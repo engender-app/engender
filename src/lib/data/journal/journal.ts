@@ -288,9 +288,9 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const dimensions = makeDimensionsArea(driver);
   const stats = makeStatsArea(driver);
   const checklists = makeChecklistsArea(driver);
-  const procedures = makeProceduresArea(driver, files, checklists);
-  const entries = makeEntriesArea(driver, files);
   const milestones = makeMilestonesArea(driver, files);
+  const procedures = makeProceduresArea(driver, files, checklists, milestones);
+  const entries = makeEntriesArea(driver, files);
   const doubtJournal = makeDoubtJournalArea(driver);
   const feltSense = makeFeltSenseArea(driver);
   const tags = makeTagsArea(driver);

@@ -33,6 +33,7 @@ export interface MilestoneInput {
   epochDay: number;
   templateKey?: string | null;
   roadmapGoalKey?: string | null;
+  procedureId?: string | null;
   /** The final photo intent for this save. Omitted means preserve, which
       keeps existing callers and non-photo edits from touching photo rows. */
   photo?: MilestonePhotoChange;
@@ -56,7 +57,10 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         epoch_day: number;
         template_key: string | null;
         roadmap_goal_key: string | null;
-      }>('SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key FROM milestone ORDER BY epoch_day, id');
+        procedure_id: string | null;
+      }>(
+        'SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id FROM milestone ORDER BY epoch_day, id'
+      );
       // One query for every milestone's photo rather than one per row: the
       // milestones screen renders the whole list at once.
       const photos = await photosByMilestone(driver);
@@ -66,6 +70,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         epochDay: r.epoch_day,
         templateKey: r.template_key,
         roadmapGoalKey: r.roadmap_goal_key,
+        procedureId: r.procedure_id ?? null,
         photo: photos.get(r.id) ?? null
       }));
     },
@@ -87,20 +92,31 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           : [];
       const staged = photoChange.action === 'replace' ? await stagePhoto(files, photoChange.photo) : null;
 
+      // roadmapGoalKey and procedureId are each set by a different caller
+      // (roadmap sync, the procedure hub) and each must survive an edit made
+      // by a caller that doesn't know about it - a plain rename from the
+      // milestones screen passes neither and must not clear either link.
+      const hasRoadmap = input.roadmapGoalKey !== undefined;
+      const hasProc = input.procedureId !== undefined;
+      const extraColumns = [
+        ...(hasRoadmap ? ['roadmap_goal_key'] : []),
+        ...(hasProc ? ['procedure_id'] : [])
+      ];
+      const extraValues = [
+        ...(hasRoadmap ? [input.roadmapGoalKey ?? null] : []),
+        ...(hasProc ? [input.procedureId ?? null] : [])
+      ];
+      const updateSql = `UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?${extraColumns.map((c) => `, ${c} = ?`).join('')}, updated_at = ? WHERE uuid = ?`;
+      const updateParams = [input.name, input.epochDay, input.templateKey ?? null, ...extraValues, now(), input.id];
+
       if (input.id) {
         if (photoChange.action === 'preserve') {
-          const result = await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, roadmap_goal_key = ?, updated_at = ? WHERE uuid = ?',
-            [input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now(), input.id]
-          );
+          const result = await driver.run(updateSql, updateParams);
           assertChanged(result, `milestone: ${input.id}`);
           return input.id;
         }
         await driver.transaction(async () => {
-          const result = await driver.run(
-            'UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?, roadmap_goal_key = ?, updated_at = ? WHERE uuid = ?',
-            [input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now(), input.id]
-          );
+          const result = await driver.run(updateSql, updateParams);
           assertChanged(result, `milestone: ${input.id}`);
           await driver.run('DELETE FROM photo WHERE milestone_id = ?', [milestoneRowid]);
           if (staged) {
@@ -111,18 +127,22 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         return input.id;
       }
       const uuid = mintUuid();
+      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      const insertParams = [
+        uuid,
+        input.name,
+        input.epochDay,
+        input.templateKey ?? null,
+        input.roadmapGoalKey ?? null,
+        input.procedureId ?? null,
+        now()
+      ];
       if (!staged) {
-        await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuid, input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now()]
-        );
+        await driver.run(insertSql, insertParams);
         return uuid;
       }
       await driver.transaction(async () => {
-        await driver.run(
-          'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuid, input.name, input.epochDay, input.templateKey ?? null, input.roadmapGoalKey ?? null, now()]
-        );
+        await driver.run(insertSql, insertParams);
         if (staged) {
           const rowid = await rowidByUuid(driver, 'milestone', uuid);
           await insertStagedPhoto(driver, { entryId: null, milestoneId: rowid }, staged);

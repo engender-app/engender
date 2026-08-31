@@ -71,12 +71,28 @@ test('a milestone round-trips without a kind column and updates by id', async ()
   const id = await journal.milestones.upsertMilestone({ epochDay: 20000, name: 'HRT start', templateKey: 'hrt_start' });
 
   assert.deepEqual(await journal.milestones.getMilestones(), [
-    { id, name: 'HRT start', epochDay: 20000, templateKey: 'hrt_start', roadmapGoalKey: null, photo: null }
+    {
+      id,
+      name: 'HRT start',
+      epochDay: 20000,
+      templateKey: 'hrt_start',
+      roadmapGoalKey: null,
+      procedureId: null,
+      photo: null
+    }
   ]);
 
   await journal.milestones.upsertMilestone({ id, name: 'HRT day one', epochDay: 20001 });
   assert.deepEqual(await journal.milestones.getMilestones(), [
-    { id, name: 'HRT day one', epochDay: 20001, templateKey: null, roadmapGoalKey: null, photo: null }
+    {
+      id,
+      name: 'HRT day one',
+      epochDay: 20001,
+      templateKey: null,
+      roadmapGoalKey: null,
+      procedureId: null,
+      photo: null
+    }
   ]);
 
   await assert.rejects(journal.milestones.upsertMilestone({ id: 'nope', name: 'x', epochDay: 1 }), /unknown milestone/);

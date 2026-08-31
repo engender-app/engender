@@ -67,3 +67,26 @@ export function activeSurgeryProcedure<T extends { surgeryEpochDay: number | nul
 
   return candidates[0].procedure;
 }
+
+/** The 5 lifecycle phases of a surgical procedure (phase 5 ticket 12).
+    - `planning`: no surgery date set yet (consult questions, prep checklist, insurance)
+    - `pre_op`: surgery date set in future (countdown, packing list, pre-op clearance)
+    - `surgery_day`: surgery day is today (prompt for milestone recording)
+    - `recovery`: 1..90 days post-op (Post-Op Day X badge, feelings diary, wound photo album)
+    - `archived`: >90 days post-op (permanent surgical history record)
+*/
+export type ProcedurePhase = 'planning' | 'pre_op' | 'surgery_day' | 'recovery' | 'archived';
+
+export function procedurePhase(
+  surgeryEpochDay: number | null,
+  today: number,
+  cutoffDays = SURGERY_RECOVERY_CUTOFF_DAYS
+): ProcedurePhase {
+  if (surgeryEpochDay === null) return 'planning';
+  if (surgeryEpochDay > today) return 'pre_op';
+  if (surgeryEpochDay === today) return 'surgery_day';
+  const days = today - surgeryEpochDay;
+  if (days <= cutoffDays) return 'recovery';
+  return 'archived';
+}
+

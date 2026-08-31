@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 43);
+  assert.equal(db.getUserVersion(), 44);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -795,6 +795,31 @@ test('v43 adds roadmap_goal_key column to milestone table', async () => {
   assert.equal(afterCols.some((c) => c.name === 'roadmap_goal_key'), true);
 });
 
+test('v44 adds procedure_id to milestone table, preserving existing milestones', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 43)
+  );
+
+  db.raw.exec(
+    "INSERT INTO milestone (uuid, name, epoch_day, updated_at) VALUES ('m-1', 'HRT Start', 20000, 0)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw.prepare('SELECT uuid, name, procedure_id FROM milestone WHERE uuid = ?').get('m-1') as {
+    uuid: string;
+    name: string;
+    procedure_id: string | null;
+  };
+  assert.equal(row.uuid, 'm-1');
+  assert.equal(row.name, 'HRT Start');
+  assert.equal(row.procedure_id, null);
+});
+
 test('the hand-written latest version and the migration list agree', async () => {
   /* LATEST_SCHEMA_VERSION stopped being derived from the array in phase 5
      audit ticket 02, so that a boot on the current schema never loads it.
@@ -808,3 +833,4 @@ test('the hand-written latest version and the migration list agree', async () =>
     'the list is contiguous from 1, in order, with no version applied twice'
   );
 });
+
