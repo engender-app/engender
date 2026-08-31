@@ -93,17 +93,17 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
   context.createMediaStreamSource(stream).connect(analyser);
 
   const gauge: LiveGauge = makeLiveGauge(ANALYSIS_SAMPLE_RATE, checks);
-  const window = new Float32Array(analyser.fftSize);
+  const latest = new Float32Array(analyser.fftSize);
   let lastPollAt = context.currentTime;
 
   const poll = setInterval(() => {
-    analyser.getFloatTimeDomainData(window);
+    analyser.getFloatTimeDomainData(latest);
     const elapsed = context.currentTime - lastPollAt;
     lastPollAt = context.currentTime;
     // Only what arrived since the last poll, taken off the end of the
     // analyser's window: everything before that has already been counted.
-    const fresh = Math.min(window.length, Math.round(elapsed * ANALYSIS_SAMPLE_RATE));
-    if (fresh > 0) gauge.push(window.slice(window.length - fresh));
+    const fresh = Math.min(latest.length, Math.round(elapsed * ANALYSIS_SAMPLE_RATE));
+    if (fresh > 0) gauge.push(latest.slice(latest.length - fresh));
   }, POLL_MS);
 
   const close = async () => {

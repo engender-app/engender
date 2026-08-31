@@ -121,16 +121,19 @@ export function shouldShowPatchScheduleTile(params: {
 }
 
 export interface VoiceBenchmarkNudgeResult {
-  daysElapsed: number | null;
+  daysElapsed: number;
 }
 
 /* Benchmarks, not an entry's voice memos (phase 5 deepening ticket 15). The
    tile was written against `voice.inJournal()` while voice_benchmark did not
    exist yet, which made it measure the age of the last memo somebody attached
    to an entry - a different record with a different cadence, and the one
-   thing a benchmark reminder must not be counting. The empty case still
-   nudges, because "no baseline recorded yet" is what the tile's own copy
-   says and is the only route to the flow before the first one exists. */
+   thing a benchmark reminder must not be counting.
+
+   A journal with no benchmark in it gets no tile at all, which is ADR-0039's
+   own rule - the live-tile area is gated on live data, never on a preference
+   - and is what stops the tile being an advert for a feature nobody has
+   started. The flow is reached from the More hub until then. */
 export function shouldShowVoiceBenchmarkNudge(params: {
   benchmarks: readonly { epochDay: number }[];
   todayEpochDay: number;
@@ -139,9 +142,7 @@ export function shouldShowVoiceBenchmarkNudge(params: {
 }): VoiceBenchmarkNudgeResult | null {
   if (!params.enabled || params.snoozed) return null;
 
-  if (params.benchmarks.length === 0) {
-    return { daysElapsed: null };
-  }
+  if (params.benchmarks.length === 0) return null;
 
   let latestDay = params.benchmarks[0].epochDay;
   for (const benchmark of params.benchmarks) {

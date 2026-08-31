@@ -764,9 +764,9 @@
               data-live-tile="voice-benchmark-nudge"
               title={m.tile_voice_benchmark_title()}
               value={m.tile_voice_benchmark_action()}
-              note={voiceBenchmarkQualifying.daysElapsed == null
-                ? m.tile_voice_benchmark_none()
-                : m.tile_voice_benchmark_days_ago({ days: String(voiceBenchmarkQualifying.daysElapsed) })}
+              note={m.tile_voice_benchmark_days_ago({
+                days: String(voiceBenchmarkQualifying.daysElapsed)
+              })}
               href="/settings/voice"
               action={{
                 icon: 'mic',

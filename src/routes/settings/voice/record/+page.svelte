@@ -59,6 +59,11 @@
   let step = $state<Step>('passage');
   let phase = $state<Phase>('idle');
   let refusal = $state<MicRefusal | null>(null);
+  /* Whether asking has already been tried once. Android stops offering the
+     dialog after a refusal it treats as final, and a button that silently
+     does nothing is worse than no button - so the second refusal swaps the
+     ask for the sentence about where the switch actually lives. */
+  let askedAgain = $state(false);
   let saving = $state(false);
 
   let session: TakeSession | null = null;
@@ -98,6 +103,18 @@
     });
   }
 
+  /** What a refusal says, and what it can offer. A second refusal keeps the
+      title and changes the sentence: the ask is gone, so the copy has to
+      name where the switch is instead. */
+  let refusalCopy = $derived.by(() => {
+    if (refusal === 'unavailable') return { title: m.vb_mic_missing_title(), text: m.vb_mic_missing_body() };
+    if (refusal === 'unsupported') return { title: m.vb_mic_unsupported_title(), text: m.vb_mic_unsupported_body() };
+    return {
+      title: m.vb_mic_denied_title(),
+      text: askedAgain ? m.vb_mic_denied_again_body() : m.vb_mic_denied_body()
+    };
+  });
+
   let liveAdvice = $derived(reading ? adviceFor(reading.failed, step) : []);
   let retryAdvice = $derived(adviceFor(failed, step));
 
@@ -111,9 +128,12 @@
   async function start(checks: readonly QualityCheck[]) {
     const opened = await startTake(checks);
     if (typeof opened === 'string') {
+      if (refusal) askedAgain = true;
       refusal = opened;
       return;
     }
+    refusal = null;
+    askedAgain = false;
     session = opened;
     reading = null;
     frames = [];
@@ -214,7 +234,10 @@
     editingPassage = false;
   }
 
-  const round = (value: number, places = 0) => value.toFixed(places);
+  /** A figure as the screen states it: a fixed number of places, as text.
+      Named for what it produces rather than for rounding, which is what it
+      does on the way. */
+  const figure = (value: number, places = 0) => value.toFixed(places);
 
   onDestroy(() => {
     stopPolling();
@@ -236,43 +259,45 @@
 
   {#if refusal}
     <div class="screen-part">
+      <!-- The ask is a real button rather than a sentence about settings
+           (Alicja, 2026-08-31): a first refusal is usually the OS dialog
+           being dismissed, and asking again brings it straight back. Only
+           'denied' gets it - there is nothing to ask a device with no
+           microphone, or a browser that cannot record at all. -->
       <Notice
         icon="mic"
         key="voice-benchmark-refused"
         {role}
-        title={refusal === 'denied'
-          ? m.vb_mic_denied_title()
-          : refusal === 'unavailable'
-            ? m.vb_mic_missing_title()
-            : m.vb_mic_unsupported_title()}
-        text={refusal === 'denied'
-          ? m.vb_mic_denied_body()
-          : refusal === 'unavailable'
-            ? m.vb_mic_missing_body()
-            : m.vb_mic_unsupported_body()}
+        title={refusalCopy.title}
+        text={refusalCopy.text}
+        action={refusal === 'denied' && !askedAgain
+          ? {
+              label: m.vb_mic_ask(),
+              primary: true,
+              onclick: () => start(step === 'vowel' ? VOWEL_CHECKS : PASSAGE_CHECKS)
+            }
+          : undefined}
       />
     </div>
-  {:else if step === 'summary'}
+  {:else if step === 'summary' && passageTake?.figures}
+    {@const figures = passageTake.figures}
     <div class="screen-part vb-body">
       <SectionHeading text={m.vb_measured()} />
       <dl class="vb-figures kit-panel">
         <div><dt>{m.vb_pitch()}</dt>
-          <dd>{m.vb_hz({ value: round(passageTake?.figures?.f0MedianHz ?? 0) })}
-            <span class="vb-aside">{noteName(passageTake?.figures?.f0MedianHz ?? 1)}</span></dd></div>
+          <dd>{m.vb_hz({ value: figure(figures.f0MedianHz) })}
+            <span class="vb-aside">{noteName(figures.f0MedianHz)}</span></dd></div>
         <div><dt>{m.vb_span()}</dt>
-          <dd>{m.vb_hz_range({
-            low: round(passageTake?.figures?.f0P10Hz ?? 0),
-            high: round(passageTake?.figures?.f0P90Hz ?? 0)
-          })}</dd></div>
+          <dd>{m.vb_hz_range({ low: figure(figures.f0P10Hz), high: figure(figures.f0P90Hz) })}</dd></div>
         <div><dt>{m.vb_spread()}</dt>
-          <dd>{m.vb_semitones({ value: round(passageTake?.figures?.semitoneSd ?? 0, 1) })}</dd></div>
+          <dd>{m.vb_semitones({ value: figure(figures.semitoneSd, 1) })}</dd></div>
         <div><dt>{m.vb_rate()}</dt>
-          <dd>{m.vb_wpm({ value: round(passageTake?.figures?.wordsPerMinute ?? 0) })}</dd></div>
+          <dd>{m.vb_wpm({ value: figure(figures.wordsPerMinute) })}</dd></div>
         <div><dt>{m.vb_resonance()}</dt>
           <dd>
             {#if vowelTake?.formants}
-              {m.vb_hz({ value: round(vowelTake.formants.f1Hz) })} · {m.vb_hz({
-                value: round(vowelTake.formants.f2Hz)
+              {m.vb_hz({ value: figure(vowelTake.formants.f1Hz) })} · {m.vb_hz({
+                value: figure(vowelTake.formants.f2Hz)
               })}
             {:else}
               <span class="vb-aside">{m.vb_not_measured()}</span>
@@ -281,7 +306,7 @@
         <div><dt>{m.vb_room()}</dt>
           <dd>
             {#if vowelTake}
-              {m.vb_db({ value: round(vowelTake.snrDb) })}
+              {m.vb_db({ value: figure(vowelTake.snrDb) })}
             {:else}
               <span class="vb-aside">{m.vb_not_measured()}</span>
             {/if}
@@ -295,7 +320,7 @@
     </div>
 
     <div class="editor-savebar">
-      <button class="btn btn-primary press" data-vb-save disabled={saving} onclick={save}>
+      <button class="btn btn-primary" data-vb-save disabled={saving} onclick={save}>
         <Icon name="check" size={20} /><span>{m.vb_save()}</span>
       </button>
     </div>
@@ -353,7 +378,7 @@
       {/if}
 
       {#if phase === 'recording'}
-        <button class="btn btn-primary press" data-vb-stop onclick={stop}>
+        <button class="btn btn-primary" data-vb-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
         </button>
       {:else if phase === 'analysing'}
@@ -362,7 +387,7 @@
         </button>
       {:else}
         <button
-          class="btn btn-primary press"
+          class="btn btn-primary"
           data-vb-record
           onclick={() => start(step === 'vowel' ? VOWEL_CHECKS : PASSAGE_CHECKS)}
         >
@@ -374,7 +399,7 @@
       {/if}
 
       {#if step === 'vowel' && phase !== 'recording' && phase !== 'analysing'}
-        <button class="btn btn-quiet press" data-vb-skip onclick={skipVowel}>
+        <button class="btn btn-quiet" data-vb-skip onclick={skipVowel}>
           <span>{m.vb_vowel_skip()}</span>
         </button>
       {/if}
@@ -390,11 +415,11 @@
     ></textarea>
   </label>
   <div class="vb-sheet-actions">
-    <button class="btn btn-primary press" onclick={useOwnPassage}>
+    <button class="btn btn-primary" onclick={useOwnPassage}>
       <span>{m.vb_passage_own_use()}</span>
     </button>
     {#if ownPassage}
-      <button class="btn btn-quiet press" onclick={clearOwnPassage}>
+      <button class="btn btn-quiet" onclick={clearOwnPassage}>
         <span>{m.vb_passage_own_clear()}</span>
       </button>
     {/if}

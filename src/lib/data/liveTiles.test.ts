@@ -242,15 +242,14 @@ describe('liveTiles trigger predicates', () => {
   });
 
   describe('shouldShowVoiceBenchmarkNudge', () => {
-    it('triggers when no benchmarks exist', () => {
+    it('stays silent until there is a benchmark to be overdue for', () => {
       const result = shouldShowVoiceBenchmarkNudge({
         benchmarks: [],
         todayEpochDay: today,
         enabled: true,
         snoozed: false
       });
-      expect(result).not.toBeNull();
-      expect(result?.daysElapsed).toBeNull();
+      expect(result).toBeNull();
     });
 
     it('triggers when the last benchmark was > 14 days ago', () => {
