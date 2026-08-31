@@ -14,7 +14,16 @@
    fallback line below rather than three near-duplicates, since the other
    two links can't dangle in practice (milestones.ts, tryouts.ts null them
    out on delete) and a defensive string for an unreachable case would be
-   copy nobody ever reads. */
+   copy nobody ever reads.
+
+   Live tiles are the third surface the ticket names and end up not needing
+   any of this: a tile is never something a person wrote by hand, so there
+   is no "who made this" ambiguity to resolve, and its own title is already
+   the feature name (live-tiles/rows.ts, and every Tile's own `title` prop
+   in src/routes/+page.svelte) - "Wear timer" over an elapsed time is
+   already what this module would otherwise be saying. One presentation,
+   and one surface it turns out not to apply to rather than two shapes
+   of it. */
 
 import { m } from '$lib/paraglide/messages';
 import { POLISH_PACK, type RoadmapGoalKey } from './roadmap';
@@ -53,9 +62,15 @@ export function resolveMilestoneOrigin(milestone: Milestone): Origin | null {
 
 export interface ReminderOrigin extends Origin {
   hint: string;
+  /** The action label for `href`, kept beside it rather than left for each
+      caller to re-derive from which prefix matched - "View stock" and
+      "View wear log" name different screens, so a shared generic label
+      (unlike resolveMilestoneOrigin's prov_open_source) would say less. */
+  actionLabel: string | null;
 }
 
 const STOCK_PREFIX = 'stock:';
+const WEAR_PREFIX = 'wear:';
 
 /** null for a reminder a person made themselves, or one they have already
     taken over: the reminders editor never sets autoSource (reminders.ts),
@@ -66,9 +81,13 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
   const hint = m.prov_reminder_takeover_hint();
   if (reminder.autoSource.startsWith(STOCK_PREFIX)) {
     const drug = reminder.autoSource.slice(STOCK_PREFIX.length);
-    return { text: m.prov_reminder_stock({ drug }), hint, href: '/settings/stock' };
+    return { text: m.prov_reminder_stock({ drug }), hint, href: '/settings/stock', actionLabel: m.prov_view_stock() };
   }
-  // Defensive: stock.ts is the only writer of autoSource today, so this
-  // branch is unreached until a second feature starts marking reminders.
-  return { text: m.prov_source_gone(), hint, href: null };
+  if (reminder.autoSource.startsWith(WEAR_PREFIX)) {
+    return { text: m.prov_reminder_wear(), hint, href: '/settings/wear', actionLabel: m.prov_view_wear_log() };
+  }
+  // Defensive: stock.ts and wearSessions.ts are the only writers of
+  // autoSource today, so this branch is unreached until a third feature
+  // starts marking reminders.
+  return { text: m.prov_source_gone(), hint, href: null, actionLabel: null };
 }
