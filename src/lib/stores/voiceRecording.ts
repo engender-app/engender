@@ -36,26 +36,36 @@ export interface ActiveRecording {
   stop(): Promise<Uint8Array | null>;
 }
 
-/** Opens the microphone and starts capturing. Null if the browser refused -
-    permission denied, no microphone, or an unsupported codec - which is
-    reported with a toast and treated as an ordinary outcome rather than an
-    error, the same treatment pickPhotos/capturePhoto give a cancelled
-    picker (photoPicking.ts). */
-export async function startRecording(): Promise<ActiveRecording | null> {
-  if (!MediaRecorder.isTypeSupported(RECORDING_MIME_TYPE)) {
-    toast(m.recording_unsupported());
-    return null;
-  }
+/** Why the microphone did not open, for a caller that has to say something
+    other than "it did not" - the benchmark flow holds a denied-permission
+    state on screen (stores/voiceBenchmark.ts), where an entry's memo button
+    only needs a toast. `denied` is a decision a person made and can undo in
+    the OS; `unavailable` is a device with no microphone this app can reach. */
+export type MicRefusal = 'unsupported' | 'denied' | 'unavailable';
 
-  let stream: MediaStream;
+/** Opens the microphone, or says why it stayed shut. Refusal is an ordinary
+    outcome here rather than an error, the same treatment pickPhotos gives a
+    cancelled picker (photoPicking.ts) - and nothing is said to the person
+    from in here, because what to say depends on the screen that asked. */
+export async function openMicrophone(): Promise<MediaStream | MicRefusal> {
+  if (!MediaRecorder.isTypeSupported(RECORDING_MIME_TYPE)) return 'unsupported';
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    return await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (error) {
     console.error('the microphone could not be opened', error);
-    toast(m.recording_mic_failed());
-    return null;
+    // Capacitor's WebChromeClient turns an Android permission refusal into
+    // the same NotAllowedError the browser raises, so one check covers both
+    // platforms (see this module's header).
+    return error instanceof DOMException && error.name === 'NotAllowedError' ? 'denied' : 'unavailable';
   }
+}
 
+/** Captures from a stream the caller already opened, and owns stopping it.
+    Split from startRecording() so a second caller can hold the same stream
+    open for live analysis (stores/voiceBenchmark.ts) instead of opening a
+    second one - two getUserMedia calls means two microphone indicators and,
+    on Android, two permission moments for one recording. */
+export function recordStream(stream: MediaStream): ActiveRecording {
   const chunks: Blob[] = [];
   const recorder = new MediaRecorder(stream, { mimeType: RECORDING_MIME_TYPE });
   recorder.ondataavailable = (event) => {
@@ -77,6 +87,22 @@ export async function startRecording(): Promise<ActiveRecording | null> {
       return new Uint8Array(await new Blob(chunks, { type: RECORDING_MIME_TYPE }).arrayBuffer());
     }
   };
+}
+
+/** Opens the microphone and starts capturing. Null if the browser refused -
+    permission denied, no microphone, or an unsupported codec - reported with
+    a toast and treated as an ordinary outcome rather than an error. */
+export async function startRecording(): Promise<ActiveRecording | null> {
+  const stream = await openMicrophone();
+  if (stream === 'unsupported') {
+    toast(m.recording_unsupported());
+    return null;
+  }
+  if (stream === 'denied' || stream === 'unavailable') {
+    toast(m.recording_mic_failed());
+    return null;
+  }
+  return recordStream(stream);
 }
 
 /** A recording the person already has, chosen from wherever the device keeps

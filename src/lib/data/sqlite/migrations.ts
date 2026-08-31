@@ -1515,6 +1515,67 @@ const SCHEMA_V45 = `
 DELETE FROM pref WHERE key IN ('pinHash', 'appLock');
 `;
 
+/* v46: voice benchmarks (phase 5 deepening ticket 15, CONTEXT: "Voice
+   benchmark").
+
+   A separate table from voice_recording rather than a flag on it, because
+   the two are different kinds of record. A recording is a memo hanging off
+   one entry; a benchmark hangs off a day, and its numbers only mean anything
+   because the conditions were fixed - same passage, same vowel, same quality
+   floor - which is what makes two of them six months apart comparable at all.
+   Putting a benchmark's columns on voice_recording would make every memo
+   carry eleven null acoustic fields to say it was never one.
+
+   The acoustic figures are stored rather than derived, which ADR-0010 would
+   otherwise argue against. They are not derived state: they are a
+   measurement of a file, taken once under a known analyzer, and the audio a
+   benchmark was measured from is deletable while the benchmark stays. The
+   alternative is re-running YIN and LPC over every stored take on every
+   chart render.
+
+   `passage_key` is not in the ticket's column list and is here because the
+   ticket's own text needs it: a benchmark read from a custom passage is
+   comparable only to others read from the same one, and the compare surface
+   (ticket 16) has no way to know that without the row saying which passage
+   was read.
+
+   `vowel_file_path`, `f1_hz`, `f2_hz` and `snr_db` are nullable on purpose.
+   A session where the vowel step was skipped, or where it never cleared the
+   gate, is a valid benchmark with a passage and no resonance - not a failed
+   one, and not a row to refuse.
+
+   The last column is `updated_at` rather than the ticket's `created_at`:
+   every table in this schema names it that, and the flat archive path
+   (archiveTable.ts) writes it by that name on the way back in. A benchmark
+   is never edited, so the two would have held the same value anyway, and one
+   table spelling it differently would have cost a hand-written archive
+   section to say nothing new.
+
+   Landed as v46: v45 was minted by the app-lock work while this branch was
+   open, which is the collision schema-version.ts's header warns about. */
+const SCHEMA_V46 = `
+CREATE TABLE IF NOT EXISTS voice_benchmark (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid TEXT NOT NULL UNIQUE,
+  epoch_day INTEGER NOT NULL,
+  timestamp INTEGER NOT NULL,
+  passage_key TEXT NOT NULL,
+  passage_file_path TEXT NOT NULL,
+  vowel_file_path TEXT,
+  f0_median_hz REAL NOT NULL,
+  f0_p10_hz REAL NOT NULL,
+  f0_p90_hz REAL NOT NULL,
+  semitone_sd REAL NOT NULL,
+  words_per_minute REAL NOT NULL,
+  f1_hz REAL,
+  f2_hz REAL,
+  snr_db REAL,
+  note TEXT,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_voice_benchmark_epoch_day ON voice_benchmark(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1560,5 +1621,6 @@ export const migrations: Migration[] = [
   { version: 42, sql: SCHEMA_V42 },
   { version: 43, sql: SCHEMA_V43 },
   { version: 44, sql: SCHEMA_V44 },
-  { version: 45, sql: SCHEMA_V45 }
+  { version: 45, sql: SCHEMA_V45 },
+  { version: 46, sql: SCHEMA_V46 }
 ];

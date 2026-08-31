@@ -1323,6 +1323,47 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
   else fail('a hidden field still gives its control a real for/id pair, just off screen', JSON.stringify(hiddenField));
 });
 
+// --- Phase 5 deepening ticket 15: the voice benchmark engine ---------------
+await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () => {
+  const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
+  if (r.error) throw new Error(r.error);
+
+  /* The claim the node tier cannot make: opus, a webm container and a
+     resample down to the analysis rate leave the measurement alone. The
+     oscillator is at 185 Hz, so anything outside a hertz or two of that is
+     the round trip having changed the answer. */
+  if (r.medianHz !== null && Math.abs(r.medianHz - 185) <= 2)
+    ok(`a recorded, stored and decoded take still measures its own pitch (${r.medianHz.toFixed(2)} Hz against 185)`);
+  else fail('a stored and decoded take still measures its own pitch', `${r.medianHz} Hz`);
+
+  if (r.sampleRate === 16000 && Math.abs(r.decodedSeconds - 4) < 0.6)
+    ok(`decodeTake resamples to 16 kHz and keeps the take's length (${r.decodedSeconds.toFixed(2)}s)`);
+  else fail("decodeTake resamples to 16 kHz and keeps the take's length", `${r.sampleRate} Hz, ${r.decodedSeconds}s`);
+
+  if (r.storedBytes > 0)
+    ok(`what gets stored is a real file rather than an empty one (${(r.storedBytes / 1024).toFixed(1)}KB)`);
+  else fail('what gets stored is a real file', `${r.storedBytes} bytes`);
+
+  if (r.passageFailed.length === 0 && r.semitoneSd !== null && r.semitoneSd < 0.6)
+    ok('a steady take clears the gate after the round trip, and reads as steady');
+  else fail('a steady take clears the gate after the round trip', `${JSON.stringify(r.passageFailed)}, sd ${r.semitoneSd}`);
+
+  /* The gauge is the other half of the flow: it has to have seen the take
+     arrive in pieces and agree with the gate about it, or the screen would
+     be encouraging a take the save then rejects. */
+  if (r.liveFrames > 100 && r.liveVoicedSeconds > 1.5 && r.liveFailedWhileSteady.length === 0)
+    ok(`the live gauge tracked the same take frame by frame and agreed (${r.liveVoicedSeconds.toFixed(2)}s held)`);
+  else
+    fail(
+      'the live gauge tracked the same take and agreed',
+      `${r.liveFrames} frames, ${r.liveVoicedSeconds}s, ${JSON.stringify(r.liveFailedWhileSteady)}`
+    );
+
+  if (r.loudPeak >= 0.98 && r.loudFailed.includes('clipping'))
+    ok(`a take pushed into the rails is caught while it is happening (peak ${r.loudPeak.toFixed(3)})`);
+  else fail('a take pushed into the rails is caught while it is happening', `peak ${r.loudPeak}, ${JSON.stringify(r.loudFailed)}`);
+});
+
 await browser.close();
 await server.close();
 
