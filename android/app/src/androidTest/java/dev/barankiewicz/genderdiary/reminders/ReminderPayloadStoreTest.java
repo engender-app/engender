@@ -6,7 +6,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -21,6 +24,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.KeyStore;
 
 /**
  * Phase 5 security ticket 02 (audit finding G-02): what a copy of the app's
@@ -59,7 +63,7 @@ public class ReminderPayloadStoreTest {
         assertFalse("the reminder title is readable on disk", onDisk.contains(TITLE));
         assertFalse("the affirmation is readable on disk", onDisk.contains(AFFIRMATION));
         assertFalse("the check-in prompt is readable on disk", onDisk.contains("How are you today?"));
-        assertTrue("nothing was written at all", onDisk.contains("payload-v2"));
+        assertTrue("nothing was written at all", onDisk.contains(ReminderPayloadStore.KEY_CIPHERTEXT));
 
         JSONObject loaded = ReminderScheduler.loadPayload(context);
         assertNotNull(loaded);
@@ -85,6 +89,26 @@ public class ReminderPayloadStoreTest {
         // And it reads back the same way on every later fire, not only the
         // one that migrated it.
         assertEquals(payload().toString(), ReminderScheduler.loadPayload(context).toString());
+
+        /* "Still fires", which is the half a round trip does not prove: the
+           migrated rules reach AlarmManager, under the reminder's own id. */
+        ReminderScheduler.rescheduleFromStore(context);
+        assertTrue("the migrated reminder scheduled nothing", reminderAlarmExists());
+    }
+
+    @Test
+    public void theStoreMintsTheAliasTheResetDeletes() throws Exception {
+        /* What DeviceStoresTest cannot ask from the reset package: that the
+           alias the reset deletes is the one this store actually wraps
+           under. Minted by writing a payload rather than by hand, so a store
+           that quietly moved to another alias fails here. */
+        assertFalse("the fixture started with an alias", aliasExists());
+
+        ReminderScheduler.saveAndSchedule(context, payload());
+        assertTrue("the store wrapped under some other alias", aliasExists());
+
+        ReminderScheduler.wipe(context);
+        assertFalse("the wrapping key survived the reset", aliasExists());
     }
 
     @Test
@@ -124,16 +148,33 @@ public class ReminderPayloadStoreTest {
     }
 
     /**
-     * The preference file as a thief reads it. The empty {@code commit} first
-     * is what makes that honest: the store writes with {@code apply}, which
-     * returns before the file does, so a read that raced it could report a
-     * clean file for a payload not yet written.
+     * The preference file as a thief reads it. The empty {@code commit}
+     * first is what keeps that honest whatever the store does: a write that
+     * went out with {@code apply} returns before the file does, and a read
+     * that raced it would report a clean file for a payload not yet
+     * written.
      */
     private String preferenceBytes() throws Exception {
         context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE).edit().commit();
         File file = new File(context.getDataDir(), "shared_prefs/" + ReminderScheduler.PREFS + ".xml");
         if (!file.exists()) return "";
         return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+    }
+
+    private static boolean aliasExists() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        return keyStore.containsAlias(ReminderPayloadStore.ALIAS);
+    }
+
+    /** The alarm ReminderScheduler builds for the reminder in {@link
+        #payload()}, if it is still scheduled. */
+    private boolean reminderAlarmExists() {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class)
+            .setAction("dev.barankiewicz.genderdiary.REMINDER")
+            .setData(Uri.parse("genderdiary://reminder/r-1"));
+        return PendingIntent.getBroadcast(
+            context, 41, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE) != null;
     }
 
     private static JSONObject payload() throws Exception {
