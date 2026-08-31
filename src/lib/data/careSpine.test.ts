@@ -94,7 +94,7 @@ test('the rail always reaches at least a fortnight either side of today', () => 
   assert.equal(spine.toEpochDay, TODAY + SPINE_MIN_FORWARD_DAYS);
 });
 
-test('a mark past the fortnight stretches the rail to it', () => {
+test('a mark past the fortnight stretches the rail to it, and lands on its end', () => {
   const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 40, labDrawEpochDay: TODAY - 30 }, TODAY);
   assert.ok(spine);
   assert.equal(spine.fromEpochDay, TODAY - 30);
@@ -129,11 +129,41 @@ test('a mark inside the rail is not beyond it', () => {
   assert.equal(markOf(spine, 'today')?.beyondSpan, false);
 });
 
-test("today's position follows the span rather than sitting at a fixed third", () => {
-  const spine = careSpine({ ...NO_FACTS, runOutEpochDay: TODAY + 100 }, TODAY);
+test('today sits at the middle of the rail whatever the marks are', () => {
+  for (const facts of [
+    { ...NO_FACTS, runOutEpochDay: TODAY + 100 },
+    { ...NO_FACTS, labDrawEpochDay: TODAY - 55 },
+    { lastDoseEpochDay: TODAY - 3, nextDoseEpochDay: TODAY + 4, labDrawEpochDay: TODAY - 200, runOutEpochDay: TODAY + 9 }
+  ]) {
+    const spine = careSpine(facts, TODAY);
+    assert.ok(spine);
+    assert.equal(markOf(spine, 'today')?.position, 0.5);
+  }
+});
+
+/* The rail's scale is the square root of the distance from today, not the
+   distance: it is what makes a rail with a dose yesterday and a run-out in
+   three weeks readable at all. Held here because it is a design decision
+   about honesty rather than an implementation detail - the marks stay in
+   order, so nothing on the line is ever drawn out of sequence, and every
+   caption prints its own date. */
+test('a day twice as far from today sits less than twice as far along', () => {
+  const spine = careSpine({ ...NO_FACTS, nextDoseEpochDay: TODAY + 4, runOutEpochDay: TODAY + 16 }, TODAY);
   assert.ok(spine);
-  const expected = SPINE_MIN_BACK_DAYS / (SPINE_MIN_BACK_DAYS + 100);
-  assert.ok(Math.abs((markOf(spine, 'today')?.position ?? -1) - expected) < 1e-9);
+  const near = (markOf(spine, 'nextDose')?.position ?? 0) - 0.5;
+  const far = (markOf(spine, 'runOut')?.position ?? 0) - 0.5;
+  assert.ok(near > 0 && far > near);
+  assert.ok(Math.abs(far / near - 2) < 1e-9, 'four times the days, twice the distance');
+});
+
+test('the scale never reorders two marks', () => {
+  const spine = careSpine(
+    { lastDoseEpochDay: TODAY - 1, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: TODAY - 40, runOutEpochDay: TODAY + 2 },
+    TODAY
+  );
+  assert.ok(spine);
+  const positions = spine.marks.map((mark) => mark.position);
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions);
 });
 
 /* Labels that would collide take the second lane */
@@ -158,7 +188,7 @@ test('a mark crowding the one before it drops to the far lane', () => {
   assert.notEqual(lanes.get('today'), lanes.get('nextDose'));
 });
 
-test('two marks on the same day still get their own lanes', () => {
+test('marks on the same day each get a lane of their own', () => {
   const spine = careSpine(
     { lastDoseEpochDay: TODAY, nextDoseEpochDay: null, labDrawEpochDay: TODAY, runOutEpochDay: TODAY + 20 },
     TODAY
@@ -166,7 +196,39 @@ test('two marks on the same day still get their own lanes', () => {
   assert.ok(spine);
   const onToday = spine.marks.filter((mark) => mark.epochDay === TODAY);
   assert.equal(onToday.length, 3);
-  assert.equal(new Set(onToday.map((mark) => mark.lane)).size >= 2, true);
+  assert.deepEqual(
+    onToday.map((mark) => mark.lane).sort(),
+    [0, 1, 2],
+    'three captions at one point need three lanes; two would print one over another'
+  );
+});
+
+/* The case that put this rule in: dosed today, next dose tomorrow, and a
+   run-out three weeks out. On a linear scale all three crowded into the last
+   quarter of the rail and the captions printed on top of each other. */
+test('a dose today, one tomorrow and a run-out weeks out all stay readable', () => {
+  const spine = careSpine(
+    { lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: TODAY - 70, runOutEpochDay: TODAY + 20 },
+    TODAY
+  );
+  assert.ok(spine);
+  const byLane = new Map<number, number[]>();
+  for (const mark of spine.marks) byLane.set(mark.lane, [...(byLane.get(mark.lane) ?? []), mark.position]);
+  for (const [lane, positions] of byLane) {
+    for (let i = 1; i < positions.length; i++) {
+      assert.ok(positions[i] - positions[i - 1] >= 0.17, `lane ${lane} has two captions too close together`);
+    }
+  }
+});
+
+test('every lane from 0 up is used, so the rail is never taller than it needs', () => {
+  const spine = careSpine(
+    { lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 1, labDrawEpochDay: TODAY - 70, runOutEpochDay: TODAY + 20 },
+    TODAY
+  );
+  assert.ok(spine);
+  const lanes = [...new Set(spine.marks.map((mark) => mark.lane))].sort((a, b) => a - b);
+  assert.deepEqual(lanes, lanes.map((_, i) => i));
 });
 
 /* The two facts the rail reads off the dose log */
