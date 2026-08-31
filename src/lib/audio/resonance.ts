@@ -27,6 +27,7 @@
    the wrong model. */
 
 import type { PitchTrack } from './pitch';
+import { median } from './series';
 
 /** 25 ms per frame: long enough for the autocorrelation to see several
     periods of a low voice, short enough that a vowel does not drift inside
@@ -120,12 +121,6 @@ function peakFormants(a: Float64Array, order: number, sampleRate: number): Forma
   const f2 = peaks.find((hz) => hz >= f1 + MIN_FORMANT_GAP_HZ && hz <= F2_CEILING_HZ);
   if (f2 === undefined) return null;
   return { f1Hz: f1, f2Hz: f2 };
-}
-
-function median(values: number[]): number {
-  const sorted = [...values].sort((x, y) => x - y);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
 /** F1 and F2 for a sustained vowel, as the median of the voiced frames'

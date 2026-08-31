@@ -1780,7 +1780,6 @@
   "tile_voice_benchmark_title": "Próbka głosu",
   "tile_voice_benchmark_sub": "Przypomina o okresowym nagraniu próbki bazowej głosu.",
   "tile_voice_benchmark_action": "Nagraj próbkę",
-  "tile_voice_benchmark_none": "Brak zapisanej próbki bazowej",
   "tile_voice_benchmark_days_ago": "{days} dni od ostatniej próbki",
   "tile_pause_active_title": "Pauza w dzienniku",
   "tile_pause_active_sub": "Zastępuje licznik serii informacją o ochronie podczas pauzy.",
@@ -2573,7 +2572,6 @@
   "vb_vowel_skip": "Pomiń dźwięk",
   "vb_vowel_start": "Zacznij trzy sekundy",
   "vb_gauge_label": "Jak idzie to nagranie",
-  "vb_gauge_room": "Tło",
   "vb_gauge_run": "Utrzymane: {seconds}s",
   "vb_fail_clipping": "Dalej od mikrofonu.",
   "vb_fail_noise": "Gdzieś ciszej, jeśli jest gdzie.",
@@ -2604,5 +2602,8 @@
   "vb_mic_missing_title": "Brak mikrofonu, do którego aplikacja ma dostęp",
   "vb_mic_missing_body": "Cała reszta aplikacji działa dalej. Wróć tu, kiedy mikrofon będzie.",
   "vb_mic_unsupported_title": "Ta przeglądarka nie nagrywa dźwięku",
-  "vb_mic_unsupported_body": "Aplikacja na Androida potrafi. Nic innego tutaj od tego nie zależy."
+  "vb_mic_unsupported_body": "Aplikacja na Androida potrafi. Nic innego tutaj od tego nie zależy.",
+  "vb_mic_ask": "Poproś o mikrofon",
+  "vb_mic_denied_again_body": "Ponowna prośba nic nie dała, więc wybór nie jest już proponowany. Przełącznik jest w uprawnieniach tej aplikacji, przy mikrofonie.",
+  "vb_hub_sub": "nagranie według stałych zasad, porównywalne miesiąc do miesiąca"
 }

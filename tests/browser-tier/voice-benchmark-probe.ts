@@ -15,7 +15,7 @@
    decodeTake() run unchanged over it. */
 
 import { analysePassage } from '../../src/lib/audio/benchmark.ts';
-import { PASSAGE_CHECKS, VOWEL_CHECKS } from '../../src/lib/audio/quality.ts';
+import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck } from '../../src/lib/audio/quality.ts';
 import { installFakeMicrophone } from '../fake-microphone.mjs';
 import { ANALYSIS_SAMPLE_RATE, startTake } from '../../src/lib/stores/voiceBenchmark.ts';
 import { publish } from '../probe-handshake.mjs';
@@ -23,9 +23,9 @@ import { publish } from '../probe-handshake.mjs';
 const NAME = 'voice-benchmark-probe';
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function take(kind: 'steady' | 'loud' | 'wobble' | 'silent', seconds: number, checks: readonly string[]) {
+async function take(kind: 'steady' | 'loud' | 'wobble', seconds: number, checks: readonly QualityCheck[]) {
   const microphone = installFakeMicrophone(kind);
-  const session = await startTake(checks as never);
+  const session = await startTake(checks);
   if (typeof session === 'string') throw new Error(`the microphone refused: ${session}`);
 
   await delay(seconds * 1000);

@@ -44,6 +44,7 @@
   import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
+  import { median } from '$lib/audio/series';
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
 
@@ -92,9 +93,7 @@
       happens to be. The figure never says which pitch is the right one. */
   let reference = $derived.by(() => {
     const voiced = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
-    if (voiced.length === 0) return null;
-    const sorted = [...voiced].sort((a, b) => a - b);
-    return sorted[Math.floor(sorted.length / 2)];
+    return voiced.length === 0 ? null : median(voiced);
   });
 
   /** The trace, as one polyline per unbroken voiced run: a gap in the
@@ -322,9 +321,5 @@
     font-size: var(--text-sm);
     line-height: 1.5;
     color: var(--role-ink);
-  }
-
-  .vg-advice:empty {
-    min-height: calc(var(--text-sm) * 1.5);
   }
 </style>

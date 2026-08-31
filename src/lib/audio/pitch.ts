@@ -27,6 +27,8 @@
    quadratic in the search range). Nothing here assumes it - every bound is
    derived from the rate passed in. */
 
+import { percentileOfSorted } from './series';
+
 /** The pitch range searched. Wider than any one voice on purpose: the
     engine has no business deciding in advance which end of it a person's
     voice belongs at. */
@@ -161,14 +163,6 @@ function frameF0(
   return hz >= MIN_F0_HZ && hz <= MAX_F0_HZ ? hz : null;
 }
 
-function percentile(sorted: number[], fraction: number): number {
-  if (sorted.length === 1) return sorted[0];
-  const at = fraction * (sorted.length - 1);
-  const below = Math.floor(at);
-  const above = Math.min(below + 1, sorted.length - 1);
-  return sorted[below] + (sorted[above] - sorted[below]) * (at - below);
-}
-
 export function trackPitch(samples: Float32Array, sampleRate: number): PitchTrack {
   const { windowLength, maxTau, minTau, hop, hopSeconds } = frameGeometry(sampleRate);
   const frames: PitchFrame[] = [];
@@ -245,7 +239,7 @@ export function summarizeFrames(frames: readonly PitchFrame[], hopSeconds: numbe
   if (voicedHz.length === 0) return track;
 
   const sorted = [...voicedHz].sort((a, b) => a - b);
-  const medianHz = percentile(sorted, 0.5);
+  const medianHz = percentileOfSorted(sorted, 0.5);
   let squared = 0;
   for (const hz of voicedHz) {
     const semitones = 12 * Math.log2(hz / medianHz);
@@ -256,8 +250,8 @@ export function summarizeFrames(frames: readonly PitchFrame[], hopSeconds: numbe
     ...track,
     stats: {
       medianHz,
-      p10Hz: percentile(sorted, 0.1),
-      p90Hz: percentile(sorted, 0.9),
+      p10Hz: percentileOfSorted(sorted, 0.1),
+      p90Hz: percentileOfSorted(sorted, 0.9),
       semitoneSd: Math.sqrt(squared / voicedHz.length),
       note: noteName(medianHz)
     }

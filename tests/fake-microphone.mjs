@@ -15,10 +15,9 @@
    The kinds:
      steady  in range, steady, below the rails - clears the gate
      loud    the same note at full scale - fails on clipping
-     wobble  sliding by three semitones - fails on steadiness
-     silent  room tone alone - fails on length, with no pitch to report */
+     wobble  sliding by three semitones - fails on steadiness */
 
-/** @typedef {'steady' | 'loud' | 'wobble' | 'silent'} FakeTake */
+/** @typedef {'steady' | 'loud' | 'wobble'} FakeTake */
 
 /** A stream carrying a synthesized voice-like tone: a sawtooth at 185 Hz,
     which is inside the tracker's range and away from either end of it.
@@ -30,7 +29,7 @@ export function fakeMicrophone(kind = 'steady') {
   const destination = context.createMediaStreamDestination();
 
   const gain = context.createGain();
-  gain.gain.value = kind === 'silent' ? 0.0008 : kind === 'loud' ? 4 : 0.35;
+  gain.gain.value = kind === 'loud' ? 4 : 0.35;
   gain.connect(destination);
 
   const source = context.createOscillator();

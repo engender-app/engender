@@ -15,6 +15,7 @@
    recomputing it (see resonance.ts's header for why). */
 
 import type { PitchTrack } from './pitch';
+import { median, percentileOfSorted } from './series';
 
 /** Full scale is 1.0, so a peak this close to it means samples were very
     likely already flattened against the rails by the time they arrived. */
@@ -71,12 +72,6 @@ export interface QualityReport {
   passed: boolean;
 }
 
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-}
-
 /** Voice against room: the median level of the frames the pitch track called
     voiced, over the median level of the frames it did not.
 
@@ -110,8 +105,7 @@ function signalToNoiseDb(samples: Float32Array, sampleRate: number, track: Pitch
 
   if (voiced.length === 0) return 0;
   if (room.length < MIN_ROOM_FRAMES) return MAX_SNR_DB;
-  const sorted = [...room].sort((a, b) => a - b);
-  const floor = sorted[Math.floor(ROOM_PERCENTILE * (sorted.length - 1))];
+  const floor = percentileOfSorted([...room].sort((a, b) => a - b), ROOM_PERCENTILE);
   if (floor === 0) return MAX_SNR_DB;
   return Math.min(MAX_SNR_DB, 20 * Math.log10(median(voiced) / floor));
 }
