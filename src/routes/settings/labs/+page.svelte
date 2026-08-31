@@ -19,7 +19,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { LabSeries } from '$lib/data/journal/labs';
   import { paddedSeries } from '$lib/charts/geometry';
-  import { narrowAnnotations } from '$lib/charts/annotations';
+  import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
   import { seriesComparability } from '$lib/data/labTiming';
   import { comparabilityLabels, labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -100,13 +100,9 @@
      unit and each one covers however long that unit has been drawn in, so
      there is no single range to ask for - and asking once per chart would be
      one query per unit for the same six tables. */
-  let annotationSpan = $derived({
-    from: Math.min(...series.flatMap((s) => s.results.map((r) => r.epochDay)), todayEpochDay()),
-    to: Math.max(...series.flatMap((s) => s.results.map((r) => r.epochDay)), todayEpochDay())
-  });
-  let annotationsQuery = liveList((j) =>
-    j.chartAnnotations.getAnnotations(annotationSpan.from, annotationSpan.to, todayEpochDay())
-  );
+  let drawnOn = $derived(series.flatMap((s) => s.results.map((r) => r.epochDay)));
+  let span = $derived(annotationSpan(drawnOn, todayEpochDay()));
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(span.from, span.to, todayEpochDay()));
 
   /* Ten as the flat-run floor rather than measurements' one: an analyte's
      values run in the hundreds, so a whole unit either side would still

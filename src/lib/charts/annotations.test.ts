@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MIN_MARK_GAP,
+  annotationSpan,
   annotationsAtPoint,
   annotationsInRange,
   narrowAnnotations,
@@ -292,5 +293,25 @@ describe('cutting one query down to a narrower chart', () => {
     const inside = annotationsInRange([regimen('estradiol', 30, 80)], { from: 20, to: 90, today: 90 });
     expect(narrowAnnotations(inside, 25, 60)[0].startsInRange).toBe(true);
     expect(narrowAnnotations(inside, 35, 60)[0].startsInRange).toBe(false);
+  });
+});
+
+describe('the range a set of readings asks for', () => {
+  it('reaches from the oldest reading to today', () => {
+    expect(annotationSpan([90, 40, 70], 100)).toEqual({ from: 40, to: 100 });
+  });
+
+  /* A journal whose last lab was two years ago still gets a range that
+     reaches the present, so an episode running through the gap is drawn. */
+  it('keeps today in the range even when every reading predates it', () => {
+    expect(annotationSpan([40, 50], 900)).toEqual({ from: 40, to: 900 });
+  });
+
+  it('covers a reading that somehow sits after today', () => {
+    expect(annotationSpan([40, 950], 900)).toEqual({ from: 40, to: 950 });
+  });
+
+  it('is today alone when there is nothing drawn yet', () => {
+    expect(annotationSpan([], 100)).toEqual({ from: 100, to: 100 });
   });
 });

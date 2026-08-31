@@ -142,6 +142,14 @@ export interface AnnotationRange {
   today: number;
 }
 
+/** How many positions a chart needs before an annotation can be placed on it.
+
+    One position is not a plot: every day maps to the same pixel, so a band is
+    a hairline and every mark is the same mark. A chart drawn from a single
+    reading takes no annotations - and the caption has to read the same rule,
+    or it names things the plot never drew. */
+export const MIN_PLOT_POSITIONS = 2;
+
 /** How close two marks may come before they are drawn as one, in pixels.
 
     Under about five pixels apart the ticks overlap into a single thicker
@@ -178,11 +186,26 @@ export function annotationsInRange(
       fromEpochDay: Math.max(start, range.from),
       toEpochDay: Math.min(end, range.to),
       startsInRange: start >= range.from,
-      endsInRange: shape === 'point' ? start <= range.to : source.endEpochDay !== null && end <= range.to
+      // A moment ends on the day it happened, and a moment outside the range
+      // never got this far. A stretch that has not ended has no day to draw
+      // an edge at.
+      endsInRange: shape === 'point' || (source.endEpochDay !== null && end <= range.to)
     });
   }
 
   return found.sort((a, b) => a.fromEpochDay - b.fromEpochDay || a.id.localeCompare(b.id));
+}
+
+/** The days a set of readings covers, as a range to ask the journal for.
+
+    Two screens draw a chart over however long there have been readings rather
+    than over a range somebody picked - the lab series and the voice benchmark
+    trend - and both were working the same two reductions out for themselves.
+    Today is always in it, so a journal whose readings all predate it still
+    gets a range that reaches the present, and a journal with no readings at
+    all gets today rather than an infinity. */
+export function annotationSpan(days: readonly number[], today: number): { from: number; to: number } {
+  return { from: Math.min(...days, today), to: Math.max(...days, today) };
 }
 
 /** The same annotations, cut down to a narrower range.
@@ -271,13 +294,9 @@ function pixelAt(points: readonly { x: number }[], day: number, width: number): 
 export function placeAnnotations(
   annotations: readonly ChartAnnotation[],
   points: readonly { x: number }[],
-  width: number,
-  minGap: number = MIN_MARK_GAP
+  width: number
 ): PlacedAnnotations {
-  // One position is not a plot: every day maps to the same pixel, so a band
-  // is a hairline and every mark is the same mark. A chart drawn from a
-  // single reading gets no annotations rather than a pile of them at x=0.
-  if (points.length < 2) return { bands: [], marks: [] };
+  if (points.length < MIN_PLOT_POSITIONS) return { bands: [], marks: [] };
 
   const bands: AnnotationBand[] = [];
   const marks: AnnotationMark[] = [];
@@ -301,7 +320,7 @@ export function placeAnnotations(
 
     const x = pixelAt(points, annotation.fromEpochDay, width);
     const open = marks[marks.length - 1];
-    if (open && x - open.x < minGap) {
+    if (open && x - open.x < MIN_MARK_GAP) {
       open.annotations.push(annotation);
       open.x = x;
     } else {

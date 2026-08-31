@@ -16,15 +16,23 @@ import { fmtDay } from '$lib/data/dates';
 import type { ChartAnnotation, ChartAnnotationKind } from '$lib/charts/annotations';
 
 /** What each kind of thing is called, for a record that carries no name of
-    its own and to say which sort of thing a named one is. */
+    its own and to say which sort of thing a named one is.
+
+    A record rather than an if-cascade, and keyed by the kind so it is total:
+    an eighth kind is a compile error here. A cascade ending in a bare return
+    would have labelled it a tryout instead, silently and in two languages. */
+const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
+  milestone: m.chart_annotation_milestone,
+  surgery: m.chart_annotation_surgery,
+  regimen: m.chart_annotation_regimen,
+  recovery: m.chart_annotation_recovery,
+  dosePause: m.chart_annotation_dose_pause,
+  journalingPause: m.chart_annotation_journaling_pause,
+  tryout: m.chart_annotation_tryout
+};
+
 function kindWord(kind: ChartAnnotationKind): string {
-  if (kind === 'milestone') return m.chart_annotation_milestone();
-  if (kind === 'surgery') return m.chart_annotation_surgery();
-  if (kind === 'regimen') return m.chart_annotation_regimen();
-  if (kind === 'recovery') return m.chart_annotation_recovery();
-  if (kind === 'dosePause') return m.chart_annotation_dose_pause();
-  if (kind === 'journalingPause') return m.chart_annotation_journaling_pause();
-  return m.chart_annotation_tryout();
+  return KIND_WORD[kind]();
 }
 
 /** The short form, for the caption under a plot where two of these have to
@@ -74,7 +82,26 @@ export function annotationLine(annotation: ChartAnnotation): string {
 /** How many names the caption writes before it stops naming them. Three fits
     across a card at 390px; a fourth wraps the caption onto a third line and
     the chart starts being framed by its own footnote. */
-export const CAPTION_NAMES = 3;
+const CAPTION_NAMES = 3;
+
+/** How many the scrub readout writes. Fewer, because the readout is a pill
+    over a 132px plot rather than a line under it: a day inside a regimen, a
+    dose pause, a recovery window and a tryout would otherwise stack four
+    lines of it over the chart it is annotating - and a gathered mark is
+    exactly where that happens. */
+const READOUT_LABELS = 2;
+
+/** What the readout writes at one position: the first couple in full, and a
+    count for the rest. */
+export function annotationReadout(annotations: readonly ChartAnnotation[]): {
+  labels: string[];
+  rest: number;
+} {
+  return {
+    labels: annotations.slice(0, READOUT_LABELS).map(annotationLabel),
+    rest: Math.max(annotations.length - READOUT_LABELS, 0)
+  };
+}
 
 /** The caption under the plot: what is in view, named, with a count for the
     rest. Empty where there is nothing in view, so a chart with no annotations
