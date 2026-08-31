@@ -39,6 +39,13 @@ const config: CapacitorConfig = {
        SyntaxError in a log nobody holding a phone can read - measured on the
        API 26 emulator, whose WebView is Chrome 69. */
     errorPath: 'webview-too-old.html'
+  },
+  /* Left unset, `cap sync` writes res/xml/config.xml with a wildcard
+     <access origin="*" />, a Cordova-compat leftover no plugin here reads
+     (phase 5 security ticket 07, G-07). Empty skips the tag instead of
+     narrowing it, since nothing needs it at all. */
+  cordova: {
+    accessOrigins: []
   }
 };
 
