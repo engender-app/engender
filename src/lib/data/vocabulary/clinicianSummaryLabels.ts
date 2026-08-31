@@ -13,6 +13,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { ClinicianSummarySectionKey } from '$lib/data/journal/clinicianSummary';
+import type { ClinicianDossierInclusionKey } from '$lib/data/export/clinicianSummaryData';
 
 const SECTION_TITLE: Record<ClinicianSummarySectionKey, () => string> = {
   regimenEpisodes: m.regimen,
@@ -26,3 +27,18 @@ const SECTION_TITLE: Record<ClinicianSummarySectionKey, () => string> = {
 
 /** What a section prints as its heading. */
 export const clinicianSummarySectionTitle = (key: ClinicianSummarySectionKey): string => SECTION_TITLE[key]();
+
+const DOSSIER_PART_NAME: Record<ClinicianDossierInclusionKey, () => string> = {
+  demographics: m.clinician_summary_part_demographics,
+  regimen: m.clinician_summary_part_regimen,
+  exposure: m.clinician_summary_part_exposure,
+  labs: m.clinician_summary_part_labs,
+  sideEffects: m.clinician_summary_part_side_effects,
+  cycleEvents: m.clinician_summary_part_cycle_events,
+  appointmentPrep: m.clinician_summary_part_appointment_prep,
+  procedures: m.clinician_summary_part_procedures
+};
+
+/** What a dossier section is called in inclusion controls. */
+export const clinicianDossierPartName = (key: ClinicianDossierInclusionKey): string => DOSSIER_PART_NAME[key]();
+

@@ -69,7 +69,7 @@ describe('what Settings is built from', () => {
        control. Those stay plain .kit-row divs. The wrapped and on-this-day
        rows moved to the live-tiles screen (ticket 51), which live-tiles
        surfaces test holds to the same rule. */
-    for (const handle of ['data-entry-nudges', 'data-guided-prompts']) {
+    for (const handle of ['data-entry-nudges', 'data-guided-prompts', 'data-roadmap-milestone-sync']) {
       const re = new RegExp(`<div class="kit-row" ${handle}>`);
       expect(withoutScript).toMatch(re);
     }

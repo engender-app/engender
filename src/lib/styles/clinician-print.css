@@ -1,0 +1,227 @@
+/* Multi-page clinical dossier stylesheet (phase 5 ticket 09).
+   Formats structured clinical summaries for A4/Letter print preview and PDF export.
+   High-contrast, monochrome-friendly, preventing orphaned headers and broken table rows. */
+
+.clinician-dossier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--text);
+  font-family: inherit;
+}
+
+/* Patient profile summary box */
+.dossier-profile-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--surface);
+}
+
+.dossier-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.dossier-profile-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dossier-profile-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dossier-profile-value {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+/* Sections */
+.dossier-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--surface);
+  break-inside: avoid;
+}
+
+.dossier-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  break-after: avoid;
+}
+
+.dossier-section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  margin: 0;
+}
+
+.dossier-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Clinical tables */
+.dossier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.dossier-table th {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--hairline);
+  white-space: nowrap;
+}
+
+.dossier-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+
+.dossier-table tr {
+  break-inside: avoid;
+}
+
+.dossier-table .num {
+  font-variant-numeric: tabular-nums;
+}
+
+.dossier-sub-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.dossier-timing-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.dossier-empty-note {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin: var(--space-2) 0;
+}
+
+.dossier-disclaimer {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+  break-inside: avoid;
+}
+
+/* Print mode formatting */
+@media print {
+  .clinician-dossier {
+    display: block !important;
+    color: #000000 !important;
+    background: transparent !important;
+    gap: 0;
+  }
+
+  .dossier-profile-card,
+  .dossier-section {
+    border: 1px solid #333333 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin-bottom: 14pt;
+    padding: 10pt !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+  }
+
+  .dossier-section-header {
+    border-bottom: 1.5pt solid #000000 !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .dossier-section-title {
+    font-size: 13pt !important;
+    color: #000000 !important;
+  }
+
+  .dossier-profile-label {
+    color: #444444 !important;
+    font-size: 8pt !important;
+  }
+
+  .dossier-profile-value {
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  .dossier-table {
+    font-size: 9.5pt !important;
+    border: 1px solid #444444 !important;
+  }
+
+  .dossier-table th {
+    background: #f0f0f0 !important;
+    color: #000000 !important;
+    border-bottom: 1.5pt solid #000000 !important;
+    border-right: 1px solid #cccccc !important;
+    font-size: 9pt !important;
+    padding: 4pt 6pt !important;
+  }
+
+  .dossier-table td {
+    color: #000000 !important;
+    border-bottom: 1px solid #dddddd !important;
+    border-right: 1px solid #eeeeee !important;
+    padding: 4pt 6pt !important;
+  }
+
+  .dossier-table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .dossier-timing-badge {
+    background: #ffffff !important;
+    border: 1px solid #444444 !important;
+    color: #000000 !important;
+    font-size: 8.5pt !important;
+  }
+
+  .dossier-disclaimer {
+    color: #444444 !important;
+    border-top: 1px solid #000000 !important;
+    font-size: 8pt !important;
+    margin-top: 12pt;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

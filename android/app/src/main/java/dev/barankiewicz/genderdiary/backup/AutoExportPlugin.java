@@ -40,6 +40,9 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
+import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
+import org.bouncycastle.crypto.params.Argon2Parameters;
+
 /**
  * Android side of scheduled encrypted backup destination management
  * (ticket 16): a SAF tree the person picks, verified writes into it,
@@ -109,40 +112,75 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /**
-     * The saved backup password, handed back to the scheduler and to nobody
-     * else (phase 5 security ticket 02, F-04).
+     * Derives an archive encryption key from the saved backup password,
+     * without ever exposing the password to the WebView (phase 5 security
+     * ticket 06, F-04).
      *
-     * <p>The audit asked for one of two things here: a
-     * {@code KeystorePlugin.confirm} prompt in front of this, or no reveal
-     * at all. Neither is what shipped, because both break the scheduler,
-     * which is this method's only caller: {@code auto-export-scheduler.ts}
-     * packs the archive in the WebView, so it needs the cleartext, and it
-     * runs unattended by design - a prompt in front of it means no backup
-     * happens unless somebody is watching.
-     *
-     * <p>What shipped instead is the name and this comment. No screen reads
-     * the password: the export screen asks {@code status()} whether one is
-     * saved, which {@code hasPassword} answers with no secret in it, and it
-     * can only replace or clear the password from there. Gating this call
-     * while leaving the scheduler a second ungated one would have been two
-     * doors with one lock: the bridge is reachable from the page either way,
-     * and both would be reachable the same way.
-     *
-     * <p>So the exposure is bounded rather than closed, and what closes it
-     * is moving the archive's Argon2id derivation native, so the password
-     * never reaches JavaScript at all. That is its own ticket - it splits
-     * {@code pack.ts} across the bridge - and it is not this one.
+     * <p>Argon2id derivation runs native behind the bridge. The scheduler
+     * sends a fresh random salt and the archive's KDF parameters, and
+     * receives a single derived key that opens only the archive about to be
+     * written. The password remains in Keystore-wrapped storage and never
+     * crosses into JavaScript.
      */
     @PluginMethod
-    public void passwordForScheduledBackup(PluginCall call) {
-        JSObject out = new JSObject();
+    public void deriveKey(PluginCall call) {
+        String saltBase64 = call.getString("salt");
+        if (saltBase64 == null || saltBase64.isEmpty()) {
+            call.reject("deriveKey requires salt");
+            return;
+        }
+
+        JSObject kdf = call.getObject("kdf");
+        if (kdf == null) {
+            call.reject("deriveKey requires kdf");
+            return;
+        }
+        int memorySize = kdf.getInteger("memorySize", 65536);
+        int iterations = kdf.getInteger("iterations", 3);
+        int parallelism = kdf.getInteger("parallelism", 1);
+        int hashLength = kdf.getInteger("hashLength", 32);
+
         try {
             String password = passwordStore().read();
-            out.put("password", password == null ? JSObject.NULL : password);
+            if (password == null) {
+                JSObject out = new JSObject();
+                out.put("key", JSObject.NULL);
+                call.resolve(out);
+                return;
+            }
+
+            byte[] salt = Base64.decode(saltBase64, Base64.DEFAULT);
+            byte[] derived = deriveArgon2id(password, salt, memorySize, iterations, parallelism, hashLength);
+
+            JSObject out = new JSObject();
+            out.put("key", Base64.encodeToString(derived, Base64.NO_WRAP));
             call.resolve(out);
         } catch (Exception e) {
             call.reject(message(e), e);
         }
+    }
+
+    public static byte[] deriveArgon2id(
+        String password,
+        byte[] salt,
+        int memorySize,
+        int iterations,
+        int parallelism,
+        int hashLength
+    ) {
+        Argon2Parameters params = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+            .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+            .withIterations(iterations)
+            .withMemoryAsKB(memorySize)
+            .withParallelism(parallelism)
+            .withSalt(salt)
+            .build();
+
+        Argon2BytesGenerator generator = new Argon2BytesGenerator();
+        generator.init(params);
+        byte[] out = new byte[hashLength];
+        generator.generateBytes(password.getBytes(StandardCharsets.UTF_8), out);
+        return out;
     }
 
     @PluginMethod

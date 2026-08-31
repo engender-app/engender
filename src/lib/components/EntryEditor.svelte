@@ -8,6 +8,10 @@
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { matchDoseRoute } from '$lib/data/doseSchedule';
+  import { startOfDayTimestamp } from '$lib/data/epochDay';
+  import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import { pickRecording, startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
@@ -168,6 +172,88 @@
     return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
   let isToday = $derived(day === todayEpochDay());
+
+  /* Contextual Inline Cards (ticket 04, ADR-0044) */
+  let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
+  let activeTryout = $derived(
+    (tryoutsQuery.value ?? []).find((t) => t.endEpochDay == null && (t.kind === 'name' || t.kind === 'pronouns'))
+  );
+
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
+  let activeEpisodes = $derived(
+    episodesQuery.value ? activeEpisodesAt(episodesQuery.value, startOfDayTimestamp(day)) : []
+  );
+
+  let todayDosesQuery = liveQuery((j) => j.doses.getDoses(day, day));
+  let loggedDoseDrugs = $derived(
+    new Set((todayDosesQuery.value ?? []).map((d) => d.drug?.toLowerCase().trim()).filter(Boolean))
+  );
+
+  let dueScheduledDoses = $derived.by(() => {
+    if (!activeEpisodes) return [];
+    return activeEpisodes
+      .filter((ep) => ep.dose != null && ep.dose > 0 && !loggedDoseDrugs.has(ep.drug.toLowerCase().trim()))
+      .map((ep) => ({
+        dose: ep.dose!,
+        doseUnit: ep.doseUnit,
+        drug: ep.drug,
+        route: matchDoseRoute(ep.route ?? '', []) ?? undefined
+      }));
+  });
+
+  let scheduleDose = $derived(dueScheduledDoses[0] ?? null);
+
+  let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
+  let recoveringProcedure = $derived.by(() => {
+    if (!proceduresQuery.value) return null;
+    for (const proc of proceduresQuery.value) {
+      if (proc.surgeryEpochDay != null) {
+        const postOpDays = day - proc.surgeryEpochDay;
+        if (postOpDays >= 1 && postOpDays <= 90) return { proc, postOpDays };
+      }
+    }
+    return null;
+  });
+
+  let effectTypesQuery = liveQuery((j) => j.personalEffects.getEffectTypes());
+  let isHrtActive = $derived(activeEpisodes.length > 0);
+  let cycleTrackingActive = $derived(prefs.cycleTrackingEnabled);
+
+  let tryoutReflection = $state('');
+  let procRecoveryNote = $state('');
+  let procRecoveryPhoto = $state<NormalizedPhoto | null>(null);
+  let effectSheetOpen = $state(false);
+
+  $effect(() => {
+    if (entryDraft.tryoutFeltSense?.note !== undefined && entryDraft.tryoutFeltSense?.note !== null) {
+      tryoutReflection = entryDraft.tryoutFeltSense.note;
+    }
+    if (entryDraft.procedureRecovery?.notes !== undefined && entryDraft.procedureRecovery?.notes !== null) {
+      procRecoveryNote = entryDraft.procedureRecovery.notes;
+    }
+    if (entryDraft.procedureRecovery?.photo) {
+      procRecoveryPhoto = entryDraft.procedureRecovery.photo;
+    }
+  });
+
+  function effectLabel(key: string): string {
+    const found = (effectTypesQuery.value ?? []).find((e) => e.key === key);
+    return found?.name || key;
+  }
+
+  function updateProcedureRecovery() {
+    if (!recoveringProcedure) return;
+    const notes = procRecoveryNote.trim() || entryDraft.procedureRecovery?.notes;
+    if (!notes && !procRecoveryPhoto) {
+      entryDraft.setProcedureRecovery(null);
+    } else {
+      entryDraft.setProcedureRecovery({
+        procedureId: recoveringProcedure.proc.id,
+        notes: notes || undefined,
+        photo: procRecoveryPhoto ?? undefined
+      });
+    }
+  }
 
   // An entry holds several photos, so one trip through the picker can bring
   // back several (photoPicking.ts).
@@ -464,6 +550,198 @@
     bind:value={entryDraft.note}
   ></textarea>
 
+  <!-- Contextual Inline Cards (ticket 04, ADR-0044) -->
+  {#if prefs.entryTryoutPromptEnabled && activeTryout}
+    <div class="contextual-panel" data-contextual="tryout-felt-sense">
+      <div class="contextual-header">
+        <span class="contextual-title">{m.entry_tryout_felt_sense_title({ name: activeTryout.label })}</span>
+      </div>
+      <div class="contextual-chips" role="radiogroup" aria-label={m.entry_tryout_felt_sense_title({ name: activeTryout.label })}>
+        {#each [
+          { step: 5, label: m.entry_tryout_sentiment_euphoric() },
+          { step: 4, label: m.entry_tryout_sentiment_affirming() },
+          { step: 3, label: m.entry_tryout_sentiment_neutral() },
+          { step: 2, label: m.entry_tryout_sentiment_uncomfortable() },
+          { step: 1, label: m.entry_tryout_sentiment_dysphoric() }
+        ] as opt (opt.step)}
+          <button
+            type="button"
+            class="contextual-chip press"
+            class:is-active={entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id && entryDraft.tryoutFeltSense?.mood === opt.step}
+            role="radio"
+            aria-checked={entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id && entryDraft.tryoutFeltSense?.mood === opt.step}
+            onclick={() => {
+              if (entryDraft.tryoutFeltSense?.mood === opt.step) {
+                entryDraft.setTryoutFeltSense(null);
+              } else {
+                entryDraft.setTryoutFeltSense({
+                  tryoutId: activeTryout.id,
+                  mood: opt.step,
+                  note: tryoutReflection.trim() || null,
+                  epochDay: day
+                });
+              }
+            }}
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
+      {#if entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id}
+        <input
+          type="text"
+          class="input contextual-input"
+          placeholder={m.entry_tryout_reflection_placeholder()}
+          bind:value={tryoutReflection}
+          oninput={() => {
+            if (entryDraft.tryoutFeltSense) {
+              entryDraft.setTryoutFeltSense({
+                ...entryDraft.tryoutFeltSense,
+                note: tryoutReflection.trim() || null
+              });
+            }
+          }}
+        />
+      {/if}
+    </div>
+  {/if}
+
+  {#if prefs.entryDoseQuickLogEnabled && scheduleDose}
+    <div class="contextual-row" data-contextual="dose-quick-log">
+      {#each dueScheduledDoses as doseItem (doseItem.drug)}
+        <button
+          type="button"
+          class="contextual-chip dose-chip press"
+          class:is-active={entryDraft.doseLog?.drug === doseItem.drug}
+          aria-pressed={entryDraft.doseLog?.drug === doseItem.drug}
+          onclick={() => {
+            if (entryDraft.doseLog?.drug === doseItem.drug) {
+              entryDraft.setDoseLog(null);
+            } else {
+              entryDraft.setDoseLog({
+                dose: doseItem.dose,
+                doseUnit: doseItem.doseUnit,
+                drug: doseItem.drug,
+                route: doseItem.route
+              });
+            }
+          }}
+        >
+          <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
+          <span>{m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if prefs.entryProcedureRecoveryEnabled && recoveringProcedure}
+    <div class="contextual-panel" data-contextual="procedure-recovery">
+      <div class="contextual-header">
+        <span class="contextual-title">
+          {m.entry_procedure_recovery_title({ day: recoveringProcedure.postOpDays, name: recoveringProcedure.proc.name })}
+        </span>
+      </div>
+      <textarea
+        class="input contextual-textarea"
+        rows="2"
+        placeholder={m.entry_procedure_recovery_notes_placeholder()}
+        bind:value={procRecoveryNote}
+        oninput={updateProcedureRecovery}
+      ></textarea>
+      <div class="procedure-photo-row">
+        {#if procRecoveryPhoto}
+          <div class="photo-wrap">
+            <PhotoThumb photo={{ fileName: null }} bytes={procRecoveryPhoto.thumb} size={64} />
+            <button
+              type="button"
+              class="photo-remove"
+              aria-label={m.entry_procedure_recovery_remove_photo()}
+              onclick={() => {
+                procRecoveryPhoto = null;
+                updateProcedureRecovery();
+              }}
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        {:else}
+          <button
+            type="button"
+            class="btn btn-ghost photo-add-btn"
+            onclick={async () => {
+              const picked = await pickPhotos();
+              if (picked.length > 0) {
+                procRecoveryPhoto = picked[0];
+                updateProcedureRecovery();
+              }
+            }}
+          >
+            <Icon name="camera" size={18} />
+            <span>{m.entry_procedure_recovery_add_photo()}</span>
+          </button>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  {#if prefs.entryHrtEffectsEnabled && isHrtActive}
+    <div class="contextual-row" data-contextual="hrt-effects">
+      {#if entryDraft.effectMarker}
+        <div class="contextual-chip effect-chip is-active">
+          <span>{m.entry_hrt_effects_title()}: {effectLabel(entryDraft.effectMarker.effect)}</span>
+          <button
+            type="button"
+            class="icon-btn-inline"
+            aria-label={m.dismiss()}
+            onclick={() => entryDraft.setEffectMarker(null)}
+          >
+            <Icon name="x" size={14} />
+          </button>
+        </div>
+      {:else}
+        <button
+          type="button"
+          class="contextual-chip press"
+          onclick={() => (effectSheetOpen = true)}
+        >
+          <Icon name="plus" size={16} />
+          <span>{m.entry_hrt_effects_chip()}</span>
+        </button>
+      {/if}
+    </div>
+  {/if}
+
+  {#if cycleTrackingActive}
+    <div class="contextual-panel" data-contextual="cycle-event">
+      <div class="contextual-header">
+        <span class="contextual-title">{m.entry_cycle_event_title()}</span>
+      </div>
+      <div class="contextual-chips">
+        {#each [
+          { kind: 'period_occurred' as const, label: m.entry_cycle_event_chip_period() },
+          { kind: 'spotting' as const, label: m.entry_cycle_event_chip_spotting() },
+          { kind: 'nothing_this_month' as const, label: m.entry_cycle_event_chip_clear() }
+        ] as item (item.kind)}
+          <button
+            type="button"
+            class="contextual-chip press"
+            class:is-active={entryDraft.cycleEvent?.kind === item.kind}
+            aria-pressed={entryDraft.cycleEvent?.kind === item.kind}
+            onclick={() => {
+              if (entryDraft.cycleEvent?.kind === item.kind) {
+                entryDraft.setCycleEvent(null);
+              } else {
+                entryDraft.setCycleEvent({ kind: item.kind, epochDay: day });
+              }
+            }}
+          >
+            {item.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <SectionHeading text={m.body_map_label()} />
   <p class="editor-hint">{m.body_map_hint()}</p>
   <BodyRegionPicker
@@ -621,6 +899,24 @@
     </div>
   </Sheet>
 
+  <Sheet bind:open={effectSheetOpen} title={m.entry_hrt_effects_sheet_title()}>
+    <SectionHeading text={m.entry_hrt_effects_sheet_title()} />
+    <ListCard {role}>
+      {#each effectTypesQuery.value ?? [] as effectType (effectType.key)}
+        <ListRow
+          key={effectType.key}
+          title={effectType.name || effectType.key}
+          subtitle={effectType.categoryKey ?? undefined}
+          chevron={false}
+          onclick={() => {
+            entryDraft.setEffectMarker({ effect: effectType.key, firstNoticedEpochDay: day });
+            effectSheetOpen = false;
+          }}
+        />
+      {/each}
+    </ListCard>
+  </Sheet>
+
   <PhotoAlignmentReview
     photo={entryPhotoReview.photo}
     reference={entryPhotoReview.reference}
@@ -645,7 +941,8 @@
     isolation: isolate;
   }
   .editor-bg {
-    position: absolute; inset: 0;
+    position: absolute;
+    inset: 0;
     z-index: -1;
     background: var(--bg);
   }
@@ -668,6 +965,115 @@
     width: 100%;
     resize: vertical;
     font-family: var(--font-body);
+  }
+
+  /* Contextual Inline Cards (ticket 04, ADR-0044) */
+  .contextual-panel {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: var(--space-3) 0;
+  }
+  .contextual-row {
+    margin: var(--space-3) 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .contextual-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .contextual-title {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+    text-transform: uppercase;
+  }
+  .contextual-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .contextual-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    min-height: 36px;
+    box-sizing: border-box;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .contextual-chip::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+  .contextual-chip:hover {
+    border-color: var(--accent-border, var(--outline));
+  }
+  .contextual-chip.is-active {
+    background: var(--accent-soft, var(--accent));
+    color: var(--on-accent-soft, var(--accent-fg));
+    border-color: var(--accent);
+  }
+  .contextual-input {
+    width: 100%;
+    font-size: var(--text-sm);
+  }
+  .contextual-textarea {
+    width: 100%;
+    resize: vertical;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+  }
+  .photo-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+  }
+  .icon-btn-inline {
+    position: relative;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    margin-left: var(--space-1);
+  }
+  .icon-btn-inline::after {
+    content: '';
+    position: absolute;
+    inset: -12px;
+  }
+  .procedure-photo-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   /* Everything an entry carries besides its words, on one surface (phase 5

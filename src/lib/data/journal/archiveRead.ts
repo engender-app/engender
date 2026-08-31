@@ -326,8 +326,16 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
 }
 
 export async function readMilestones({ driver, photos }: SectionRead): Promise<ArchiveMilestone[]> {
-  const rows = await driver.query<{ id: number; uuid: string; name: string; epoch_day: number; template_key: string | null }>(
-    'SELECT id, uuid, name, epoch_day, template_key FROM milestone ORDER BY epoch_day, id'
+  const rows = await driver.query<{
+    id: number;
+    uuid: string;
+    name: string;
+    epoch_day: number;
+    template_key: string | null;
+    roadmap_goal_key: string | null;
+    procedure_id: string | null;
+  }>(
+    'SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id FROM milestone ORDER BY epoch_day, id'
   );
   const byMilestone = groupBy(photos.filter((p) => p.milestone_id !== null), (p) => p.milestone_id!, toArchivePhoto);
   return rows.map((r) => ({
@@ -335,6 +343,8 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     name: r.name,
     epochDay: r.epoch_day,
     templateKey: r.template_key,
+    roadmapGoalKey: r.roadmap_goal_key,
+    procedureId: r.procedure_id,
     // A milestone shows one photo; a second row for the same one would
     // be a bug elsewhere, and the earliest wins rather than throwing -
     // the same rule the milestones area reads by.

@@ -57,12 +57,50 @@ import {
 } from './videoNotes';
 import { assertChanged, bool, domainIdOf, mintUuid, now, rowidByUuid } from './support';
 import { watchJournalWrites } from '../journal-busy';
+import { startOfDayTimestamp } from '../epochDay';
+import type { CycleEventKind, DoseRoute, DoseStatus, InjectionVehicle, PersonalEffectType } from '../types';
+import type { ApplicationSiteKey, InjectionSiteKey } from '../doseSchedule';
 
 /** How long a trashed entry survives before purgeExpiredTrash reclaims it
     (phase 5 ticket 19). Fixed, like the hair-photo schedule's 28 days
     (hairPhotoSchedule.ts) - no per-user setting. */
 export const TRASH_WINDOW_DAYS = 30;
 const TRASH_WINDOW_MS = TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+export interface EntryTryoutFeltSenseInput {
+  tryoutId: string;
+  mood: number;
+  note?: string | null;
+  epochDay?: number;
+}
+
+export interface EntryDoseLogInput {
+  timestamp?: number;
+  dose: number;
+  doseUnit: string;
+  route?: DoseRoute;
+  drug?: string | null;
+  status?: DoseStatus;
+  injectionSite?: InjectionSiteKey;
+  vehicle?: InjectionVehicle;
+  applicationSite?: ApplicationSiteKey;
+}
+
+export interface EntryProcedureRecoveryInput {
+  procedureId: string;
+  notes?: string;
+  photo?: NormalizedPhoto;
+}
+
+export interface EntryEffectMarkerInput {
+  effect: PersonalEffectType;
+  firstNoticedEpochDay?: number;
+}
+
+export interface EntryCycleEventInput {
+  kind: CycleEventKind;
+  epochDay?: number;
+}
 
 export interface EntryInput {
   id?: number;
@@ -103,6 +141,16 @@ export interface EntryInput {
   /** Stored video notes removed in this edit, committed with the rest of the
       save. */
   removeVideoIds?: string[];
+  /** Contextual tryout felt-sense reflection (ADR-0044). */
+  tryoutFeltSense?: EntryTryoutFeltSenseInput;
+  /** Contextual scheduled dose quick-log (ADR-0044). */
+  doseLog?: EntryDoseLogInput;
+  /** Contextual post-op procedure recovery note and wound photo (ADR-0044). */
+  procedureRecovery?: EntryProcedureRecoveryInput;
+  /** Contextual HRT physical effect noticed milestone (ADR-0044). */
+  effectMarker?: EntryEffectMarkerInput;
+  /** Contextual cycle event (ADR-0044). */
+  cycleEvent?: EntryCycleEventInput;
 }
 
 export interface EntrySearchFilters {
@@ -597,6 +645,152 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
   };
 
+  const resolveContextual = async (input: EntryInput) => {
+    let tryoutRowId: number | null = null;
+    if (input.tryoutFeltSense) {
+      if (
+        !Number.isInteger(input.tryoutFeltSense.mood) ||
+        input.tryoutFeltSense.mood < 1 ||
+        input.tryoutFeltSense.mood > 5
+      ) {
+        throw new Error(`invalid mood: ${input.tryoutFeltSense.mood}`);
+      }
+      tryoutRowId = await rowidByUuid(driver, 'tryout', input.tryoutFeltSense.tryoutId);
+    }
+
+    let procedureRowId: number | null = null;
+    let stagedProcedurePhoto: StagedPhoto | null = null;
+    if (input.procedureRecovery) {
+      procedureRowId = await rowidByUuid(driver, 'procedure', input.procedureRecovery.procedureId);
+      if (input.procedureRecovery.photo) {
+        stagedProcedurePhoto = await stagePhoto(files, input.procedureRecovery.photo);
+      }
+    }
+
+    if (input.effectMarker) {
+      const known = await driver.query<{ key: string }>(
+        'SELECT key FROM personal_effect_type WHERE key = ?',
+        [input.effectMarker.effect]
+      );
+      if (known.length === 0) throw new Error(`unknown personal effect type: ${input.effectMarker.effect}`);
+    }
+
+    return { tryoutRowId, procedureRowId, stagedProcedurePhoto };
+  };
+
+  const commitContextual = async (
+    input: EntryInput,
+    resolved: { tryoutRowId: number | null; procedureRowId: number | null; stagedProcedurePhoto: StagedPhoto | null },
+    epochDay: number
+  ) => {
+    if (input.tryoutFeltSense && resolved.tryoutRowId != null) {
+      await driver.run(
+        'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at) VALUES (?, ?, NULL, ?, ?, ?, ?)',
+        [
+          mintUuid(),
+          resolved.tryoutRowId,
+          input.tryoutFeltSense.epochDay ?? epochDay,
+          input.tryoutFeltSense.mood,
+          input.tryoutFeltSense.note ?? null,
+          now()
+        ]
+      );
+    }
+
+    if (input.doseLog) {
+      const dose = input.doseLog;
+      const doseUuid = mintUuid();
+      const doseTimestamp = dose.timestamp ?? input.timestamp ?? startOfDayTimestamp(epochDay);
+      const doseRoute = dose.route ?? 'oral';
+      const doseStatus = dose.status ?? 'taken';
+      await driver.run(
+        `INSERT INTO dose_event (timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
+                                 status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, updated_at, uuid)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)`,
+        [
+          doseTimestamp,
+          doseRoute,
+          dose.dose,
+          dose.doseUnit,
+          dose.injectionSite ?? null,
+          dose.vehicle ?? null,
+          dose.applicationSite ?? null,
+          doseStatus,
+          dose.drug ?? null,
+          now(),
+          doseUuid
+        ]
+      );
+      if (dose.drug) {
+        await driver.run(
+          'UPDATE medication_stock SET quantity = MAX(0, quantity - ?), updated_at = ? WHERE drug = ?',
+          [dose.dose, now(), dose.drug.trim()]
+        );
+      }
+    }
+
+    if (input.procedureRecovery && resolved.procedureRowId != null) {
+      if (resolved.stagedProcedurePhoto) {
+        await driver.run(
+          'INSERT INTO procedure_photo (uuid, procedure_id, epoch_day, file_path, updated_at) VALUES (?, ?, ?, ?, ?)',
+          [
+            resolved.stagedProcedurePhoto.id,
+            resolved.procedureRowId,
+            epochDay,
+            resolved.stagedProcedurePhoto.fileName,
+            now()
+          ]
+        );
+      }
+      if (input.procedureRecovery.notes != null && input.procedureRecovery.notes.trim() !== '') {
+        const procRows = await driver.query<{ notes: string }>(
+          'SELECT notes FROM procedure WHERE id = ?',
+          [resolved.procedureRowId]
+        );
+        const existingNotes = procRows[0]?.notes ?? '';
+        const newNotes = existingNotes
+          ? `${existingNotes}\n${input.procedureRecovery.notes}`
+          : input.procedureRecovery.notes;
+        await driver.run('UPDATE procedure SET notes = ?, updated_at = ? WHERE id = ?', [
+          newNotes,
+          now(),
+          resolved.procedureRowId
+        ]);
+      }
+    }
+
+    if (input.effectMarker) {
+      const marker = input.effectMarker;
+      const markerDay = marker.firstNoticedEpochDay ?? epochDay;
+      const existing = await driver.query<{ uuid: string }>(
+        'SELECT uuid FROM personal_effect WHERE effect = ?',
+        [marker.effect]
+      );
+      if (existing.length > 0) {
+        await driver.run(
+          'UPDATE personal_effect SET first_noticed_epoch_day = ?, updated_at = ? WHERE effect = ?',
+          [markerDay, now(), marker.effect]
+        );
+      } else {
+        await driver.run(
+          'INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES (?, ?, ?, ?)',
+          [mintUuid(), marker.effect, markerDay, now()]
+        );
+      }
+    }
+
+    if (input.cycleEvent) {
+      const cycle = input.cycleEvent;
+      const cycleDay = cycle.epochDay ?? epochDay;
+      await driver.run('INSERT INTO cycle_event (uuid, kind, epoch_day, updated_at) VALUES (?, ?, ?, ?)', [
+        mintUuid(),
+        cycle.kind,
+        cycleDay,
+        now()
+      ]);
+    }
+  };
+
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
@@ -790,6 +984,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const dimIds = await resolveDimensionIds(input.dims ?? {});
         const tagIds = input.tags && (await resolveTagIds(input.tags));
         if (input.bodyRegions) await assertKnownBodyRegions(input.bodyRegions);
+        const contextual = await resolveContextual(input);
         // The note that will be stored, whether this edit supplied one or
         // not - reindexing on input.note alone would blank the index for an
         // edit that only touched the mood.
@@ -801,11 +996,12 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const stagedVideos: StagedVideo[] = [];
         for (const bytes of attachingVideos) stagedVideos.push(await stageVideo(files, bytes));
 
+        const targetEpochDay = input.epochDay ?? current.epoch_day;
         await driver.transaction(async () => {
           await driver.run(
             'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, updated_at = ? WHERE id = ?',
             [
-              input.epochDay ?? current.epoch_day,
+              targetEpochDay,
               input.timestamp ?? current.timestamp,
               mood,
               note,
@@ -844,6 +1040,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           for (const video of stagedVideos) {
             await insertStagedVideo(driver, current.id, video);
           }
+          await commitContextual(input, contextual, targetEpochDay);
         });
         await removeFilesAfterCommit(files, removedPhotos);
         await removeRecordingFilesAfterCommit(files, removedRecordings);
@@ -876,6 +1073,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const dimIds = await resolveDimensionIds(dims);
       const tagIds = await resolveTagIds(tags);
       await assertKnownBodyRegions(bodyRegions);
+      const contextual = await resolveContextual(input);
       const stagedPhotos: StagedPhoto[] = [];
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
       const stagedRecordings: StagedRecording[] = [];
@@ -903,6 +1101,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         for (const video of stagedVideos) {
           await insertStagedVideo(driver, entryId, video);
         }
+        await commitContextual(input, contextual, input.epochDay!);
         return entryId;
       });
     },

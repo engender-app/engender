@@ -127,3 +127,106 @@ export function projectStock(
   if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
   return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
 }
+
+/** Threshold in days below which a medication stock triggers a low-stock notice. */
+export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
+export const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
+export const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+function resolveStorage(storage?: Storage): Storage | null {
+  if (storage) return storage;
+  if (typeof localStorage !== 'undefined') return localStorage;
+  return null;
+}
+
+export function isStockNoticeSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {
+  const s = resolveStorage(storage);
+  if (!s) return false;
+  try {
+    const raw = s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
+    if (!raw) return false;
+    const until = Number(raw);
+    return !Number.isNaN(until) && nowMs < until;
+  } catch {
+    return false;
+  }
+}
+
+export function snoozeStockNotice(nowMs: number = Date.now(), storage?: Storage): void {
+  const s = resolveStorage(storage);
+  if (!s) return;
+  try {
+    s.setItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY, String(nowMs + STOCK_NOTICE_SNOOZE_DURATION_MS));
+  } catch {
+    // Storage write failure ignored gracefully.
+  }
+}
+
+export function clearStockNoticeSnooze(storage?: Storage): void {
+  const s = resolveStorage(storage);
+  if (!s) return;
+  try {
+    s.removeItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
+  } catch {
+    // Storage remove failure ignored gracefully.
+  }
+}
+
+export function isStockDepletingSoon(
+  projection: StockProjection,
+  asOfEpochDay: number,
+  thresholdDays?: number
+): boolean;
+export function isStockDepletingSoon(
+  stock: StockEntry,
+  doses: readonly DoseEvent[],
+  episodes: readonly RegimenEpisode[],
+  asOfEpochDay: number,
+  thresholdDays?: number
+): boolean;
+export function isStockDepletingSoon(
+  stockOrProjection: StockEntry | StockProjection,
+  dosesOrAsOf: readonly DoseEvent[] | number,
+  episodesOrThreshold?: readonly RegimenEpisode[] | number,
+  asOfEpochDayArg?: number,
+  thresholdDaysArg: number = STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS
+): boolean {
+  if ('remaining' in stockOrProjection && typeof dosesOrAsOf === 'number') {
+    const projection = stockOrProjection;
+    const asOfEpochDay = dosesOrAsOf;
+    const thresholdDays =
+      typeof episodesOrThreshold === 'number' ? episodesOrThreshold : STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS;
+    if (projection.runOutEpochDay === null) return false;
+    return projection.runOutEpochDay - asOfEpochDay <= thresholdDays;
+  }
+  const stock = stockOrProjection as StockEntry;
+  const doses = dosesOrAsOf as readonly DoseEvent[];
+  const episodes = episodesOrThreshold as readonly RegimenEpisode[];
+  const asOfEpochDay = asOfEpochDayArg!;
+  const thresholdDays = thresholdDaysArg ?? STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS;
+  const projection = projectStock(stock, doses, episodes, asOfEpochDay);
+  if (projection.runOutEpochDay === null) return false;
+  return projection.runOutEpochDay - asOfEpochDay <= thresholdDays;
+}
+
+export interface DepletingStockInfo<T = StockEntry> {
+  entry: T;
+  projection: StockProjection;
+  daysRemaining: number;
+}
+
+export function depletingStocks<T extends { drug: string }>(
+  rows: readonly { entry: T; projection: StockProjection }[],
+  asOfEpochDay: number,
+  thresholdDays: number = STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS
+): DepletingStockInfo<T>[] {
+  const result: DepletingStockInfo<T>[] = [];
+  for (const { entry, projection } of rows) {
+    if (isStockDepletingSoon(projection, asOfEpochDay, thresholdDays)) {
+      const daysRemaining = Math.max(0, projection.runOutEpochDay! - asOfEpochDay);
+      result.push({ entry, projection, daysRemaining });
+    }
+  }
+  return result.sort((a, b) => a.daysRemaining - b.daysRemaining || a.entry.drug.localeCompare(b.entry.drug));
+}
+

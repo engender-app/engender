@@ -27,6 +27,8 @@ import { openPreferences } from '../../../src/lib/data/prefs/preferences.ts';
 import type { SqliteDriver } from '../../../src/lib/data/sqlite/driver.ts';
 import type { PhotoFileStore } from '../../../src/lib/data/journal/journal.ts';
 import { DecryptionFailedError } from '../../../src/lib/crypto/aesGcm.ts';
+import { deriveKey } from '../../../src/lib/crypto/argon2id.ts';
+import { androidAutoExport } from '../../../src/lib/data/archive/android-auto-export-bridge.ts';
 
 declare global {
   interface Window {
@@ -203,7 +205,8 @@ function portableWith(marker: string) {
     streakGoalHabit: values.streakGoalHabit,
     streakGoalTargetDays: values.streakGoalTargetDays,
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
-    hairAnchorEpochDay: values.hairAnchorEpochDay
+    hairAnchorEpochDay: values.hairAnchorEpochDay,
+    cycleTrackingEnabled: values.cycleTrackingEnabled
   };
 }
 
@@ -381,6 +384,27 @@ async function runDirection(
   }
 }
 
+async function verifyNativeDerivationParity(checks: Check[]) {
+  const salt = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+  const kdf = { memorySize: 8192, iterations: 1, parallelism: 1, hashLength: 32 };
+  const password = 'cross-derivation-secret';
+
+  await androidAutoExport.setPassword({ password });
+  const { key: nativeKeyB64 } = await androidAutoExport.deriveKey({
+    salt: btoa(String.fromCharCode(...salt)),
+    kdf
+  });
+  const jsKey = await deriveKey(password, salt, kdf);
+  const jsKeyB64 = btoa(String.fromCharCode(...jsKey));
+
+  record(
+    checks,
+    'archive KDF: Android native derivation matches JavaScript deriveKey',
+    Boolean(nativeKeyB64) && nativeKeyB64 === jsKeyB64,
+    `native: ${nativeKeyB64}, js: ${jsKeyB64}`
+  );
+}
+
 async function run() {
   const checks: Check[] = [];
 
@@ -391,6 +415,8 @@ async function run() {
   await runDirection(checks, 'mixed encryption android->web', 'android', false, 'web', true, 'me-aw');
   await runDirection(checks, 'mixed encryption web plaintext->android encrypted', 'web', false, 'android', true, 'me2-wa');
   await runDirection(checks, 'mixed encryption android encrypted->web plaintext', 'android', true, 'web', false, 'me2-aw');
+
+  await verifyNativeDerivationParity(checks);
 
   window.__archiveCrossResult = { checks };
   document.body.dataset.archiveCrossReady = 'true';

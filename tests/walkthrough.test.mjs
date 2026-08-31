@@ -2561,6 +2561,98 @@ try {
 } catch (e) { fail('quick add dose', e); }
 
 try {
+  /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
+     phase 5 deepening ticket 05). The demo journal is transfemme by
+     construction - estradiol, no testosterone - so by default not one
+     surface names the cycle log, while the log itself keeps its records
+     and its direct URL. Two ways in, walked one after the other: the
+     explicit opt-in switch in Settings, and an active testosterone
+     episode, which surfaces it with the switch back off. */
+  await fresh('/more');
+  if (await page.locator('[data-list-row="cycle-events"]').count()) {
+    throw new Error('the cycle row showed in More with no testosterone and no opt-in');
+  }
+  await page.goto(BASE + '/settings/side-effects', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
+    throw new Error('side effects named the cycle log with no testosterone and no opt-in');
+  }
+  if (await page.locator('[data-cycle-events-link]').count()) {
+    throw new Error('regimen linked the cycle log without a testosterone episode');
+  }
+
+  // The direct URL still answers, records intact - hiding a row never
+  // closes a screen (ADR-0043).
+  await page.goto(BASE + '/settings/cycle-events', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-cycle-event]').count()) === 0) {
+    throw new Error('the cycle log lost its records behind the hidden row');
+  }
+
+  // Way in one: the explicit opt-in, for someone no regimen speaks for.
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-cycle-tracking-toggle] [role="switch"]').click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true',
+    null,
+    { timeout: 8000 }
+  );
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/settings/side-effects', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
+
+  // Back off, so the next flow starts from the default and the testosterone
+  // episode below has to be the thing that surfaces the log.
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-cycle-tracking-toggle] [role="switch"]').click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false',
+    null,
+    { timeout: 8000 }
+  );
+  ok('cycle tracking: hidden by default, surfaced by the opt-in, records and direct URL untouched');
+} catch (e) { fail('cycle tracking opt-in', e); }
+
+try {
+  /* Way in two: an active testosterone episode, which is the body the log
+     is for, asking nothing of preferences. The regimen screen links the
+     log while the episode runs, and stops again once it is ended - cycle
+     cessation belongs to the timeline that caused it. */
+  await fresh('/settings/regimen');
+  await page.click('[data-add]');
+  await page.click('[data-own]');
+  await page.waitForSelector('#regimen-drug');
+  await page.fill('#regimen-drug', 'Testosterone cypionate');
+  await page.fill('#regimen-dose', '100');
+  await page.fill('#regimen-dose-unit', 'mg');
+  await page.fill('#regimen-route', 'im');
+  await page.fill('#regimen-interval', 'weekly');
+  await page.click('[data-save-regimen]');
+  await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
+
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
+
+  // End the episode the way the concurrent-episodes flow does: an end date
+  // of yesterday, so it stops being active today, saved from the editor.
+  const daysAgoIso = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().click(); // text-under-test: the drug I just typed
+  await page.waitForSelector('#regimen-end');
+  await fillDate(page, '#regimen-end', daysAgoIso(1));
+  await page.click('[data-save-regimen]');
+  await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
+
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-list-row="cycle-events"]'), null, { timeout: 8000 });
+  ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
+} catch (e) { fail('cycle tracking testosterone', e); }
+
+
+try {
   /* The personal effects onset nudge (phase 5 ticket 49).
      Absent on a fresh journal with no regimen. Once an active regimen
      episode with a literature onset window is added, opening the fan shows

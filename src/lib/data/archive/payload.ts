@@ -170,6 +170,8 @@ export interface ArchiveMilestone {
   name: string;
   epochDay: number;
   templateKey: string | null;
+  roadmapGoalKey: string | null;
+  procedureId: string | null;
   photo: ArchivePhoto | null;
 }
 
