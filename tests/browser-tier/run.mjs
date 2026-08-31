@@ -459,7 +459,8 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
      SAHPool pool files (database, side files, the pre-migration copy),
      encrypted photos, the keystore - and every localStorage value, scanned
      for seeded entry text, lab strings, a reminder title, a milestone
-     name, a preference value, photo body text and the JPEG signature. */
+     name, a preference value, a half-written draft's note, photo body text
+     and the JPEG signature. */
   const dirtyFiles = r.scan.filter((f) => f.found.length > 0);
   if (r.scan.length >= 3 && dirtyFiles.length === 0)
     ok(`closed-app scan: no protected content readable in any of ${r.scan.length} OPFS files (pre-migration copy included)`);
@@ -469,13 +470,26 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
       dirtyFiles.map((f) => `${f.path}: ${f.found.join(', ')}`).join('; ') || `only ${r.scan.length} files scanned`
     );
 
+  /* Both mirrors have to be on the scan's plate for a clean scan to mean
+     anything: the boot cache, and the entry-draft mirror an editor leaves
+     behind mid-edit (sec-audit 02, finding G-01) - the one writer that puts
+     journal text in localStorage at all. */
   const dirtyKeys = r.localStorageScan.filter((k) => k.found.length > 0);
-  if (r.bootCachePresent && dirtyKeys.length === 0)
-    ok('closed-app scan: the localStorage boot mirror exists and holds none of the protected content');
+  if (r.bootCachePresent && r.draftMirrorPresent && dirtyKeys.length === 0)
+    ok('closed-app scan: the localStorage boot mirror and the entry-draft mirror hold none of the protected content');
   else
     fail(
       'closed-app scan: localStorage holds none of the protected content',
-      dirtyKeys.map((k) => `${k.key}: ${k.found.join(', ')}`).join('; ') || 'boot cache was never written'
+      dirtyKeys.map((k) => `${k.key}: ${k.found.join(', ')}`).join('; ') ||
+        `mirrors written: boot cache ${r.bootCachePresent}, entry draft ${r.draftMirrorPresent}`
+    );
+
+  if (r.draftMirrorRestored === 'sentinel-draft-note-half-written-5583' && r.draftMirrorUnderWrongKey === null)
+    ok('the encrypted entry-draft mirror restores under the journal key and reads as no draft under any other');
+  else
+    fail(
+      'the encrypted entry-draft mirror restores under the journal key only',
+      JSON.stringify({ restored: r.draftMirrorRestored, wrongKey: r.draftMirrorUnderWrongKey })
     );
 
   if (r.wrongPassphrase?.name === 'DecryptionFailedError' && r.wrongPassphrase.message === 'wrong password')
