@@ -179,11 +179,15 @@
 
     autoBusy = true;
     try {
+      if (expPass) {
+        await androidAutoExport.setPassword({ password: expPass });
+        autoHasPassword = true;
+      }
+
       const result = await runAndroidAutoExport(
         {
           snapshot: await journal.archive.snapshot(),
-          preferences: prefs,
-          password: expPass
+          preferences: prefs
         },
         {
           recordBackup: (at) => {
@@ -194,10 +198,6 @@
       );
 
       if (result.outcome === 'ok') {
-        if (expPass) {
-          await androidAutoExport.setPassword({ password: expPass });
-          autoHasPassword = true;
-        }
         toast(m.exp_auto_saved_toast());
       } else if (result.outcome === 'needs-destination') {
         toast(m.exp_auto_reselect_needed());

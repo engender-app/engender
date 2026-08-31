@@ -382,7 +382,7 @@ test('a dose can be deleted', async () => {
   await assert.rejects(journal.doses.deleteDose(id), /unknown dose event/);
 });
 
-/* The schedule comparison (phase 5 deepening ticket 17). The six-step
+/* The schedule comparison (phase 5 audit-deepening ticket 17). The six-step
    assembly the dose log screen used to do in markup, and which the
    long-journal benchmark used to do a second, drifted way: which episode is
    in effect, its schedule, its pauses, the doses attributed to it, and the

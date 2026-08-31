@@ -30,11 +30,13 @@
    removeFilesOf reclaims them the same way on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Checklist, ChecklistItem, ChecklistOwner, Procedure, ProcedureConsult } from '../types';
+import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure, ProcedureConsult } from '../types';
 import type { ChecklistsArea } from './checklists';
 import type { PhotoFileStore } from './journal';
-import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
+import type { MilestonesArea } from './milestones';
+import { photosByMilestone, removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now } from './support';
+import { todayEpochDay } from '../epochDay';
 
 /** What a procedure's checklist is owned by. A plain string rather than an
     enum of one, matching ChecklistOwner's own deliberately open `kind`
@@ -101,6 +103,10 @@ export interface ProceduresArea {
       caller has to check whether it exists yet - the same shape ticket 11's
       addToStandaloneChecklist takes. Throws if the procedure is unknown. */
   addChecklistItem(procedureId: string, content: string): Promise<ChecklistItem>;
+  /** Finds the transition milestone linked to this procedure, if one exists. */
+  getMilestone(procedureId: string): Promise<Milestone | null>;
+  /** Records or updates a transition milestone linked to this procedure (ADR-0045). */
+  recordSurgeryMilestone(procedureId: string, options?: { name?: string; epochDay?: number }): Promise<string>;
 }
 
 type ProcedureRow = {
@@ -114,7 +120,8 @@ type ProcedureRow = {
 export function makeProceduresArea(
   driver: SqliteDriver,
   files: PhotoFileStore,
-  checklists: ChecklistsArea
+  checklists: ChecklistsArea,
+  milestones: MilestonesArea
 ): ProceduresArea {
   const rowidOf = async (procedureId: string): Promise<number> => {
     const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [procedureId]);
@@ -186,6 +193,7 @@ export function makeProceduresArea(
       );
       const checklist = await checklists.getChecklistByOwner(procedureChecklistOwner(id));
 
+      await driver.run('UPDATE milestone SET procedure_id = NULL WHERE procedure_id = ?', [id]);
       await driver.run('DELETE FROM procedure WHERE uuid = ?', [id]);
       if (checklist) await checklists.deleteChecklist(checklist.id);
       await removeFilesOf(files, photos);
@@ -254,6 +262,66 @@ export function makeProceduresArea(
     async addChecklistItem(procedureId, content) {
       await rowidOf(procedureId);
       return checklists.addToOwnedChecklist(procedureChecklistOwner(procedureId), content);
+    },
+
+    async getMilestone(procedureId) {
+      const rows = await driver.query<{
+        id: number;
+        uuid: string;
+        name: string;
+        epoch_day: number;
+        template_key: string | null;
+        procedure_id: string | null;
+      }>(
+        'SELECT id, uuid, name, epoch_day, template_key, procedure_id FROM milestone WHERE procedure_id = ? LIMIT 1',
+        [procedureId]
+      );
+      if (rows.length === 0) return null;
+      const photos = await photosByMilestone(driver);
+      return {
+        id: rows[0].uuid,
+        name: rows[0].name,
+        epochDay: rows[0].epoch_day,
+        templateKey: rows[0].template_key,
+        procedureId: rows[0].procedure_id,
+        photo: photos.get(rows[0].id) ?? null
+      };
+    },
+
+    async recordSurgeryMilestone(procedureId, options) {
+      const rows = await driver.query<ProcedureRow>(
+        'SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure WHERE uuid = ?',
+        [procedureId]
+      );
+      if (rows.length === 0) throw new Error(`unknown procedure: ${procedureId}`);
+      const procedure = rows[0];
+
+      const name = options?.name?.trim() || procedure.name;
+      const epochDay = options?.epochDay ?? procedure.surgery_epoch_day ?? todayEpochDay();
+
+      const existing = await driver.query<{ uuid: string }>(
+        'SELECT uuid FROM milestone WHERE procedure_id = ?',
+        [procedureId]
+      );
+
+      if (existing.length > 0) {
+        const existingId = existing[0].uuid;
+        await milestones.upsertMilestone({
+          id: existingId,
+          name,
+          epochDay,
+          templateKey: 'surgery',
+          procedureId
+        });
+        return existingId;
+      }
+
+      return milestones.upsertMilestone({
+        name,
+        epochDay,
+        templateKey: 'surgery',
+        procedureId
+      });
     }
   };
 }

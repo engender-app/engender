@@ -23,6 +23,7 @@ import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
+import { getRegionSomaticBreakdown, type RegionSomaticBreakdown } from './bodyMapQueries';
 import { bool } from './support';
 
 export interface DayAverage {
@@ -142,6 +143,8 @@ export interface StatsArea {
     fromEpochDay: number,
     toEpochDay: number
   ): Promise<DayAverage[]>;
+  /** Multi-track somatic breakdown for an anatomical zone (phase 5 ticket 08). */
+  bodyRegionBreakdown(region: string): Promise<RegionSomaticBreakdown>;
   /** One point per day at least one completed wear session started in the
       range, oldest first, both ends inclusive - the same DayAverage shape
       as bodyRegionTrend, so a wear-time trend overlays the same chart
@@ -274,6 +277,10 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
     async bodyRegionTrend(region, axis, fromEpochDay, toEpochDay) {
       return averageByDay(bodyRegionValues(region, axis), fromEpochDay, toEpochDay);
+    },
+
+    async bodyRegionBreakdown(region) {
+      return getRegionSomaticBreakdown(driver, region);
     },
 
     async wearTimeTrend(fromEpochDay, toEpochDay) {

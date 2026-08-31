@@ -13,7 +13,7 @@ vi.mock('./android-auto-export-bridge.ts', () => ({
     configure: vi.fn(),
     writeBackup: vi.fn(),
     setPassword: vi.fn(),
-    passwordForScheduledBackup: vi.fn(),
+    deriveKey: vi.fn(),
     clearPassword: vi.fn(),
     notifyFailure: vi.fn()
   }
@@ -41,6 +41,9 @@ describe('runAndroidAutoExport', () => {
       hasPassword: true,
       nextDueAt: null
     });
+    vi.mocked(androidAutoExport.deriveKey).mockResolvedValue({
+      key: btoa('01234567890123456789012345678901')
+    });
     vi.mocked(androidAutoExport.writeBackup).mockResolvedValue({ writtenAt: 12345 });
     vi.mocked(androidAutoExport.configure).mockResolvedValue({
       enabled: false,
@@ -61,8 +64,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       {
         now: () => 17,
@@ -85,8 +87,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       {
         now: () => 17,
@@ -116,8 +117,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       { recordBackup: () => {} }
     );
@@ -136,8 +136,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       {
         now: () => 17,
@@ -158,8 +157,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       {
         now: () => 17,
@@ -180,8 +178,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       { recordBackup: () => {} }
     );
@@ -196,8 +193,7 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       { recordBackup: () => {} }
     );
@@ -214,14 +210,56 @@ describe('runAndroidAutoExport', () => {
     const result = await runAndroidAutoExport(
       {
         snapshot,
-        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' },
-        password: 'correct horse'
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
       },
       { recordBackup: () => {} }
     );
 
     expect(result).toEqual({ outcome: 'failed', reason: 'partial-write' });
     expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(2);
+  });
+
+  test('derives key through bridge with fresh salt per archive', async () => {
+    await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
+      },
+      { recordBackup: () => {} }
+    );
+
+    expect(androidAutoExport.deriveKey).toHaveBeenCalledTimes(1);
+    const firstCall = vi.mocked(androidAutoExport.deriveKey).mock.calls[0][0];
+    expect(typeof firstCall.salt).toBe('string');
+    expect(firstCall.salt.length).toBeGreaterThan(0);
+    expect(firstCall.kdf).toBeDefined();
+    expect(firstCall.kdf?.memorySize).toBe(65536);
+
+    await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
+      },
+      { recordBackup: () => {} }
+    );
+
+    expect(androidAutoExport.deriveKey).toHaveBeenCalledTimes(2);
+    const secondCall = vi.mocked(androidAutoExport.deriveKey).mock.calls[1][0];
+    expect(secondCall.salt).not.toBe(firstCall.salt);
+  });
+
+  test('fails when bridge returns no derived key (no password saved)', async () => {
+    vi.mocked(androidAutoExport.deriveKey).mockResolvedValue({ key: null });
+
+    const result = await runAndroidAutoExport(
+      {
+        snapshot,
+        preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' }
+      },
+      { recordBackup: () => {} }
+    );
+
+    expect(result).toEqual({ outcome: 'failed', reason: 'no-password' });
   });
 });
 

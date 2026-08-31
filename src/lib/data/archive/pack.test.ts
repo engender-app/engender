@@ -443,3 +443,18 @@ test('packing reads photos as it needs them, not all of them up front', async ()
   assert.ok(reads.length <= 2, `read ${reads.length} photos to produce two chunks`);
   await packing.return(undefined);
 });
+
+test('packArchive accepts a custom KeyDerivation function', async () => {
+  const { contents } = await contentsOf();
+  let derivationCalled = false;
+  const customDerive = async (salt: Uint8Array<ArrayBuffer>, kdf: typeof CHEAP_KDF) => {
+    derivationCalled = true;
+    return deriveKey('custom-derivation-pass', salt, kdf);
+  };
+
+  const archive = await collect(packArchive(contents, customDerive, CHEAP_KDF));
+  assert.ok(derivationCalled, 'custom KeyDerivation was invoked');
+
+  const opened = await openArchive(oneShot(archive), 'custom-derivation-pass');
+  assert.equal(opened.payload.preferences.name, 'Alicja');
+});

@@ -88,12 +88,37 @@ test('every live-tile kind is switchable and defaults to on (ticket 51)', () => 
     'readyLetterEnabled',
     'surgeryCountdownEnabled',
     'safeSpaceNudgeEnabled',
-    'stockNoticeEnabled'
+    'stockNoticeEnabled',
+    'activeTryoutTileEnabled',
+    'patchScheduleTileEnabled',
+    'voiceBenchmarkNudgeEnabled',
+    'pauseActiveBannerEnabled',
+    'hairRemovalRecoveryEnabled',
+    'measurementsNudgeEnabled'
   ]) {
     expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
     expect(DEVICE_LOCAL_KEYS).toContain(key);
     expect(PORTABLE_KEYS).not.toContain(key);
   }
+});
+
+test('every entry contextual card is switchable and defaults to on', () => {
+  for (const key of [
+    'entryTryoutPromptEnabled',
+    'entryDoseQuickLogEnabled',
+    'entryProcedureRecoveryEnabled',
+    'entryHrtEffectsEnabled'
+  ]) {
+    expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
+    expect(DEVICE_LOCAL_KEYS).toContain(key);
+    expect(PORTABLE_KEYS).not.toContain(key);
+  }
+});
+
+test('cycleTrackingEnabled defaults to false and is portable (ADR-0043)', () => {
+  expect(PREFERENCE_DEFAULTS.cycleTrackingEnabled).toBe(false);
+  expect(PORTABLE_KEYS).toContain('cycleTrackingEnabled');
+  expect(DEVICE_LOCAL_KEYS).not.toContain('cycleTrackingEnabled');
 });
 
 test('theme and language default to following the system, as the PRD asks', () => {

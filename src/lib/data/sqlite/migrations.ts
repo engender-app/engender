@@ -1470,7 +1470,28 @@ HAVING count(gd.key) > 0;
 DELETE FROM pref WHERE key = 'activePreset';
 `;
 
-/* v43: the app-lock PIN gate is retired (ticket 53, ADR-0041). Its two
+/* v43: roadmap-to-milestone sync bridge (phase 5 deepening ticket 10,
+   ADR-0045). A milestone created from checking off a transition roadmap
+   goal records the goal's key, so the app knows which roadmap item it
+   originated from.
+
+   Nullable, and unconstrained by a foreign key or CHECK: a goal key can
+   name a built-in goal from a country pack or a custom roadmap goal UUID.
+   If the milestone is deleted later, the roadmap checkmark remains checked
+   (graceful unlink). */
+const SCHEMA_V43 = `
+ALTER TABLE milestone ADD COLUMN roadmap_goal_key TEXT;
+`;
+
+/* v44: link milestones to surgical procedures (phase 5 ticket 12, ADR-0045).
+   A procedure's surgery day can record a milestone linking back to the
+   procedure by its uuid. Landed as v44 rather than v43 - ticket 10 minted
+   v43 for the same table first. */
+const SCHEMA_V44 = `
+ALTER TABLE milestone ADD COLUMN procedure_id TEXT REFERENCES procedure(uuid);
+`;
+
+/* v45: the app-lock PIN gate is retired (ticket 53, ADR-0041). Its two
    preferences go with it - `pinHash`, an Argon2id record that only ever
    protected a comparison, and `appLock`, a flag whose entire meaning was
    "a PIN gate stands in front of the app".
@@ -1485,8 +1506,12 @@ DELETE FROM pref WHERE key = 'activePreset';
 
    What an upgrading installation loses is the quick-relock shortcut. What it
    keeps is its actual protection: device-bound or passphrase underneath,
-   untouched, same keystore, same key. */
-const SCHEMA_V43 = `
+   untouched, same keystore, same key.
+
+   Landed as v45 rather than v43: tickets 10 and 12 minted 43 and 44 while
+   this branch was open, which is exactly the collision schema-version.ts's
+   own header warns about. */
+const SCHEMA_V45 = `
 DELETE FROM pref WHERE key IN ('pinHash', 'appLock');
 `;
 
@@ -1533,5 +1558,7 @@ export const migrations: Migration[] = [
   { version: 40, sql: SCHEMA_V40 },
   { version: 41, sql: SCHEMA_V41 },
   { version: 42, sql: SCHEMA_V42 },
-  { version: 43, sql: SCHEMA_V43 }
+  { version: 43, sql: SCHEMA_V43 },
+  { version: 44, sql: SCHEMA_V44 },
+  { version: 45, sql: SCHEMA_V45 }
 ];

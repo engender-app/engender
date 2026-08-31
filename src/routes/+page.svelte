@@ -85,17 +85,34 @@
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { activeSurgeryProcedure, recoveryDay } from '$lib/data/recoveryDay';
   import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
+  import { isLetterSnoozed, snoozeLetterTile, unreadUnlockedLetters } from '$lib/data/letterStatus';
+  import {
+    depletingStocks,
+    isStockNoticeSnoozed,
+    snoozeStockNotice
+  } from '$lib/data/stockProjection';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { isTileSnoozed, snoozeTile } from '$lib/data/liveTilesSnooze';
+  import {
+    shouldShowActiveTryoutTile,
+    shouldShowPatchScheduleTile,
+    shouldShowVoiceBenchmarkNudge,
+    shouldShowPauseActiveBanner,
+    shouldShowHairRemovalRecovery,
+    shouldShowMeasurementsNudge
+  } from '$lib/data/liveTiles';
+  import { hairRemovalAreaName } from '$lib/data/vocabulary/labels';
 
   const today = todayEpochDay();
+  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  /* Live tiles data & condition (phase 5 ticket 45, 47, 50). */
+  /* Live tiles data & condition (phase 5 tickets 45, 47, 50, deepening 01, 03). */
   let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let runningWear = $derived(runningWearQuery.value ?? null);
   let nowTick = $state(Date.now());
   $effect(() => {
-    if (!runningWear) return;
     const id = setInterval(() => (nowTick = Date.now()), 1000);
     return () => clearInterval(id);
   });
@@ -109,6 +126,17 @@
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let activeSurgery = $derived(activeSurgeryProcedure(proceduresQuery.rows, today));
   let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);
+
+  let lettersQuery = liveList((j) => j.letters.getLetters(100));
+  let isLetterSnoozedState = $state(false);
+  $effect(() => {
+    isLetterSnoozedState = isLetterSnoozed();
+  });
+  let unreadLetters = $derived(unreadUnlockedLetters(lettersQuery.rows, today));
+  let readyLetter = $derived(unreadLetters[0] ?? null);
+  let otherReadyLettersCount = $derived(Math.max(0, unreadLetters.length - 1));
+  let showLetterTile = $derived(prefs.readyLetterEnabled && !!readyLetter && !isLetterSnoozedState);
+  let letterDismissSheetOpen = $state(false);
 
   function procedureRecoveryText(procedure: { surgeryEpochDay: number | null }): string {
     const day = recoveryDay(procedure.surgeryEpochDay, today);
@@ -128,8 +156,6 @@
     })
   );
 
-  let hasLiveTiles = $derived(showWearTile || showDoseTile || showSurgeryTile || showSafeSpaceTile);
-
   function dismissSafeSpaceNudge(e?: MouseEvent) {
     if (e) {
       e.stopPropagation();
@@ -139,6 +165,135 @@
       prefs.safeSpaceNudgeDismissedEntryId = latestBadEntry.id;
     }
   }
+
+  /* 1. Active tryout tile */
+  let tryoutsQuery = liveList((j) => j.tryouts.getTryouts());
+  let tryoutFeltSenseQuery = liveQuery(async (j) => {
+    const tryouts = await j.tryouts.getTryouts();
+    const map = new Map<string, number | null>();
+    for (const t of tryouts) {
+      if (t.endEpochDay === null || t.endEpochDay >= today) {
+        const entries = await j.feltSense.forTryout(t.id);
+        map.set(t.id, entries.length > 0 ? entries[0].epochDay : null);
+      }
+    }
+    return map;
+  });
+  let activeTryoutQualifying = $derived(
+    shouldShowActiveTryoutTile({
+      tryouts: tryoutsQuery.rows,
+      latestFeltSenseByTryoutId: tryoutFeltSenseQuery.value ?? new Map(),
+      todayEpochDay: today,
+      enabled: prefs.activeTryoutTileEnabled,
+      snoozed: isTileSnoozed('active-tryout-tile', nowTick)
+    })
+  );
+  let showTryoutTile = $derived(!!activeTryoutQualifying);
+
+  /* 2. Patch schedule tile */
+  let schedulesQuery = liveList((j) => j.doses.getSchedules());
+  let dosePausesQuery = liveList((j) => j.doses.getPauses());
+  let todayDosesQuery = liveList((j) => j.doses.getDoses(today, today));
+  let patchScheduleQualifying = $derived(
+    shouldShowPatchScheduleTile({
+      episodes: episodesQuery.rows,
+      schedules: schedulesQuery.rows,
+      doses: todayDosesQuery.rows,
+      pauses: dosePausesQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.patchScheduleTileEnabled,
+      snoozed: isTileSnoozed('patch-schedule-tile', nowTick)
+    })
+  );
+  let showPatchScheduleTile = $derived(!!patchScheduleQualifying);
+
+  /* 3. Voice benchmark nudge */
+  let voiceRecordingsQuery = liveList((j) => j.voice.inJournal());
+  let voiceBenchmarkQualifying = $derived(
+    shouldShowVoiceBenchmarkNudge({
+      recordings: voiceRecordingsQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.voiceBenchmarkNudgeEnabled,
+      snoozed: isTileSnoozed('voice-benchmark-nudge', nowTick)
+    })
+  );
+  let showVoiceBenchmarkTile = $derived(!!voiceBenchmarkQualifying);
+
+  /* 4. Journaling pause active banner / tile */
+  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
+  let pauseActiveQualifying = $derived(
+    shouldShowPauseActiveBanner({
+      pauses: pausesQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.pauseActiveBannerEnabled,
+      snoozed: isTileSnoozed('pause-active-banner', nowTick)
+    })
+  );
+  let showPauseBannerTile = $derived(!!pauseActiveQualifying);
+
+  async function resumePauseEarly(pauseId: string, startEpochDay: number) {
+    const endEpochDay = today - 1;
+    if (endEpochDay < startEpochDay) {
+      await journal.journalingPauses.deletePause(pauseId);
+      return;
+    }
+    await journal.journalingPauses.upsertPause({
+      id: pauseId,
+      startEpochDay,
+      endEpochDay
+    });
+  }
+
+  /* 5. Hair removal recovery tile */
+  let hairRemovalQuery = liveList((j) => j.hairRemoval.getSessions());
+  let hairRemovalQualifying = $derived(
+    shouldShowHairRemovalRecovery({
+      sessions: hairRemovalQuery.rows,
+      todayEpochDay: today,
+      enabled: prefs.hairRemovalRecoveryEnabled,
+      snoozed: isTileSnoozed('hair-removal-recovery', nowTick)
+    })
+  );
+  let showHairRemovalTile = $derived(!!hairRemovalQualifying);
+
+  /* 6. Measurements nudge tile */
+  let measurementsQuery = liveQuery(async (j) => {
+    const all = await j.measurements.getMeasurementsInRange(0, 999999);
+    const count = all.length;
+    let latestDay: number | null = null;
+    for (const m of all) {
+      if (latestDay == null || m.epochDay > latestDay) latestDay = m.epochDay;
+    }
+    return { count, latestDay };
+  });
+  let measurementsData = $derived(measurementsQuery.value ?? { count: 0, latestDay: null });
+  let measurementsNudgeQualifying = $derived(
+    shouldShowMeasurementsNudge({
+      measurementsCount: measurementsData.count,
+      latestMeasurementEpochDay: measurementsData.latestDay,
+      todayEpochDay: today,
+      enabled: prefs.measurementsNudgeEnabled,
+      snoozed: isTileSnoozed('measurements-nudge', nowTick)
+    })
+  );
+  let showMeasurementsTile = $derived(!!measurementsNudgeQualifying);
+
+  let liveTilesCount = $derived(
+    (showWearTile && runningWear && runningWearElapsed ? 1 : 0) +
+      (showDoseTile ? 1 : 0) +
+      (showSurgeryTile && activeSurgery ? 1 : 0) +
+      (showSafeSpaceTile ? 1 : 0) +
+      (showLetterTile && readyLetter ? 1 : 0) +
+      (showTryoutTile && activeTryoutQualifying ? 1 : 0) +
+      (showPatchScheduleTile && patchScheduleQualifying ? 1 : 0) +
+      (showVoiceBenchmarkTile && voiceBenchmarkQualifying ? 1 : 0) +
+      (showPauseBannerTile && pauseActiveQualifying ? 1 : 0) +
+      (showHairRemovalTile && hairRemovalQualifying ? 1 : 0) +
+      (showMeasurementsTile && measurementsNudgeQualifying ? 1 : 0)
+  );
+
+  let hasLiveTiles = $derived(liveTilesCount > 0);
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -157,6 +312,15 @@
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
   let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
 
+  let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
+  let isStockNoticeSnoozedState = $state(false);
+  $effect(() => {
+    isStockNoticeSnoozedState = isStockNoticeSnoozed();
+  });
+  let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
+  let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
+  let stockDismissSheetOpen = $state(false);
+
   /* Five days, not five entries, is what the read asks for: the day cards
      head each day with how many entries it holds, and a query row limit
      would leave that number unanswerable. The cap is applied to what is
@@ -168,13 +332,6 @@
 
   let streakQuery = liveQuery((j) => j.stats.streak(today));
   let streak = $derived(streakQuery.value ?? 0);
-
-  /* The journaling pause (phase 5 features ticket 21): the streak caption is
-     a nudge, the same as the check-in prompt, so it goes quiet while a pause
-     covers today rather than showing a frozen number with nothing to
-     explain it. */
-  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
-  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* A second authored moment, and the only one besides the sun: past a
      week's run, opening Home throws a little confetti over the streak line.
@@ -313,6 +470,14 @@
         {#if cheering}{@render cheer(true)}{/if}
         <p class="home-streak" data-home-streak="line">{streak} {m.streak_row()}</p>
       </div>
+    {:else if pausedToday && showPauseBannerTile && pauseActiveQualifying}
+      <div class="home-streak-wrap">
+        <p class="home-streak" data-home-streak="paused">
+          {pauseActiveQualifying.pause.endEpochDay != null
+            ? m.tile_pause_until_date({ date: fmtDay(pauseActiveQualifying.pause.endEpochDay, { day: 'numeric', month: 'short' }) })
+            : m.tile_pause_ongoing()}
+        </p>
+      </div>
     {/if}
   </header>
 
@@ -361,6 +526,29 @@
     />
   {/if}
 
+  {#if showStockNotice && urgentDepletingStock}
+    <Notice
+      icon="alert"
+      key="stock-low"
+      title={m.notice_stock_low_title()}
+      text={urgentDepletingStock.daysRemaining <= 0
+        ? m.notice_stock_out_body({ drug: urgentDepletingStock.entry.drug })
+        : m.notice_stock_low_body({
+            drug: urgentDepletingStock.entry.drug,
+            days: String(urgentDepletingStock.daysRemaining)
+          })}
+      action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
+      dismiss={{
+        label: m.notice_stock_dismiss_action(),
+        onclick: () => {
+          stockDismissSheetOpen = true;
+        }
+      }}
+      aria-live="polite"
+      data-stock-notice=""
+    />
+  {/if}
+
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
 
@@ -377,7 +565,7 @@
         data-live-tile-grid
       >
         {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile }}>
+          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile || showLetterTile }}>
             <Tile
               key="wear-timer"
               data-wear-running-tile
@@ -413,7 +601,7 @@
         {#if showDoseTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile || showLetterTile
             }}
           >
             <Tile
@@ -438,7 +626,7 @@
         {#if showSurgeryTile && activeSurgery}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile
+              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile || showLetterTile
             }}
           >
             <Tile
@@ -456,36 +644,221 @@
         {#if showSafeSpaceTile}
           <div
             transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSurgeryTile
+              enabled: liveTilesCount > 1
             }}
           >
-            <div
-              class="kit-tile home-safe-space-tile"
-              data-tile="safe-space-nudge"
+            <Tile
+              key="safe-space-nudge"
               data-safe-space-nudge-tile
               data-live-tile="safe-space-nudge"
-            >
-              <div class="home-safe-space-main">
-                <p class="home-safe-space-text">{m.tile_safe_space_nudge_sub()}</p>
-                <a
-                  class="btn btn-soft kit-tile-act press"
-                  href="/doubt"
-                  data-safe-space-nudge-open
-                  onclick={dismissSafeSpaceNudge}
-                >
-                  <span>{m.safe_space_title()}</span>
-                </a>
-              </div>
-              <button
-                type="button"
-                class="home-safe-space-dismiss press"
-                data-safe-space-nudge-dismiss
-                aria-label={m.tile_safe_space_nudge_dismiss()}
-                onclick={dismissSafeSpaceNudge}
-              >
-                <Icon name="x" size={16} />
-              </button>
-            </div>
+              title={m.safe_space_title()}
+              note={m.tile_safe_space_nudge_sub()}
+              href="/doubt"
+              action={{
+                icon: 'x',
+                label: m.tile_safe_space_nudge_dismiss(),
+                attrs: { 'data-safe-space-nudge-dismiss': '' },
+                onclick: (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  dismissSafeSpaceNudge(e);
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showLetterTile && readyLetter}
+          <div
+            transition:tileSlide={{
+              enabled:
+                !!(showWearTile && runningWear && runningWearElapsed) ||
+                showDoseTile ||
+                showSurgeryTile ||
+                showSafeSpaceTile
+            }}
+          >
+            <Tile
+              key="ready-letter"
+              data-letter-tile
+              data-live-tile="ready-letter"
+              title={m.tile_letter_title()}
+              value={dayLabel(readyLetter.epochDay)}
+              note={otherReadyLettersCount > 0
+                ? m.tile_letter_more({ count: String(otherReadyLettersCount) })
+                : m.tile_letter_single_note()}
+              href={`/settings/letters?read=${readyLetter.id}`}
+              action={{
+                icon: 'x',
+                label: m.tile_letter_dismiss_action(),
+                attrs: { 'data-letter-dismiss': '' },
+                onclick: (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  letterDismissSheetOpen = true;
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showTryoutTile && activeTryoutQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="active-tryout"
+              data-active-tryout-tile
+              data-live-tile="active-tryout-tile"
+              title={m.tile_active_tryout_title()}
+              value={activeTryoutQualifying.tryout.label}
+              note={m.tile_active_tryout_note({ days: String(activeTryoutQualifying.daysElapsed) })}
+              href={`/settings/tryouts/${activeTryoutQualifying.tryout.id}`}
+              action={{
+                icon: 'plus',
+                text: m.tile_tryout_action(),
+                label: m.tile_tryout_action(),
+                href: `/settings/tryouts/${activeTryoutQualifying.tryout.id}?feltSense=1`
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('active-tryout-tile');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showPatchScheduleTile && patchScheduleQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="patch-schedule"
+              data-patch-schedule-tile
+              data-live-tile="patch-schedule-tile"
+              title={m.tile_patch_schedule_title()}
+              value={patchScheduleQualifying.episode.drug}
+              note={`${patchScheduleQualifying.doseAmount} · ${patchScheduleQualifying.route}`}
+              href="/doses"
+              action={{
+                icon: 'plus',
+                text: m.tile_dose_log_action(),
+                label: m.tile_dose_log_action(),
+                href: '/doses?add=1'
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('patch-schedule-tile');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showVoiceBenchmarkTile && voiceBenchmarkQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="voice-benchmark"
+              data-voice-benchmark-tile
+              data-live-tile="voice-benchmark-nudge"
+              title={m.tile_voice_benchmark_title()}
+              value={m.tile_voice_benchmark_action()}
+              note={voiceBenchmarkQualifying.daysElapsed == null
+                ? m.tile_voice_benchmark_none()
+                : m.tile_voice_benchmark_days_ago({ days: String(voiceBenchmarkQualifying.daysElapsed) })}
+              href="/settings/voice"
+              action={{
+                icon: 'mic',
+                text: m.tile_voice_benchmark_action(),
+                label: m.tile_voice_benchmark_action(),
+                href: '/settings/voice/record'
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('voice-benchmark-nudge');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showPauseBannerTile && pauseActiveQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="pause-active"
+              data-pause-active-tile
+              data-live-tile="pause-active-banner"
+              title={m.tile_pause_active_title()}
+              value={m.streak_protected()}
+              note={pauseActiveQualifying.pause.endEpochDay != null
+                ? m.tile_pause_until_date({ date: fmtDay(pauseActiveQualifying.pause.endEpochDay, { day: 'numeric', month: 'short' }) })
+                : m.tile_pause_ongoing()}
+              href="/settings/journaling-pause"
+              action={{
+                icon: 'play',
+                text: m.journaling_pause_resume(),
+                label: m.journaling_pause_resume(),
+                onclick: () => resumePauseEarly(pauseActiveQualifying!.pause.id ?? '', pauseActiveQualifying!.pause.startEpochDay)
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('pause-active-banner');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showHairRemovalTile && hairRemovalQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="hair-removal-recovery"
+              data-hair-removal-tile
+              data-live-tile="hair-removal-recovery"
+              title={m.tile_hair_removal_title()}
+              value={hairRemovalAreaName(hairRemovalQualifying.session.area)}
+              note={m.tile_hair_removal_guidance()}
+              href="/settings/hair-removal"
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('hair-removal-recovery');
+                  nowTick = Date.now();
+                }
+              }}
+            />
+          </div>
+        {/if}
+
+        {#if showMeasurementsTile && measurementsNudgeQualifying}
+          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
+            <Tile
+              key="measurements-nudge"
+              data-measurements-tile
+              data-live-tile="measurements-nudge"
+              title={m.tile_measurements_title()}
+              value={m.tile_measurements_prompt()}
+              note={m.tile_measurements_note({ days: String(measurementsNudgeQualifying.daysSince) })}
+              href="/settings/measurements"
+              action={{
+                icon: 'plus',
+                text: m.tile_measurements_action(),
+                label: m.tile_measurements_action(),
+                href: '/settings/measurements'
+              }}
+              dismiss={{
+                label: m.dismiss(),
+                onclick: () => {
+                  snoozeTile('measurements-nudge');
+                  nowTick = Date.now();
+                }
+              }}
+            />
           </div>
         {/if}
       </TileGrid>
@@ -640,6 +1013,76 @@
         </div>
       </div>
     {/if}
+  </Sheet>
+
+  <Sheet
+    open={letterDismissSheetOpen}
+    title={m.tile_letter_dismiss_title()}
+    onClose={() => (letterDismissSheetOpen = false)}
+  >
+    <div data-letter-dismiss-sheet>
+      <SectionHeading text={m.tile_letter_dismiss_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.tile_letter_dismiss_hint()}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-letter-snooze
+          onclick={() => {
+            snoozeLetterTile();
+            isLetterSnoozedState = true;
+            letterDismissSheetOpen = false;
+            toast(m.tile_letter_snoozed_toast());
+          }}
+        >
+          <span>{m.tile_letter_snooze_btn()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-letter-dont-show
+          onclick={() => {
+            prefs.readyLetterEnabled = false;
+            letterDismissSheetOpen = false;
+          }}
+        >
+          <span>{m.tile_letter_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
+  </Sheet>
+
+  <Sheet
+    open={stockDismissSheetOpen}
+    title={m.notice_stock_dismiss_title()}
+    onClose={() => (stockDismissSheetOpen = false)}
+  >
+    <div data-stock-dismiss-sheet>
+      <SectionHeading text={m.notice_stock_dismiss_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.notice_stock_dismiss_hint()}</p>
+      <div class="stack-3">
+        <button
+          class="btn btn-primary btn-block"
+          data-stock-snooze
+          onclick={() => {
+            snoozeStockNotice();
+            isStockNoticeSnoozedState = true;
+            stockDismissSheetOpen = false;
+            toast(m.notice_stock_snoozed_toast());
+          }}
+        >
+          <span>{m.notice_stock_snooze_btn()}</span>
+        </button>
+        <button
+          class="btn btn-ghost btn-block"
+          data-stock-dont-show
+          onclick={() => {
+            prefs.stockNoticeEnabled = false;
+            stockDismissSheetOpen = false;
+          }}
+        >
+          <span>{m.notice_stock_dont_show_btn()}</span>
+        </button>
+      </div>
+    </div>
   </Sheet>
 </div>
 
@@ -915,65 +1358,4 @@
   .home-swap { display: grid; }
   .home-swap > * { grid-area: 1 / 1; }
   .home-days { display: grid; gap: var(--space-3); align-content: start; }
-
-  .home-safe-space-tile {
-    position: relative;
-    display: block;
-    min-height: 0;
-    padding: var(--space-4);
-  }
-  .home-safe-space-main {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding-right: var(--space-6);
-  }
-  .home-safe-space-text {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text);
-    line-height: 1.35;
-    font-weight: var(--weight-medium);
-    flex: 1 1 auto;
-  }
-  .home-safe-space-main .btn {
-    flex: 0 0 auto;
-    min-height: 36px;
-    padding: 0 var(--space-3.5);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    border-radius: var(--radius-pill);
-    background: color-mix(in oklab, var(--role-mark) 25%, transparent);
-    color: var(--text);
-    border: 1px solid color-mix(in oklab, var(--role-mark) 45%, transparent);
-    white-space: nowrap;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-  .home-safe-space-main .btn:active {
-    background: color-mix(in oklab, var(--role-mark) 38%, transparent);
-  }
-  .home-safe-space-dismiss {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 0;
-    color: var(--text-2);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-  }
-  .home-safe-space-dismiss:hover,
-  .home-safe-space-dismiss:active {
-    color: var(--text);
-    background: color-mix(in oklab, var(--role-mark) 14%, transparent);
-  }
 </style>

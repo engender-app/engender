@@ -87,6 +87,14 @@ export interface PreferenceValues {
       `entryNudges` is: a yes/no about one installation's entry screen, not
       anything the journal itself carries. */
   guidedPromptsEnabled: boolean;
+  /** Whether active tryouts show a felt-sense quick prompt in the entry editor. */
+  entryTryoutPromptEnabled: boolean;
+  /** Whether a scheduled dose due today shows a quick-log chip in the entry editor. */
+  entryDoseQuickLogEnabled: boolean;
+  /** Whether post-op procedure recovery shows a status card in the entry editor. */
+  entryProcedureRecoveryEnabled: boolean;
+  /** Whether active HRT regimen shows a physical change marker chip in the entry editor. */
+  entryHrtEffectsEnabled: boolean;
   /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
       A kind-level switch, not a way to hide one running session: the tile
       appears while a session is running and the kind is on, and this never
@@ -119,6 +127,18 @@ export interface PreferenceValues {
       while an in-use regimen's stock is projected to run out. Same shape and
       reasoning as `wearTimerEnabled`. */
   stockNoticeEnabled: boolean;
+  /** Whether the active-tryout live tile is ever shown (phase 5 deepening ticket 03). */
+  activeTryoutTileEnabled: boolean;
+  /** Whether the patch-schedule live tile is ever shown (phase 5 deepening ticket 03). */
+  patchScheduleTileEnabled: boolean;
+  /** Whether the voice-benchmark nudge live tile is ever shown (phase 5 deepening ticket 03). */
+  voiceBenchmarkNudgeEnabled: boolean;
+  /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
+  pauseActiveBannerEnabled: boolean;
+  /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
+  hairRemovalRecoveryEnabled: boolean;
+  /** Whether the measurements nudge live tile is ever shown (phase 5 deepening ticket 03). */
+  measurementsNudgeEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -213,6 +233,17 @@ export interface PreferenceValues {
       journey. A milestone this install no longer has resolves to unset
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
+  /** Whether cycle tracking is surfaced for someone no active regimen
+      already calls it out for (ADR-0043, phase 5 deepening ticket 05). Off
+      by default: a standalone cycle row is a dysphoria trigger for the
+      transfemme reader it has nothing to say to, so an active testosterone
+      regimen surfaces it on its own and this is everyone else's way in -
+      the row in More, the section beside side effects. It never hides or
+      deletes records; the log keeps them and its direct URL either way.
+      Portable: it says something about the person and their journal, the
+      way `activeScales` does, so moving to a new device brings the opt-in
+      along with the cycle_event rows it was set for. */
+  cycleTrackingEnabled: boolean;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
@@ -223,6 +254,9 @@ export interface PreferenceValues {
       milliseconds, like `lastBackupAt`, and just as device-local: it
       describes what this installation has checked, not the journal. */
   lastVerifiedAt: number | null;
+  /** Whether ticking a roadmap goal prompts to record it as a milestone
+      on the timeline (phase 5 deepening ticket 10, ADR-0045). */
+  roadmapMilestoneSyncEnabled: boolean;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -250,6 +284,10 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInAffirmationsEnabled: true,
   entryNudges: true,
   guidedPromptsEnabled: true,
+  entryTryoutPromptEnabled: true,
+  entryDoseQuickLogEnabled: true,
+  entryProcedureRecoveryEnabled: true,
+  entryHrtEffectsEnabled: true,
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
@@ -257,6 +295,12 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
   stockNoticeEnabled: true,
+  activeTryoutTileEnabled: true,
+  patchScheduleTileEnabled: true,
+  voiceBenchmarkNudgeEnabled: true,
+  pauseActiveBannerEnabled: true,
+  hairRemovalRecoveryEnabled: true,
+  measurementsNudgeEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   wrappedNotificationsEnabled: false,
@@ -272,11 +316,13 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   streakGoalHabit: null,
   streakGoalTargetDays: null,
   journeyAnchorMilestoneId: null,
+  cycleTrackingEnabled: false,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
   backupNoticeDismissed: false,
-  lastVerifiedAt: null
+  lastVerifiedAt: null,
+  roadmapMilestoneSyncEnabled: true
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -297,7 +343,8 @@ export const PORTABLE_KEYS = [
   'streakGoalHabit',
   'streakGoalTargetDays',
   'journeyAnchorMilestoneId',
-  'hairAnchorEpochDay'
+  'hairAnchorEpochDay',
+  'cycleTrackingEnabled'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
@@ -313,6 +360,10 @@ export const DEVICE_LOCAL_KEYS = [
   'hideNotificationTitles',
   'entryNudges',
   'guidedPromptsEnabled',
+  'entryTryoutPromptEnabled',
+  'entryDoseQuickLogEnabled',
+  'entryProcedureRecoveryEnabled',
+  'entryHrtEffectsEnabled',
   'wearTimerEnabled',
   'dosePanelEnabled',
   'readyLetterEnabled',
@@ -320,6 +371,12 @@ export const DEVICE_LOCAL_KEYS = [
   'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',
   'stockNoticeEnabled',
+  'activeTryoutTileEnabled',
+  'patchScheduleTileEnabled',
+  'voiceBenchmarkNudgeEnabled',
+  'pauseActiveBannerEnabled',
+  'hairRemovalRecoveryEnabled',
+  'measurementsNudgeEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'wrappedNotificationsEnabled',
@@ -331,6 +388,7 @@ export const DEVICE_LOCAL_KEYS = [
   'lastBackupAt',
   'backupNoticeDismissed',
   'lastVerifiedAt',
+  'roadmapMilestoneSyncEnabled',
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
   'hormoneCurveFitToOwnLabs'

@@ -41,6 +41,11 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
   draft.setMood(4);
   draft.setNote('hi');
   draft.toggleTag('e-happy');
+  draft.setTryoutFeltSense({ tryoutId: 't1', mood: 5, note: 'great' });
+  draft.setDoseLog({ dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' });
+  draft.setProcedureRecovery({ procedureId: 'p1', notes: 'healing well' });
+  draft.setEffectMarker({ effect: 'skin_softening', firstNoticedEpochDay: 20_001 });
+  draft.setCycleEvent({ kind: 'spotting', epochDay: 20_001 });
 
   const persisted = serializeDraft(draft);
   assert.deepEqual(persisted, {
@@ -55,6 +60,11 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
     removedPhotoIds: [],
     removedRecordingIds: [],
     removedVideoIds: [],
+    tryoutFeltSense: { tryoutId: 't1', mood: 5, note: 'great' },
+    doseLog: { dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' },
+    procedureRecovery: { procedureId: 'p1', notes: 'healing well' },
+    effectMarker: { effect: 'skin_softening', firstNoticedEpochDay: 20_001 },
+    cycleEvent: { kind: 'spotting', epochDay: 20_001 }
   });
 });
 
@@ -96,7 +106,7 @@ test('a persisted draft for an existing entry matches by id, regardless of day',
   assert.equal(draftMatchesRoute(persisted, undefined, 20_000), false);
 });
 
-test('applying a persisted draft overlays mood, note, dims, tags and body regions', () => {
+test('applying a persisted draft overlays mood, note, dims, tags, body regions and contextual sub-records', () => {
   const draft = createEntryDraft(20_001);
   const persisted: PersistedEntryDraft = {
     id: undefined,
@@ -109,7 +119,12 @@ test('applying a persisted draft overlays mood, note, dims, tags and body region
     bodyRegions: { chest: { dysphoria: 30, euphoria: null } },
     removedPhotoIds: [],
     removedRecordingIds: [],
-    removedVideoIds: []
+    removedVideoIds: [],
+    tryoutFeltSense: { tryoutId: 't1', mood: 4, note: 'nice' },
+    doseLog: { dose: 100, doseUnit: 'mg', route: 'im' },
+    procedureRecovery: { procedureId: 'proc-1', notes: 'day 1' },
+    effectMarker: { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 },
+    cycleEvent: { kind: 'period_occurred', epochDay: 20_001 }
   };
 
   applyPersistedDraft(draft, persisted);
@@ -119,6 +134,11 @@ test('applying a persisted draft overlays mood, note, dims, tags and body region
   assert.deepEqual(draft.dims, { femininity: 70 });
   assert.deepEqual(draft.tags, ['e-happy']);
   assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: null } });
+  assert.deepEqual(draft.tryoutFeltSense, { tryoutId: 't1', mood: 4, note: 'nice' });
+  assert.deepEqual(draft.doseLog, { dose: 100, doseUnit: 'mg', route: 'im' });
+  assert.deepEqual(draft.procedureRecovery, { procedureId: 'proc-1', notes: 'day 1' });
+  assert.deepEqual(draft.effectMarker, { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 });
+  assert.deepEqual(draft.cycleEvent, { kind: 'period_occurred', epochDay: 20_001 });
 });
 
 test('applying a persisted draft drops stored photos the user had already removed', () => {

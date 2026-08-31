@@ -32,11 +32,12 @@
      heading, its own permanently-visible notice, a dashed line instead of a
      band, and no result marks on top of it.
 
-     Both arrive in one read (phase 5 deepening ticket 17), and the arithmetic
-     that used to stand in this file - the axis maximum, whether two unfitted
-     shapes may share a scale, whether a unit may be printed, which results
-     belong on which ester's chart - is journal/hormoneCurve.ts's, where it
-     has tests. What is left here is wording and marks. */
+     Both arrive in one read (phase 5 audit-deepening ticket 17), and the
+     arithmetic that used to stand in this file - the axis maximum, whether
+     two unfitted shapes may share a scale, whether a unit may be printed,
+     which results belong on which ester's chart - is
+     journal/hormoneCurve.ts's, where it has tests. What is left here is
+     wording and marks. */
 
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';

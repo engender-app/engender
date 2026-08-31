@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 43);
+  assert.equal(db.getUserVersion(), 45);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -771,8 +771,53 @@ test('v42 leaves an install that never chose a preset on the default set', async
 
   // No row rather than an empty list: an empty list is a person who unticked
   // everything, and this install has said nothing at all, so the preference
-  // default is what should answer for it.
   assert.equal(activeScales(db), null);
+});
+
+async function migratedToV42() {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 42)
+  );
+  return db;
+}
+
+test('v43 adds roadmap_goal_key column to milestone table', async () => {
+  const db = await migratedToV42();
+  const beforeCols = await db.query<{ name: string }>('PRAGMA table_info(milestone)');
+  assert.equal(beforeCols.some((c) => c.name === 'roadmap_goal_key'), false);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  const afterCols = await db.query<{ name: string }>('PRAGMA table_info(milestone)');
+  assert.equal(afterCols.some((c) => c.name === 'roadmap_goal_key'), true);
+});
+
+test('v44 adds procedure_id to milestone table, preserving existing milestones', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 43)
+  );
+
+  db.raw.exec(
+    "INSERT INTO milestone (uuid, name, epoch_day, updated_at) VALUES ('m-1', 'HRT Start', 20000, 0)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw.prepare('SELECT uuid, name, procedure_id FROM milestone WHERE uuid = ?').get('m-1') as {
+    uuid: string;
+    name: string;
+    procedure_id: string | null;
+  };
+  assert.equal(row.uuid, 'm-1');
+  assert.equal(row.name, 'HRT Start');
+  assert.equal(row.procedure_id, null);
 });
 
 test('the hand-written latest version and the migration list agree', async () => {
@@ -789,17 +834,21 @@ test('the hand-written latest version and the migration list agree', async () =>
   );
 });
 
-/* Ticket 53 retires the app-lock PIN gate. The acceptance criterion is about
+/* Ticket 53 retires the app-lock PIN gate, as v45. The acceptance criterion is about
    what an upgrading installation keeps rather than about what goes: the PIN
    was never the encryption credential (ADR-0014), so dropping it must leave
    the journal's real protection exactly where it was. */
 
-async function migratedToV42() {
+/* main already defines migratedToV41 and migratedToV42 for its own
+   migrations, so this is the same shape one pair of versions further on -
+   and it has to be, or the two tests below would be exercising 43 and 44
+   rather than 45. */
+async function migratedToV44() {
   const db = makeNodeSqliteDb();
   await runMigrations(
     db,
     noopFileOps(),
-    migrations.filter((m) => m.version <= 42)
+    migrations.filter((m) => m.version <= 44)
   );
   return db;
 }
@@ -807,8 +856,8 @@ async function migratedToV42() {
 const pref = (db: Awaited<ReturnType<typeof migratedDb>>, key: string): string | undefined =>
   (db.raw.prepare('SELECT value FROM pref WHERE key = ?').get(key) as { value: string } | undefined)?.value;
 
-test('v43 takes the retired PIN gate\'s preferences and leaves everything else alone', async () => {
-  const db = await migratedToV42();
+test('v45 takes the retired PIN gate\'s preferences and leaves everything else alone', async () => {
+  const db = await migratedToV44();
   db.raw.exec(`INSERT INTO pref (key, value) VALUES ('pinHash', '"v1$8192$1$1$32$c2FsdA==$aGFzaA=="')`);
   db.raw.exec(`INSERT INTO pref (key, value) VALUES ('appLock', 'true')`);
   /* The two mid-session triggers outlive the gate: they now re-ask whatever
@@ -827,8 +876,8 @@ test('v43 takes the retired PIN gate\'s preferences and leaves everything else a
   assert.equal(pref(db, 'name'), '"Alicja"');
 });
 
-test('v43 is a no-op for an installation that never set a PIN', async () => {
-  const db = await migratedToV42();
+test('v45 is a no-op for an installation that never set a PIN', async () => {
+  const db = await migratedToV44();
   db.raw.exec(`INSERT INTO pref (key, value) VALUES ('name', '"Alicja"')`);
 
   await runMigrations(db, noopFileOps(), migrations);
