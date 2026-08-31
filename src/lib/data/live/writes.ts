@@ -442,7 +442,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   letters: classify<Journal['letters']>()({
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
-    reads: { getLetters: ['letter'] }
+    reads: { getLetters: ['letter'], getLetter: ['letter'] }
   }),
   roadmap: classify<Journal['roadmap']>()({
     writes: {

@@ -41,6 +41,7 @@
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
   import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
+  import type { RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import PhotoThumb from './PhotoThumb.svelte';
   import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
@@ -49,6 +50,7 @@
   import ChartCard from './kit/ChartCard.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
+  import LookBackLetterCard from './LookBackLetterCard.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
 
   let {
@@ -61,7 +63,8 @@
     anchorDuration = null,
     insights = [],
     tally = null,
-    streaks = null
+    streaks = null,
+    letters = []
   }: {
     /** The calendar year, as a number: the cover prints it and the month
         names are formatted in it, and a string round-tripped through
@@ -81,6 +84,11 @@
     insights?: (WrappedTagInsight & { label: string })[];
     tally?: WrappedTallyCounts | null;
     streaks?: WrappedStreaks | null;
+    /** The year's unlocked letters, already selected by the caller
+        (letterRetrospective.ts): written inside the period, sealed ones
+        kept out. A retrospective shows a past self's words only once the
+        letter has opened. */
+    letters?: RetrospectiveLetter[];
   } = $props();
 
   /* Which stripe each area takes, and the two ways this app writes a number,
@@ -238,6 +246,21 @@
           <span class="wrapped-figure-date">{fmtDay(ms.epochDay, { day: 'numeric', month: 'long' })}</span>
         {/snippet}
       </ListRow>
+    {/each}
+  </ListCard>
+{/if}
+
+<!-- The year's letters, each opening on its own text (phase 5 deepening
+     ticket 13). They sit beside the milestones - both are records of the
+     year itself - and ahead of the close line, so the last word a yearly
+     wrapped leaves you with can be your own. The rows take the milestones'
+     stripe: a fourth area role would re-shuffle every palette this screen
+     already composes, and a list of records is a list of records. -->
+{#if letters.length}
+  <SectionHeading text={m.wrapped_letters()} />
+  <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
+    {#each letters as rl (rl.letter.id)}
+      <LookBackLetterCard letter={rl.letter} kind={rl.kind} />
     {/each}
   </ListCard>
 {/if}

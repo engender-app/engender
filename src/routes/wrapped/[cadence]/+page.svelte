@@ -43,6 +43,7 @@
   import { smartBack } from '$lib/navigation/smart-back';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
   import { wrappedStreaks, wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
+  import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
   import {
     WRAPPED_RANGE_CHOICES,
     parseWrappedRangeParams,
@@ -232,6 +233,19 @@
   );
   let streaks = $derived(recap ? wrappedStreaks(recap, bestEverQuery.value ?? 0) : null);
 
+  /* The year's letters to the future self (phase 5 deepening ticket 13):
+     written inside the period and unlocked today, which is the only way a
+     past self's words may resurface. A year read only - the compact
+     template's week and month have no prose section to put them in, and
+     the ticket names the annual recap. Sealed ones never reach the
+     component: letterRetrospective.ts answers the seal question. */
+  let lettersQuery = liveList((j) =>
+    on && cadence === 'year' ? j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT) : Promise.resolve([])
+  );
+  let yearLetters = $derived(
+    period && cadence === 'year' ? wrappedLetters(lettersQuery.rows, period.start, period.end, today) : []
+  );
+
   /* Both templates take the dimension and the tags already named, so neither
      of them has to know that a built-in tag stores a key and takes its
      wording from the catalogue at display time (ticket 05). */
@@ -296,7 +310,7 @@
   );
 
   let loading = $derived(
-    recapQuery.loading || moodTrendQuery.loading || insightsQuery.loading || tallyQuery.loading
+    recapQuery.loading || moodTrendQuery.loading || insightsQuery.loading || tallyQuery.loading || lettersQuery.loading
   );
 </script>
 
@@ -393,6 +407,7 @@
         {insights}
         {tally}
         {streaks}
+        letters={yearLetters}
       />
     {:else}
       <WrappedCompact
