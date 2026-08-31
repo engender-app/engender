@@ -16,9 +16,9 @@
    belong to.
 
    Encrypting makes both halves async, and everything that can go wrong on
-   the way back - no key, a foreign key, a mirror from an older build, plain
-   garbage - reads as no draft at all, the same discard the shape check has
-   always done. */
+   the way back - a foreign key, a mirror from an older build, plain garbage -
+   reads as no draft at all, the same discard the shape check has always
+   done. */
 
 import { decrypt, encrypt } from '../crypto/aesGcm';
 import type { PersistedEntryDraft } from './entryDraftPersistence';
@@ -87,12 +87,12 @@ const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
 /** `journalKey` is awaited rather than read, and asked per call rather than
     captured. The editor mounts while boot is still finishing, well before
     there is a key at all, so a synchronous read finds none and a restore
-    would conclude there is no draft (which is how this arrived: the mirror
-    was written and then never read back). Everything here waits for the open
-    journal's key instead; null is for a caller that will never have one, and
-    then nothing is mirrored. */
+    would conclude there is no draft - which is how this arrived: the mirror
+    was written and then never read back. Waiting for the open journal's key
+    also means a mirror is only ever written while there is a journal for it
+    to belong to. */
 export function localStorageEntryDraft(
-  journalKey: () => Promise<Uint8Array<ArrayBuffer> | null>
+  journalKey: () => Promise<Uint8Array<ArrayBuffer>>
 ): EntryDraftStore {
   /* The store key is the additional authenticated data, so a mirror copied
      to another localStorage key fails to decrypt instead of coming back as
@@ -102,13 +102,14 @@ export function localStorageEntryDraft(
 
   /* Every keystroke starts a write and encryption is async, so two writes
      can be in flight at once. Only the newest is allowed to land: without
-     this the mirror could end up holding an older draft than the screen. */
+     this the mirror could end up holding an older draft than the screen, and
+     a write still in flight when the editor unmounts could put one back
+     after clear() took it. */
   let latest = 0;
 
   return {
     async read() {
       const key = await journalKey();
-      if (key === null) return null;
       try {
         const raw = localStorage.getItem(ENTRY_DRAFT_STORE_KEY);
         if (!raw) return null;
@@ -134,8 +135,7 @@ export function localStorageEntryDraft(
          and both are waiting on the same key. */
       const mine = ++latest;
       const key = await journalKey();
-      if (key === null) return; // nothing to encrypt under, so nothing is mirrored
-      if (mine !== latest) return; // a later edit is already on its way
+      if (mine !== latest) return; // a later edit, or an unmount, got here first
       try {
         const plaintext = new TextEncoder().encode(JSON.stringify(draft)) as Uint8Array<ArrayBuffer>;
         const { nonce, ciphertext } = await encrypt(key, plaintext, boundTo);
@@ -149,6 +149,10 @@ export function localStorageEntryDraft(
       }
     },
     clear() {
+      /* Counts as the newest write, so anything still encrypting when the
+         editor unmounts is dropped instead of landing after this. The short
+         window the mirror is readable in is the whole point of clearing it. */
+      ++latest;
       try {
         localStorage.removeItem(ENTRY_DRAFT_STORE_KEY);
       } catch {
