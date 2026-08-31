@@ -36,7 +36,8 @@ public final class ReminderScheduler {
      * The store is written before the old alarms are cancelled, so a wrap
      * that fails (phase 5 security ticket 02) leaves the phone on the rules
      * it already had rather than on none. {@code RemindersPlugin.sync}
-     * reports the failure and runs again on the next app open.
+     * rejects, which {@code platform-sync.ts} logs and nothing shows the
+     * person; what recovers it is the next sync, on the next focus.
      */
     static void saveAndSchedule(Context context, JSONObject payload) throws Exception {
         JSONObject previous = loadPayload(context);

@@ -47,8 +47,11 @@ public final class ReminderPayloadStore {
     /** The Keystore entry. Named for the app, since the keystore is shared. */
     public static final String ALIAS = "gender-diary-reminders-payload";
 
-    /** The wrapped payload, and the nonce it was wrapped under. */
-    private static final String KEY_CIPHERTEXT = "payload-v2";
+    /** The wrapped payload, and the nonce it was wrapped under. Named
+        rather than private because the test that reads the file's bytes has
+        to know what it is looking at, and a copy spelled out there would
+        keep passing after this moved. */
+    static final String KEY_CIPHERTEXT = "payload-v2";
     private static final String KEY_NONCE = "payload-v2-nonce";
 
     /** What builds before this ticket wrote: the same JSON, in the clear. */
@@ -65,11 +68,15 @@ public final class ReminderPayloadStore {
         cipher.init(Cipher.ENCRYPT_MODE, key());
         byte[] ciphertext = cipher.doFinal(payload.toString().getBytes(StandardCharsets.UTF_8));
 
+        /* commit rather than apply: this write is also the one that takes
+           an older build's plaintext off disk, and apply returns before the
+           file does. The payload is a few hundred bytes and this runs once
+           per sync, so there is nothing to gain by queueing it. */
         prefs(context).edit()
             .putString(KEY_NONCE, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
             .putString(KEY_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.NO_WRAP))
             .remove(KEY_LEGACY_PLAINTEXT)
-            .apply();
+            .commit();
     }
 
     /**
@@ -106,7 +113,7 @@ public final class ReminderPayloadStore {
 
         JSONObject payload = parse(raw);
         if (payload == null) {
-            prefs.edit().remove(KEY_LEGACY_PLAINTEXT).apply();
+            prefs.edit().remove(KEY_LEGACY_PLAINTEXT).commit();
             return null;
         }
 
@@ -122,13 +129,22 @@ public final class ReminderPayloadStore {
         the reset has to reach it after the preference file holding the
         payload is already gone. */
     static void deleteKey() throws Exception {
-        KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
-        keyStore.load(null);
+        KeyStore keyStore = keystore();
         if (keyStore.containsAlias(ALIAS)) keyStore.deleteEntry(ALIAS);
     }
 
+    private static boolean aliasExists() throws Exception {
+        return keystore().containsAlias(ALIAS);
+    }
+
+    /* Reading never mints a key. key() creates one when the alias is
+       absent, which on this path would mean answering "the key is gone"
+       with a fresh key that cannot open the stored ciphertext - the same
+       null in the end, by way of a GCM tag failure and a keystore entry
+       nothing can use. */
     private static String decrypt(String nonce, String ciphertext) {
         try {
+            if (!aliasExists()) return null;
             Cipher cipher = Cipher.getInstance(CIPHER);
             cipher.init(
                 Cipher.DECRYPT_MODE,
@@ -150,9 +166,7 @@ public final class ReminderPayloadStore {
     }
 
     private static SecretKey key() throws Exception {
-        KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
-        keyStore.load(null);
-        SecretKey existing = (SecretKey) keyStore.getKey(ALIAS, null);
+        SecretKey existing = (SecretKey) keystore().getKey(ALIAS, null);
         if (existing != null) return existing;
 
         KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE);
@@ -163,6 +177,12 @@ public final class ReminderPayloadStore {
                 .setUserAuthenticationRequired(false)
                 .build());
         return keyGenerator.generateKey();
+    }
+
+    private static KeyStore keystore() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
+        keyStore.load(null);
+        return keyStore;
     }
 
     private static SharedPreferences prefs(Context context) {
