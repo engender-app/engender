@@ -80,7 +80,7 @@ const persisted = (note: string): PersistedEntryDraft => ({
 
 test('a mirrored draft comes back through a write and read, so a killed process still restores it', async () => {
   fakeLocalStorage();
-  const store = localStorageEntryDraft(() => KEY);
+  const store = localStorageEntryDraft(async () => KEY);
 
   await store.write(persisted(NOTE));
 
@@ -99,7 +99,7 @@ test('a mirrored draft comes back through a write and read, so a killed process 
 
 test('what sits in localStorage holds none of the note, the tags or the region values', async () => {
   const values = fakeLocalStorage();
-  const store = localStorageEntryDraft(() => KEY);
+  const store = localStorageEntryDraft(async () => KEY);
 
   await store.write(persisted(NOTE));
 
@@ -116,24 +116,24 @@ test('a mirror written by an older build reads as no draft rather than as plaint
   // Exactly what the pre-encryption mirror wrote: the snapshot as bare JSON.
   values.set(ENTRY_DRAFT_STORE_KEY, JSON.stringify(persisted(NOTE)));
 
-  assert.equal(await localStorageEntryDraft(() => KEY).read(), null);
+  assert.equal(await localStorageEntryDraft(async () => KEY).read(), null);
   vi.unstubAllGlobals();
 });
 
 test('a mirror that will not decrypt is discarded rather than throwing at the editor', async () => {
   fakeLocalStorage();
-  await localStorageEntryDraft(() => KEY).write(persisted(NOTE));
+  await localStorageEntryDraft(async () => KEY).write(persisted(NOTE));
 
   // The state a draft is in after a reset: the journal it belonged to is
   // gone, so the key that would read it is a different key.
   const otherKey = new Uint8Array(32).fill(9) as Uint8Array<ArrayBuffer>;
-  assert.equal(await localStorageEntryDraft(() => otherKey).read(), null);
+  assert.equal(await localStorageEntryDraft(async () => otherKey).read(), null);
   vi.unstubAllGlobals();
 });
 
 test('ciphertext that decrypts to something which is not a draft is discarded too', async () => {
   const values = fakeLocalStorage();
-  const store = localStorageEntryDraft(() => KEY);
+  const store = localStorageEntryDraft(async () => KEY);
 
   await store.write({ ...persisted(NOTE), note: 'kept' });
   const good = values.get(ENTRY_DRAFT_STORE_KEY)!;
@@ -149,13 +149,13 @@ test('garbage in the mirror reads as no draft, not as an exception', async () =>
   const values = fakeLocalStorage();
   values.set(ENTRY_DRAFT_STORE_KEY, 'not base64 at all !!!');
 
-  assert.equal(await localStorageEntryDraft(() => KEY).read(), null);
+  assert.equal(await localStorageEntryDraft(async () => KEY).read(), null);
   vi.unstubAllGlobals();
 });
 
 test('with no journal key there is nothing to mirror under, so nothing is written', async () => {
   const values = fakeLocalStorage();
-  const store = localStorageEntryDraft(() => null);
+  const store = localStorageEntryDraft(async () => null);
 
   await store.write(persisted(NOTE));
 
@@ -166,7 +166,7 @@ test('with no journal key there is nothing to mirror under, so nothing is writte
 
 test('the last edit is what stays, even when an earlier write finishes after it', async () => {
   const values = fakeLocalStorage();
-  const store = localStorageEntryDraft(() => KEY);
+  const store = localStorageEntryDraft(async () => KEY);
 
   // Every keystroke starts a write, and encryption is async: without an
   // ordering guard whichever call happens to finish last would win, and the
@@ -178,11 +178,33 @@ test('the last edit is what stays, even when an earlier write finishes after it'
   vi.unstubAllGlobals();
 });
 
+test('a read that starts before the journal is open still gets its draft once the key arrives', async () => {
+  fakeLocalStorage();
+  await localStorageEntryDraft(async () => KEY).write(persisted(NOTE));
+
+  /* The editor mounts around 70ms before boot hands over the key, so this is
+     the ordinary case rather than an edge one: a store that read the key
+     synchronously found none, returned "no draft", and lost the entry a
+     killed process had left behind - which is exactly what the walkthrough
+     caught. */
+  let handOver: (key: Uint8Array<ArrayBuffer>) => void = () => {};
+  const opening = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
+    handOver = resolve;
+  });
+  const store = localStorageEntryDraft(() => opening);
+
+  const reading = store.read();
+  handOver(KEY);
+
+  assert.equal((await reading)?.note, NOTE);
+  vi.unstubAllGlobals();
+});
+
 test('clear takes the mirror without needing a key', () => {
   const values = fakeLocalStorage();
   values.set(ENTRY_DRAFT_STORE_KEY, 'whatever was there');
 
-  localStorageEntryDraft(() => null).clear();
+  localStorageEntryDraft(async () => null).clear();
 
   assert.equal(values.has(ENTRY_DRAFT_STORE_KEY), false);
   vi.unstubAllGlobals();

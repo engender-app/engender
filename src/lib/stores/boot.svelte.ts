@@ -127,14 +127,24 @@ let started = false;
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
 let sessionDataKey: Uint8Array<ArrayBuffer> | null = null;
+let announceDataKey: (key: Uint8Array<ArrayBuffer>) => void;
+const dataKeyOpened = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
+  announceDataKey = resolve;
+});
 
 /** The key the open journal is encrypted under, for the one thing outside
     this module that has to encrypt something itself: the entry-draft mirror
     (data/entryDraftStore.ts), which is journal content living in
-    localStorage rather than in the database. Null until a journal is open,
-    and the mirror writes nothing while it is. */
-export function journalDataKey(): Uint8Array<ArrayBuffer> | null {
-  return sessionDataKey;
+    localStorage rather than in the database.
+
+    Awaited rather than read, the way data/live/journal.svelte.ts queues on
+    its own `opened`: a screen renders during boot - the entry editor is one
+    route away at first paint, and it mounts a good 70ms before the key
+    exists - so a caller reading this synchronously would find nothing and
+    conclude there was no draft to restore. Resolved once per page, which is
+    all a reset needs, since a reset reloads. */
+export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
+  return sessionDataKey ? Promise.resolve(sessionDataKey) : dataKeyOpened;
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
@@ -489,6 +499,7 @@ function journalPorts(dataKey: Uint8Array<ArrayBuffer>): { sqlite: WebSqlite; ph
     back to the reducer as an event. */
 async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   sessionDataKey = dataKey;
+  announceDataKey(dataKey);
   const { sqlite, photoFiles } = journalPorts(dataKey);
 
   // The PRD asks for navigator.storage.persist() on first save, not on
