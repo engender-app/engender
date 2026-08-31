@@ -1,25 +1,5 @@
 <script lang="ts">
-  /* THESIS: the care readings are positions on one line, not four figures in
-     four boxes; it refuses the grouping screen that is only a menu.
-     OWN-WORLD: the app's own kit and flag palettes - ChartCard, ListCard,
-     ListRow, role 0's stripe on the rail, Nunito body and Outfit display, a
-     hairline rather than elevation.
-     STORY: you see where you are between doses, when blood was last taken
-     and how long the box lasts, then tap through to whichever of those you
-     came for.
-     FIRST VIEWPORT: the regimen named at the top, then a full-width rail
-     with today's tick fixed in it, the last dose behind, the next dose and
-     the run-out day ahead, the draw marked where it fell; the readings that
-     do not fit a rail follow as rows under one heading.
-     FORM: the spine, first of seven on my own order and dealt by an external
-     roll (the shipped concept-seed script returned nothing on this machine,
-     so /dev/urandom rolled it; seed order 7 5 1, locked from the served
-     decision page).
-     FINISH: unreviewed and undocumented is unfinished; this build ends with
-     the finish review, the verdict, DESIGN.md, and every shipping raster
-     carrying its provenance.
-
-     The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
+  /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
      surface, so it lives in the More hub rather than under /settings).
 
      What this screen does NOT do is the point of it. The ticket it comes
@@ -43,6 +23,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { careSpine, lastLoggedDoseDay, nextExpectedSlot, SPINE_FORWARD_DAYS, type SpineMark, type SpineMarkKind } from '$lib/data/careSpine';
@@ -51,6 +32,7 @@
   import { attributeDose } from '$lib/data/regimenEpisode';
   import { depletingStocks } from '$lib/data/stockProjection';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
+  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -77,6 +59,20 @@
   let comparisonQuery = liveQuery((j) => j.doses.getComparison({ fromEpochDay: today - 1, toEpochDay: today }));
   let stockQuery = liveList((j) => j.stock.getProjections(today));
   let latestLabQuery = liveQuery((j) => j.labs.getLatestResult());
+
+  /* Every one of those five reads has to have answered before the rail means
+     anything: a spine drawn while the stock query is still out would settle
+     without its run-out mark and then jump. The rail is one object rather
+     than a list, so this is a Skeleton against a `.loading` of its own rather
+     than a ReadGate (tests/feature-screens.test.ts holds the choice between
+     the two). */
+  let loading = $derived(
+    dosesQuery.loading ||
+      episodesQuery.loading ||
+      comparisonQuery.loading ||
+      stockQuery.loading ||
+      latestLabQuery.loading
+  );
 
   let comparison = $derived(comparisonQuery.value ?? null);
   let activeEpisode = $derived(comparison && 'activeEpisode' in comparison ? comparison.activeEpisode : null);
@@ -165,66 +161,78 @@
 <div class="screen">
   <ScreenHeader title={m.care_title()} back="/more" screen="care" />
 
-  {#if spine}
-    {#if activeEpisode}
-      <a class="care-regimen" href="/settings/regimen" data-care-regimen>
-        <span class="care-regimen-lines">
-          <span class="care-regimen-drug">{activeEpisode.drug}</span>
-          <span class="care-regimen-detail"
-            >{m.care_regimen_sub({
-              dose: String(activeEpisode.dose),
-              unit: activeEpisode.doseUnit,
-              interval: activeEpisode.interval
-            })}</span
-          >
-        </span>
-        <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-      </a>
-    {:else if severalRegimens}
-      <!-- No single regimen to name, so nothing is named. This is a note
-           about why the rail has no next-dose mark, at the size a note is:
-           the display line above belongs to a drug's name, and a sentence
-           set in it reads as the screen shouting. -->
-      <a class="care-regimen" href="/settings/regimen" data-care-regimen>
-        <span class="care-regimen-lines">
-          <span class="care-regimen-detail">{m.care_regimen_several()}</span>
-        </span>
-        <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-      </a>
-    {/if}
+  <!-- Outside the rail's branch on purpose. The regimen is a reading in its
+       own right, and it is the one reading that is not a day: careSpine has
+       nothing to draw for it, so a journal with a regimen and no dose, draw
+       or stock count yet gets no rail - and while this block sat inside that
+       branch the screen answered "nothing to put on the line" without ever
+       naming the regimen that was running. -->
+  {#if activeEpisode}
+    <a class="care-regimen" href="/settings/regimen" data-care-regimen>
+      <span class="care-regimen-lines">
+        <span class="care-regimen-drug">{activeEpisode.drug}</span>
+        <span class="care-regimen-detail"
+          >{m.care_regimen_sub({
+            dose: String(activeEpisode.dose),
+            unit: activeEpisode.doseUnit,
+            interval: activeEpisode.interval
+          })}</span
+        >
+      </span>
+      <Icon name="chevronRight" size={22} cls="care-regimen-go" />
+    </a>
+  {:else if severalRegimens}
+    <!-- No single regimen to name, so nothing is named. This is a note about
+         why the rail has no next-dose mark, at the size a note is: the
+         display line above belongs to a drug's name, and a sentence set in
+         it reads as the screen shouting. -->
+    <a class="care-regimen" href="/settings/regimen" data-care-regimen>
+      <span class="care-regimen-lines">
+        <span class="care-regimen-detail">{m.care_regimen_several()}</span>
+      </span>
+      <Icon name="chevronRight" size={22} cls="care-regimen-go" />
+    </a>
+  {/if}
 
+  {#if loading}
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
+  {:else if spine}
     <ChartCard heading={m.care_rail_heading()} kind="care-spine" role={roleAt(activeFlag.roles, AREA_ROLE.rail)}>
       <div class="care-rail" style="--care-rows-below: {rowsBelow}; --care-rows-above: {rowsAbove}" data-care-rail>
         <div class="care-track">
           <span class="care-line care-line-back" aria-hidden="true"></span>
           <span class="care-line care-line-on" aria-hidden="true"></span>
+          <!-- Two elements per mark, and the split is load-bearing. Placement
+               along the rail is a translate, and press.css holds the app's
+               press at zero specificity through :where(), so a transform of
+               its own on the link would outrank :active and make every mark
+               on the rail unpressable. The wrapper is placed and the link
+               inside it is left free to press. The tick sits on the wrapper
+               too, so it stays put against the line while the caption
+               presses. -->
           {#each spine.marks as mark (mark.kind)}
-            {@const style = `--care-at: ${mark.position}; --care-depth: ${laneDepth(mark.lane)}; --care-settle: ${Math.abs(mark.position - 0.5).toFixed(3)}`}
-            {#if MARK_HREF[mark.kind]}
-              <a
-                class="care-mark"
-                data-care-mark={mark.kind}
-                data-side={laneSide(mark.lane)}
-                class:is-beyond={mark.beyondSpan}
-                {style}
-                href={MARK_HREF[mark.kind]}
-                aria-label={markAria(mark)}
-              >
-                <span class="care-tick" aria-hidden="true"></span>
-                <span class="care-caption">
+            <div
+              class="care-at"
+              data-side={laneSide(mark.lane)}
+              class:is-today={mark.kind === 'today'}
+              class:is-beyond={mark.beyondSpan}
+              style={`--care-at: ${mark.position}; --care-depth: ${laneDepth(mark.lane)}; --care-settle: ${Math.abs(mark.position - 0.5).toFixed(3)}`}
+            >
+              <span class="care-tick" aria-hidden="true"></span>
+              {#if MARK_HREF[mark.kind]}
+                <a class="care-mark" data-care-mark={mark.kind} href={MARK_HREF[mark.kind]} aria-label={markAria(mark)}>
+                  <span class="care-what">{MARK_LABEL[mark.kind]()}</span>
+                  <span class="care-when">{dayLabel(mark.epochDay)}</span>
+                </a>
+              {:else}
+                <!-- Today is where the reader is rather than somewhere to go,
+                     so it is text and not a link that leads nowhere. -->
+                <span class="care-mark" data-care-mark={mark.kind}>
                   <span class="care-what">{MARK_LABEL[mark.kind]()}</span>
                   <span class="care-when">{dayLabel(mark.epochDay)}</span>
                 </span>
-              </a>
-            {:else}
-              <span class="care-mark is-today" data-care-mark={mark.kind} data-side={laneSide(mark.lane)} {style}>
-                <span class="care-tick" aria-hidden="true"></span>
-                <span class="care-caption">
-                  <span class="care-what">{MARK_LABEL[mark.kind]()}</span>
-                  <span class="care-when">{dayLabel(mark.epochDay)}</span>
-                </span>
-              </span>
-            {/if}
+              {/if}
+            </div>
           {/each}
         </div>
       </div>
@@ -346,20 +354,28 @@
     right: 0;
     background: color-mix(in oklab, var(--role-mark) 22%, transparent);
   }
+  /* Grown by transform rather than by animating left and right.
+     materials.css caps the motion palette at transform and opacity plus
+     three named materials, and a 700ms animation on two inset properties is
+     700ms of relayout on the mid-range Android WebView that cap exists for.
+     scaleX off a centred origin is the same movement and composites. */
   .care-line-on {
-    left: 50%;
-    right: 50%;
+    left: 0;
+    right: 0;
     background: var(--role-mark);
+    transform: translateY(-50%) scaleX(0);
+    transform-origin: 50% 50%;
     animation: care-line-grow var(--dur-authored) var(--ease-out) forwards;
   }
   @keyframes care-line-grow {
     to {
-      left: 0;
-      right: 0;
+      transform: translateY(-50%) scaleX(1);
     }
   }
 
-  .care-mark {
+  /* The wrapper is what gets placed and animated, so the link inside it
+     keeps the app's press (press.css). */
+  .care-at {
     position: absolute;
     left: calc(var(--care-at) * 100%);
     transform: translateX(-50%);
@@ -367,14 +383,13 @@
     flex-direction: column;
     align-items: center;
     /* The caption is around 48px wide and the tick is 2px, so the target is
-       the mark's own box: it stays at the floor whatever the tick looks
+       the caption's own box: it stays at the floor whatever the tick looks
        like. */
     min-width: var(--touch-target);
-    text-decoration: none;
-    color: inherit;
     /* Settles as the line reaches it: a mark a third of the way out waits a
-       third of the growth. Delay off --dur-med rather than a literal, so
-       reduced motion collapses it with everything else. */
+       third of the growth. The delay is a multiple of a duration token
+       rather than a literal, so reduced motion collapses it along with
+       everything else - base.css clamps every --dur-* to 1ms. */
     opacity: 0;
     animation: care-mark-settle var(--dur-med) var(--ease-out) forwards;
     animation-delay: calc(var(--care-settle) * var(--dur-authored));
@@ -389,19 +404,31 @@
       transform: translateX(-50%) translateY(0);
     }
   }
+  .care-mark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    line-height: 1.2;
+    min-width: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
   /* Lane 0 hangs below the line, lane 1 stands above it: two labels that
      would print over each other take opposite sides of the rail rather than
      a second row on the same side, which is what keeps the card at one
      height whatever the arrangement (careSpine.ts assigns them). */
-  .care-mark[data-side='below'] {
+  .care-at[data-side='below'] {
     top: calc(var(--care-line-y) + var(--care-depth) * var(--care-lane-h));
     padding-top: var(--space-4);
-    justify-content: flex-start;
   }
-  .care-mark[data-side='above'] {
+  .care-at[data-side='above'] {
     bottom: calc(100% - var(--care-line-y) + var(--care-depth) * var(--care-lane-h));
     padding-bottom: var(--space-4);
-    justify-content: flex-end;
+    /* Only the wrapper reverses, which puts the tick under the caption
+       rather than over it. The caption itself reads label then date on both
+       sides of the line; reversing it too flipped "Today / 31 Aug" into "31
+       Aug / Today". */
     flex-direction: column-reverse;
   }
 
@@ -415,16 +442,16 @@
     background: var(--role-mark);
     border-radius: 1px;
   }
-  .care-mark[data-side='below'] .care-tick {
+  .care-at[data-side='below'] .care-tick {
     top: calc(-1 * var(--care-depth) * var(--care-lane-h));
   }
-  .care-mark[data-side='above'] .care-tick {
+  .care-at[data-side='above'] .care-tick {
     bottom: calc(-1 * var(--care-depth) * var(--care-lane-h));
   }
   /* Today is a disc on the line rather than a tick off it: it is the one
      mark that is a place rather than an event, and it is what the rail is
      measured from. */
-  .care-mark.is-today .care-tick {
+  .care-at.is-today .care-tick {
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -432,35 +459,26 @@
   }
   /* A today pushed to a second row keeps a stem to the line under its disc,
      the way every other deep mark does. */
-  .care-mark.is-today[data-side='below'] .care-caption::before,
-  .care-mark.is-today[data-side='above'] .care-caption::before {
+  .care-at.is-today::before {
     content: '';
     position: absolute;
     width: 2px;
     height: calc(var(--care-depth) * var(--care-lane-h));
     background: var(--role-mark);
   }
-  .care-mark.is-today[data-side='below'] .care-caption::before {
+  .care-at.is-today[data-side='below']::before {
     top: calc(-1 * var(--care-depth) * var(--care-lane-h));
   }
-  .care-mark.is-today[data-side='above'] .care-caption::before {
+  .care-at.is-today[data-side='above']::before {
     bottom: calc(-1 * var(--care-depth) * var(--care-lane-h));
   }
-  .care-mark.is-today[data-side='below'] .care-tick {
+  .care-at.is-today[data-side='below'] .care-tick {
     top: calc(-6px - var(--care-depth) * var(--care-lane-h));
   }
-  .care-mark.is-today[data-side='above'] .care-tick {
+  .care-at.is-today[data-side='above'] .care-tick {
     bottom: calc(-6px - var(--care-depth) * var(--care-lane-h));
   }
 
-  .care-caption {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    line-height: 1.2;
-  }
   .care-what {
     font-size: var(--text-xs);
     color: var(--text-2);
@@ -472,14 +490,14 @@
     color: var(--role-ink);
     white-space: nowrap;
   }
-  .care-mark.is-today .care-what {
+  .care-at.is-today .care-what {
     color: var(--role-ink);
     font-weight: var(--weight-bold);
   }
   /* A day the rail could not reach, drawn at the end it was pulled in to.
      The caption still says the real date; the dotted tick is what says the
      mark is not where the day is. */
-  .care-mark.is-beyond .care-tick {
+  .care-at.is-beyond .care-tick {
     background: repeating-linear-gradient(
       to bottom,
       var(--role-mark) 0 2px,
