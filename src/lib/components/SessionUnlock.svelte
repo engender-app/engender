@@ -71,7 +71,8 @@
       passphrase = '';
       markUnlocked();
     } catch (e) {
-      error = e instanceof DeviceBindingUnavailableError ? m.su_device_key_gone() : m.pp_wrong();
+      const deviceGone = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
+      error = e instanceof DeviceBindingUnavailableError ? deviceGone : m.pp_wrong();
     } finally {
       busy = false;
     }
