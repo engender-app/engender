@@ -4,7 +4,7 @@ import { interpretAuthentication } from '../lock/biometric-outcome.ts';
 import {
   initialBoot,
   reduce,
-  skipSetupOutcome,
+  deviceBoundSetupOutcome,
   type BootEffect,
   type BootEvent,
   type BootMachine
@@ -35,7 +35,7 @@ const started = (platform: 'web' | 'android', demo = false): BootEvent => ({
 function surveyedWeb(survey: Partial<Extract<BootEvent, { type: 'web-surveyed' }>> = {}): BootEvent {
   return {
     type: 'web-surveyed',
-    passphraseKeystoreExists: false,
+    keystoreSecretSource: null,
     deviceBoundKeystoreExists: false,
     plaintextJournalPresent: false,
     marker: null,
@@ -48,7 +48,7 @@ function surveyedAndroid(
 ): BootEvent {
   return {
     type: 'android-surveyed',
-    passphraseKeystoreExists: false,
+    keystoreSecretSource: null,
     nativeDeviceKeyExists: false,
     plaintextJournalPresent: false,
     ...survey
@@ -78,7 +78,7 @@ test('a web first run reaches the setup gate with no access mode yet', () => {
 test('a web journal with a passphrase keystore reaches the unlock gate', () => {
   const { machine, effects } = walk(
     started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true })
+    surveyedWeb({ keystoreSecretSource: 'passphrase' })
   );
 
   expect(machine.boot.status).toBe('needs-unlock');
@@ -108,7 +108,7 @@ test('a device-bound key the browser will not hand over reaches the recovery gat
 });
 
 test('plaintext left behind by a finished conversion is retired once, then surveyed again', () => {
-  const retire = surveyedWeb({ passphraseKeystoreExists: true, plaintextJournalPresent: true });
+  const retire = surveyedWeb({ keystoreSecretSource: 'passphrase', plaintextJournalPresent: true });
   const first = walk(started('web'), retire);
 
   expect(first.effects).toEqual([{ type: 'finish-retirement' }]);
@@ -157,7 +157,7 @@ test('an accepted conversion asks for a new passphrase, or for the saved one whe
 
   const resuming = walk(
     started('web'),
-    surveyedWeb({ plaintextJournalPresent: true, passphraseKeystoreExists: true, marker: 'database' }),
+    surveyedWeb({ plaintextJournalPresent: true, keystoreSecretSource: 'passphrase', marker: 'database' }),
     { type: 'conversion-prechecked', result: { ok: true } }
   );
 
@@ -178,10 +178,10 @@ test('a demo build wipes a plaintext journal rather than converting it, then set
 });
 
 test('a demo build unlocks itself, and falls back to the gate when the passphrase changed', () => {
-  const unlocking = walk(started('web', true), surveyedWeb({ passphraseKeystoreExists: true }));
+  const unlocking = walk(started('web', true), surveyedWeb({ keystoreSecretSource: 'passphrase' }));
   expect(unlocking.effects).toEqual([{ type: 'demo-unlock' }]);
 
-  const fallen = walk(started('web', true), surveyedWeb({ passphraseKeystoreExists: true }), {
+  const fallen = walk(started('web', true), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
     type: 'demo-unlock-failed'
   });
   expect(fallen.machine.boot.status).toBe('needs-unlock');
@@ -195,7 +195,7 @@ test('android reaches each of its four gates', () => {
   expect(walk(started('android'), surveyedAndroid()).machine.boot.status).toBe('needs-setup');
 
   expect(
-    walk(started('android'), surveyedAndroid({ passphraseKeystoreExists: true })).machine.boot
+    walk(started('android'), surveyedAndroid({ keystoreSecretSource: 'passphrase' })).machine.boot
   ).toMatchObject({ status: 'needs-unlock', accessMode: 'passphrase' });
 
   expect(
@@ -300,7 +300,7 @@ test('a key with a conversion waiting converts first, reporting progress, then o
 test('an opened journal is ready, and a browser that refused storage gets a warning', () => {
   const quiet = walk(
     started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true }),
+    surveyedWeb({ keystoreSecretSource: 'passphrase' }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
     { type: 'journal-opened', journal: {} as never, persistDenied: false }
   );
@@ -311,7 +311,7 @@ test('an opened journal is ready, and a browser that refused storage gets a warn
 
   const denied = walk(
     started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true }),
+    surveyedWeb({ keystoreSecretSource: 'passphrase' }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
     { type: 'journal-opened', journal: {} as never, persistDenied: true }
   );
@@ -323,7 +323,7 @@ test('an opened journal is ready, and a browser that refused storage gets a warn
 function failedOpen(error: unknown, ...after: BootEvent[]) {
   return walk(
     started('web'),
-    surveyedWeb({ passphraseKeystoreExists: true }),
+    surveyedWeb({ keystoreSecretSource: 'passphrase' }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true },
     { type: 'journal-open-failed', error },
     ...after
@@ -375,17 +375,49 @@ test('anything else that goes wrong is the plain failure screen, with nothing to
   expect(effects).toEqual([]);
 });
 
-test('adding a passphrase to an open journal moves its access mode', () => {
+test('changing the access mode of an open journal moves it without leaving ready', () => {
   const { machine } = walk(
     started('web'),
     surveyedWeb({ deviceBoundKeystoreExists: true }),
     { type: 'key-obtained', dataKey: KEY, accessMode: 'device-bound', unlocked: false },
     { type: 'journal-opened', journal: {} as never, persistDenied: false },
-    { type: 'passphrase-added' }
+    { type: 'access-mode-changed', accessMode: 'passphrase' }
   );
 
   expect(machine.boot.accessMode).toBe('passphrase');
   expect(machine.boot.status).toBe('ready');
+});
+
+/* PIN mode is a cold-start gate like passphrase mode, not an auto-unlock:
+   the whole point is that something has to be typed. */
+test('a PIN journal boots into a gate and reports its mode', () => {
+  const { machine, effects } = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'pin' }));
+
+  expect(machine.boot.status).toBe('needs-unlock');
+  expect(machine.boot.accessMode).toBe('pin');
+  expect(effects).toEqual([]);
+});
+
+test('a PIN journal on Android boots into a gate rather than a Keystore prompt', () => {
+  const { machine } = walk(started('android'), surveyedAndroid({ keystoreSecretSource: 'pin' }));
+
+  expect(machine.boot.status).toBe('needs-unlock');
+  expect(machine.boot.accessMode).toBe('pin');
+});
+
+/* The interrupted mode change (data/journal-access-mode.ts states the rule).
+   The new keystore is written before the old device key is cleared, so this
+   is a reachable state, and it must not send the boot down the auto-unlock
+   path with a key that no longer opens the journal. */
+test('a PIN keystore beside a leftover device key still boots as PIN', () => {
+  const { machine, effects } = walk(
+    started('web'),
+    surveyedWeb({ keystoreSecretSource: 'pin', deviceBoundKeystoreExists: true })
+  );
+
+  expect(machine.boot.accessMode).toBe('pin');
+  expect(machine.boot.status).toBe('needs-unlock');
+  expect(effects).toEqual([]);
 });
 
 test('illegal events throw rather than moving the boot somewhere it cannot be', () => {
@@ -413,16 +445,16 @@ test('illegal events throw rather than moving the boot somewhere it cannot be', 
   ).toThrow(/invalid transition/i);
 });
 
-test('skipping setup names what the android refusal leaves to do', () => {
-  expect(skipSetupOutcome({ kind: 'key', dataKey: KEY })).toBe('ok');
+test('choosing device-bound mode names what the android refusal leaves to do', () => {
+  expect(deviceBoundSetupOutcome({ kind: 'key', dataKey: KEY })).toBe('ok');
   expect(
-    skipSetupOutcome({
+    deviceBoundSetupOutcome({
       kind: 'refused',
       authentication: interpretAuthentication('noDeviceCredential')
     })
   ).toBe('needs-device-lock');
   expect(
-    skipSetupOutcome({ kind: 'refused', authentication: interpretAuthentication('lockedOut') })
+    deviceBoundSetupOutcome({ kind: 'refused', authentication: interpretAuthentication('lockedOut') })
   ).toBe('device-bound-unavailable');
-  expect(skipSetupOutcome({ kind: 'invalidated' })).toBe('device-bound-unavailable');
+  expect(deviceBoundSetupOutcome({ kind: 'invalidated' })).toBe('device-bound-unavailable');
 });

@@ -8,7 +8,7 @@
    drops them, which is exactly ADR-0018's session rule: the passphrase is
    required again after the browser process ends. */
 
-import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithPassphrase } from '../crypto/keystore';
+import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithSecret } from '../crypto/keystore';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 
 /** One floor, shared by the setup screen and the change screen, so the two
@@ -17,11 +17,6 @@ import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
     person's own choice, and copy - not code - is what pushes toward a
     password manager. */
 export const MIN_PASSPHRASE_LENGTH = 8;
-
-/** Null on a first run - the signal that boot should offer setup. */
-export async function journalKeystoreExists(): Promise<boolean> {
-  return (await readKeystoreFile()) !== null;
-}
 
 /** First run: mints the data key, wraps it under the passphrase, persists
     the metadata, hands back the key for this session. */
@@ -35,7 +30,7 @@ export async function addJournalPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
   passphrase: string
 ): Promise<void> {
-  await writeKeystoreFile(await wrapDataKeyWithPassphrase(dataKey, passphrase));
+  await writeKeystoreFile(await wrapDataKeyWithSecret(dataKey, passphrase));
 }
 
 /** Every later run: throws DecryptionFailedError on a wrong passphrase,

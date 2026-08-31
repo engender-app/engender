@@ -3,11 +3,17 @@
      data key under the new passphrase (crypto/keystore.ts) - the journal
      itself is not re-encrypted, so the change is instant regardless of
      journal size, and an interrupted one loses nothing: the keystore file
-     is either the old wrap or the new one. */
+     is either the old wrap or the new one.
+
+     Changing the passphrase only. *Adding* one to a journal that opens some
+     other way used to live here too, under an `adding` branch that hid the
+     current-passphrase field; ticket 53 moved that to /settings/access-mode,
+     where it is one of three modes rather than an upgrade from the one the
+     old "Skip" left people on. So this screen now has one job and needs no
+     branch to say which it is doing. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { bootState, upgradeJournalToPassphrase } from '$lib/stores/boot.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
 
@@ -16,7 +22,6 @@
   let confirmation = $state('');
   let error = $state('');
   let busy = $state(false);
-  let adding = $derived(bootState.accessMode === 'device-bound');
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -34,16 +39,11 @@
 
     busy = true;
     try {
-      if (adding) {
-        await upgradeJournalToPassphrase(next);
-        toast(m.pp_added_toast());
-      } else {
-        await changeJournalPassphrase(current, next);
-        toast(m.pp_changed_toast());
-      }
-      goto('/settings');
+      await changeJournalPassphrase(current, next);
+      toast(m.pp_changed_toast());
+      goto('/settings/security');
     } catch {
-      error = adding ? m.pp_skip_unavailable() : m.pp_change_wrong_current();
+      error = m.pp_change_wrong_current();
     } finally {
       busy = false;
     }
@@ -51,25 +51,23 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={adding ? m.pp_add_title() : m.pp_change_title()} back="/settings" />
+  <ScreenHeader title={m.pp_change_title()} back="/settings/access-mode" />
 
   <div class="card">
-    <p class="ob-text">{adding ? m.pp_add_body() : m.pp_change_body()}</p>
+    <p class="ob-text">{m.pp_change_body()}</p>
     <form class="stack-3" onsubmit={submit}>
-      {#if !adding}
-        <div class="screen-part">
-          <label class="field-label" for="current-passphrase">{m.pp_current_label()}</label>
-          <input
-            class="input"
-            type="password"
-            id="current-passphrase"
-            name="current"
-            autocomplete="current-password"
-            bind:value={current}
-            disabled={busy}
-          />
-        </div>
-      {/if}
+      <div class="screen-part">
+        <label class="field-label" for="current-passphrase">{m.pp_current_label()}</label>
+        <input
+          class="input"
+          type="password"
+          id="current-passphrase"
+          name="current"
+          autocomplete="current-password"
+          bind:value={current}
+          disabled={busy}
+        />
+      </div>
       <div>
         <label class="field-label" for="new-passphrase">{m.pp_new_label()}</label>
         <input
@@ -97,8 +95,8 @@
       <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-change-passphrase disabled={busy}>
         <span>
-          {#if busy}{adding ? m.pp_add_running() : m.pp_change_running()}
-          {:else}{adding ? m.pp_add_submit() : m.pp_change_submit()}{/if}
+          {#if busy}{m.pp_change_running()}
+          {:else}{m.pp_change_submit()}{/if}
         </span>
       </button>
     </form>

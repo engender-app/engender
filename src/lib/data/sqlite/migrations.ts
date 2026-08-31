@@ -1491,6 +1491,30 @@ const SCHEMA_V44 = `
 ALTER TABLE milestone ADD COLUMN procedure_id TEXT REFERENCES procedure(uuid);
 `;
 
+/* v45: the app-lock PIN gate is retired (ticket 53, ADR-0041). Its two
+   preferences go with it - `pinHash`, an Argon2id record that only ever
+   protected a comparison, and `appLock`, a flag whose entire meaning was
+   "a PIN gate stands in front of the app".
+
+   Deleting rather than leaving them: openPreferences already skips a key
+   this build has no catalogue entry for, so nothing would break either way,
+   but a PIN hash left in the table is credential material outliving the
+   thing it was for. Nothing is converted into the new PIN access mode - an
+   Argon2id hash cannot be turned back into a secret, so becoming a real PIN
+   mode means typing the PIN again through the setup module, exactly as
+   adding a passphrase always has.
+
+   What an upgrading installation loses is the quick-relock shortcut. What it
+   keeps is its actual protection: device-bound or passphrase underneath,
+   untouched, same keystore, same key.
+
+   Landed as v45 rather than v43: tickets 10 and 12 minted 43 and 44 while
+   this branch was open, which is exactly the collision schema-version.ts's
+   own header warns about. */
+const SCHEMA_V45 = `
+DELETE FROM pref WHERE key IN ('pinHash', 'appLock');
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1535,5 +1559,6 @@ export const migrations: Migration[] = [
   { version: 41, sql: SCHEMA_V41 },
   { version: 42, sql: SCHEMA_V42 },
   { version: 43, sql: SCHEMA_V43 },
-  { version: 44, sql: SCHEMA_V44 }
+  { version: 44, sql: SCHEMA_V44 },
+  { version: 45, sql: SCHEMA_V45 }
 ];

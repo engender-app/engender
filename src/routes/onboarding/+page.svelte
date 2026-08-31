@@ -92,7 +92,6 @@
       ? tickedScales.filter((k) => k !== key)
       : [...tickedScales, key];
   }
-  let appLock = $state(false);
   let lockOnLeave = $state(false);
   let checkIn = $state(false);
   let checkInTime = $state(prefs.checkInTime);
@@ -142,10 +141,8 @@
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
-    else if (step === 'lock') {
-      appLock = false;
-      lockOnLeave = false;
-    } else if (step === 'checkin') checkIn = false;
+    else if (step === 'lock') lockOnLeave = false;
+    else if (step === 'checkin') checkIn = false;
     go(stepAfter(steps, step));
   }
 
@@ -177,7 +174,7 @@
       prefs.checkInTime = checkInTime;
     }
     prefs.onboarded = true;
-    goto(onboardingDestination(appLock));
+    goto(onboardingDestination());
   }
 </script>
 
@@ -271,36 +268,28 @@
           {:else if step === 'lock'}
             <h1 class="setup-title">{m.ob_lock_title()}</h1>
             <p class="setup-body">{m.ob_lock_body()}</p>
+            <!-- The app-lock toggle that used to head this list is gone
+                 with the gate it turned on (ticket 53): how the journal
+                 opens is now one choice made in the security module, and a
+                 PIN is one of its access modes rather than a switch here.
+                 What is left is the one thing this step still decides -
+                 whether leaving the app locks it. Ticket 54 brings the
+                 module itself into the flow. -->
             <ListCard>
-              <ListRow key="app-lock" title={m.app_lock()} subtitle={m.ob_pin_sub()} chevron={false}>
+              <ListRow
+                key="lock-on-leave"
+                title={m.lock_on_leave_title()}
+                subtitle={m.lock_on_leave_sub()}
+                chevron={false}
+              >
                 {#snippet trailing()}
-                  <Switch checked={appLock} label={m.app_lock()} onChange={(v) => (appLock = v)} />
+                  <Switch
+                    checked={lockOnLeave}
+                    label={m.lock_on_leave_title()}
+                    onChange={(v) => (lockOnLeave = v)}
+                  />
                 {/snippet}
               </ListRow>
-              <!-- Tier 3: the second row opens its own height rather than
-                   making the foot of the screen jump. A grid track from 0fr
-                   to 1fr rather than a JS height tween, so the 1ms clamp in
-                   base.css reaches it like any other CSS transition and the
-                   reduced-motion path is an instant cut with nothing to
-                   remember. -->
-              <div class="setup-reveal" class:is-open={appLock} data-lock-extra>
-                <div>
-                  <ListRow
-                    key="lock-on-leave"
-                    title={m.lock_on_leave_title()}
-                    subtitle={m.lock_on_leave_sub()}
-                    chevron={false}
-                  >
-                    {#snippet trailing()}
-                      <Switch
-                        checked={lockOnLeave}
-                        label={m.lock_on_leave_title()}
-                        onChange={(v) => (lockOnLeave = v)}
-                      />
-                    {/snippet}
-                  </ListRow>
-                </div>
-              </div>
             </ListCard>
           {:else if step === 'checkin'}
             <h1 class="setup-title">{m.ob_checkin_title()}</h1>

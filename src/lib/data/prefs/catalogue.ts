@@ -55,9 +55,6 @@ export interface PreferenceValues {
   a11yTextSizeBoost: boolean;
   a11yLegibilityBoost: boolean;
   a11yMotionReduce: boolean;
-  appLock: boolean;
-  /** Argon2id-derived, from ticket 17. Null until a PIN is set. */
-  pinHash: string | null;
   /** Null until the person has answered the biometric ask (ticket 18) - the
       boot gate and the PIN pad both read it to decide whether to offer
       biometrics at all, so it has to distinguish "never asked" from
@@ -277,8 +274,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   a11yTextSizeBoost: false,
   a11yLegibilityBoost: false,
   a11yMotionReduce: false,
-  appLock: false,
-  pinHash: null,
   bioOptIn: null,
   lockOnLeave: false,
   disguise: false,
@@ -358,8 +353,6 @@ export const DEVICE_LOCAL_KEYS = [
   'a11yTextSizeBoost',
   'a11yLegibilityBoost',
   'a11yMotionReduce',
-  'appLock',
-  'pinHash',
   'bioOptIn',
   'lockOnLeave',
   'disguise',
