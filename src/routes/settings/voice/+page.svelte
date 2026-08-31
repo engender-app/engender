@@ -136,12 +136,13 @@
   }
 
   /** A delta figure as the screen states it: signed, so +35 and -35 are told
-      apart, and 0 carries no sign at all. */
+      apart, and 0 carries no sign at all - the sign follows the number
+      actually shown, not the raw value, so a difference too small for the
+      places kept never rounds to "-0". */
   function signed(value: number, places: number): string {
     const fixed = Math.abs(value).toFixed(places);
-    if (value > 0) return `+${fixed}`;
-    if (value < 0) return `-${fixed}`;
-    return fixed;
+    if (Number(fixed) === 0) return fixed;
+    return value > 0 ? `+${fixed}` : `-${fixed}`;
   }
 </script>
 
