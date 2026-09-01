@@ -17,8 +17,16 @@ import { describe, expect, it } from 'vitest';
 import { roleAttrs } from '../src/lib/components/kit/role';
 import type { Role } from '../src/lib/theme/roles';
 
-// roleAttrs() reads only stripe/ink/mark; heat is here to satisfy the type.
-const role: Role = { stripe: '#FCF434', ink: '#665f00', mark: '#8f8500', heat: [] };
+// roleAttrs() reads only stripe/ink/mark; paired and heat are here to
+// satisfy the type. `paired` is handed straight to whichever component
+// draws a mark beside another one, and never through these attributes.
+const role: Role = {
+  stripe: '#FCF434',
+  ink: '#665f00',
+  mark: '#8f8500',
+  paired: '#FCF434',
+  heat: []
+};
 
 describe('roleAttrs', () => {
   it('sets the three inputs a role needs, given one', () => {

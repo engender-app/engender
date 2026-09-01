@@ -103,3 +103,42 @@ export function atGrain(
   const grain = chooseGrain(spanInDays, maxPositions);
   return { grain, points: bucketByGrain(points, grain) };
 }
+
+/** One position on a chart carrying two metrics, and what each of them
+    actually read there. `null` where a metric has no bucket at that
+    position - either because it was not being logged yet, or because the
+    other metric is what put this position on the plot.
+
+    Only real readings, never a value derived to fill a hole. The line drawn
+    between two buckets still crosses the positions in between, and
+    bridgeGaps in charts/geometry is what puts it there; a number a person
+    is shown has to be one they logged. */
+export interface AlignedPoint {
+  x: number;
+  a: number | null;
+  b: number | null;
+}
+
+/** Two bucketed series read onto one set of positions, oldest first.
+
+    Two metrics have their own days and their own gaps, so bucketing them
+    separately leaves two arrays that agree about nothing. A chart places by
+    position rather than by date, so drawing those two as they come would
+    space one series' four buckets across the same width as the other's
+    forty and put a Tuesday above a March - which is precisely the reading a
+    person putting two metrics on one plot is trying to make.
+
+    So the positions are the union of both, and each series keeps its own
+    readings against them. A position the other metric introduced is `null`
+    here rather than filled in: the line still crosses it, but it crosses it
+    as geometry (charts/geometry's bridgeGaps), and the readout under a
+    finger has nothing to say there. "Said nothing" is not "said none", and
+    that rule does not stop applying because a second metric was logged that
+    day. */
+export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
+  const first = new Map(a.map((p) => [p.x, p.y]));
+  const second = new Map(b.map((p) => [p.x, p.y]));
+  return [...new Set([...first.keys(), ...second.keys()])]
+    .sort((p, q) => p - q)
+    .map((x) => ({ x, a: first.get(x) ?? null, b: second.get(x) ?? null }));
+}

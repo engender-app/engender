@@ -573,6 +573,39 @@ try {
   ok('stats range, value list, named tag insights and the scale bars');
 } catch (e) { fail('stats', e); }
 
+/* 6b. a second scale on the day-by-day chart (phase 6 ticket 12).
+
+   The offer, the pick, and the two things that have to change together: the
+   legend arrives to say which line is which, and the value gutter goes,
+   because two metrics placed against their own ranges have no shared scale
+   for it to be the ends of. Both are asserted on the resting state after the
+   pick rather than on anything mid-tween. */
+try {
+  await fresh('/stats');
+  const card = page.locator('[data-chart-card="day-by-day"]');
+  if (!(await card.locator('[data-chart-scale]').count())) {
+    throw new Error('one scale should print its value gutter');
+  }
+  await page.locator('[data-compare-open]').click();
+  const picker = page.locator('[data-chart-picker="stats-compare"]');
+  const values = await picker.locator('option').evaluateAll((options) =>
+    options.map((option) => option.value).filter(Boolean)
+  );
+  if (!values.length) throw new Error('nothing offered as a second scale');
+  await picker.selectOption(values[0]);
+  await card.locator('[data-chart-legend]').waitFor();
+  const named = await card.locator('[data-chart-legend]').textContent();
+  if (!named?.trim()) throw new Error('the legend names neither line');
+  if (await card.locator('[data-chart-scale]').count()) {
+    throw new Error('two scales should print no value gutter');
+  }
+  /* And back off again, which is the picker's own first option: the
+     comparison is something a person can put down. */
+  await picker.selectOption('');
+  await card.locator('[data-chart-scale]').waitFor();
+  ok('a second scale joins the day-by-day chart and can be put down again');
+} catch (e) { fail('a second scale on the day-by-day chart', e); }
+
 /* 6b. ticket 18's three view-only screens: chronological milestones with
    a compressed gap, thumbnail-backed photo comparison with both sides
    step-able, and the on-demand recap sequence with its Rive fallback. */
