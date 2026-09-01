@@ -55,14 +55,17 @@ const BOOT_TIMEOUT_MS = 300_000;
 /** The AVDs whose WebView is too old to start the app, so only the native
     half is asked of them. See the header for why this is not a gap. */
 const NATIVE_ONLY = new Set(['gd26']);
-/* The two suites that need no WebView: what the native SQLite build has
-   (ticket 11) and what Android Keystore does with the journal's data key
-   (ticket 13). The Keystore one is worth having on the older emulator in
-   particular - below API 30 the key is authorized by time rather than
-   per-operation, and that branch exists nowhere else. */
+/* The three suites that need no WebView: what the native SQLite build has
+   (ticket 11), what Android Keystore does with the journal's data key
+   (ticket 13), and which authenticators BiometricManager reports available
+   (ticket 09). All three are worth having on the older emulator
+   in particular - below API 30 the Keystore key is authorized by time
+   rather than per-operation, and androidx.biometric's device-credential
+   fallback exists specifically for that floor. */
 const NATIVE_TESTS = [
   'dev.barankiewicz.genderdiary.sqlite.NativeSqliteCapabilitiesTest',
-  'dev.barankiewicz.genderdiary.keystore.JournalKeystoreTest'
+  'dev.barankiewicz.genderdiary.keystore.JournalKeystoreTest',
+  'dev.barankiewicz.genderdiary.keystore.BiometricAuthenticatorAvailabilityTest'
 ].join(',');
 
 const sdkRoot =

@@ -9,13 +9,15 @@ ext {
     minSdkVersion = 26
     compileSdkVersion = 36
     targetSdkVersion = 36
-    sqlcipherVersion = '4.9.0'
+    sqlcipherVersion = '4.9.0' // latest on Maven Central, checked 2026-09-01
     androidxSqliteVersion = '2.4.0'
     androidxTestRunnerVersion = '1.6.2'
     androidxTestCoreVersion = '1.6.1'
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
-    androidxBiometricVersion = '1.1.0'
+    androidxBiometricVersion = '1.1.0' // latest stable, checked 2026-09-01: every release since
+                                        // is an unreleased alpha (1.4.0-alpha07 as of April 2026),
+                                        // so this is the floor, not a stale pin
     androidxCoordinatorLayoutVersion = '1.3.0'
     androidxCoreVersion = '1.17.0'
     androidxFragmentVersion = '1.8.9'
@@ -25,5 +27,5 @@ ext {
     androidxJunitVersion = '1.3.0'
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
-    bouncycastleVersion = '1.79'
+    bouncycastleVersion = '1.80'
 }
