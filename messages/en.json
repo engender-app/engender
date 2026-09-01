@@ -145,7 +145,7 @@
   "cal_jump_month": "Jump to month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average. Tap a filled day to see its entries.",
+  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average, with a mark underneath running from the lowest value logged to the highest. Tap a filled day to see its entries.",
   "legend_none": "no entry",
   "day_avg": "avg {metric}",
   "entries_this_day": [
@@ -256,6 +256,7 @@
   "custom_interval_chart_aria": "Mood folded by a {days}-day interval, {count} points, day {from} to day {to}.",
   "values_title": "{name}: values",
   "avg_of": "avg of {count}",
+  "day_spread": "from {low} to {high}",
   "body_map_title": "Body map",
   "body_map_sub": "track one spot's dysphoria and euphoria over time",
   "body_map_mode_filter_all": "All",

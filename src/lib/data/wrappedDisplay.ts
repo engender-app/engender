@@ -13,12 +13,27 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { BarRow } from '$lib/components/kit/barRow';
+import type { DaySpread } from './journal/stats';
+import { coveredGround } from './statsCharts';
 import type { WrappedTagInsight, WrappedTallyCounts } from './wrappedSections';
 
 /** A value in its metric's own units (ADR-0012). Mood arrives on 1 to 5 and
     wants a decimal place; a dimension arrives in its own range and does not. */
 export function nativeValue(metric: string, value: number): string {
   return metric === 'mood' ? value.toFixed(1) : String(Math.round(value));
+}
+
+/** A day's two ends in words, or null for a day that covered no ground
+    (phase 6 unprompted ticket 11, CONTEXT: Spread).
+
+    Written once because two surfaces say it: the calendar reads it out on
+    the cell it marks, and the values sheet on /stats prints it beside the
+    day's average. Both are native units (ADR-0012) - the mark's geometry is
+    the only normalized half of this feature - and both leave the day's order
+    unsaid, because the read cannot answer which end came first. */
+export function spreadNote(metric: string, spread: Pick<DaySpread, 'low' | 'high'> | undefined): string | null {
+  if (!coveredGround(spread)) return null;
+  return m.day_spread({ low: nativeValue(metric, spread.low), high: nativeValue(metric, spread.high) });
 }
 
 /** A movement, with its direction on the front.

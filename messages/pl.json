@@ -147,7 +147,7 @@
   "cal_jump_month": "Przejdź do miesiąca",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
-  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dni z kilkoma wpisami pokazują średnią. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
+  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dni z kilkoma wpisami pokazują średnią, a znacznik pod spodem biegnie od najniższej zapisanej wartości do najwyższej. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
   "legend_none": "brak wpisu",
   "day_avg": "śr. {metric}",
   "entries_this_day": [
@@ -278,6 +278,7 @@
   "custom_interval_chart_aria": "Nastrój podzielony na odstępy {days}-dniowe, punkty: {count}, od dnia {from} do dnia {to}.",
   "values_title": "{name}: wartości",
   "avg_of": "śr. z {count}",
+  "day_spread": "od {low} do {high}",
   "body_map_title": "Mapa ciała",
   "body_map_sub": "przebieg dysforii i euforii w jednym miejscu na ciele",
   "body_map_mode_filter_all": "Wszystkie",
