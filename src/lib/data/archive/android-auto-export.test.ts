@@ -151,7 +151,11 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.writeBackup).toHaveBeenCalledTimes(2);
   });
 
-  test('scheduled failure sends privacy-safe notification', async () => {
+  test('leaves the failure notice to the scheduler, whatever the outcome', async () => {
+    /* Phase 6 ticket 04: this used to take a `trigger` argument whose only
+       job was to gate notifyFailure. The notice answers to the unprompted
+       registry now - a preference, quiet hours and the disguise - which is
+       auto-export-scheduler.ts's business and failureNotice.test.ts's. */
     vi.mocked(androidAutoExport.writeBackup).mockRejectedValue(new Error('destination-revoked'));
 
     const result = await runAndroidAutoExport(
@@ -164,12 +168,11 @@ describe('runAndroidAutoExport', () => {
         recordBackup: () => {
           throw new Error('must not record on failure');
         }
-      },
-      'scheduled'
+      }
     );
 
     expect(result).toEqual({ outcome: 'needs-destination' });
-    expect(androidAutoExport.notifyFailure).toHaveBeenCalledTimes(1);
+    expect(androidAutoExport.notifyFailure).not.toHaveBeenCalled();
   });
 
   test('unavailable destination disables schedule and returns needs-destination', async () => {
