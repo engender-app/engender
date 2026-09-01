@@ -137,7 +137,7 @@ test('the JSON reads as a file, indented, version first', () => {
   const written = journalJson(empty, portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Ola', palette: 'lesbian' }));
 
   assert.equal(
-    written.split('\n').slice(0, 44).join('\n'),
+    written.split('\n').slice(0, 45).join('\n'),
     `{
   "formatVersion": 2,
   "journal": {
@@ -156,6 +156,7 @@ test('the JSON reads as a file, indented, version first', () => {
     "sideEffects": [],
     "cycleEvents": [],
     "journalingPauses": [],
+    "eras": [],
     "effectCategories": [],
     "personalEffectTypes": [],
     "personalEffects": [],

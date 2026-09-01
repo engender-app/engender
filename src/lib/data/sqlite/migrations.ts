@@ -1635,6 +1635,37 @@ ALTER TABLE entry ADD COLUMN presentation_id TEXT REFERENCES presentation(uuid);
 CREATE INDEX idx_entry_presentation_id ON entry(presentation_id);
 `;
 
+/* v50: the era (phase 6 ticket 01, ADR-0049, CONTEXT: "Era") - a named
+   stretch of the person's own timeline.
+
+   Four columns and no fifth. No colour, no mute flag, no photo policy: an
+   era names a span and owns nothing else, and ADR-0049 exists to refuse the
+   column the next feature will want, because the second one makes this table
+   the only place two rules can be read together. The resurfacing consent
+   layer keys its own rows by this uuid instead.
+
+   Both bounds are nullable and neither is defaulted. A null start reaches
+   back before the journal does - "before I knew" is a real era with no day
+   that begins it - and a null end is still running, the same way
+   journaling_pause and regimen_episode already say it.
+
+   No CHECK guards the two invariants (at most one open start, at most one
+   open end, and no two eras overlapping). Neither is expressible over a
+   single row, and a constraint violation surfacing from the driver would
+   name a table rather than the era it collided with, so both are enforced
+   above this seam in eras.ts the way assertValidRule guards a reminder
+   rule. */
+const SCHEMA_V50 = `
+CREATE TABLE era (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  name            TEXT NOT NULL,
+  start_epoch_day INTEGER,
+  end_epoch_day   INTEGER,
+  updated_at      INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1684,5 +1715,6 @@ export const migrations: Migration[] = [
   { version: 46, sql: SCHEMA_V46 },
   { version: 47, sql: SCHEMA_V47 },
   { version: 48, sql: SCHEMA_V48 },
-  { version: 49, sql: SCHEMA_V49 }
+  { version: 49, sql: SCHEMA_V49 },
+  { version: 50, sql: SCHEMA_V50 }
 ];

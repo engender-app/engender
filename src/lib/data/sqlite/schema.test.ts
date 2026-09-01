@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 49);
+  assert.equal(db.getUserVersion(), 50);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -29,6 +29,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'entry_body_region',
     'entry_dimension_value',
     'entry_tag',
+    'era',
     'gender_dimension',
     'gender_preset',
     'hair_photo',
@@ -880,6 +881,42 @@ test('v49 adds the presentation table and entry.presentation_id, both nullable/u
     presentation_id: string | null;
   };
   assert.equal(linked.presentation_id, 'p-1');
+});
+
+test('v50 adds the era table, with both bounds nullable and no fifth column', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 49)
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  db.raw.exec("INSERT INTO era (uuid, name, start_epoch_day, end_epoch_day, updated_at) VALUES ('era-1', 'before I knew', NULL, 19000, 1000)");
+  const row = db.raw.prepare("SELECT name, start_epoch_day, end_epoch_day FROM era WHERE uuid = 'era-1'").get() as {
+    name: string;
+    start_epoch_day: number | null;
+    end_epoch_day: number | null;
+  };
+  assert.equal(row.name, 'before I knew');
+  assert.equal(row.start_epoch_day, null);
+  assert.equal(row.end_epoch_day, 19000);
+
+  db.raw.exec("INSERT INTO era (uuid, name, start_epoch_day, end_epoch_day, updated_at) VALUES ('era-2', 'now', 19001, NULL, 1000)");
+  const running = db.raw.prepare("SELECT end_epoch_day FROM era WHERE uuid = 'era-2'").get() as {
+    end_epoch_day: number | null;
+  };
+  assert.equal(running.end_epoch_day, null);
+
+  /* ADR-0049: the table owns a name and two bounds and nothing else, so the
+     column list is the assertion. A colour, a mute flag or a photo policy
+     arriving here is the erosion the ADR exists to refuse, and it has to
+     supersede the ADR rather than slip in past a test that only checked the
+     four columns it knew about. */
+  const columns = (db.raw.prepare('PRAGMA table_info(era)').all() as { name: string }[]).map((c) => c.name);
+  assert.deepEqual(columns, ['id', 'uuid', 'name', 'start_epoch_day', 'end_epoch_day', 'updated_at']);
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

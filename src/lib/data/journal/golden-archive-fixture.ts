@@ -177,6 +177,14 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
+
+  /* Three eras, so both open bounds and a closed pair all travel. An absent
+     bound is the case a round trip can lose silently by defaulting it to a
+     day, and it has two sides: the era that reaches back before the journal
+     and the one still running (phase 6 ticket 01). */
+  await journal.eras.upsertEra({ name: 'before I knew', startEpochDay: null, endEpochDay: 19000 });
+  await journal.eras.upsertEra({ name: 'first year', startEpochDay: 19001, endEpochDay: 19365 });
+  await journal.eras.upsertEra({ name: 'after I moved', startEpochDay: 19366, endEpochDay: null });
   await journal.effectCategories.setCategoryEnabled('sensory', true);
   const customEffect = await journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape');
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);

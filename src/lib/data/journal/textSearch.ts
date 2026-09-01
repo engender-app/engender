@@ -281,6 +281,25 @@ const AREAS = [
     date: null,
     columns: ['name']
   }),
+  /* An era's name is typed by the person too, the same reason presentations
+     is covered rather than opted out (phase 6 ticket 01) - nothing ships
+     seeded, so there is no built-in wording living above this seam.
+
+     `date: null` even though an era has two: a hit is the name of a span,
+     and dating it by its start would put "before I knew" - an era whose
+     start is deliberately absent - at a day it never claimed. A date here
+     also narrows a search by range, and narrowing a span by a range means
+     choosing whether it overlaps or is contained, which is a filter this
+     registry cannot state. */
+  area({
+    key: 'eras',
+    covers: ['eras'],
+    tables: ['era'],
+    from: 'era',
+    uuid: 'uuid',
+    date: null,
+    columns: ['name']
+  }),
   area({
     key: 'affirmations',
     covers: ['affirmations'],
