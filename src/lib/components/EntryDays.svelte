@@ -19,6 +19,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
+  import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import type { Role } from '$lib/theme/roles';
   import DayCard from './kit/DayCard.svelte';
   import DayEntry from './kit/DayEntry.svelte';
@@ -34,6 +35,7 @@
       date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
     >
       {#each group.entries as entry (entry.id)}
+        {@const presentation = entryPresentation(entry)}
         <DayEntry
           key={String(entry.id)}
           href={`/entry/${entry.id}`}
@@ -42,6 +44,8 @@
           note={entry.note ?? undefined}
           tags={entryTags(entry)}
           marks={entryMarks(entry)}
+          presentationName={presentation?.name}
+          presentationColor={presentation?.color}
         />
       {/each}
     </DayCard>

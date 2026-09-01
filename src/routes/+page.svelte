@@ -51,6 +51,7 @@
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
+  import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { appWordmark } from '$lib/disguise/identity';
@@ -942,6 +943,7 @@
               aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
             >
               {#each group.entries as entry (entry.id)}
+                {@const presentation = entryPresentation(entry)}
                 <DayEntry
                   key={String(entry.id)}
                   href={`/entry/${entry.id}`}
@@ -950,6 +952,8 @@
                   note={entry.note ?? undefined}
                   tags={entryTags(entry)}
                   marks={entryMarks(entry)}
+                  presentationName={presentation?.name}
+                  presentationColor={presentation?.color}
                 />
               {/each}
             </DayCard>

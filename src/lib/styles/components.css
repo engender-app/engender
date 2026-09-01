@@ -940,6 +940,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   min-height: calc(1.5em * 1); /* breathe even for one-liners */
 }
 .entry-tags { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+/* The fluidity engine's presentation, read back in its own colour (phase 5
+   deepening ticket 17, ADR-0048) - the colour is set inline per entry
+   (--role-mark resolved through roleAt, EntryCard.svelte), since it names
+   a specific presentation rather than this card's own section role. */
+.entry-presentation { font-size: var(--text-xs); font-weight: var(--weight-bold); }
 
 /* ---------- heat-map ---------- */
 /* The heat map's own squares moved to screens.css with the calendar
