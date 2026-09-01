@@ -109,10 +109,19 @@ describe('eraConflict', () => {
 });
 
 describe('assertEraFits', () => {
-  it('throws one error naming the era it collides with', () => {
-    const existing = [era('first year', 100, 200)];
+  it('throws one sentence naming the era it collides with, per kind', () => {
+    const existing = [era('before I knew', null, 99), era('first year', 100, 200), era('now', 300, null)];
     expect(() => assertEraFits(existing, { name: 'the move', startEpochDay: 150, endEpochDay: 260 })).toThrow(
-      /overlap.*first year/
+      'era "the move" overlaps "first year"'
+    );
+    expect(() => assertEraFits(existing, { name: 'earlier', startEpochDay: null, endEpochDay: 50 })).toThrow(
+      'era "earlier" has no start, and neither does "before I knew"'
+    );
+    expect(() => assertEraFits(existing, { name: 'after', startEpochDay: 4000, endEpochDay: null })).toThrow(
+      'era "after" has no end, and neither does "now"'
+    );
+    expect(() => assertEraFits([], { name: 'backwards', startEpochDay: 260, endEpochDay: 220 })).toThrow(
+      'era "backwards" ends before it starts'
     );
   });
 

@@ -33,9 +33,15 @@ export function eraCoversDay(era: EraSpan, day: number): boolean {
   return true;
 }
 
-/** Which era a day falls in, or none. Never more than one, which is what the
-    no-overlap invariant buys: a day in no era is a resting state rather than
-    a gap to fill (ADR-0049), so the caller gets null and not a placeholder. */
+/** Which era a day falls in, or none. A day in no era is a resting state
+    rather than a gap to fill (ADR-0049), so the caller gets null and not a
+    placeholder.
+
+    The first era covering the day, which the no-overlap invariant makes the
+    only one - except after a merge, which can land two overlapping eras on
+    purpose (archiveSections.ts). This still answers with exactly one there,
+    which is what keeps a filtered read total while the person sorts the
+    overlap out on /settings/eras. */
 export function eraForDay<T extends EraSpan>(eras: readonly T[], day: number): T | null {
   return eras.find((era) => eraCoversDay(era, day)) ?? null;
 }
@@ -66,7 +72,7 @@ export function eraConflict(existing: readonly EraSpan[], candidate: EraSpan): E
     return { kind: 'inverted' };
   }
 
-  const others = candidate.id === undefined ? existing : existing.filter((era) => era.id !== candidate.id);
+  const others = existing.filter((era) => era.id === undefined || era.id !== candidate.id);
 
   if (candidate.startEpochDay === null) {
     const other = others.find((era) => era.startEpochDay === null);
@@ -82,12 +88,18 @@ export function eraConflict(existing: readonly EraSpan[], candidate: EraSpan): E
 }
 
 /** The write-side guard, so an era that skipped the editor cannot reach the
-    table. One error naming what it collided with. */
+    table. One sentence naming what it collided with - the discriminant is not
+    the message, because an error reading `era "x" openStart "y"` says less
+    than the type it was read off. */
 export function assertEraFits(existing: readonly EraSpan[], candidate: EraSpan): void {
   const conflict = eraConflict(existing, candidate);
   if (!conflict) return;
-  if (conflict.kind === 'inverted') throw new Error(`era "${candidate.name}" ends before it starts`);
-  throw new Error(`era "${candidate.name}" ${conflict.kind === 'overlap' ? 'overlaps' : conflict.kind} "${conflict.with.name}"`);
+  const era = `era "${candidate.name}"`;
+  if (conflict.kind === 'inverted') throw new Error(`${era} ends before it starts`);
+  const other = `"${conflict.with.name}"`;
+  if (conflict.kind === 'openStart') throw new Error(`${era} has no start, and neither does ${other}`);
+  if (conflict.kind === 'openEnd') throw new Error(`${era} has no end, and neither does ${other}`);
+  throw new Error(`${era} overlaps ${other}`);
 }
 
 function spansOverlap(a: EraSpan, b: EraSpan): boolean {
