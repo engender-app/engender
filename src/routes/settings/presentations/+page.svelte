@@ -191,11 +191,14 @@
      a bigger hit area layered under it - the swatch's own visible size is
      the target, so nothing has to be taken on faith about where the tap
      lands. */
+  /* A visible ring at rest, not just on selection - a white or near-black
+     flag stripe (trans, agender) is otherwise a swatch the same colour as
+     the sheet it sits on, invisible rather than merely unselected. */
   .presentation-swatch {
     width: var(--touch-target);
     height: var(--touch-target);
     border-radius: 50%;
-    border: 3px solid transparent;
+    border: 2px solid var(--outline);
     background: var(--role-draw);
     cursor: pointer;
     padding: 0;
@@ -203,8 +206,6 @@
 
   .presentation-swatch.is-selected {
     border-color: var(--role-mark);
-    box-shadow: 0 0 0 2px var(--bg);
-    outline: 2px solid var(--role-draw);
-    outline-offset: 1px;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--role-draw);
   }
 </style>
