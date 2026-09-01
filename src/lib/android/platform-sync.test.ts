@@ -9,13 +9,28 @@ vi.mock('$lib/reminders/payload', () => ({
   buildAndroidReminderPayload: (input: unknown) => input
 }));
 
-import { assembleReminderSyncPayload, coalescing, type PlatformSyncDeps } from './platform-sync';
+import {
+  assembleReminderSyncPayload,
+  coalescing,
+  schedulableReminders,
+  type PlatformSyncDeps
+} from './platform-sync';
 
 const TEXTS = {
   channelReminders: 'Reminders',
   channelCheckIn: 'Check-in',
   checkInTitle: 'Daily check-in',
   checkInBody: 'How are you today?'
+};
+
+/* The registry's reminder switches and the quiet window, at the settings a
+   journal that has never opened /settings/notifications is on: every case
+   below that is not about them says so once rather than restating five
+   fields. */
+const ALL_ON = {
+  remindersEnabled: true,
+  wearElapsedEnabled: true,
+  quietHours: { enabled: false, start: '22:00', end: '07:00' }
 };
 
 const REMINDER = {
@@ -41,6 +56,7 @@ describe('assembleReminderSyncPayload', () => {
       checkInAffirmationsEnabled: false,
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
+      ...ALL_ON,
       pausedToday: false,
       texts: TEXTS
     });
@@ -57,6 +73,7 @@ describe('assembleReminderSyncPayload', () => {
       checkInAffirmationsEnabled: true,
       affirmationLines: ['You are enough.', 'Your pace is the right pace.'],
       hideNotificationTitles: false,
+      ...ALL_ON,
       pausedToday: false,
       texts: TEXTS
     });
@@ -73,6 +90,7 @@ describe('assembleReminderSyncPayload', () => {
       checkInAffirmationsEnabled: false,
       affirmationLines: [],
       hideNotificationTitles: false,
+      ...ALL_ON,
       pausedToday: false,
       texts: TEXTS
     });
@@ -89,6 +107,7 @@ describe('assembleReminderSyncPayload', () => {
       checkInAffirmationsEnabled: false,
       affirmationLines: [],
       hideNotificationTitles: false,
+      ...ALL_ON,
       pausedToday: false,
       texts: TEXTS
     });
@@ -105,6 +124,7 @@ describe('assembleReminderSyncPayload', () => {
       checkInAffirmationsEnabled: false,
       affirmationLines: [],
       hideNotificationTitles: false,
+      ...ALL_ON,
       pausedToday: true,
       texts: TEXTS
     });
@@ -121,11 +141,83 @@ describe('assembleReminderSyncPayload', () => {
       checkInAffirmationsEnabled: false,
       affirmationLines: [],
       hideNotificationTitles: false,
+      ...ALL_ON,
       pausedToday: false,
       texts: TEXTS
     });
 
     expect(payload.checkInEnabled).toBe(false);
+  });
+});
+
+describe('schedulableReminders (phase 6 ticket 04)', () => {
+  const WEAR = { ...REMINDER, id: 'r-2', title: 'Binder', autoSource: 'wear:session-1' };
+  const STOCK = { ...REMINDER, id: 'r-3', title: 'Estradiol', autoSource: 'stock:estradiol' };
+
+  test('schedules everything while both switches are on', () => {
+    expect(
+      schedulableReminders([REMINDER, WEAR, STOCK], { remindersEnabled: true, wearElapsedEnabled: true })
+    ).toEqual([REMINDER, WEAR, STOCK]);
+  });
+
+  test('schedules nothing at all once reminders are off', () => {
+    /* Off is final rather than a snooze, and it is the whole kind: a wear
+       prompt is a reminder row, so nothing survives the outer switch. */
+    expect(
+      schedulableReminders([REMINDER, WEAR, STOCK], { remindersEnabled: false, wearElapsedEnabled: true })
+    ).toEqual([]);
+  });
+
+  test('drops only the wear prompts when the wear switch alone is off', () => {
+    expect(
+      schedulableReminders([REMINDER, WEAR, STOCK], { remindersEnabled: true, wearElapsedEnabled: false })
+    ).toEqual([REMINDER, STOCK]);
+  });
+
+  test('leaves the rows themselves alone, so turning the switch back on restores them', () => {
+    /* The filter is over the payload, never over the journal: a person who
+       silences reminders for a month keeps every rule exactly as they wrote
+       it. */
+    const rows = [REMINDER, WEAR];
+    schedulableReminders(rows, { remindersEnabled: false, wearElapsedEnabled: false });
+    expect(rows).toEqual([REMINDER, WEAR]);
+  });
+});
+
+describe('what the payload carries about the registry (phase 6 ticket 04)', () => {
+  const assemble = (over: Record<string, unknown>) =>
+    assembleReminderSyncPayload({
+      reminders: [REMINDER, { ...REMINDER, id: 'r-2', autoSource: 'wear:session-1' }],
+      recentEntries: [],
+      checkInEnabled: true,
+      checkInTime: '21:30',
+      checkInAffirmationsEnabled: false,
+      affirmationLines: [],
+      hideNotificationTitles: false,
+      ...ALL_ON,
+      pausedToday: false,
+      texts: TEXTS,
+      ...over
+    });
+
+  test('hands the native side an empty schedule when the kind is switched off', () => {
+    expect(assemble({ remindersEnabled: false }).reminders).toEqual([]);
+  });
+
+  test('carries the quiet window through untouched, for the native side to hold against', () => {
+    /* Not applied here: an alarm's fire time is computed from its rule on the
+       Java side, before any WebView exists, so the window crosses the bridge
+       and QuietHours.java does the holding. */
+    const quietHours = { enabled: true, start: '23:00', end: '06:30' };
+    expect(assemble({ quietHours }).quietHours).toEqual(quietHours);
+  });
+
+  test('leaves the check-in alone when only the wear switch is off', () => {
+    // Three switches over one payload, and none of them is a master switch
+    // for the other two.
+    const payload = assemble({ wearElapsedEnabled: false });
+    expect(payload.checkInEnabled).toBe(true);
+    expect(payload.reminders.map((r) => r.id)).toEqual(['r-1']);
   });
 });
 
@@ -189,6 +281,11 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       checkInTime: '21:30',
       checkInAffirmationsEnabled: false,
       hideNotificationTitles: false,
+      remindersEnabled: true,
+      wearElapsedEnabled: true,
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
       disguise: false,
       quickExit: false
     },
