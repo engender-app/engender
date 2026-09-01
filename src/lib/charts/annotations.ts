@@ -237,6 +237,14 @@ export function narrowAnnotations(
   return out;
 }
 
+/** The day one stretch inside a band began, and which stretch that was. The
+    annotation travels with the position because the edge is a mark somebody
+    can point at, and a bare x cannot say what it belongs to. */
+export interface AnnotationEdge {
+  x: number;
+  annotation: ChartAnnotation;
+}
+
 /** A stretch, as a rectangle behind the plot. */
 export interface AnnotationBand {
   key: string;
@@ -245,7 +253,7 @@ export interface AnnotationBand {
   /** Every constituent's real start, where that day is inside the range: the
       edge line the band draws is the day something began, and a band clipped
       by the chart's own left edge has none. */
-  edges: number[];
+  edges: AnnotationEdge[];
   annotations: ChartAnnotation[];
 }
 
@@ -305,7 +313,7 @@ export function placeAnnotations(
     if (annotation.shape === 'span') {
       const x1 = pixelAt(points, annotation.fromEpochDay, width);
       const x2 = pixelAt(points, annotation.toEpochDay, width);
-      const edges = annotation.startsInRange ? [x1] : [];
+      const edges = annotation.startsInRange ? [{ x: x1, annotation }] : [];
       const open = bands[bands.length - 1];
       // Sorted by start, so only the band most recently opened can overlap.
       if (open && x1 <= open.x2) {

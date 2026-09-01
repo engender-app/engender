@@ -135,7 +135,8 @@ describe('where the marks go', () => {
     expect(placed.bands).toHaveLength(1);
     expect(placed.bands[0].x1).toBeCloseTo(50, 5);
     expect(placed.bands[0].x2).toBeCloseTo(100, 5);
-    expect(placed.bands[0].edges).toEqual([50]);
+    expect(placed.bands[0].edges.map((e) => e.x)).toEqual([50]);
+    expect(placed.bands[0].edges[0].annotation.id).toBe('estradiol');
   });
 
   it('leaves a clipped band no start edge to be mistaken for one', () => {
@@ -163,7 +164,8 @@ describe('where the marks go', () => {
     expect(placed.bands[0].x1).toBeCloseTo(20, 5);
     expect(placed.bands[0].x2).toBeCloseTo(140, 5);
     expect(placed.bands[0].annotations.map((a) => a.id)).toEqual(['estradiol', 'spiro']);
-    expect(placed.bands[0].edges).toEqual([20, 60]);
+    expect(placed.bands[0].edges.map((e) => e.x)).toEqual([20, 60]);
+    expect(placed.bands[0].edges.map((e) => e.annotation.id)).toEqual(['estradiol', 'spiro']);
   });
 
   it('leaves bands that do not touch as separate bands', () => {
