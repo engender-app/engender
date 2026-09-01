@@ -91,8 +91,14 @@ export const TRACE_WINDOW = 120;
 /** The strength an old reading never drops below. Low enough that a year of
     them reads as ground rather than as data, high enough that a single old
     reading on its own is still visible - it happened, and a chart that hides
-    it is a chart with a memory. */
-export const TRACE_FLOOR = 0.12;
+    it is a chart with a memory.
+
+    Set from the light theme rather than the dark one. At 0.12 the ramp read
+    well on the dark theme and the oldest marks were gone on the light one:
+    the flags' pale stripes - trans's pink and blue, agender's grey - are
+    within a few percent of a white card before any alpha is applied to them,
+    so the floor has to clear a ground the dark theme never tested. */
+export const TRACE_FLOOR = 0.25;
 
 export function plotPoints(
   readings: ConstellationReading[],

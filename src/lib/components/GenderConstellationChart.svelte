@@ -23,10 +23,12 @@
      worth its cost, since the code was there anyway.
 
      Tier 3 (DIRECTION.md): the mark moves, not its container. The sweep
-     replays whenever the dataset itself changes - a different scale on
-     either axis, a different range - and not when a live query merely
-     hands back the same readings again, which is what `signature` below is
-     for. It takes the authored duration on --ease-out for the reason
+     replays when the readings themselves change - a different range, an
+     entry saved - and not when a live query merely hands the same ones back
+     again, which is what `signature` below is for. Switching a scale on
+     either axis is deliberately not a replay: those are the same readings
+     seen from another angle, and a person who has scrubbed to a day wants
+     to still be on that day after turning the plane. It takes the authored duration on --ease-out for the reason
      AreaChart's own first draw does: at --dur-slow a path this long reads
      as a flicker rather than as a drawing (Alicja, 2026-08-25, "a little
      slower and not linear").
@@ -44,10 +46,13 @@
      marks are drawn at 0.12 alpha, so whichever way round two of them land
      the newer one still reads.
 
-     The trail is drawn over the most recent TRAIL_READINGS only. Further
-     back than that the segments are at the alpha floor, where a line is a
-     tangle rather than a path while a dot is still a dot - so the old
-     stretch keeps its marks and loses its joins. */
+     The trail is short on purpose, and the first build had it wrong. Joining
+     forty readings that all sit inside one corner of the plane draws forty
+     lines across each other, which is a tangle and not a path - the exact
+     smear the ticket warned the density would become. What carries the
+     reading instead is a comet's tail: the last TRAIL_READINGS joins, fading
+     out behind the head, so the picture says which way the recent move went
+     and the older marks stay marks. */
   import { untrack } from 'svelte';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import { tracedThrough, type ConstellationPoint, type PlottedPoint } from '$lib/data/constellationData';
@@ -101,10 +106,14 @@
     ariaLabel: string;
   } = $props();
 
-  /** How many readings back the joins are drawn. Past this the trail is at
-      the alpha floor, where a line reads as a tangle and a dot still reads
-      as a dot. */
-  const TRAIL_READINGS = 40;
+  /** How many readings back the joins are drawn. Eight, because a plane is
+      not a timeline: readings sit where their values are rather than in a
+      row, so joins accumulate into a tangle far faster than they would on a
+      chart with time along the bottom. */
+  const TRAIL_READINGS = 8;
+  /** The trail sits under the marks it joins. It says the order they came
+      in, which is a weaker fact than where each of them was. */
+  const TRAIL_ALPHA = 0.55;
   /** Room for the head's ring, and for a mark sitting exactly on either
       end of either scale. */
   const PAD = 8;
@@ -168,9 +177,7 @@
   let byMode = $derived(
     [
       /* The uncoloured group first, so a mark with no mode never lands on
-         top of one that has a colour to say. An entry with no presentation
-         is a resting state rather than a category (ADR-0048), so it takes
-         no role at all and kit.css's accent fallback draws it. */
+         top of one that has a colour to say. */
       { key: '', role: undefined, points: traced.filter((p) => !p.presentationId) },
       ...modes.map((mode) => ({
         key: mode.id,
@@ -187,7 +194,7 @@
     traced
       .slice(-TRAIL_READINGS)
       .flatMap((point, i, run) =>
-        i === 0 ? [] : [{ key: point.id, from: run[i - 1], to: point, weight: point.weight }]
+        i === 0 ? [] : [{ key: point.id, from: run[i - 1], to: point, weight: point.weight * TRAIL_ALPHA }]
       )
   );
 
@@ -235,7 +242,14 @@
         {#each byMode as group (group.key)}
           <g {...roleAttrs(group.role)} aria-hidden="true">
             {#each group.points as point (point.id)}
-              <circle class="cn-dot" cx={px(point)} cy={py(point)} r={DOT} opacity={point.weight} />
+              <circle
+                class="cn-dot"
+                class:is-unset={!point.presentationId}
+                cx={px(point)}
+                cy={py(point)}
+                r={DOT}
+                opacity={point.weight}
+              />
             {/each}
           </g>
         {/each}
@@ -246,7 +260,13 @@
                mode's own colour so the ring answers the same question the
                points do. -->
           <g {...roleAttrs(headMode?.role)} aria-hidden="true">
-            <circle class="cn-head" cx={px(at)} cy={py(at)} r={DOT + 3} />
+            <circle
+              class="cn-head"
+              class:is-unset={!headMode}
+              cx={px(at)}
+              cy={py(at)}
+              r={DOT + 3}
+            />
           </g>
         {/if}
       </svg>
@@ -297,9 +317,16 @@
     /* Each word centres on the edge it names, which the plot is inset from
        by PAD above. */
     padding-block: calc(8px - 0.55em);
-    /* The gutter is the person's own two words for a scale and can be as
-       long as they like; the plot is what the card is for. */
-    max-width: 7ch;
+  }
+
+  /* A scale's end is the person's own words and can be any length, so the
+     cap goes on the word rather than on the column: without it a custom
+     scale ending in a sentence squeezes the plot down to a strip. Wrapped
+     rather than clipped, because half of one of somebody's own two words is
+     worse than two lines of it. */
+  .cn-gutter span {
+    max-width: 9ch;
+    overflow-wrap: break-word;
   }
 
   .cn-plot-wrap {
@@ -326,7 +353,7 @@
      system on a plot that already carries one. */
   .cn-trail line {
     stroke: var(--text-2);
-    stroke-width: 1.5;
+    stroke-width: 1.25;
     stroke-linecap: round;
   }
 
@@ -343,14 +370,35 @@
     stroke-width: 2.5;
   }
 
+  /* An entry carrying no mode is absence and not a category (ADR-0048), so
+     it is drawn in ink rather than in a colour. The accent fallback
+     kit.css gives an uncoloured surface is wrong here for once: on trans it
+     is the same pink as one of the flag's own stripes, so a mark meaning
+     "no mode" came out looking exactly like a mark meaning a mode the
+     person had named pink. */
+  .cn-dot.is-unset {
+    fill: var(--text-2);
+  }
+
+  .cn-head.is-unset {
+    stroke: var(--text-2);
+  }
+
+  /* Inset by the same PAD the plot is drawn inside, so each word sits under
+     the edge of the scale it names rather than under the edge of the box. */
   .cn-ends {
     grid-column: 2;
     display: flex;
     justify-content: space-between;
     gap: var(--space-2);
+    padding-inline: 8px;
     margin-top: var(--space-1);
     font-size: var(--text-xs);
     color: var(--text-2);
+  }
+
+  .cn-ends span {
+    max-width: 45%;
   }
 
   .cn-readout {
