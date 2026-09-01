@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { epochDayFromDateInputValue, weekdayOfEpochDay } from '../data/epochDay';
-import { MAX_POSITIONS, atGrain, bucketByGrain, bucketStart, chooseGrain } from './grain';
+import { MAX_POSITIONS, alignSeries, atGrain, bucketByGrain, bucketStart, chooseGrain } from './grain';
 
 const day = (value: string) => epochDayFromDateInputValue(value) as number;
 
@@ -100,5 +100,68 @@ describe('a range read at one grain', () => {
     expect(read.grain).toBe('week');
     expect(read.points.length).toBeLessThanOrEqual(MAX_POSITIONS);
     expect(read.points.length).toBeGreaterThan(40);
+  });
+});
+
+describe('two series read onto one set of positions', () => {
+  const mon = day('2026-06-01');
+  const tue = day('2026-06-02');
+  const wed = day('2026-06-03');
+  const thu = day('2026-06-04');
+  const at = (x: number, y: number) => ({ x, y, days: 1 });
+
+  it('keeps the union of both series positions, oldest first', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20), at(thu, 40)]);
+    expect(rows.map((r) => r.x)).toEqual([mon, tue, wed, thu]);
+  });
+
+  it('carries each series own reading where it has one', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(mon, 20), at(wed, 40)]);
+    expect(rows.map((r) => [r.a, r.b])).toEqual([
+      [1, 20],
+      [3, 40]
+    ]);
+  });
+
+  /* A position the other series introduced is read off the line this one
+     already draws between the two buckets around it. That is not a reading
+     invented from nothing: the chart drew a segment across that stretch
+     before the second metric arrived, and this is a point on it. Breaking
+     the line there instead would leave a sparse metric as a row of
+     unconnected marks. */
+  it('reads a position between two buckets off the line already drawn', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20)]);
+    expect(rows.map((r) => r.a)).toEqual([1, 2, 3]);
+  });
+
+  /* Outside its own span is a different thing from a gap inside it: before
+     a metric was first logged there is no line, and a value there would be
+     the chart claiming a reading for a stretch nobody recorded. */
+  it('leaves a series empty before it starts and after it ends', () => {
+    const rows = alignSeries([at(mon, 1), at(tue, 2)], [at(wed, 30), at(thu, 40)]);
+    expect(rows.map((r) => r.a)).toEqual([1, 2, null, null]);
+    expect(rows.map((r) => r.b)).toEqual([null, null, 30, 40]);
+  });
+
+  it('gives a one-bucket series that one position and nothing either side', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20)]);
+    expect(rows.map((r) => r.b)).toEqual([null, 20, null]);
+  });
+
+  it('reads one series alone as itself', () => {
+    const rows = alignSeries([at(mon, 1), at(tue, 2)], []);
+    expect(rows).toEqual([
+      { x: mon, a: 1, b: null },
+      { x: tue, a: 2, b: null }
+    ]);
+  });
+
+  it('has nothing to say about two empty series', () => {
+    expect(alignSeries([], [])).toEqual([]);
+  });
+
+  it('folds two buckets logged at the same position into one row', () => {
+    const rows = alignSeries([at(mon, 1), at(tue, 2)], [at(mon, 20), at(tue, 40)]);
+    expect(rows).toHaveLength(2);
   });
 });
