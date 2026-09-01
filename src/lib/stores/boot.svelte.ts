@@ -45,10 +45,9 @@ import {
   setupJournalPassphrase,
   unlockJournalPassphrase
 } from '../data/journal-passphrase';
-import { addJournalPin, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
+import { addJournalPin, removeEveryPinBinding, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
 import { addJournalBiometric, setupJournalBiometric, unlockJournalBiometric } from '../data/journal-biometric';
 import { BiometricUnavailableError } from '../data/webauthn-prf';
-import { removeDeviceBindingSecret } from '../data/device-secret';
 import {
   addDeviceBoundJournal,
   deleteDeviceKeyDatabase,
@@ -199,6 +198,15 @@ export async function resetApp(): Promise<void> {
      not take this is worth seeing in a console. */
   await deleteDeviceKeyDatabase().catch((error) => {
     console.warn('could not remove the browser device keys during the reset', error);
+  });
+  /* And PIN mode's binding key where the platform holds it somewhere that
+     sweep cannot reach: on Android it is a Keystore alias rather than an
+     IndexedDB row (ticket sec-02-06), so nothing above this line touches it.
+     Overlaps the sweep on the web deliberately - removing a key twice costs
+     nothing, and a reset should not depend on which of the two calls covers
+     which store. */
+  await removeEveryPinBinding().catch((error) => {
+    console.warn('could not remove the PIN binding key during the reset', error);
   });
   // replace(), so back doesn't return to the lock screen of a journal that
   // is no longer there.
@@ -372,7 +380,7 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
        leaves the old mode working and the screen able to say so. */
     await removeKeystoreFile();
     dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
-    await removeDeviceBindingSecret().catch((error) => {
+    await removeEveryPinBinding().catch((error) => {
       console.warn('could not remove the PIN binding key after moving to device-bound mode', error);
     });
     return;
@@ -386,7 +394,7 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
   /* PIN mode keeps its own binding key, so only a move *away* from it clears
      one. Everything else here is the previous mode's leftovers. */
   if (target !== 'pin') {
-    await removeDeviceBindingSecret().catch((error) => {
+    await removeEveryPinBinding().catch((error) => {
       console.warn('could not remove the PIN binding key after changing access mode', error);
     });
   }

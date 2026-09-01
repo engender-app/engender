@@ -3,6 +3,7 @@ import { registerPlugin } from '@capacitor/core';
 export const androidPluginOwners = {
   sqlite: 'data/sqlite/android-driver',
   keystore: 'lock/keystore-bridge',
+  pinBinding: 'data/pin-binding-bridge',
   photos: 'data/photos/android-bridge',
   reminders: 'reminders/android-bridge',
   autoExport: 'data/archive/android-auto-export-bridge',
@@ -28,6 +29,7 @@ interface AndroidPluginRegistryEntry {
 export const androidPluginRegistry = [
   { name: 'Sqlite', owner: androidPluginOwners.sqlite },
   { name: 'Keystore', owner: androidPluginOwners.keystore },
+  { name: 'PinBinding', owner: androidPluginOwners.pinBinding },
   { name: 'Photos', owner: androidPluginOwners.photos },
   { name: 'Reminders', owner: androidPluginOwners.reminders },
   { name: 'AutoExport', owner: androidPluginOwners.autoExport },
