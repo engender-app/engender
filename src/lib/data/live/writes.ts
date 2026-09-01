@@ -27,6 +27,7 @@
 import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
 import { DAY_TABLES } from '../journal/day';
+import { SEARCH_TABLES } from '../journal/textSearch';
 import { RECONCILE_TABLES } from '../journal/reconcile';
 
 /** Every table there is, in one place: what an import rewrites, and what
@@ -591,6 +592,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   day: classify<Journal['day']>()({
     writes: {},
     reads: { getDay: DAY_TABLES }
+  }),
+  /* Read-only, and its table list is its own registry's for the reason day's
+     is (textSearch.ts's SEARCH_TABLES): an area registered there brings its
+     tables with it, so a search result cannot go stale on a write to an area
+     registered after this line was written. */
+  textSearch: classify<Journal['textSearch']>()({
+    writes: {},
+    reads: { search: SEARCH_TABLES }
   }),
   // Read-only, the same reason clinicianSummary is: a book is assembled
   // from entries, milestones, side effects and a recap on every read and
