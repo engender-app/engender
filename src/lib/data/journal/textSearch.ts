@@ -76,7 +76,8 @@
    paraglide (ADR-0016). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
-import { foldedSql, foldText } from '../fold';
+import { foldedSql } from '../fold';
+import { likePattern } from '../searchQuery';
 import type { TableName } from '../live/writes';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { ArchiveSectionName } from './archiveSections';
@@ -118,7 +119,7 @@ export interface SearchRequest {
     (searchQuery.ts's matchWindow). */
 export interface SearchHit {
   /** The registered area's key, which is the hit's kind. */
-  area: string;
+  area: SearchAreaKey;
   /** The record's travelling id (ADR-0002), which is what a hit navigates
       by where its area has a screen per record. */
   id: string;
@@ -128,14 +129,16 @@ export interface SearchHit {
   context: string | null;
 }
 
-/** One area's declaration that its text is searchable. Erased over nothing -
-    every area answers in the same shape - so unlike the day registry there
-    is no per-area row type to keep honest. What `section` below adds is the
-    literal `covers`, which is what the opt-out record is checked against. */
-export interface SearchArea {
-  key: string;
-  covers: readonly string[];
+/** One area's declaration that its text is searchable, over whatever key and
+    whatever `covers` it was written with. Every area answers in the same
+    shape, so unlike the day registry there is no per-area row type to keep
+    honest; what the two parameters carry is the literals `SearchAreaKey` and
+    the opt-out record are read off. */
+interface DeclaredArea<Key extends string, Covers extends readonly ArchiveSectionName[]> {
+  key: Key;
+  covers: Covers;
   tables: readonly TableName[];
+  /** The table, or the join, the text lives in. */
   from: string;
   uuid: string;
   date: SearchDate;
@@ -143,6 +146,10 @@ export interface SearchArea {
   context?: string;
   where?: { sql: string; params(request: SearchRequest): unknown[] };
 }
+
+/** One declaration with its literals erased, which is what the list holds
+    and what everything below reads. */
+export type SearchArea = DeclaredArea<string, readonly ArchiveSectionName[]>;
 
 /** Keeps the key and `covers` from widening at the declaration site.
 
@@ -155,17 +162,9 @@ export interface SearchArea {
     searchHitRows.ts's full Record over the keys - the half of the registry's
     promise that says what a hit looks like - would accept anything at all
     too. */
-function area<const Key extends string, const Covers extends readonly ArchiveSectionName[]>(declared: {
-  key: Key;
-  covers: Covers;
-  tables: readonly TableName[];
-  from: string;
-  uuid: string;
-  date: SearchDate;
-  columns: readonly string[];
-  context?: string;
-  where?: { sql: string; params(request: SearchRequest): unknown[] };
-}) {
+function area<const Key extends string, const Covers extends readonly ArchiveSectionName[]>(
+  declared: DeclaredArea<Key, Covers>
+) {
   return declared;
 }
 
@@ -334,6 +333,10 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['description']
   }),
+  /* Both free-text fields, and `cost` is one of them: the column is TEXT
+     because somebody types "800" or "covered by insurance" into it, unlike a
+     lab result's `value`, which is a REAL and is left out above. What the
+     rule turns on is the column, not whether digits show up in it. */
   area({
     key: 'hairRemovalSessions',
     covers: ['hairRemovalSessions'],
@@ -460,28 +463,6 @@ export const SEARCH_AREA_KEYS: readonly SearchAreaKey[] = AREAS.map((a) => a.key
     (the same reasoning DAY_TABLES gives). */
 export const SEARCH_TABLES: TableName[] = [...new Set(AREAS.flatMap((a) => a.tables))];
 
-/** Runs of letters and digits, the same notion of "something to look for"
-    the FTS side uses (searchQuery.ts's TOKENS). A query with none of them -
-    punctuation only, or nothing at all - is not a search. */
-const SOMETHING_TO_FIND = /[\p{L}\p{N}]/u;
-
-/** A LIKE pattern for the folded query, or null when there is nothing to
-    look for. Null means "do not go to the database", the same rule
-    ftsMatchExpression follows for an empty MATCH expression - and it is the
-    same rule, so a query the entry index refuses does not quietly become
-    twenty table scans.
-
-    `%` and `_` in what somebody typed are literal characters they want
-    found, not wildcards, so they are escaped along with the escape
-    character itself: "100%" is a search for a hundred percent, not for
-    everything. */
-export function likePattern(query: string): string | null {
-  const folded = foldText(query).trim();
-  if (!SOMETHING_TO_FIND.test(folded)) return null;
-  const escaped = folded.replace(/[\\%_]/g, (character) => `\\${character}`);
-  return `%${escaped}%`;
-}
-
 interface Branch {
   sql: string;
   params: unknown[];
@@ -557,6 +538,7 @@ function branchFor(declared: SearchArea, pattern: string, request: SearchRequest
 
 interface HitRow extends Record<string, unknown> {
   area: string;
+  // (the projection's own literal; narrowed where the hits are built)
   id: string;
   epoch_day: number | null;
   timestamp: number | null;
@@ -584,16 +566,13 @@ export interface TextSearchArea {
     its count come back together or not at all. */
 const NOTHING_FOUND: SearchResults = { hits: [], total: 0 };
 
-export function makeTextSearchArea(
-  driver: SqliteDriver,
-  areas: readonly SearchArea[] = SEARCH_AREAS
-): TextSearchArea {
+export function makeTextSearchArea(driver: SqliteDriver): TextSearchArea {
   return {
     async search(request) {
       const pattern = likePattern(request.query);
-      if (pattern === null || areas.length === 0) return NOTHING_FOUND;
+      if (pattern === null) return NOTHING_FOUND;
 
-      const branches = areas.map((declared) => branchFor(declared, pattern, request));
+      const branches = SEARCH_AREAS.map((declared) => branchFor(declared, pattern, request));
       const union = branches.map((b) => b.sql).join('\nUNION ALL\n');
       const params = branches.flatMap((b) => b.params);
 
@@ -611,8 +590,11 @@ export function makeTextSearchArea(
         driver.query<{ total: number }>(`SELECT COUNT(*) AS total FROM (${union})`, params)
       ]);
 
+      /* The area is cast rather than checked: every branch of the query above
+         wrote its own key into the projection as a literal, so the only
+         strings this column can hold are the registry's own. */
       const hits = rows.map((row) => ({
-        area: row.area,
+        area: row.area as SearchAreaKey,
         id: row.id,
         epochDay: row.epoch_day ?? (row.timestamp === null ? null : epochDayFromTimestamp(row.timestamp)),
         value: row.value,

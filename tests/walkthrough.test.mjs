@@ -502,6 +502,43 @@ try {
   ok('structured search filters combine with text, show chips and clear-all');
 } catch (e) { fail('structured search filters', e); }
 
+/* 5c. search reaches past entries (phase 5 deepening ticket 24).
+
+   The registry itself is tested in the node tier; what only the real screen
+   can show is the presentation half - searchHitRows.ts imports paraglide and
+   $lib, neither of which resolves under vitest.config.ts, which is the same
+   reason ticket 21's day composition is checked from the browser tier rather
+   than in a unit test.
+
+   Both queries are the demo persona's own text and neither is entry text: a
+   milestone's name, and the provider on a lab result. */
+try {
+  await fresh('/search');
+
+  await page.locator('#q').fill('workshop');
+  await page.waitForSelector('[data-search-hit="milestones"]');
+  const milestoneHit = page.locator('[data-search-hit="milestones"]').first();
+  const href = await milestoneHit.getAttribute('href');
+  if (href !== '/settings/milestones') throw new Error(`a milestone hit went to ${href}`);
+  /* The ticket's own condition: a hit says what kind of thing it is. Read as
+     "the row states two things" rather than by gripping the kit's own class
+     or the label's wording (ADR-0029) - the excerpt on one line, the area it
+     came from on the next. */
+  const lines = (await milestoneHit.innerText()).split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) throw new Error(`a hit did not say what kind of thing it is: ${JSON.stringify(lines)}`);
+
+  await page.locator('#q').fill('diagnostyka');
+  await page.waitForSelector('[data-search-hit="labResults"]');
+
+  /* A word in no record at all still says so, rather than showing the
+     entries' empty state over hits from somewhere else. */
+  await page.locator('#q').fill('pierogi');
+  await page.waitForTimeout(300);
+  if (await page.locator('[data-search-hit]').count()) throw new Error('a word in no record still returned hits');
+
+  ok('search reaches records outside entries, and every hit says its kind and where it goes');
+} catch (e) { fail('search reaches past entries', e); }
+
 /* 6. stats range + value list.
 
    The handles moved with ticket 23's rebuild: the range is the shared

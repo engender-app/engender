@@ -14,7 +14,6 @@ import { ARCHIVE_SECTION_NAMES } from './archiveSections.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver, journalWithBuiltIns } from './test-support.ts';
 import {
-  likePattern,
   makeTextSearchArea,
   SEARCH_AREAS,
   SEARCH_AREA_KEYS,
@@ -29,7 +28,7 @@ const TODAY = DAY + 10;
 // --- the registry -------------------------------------------------------
 
 test('every area that travels either holds searchable text or says why it does not', () => {
-  const covered = new Set(SEARCH_AREAS.flatMap((a) => a.covers));
+  const covered = new Set<string>(SEARCH_AREAS.flatMap((a) => a.covers));
   const optedOut = new Set(Object.keys(SEARCH_OPT_OUTS));
 
   for (const name of ARCHIVE_SECTION_NAMES) {
@@ -42,7 +41,7 @@ test('every area that travels either holds searchable text or says why it does n
 
 test('nothing is both registered and opted out, and no opt-out names an area that no longer travels', () => {
   const travelling = new Set<string>(ARCHIVE_SECTION_NAMES);
-  const covered = new Set(SEARCH_AREAS.flatMap((a) => a.covers));
+  const covered = new Set<string>(SEARCH_AREAS.flatMap((a) => a.covers));
 
   for (const [name, reason] of Object.entries(SEARCH_OPT_OUTS) as [string, string][]) {
     assert.ok(travelling.has(name), `SEARCH_OPT_OUTS names ${name}, which is not an archive section any more`);
@@ -57,7 +56,7 @@ test('a registry short of an area fails the coverage rule the real one passes', 
      area taken out: the same rule, the same opt-out list, and the area that
      one covered is now accounted for nowhere. */
   const withoutLetters = SEARCH_AREAS.filter((a) => !a.covers.includes('letters'));
-  const covered = new Set(withoutLetters.flatMap((a) => a.covers));
+  const covered = new Set<string>(withoutLetters.flatMap((a) => a.covers));
   const optedOut = new Set(Object.keys(SEARCH_OPT_OUTS));
 
   const unaccounted = ARCHIVE_SECTION_NAMES.filter((name) => !covered.has(name) && !optedOut.has(name));
@@ -123,7 +122,6 @@ test('a query with nothing searchable in it never goes to the database', async (
     assert.deepEqual(results.hits, []);
   }
   assert.equal(roundTrips().query, 0);
-  assert.equal(likePattern('...'), null);
 });
 
 test('a typed % or _ is a character to find rather than a wildcard', async () => {
@@ -298,7 +296,7 @@ test('searching writes nothing', async () => {
 
 /** One record carrying the same word in every registered area, so "does
     search reach it" is a question about the registry rather than about
-    twenty fixtures. Written through each area's own write path, so a
+    eighteen fixtures. Written through each area's own write path, so a
     declaration that names a column the area does not actually fill fails
     here. */
 async function fillEveryTextArea(journal: Journal): Promise<void> {
