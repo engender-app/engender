@@ -44,6 +44,10 @@
   let doseTotals = liveListIn(countersQuery, (c) => c.doseTotals);
   let routeDays = liveListIn(countersQuery, (c) => c.routeDays);
   let regimenDays = liveListIn(countersQuery, (c) => c.regimenDays);
+
+  /* Both route-days and regimen-days are empty for the same reason - no
+     regimen episode logged in range - so they point at the same place. */
+  const regimenAction = { label: m.regimen_empty_action(), href: '/settings/regimen' };
 </script>
 
 <div class="screen">
@@ -110,7 +114,7 @@
         icon="flask"
         key="exposure-route-days-empty"
         text={m.exposure_route_days_empty()}
-        action={{ label: m.regimen_empty_action(), href: '/settings/regimen' }}
+        action={regimenAction}
       />
     {/snippet}
   </ReadGate>
@@ -138,7 +142,7 @@
         icon="flask"
         key="exposure-regimen-days-empty"
         text={m.exposure_regimen_days_empty()}
-        action={{ label: m.regimen_empty_action(), href: '/settings/regimen' }}
+        action={regimenAction}
       />
     {/snippet}
   </ReadGate>
