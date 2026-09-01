@@ -18,6 +18,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
+  import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
@@ -164,6 +165,17 @@
     await journal.feltSense.add({ milestoneId: feelingOfferId }, { epochDay: todayEpochDay(), ...input });
     feelingOfferId = null;
   }
+
+  /* The editor's own draft carries no origin - it's a name, a date, a
+     template key, a photo (RecordSheet's Draft shape) - so the notice below
+     reads it off the stored record being edited instead. A brand-new
+     milestone has neither an id nor an origin, which is exactly right: a
+     hand-written record says nothing here (ADR-0010). */
+  let editingOrigin = $derived.by(() => {
+    const id = record.editor?.id;
+    const found = id ? sorted.find((mi) => mi.id === id) : undefined;
+    return found ? resolveMilestoneOrigin(found) : null;
+  });
 </script>
 
 <div class="screen">
@@ -178,12 +190,13 @@
   {#if sorted.length}
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       {#each sorted as mi (mi.id)}
+        {@const origin = resolveMilestoneOrigin(mi)}
         <ListRow
           key={mi.id}
           data-milestone={mi.id}
           icon="flag"
           title={mi.name}
-          subtitle={`${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`}
+          subtitle={[`${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`, origin?.text]}
           chevron={false}
           onclick={() => openEditor(mi, null)}
           action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
@@ -259,6 +272,14 @@
     }}
   >
     {#snippet fields(editor)}
+      {#if editingOrigin}
+        <Notice
+          icon="sparkle"
+          key="milestone-provenance"
+          text={editingOrigin.text}
+          action={editingOrigin.href ? { label: m.prov_open_source(), href: editingOrigin.href } : undefined}
+        />
+      {/if}
       <Field label={m.ms_name_label()} id="ms-name">
         {#snippet children(id)}
           <input class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />

@@ -10,11 +10,13 @@
     type ReminderRule
   } from '$lib/data/reminderRule';
   import { intlLocale } from '$lib/data/dates';
+  import { resolveReminderOrigin } from '$lib/data/provenance';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
 
   const TYPES = [
@@ -43,6 +45,7 @@
     fromRecord: (found) => ({ title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) })
   });
   let draft = $derived(detail.draft);
+  let origin = $derived(detail.record ? resolveReminderOrigin(detail.record) : null);
 
   const ruleFromDraft = (): ReminderRule =>
     ruleFromChoice(draft.choice, draft.time, detail.record ?? null, new Date());
@@ -76,6 +79,20 @@
 
 <div class="screen">
   <ScreenHeader title={detail.isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
+
+  {#if origin}
+    <!-- Editing and saving clears autoSource (reminders.ts), so this notice
+         is itself the warning that Save takes the reminder over - shown
+         once, before the editor rather than after (phase 5 deepening
+         ticket 22). -->
+    <Notice
+      icon="sparkle"
+      key="reminder-provenance"
+      title={origin.text}
+      text={origin.hint}
+      action={origin.href && origin.actionLabel ? { label: origin.actionLabel, href: origin.href } : undefined}
+    />
+  {/if}
 
   <div class="card editor-section">
     <Field label={m.rem_type_label()} legend>
