@@ -305,6 +305,7 @@
   "home_cal_colour": "Home & calendar colour",
   "reminders": "Reminders",
   "reminders_web_sub": "reminders need the Android app",
+  "notif_web_row_sub": "notifications need the Android app",
   "progress_photos": "Progress photos",
   "progress_photos_sub": "all photos, then vs now",
   "lab_results": "Lab results",

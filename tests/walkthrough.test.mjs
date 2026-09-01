@@ -2960,6 +2960,45 @@ try {
   });
 } catch (e) { fail('Home bleeds decoration only', e); }
 
+/* The two views over the unprompted registry (phase 6 ticket 04). The
+   notifications view is the interesting one here precisely because this is a
+   browser: its entries are absent rather than shown and inert, since a
+   browser cannot fire a scheduled notification while the app is closed, so
+   what the walkthrough can hold on web is that absence plus the screen still
+   saying why. The switches themselves are Android-only and are held by
+   registry.test.ts and each producer's own test. */
+try {
+  await fresh('/settings');
+  await page.locator('[data-list-row="notifications"]').click();
+  await page.waitForSelector('[data-screen]');
+  if ((await page.getByRole('heading', { level: 1 }).count()) === 0) {
+    throw new Error('the notifications view rendered no heading');
+  }
+  if (await page.locator('[data-notification]').count()) {
+    throw new Error('a notification row rendered on web, where it can never fire');
+  }
+  if (await page.locator('[data-quiet-hours]').count()) {
+    throw new Error('quiet hours rendered on web, over notifications that cannot happen');
+  }
+  if (!(await page.locator('[data-notice-title]').count())) {
+    throw new Error('the empty screen explains nothing');
+  }
+
+  /* And the surfaces view beside it, which is not Android-only: its rows are
+     what Home may show. The notification sub-toggles that used to hang under
+     wrapped and on-this-day here have moved to the screen above. */
+  await fresh('/settings');
+  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.waitForSelector('[data-live-tile="wrapped"]');
+  if (await page.locator('[data-live-tile-notify]').count()) {
+    throw new Error("a notification sub-toggle is still on the surfaces view");
+  }
+  const tiles = await page.locator('[data-live-tile]').count();
+  if (tiles !== 14) throw new Error('the surfaces view drew ' + tiles + ' rows, expected 14');
+
+  ok('two views over one registry: notifications absent on web, surfaces still whole');
+} catch (e) { fail('the unprompted registry views', e); }
+
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
 
