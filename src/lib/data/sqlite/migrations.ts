@@ -1576,6 +1576,17 @@ CREATE TABLE IF NOT EXISTS voice_benchmark (
 CREATE INDEX idx_voice_benchmark_epoch_day ON voice_benchmark(epoch_day);
 `;
 
+/* v47: milestone.tryout_id (phase 5 deepening ticket 22, ADR-0045). Adopting
+   a tryout already mints a milestone (tryouts.ts's adoptTryout) but never
+   recorded which tryout it came from - roadmap_goal_key and procedure_id
+   exist for the same question and nothing filled in a third. Nullable and
+   unlinked the same way procedure_id already is: deleteTryout clears it
+   before the tryout row goes, so a milestone never carries a dangling
+   reference. */
+const SCHEMA_V47 = `
+ALTER TABLE milestone ADD COLUMN tryout_id TEXT REFERENCES tryout(uuid);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1622,5 +1633,6 @@ export const migrations: Migration[] = [
   { version: 43, sql: SCHEMA_V43 },
   { version: 44, sql: SCHEMA_V44 },
   { version: 45, sql: SCHEMA_V45 },
-  { version: 46, sql: SCHEMA_V46 }
+  { version: 46, sql: SCHEMA_V46 },
+  { version: 47, sql: SCHEMA_V47 }
 ];

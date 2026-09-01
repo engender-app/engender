@@ -473,7 +473,7 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
 
   await insertRows(
     driver,
-    'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, updated_at)',
+    'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at)',
     inserting.map((milestone) => [
       milestone.id,
       milestone.name,
@@ -481,6 +481,7 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
       milestone.templateKey,
       milestone.roadmapGoalKey ?? null,
       milestone.procedureId ?? null,
+      milestone.tryoutId ?? null,
       ts
     ])
   );

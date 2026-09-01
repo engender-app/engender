@@ -1,6 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { resolveReminderOrigin } from '$lib/data/provenance';
   import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -153,11 +154,13 @@
              no shape for that: `href` makes the whole row the link, which
              would toggle the switch by navigating past it; `action` renders
              one icon button, not a Switch (ticket 18). -->
+        {@const origin = resolveReminderOrigin(r)}
         <div class="kit-row" data-list-row={r.id}>
           <span class="kit-row-ico"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
           <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
             <span class="kit-row-title">{r.title}</span>
             <span class="kit-row-sub">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
+            {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
           </a>
           <span class="kit-row-trail">
             <Switch checked={r.enabled} label={m.rem_enable_aria({ title: r.title })} onChange={(v) => journal.reminders.setEnabled(r.id, v)} />
