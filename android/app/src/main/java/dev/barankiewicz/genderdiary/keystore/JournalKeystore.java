@@ -203,6 +203,20 @@ public final class JournalKeystore {
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
                 .setUserAuthenticationRequired(true);
 
+        /* From API 35 the MGF1 digest has to be declared on the key itself
+           rather than left to inherit SHA-1; the platform has been moving
+           toward refusing the inherited default outright. The digest stays
+           SHA-1, for the reason given at oaepParameters(): AndroidKeyStore
+           leaves MGF1 at SHA-1 regardless of setDigests, and the public-key
+           half in oaepParameters() is pinned to match it. Guarded by API
+           level because setMgf1Digests does not exist below it, and an
+           existing key predates this call, so it keeps whatever MGF1 digest
+           it was made with - unaffected, since this only runs inside
+           create(). */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            spec.setMgf1Digests(KeyProperties.DIGEST_SHA1);
+        }
+
         /* A newly enrolled fingerprint does not destroy the Journal. The
            threat that setting guards against is somebody adding their own
            finger to a phone they took, and the lock screen they would need
