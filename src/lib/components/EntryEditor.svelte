@@ -24,6 +24,7 @@
   import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { roleAttrs } from '$lib/components/kit/role';
   import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -532,6 +533,26 @@
   {:else}
   <SectionHeading text={m.mood()} />
   <MoodPicker value={entryDraft.mood} onPick={(v) => entryDraft.setMood(v)} />
+
+  {#if vocabulary.visiblePresentations.length > 0}
+    <SectionHeading text={m.presentation_label()} />
+    <div class="contextual-chips" role="radiogroup" aria-label={m.presentation_label()}>
+      {#each vocabulary.visiblePresentations as p (p.id)}
+        {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+        <button
+          type="button"
+          class="contextual-chip presentation-chip press"
+          class:is-active={entryDraft.presentationId === p.id}
+          {...roleAttrs(role)}
+          role="radio"
+          aria-checked={entryDraft.presentationId === p.id}
+          onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
+        >
+          {p.name}
+        </button>
+      {/each}
+    </div>
+  {/if}
 
   <SectionHeading text={m.gender_label()}>
     {#snippet action()}
@@ -1072,6 +1093,20 @@
     background: var(--accent-soft, var(--accent));
     color: var(--on-accent-soft, var(--accent-fg));
     border-color: var(--accent);
+  }
+
+  /* A presentation's own colour rather than the app's accent, since the
+     whole point of the chip is telling several of them apart at a glance
+     (ADR-0048) - the tokens [data-kit-role] derives from roleAttrs() on
+     this button. Unselected, only the ring shows; selected, the tint fills
+     in behind the name. */
+  .presentation-chip[data-kit-role] {
+    border: var(--role-hairline);
+  }
+  .presentation-chip.is-active[data-kit-role] {
+    background: var(--role-tint);
+    border-color: var(--role-draw);
+    color: var(--role-ink);
   }
 
   /* The dose chip earns two lines when a stock entry adds what it leaves,
