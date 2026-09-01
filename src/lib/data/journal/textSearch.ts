@@ -268,6 +268,19 @@ const AREAS = [
      `text` and its wording comes from the message catalogue (reconcile.ts),
      so what is matched here is the custom pool - the same division of labour
      tag labels have. */
+  /* Every presentation name is typed by the person - there are no built-ins
+     whose wording lives in the message catalogue (ADR-0048), so the
+     reference-data opt-out the built-in areas above use does not apply
+     here. */
+  area({
+    key: 'presentations',
+    covers: ['presentations'],
+    tables: ['presentation'],
+    from: 'presentation',
+    uuid: 'uuid',
+    date: null,
+    columns: ['name']
+  }),
   area({
     key: 'affirmations',
     covers: ['affirmations'],

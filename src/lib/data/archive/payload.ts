@@ -94,6 +94,12 @@ export interface ArchiveEntry {
   /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Same
       no-format-version-step reasoning as ArchivePhoto.starred. */
   starred: boolean;
+  /** The presentation this entry was filed under (phase 5 deepening ticket
+      17, ADR-0048), by domain id (uuid), or null. Carried as plain text the
+      same way ArchiveMilestone.procedureId/tryoutId are - restore.ts
+      resolves no rowid against it. Absent on an archive written before this
+      ticket, read the same way an unset presentation always reads. */
+  presentationId: string | null;
 }
 
 export interface ArchiveDimension {
@@ -660,6 +666,20 @@ export interface ArchiveJournal {
   checklists: ArchiveChecklist[];
   wearSessions: ArchiveWearSession[];
   voiceBenchmarks: ArchiveVoiceBenchmark[];
+  presentations: ArchivePresentation[];
+}
+
+/** A named presentation (phase 5 deepening ticket 17, ADR-0048, CONTEXT:
+    "Presentation"). No `builtIn` flag: unlike ArchiveTag or
+    ArchiveGenderDimension it ships nothing seeded, so every row travels the
+    same way. `roleIndex` is an index into the active flag's roles
+    (theme/roles.ts), never a colour of its own - the same reason
+    ArchiveMilestone carries no rendered label. */
+export interface ArchivePresentation {
+  id: string;
+  name: string;
+  roleIndex: number;
+  hidden: boolean;
 }
 
 /** A standardized voice take (phase 5 deepening ticket 15, CONTEXT: "Voice
