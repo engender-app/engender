@@ -65,7 +65,8 @@ test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
     doseLog: { dose: 2, doseUnit: 'mg', route: 'oral', drug: 'Estradiol' },
     procedureRecovery: { procedureId: 'p1', notes: 'healing well' },
     effectMarker: { effect: 'skin_softening', firstNoticedEpochDay: 20_001 },
-    cycleEvent: { kind: 'spotting', epochDay: 20_001 }
+    cycleEvent: { kind: 'spotting', epochDay: 20_001 },
+    presentationId: null
   });
 });
 
@@ -125,7 +126,8 @@ test('applying a persisted draft overlays mood, note, dims, tags, body regions a
     doseLog: { dose: 100, doseUnit: 'mg', route: 'im' },
     procedureRecovery: { procedureId: 'proc-1', notes: 'day 1' },
     effectMarker: { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 },
-    cycleEvent: { kind: 'period_occurred', epochDay: 20_001 }
+    cycleEvent: { kind: 'period_occurred', epochDay: 20_001 },
+    presentationId: 'femme'
   };
 
   applyPersistedDraft(draft, persisted);
@@ -140,6 +142,7 @@ test('applying a persisted draft overlays mood, note, dims, tags, body regions a
   assert.deepEqual(draft.procedureRecovery, { procedureId: 'proc-1', notes: 'day 1' });
   assert.deepEqual(draft.effectMarker, { effect: 'body_hair_reduction', firstNoticedEpochDay: 20_001 });
   assert.deepEqual(draft.cycleEvent, { kind: 'period_occurred', epochDay: 20_001 });
+  assert.equal(draft.presentationId, 'femme');
 });
 
 test('applying a persisted draft drops stored photos the user had already removed', () => {
