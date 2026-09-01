@@ -27,6 +27,7 @@ import type {
   Milestone,
   MilestoneTemplate,
   PersonalEffectCatalogEntry,
+  Presentation,
   RegimenTemplate,
   Tag,
   TagGroup
@@ -299,6 +300,18 @@ export const vocabulary = {
   tag(id: string): Tag | null {
     const found = reference.tag(id);
     return found && localizeTag(found);
+  },
+  /** Every presentation a person has named (phase 5 deepening ticket 17,
+      ADR-0048), most-recently-used first - no built-in wording to localize,
+      since every name is typed by the person. */
+  get presentations(): Presentation[] {
+    return reference.presentations;
+  },
+  get visiblePresentations(): Presentation[] {
+    return reference.visiblePresentations;
+  },
+  presentation(id: string): Presentation | null {
+    return this.presentations.find((p) => p.id === id) ?? null;
   },
   /** A few templates to offer, picked at random so the suggestions differ
       between visits and the shuffle button has something to do (PRD F6).

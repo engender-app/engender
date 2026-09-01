@@ -2630,5 +2630,21 @@
   "vb_mic_unsupported_body": "The Android app can. Nothing else here depends on it.",
   "vb_mic_ask": "Ask for the microphone",
   "vb_mic_denied_again_body": "Asking again did nothing, so the choice is not being offered any more. The switch is in this app's own permissions, under Microphone.",
-  "vb_hub_sub": "a standard take, comparable month to month"
+  "vb_hub_sub": "a standard take, comparable month to month",
+  "presentation_label": "Mode",
+  "presentations_title": "Modes",
+  "presentations_row_sub": "How you're presenting when you log.",
+  "presentations_intro": "A name and a colour for how you're presenting. Nothing else.",
+  "presentations_empty_title": "No modes yet.",
+  "presentations_empty_body": "For a way of presenting you move between: boy mode, girl mode, whatever you call it.",
+  "presentations_add": "Add mode",
+  "presentation_new_sheet": "New mode",
+  "presentation_edit_sheet": "Edit mode",
+  "presentation_save": "Save mode",
+  "presentation_name_label": "Name",
+  "presentation_name_placeholder": "e.g. Femme, At work",
+  "presentation_colour_label": "Colour",
+  "presentation_colour_swatch_aria": "Colour {index}",
+  "presentation_hide_aria": "Hide {name}",
+  "presentation_show_aria": "Show {name}"
 }
