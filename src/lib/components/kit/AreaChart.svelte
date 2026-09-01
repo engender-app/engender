@@ -536,10 +536,10 @@
                 <b>{overlay.formatValue(at.overlayValue)}</b>
                 <span>{overlay.name}</span>
               {/if}
+              {#if scrubLabel && scrub !== null}
+                <span class="kit-area-readout-at">{scrubLabel(at.point, scrub)}</span>
+              {/if}
             </span>
-            {#if scrubLabel && scrub !== null}
-              <span class="kit-area-readout-at">{scrubLabel(at.point, scrub)}</span>
-            {/if}
           {:else if at.value !== null}
             <span class="kit-area-readout-value">
               <b>{formatValue(at.value)}</b>
