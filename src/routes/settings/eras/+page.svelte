@@ -271,13 +271,18 @@
         {/snippet}
       </Field>
 
-      {#if resolvedText(editor)}
-        <p class="muted small" data-era-resolved>{resolvedText(editor)}</p>
+      <!-- Each read once. Both functions rebuild the draft's span and rescan
+           the era list, and `canSave` asks for the conflict a third time on
+           every keystroke. -->
+      {@const resolved = resolvedText(editor)}
+      {@const conflict = conflictText(editor)}
+      {#if resolved}
+        <p class="muted small" data-era-resolved>{resolved}</p>
       {/if}
-      {#if conflictText(editor)}
+      {#if conflict}
         <div class="notice notice-warn" role="alert" data-era-conflict>
           <Icon name="alert" size={20} />
-          <div class="notice-body">{conflictText(editor)}</div>
+          <div class="notice-body">{conflict}</div>
         </div>
       {/if}
     {/snippet}
