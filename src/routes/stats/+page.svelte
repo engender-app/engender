@@ -35,7 +35,7 @@
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { isPausedOn } from '$lib/data/journalingPause';
-  import { atGrain, type Grain } from '$lib/charts/grain';
+  import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import { nativeValue, signedValue, tagInsightRows } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
@@ -318,6 +318,53 @@
     )
   );
 
+  /* A second scale on the same chart (phase 6 ticket 12). The manual,
+     hypothesis-driven companion to the app noticing things for you:
+     somebody who suspects two of their scales move together can look,
+     rather than wait.
+
+     Opt-in and empty by default. A second picker sitting on the card
+     whatever anyone asked for would put a comparison in front of every
+     person who opened the screen, and a comparison is a question somebody
+     has to have first. `seriesQuery` already fetches every scale's series in
+     one go, so choosing one costs no query.
+
+     Held to the scales that still exist, the same rule the constellation's
+     two axes follow: a scale unticked in settings, or the one the primary
+     picker has just moved onto, drops the comparison rather than leaving the
+     chart pointed at something nobody logs. */
+  let compareKey = $state('');
+  let comparing = $state(false);
+  $effect(() => {
+    if (compareKey && !metrics.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
+      compareKey = '';
+    }
+  });
+  let compared = $derived(metrics.find((mt) => mt.key === compareKey));
+  let compareOptions = $derived([
+    { value: '', label: m.stats_compare_none() },
+    ...metricOptions.filter((option) => option.value !== shown.key)
+  ]);
+
+  /* Bucketed on its own and then read onto the first series' positions. The
+     chart places its points by index, so two series bucketed separately
+     would be stretched to the same width whatever their own counts - and
+     "do these two move together" is exactly the reading that gets wrong. */
+  let comparePlotted = $derived(
+    compared
+      ? atGrain(
+          seriesFor(compared.key).map((p) => ({ x: p.day, y: p.value })),
+          range
+        )
+      : null
+  );
+  let aligned = $derived(
+    comparePlotted ? alignSeries(plotted.points, comparePlotted.points) : null
+  );
+  /* One role along from the card's own, so the two lines are two stripes of
+     the same flag and a palette switch recolours both. */
+  let compareRole = $derived(roleAt(activeFlag.roles, AREA_ROLE.charts + 1));
+
   /* The constellation (phase 5 deepening ticket 19, ADR-0048). Gated on
      data and on nothing else: the card exists once the journal holds a
      presentation, and there is no preference to turn it on, because a
@@ -457,16 +504,61 @@
       <Skeleton variant="block" />
     {:else}
       <AreaChart
-        points={plotted.points}
+        points={aligned ? aligned.map((row) => ({ x: row.x, y: row.a })) : plotted.points}
         min={shown.min}
         max={shown.max}
+        name={shown.name}
+        overlay={aligned && compared
+          ? {
+              values: aligned.map((row) => row.b),
+              min: compared.min,
+              max: compared.max,
+              name: compared.name,
+              formatValue: (v) => fmtNativeValue(compared.key, v),
+              role: compareRole
+            }
+          : undefined}
         from={fmtDay(from, { day: 'numeric', month: 'short' })}
         to={fmtDay(today, { day: 'numeric', month: 'short' })}
         formatValue={(v) => fmtNativeValue(shown.key, v)}
         scrubLabel={grainLabel(plotted.grain)}
         annotations={annotationsQuery.rows}
-        ariaLabel={m.values_title({ name: shown.name })}
+        ariaLabel={compared
+          ? m.values_two_title({ first: shown.name, second: compared.name })
+          : m.values_title({ name: shown.name })}
       />
+      <!-- The second scale, offered rather than presented: a comparison is a
+           question somebody has to have first, so until they ask there is a
+           line of text here and no second control on the card. Nothing to
+           offer at all where the journal holds one scale. -->
+      {#if metrics.length > 1}
+        {#if comparing || compared}
+          <!-- The word on the left and the picker on the right, in the
+               constellation's own axis row: it is the same kind of control in
+               the same place - one setting for the picture above it, under
+               the plot because the card's heading line already holds the
+               chart's own picker. -->
+          <div class="stats-axes">
+            <p class="stats-axis">
+              <span id="stats-compare">{m.stats_compare_label()}</span>
+              <ChartPicker
+                key="stats-compare"
+                labelledBy="stats-compare"
+                value={compareKey}
+                options={compareOptions}
+                onPick={(value) => {
+                  compareKey = value;
+                  comparing = value !== '';
+                }}
+              />
+            </p>
+          </div>
+        {:else}
+          <button class="stats-open" data-compare-open onclick={() => (comparing = true)}>
+            {m.stats_compare_open()}
+          </button>
+        {/if}
+      {/if}
     {/if}
   </ChartCard>
   <!-- Every reading in the range, as text. The chart's gutter says what the
