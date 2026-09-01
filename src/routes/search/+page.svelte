@@ -51,6 +51,13 @@
      day cards - a hit in a letter is a line of text, and an entry is a day
      with a mood and tags on it.
 
+     A hit outside entries is a row in one list rather than a section per
+     area: it carries the area's name as its subtitle, and the list keeps the
+     order the read returned, which is newest first across every area. The
+     first build grouped by area and it was wrong - eighteen areas can answer
+     a query, and a display-size heading over a card holding one row makes
+     three hits look like a screen of scaffolding (searchHitRows.ts).
+
      Three rules the screen holds to, and the sheet says the third out loud
      because it is the one somebody could otherwise be surprised by:
 
@@ -88,7 +95,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { searchHitGroups } from '$lib/components/searchHitRows';
+  import { searchHitRows } from '$lib/components/searchHitRows';
 
   /** One page of hits, and what the "show more" control asks for again. */
   const PAGE = 30;
@@ -218,10 +225,12 @@
   let remaining = $derived(Math.max(0, total - hits.length));
 
   let elsewhereResults = $derived(elsewhere.value ?? NOTHING_ELSEWHERE);
-  /* Grouped by area, which is how a hit says what kind of thing it is: the
-     kind is the heading over the group rather than a label repeated on every
-     row (searchHitRows.ts). */
-  let hitGroups = $derived(searchHitGroups(elsewhereResults.hits, query.trim()));
+  /* One list, newest first across every area, each row saying what kind of
+     thing it is. Not a section per area: eighteen areas can answer a query
+     and a heading over a card of one row is framework rather than structure
+     (searchHitRows.ts carries the reasoning, and DayRecords.svelte made the
+     same call about a day's sixteen). */
+  let hitRows = $derived(searchHitRows(elsewhereResults.hits, query.trim()));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
   /* One count over both reads. Stating the entries' total alone while five
@@ -229,7 +238,7 @@
      found. */
   let foundTotal = $derived(total + elsewhereResults.total);
   let loading = $derived(search.loading || elsewhere.loading);
-  let foundNothing = $derived(hits.length === 0 && hitGroups.length === 0);
+  let foundNothing = $derived(hits.length === 0 && hitRows.length === 0);
 
   /* One area of colour on this screen, and it is the days. Role 0, the only
      index guaranteed to be a colour on all 8 palettes, since a screen with a
@@ -339,7 +348,7 @@
              a screen of nothing but day cards it would be a name for the
              only thing there is, which is the framework DayRecords.svelte
              refuses for the same reason. -->
-        {#if hitGroups.length}
+        {#if hitRows.length}
           <SectionHeading text={m.search_entries_heading()} />
         {/if}
         <EntryDays {groups} {role} />
@@ -350,16 +359,17 @@
         {/if}
       {/if}
 
-      {#each hitGroups as group (group.key)}
-        <SectionHeading text={group.label} />
+      {#if hitRows.length}
+        <SectionHeading text={m.search_elsewhere_heading()} />
         <ListCard role={hitsRole}>
-          {#each group.rows as row (row.key)}
+          {#each hitRows as row (row.key)}
             <ListRow
               key={row.key}
-              icon={group.icon}
+              icon={row.icon}
               title={row.excerpt}
+              subtitle={row.label}
               href={row.href}
-              data-search-hit={group.key}
+              data-search-hit={row.area}
             >
               {#snippet trailing()}
                 {#if row.date}<span class="search-hit-date">{row.date}</span>{/if}
@@ -367,7 +377,7 @@
             </ListRow>
           {/each}
         </ListCard>
-      {/each}
+      {/if}
       {#if hitsRemaining > 0}
         <button class="btn btn-soft search-more" data-search-hits-more onclick={() => (hitPages += 1)}>
           <span>{m.search_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
