@@ -120,6 +120,11 @@
      Home's does (phase 5 features ticket 21): it is a nudge, and a frozen
      number with nothing to explain it is worse than no number. */
   let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
+  /* What was happening around these readings (ticket 23). One query for the
+     screen, and only the values chart draws it: the interval-mood chart
+     below plots a position in the dosing interval rather than a date, so a
+     day has nowhere to sit on it. */
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
   let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* One query for every metric on screen rather than one per chart: the
@@ -373,6 +378,7 @@
         to={fmtDay(today, { day: 'numeric', month: 'short' })}
         formatValue={(v) => fmtNativeValue(shown.key, v)}
         scrubLabel={grainLabel(plotted.grain)}
+        annotations={annotationsQuery.rows}
         ariaLabel={m.values_title({ name: shown.name })}
       />
     {/if}

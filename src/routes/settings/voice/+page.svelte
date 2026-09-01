@@ -26,6 +26,8 @@
      wrapping div (appointment-prep's own note on the same conflict), which
      would break the exact contract this picker needs. */
   import { m } from '$lib/paraglide/messages';
+  import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
@@ -69,6 +71,11 @@
      list, or now journal.voiceBenchmarks.getBenchmarks' (ticket 16). */
   let recordingsQuery = liveList((j) => j.voice.inJournal());
   let benchmarksQuery = liveList((j) => j.voiceBenchmarks.getBenchmarks());
+  /* What was happening between the takes (ticket 23). Benchmarks are months
+     apart and a regimen episode is the thing they are read against, so the
+     trend's range is however long there have been benchmarks. */
+  let span = $derived(annotationSpan(benchmarksQuery.rows.map((b) => b.epochDay), todayEpochDay()));
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(span.from, span.to, todayEpochDay()));
   let activeQuery: LiveList<Anchor> = $derived(kind === 'recordings' ? recordingsQuery : benchmarksQuery);
   let anchors = $derived<Anchor[]>(kind === 'recordings' ? recordingsQuery.rows : benchmarksQuery.rows);
 
@@ -229,6 +236,7 @@
                   to={ends.to}
                   formatValue={(v) => m.vb_hz({ value: String(Math.round(v)) })}
                   scrubLabel={(_point, index) => fmtDay(benchmarksQuery.rows[index].epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                  annotations={narrowAnnotations(annotationsQuery.rows, trend.from, trend.to)}
                   ariaLabel={m.vc_trend_heading()}
                 />
               {:else}

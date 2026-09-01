@@ -93,7 +93,11 @@ export default defineConfig({
   plugins: [svelte(), sqlocal(), mutableServiceWorker()],
   resolve: {
     alias: {
-      $lib: resolve(import.meta.dirname, '../../src/lib')
+      $lib: resolve(import.meta.dirname, '../../src/lib'),
+      /* SvelteKit's own module, which this tier has no router to provide:
+         see app-state-stub.ts. Without it the kit gallery does not mount,
+         because a real kit component imports it. */
+      '$app/state': resolve(import.meta.dirname, 'app-state-stub.ts')
     }
   },
   // Same exclusion the app's own config needs (ticket 09): pre-bundling
