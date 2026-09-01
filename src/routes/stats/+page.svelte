@@ -245,20 +245,25 @@
      first does not get a row of their own, with an empty bar: the chart
      draws that stretch, and a list that quietly dropped it would disagree
      with the picture it is standing in for. */
+  let shownByDay = $derived(new Map(seriesFor(shown.key).map((point) => [point.day, point])));
   let comparedByDay = $derived(
     compared ? new Map(seriesFor(compared.key).map((point) => [point.day, point])) : null
   );
   let valueDays = $derived(
-    [...new Set([...seriesFor(shown.key), ...(compared ? seriesFor(compared.key) : [])].map((p) => p.day))]
-      .sort((a, b) => b - a)
+    [...new Set([...shownByDay.keys(), ...(comparedByDay?.keys() ?? [])])].sort((a, b) => b - a)
   );
   let valueRows = $derived<BarRow[]>(
     valueDays.map((day) => {
-      const point = seriesFor(shown.key).find((p) => p.day === day);
+      const point = shownByDay.get(day);
       const second = comparedByDay?.get(day);
       const notes = [
         point && point.count > 1 ? m.avg_of({ count: String(point.count) }) : null,
-        compared && second ? `${compared.name}: ${fmtNativeValue(compared.key, second.value)}` : null
+        compared && second
+          ? m.values_second({
+              name: compared.name,
+              value: fmtNativeValue(compared.key, second.value)
+            })
+          : null
       ].filter(Boolean);
       return {
         key: String(day),
@@ -851,7 +856,7 @@
        hiding the other's. -->
   <Sheet
     open={valueSheet}
-    title={compared ? `${shown.name} · ${compared.name}` : shown.name}
+    title={compared ? m.values_two_title({ first: shown.name, second: compared.name }) : shown.name}
     onClose={() => (valueSheet = false)}
   >
     <BarRows rows={valueRows} />

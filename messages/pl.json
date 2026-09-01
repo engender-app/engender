@@ -278,6 +278,7 @@
   "custom_interval_chart_aria": "Nastrój podzielony na odstępy {days}-dniowe, punkty: {count}, od dnia {from} do dnia {to}.",
   "values_title": "{name}: wartości",
   "values_two_title": "{first} i {second}: wartości",
+  "values_second": "{name}: {value}",
   "avg_of": "śr. z {count}",
   "body_map_title": "Mapa ciała",
   "body_map_sub": "przebieg dysforii i euforii w jednym miejscu na ciele",

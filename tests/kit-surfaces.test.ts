@@ -233,10 +233,21 @@ describe('the charts', () => {
        always been drawn in. Colour is not the only separation either way:
        the second line is dashed. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-draw|--role-2|--role-2-draw|--accent-2|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
-    for (const [, token] of markCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
-      if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
-      expect(token, `${token} in the chart rules`).toMatch(allowed);
+      /^(--role-ink|--role-mark|--role-draw|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
+    /* The second hue, admitted for the area chart's second series and for
+       nothing else. Read per rule rather than over the whole of markCss:
+       allowing it globally would let the next bar set or distribution take a
+       second colour without anything here noticing, which is the opposite of
+       what a named exception is for. */
+    const secondSeries = /^(--role-2|--role-2-draw|--accent-2)$/;
+    for (const rule of markCss.split('}')) {
+      const prelude = rule.split('{')[0] ?? '';
+      const isAreaChart = /\.kit-area/.test(prelude);
+      for (const [, token] of rule.matchAll(/var\((--[a-z0-9-]+)/g)) {
+        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
+        if (isAreaChart && secondSeries.test(token)) continue;
+        expect(token, `${token} in the chart rules`).toMatch(allowed);
+      }
     }
     // And no raw colour anywhere in them.
     expect(markCss).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

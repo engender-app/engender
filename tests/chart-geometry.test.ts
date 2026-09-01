@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   areaPath,
+  bridgeGaps,
   lerpSamples,
   paddedSeries,
   resample,
@@ -243,5 +244,32 @@ describe('lerpSamples across a position one of the two has no reading at', () =>
 
   it('takes the incoming reading where the outgoing dataset had none', () => {
     expect(lerpSamples([null, 0], [100, 100], 0.5)).toEqual([100, 50]);
+  });
+});
+
+describe('bridgeGaps', () => {
+  it('fills a hole between two readings along the line already drawn', () => {
+    expect(bridgeGaps([0, null, 100])).toEqual([0, 50, 100]);
+    expect(bridgeGaps([0, null, null, 30])).toEqual([0, 10, 20, 30]);
+  });
+
+  it('leaves the two open ends alone', () => {
+    // Before a series' first reading and after its last there is no line to
+    // take a point from, so those stay absent and the path stays broken.
+    expect(bridgeGaps([null, 10, 20, null])).toEqual([null, 10, 20, null]);
+  });
+
+  it('leaves a series with no holes exactly as it was', () => {
+    expect(bridgeGaps([1, 2, 3])).toEqual([1, 2, 3]);
+    expect(bridgeGaps([])).toEqual([]);
+    expect(bridgeGaps([null, null])).toEqual([null, null]);
+  });
+
+  it('does not touch the readings it was given', () => {
+    // The drawn shape and the readings are two things; filling one must not
+    // put a number into the other, which is what a person is shown.
+    const readings = [0, null, 100];
+    bridgeGaps(readings);
+    expect(readings).toEqual([0, null, 100]);
   });
 });

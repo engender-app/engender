@@ -123,20 +123,17 @@ describe('two series read onto one set of positions', () => {
     ]);
   });
 
-  /* A position the other series introduced is read off the line this one
-     already draws between the two buckets around it. That is not a reading
-     invented from nothing: the chart drew a segment across that stretch
-     before the second metric arrived, and this is a point on it. Breaking
-     the line there instead would leave a sparse metric as a row of
-     unconnected marks. */
-  it('reads a position between two buckets off the line already drawn', () => {
+  /* A position the other series introduced carries nothing for this one.
+     The line still crosses that stretch - charts/geometry's bridgeGaps puts
+     it there for the drawing - but a reading is a thing a person logged, and
+     the readout under a finger has to be able to say there was none. */
+  it('leaves a position the other series introduced empty', () => {
     const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20)]);
-    expect(rows.map((r) => r.a)).toEqual([1, 2, 3]);
+    expect(rows.map((r) => r.a)).toEqual([1, null, 3]);
   });
 
-  /* Outside its own span is a different thing from a gap inside it: before
-     a metric was first logged there is no line, and a value there would be
-     the chart claiming a reading for a stretch nobody recorded. */
+  /* Outside a series' own span, same answer for the same reason: before a
+     metric was first logged there is nothing it read. */
   it('leaves a series empty before it starts and after it ends', () => {
     const rows = alignSeries([at(mon, 1), at(tue, 2)], [at(wed, 30), at(thu, 40)]);
     expect(rows.map((r) => r.a)).toEqual([1, 2, null, null]);
