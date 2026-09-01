@@ -206,20 +206,27 @@
     <div class="screen-part">
       <SectionHeading text={m.appointment_prep_context_heading()} />
       <ListCard role={roleAt(activeFlag.roles, 1)}>
-        <div class="rows-divide date-row">
-          <label class="date-row-label" for="appointment-prep-date">{m.appointment_prep_last_appointment_label()}</label>
-          <span class="date-row-value">{appointmentDate === null ? m.appointment_prep_last_appointment_unset() : dayShort(appointmentDate)}</span>
-          <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
-          <DatePicker
-            id="appointment-prep-date"
-            value={appointmentDateInput}
-            max={todayInput}
-            ariaLabel={m.appointment_prep_last_appointment_aria()}
-            invis
-            onchange={setAppointmentDate}
-            data-appointment-date
-          />
-        </div>
+        <!-- Styled as a row of this card rather than compare page's own
+             date-row (Alicja, 2026-09-01: the plain label/value line read
+             wrong stacked over two icon-disc rows). `static` because the
+             row itself goes nowhere - the invisible DatePicker layered over
+             it is the real control, the same overlay compare page's own
+             date-row uses, just anchored to .kit-row's position: relative
+             instead. -->
+        <ListRow key="last-appointment" icon="calendar" title={m.appointment_prep_last_appointment_label()} static>
+          {#snippet trailing()}
+            {appointmentDate === null ? m.appointment_prep_last_appointment_unset() : dayShort(appointmentDate)}
+            <DatePicker
+              id="appointment-prep-date"
+              value={appointmentDateInput}
+              max={todayInput}
+              ariaLabel={m.appointment_prep_last_appointment_aria()}
+              invis
+              onchange={setAppointmentDate}
+              data-appointment-date
+            />
+          {/snippet}
+        </ListRow>
         {#if activeEpisode}
           <ListRow
             key="regimen"
