@@ -136,6 +136,56 @@ test('progress photos filter by region and exclude trashed entries', async () =>
   assert.equal(faceBreakdown.photos[0].epochDay, 100);
 });
 
+test('the trajectory and its photos filter by presentation (ADR-0048, ticket 18)', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+  const boy = await journal.presentations.addPresentation('Boy mode', 1);
+
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 20, euphoria: 80 } },
+    presentationId: girl.id,
+    attachPhotos: [photoShot('girl1', 'girl1t')]
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 90, euphoria: 5 } },
+    presentationId: boy.id,
+    attachPhotos: [photoShot('boy1', 'boy1t')]
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 102,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 50, euphoria: 50 } }
+  });
+
+  const girlBreakdown = await getRegionSomaticBreakdown(db, 'chest', girl.id);
+  assert.equal(girlBreakdown.trajectory.length, 1);
+  assert.equal(girlBreakdown.trajectory[0].epochDay, 100);
+  assert.equal(girlBreakdown.photos.length, 1);
+  assert.equal(girlBreakdown.photos[0].epochDay, 100);
+
+  const noPresentationBreakdown = await getRegionSomaticBreakdown(db, 'chest', null);
+  assert.equal(noPresentationBreakdown.trajectory.length, 1);
+  assert.equal(noPresentationBreakdown.trajectory[0].epochDay, 102);
+
+  // Partition: per-presentation reads plus the no-presentation read account
+  // for every entry the unfiltered view shows.
+  const unfiltered = await getRegionSomaticBreakdown(db, 'chest');
+  const boyBreakdown = await getRegionSomaticBreakdown(db, 'chest', boy.id);
+  assert.equal(
+    girlBreakdown.trajectory.length + boyBreakdown.trajectory.length + noPresentationBreakdown.trajectory.length,
+    unfiltered.trajectory.length
+  );
+  assert.equal(
+    girlBreakdown.photos.length + boyBreakdown.photos.length + noPresentationBreakdown.photos.length,
+    unfiltered.photos.length
+  );
+});
+
 test('hair removal sessions and hair staging link to relevant regions', async () => {
   const { journal, db } = await journalWithBuiltIns();
 

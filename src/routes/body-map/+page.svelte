@@ -35,10 +35,26 @@
   const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
 
+  /* Undefined is the unfiltered view (ADR-0048, ticket 18) - every entry,
+     with and without a presentation, byte for byte what this screen showed
+     before the filter existed. There is no "no presentation" option: an
+     entry with none already reads back in the unfiltered view like every
+     other entry, so it needs no filter of its own to reach. Gated on data
+     rather than a preference - the control below is absent, not merely
+     unfiltered, for anyone with no presentations. */
+  let modeFilter = $state<string | undefined>(undefined);
+
   let regions = $derived(vocabulary.visibleBodyRegions);
   let region = $state(vocabulary.visibleBodyRegions[0]?.id ?? '');
   $effect(() => {
     if (regions.length && !regions.some((r) => r.id === region)) region = regions[0].id;
+  });
+  // A presentation hidden mid-session drops out of visiblePresentations
+  // (CONTEXT: "Hidden") without deleting anything it was ever logged
+  // against - falling back to the unfiltered view rather than silently
+  // keeping a filter nothing can any longer select or clear.
+  $effect(() => {
+    if (modeFilter && !vocabulary.visiblePresentations.some((p) => p.id === modeFilter)) modeFilter = undefined;
   });
   let regionName = $derived(regions.find((r) => r.id === region)?.name ?? '');
 
@@ -55,8 +71,8 @@
   let today = $derived(todayEpochDay());
   let from = $derived(today - range + 1);
 
-  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today));
-  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today));
+  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today, modeFilter));
+  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today, modeFilter));
   /* Both axes of one region over one range, so both take the same
      annotations (ticket 23). */
   let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
@@ -154,6 +170,23 @@
       key="body-map-range"
     />
 
+    {#if vocabulary.visiblePresentations.length > 0}
+      <div class="kit-filter">
+        <label class="kit-filter-label" for="body-map-mode-filter">{m.presentation_label()}</label>
+        <ChartPicker
+          key="body-map-mode"
+          id="body-map-mode-filter"
+          labelledBy="body-map-mode-filter"
+          value={modeFilter ?? 'all'}
+          options={[
+            { value: 'all', label: m.body_map_mode_filter_all() },
+            ...vocabulary.visiblePresentations.map((p) => ({ value: p.id, label: p.name }))
+          ]}
+          onPick={(v) => (modeFilter = v === 'all' ? undefined : v)}
+        />
+      </div>
+    {/if}
+
     {#if dysphoriaQuery.loading || euphoriaQuery.loading}
       <Skeleton variant="block" count={2} />
     {:else}
@@ -221,6 +254,7 @@
   <BodyRegionInspectorSheet
     bind:open={inspectorOpen}
     {region}
+    presentationId={modeFilter}
     onClose={() => (inspectorOpen = false)}
   />
 </div>
