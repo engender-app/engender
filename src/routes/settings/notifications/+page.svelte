@@ -117,7 +117,7 @@
     {/if}
 
     <div class="card" data-quiet-hours>
-      <div class="pref-row">
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title"><Icon name="moon" size={16} /> {m.notif_quiet_title()}</span>
           <span class="kit-row-sub">{m.notif_quiet_sub()}</span>
@@ -131,23 +131,29 @@
         />
       </div>
       {#if prefs.quietHoursEnabled}
-        <div class="quiet-window" transition:disclose>
-          <Field label={m.notif_quiet_from()} id="quiet-start">
-            {#snippet children(id)}
-              <input class="input" type="time" name="quiet-start" {id} bind:value={prefs.quietHoursStart} />
-            {/snippet}
-          </Field>
-          <Field label={m.notif_quiet_to()} id="quiet-end">
-            {#snippet children(id)}
-              <input class="input" type="time" name="quiet-end" {id} bind:value={prefs.quietHoursEnd} />
-            {/snippet}
-          </Field>
+        <!-- One `disclosed` wrapper around the whole group rather than a
+             transition per child: `disclose` runs with overflow hidden, so a
+             margin left free to collapse out afterwards makes the block below
+             jump once the inline styles come off (components.css). -->
+        <div class="disclosed" transition:disclose>
+          <div class="quiet-window">
+            <Field label={m.notif_quiet_from()} id="quiet-start">
+              {#snippet children(id)}
+                <input class="input" type="time" name="quiet-start" {id} bind:value={prefs.quietHoursStart} />
+              {/snippet}
+            </Field>
+            <Field label={m.notif_quiet_to()} id="quiet-end">
+              {#snippet children(id)}
+                <input class="input" type="time" name="quiet-end" {id} bind:value={prefs.quietHoursEnd} />
+              {/snippet}
+            </Field>
+          </div>
+          <p class="muted small">{m.notif_quiet_held()}</p>
         </div>
-        <p class="muted small" transition:disclose>{m.notif_quiet_held()}</p>
       {/if}
     </div>
 
-    <div class="card pref-row">
+    <div class="card spread">
       <span class="kit-row-text">
         <span class="kit-row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
         <span class="kit-row-sub">{m.rem_hide_titles_sub()}</span>
@@ -169,7 +175,11 @@
      unrelated settings. */
   .quiet-window {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr), not 1fr: a time input's min-content width is the
+       platform control's own, which is wider than half a 320px screen once
+       the card's padding comes off, and a plain 1fr would let it push the
+       row past the viewport. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-3);
     margin-top: var(--space-3);
   }
