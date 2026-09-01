@@ -69,6 +69,12 @@ const CHARTED_METRICS = [
 /** What the search screen asks for one page of hits. */
 const SEARCH_PAGE = 30;
 
+/** A word the fixture writes outside the entry note - its letters are
+    addressed to a future self (generate.ts) - so the registry search is
+    measured over rows it actually returns rather than over a scan that
+    matches nothing. */
+const NON_ENTRY_SEARCH_WORD = 'future self';
+
 /** A built-in gender dimension, for the half of the metric that is not
     mood. Any of the five would do; the generator logs values against all
     of them. */
@@ -251,13 +257,15 @@ export async function measureLongJournal(
      one UNION ALL - plus its count, which is what the screen runs per search
      beside the two entry queries above (textSearch.ts).
 
-     The same word the first search measurement uses, and the number it
-     reports is the scan rather than the hits: none of these areas has an
-     index, so what this watches is what a folded LIKE over every text
-     column in the journal costs at decade scale. The fixture's non-entry
-     text is written in English and the word is Polish, so the hit count is
-     usually zero and the cost is the same either way - a scan pays for the
-     rows it reads, not for the ones it returns.
+     None of these areas has an index, so most of what this watches is what a
+     folded LIKE over every text column in the journal costs at decade scale.
+     But it is measured with a word the fixture's non-entry text actually
+     holds - the letters are addressed to a future self - rather than with the
+     Polish note word the three measurements above use, so the CASE that picks
+     the matched column, the ORDER BY over the union and the LIMIT are all on
+     the measured path instead of only the scan. That the word still matches
+     is asserted rather than assumed: a fixture that stops writing it would
+     otherwise quietly turn this into a scan with nothing to return.
 
      If this ever grows out of budget, the strategy to reach for is the one
      deliberately not taken here: search on submit rather than per keystroke.
@@ -266,10 +274,15 @@ export async function measureLongJournal(
   */
   await measure('search-everywhere', 'search, every area outside entries in one statement', async () => {
     const results = await journal.textSearch.search({
-      query: summary.commonWord,
+      query: NON_ENTRY_SEARCH_WORD,
       today,
       limit: SEARCH_PAGE
     });
+    if (results.total === 0) {
+      throw new Error(
+        `long-journal fixture holds no non-entry text matching "${NON_ENTRY_SEARCH_WORD}", so search-everywhere would measure a scan with nothing to return`
+      );
+    }
     return {
       result: results,
       detail: `${results.hits.length} shown of ${results.total} matches across ${SEARCH_AREA_KEYS.length} areas`

@@ -75,7 +75,11 @@ export function foldedSql(expr: string): string {
   for (const [replacement, letterforms] of FOLDS) {
     for (const letterform of letterforms) {
       for (const spelling of new Set([letterform, letterform.toUpperCase()])) {
-        if (spelling === replacement) continue;
+        // `lower()` has already turned every A-Z into its own lowercase, so a
+        // spelling that folds to the replacement by lowercasing alone - l, L -
+        // needs no REPLACE of its own, and one would be work per row for no
+        // effect.
+        if (spelling.toLowerCase() === replacement) continue;
         sql = `REPLACE(${sql}, '${spelling}', '${replacement}')`;
       }
     }

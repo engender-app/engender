@@ -457,10 +457,10 @@
 </div>
 
 <style>
-  /* When a hit was recorded, at the trailing edge of its row. The day rather
-     than the exact date: a search result is placed in time, and the record's
-     own screen is where the full date lives (the starred shelf's photo dates
-     read the same way). */
+  /* When a hit was recorded, at the trailing edge of its row. The month and
+     the year rather than the exact day: a search result wants placing in
+     time, and the record's own screen is where the full date lives (the
+     starred shelf's photo dates read the same way, in the same format). */
   .search-hit-date {
     font-size: var(--text-xs);
     color: var(--text-2);
