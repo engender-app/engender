@@ -53,7 +53,8 @@
     recordings: [],
     videos: [],
     bodyRegions: {},
-    starred: false
+    starred: false,
+    presentationId: null
   });
 
   /** Every section empty, so a day names only what it actually holds. */

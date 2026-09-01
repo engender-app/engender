@@ -22,7 +22,8 @@ const existingEntry = (): Entry => ({
   recordings: [{ id: 'r1', fileName: 'r1.webm' }],
   videos: [{ id: 'n1', fileName: 'n1.webm' }],
   bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
-  starred: false
+  starred: false,
+  presentationId: null
 });
 
 test('a fresh draft with no existing entry starts empty on the given day', () => {
