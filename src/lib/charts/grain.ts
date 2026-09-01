@@ -103,3 +103,49 @@ export function atGrain(
   const grain = chooseGrain(spanInDays, maxPositions);
   return { grain, points: bucketByGrain(points, grain) };
 }
+
+/** One position on a chart carrying two metrics, and what each of them read
+    there. `null` where a metric has nothing to say at that position. */
+export interface AlignedPoint {
+  x: number;
+  a: number | null;
+  b: number | null;
+}
+
+/** Two bucketed series read onto one set of positions, oldest first.
+
+    Two metrics have their own days and their own gaps, so bucketing them
+    separately leaves two arrays that agree about nothing. A chart places by
+    position rather than by date, so drawing those two as they come would
+    space one series' four buckets across the same width as the other's
+    forty and put a Tuesday above a March - which is precisely the reading a
+    person putting two metrics on one plot is trying to make.
+
+    So the positions are the union of both, and each series is read onto all
+    of them. Inside its own span a series is interpolated: the line already
+    ran across that stretch before the other metric introduced a position in
+    the middle of it, and this is a point on that line rather than a reading
+    invented from nothing. Outside its own span it is `null` and the line
+    simply is not there, because before a metric was first logged there is
+    no line to take a point from. */
+export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
+  const positions = [...new Set([...a, ...b].map((p) => p.x))].sort((p, q) => p - q);
+  return positions.map((x) => ({ x, a: readAt(a, x), b: readAt(b, x) }));
+}
+
+/** What a bucketed series reads at `x`: its own value where it has a bucket
+    there, the line between the two buckets around it where it does not, and
+    nothing at all outside the stretch it covers. */
+function readAt(points: GrainPoint[], x: number): number | null {
+  if (points.length === 0) return null;
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (x < first.x || x > last.x) return null;
+  for (let i = 0; i < points.length - 1; i++) {
+    const from = points[i];
+    const to = points[i + 1];
+    if (x === from.x) return from.y;
+    if (x < to.x) return from.y + ((to.y - from.y) * (x - from.x)) / (to.x - from.x);
+  }
+  return last.y;
+}
