@@ -39,6 +39,7 @@ export interface PersistedEntryDraft {
   procedureRecovery?: { procedureId: string; notes?: string } | null;
   effectMarker?: EntryEffectMarkerInput | null;
   cycleEvent?: EntryCycleEventInput | null;
+  presentationId?: string | null;
 }
 
 /** The subset of `draft` that is worth mirroring outside the component. */
@@ -61,7 +62,8 @@ export function serializeDraft(draft: EntryDraft): PersistedEntryDraft {
       ? { procedureId: draft.procedureRecovery.procedureId, notes: draft.procedureRecovery.notes }
       : null,
     effectMarker: draft.effectMarker ? { ...draft.effectMarker } : null,
-    cycleEvent: draft.cycleEvent ? { ...draft.cycleEvent } : null
+    cycleEvent: draft.cycleEvent ? { ...draft.cycleEvent } : null,
+    presentationId: draft.presentationId
   };
 }
 
@@ -96,4 +98,5 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.procedureRecovery = persisted.procedureRecovery ? { ...persisted.procedureRecovery } : null;
   draft.effectMarker = persisted.effectMarker ? { ...persisted.effectMarker } : null;
   draft.cycleEvent = persisted.cycleEvent ? { ...persisted.cycleEvent } : null;
+  draft.presentationId = persisted.presentationId ?? null;
 }

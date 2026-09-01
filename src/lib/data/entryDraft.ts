@@ -54,6 +54,10 @@ export interface EntryDraft {
   procedureRecovery: EntryProcedureRecoveryInput | null;
   effectMarker: EntryEffectMarkerInput | null;
   cycleEvent: EntryCycleEventInput | null;
+  /** The fluidity engine's chip (phase 5 deepening ticket 17, ADR-0048): a
+      domain id or null, never pre-filled for a new entry - only an existing
+      entry's own value seeds it, the same way `mood` does. */
+  presentationId: string | null;
   readonly isEmpty: boolean;
   readonly hasMoodOnlyContent: boolean;
   setMood(mood: number | null): void;
@@ -87,6 +91,7 @@ export interface EntryDraft {
   setProcedureRecovery(recovery: EntryProcedureRecoveryInput | null): void;
   setEffectMarker(marker: EntryEffectMarkerInput | null): void;
   setCycleEvent(cycleEvent: EntryCycleEventInput | null): void;
+  setPresentation(id: string | null): void;
   /** The exact upsertEntry payload for the draft as it stands, including the
       photo, recording and video-note attach and remove lists. */
   toUpsert(): EntryInput;
@@ -123,6 +128,7 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
     procedureRecovery: null,
     effectMarker: null,
     cycleEvent: null,
+    presentationId: existing ? existing.presentationId : null,
 
     get isEmpty() {
       return entryIsEmpty({
@@ -231,6 +237,10 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.cycleEvent = cycleEvent;
     },
 
+    setPresentation(id) {
+      this.presentationId = id;
+    },
+
     toUpsert() {
       const payload: EntryInput = {
         id: this.id,
@@ -248,7 +258,8 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
           .map((r) => r.bytes),
         removeRecordingIds: this.removedRecordingIds,
         attachVideos: this.videos.filter((v: EditorVideo) => v.kind === 'recorded').map((v) => v.bytes),
-        removeVideoIds: this.removedVideoIds
+        removeVideoIds: this.removedVideoIds,
+        presentationId: this.presentationId
       };
       if (this.tryoutFeltSense) payload.tryoutFeltSense = this.tryoutFeltSense;
       if (this.doseLog) payload.doseLog = this.doseLog;
