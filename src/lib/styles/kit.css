@@ -1496,6 +1496,12 @@ a.kit-entry:active {
 .kit-area-plot {
   display: block;
   overflow: visible;
+  /* The plot takes no pointer events of its own. Everything drawn in here is
+     decoration - the drag that scrubs is handled by the element around it, and
+     events pass straight through - which leaves the annotation layer's own
+     targets below as the only things in the SVG a pointer can find. Without
+     this the area fill, being painted after them, swallows every one. */
+  pointer-events: none;
 }
 
 .kit-area-fill {
@@ -1620,6 +1626,55 @@ a.kit-entry:active {
   stroke: color-mix(in oklab, var(--text) 52%, transparent);
   stroke-width: 1.5;
   stroke-linecap: round;
+}
+
+/* The pointer target around a mark. Invisible, and only where hovering is
+   real: a finger has no hover, and on a touch screen these would swallow the
+   drag that scrubs the chart, which is how the same names are read there. */
+.kit-annotation-hit {
+  fill: transparent;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kit-annotation-hit {
+    pointer-events: auto;
+    cursor: default;
+  }
+
+  /* The mark answers before the label arrives, so the pointer knows it has
+     found something in the frame before it can read what. */
+  .kit-annotation-mark.is-hovered,
+  .kit-annotation-edge.is-hovered {
+    stroke: color-mix(in oklab, var(--text) 80%, transparent);
+  }
+}
+
+/* What one mark is, beside the mark. The scrub's pill answers "what is at
+   this position"; this answers "what is this", so it stands at the mark
+   rather than in the corner, and it is the only text this layer draws. */
+.kit-area-annotation-label {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 168px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.kit-area-annotation-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Names for the marks, once, under the plot. Wraps to two lines and stops:

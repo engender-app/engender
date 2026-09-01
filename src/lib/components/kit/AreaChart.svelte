@@ -37,7 +37,7 @@
      tier 2's crossfade: a change inside a screen has no journey for a fade
      to stand in for. */
   import { untrack } from 'svelte';
-  import { fade } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { areaPath, lerpSamples, resample, type Point } from '$lib/charts/geometry';
   import {
@@ -46,7 +46,7 @@
     placeAnnotations,
     type ChartAnnotation
   } from '$lib/charts/annotations';
-  import ChartAnnotations from './ChartAnnotations.svelte';
+  import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
   import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
@@ -94,6 +94,9 @@
   /* Room for the ring on the latest reading and for the stroke at the top
      and bottom of the scale. */
   const PAD = 7;
+  /* How far a hover label stands off the mark it names. Enough that the two
+     read as a label and a mark rather than as one taller mark. */
+  const LABEL_GAP = 6;
 
   let target = $derived(points.map((p) => p.y));
   let shown = $state<number[]>([]);
@@ -181,8 +184,19 @@
      placement's own, rather than a second copy of it here. */
   let shownAnnotations = $derived(points.length >= MIN_PLOT_POSITIONS ? annotations : []);
   let placed = $derived(placeAnnotations(shownAnnotations, points, Math.max(plotWidth - PAD * 2, 1)));
+  /* What the pointer is on, and what to write beside it. A hover names one
+     mark where the scrub names a whole bucket, which is the difference
+     between pointing at a thing and reading a position - so this is its own
+     label rather than a second way of filling the readout. */
+  let hovered = $state<HoveredAnnotations | null>(null);
+
+  /* The readout's own annotations go quiet while a mark is hovered. A mouse
+     moving across the plot scrubs it as well as hovering, so both would
+     otherwise write the same names twice on one card - and the two answer
+     different questions anyway: the pill says what is at this position, the
+     label says what this mark is. The value stays either way. */
   let atAnnotations = $derived(
-    annotationReadout(scrub === null ? [] : annotationsAtPoint(shownAnnotations, points, scrub))
+    annotationReadout(scrub === null || hovered ? [] : annotationsAtPoint(shownAnnotations, points, scrub))
   );
   let caption = $derived(annotationCaption(shownAnnotations));
   /* Named here rather than called in the markup, for the reason the scrub
@@ -190,6 +204,16 @@
      regex, and a message call carrying an object argument is a nested brace
      it cannot see past - so the key itself reads as inline copy. */
   let restLabel = $derived(m.chart_annotations_and_more({ count: String(atAnnotations.rest) }));
+
+  let hoveredLabels = $derived(annotationReadout(hovered?.annotations ?? []));
+  let hoveredRest = $derived(m.chart_annotations_and_more({ count: String(hoveredLabels.rest) }));
+  /* Centred on the mark, then held inside the plot: a mark near either end
+     would otherwise carry its label off the card. Half the label's own
+     maximum, which is the width the stylesheet caps it at. */
+  const LABEL_HALF = 84;
+  let hoveredLeft = $derived(
+    Math.min(Math.max((hovered?.x ?? 0) + PAD, LABEL_HALF), Math.max(plotWidth - LABEL_HALF, LABEL_HALF))
+  );
 
   /* Named rather than written inline. An arrow in an attribute is also an
      arrow to anything reading this markup with a regex, and
@@ -249,7 +273,7 @@
         <g transform="translate({PAD}, {PAD})">
           <!-- Under the fill and the line, never over them: context sits
                behind the readings it is context for. -->
-          <ChartAnnotations {placed} height={HEIGHT - PAD * 2} />
+          <ChartAnnotations {placed} height={HEIGHT - PAD * 2} onHover={(next) => (hovered = next)} />
           <path class="kit-area-fill" d={path.fill} />
           <path class="kit-area-line" d={path.line} />
           {#if lastMovingPath}
@@ -289,6 +313,24 @@
           <circle class="kit-area-ring" cx={path.last.x} cy={path.last.y} r="5" />
         </g>
       </svg>
+
+      {#if hovered}
+        <!-- Beside the mark rather than in the corner: a hover is somebody
+             pointing at one thing, and an answer that appeared somewhere else
+             on the card would not be an answer to that. Rises the short way
+             it is written, which is toward the mark it belongs to. -->
+        <div
+          class="kit-area-annotation-label"
+          data-annotation-label
+          style:left="{hoveredLeft}px"
+          style:top={hovered.above ? 'auto' : `${PAD + hovered.y + LABEL_GAP}px`}
+          style:bottom={hovered.above ? `${HEIGHT - PAD - hovered.y + LABEL_GAP}px` : 'auto'}
+          in:fly={{ y: hovered.above ? 4 : -4, duration: motionDuration('--dur-fast'), easing: EASE_OUT }}
+        >
+          {#each hoveredLabels.labels as label (label)}<span>{label}</span>{/each}
+          {#if hoveredLabels.rest}<span>{hoveredRest}</span>{/if}
+        </div>
+      {/if}
 
       {#if at}
         <output class="kit-area-readout" data-chart-readout>
