@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DayAverage } from './journal/stats';
 import { MOOD_RANGE } from './metricRange';
-import { metricStandings, moodDistribution, seriesAverage } from './statsCharts';
+import { MIN_SPREAD_MARK, metricStandings, moodDistribution, seriesAverage, spreadMark } from './statsCharts';
 
 const days = (...values: number[]): DayAverage[] =>
   values.map((value, i) => ({ day: 20100 + i, value, count: 1 }));
@@ -61,5 +61,56 @@ describe('how many days landed on each mood', () => {
 
   it('holds a value from outside the scale at the end of the ramp', () => {
     expect(moodDistribution(days(0, 9)).map((s) => s.count)).toEqual([1, 0, 0, 0, 1]);
+  });
+});
+
+describe('the mark a day covering ground gets on the calendar', () => {
+  const FEMININITY = { min: 0, max: 100 };
+
+  it('marks nothing on a day the read said nothing about', () => {
+    expect(spreadMark(undefined, MOOD_RANGE)).toBeNull();
+  });
+
+  it('marks nothing on a day that only ever said one thing', () => {
+    /* One entry, or six entries all at the same value. Neither covered any
+       ground, and a mark of no width would be a smudge claiming otherwise. */
+    expect(spreadMark({ low: 4, high: 4 }, MOOD_RANGE)).toBeNull();
+  });
+
+  it('runs from the lowest to the highest, inside the metric\'s own range', () => {
+    const mark = spreadMark({ low: 2, high: 5 }, MOOD_RANGE);
+    expect(mark?.start).toBeCloseTo(0.25);
+    expect(mark?.width).toBeCloseTo(0.75);
+  });
+
+  it('reads the same way on a range that is not mood\'s', () => {
+    /* The acceptance criterion behind this: a 1-to-5 metric and a 0-to-100
+       one have to produce a mark a person can compare between two months
+       without knowing which scale is showing. */
+    const mark = spreadMark({ low: 20, high: 85 }, FEMININITY);
+    expect(mark?.start).toBeCloseTo(0.2);
+    expect(mark?.width).toBeCloseTo(0.65);
+  });
+
+  it('keeps a difference too small to draw visible, centred on where it was', () => {
+    // Two points apart on a 0-to-100 scale is under a pixel of a calendar
+    // cell. The day did cover ground, so the mark says so at the floor.
+    const mark = spreadMark({ low: 50, high: 52 }, FEMININITY);
+    expect(mark?.width).toBeCloseTo(MIN_SPREAD_MARK);
+    expect(mark?.start).toBeCloseTo(0.51 - MIN_SPREAD_MARK / 2);
+  });
+
+  it('keeps that floor inside the track rather than hanging off its end', () => {
+    const top = spreadMark({ low: 98, high: 100 }, FEMININITY);
+    expect(top?.start).toBeCloseTo(1 - MIN_SPREAD_MARK);
+    const bottom = spreadMark({ low: 0, high: 2 }, FEMININITY);
+    expect(bottom?.start).toBeCloseTo(0);
+  });
+
+  it('holds a value from outside the range to the range, the way the fill does', () => {
+    // An archive from a build whose dimension ran wider (metricRange.ts).
+    const mark = spreadMark({ low: -20, high: 140 }, FEMININITY);
+    expect(mark?.start).toBeCloseTo(0);
+    expect(mark?.width).toBeCloseTo(1);
   });
 });

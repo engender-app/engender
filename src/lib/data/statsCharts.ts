@@ -8,11 +8,16 @@
    read of its own. Kept here, away from the markup, because the awkward part
    of both is a unit problem and a unit problem is worth a test.
 
+   The calendar's spread mark (phase 6 unprompted ticket 11) is here for the
+   same reason, though the calendar is not the stats screen: where a day's
+   two ends land inside a metric's own range is the same unit problem the
+   bars have, and it is the half of that mark a test can hold.
+
    Nothing here names anything and nothing here formats anything: a metric's
    own wording comes from the vocabulary and a value is written by the
    screen in the metric's native units (ADR-0012). */
 
-import type { DayAverage } from './journal/stats';
+import type { DayAverage, DaySpread } from './journal/stats';
 import { MOOD_RANGE, normalize, type MetricRange } from './metricRange';
 
 /** The average of a day series, or null where nothing was logged. */
@@ -90,4 +95,43 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
     counts.set(step, (counts.get(step) ?? 0) + 1);
   }
   return [...counts].map(([step, count]) => ({ step, count }));
+}
+
+/** The narrowest mark the calendar draws, as a fraction of the metric's
+    range. A dimension running 0 to 100 can hold two entries two points
+    apart, which is well under a pixel of a 46px cell: the day did cover
+    ground and a mark thinner than the eye can see would say it did not. */
+export const MIN_SPREAD_MARK = 0.12;
+
+export interface SpreadMark {
+  /** Where the mark begins inside the metric's own range, 0 to 1. */
+  start: number;
+  /** How much of the range it covers, 0 to 1. */
+  width: number;
+}
+
+/** Where a day's spread sits on the track under its calendar cell, or null
+    for a day with no mark to draw (CONTEXT: Spread).
+
+    Normalized, for metricStandings' own reason and ADR-0012's: a mood of 2
+    to 5 and a dimension of 20 to 85 have to be marks a person can compare
+    across a month without being told which scale is showing. The numbers
+    themselves stay native and are read out rather than drawn.
+
+    A day with one entry, and a day whose entries all landed on the same
+    value, get no mark at all. Both are days that covered no ground, and the
+    honest mark for that is none - not a mark of no width, which at this
+    size is a smudge that reads as a very narrow range.
+
+    Descriptive only: a mark says the day ran between these two points, never
+    which end it started at. */
+export function spreadMark(spread: Pick<DaySpread, 'low' | 'high'> | undefined, range: MetricRange): SpreadMark | null {
+  if (!spread || spread.high <= spread.low) return null;
+  const low = normalize(spread.low, range);
+  const high = normalize(spread.high, range);
+  const width = Math.min(1, Math.max(high - low, MIN_SPREAD_MARK));
+  // Widened around its own middle and then pushed back inside the track, so
+  // a floor applied at either end of the scale does not hang off it.
+  const start = Math.min(1 - width, Math.max(0, (low + high) / 2 - width / 2));
+  return { start, width };
 }
