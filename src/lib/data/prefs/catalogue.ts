@@ -174,6 +174,52 @@ export interface PreferenceValues {
       day (phase 4 features ticket 04). Same shape as
       `wrappedNotificationsEnabled`, and for the same reasons. */
   onThisDayNotificationsEnabled: boolean;
+  /** Whether reminder alarms are scheduled at all (phase 6 ticket 04). The
+      kind-level switch the notifications view draws, one level above each
+      Reminder row's own `enabled`: off means no reminder reaches the phone,
+      while the rows themselves stay exactly as the person wrote them. Off is
+      final rather than a snooze - nothing turns it back on.
+
+      Device-local, unlike the reminder rows it gates, which travel in an
+      archive: this is a yes/no about whether this installation may fire. */
+  remindersEnabled: boolean;
+  /** Whether a wear session's own elapsed prompt is scheduled (phase 6
+      ticket 04). A wear prompt is an ordinary Reminder row on a `wear:`
+      auto-source (CONTEXT.md), so this gates that subset rather than a
+      producer of its own, and independently of `remindersEnabled`: wanting
+      medication reminders is not wanting to be told a binder has been on for
+      eight hours. Device-local for the same reason `remindersEnabled` is. */
+  wearElapsedEnabled: boolean;
+  /** Whether a scheduled backup that failed says so on the phone (phase 6
+      ticket 04). The notice has fired since phase 4 with no settings home at
+      all; this is that home. On by default, unlike the two retrospective
+      notifications: a backup that saved nothing is the one thing in here
+      that is worth interrupting somebody for, and it is the half of the
+      admission rule that says "something failed". */
+  exportFailureNoticeEnabled: boolean;
+  /** An export failure notice that came due inside quiet hours and is
+      waiting for them to end (phase 6 ticket 04). Held, not dropped - the
+      auto-export scheduler's next check outside the window posts it and
+      clears this. The three other producers need no such flag: reminders
+      shift their own alarm, and the two retrospective checks re-run every
+      fifteen minutes anyway, so skipping one is already a hold. */
+  heldExportFailureNotice: boolean;
+  /** Whether quiet hours hold notifications at all (phase 6 ticket 04). One
+      cross-class rule for every producer rather than a field per producer,
+      which is what four schedulers each picking their own time amounted to
+      before. Off by default: a rule about when the phone may wake somebody
+      is theirs to set, and a window nobody asked for is its own surprise. */
+  quietHoursEnabled: boolean;
+  /** When quiet hours begin, as wall-clock `HH:MM` (phase 6 ticket 04).
+      Stored as a time rather than an instant for the same reason a Reminder
+      is (CONTEXT.md): 22:00 means 22:00 after a flight, not the instant that
+      was 22:00 at home. */
+  quietHoursStart: string;
+  /** When quiet hours end, as wall-clock `HH:MM`. A window may wrap past
+      midnight, which the default one does, and start equal to end is an
+      empty window rather than a whole silent day - quietHours.ts owns that
+      rule. */
+  quietHoursEnd: string;
   /** The wrapped period (`cadence:start`) last notified about, so the
       scheduler does not repeat itself on every check while the same period
       is still fresh (phase 4 features ticket 04). Device-local: it
@@ -312,6 +358,13 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   onThisDayEnabled: true,
   wrappedNotificationsEnabled: false,
   onThisDayNotificationsEnabled: false,
+  remindersEnabled: true,
+  wearElapsedEnabled: true,
+  exportFailureNoticeEnabled: true,
+  heldExportFailureNotice: false,
+  quietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
   lastWrappedNotifiedPeriodKey: null,
   lastOnThisDayNotifiedEpochDay: null,
   preferredLabUnits: {},
@@ -389,6 +442,13 @@ export const DEVICE_LOCAL_KEYS = [
   'onThisDayEnabled',
   'wrappedNotificationsEnabled',
   'onThisDayNotificationsEnabled',
+  'remindersEnabled',
+  'wearElapsedEnabled',
+  'exportFailureNoticeEnabled',
+  'heldExportFailureNotice',
+  'quietHoursEnabled',
+  'quietHoursStart',
+  'quietHoursEnd',
   'lastWrappedNotifiedPeriodKey',
   'lastOnThisDayNotifiedEpochDay',
   'autoExportEnabled',

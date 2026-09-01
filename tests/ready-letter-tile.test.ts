@@ -20,7 +20,7 @@ import {
   unreadUnlockedLetters
 } from '../src/lib/data/letterStatus.ts';
 import type { Letter } from '../src/lib/data/types.ts';
-import { LIVE_TILE_ROWS } from '../src/routes/settings/live-tiles/rows.ts';
+import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -148,9 +148,9 @@ describe('Home ready-letter live tile rendering and behavior', () => {
 
 describe('Settings and letter route integration', () => {
   it('registers ready-letter in live-tiles settings registry', () => {
-    const row = LIVE_TILE_ROWS.find((r) => r.key === 'ready-letter');
+    const row = UNPROMPTED_ROWS.find((r) => r.key === 'ready-letter');
     expect(row).toBeDefined();
-    expect(row?.prefKey).toBe('readyLetterEnabled');
+    expect(row?.surface?.prefKey).toBe('readyLetterEnabled');
     expect(row?.title()).toBe(enMessages.tile_letter_title);
   });
 

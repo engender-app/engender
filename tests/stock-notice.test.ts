@@ -19,7 +19,7 @@ import {
   snoozeStockNotice
 } from '../src/lib/data/stockProjection.ts';
 import type { MedicationStock } from '../src/lib/data/types.ts';
-import { LIVE_TILE_ROWS } from '../src/routes/settings/live-tiles/rows.ts';
+import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -201,9 +201,9 @@ describe('Home stock notice rendering and interaction', () => {
 
 describe('Settings live-tiles registry integration', () => {
   it('registers stock-notice in live-tiles registry', () => {
-    const row = LIVE_TILE_ROWS.find((r) => r.key === 'stock-notice');
+    const row = UNPROMPTED_ROWS.find((r) => r.key === 'stock-notice');
     expect(row).toBeDefined();
-    expect(row?.prefKey).toBe('stockNoticeEnabled');
+    expect(row?.surface?.prefKey).toBe('stockNoticeEnabled');
     expect(row?.title()).toBe(enMessages.tile_stock_title);
   });
 });
