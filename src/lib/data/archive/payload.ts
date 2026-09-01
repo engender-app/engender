@@ -643,6 +643,7 @@ export interface ArchiveJournal {
   sideEffects: ArchiveSideEffect[];
   cycleEvents: ArchiveCycleEvent[];
   journalingPauses: ArchiveJournalingPause[];
+  eras: ArchiveEra[];
   personalEffects: ArchivePersonalEffect[];
   effectCategories: ArchiveEffectCategory[];
   personalEffectTypes: ArchivePersonalEffectType[];
@@ -667,6 +668,20 @@ export interface ArchiveJournal {
   wearSessions: ArchiveWearSession[];
   voiceBenchmarks: ArchiveVoiceBenchmark[];
   presentations: ArchivePresentation[];
+}
+
+/** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,
+    CONTEXT: "Era"). Both bounds travel as null when they are open, which is
+    the whole of what an open bound is: the clamp a surface applies to read
+    it as two concrete dates is computed against the importing journal's own
+    data and is never written down (ADR-0010), so an archive restored onto a
+    device with a different first entry resolves "before I knew" against that
+    device rather than against the one it was exported from. */
+export interface ArchiveEra {
+  id: string;
+  name: string;
+  startEpochDay: number | null;
+  endEpochDay: number | null;
 }
 
 /** A named presentation (phase 5 deepening ticket 17, ADR-0048, CONTEXT:

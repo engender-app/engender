@@ -308,6 +308,37 @@ const SECTIONS = [
     orderBy: 'start_epoch_day, id',
     columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
   }),
+  /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
+     no children, no built-ins - nothing ships seeded, so every row is the
+     person's own and `uuid` alone tells two devices' rows apart. No `after`:
+     nothing resolves a rowid against an era, and the resurfacing consent
+     layer that will reference one holds its uuid as plain text.
+
+     The read's order puts the era with no start first, which is the order
+     the screen shows them in and the order they read as a timeline.
+
+     A merge can leave two eras overlapping, and does so knowingly. The two
+     invariants are enforced where an era is authored (eras.ts), and a merge
+     writes rows this device never saw being authored: two devices that each
+     named "before I knew" mint two uuids for it, so neither matches the
+     other and both land. The alternative is dropping an incoming era that
+     collides, which loses a name the person gave a stretch of their life
+     with nothing on screen to say so. An overlap is visible on
+     /settings/eras and editable there, and every read stays total meanwhile
+     - `eraForDay` answers with the first era covering the day, so a day
+     still resolves to at most one. */
+  flat({
+    name: 'eras',
+    table: 'era',
+    identity: 'uuid',
+    orderBy: 'start_epoch_day IS NULL DESC, start_epoch_day, id',
+    columns: {
+      uuid: 'id',
+      name: 'name',
+      start_epoch_day: 'startEpochDay',
+      end_epoch_day: 'endEpochDay'
+    }
+  }),
   section({
     name: 'effectCategories',
     /* The one section with nothing to discard, and not by omission: the
