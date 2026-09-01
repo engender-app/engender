@@ -97,6 +97,16 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
   return [...counts].map(([step, count]) => ({ step, count }));
 }
 
+/** Whether a day ran between two different values at all (CONTEXT: Spread).
+
+    The one rule behind "a day with one entry shows no spread" and "a day
+    whose entries all said the same thing shows no spread", so that the mark
+    on the calendar and the words on /stats cannot end up disagreeing about
+    which days covered ground. */
+export function coveredGround(spread: Pick<DaySpread, 'low' | 'high'> | undefined): spread is DaySpread {
+  return spread !== undefined && spread.high > spread.low;
+}
+
 /** The narrowest mark the calendar draws, as a fraction of the metric's
     range. A dimension running 0 to 100 can hold two entries two points
     apart, which is well under a pixel of a 46px cell: the day did cover
@@ -126,7 +136,7 @@ export interface SpreadMark {
     Descriptive only: a mark says the day ran between these two points, never
     which end it started at. */
 export function spreadMark(spread: Pick<DaySpread, 'low' | 'high'> | undefined, range: MetricRange): SpreadMark | null {
-  if (!spread || spread.high <= spread.low) return null;
+  if (!coveredGround(spread)) return null;
   const low = normalize(spread.low, range);
   const high = normalize(spread.high, range);
   const width = Math.min(1, Math.max(high - low, MIN_SPREAD_MARK));

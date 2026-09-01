@@ -142,12 +142,51 @@ describe('the heat map', () => {
     }
   });
 
+  it('marks the day\'s two ends beside the average rather than instead of it', () => {
+    /* Phase 6 unprompted ticket 11. The fill stays the day average; the
+       spread is a second read drawn along the cell's foot. A cell sliced
+       into one band per entry is what this is not - at 46px that is a few
+       pixels of nothing, and the claim is that the day covered ground, not
+       that here are its entries in order. */
+    expect(heatMap).toContain('j.stats.daySpread(');
+    expect(heatMap).toContain('spreadMark(');
+    expect(markupOf(heatMap)).toContain('data-hm-cell-spread');
+    // Still the average that fills the cell.
+    expect(heatMap).toContain('heatLevel(valueByDay.get(epochDay) ?? null, range)');
+  });
+
+  it('draws the mark in the cell\'s own ink rather than in a colour of its own', () => {
+    /* The ink is computed per heat step and held to the contrast floor by
+       tests/kit-roles.test.ts, so a mark inheriting it is legible on every
+       fill of every palette by the same guarantee the date is. A colour
+       written here would be a second table to tune per palette and per
+       theme, which is exactly what roles.ts exists to have stopped. */
+    const style = heatMap.slice(heatMap.indexOf('.cal-spread'), heatMap.indexOf('.cal-legend {'));
+    expect(style).toContain('currentColor');
+    expect(style).not.toMatch(/var\(--(heat|on-heat|accent|text)/);
+  });
+
+  it('reads the two ends out in native units, never the normalized ones', () => {
+    // ADR-0012: the geometry is normalized and the words are not. Both come
+    // from one place so the calendar and /stats cannot word a day
+    // differently.
+    expect(heatMap).toContain('spreadNote(');
+    expect(read('src/routes/stats/+page.svelte')).toContain('spreadNote(');
+    expect(read('src/lib/data/wrappedDisplay.ts')).toMatch(/spreadNote[\s\S]*?nativeValue\(metric/);
+  });
+
   it('says nothing about a day until it has been told', () => {
     /* An empty result and a month with nothing logged are the same shape, so
        before the read lands every cell would announce "no entries" for a day
        that has six. */
     expect(heatMap).toMatch(/aria-busy=\{loading\}/);
     expect(heatMap).toMatch(/label: loading/);
+    /* The mark carries the same rule and needs it stated separately: an
+       unloaded month and a month of single-entry days both come back with
+       no spread rows, so an unguarded mark would tell every cell it covered
+       no ground before the answer arrived. */
+    expect(heatMap).toMatch(/loading \? null : spreadMark\(/);
+    expect(heatMap).toContain('spreads.loading');
   });
 });
 

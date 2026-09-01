@@ -37,7 +37,7 @@
   import { isPausedOn } from '$lib/data/journalingPause';
   import { atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
-  import { nativeValue, signedValue, tagInsightRows } from '$lib/data/wrappedDisplay';
+  import { nativeValue, signedValue, spreadNote, tagInsightRows } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -205,19 +205,38 @@
     )
   );
 
+  /* Where the picked metric's days ran between, for the sheet below (phase
+     6 unprompted ticket 11). One read for the shown metric rather than one
+     per metric the way the averages are read: the sheet is the only place on
+     this screen that prints a single day, and the bars, the distribution and
+     the insights all speak for a period. */
+  let spreadsQuery = liveList((j) => j.stats.daySpread(shown.key, from, today));
+  let spreadByDay = $derived(new Map(spreadsQuery.rows.map((point) => [point.day, point])));
+
   /* The values sheet, in the same bars as everything else on the screen. The
      bar's length is where the day sits in the metric's own range, which is
-     what makes a quiet week visible as a run of short bars. */
+     what makes a quiet week visible as a run of short bars.
+
+     A day that covered ground says so beside its average, in the same words
+     the calendar reads out over that day's cell: the two surfaces draw one
+     day from one pair of reads, and a person who checks one against the
+     other has to find the same answer. */
   let valueRows = $derived<BarRow[]>(
     seriesFor(shown.key)
       .toReversed()
-      .map((point) => ({
-        key: String(point.day),
-        name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
-        note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
-        value: fmtNativeValue(shown.key, point.value),
-        amount: (point.value - shown.min) / Math.max(shown.max - shown.min, 1)
-      }))
+      .map((point) => {
+        const parts = [
+          point.count > 1 ? m.avg_of({ count: String(point.count) }) : null,
+          spreadNote(shown.key, spreadByDay.get(point.day))
+        ].filter((part) => part !== null);
+        return {
+          key: String(point.day),
+          name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
+          note: parts.length ? parts.join(' · ') : undefined,
+          value: fmtNativeValue(shown.key, point.value),
+          amount: (point.value - shown.min) / Math.max(shown.max - shown.min, 1)
+        };
+      })
   );
 
   let insightEntriesQuery = liveList((j) => {
