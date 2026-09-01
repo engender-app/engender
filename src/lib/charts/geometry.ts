@@ -13,6 +13,22 @@ export interface Point {
   y: number;
 }
 
+/** One reading at one position, or nothing at all.
+
+    A chart drawing one series never has a null: every position it holds
+    came from a bucket that carried a value. A chart sharing its positions
+    with a second metric does, wherever one of the two was not being logged
+    yet (charts/grain.ts's alignSeries). */
+export type Sample = number | null;
+
+/** A position on a chart and what was read there. The area chart's own
+    input: `Point[]` is one of these, and a series sharing its positions
+    with a second metric is the other. */
+export interface SeriesPoint {
+  x: number;
+  y: Sample;
+}
+
 /** Reads `points` onto `n` evenly spaced positions across its own x range.
 
     This is what makes a re-tween possible at all: a week and a year have
@@ -52,9 +68,44 @@ export function resample(points: Point[], n: number): number[] {
     across it. Only a caller that failed to resample onto one grid can
     produce one, and the shape that would come out belongs to neither
     reading. */
-export function lerpSamples(from: number[], to: number[], t: number): number[] {
+export function lerpSamples(from: Sample[], to: Sample[], t: number): Sample[] {
   if (from.length !== to.length) return to;
-  return to.map((b, i) => from[i] + (b - from[i]) * t);
+  /* A position either dataset has no reading at cuts to the incoming one.
+     There is no shape to travel between when one end of the journey is
+     nothing, and mixing a reading with an absence would draw a line down to
+     a value nobody logged. */
+  return to.map((b, i) => {
+    const a = from[i];
+    return a === null || b === null ? b : a + (b - a) * t;
+  });
+}
+
+/** A series' readings with its interior gaps filled in, for drawing only.
+
+    A position between two of a series' own readings is one the line already
+    crossed before anything put a position there - two metrics on one plot
+    give each other positions the other never logged (charts/grain's
+    alignSeries), and breaking the line at each of them would draw a sparse
+    metric as a row of unconnected marks nobody can see.
+
+    So the drawn shape bridges those, and the readings do not: what comes out
+    here is handed to areaPath and to nothing else, and the number under a
+    finger still comes from what the person actually logged. Outside the
+    series' own span nothing is filled, because before its first reading
+    there is no line to take a point from. */
+export function bridgeGaps(values: Sample[]): Sample[] {
+  const out = [...values];
+  let last = -1;
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] === null) continue;
+    if (last >= 0 && i - last > 1) {
+      const from = out[last] as number;
+      const step = ((out[i] as number) - from) / (i - last);
+      for (let j = last + 1; j < i; j++) out[j] = from + step * (j - last);
+    }
+    last = i;
+  }
+  return out;
 }
 
 export interface AreaBox {
@@ -68,13 +119,18 @@ export interface AreaPath {
   line: string;
   /** The same line, closed down to the baseline. */
   fill: string;
-  /** Where each value sits, for the marks a finger scrolls between. */
-  dots: { x: number; y: number }[];
-  /** The latest position, for the ring the area chart puts on it. */
+  /** Where each value sits, for the marks a finger scrolls between. `null`
+      at a position this series has no reading at - the slot is kept rather
+      than dropped, because its index is how the scrub finds a position and
+      two series on one plot have to agree about which index is where. */
+  dots: ({ x: number; y: number } | null)[];
+  /** The latest reading, for the ring the area chart puts on it. The latest
+      one there is, which on a series that stops early is not the last
+      position on the plot. */
   last: { x: number; y: number } | null;
 }
 
-export function areaPath(values: number[], box: AreaBox, smooth: boolean = true): AreaPath {
+export function areaPath(values: Sample[], box: AreaBox, smooth: boolean = true): AreaPath {
   if (values.length === 0) return { line: '', fill: '', dots: [], last: null };
 
   const span = box.max - box.min;
@@ -87,7 +143,7 @@ export function areaPath(values: number[], box: AreaBox, smooth: boolean = true)
     return box.height - ((clamped - box.min) / span) * box.height;
   };
 
-  const dots = values.map((v, i) => ({ x: round(xs(i)), y: round(ys(v)) }));
+  const dots = values.map((v, i) => (v === null ? null : { x: round(xs(i)), y: round(ys(v)) }));
 
   /* Monotone rather than straight segments or a plain spline: it rounds the
      corners a reading turns without inventing a peak between two days that
@@ -103,22 +159,30 @@ export function areaPath(values: number[], box: AreaBox, smooth: boolean = true)
      difference between the two curves is a fraction of the stroke width
      while the line is moving, and the smoothing arrives when it stops. */
   const curve = smooth ? curveMonotoneX : curveLinear;
-  const line = d3line<Point>()
+  /* `defined` is what keeps a gap a gap: a stretch this metric was not
+     logged over comes out as a break in the path rather than as a segment
+     drawn straight across it. On a single series nothing is ever undefined
+     and the path is what it always was. */
+  const defined = (p: { x: number; y: number | null }): p is Point => p.y !== null;
+  const line = d3line<{ x: number; y: number | null }>()
+    .defined(defined)
     .x((p) => p.x)
-    .y((p) => p.y)
+    .y((p) => p.y as number)
     .curve(curve);
-  const fill = d3area<Point>()
+  const fill = d3area<{ x: number; y: number | null }>()
+    .defined(defined)
     .x((p) => p.x)
     .y0(box.height)
-    .y1((p) => p.y)
+    .y1((p) => p.y as number)
     .curve(curve);
-  const shape = dots.map((d) => ({ x: d.x, y: d.y }));
+  const shape = dots.map((d, i) => ({ x: round(xs(i)), y: d ? d.y : null }));
+  const read = dots.filter((d) => d !== null);
 
   return {
     line: line(shape) ?? '',
     fill: fill(shape) ?? '',
     dots,
-    last: dots[dots.length - 1]
+    last: read[read.length - 1] ?? null
   };
 }
 

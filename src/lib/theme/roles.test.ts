@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { HOME_AREA_ROLE, roleAt } from './roles.ts';
 
 describe('roleAt', () => {
-  const roles = ['a', 'b', 'c'].map((stripe) => ({ stripe, ink: stripe, mark: stripe, heat: [] }));
+  const roles = ['a', 'b', 'c'].map((stripe) => ({
+    stripe,
+    ink: stripe,
+    mark: stripe,
+    paired: stripe,
+    heat: []
+  }));
 
   it('wraps, so a screen with more areas than the flag has colours still gets one', () => {
     /* trans yields three roles after de-duplication and Home has four

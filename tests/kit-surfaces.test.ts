@@ -220,12 +220,34 @@ describe('the charts', () => {
        the marks' own selectors: the pressable bar row's press fill, and the
        scrub readout's pill. Neither introduces a hue - the wash is mixed
        from the same stripe as the bar above it, and the pill is one of the
-       app's own two surfaces. */
+       app's own two surfaces.
+
+       --role-2 and --role-2-draw are the one place a second hue is allowed,
+       and only on the area chart's second series (phase 6 ticket 12). Two
+       metrics on one plot are two readings of equal standing, and a single
+       hue cannot say which line is which. It is the same kind of colour as
+       the first - another stripe of the same flag, resolved through roleAt()
+       by the screen and undiluted here - so the card still wears the flag
+       rather than a second palette. --accent-2 is its fallback for a card
+       handed no role at all, which is what the app's other second line has
+       always been drawn in. Colour is not the only separation either way:
+       the second line is dashed. */
     const allowed =
       /^(--role-ink|--role-mark|--role-draw|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
-    for (const [, token] of markCss.matchAll(/var\((--[a-z0-9-]+)/g)) {
-      if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
-      expect(token, `${token} in the chart rules`).toMatch(allowed);
+    /* The second hue, admitted for the area chart's second series and for
+       nothing else. Read per rule rather than over the whole of markCss:
+       allowing it globally would let the next bar set or distribution take a
+       second colour without anything here noticing, which is the opposite of
+       what a named exception is for. */
+    const secondSeries = /^(--role-2|--role-2-draw|--accent-2)$/;
+    for (const rule of markCss.split('}')) {
+      const prelude = rule.split('{')[0] ?? '';
+      const isAreaChart = /\.kit-area/.test(prelude);
+      for (const [, token] of rule.matchAll(/var\((--[a-z0-9-]+)/g)) {
+        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
+        if (isAreaChart && secondSeries.test(token)) continue;
+        expect(token, `${token} in the chart rules`).toMatch(allowed);
+      }
     }
     // And no raw colour anywhere in them.
     expect(markCss).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
@@ -236,10 +258,29 @@ describe('the charts', () => {
     expect(markCss).toMatch(/\.kit-dist-mark/);
   });
 
-  it('draws no gridline, no legend and no axis', () => {
-    for (const furniture of ['gridline', 'legend', 'axis', 'tick']) {
+  it('draws no gridline, no axis and no tick', () => {
+    for (const furniture of ['gridline', 'axis', 'tick']) {
       expect(kitNoComments, furniture).not.toMatch(new RegExp(`\\.kit-[a-z-]*${furniture}`));
     }
+  });
+
+  /* The one legend the kit draws, named here rather than left to be found -
+     the same way DIRECTION.md names the wear trend's, which is the app's
+     other one and lives outside the kit.
+
+     The rule refusing legends is about a single-series chart whose marks
+     carry their own values: there, a legend names the one thing the heading
+     already named. The area chart carrying a second metric is not that. Two
+     ranges against one axis, no value gutter, and two unnamed lines are not
+     a chart (phase 6 ticket 12).
+
+     What this does not license is a legend on any other chart in the kit,
+     which is what the assertion below is for: the next one that wants one is
+     arguing against this paragraph rather than extending it. */
+  it('draws a legend only for the area chart carrying a second metric', () => {
+    const legends = [...kitNoComments.matchAll(/\.kit-[a-z-]*legend[a-z-]*/g)].map(([sel]) => sel);
+    expect(legends.length).toBeGreaterThan(0);
+    for (const selector of legends) expect(selector).toMatch(/^\.kit-area-legend/);
   });
 
   it('caps how many points a chart draws, whatever range it is given', async () => {

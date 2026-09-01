@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { epochDayFromDateInputValue, weekdayOfEpochDay } from '../data/epochDay';
-import { MAX_POSITIONS, atGrain, bucketByGrain, bucketStart, chooseGrain } from './grain';
+import { MAX_POSITIONS, alignSeries, atGrain, bucketByGrain, bucketStart, chooseGrain } from './grain';
 
 const day = (value: string) => epochDayFromDateInputValue(value) as number;
 
@@ -100,5 +100,65 @@ describe('a range read at one grain', () => {
     expect(read.grain).toBe('week');
     expect(read.points.length).toBeLessThanOrEqual(MAX_POSITIONS);
     expect(read.points.length).toBeGreaterThan(40);
+  });
+});
+
+describe('two series read onto one set of positions', () => {
+  const mon = day('2026-06-01');
+  const tue = day('2026-06-02');
+  const wed = day('2026-06-03');
+  const thu = day('2026-06-04');
+  const at = (x: number, y: number) => ({ x, y, days: 1 });
+
+  it('keeps the union of both series positions, oldest first', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20), at(thu, 40)]);
+    expect(rows.map((r) => r.x)).toEqual([mon, tue, wed, thu]);
+  });
+
+  it('carries each series own reading where it has one', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(mon, 20), at(wed, 40)]);
+    expect(rows.map((r) => [r.a, r.b])).toEqual([
+      [1, 20],
+      [3, 40]
+    ]);
+  });
+
+  /* A position the other series introduced carries nothing for this one.
+     The line still crosses that stretch - charts/geometry's bridgeGaps puts
+     it there for the drawing - but a reading is a thing a person logged, and
+     the readout under a finger has to be able to say there was none. */
+  it('leaves a position the other series introduced empty', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20)]);
+    expect(rows.map((r) => r.a)).toEqual([1, null, 3]);
+  });
+
+  /* Outside a series' own span, same answer for the same reason: before a
+     metric was first logged there is nothing it read. */
+  it('leaves a series empty before it starts and after it ends', () => {
+    const rows = alignSeries([at(mon, 1), at(tue, 2)], [at(wed, 30), at(thu, 40)]);
+    expect(rows.map((r) => r.a)).toEqual([1, 2, null, null]);
+    expect(rows.map((r) => r.b)).toEqual([null, null, 30, 40]);
+  });
+
+  it('gives a one-bucket series that one position and nothing either side', () => {
+    const rows = alignSeries([at(mon, 1), at(wed, 3)], [at(tue, 20)]);
+    expect(rows.map((r) => r.b)).toEqual([null, 20, null]);
+  });
+
+  it('reads one series alone as itself', () => {
+    const rows = alignSeries([at(mon, 1), at(tue, 2)], []);
+    expect(rows).toEqual([
+      { x: mon, a: 1, b: null },
+      { x: tue, a: 2, b: null }
+    ]);
+  });
+
+  it('has nothing to say about two empty series', () => {
+    expect(alignSeries([], [])).toEqual([]);
+  });
+
+  it('folds two buckets logged at the same position into one row', () => {
+    const rows = alignSeries([at(mon, 1), at(tue, 2)], [at(mon, 20), at(tue, 40)]);
+    expect(rows).toHaveLength(2);
   });
 });

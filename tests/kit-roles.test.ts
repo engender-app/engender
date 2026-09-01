@@ -202,6 +202,50 @@ describe('the two colours a role carries', () => {
     expect(distance(pink.mark, pink.stripe)).toBeLessThan(distance(pink.ink, pink.stripe) - 0.05);
   });
 
+  /* The third colour, for a mark that shares a card with another mark
+     (phase 6 ticket 12's second chart line). A fill and a lone mark owe no
+     ratio and take the stripe exactly, which is the decision that stopped
+     nonbinary's yellow turning olive - but a stripe that cannot be seen
+     against the card at all is not a faint line, it is no line. That only
+     ever happens to a flag's shades: a white band on the light theme and a
+     near-black one on the dark theme sit on their own ground. A colour, at
+     any lightness, still reads as itself. */
+  for (const palette of PALETTES) {
+    for (const theme of THEMES) {
+      it(`draws a paired mark in the flag's own colour, ${palette} ${theme}`, () => {
+        const tokens = tokensOf(palette, theme);
+        for (const role of flagRoles(stripesOf(palette), tokens.text, grounds(tokens))) {
+          if (chromaOf(role.stripe) < 0.02) continue;
+          expect(role.paired, `${palette}/${theme} ${role.stripe}`).toBe(role.stripe);
+        }
+      });
+
+      it(`lifts a paired shade off the ground it sits on, ${palette} ${theme}`, () => {
+        const tokens = tokensOf(palette, theme);
+        for (const role of flagRoles(stripesOf(palette), tokens.text, grounds(tokens))) {
+          if (chromaOf(role.stripe) >= 0.02) continue;
+          for (const ground of grounds(tokens)) {
+            expect(
+              contrast(role.paired, ground),
+              `${palette}/${theme} ${role.stripe} paired ${role.paired} on ${ground}`
+            ).toBeGreaterThanOrEqual(3);
+          }
+        }
+      });
+    }
+  }
+
+  it("keeps agender's black band as a line that can be seen on the dark theme", () => {
+    /* The case that produced this at all: agender's flag holds one colour
+       and three shades, so a second chart line on it lands on #1A1A1A - and
+       on the dark theme that is the card. */
+    const dark = tokensOf('agender', 'dark');
+    const roles = flagRoles(stripesOf('agender'), dark.text, grounds(dark));
+    const black = roles.find((r) => r.stripe === '#1A1A1A')!;
+    expect(black.paired).not.toBe(black.stripe);
+    expect(contrast(black.paired, dark.surface)).toBeGreaterThanOrEqual(3);
+  });
+
   it('leaves a stripe alone where the stripe already reads', () => {
     expect(legibleInk('#000000', '#1B2B36', ['#FFFFFF'])).toBe('#000000');
   });

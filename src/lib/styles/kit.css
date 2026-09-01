@@ -1499,6 +1499,20 @@ a.kit-entry:active {
   /* A drag across it scrubs; a drag down the screen still scrolls the
      screen, which is what a chart in the middle of a long page owes. */
   touch-action: pan-y;
+  /* The second metric's stripe, set by the component from a role the screen
+     resolved through roleAt() - so a palette switch recolours both lines.
+     Undiluted, like --role-draw and for the same reason: a chart mark is a
+     fill of the flag's own colour and owes no contrast floor.
+
+     --accent-2 where a screen hands over no role, which is what a second
+     line drawn on a card with no section colour has always taken. */
+  --role-2-draw: var(--role-2, var(--accent-2));
+}
+
+/* With two metrics up there is no value gutter to leave room for: the plot
+   is the whole card. */
+.kit-area.has-overlay {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .kit-area-scale {
@@ -1544,6 +1558,26 @@ a.kit-entry:active {
   stroke-linecap: round;
 }
 
+/* The second metric (phase 6 ticket 12). A second stripe and a dash, at the
+   same weight as the first: colour is never the only thing separating them,
+   because two roles can land close together on a palette and because some
+   readers cannot separate any two. The dash is long enough to read as a
+   dashed line at 2.5px rather than as a dotted one, and the legend under the
+   plot repeats it beside the metric's name. */
+.kit-area-line.is-overlay {
+  stroke: var(--role-2-draw);
+  stroke-dasharray: 7 5;
+}
+
+/* The annotation band gives way when the area fill does. With one series the
+   band sits under a filled shape and reads as context behind it; with the
+   fill gone it is the only filled thing on the plot, and at its usual
+   strength it read as a panel the chart was drawn on, hard right edge and
+   all. Same context, quieter, because there is nothing in front of it now. */
+.kit-area.has-overlay .kit-annotation-band {
+  opacity: 0.5;
+}
+
 /* The latest reading, ringed on the line rather than annotated beside it:
    the mark is the label. Filled with the card colour so the line does not
    show through it. */
@@ -1551,6 +1585,16 @@ a.kit-entry:active {
   fill: var(--surface);
   stroke: var(--role-draw);
   stroke-width: 2.5;
+}
+
+.kit-area-ring.is-overlay,
+.kit-area-scrub-dot.is-overlay {
+  stroke: var(--role-2-draw);
+}
+
+.kit-area-scrub-dot.is-overlay {
+  fill: var(--role-2-draw);
+  stroke: var(--surface);
 }
 
 .kit-area-dot {
@@ -1605,6 +1649,69 @@ a.kit-entry:active {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
+}
+
+/* The two readings, one per line, in two columns: number then name. A column
+   each rather than a row each, because the numbers are the thing being
+   compared and ragged numbers are not comparable - "4.0" and "69" have to
+   start at the same place for the pair to be read as a pair, and the names
+   they carry are different lengths. */
+.kit-area-readout-pair {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+}
+
+.kit-area-readout-pair b {
+  text-align: right;
+}
+
+/* Where the finger is, under the two readings rather than beside one of
+   them: with two metrics up the position is the one thing they share, and
+   hanging it off either number would make it look like that number's date. */
+.kit-area-readout-at {
+  margin-top: 1px;
+}
+
+/* Which line is which (phase 6 ticket 12). The app's second legend, and the
+   second named departure from DIRECTION.md's chart rules - the first is the
+   wear trend's, for the same reason: two unnamed lines are not a chart.
+
+   Under the plot and quiet: it says what the marks are and never what they
+   mean. */
+.kit-area-legend {
+  /* Declared here too, not only on the plot: the legend is the plot's
+     sibling, so the stripe the component sets on one does not reach the
+     other. */
+  --role-2-draw: var(--role-2, var(--accent-2));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  /* Close to the plot: it is part of the picture rather than the first of
+     the rows underneath it. */
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+
+.kit-area-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Line segments rather than swatches, because that is what they stand for,
+   and the dashed one repeats the plot's own dash so the pairing survives for
+   anybody who cannot separate the two colours. */
+.kit-area-legend-mark {
+  width: 18px;
+  border-top: 2.5px solid var(--role-draw);
+}
+
+.kit-area-legend-mark.is-overlay {
+  border-top-style: dashed;
+  border-top-color: var(--role-2-draw);
 }
 
 /* Under the reading and quieter than it: what was going on is context for a
