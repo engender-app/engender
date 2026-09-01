@@ -279,12 +279,23 @@ export type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
    `channel: 'reminders'` from the `reminders` row. */
 export const UNPROMPTED_ROWS: readonly UnpromptedRow[] = ROWS;
 
+/** A row as the view drawing it sees one: the half that view owns is no
+    longer optional. Without these two, both screens read `row.surface!` and
+    `row.notify!` on every line, which is a non-null assertion standing in
+    for a filter that already ran. */
+export type SurfaceRow = UnpromptedRow & { surface: NonNullable<UnpromptedRow['surface']> };
+export type NotificationRow = UnpromptedRow & { notify: NonNullable<UnpromptedRow['notify']> };
+
 /** The surfaces view's rows, in registry order. */
-export const SURFACE_ROWS: readonly UnpromptedRow[] = UNPROMPTED_ROWS.filter((row) => row.surface);
+export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(
+  (row): row is SurfaceRow => row.surface !== undefined
+);
 
 /** The notifications view's rows, in registry order - every kind that may
     reach the phone rather than only the app. */
-export const NOTIFICATION_ROWS: readonly UnpromptedRow[] = UNPROMPTED_ROWS.filter((row) => row.notify);
+export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.filter(
+  (row): row is NotificationRow => row.notify !== undefined
+);
 
 /** `UnpromptedKind` as a value, read off `ROWS` itself rather than typed out
     a second time - a hand-kept second copy of the same literals would be

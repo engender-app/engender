@@ -23,7 +23,8 @@ import { preview } from 'vite';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { launchChromium } from './browser-harness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -47,8 +48,26 @@ const forced = original.replace(
 );
 if (forced === original) throw new Error('the notifications screen no longer has the shape this script patches');
 
+/* This is the only gallery that edits a tracked source file, so it refuses
+   to run over uncommitted work in it: the restore below writes `original`
+   back, and `original` would be somebody's half-finished edit. */
+const dirty = execFileSync('git', ['status', '--porcelain', '--', SCREEN], { cwd: root }).toString().trim();
+if (dirty) throw new Error(`${SCREEN} has uncommitted changes - commit or stash them before shooting`);
+
 await mkdir(outDir, { recursive: true });
 const shots = [];
+
+/* `finally` covers a throw; a Ctrl-C is a signal and skips it, which would
+   leave the pinned file on disk. */
+const restore = () => writeFileSync(SCREEN, original);
+process.on('SIGINT', () => {
+  restore();
+  process.exit(130);
+});
+process.on('SIGTERM', () => {
+  restore();
+  process.exit(143);
+});
 
 try {
   await writeFile(SCREEN, forced);

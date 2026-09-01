@@ -1,6 +1,7 @@
 /* The rules the two views over the unprompted registry keep (phase 6 ticket
-   04, extending ticket 51's single screen), at the level a screen's source
-   can be held to - mirrors settings-surfaces.test.ts.
+   04, extending ticket 51's single screen - this file was
+   live-tiles-surfaces.test.ts when there was one view), at the level a
+   screen's source can be held to - mirrors settings-surfaces.test.ts.
 
    The rows' content is registry.test.ts's business (one per kind, which view
    draws it, which preference each reads); this file holds only what the
@@ -21,19 +22,28 @@ const surfaces = read('src/routes/settings/live-tiles/+page.svelte');
 const surfacesMarkup = stripScript(surfaces);
 const notifications = read('src/routes/settings/notifications/+page.svelte');
 const notificationsMarkup = stripScript(notifications);
+const row = read('src/lib/unprompted/RegistryRow.svelte');
 
 describe('what the surfaces view is built from', () => {
   it('draws its rows from the registry, not from hand-written markup', () => {
     expect(surfaces).toContain("from '$lib/unprompted/registry'");
     expect(surfacesMarkup).toContain('{#each SURFACE_ROWS as row (row.key)}');
-    /* One row shape, one {#each}: a kind added to the array needs no edit
+    /* One RegistryRow, one {#each}: a kind added to the array needs no edit
        here. */
-    expect(surfacesMarkup.match(/<div class="kit-row"/g)?.length).toBe(1);
+    expect(surfacesMarkup.match(/<RegistryRow/g)?.length).toBe(1);
+  });
+
+  it('draws the row through the component both views share', () => {
+    /* One registry behind two views is only half true if each view writes
+       the row out itself. */
+    expect(surfaces).toContain("from '$lib/unprompted/RegistryRow.svelte'");
+    expect(surfacesMarkup).toContain('handle="live-tile"');
+    expect(row).toContain('data-live-tile={handle === \'live-tile\' ? key : undefined}');
   });
 
   it('gives rows that carry a switch no interactive wrapper of their own', () => {
-    expect(surfaces).not.toContain('kit/ListRow.svelte');
-    expect(surfacesMarkup).toMatch(/<div class="kit-row" data-live-tile=\{row\.key\}>/);
+    expect(row).not.toContain('kit/ListRow.svelte');
+    expect(row.replace(/<script[\s\S]*?<\/script>/g, '')).toMatch(/<div class="kit-row"/);
   });
 
   it('has handed the notification sub-toggles over to the notifications view', () => {
@@ -42,11 +52,13 @@ describe('what the surfaces view is built from', () => {
        schedulers, four screens" problem the registry exists to end, only
        within one feature. */
     expect(surfaces).not.toContain('data-live-tile-notify');
+    expect(surfaces).not.toContain('notify.subtitle()');
     /* The one thing it still does with `notify` is the cascade: turning a
        kind off turns its notification off too, so nothing fires for a kind
-       that is off whichever screen the person is standing on. */
-    expect(surfacesMarkup).not.toContain('<Switch checked={prefs[notify');
-    expect(surfaces).toContain('if (!v && row.notify) prefs[row.notify.prefKey] = false;');
+       that is off whichever screen the person is standing on. Matched on the
+       assignment rather than on a whole statement, so reformatting the line
+       is not a test failure. */
+    expect(surfaces).toMatch(/row\.notify\)\s*prefs\[row\.notify\.prefKey\] = false/);
   });
 
   it('reaches back to Settings', () => {
@@ -58,24 +70,34 @@ describe('what the notifications view is built from', () => {
   it('draws its rows from the same registry, filtered to what fires', () => {
     expect(notifications).toContain("from '$lib/unprompted/registry'");
     expect(notificationsMarkup).toContain('{#each NOTIFICATION_ROWS as row (row.key)}');
-    expect(notificationsMarkup.match(/<div class="kit-row"/g)?.length).toBe(1);
+    expect(notificationsMarkup.match(/<RegistryRow/g)?.length).toBe(1);
   });
 
   it('gives every row the handle the walkthrough grips (ADR-0029)', () => {
-    expect(notificationsMarkup).toMatch(/<div class="kit-row" data-notification=\{row\.key\}>/);
+    expect(notificationsMarkup).toContain('handle="notification"');
+    expect(row).toContain("data-notification={handle === 'notification' ? key : undefined}");
+  });
+
+  it('is built out of the kit, with no card left from the old world', () => {
+    // The line feature-screens.test.ts holds for every screen on its list,
+    // which this one joined (phase 6 ticket 04).
+    expect(notificationsMarkup).not.toMatch(/class="[^"]*\bcard\b/);
+    expect(notifications).toContain("from '$lib/components/kit/ListCard.svelte'");
   });
 
   it('is absent on web rather than shown and inert', () => {
     /* User story 18. A browser cannot fire a scheduled notification while
        the app is closed, so every switch here would be a promise the
-       platform does not keep - the screen says so instead of drawing
-       fourteen dead controls. */
+       platform does not keep - the screen says so instead of drawing six
+       dead switches and a quiet-hours window over notifications that cannot
+       happen. */
     expect(notificationsMarkup).toContain('{#if isWeb}');
     const web = notificationsMarkup.slice(
       notificationsMarkup.indexOf('{#if isWeb}'),
       notificationsMarkup.indexOf('{:else}')
     );
     expect(web).not.toContain('<Switch');
+    expect(web).not.toContain('<RegistryRow');
     expect(web).toContain('notif_web_title');
   });
 

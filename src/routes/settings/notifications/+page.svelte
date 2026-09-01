@@ -13,9 +13,10 @@
      they already had - see the admission rule in registry.ts, which is the
      thing a seventh producer has to argue with.
 
-     The rows are not written here, the same way they are not written on the
-     surfaces view: this page draws one row per registry entry with a
-     `notify` and nothing else.
+     Three cards, and the order is the answer getting wider: what may fire,
+     then when it may not, then what it may say. Quiet hours and the disguise
+     are the registry's two cross-class rules, so they sit under the list
+     they both apply to rather than beside it.
 
      Absent on web rather than shown and inert (user story 18): a browser
      cannot fire a scheduled notification while the app is closed, so a
@@ -28,13 +29,14 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import RegistryRow from '$lib/unprompted/RegistryRow.svelte';
   import { isAndroid } from '$lib/platform';
   import {
     androidRetrospectiveNotifications,
     type AndroidRetrospectiveNotificationStatus
   } from '$lib/retrospective/android-bridge';
   import { disclose } from '$lib/motion/reveal';
-  import { NOTIFICATION_ROWS, type UnpromptedRow } from '$lib/unprompted/registry';
+  import { NOTIFICATION_ROWS, type NotificationRow } from '$lib/unprompted/registry';
 
   let isWeb = $derived(!isAndroid());
 
@@ -73,12 +75,12 @@
      `wrappedEnabled` was off, which is a promise the scheduler does not
      keep. Turning it off is final rather than a snooze: nothing anywhere
      writes these keys back. */
-  function setNotify(row: UnpromptedRow, v: boolean) {
-    prefs[row.notify!.prefKey] = v;
+  function setNotify(row: NotificationRow, v: boolean) {
+    prefs[row.notify.prefKey] = v;
     if (v && row.surface) prefs[row.surface.prefKey] = true;
   }
 
-  let anyOn = $derived(NOTIFICATION_ROWS.some((row) => prefs[row.notify!.prefKey]));
+  let anyOn = $derived(NOTIFICATION_ROWS.some((row) => prefs[row.notify.prefKey]));
 </script>
 
 <div class="screen" data-screen>
@@ -89,20 +91,14 @@
   {:else}
     <ListCard>
       {#each NOTIFICATION_ROWS as row (row.key)}
-        {@const notify = row.notify!}
-        <div class="kit-row" data-notification={row.key}>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{row.title()}</span>
-            <span class="kit-row-sub">{notify.subtitle()}</span>
-          </span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={prefs[notify.prefKey]}
-              label={row.title()}
-              onChange={(v) => setNotify(row, v)}
-            />
-          </span>
-        </div>
+        <RegistryRow
+          handle="notification"
+          key={row.key}
+          title={row.title()}
+          subtitle={row.notify.subtitle()}
+          checked={prefs[row.notify.prefKey]}
+          onChange={(v) => setNotify(row, v)}
+        />
       {/each}
     </ListCard>
 
@@ -116,26 +112,28 @@
       />
     {/if}
 
-    <div class="card" data-quiet-hours>
-      <div class="spread">
+    <ListCard>
+      <div class="kit-row" data-quiet-hours>
         <span class="kit-row-text">
           <span class="kit-row-title"><Icon name="moon" size={16} /> {m.notif_quiet_title()}</span>
           <span class="kit-row-sub">{m.notif_quiet_sub()}</span>
         </span>
-        <Switch
-          checked={prefs.quietHoursEnabled}
-          label={m.notif_quiet_title()}
-          onChange={(v) => {
-            prefs.quietHoursEnabled = v;
-          }}
-        />
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.quietHoursEnabled}
+            label={m.notif_quiet_title()}
+            onChange={(v) => {
+              prefs.quietHoursEnabled = v;
+            }}
+          />
+        </span>
       </div>
       {#if prefs.quietHoursEnabled}
         <!-- One `disclosed` wrapper around the whole group rather than a
              transition per child: `disclose` runs with overflow hidden, so a
              margin left free to collapse out afterwards makes the block below
              jump once the inline styles come off (components.css). -->
-        <div class="disclosed" transition:disclose>
+        <div class="disclosed quiet-body" transition:disclose>
           <div class="quiet-window">
             <Field label={m.notif_quiet_from()} id="quiet-start">
               {#snippet children(id)}
@@ -148,28 +146,38 @@
               {/snippet}
             </Field>
           </div>
-          <p class="muted small">{m.notif_quiet_held()}</p>
+          <p class="muted small quiet-note">{m.notif_quiet_held()}</p>
         </div>
       {/if}
-    </div>
+    </ListCard>
 
-    <div class="card spread">
-      <span class="kit-row-text">
-        <span class="kit-row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
-        <span class="kit-row-sub">{m.rem_hide_titles_sub()}</span>
-      </span>
-      <Switch
-        checked={prefs.hideNotificationTitles}
-        label={m.rem_hide_titles_title()}
-        onChange={(v) => {
-          prefs.hideNotificationTitles = v;
-        }}
-      />
-    </div>
+    <ListCard>
+      <div class="kit-row" data-hide-titles>
+        <span class="kit-row-text">
+          <span class="kit-row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
+          <span class="kit-row-sub">{m.rem_hide_titles_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.hideNotificationTitles}
+            label={m.rem_hide_titles_title()}
+            onChange={(v) => {
+              prefs.hideNotificationTitles = v;
+            }}
+          />
+        </span>
+      </div>
+    </ListCard>
   {/if}
 </div>
 
 <style>
+  /* The window is not a row, so it takes the row's own horizontal padding
+     rather than sitting flush against the card's edge (kit.css). */
+  .quiet-body {
+    padding: var(--space-2) var(--space-4) var(--space-3) var(--space-3);
+  }
+
   /* Two time fields side by side, the shape journaling-pause's two date
      fields already use, so the window reads as one range rather than as two
      unrelated settings. */
@@ -181,6 +189,9 @@
        row past the viewport. */
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-3);
-    margin-top: var(--space-3);
+  }
+
+  .quiet-note {
+    margin: var(--space-3) 0 0;
   }
 </style>

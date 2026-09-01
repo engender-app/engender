@@ -1,5 +1,6 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 import type { Reminder } from '$lib/data/types';
+import type { QuietHours } from '$lib/unprompted/quietHours';
 
 export interface AndroidReminderTexts {
   channelReminders: string;
@@ -25,7 +26,7 @@ export interface AndroidReminderSyncPayload {
       alarm that would fire inside the window is scheduled at the end of it
       instead - held, never dropped - which QuietHours.java does, because the
       fire times themselves are computed natively before any WebView exists. */
-  quietHours: { enabled: boolean; start: string; end: string };
+  quietHours: QuietHours;
   texts: AndroidReminderTexts;
 }
 

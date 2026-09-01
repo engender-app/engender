@@ -71,6 +71,9 @@ public class AutoExportPlugin extends Plugin {
     private static final String PASSWORD_CIPHER = "AES/GCM/NoPadding";
 
     private static final String FAILURE_CHANNEL = "backup_failures";
+    /* Only reached when the JS side sends nothing, which it does not: the
+       localized name and body come from messages/*.json (phase 6 ticket 04). */
+    private static final String FAILURE_CHANNEL_FALLBACK_NAME = "Backups";
     private static final int FAILURE_NOTIFICATION_ID = 1601;
 
     /** The archive profile (ADR-0013), pinned here rather than read off the
@@ -347,7 +350,7 @@ public class AutoExportPlugin extends Plugin {
                 call.resolve();
                 return;
             }
-            ensureFailureChannel(call.getString("channelName", "Backups"));
+            ensureFailureChannel(call.getString("channelName", FAILURE_CHANNEL_FALLBACK_NAME));
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(getContext(), FAILURE_CHANNEL)
                     .setSmallIcon(android.R.drawable.stat_notify_error)
@@ -511,9 +514,10 @@ public class AutoExportPlugin extends Plugin {
         if (manager == null) return;
         NotificationChannel created = new NotificationChannel(
             FAILURE_CHANNEL,
-            channelName == null || channelName.isEmpty() ? "Backups" : channelName,
+            channelName == null || channelName.isEmpty() ? FAILURE_CHANNEL_FALLBACK_NAME : channelName,
             NotificationManager.IMPORTANCE_DEFAULT
         );
+        created.setDescription("Scheduled backup failures that need a new destination or retry.");
         manager.createNotificationChannel(created);
     }
 

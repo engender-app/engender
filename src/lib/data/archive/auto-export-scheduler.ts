@@ -4,9 +4,10 @@ import { toast } from '$lib/stores/toasts.svelte';
 import { isAndroid } from '$lib/platform';
 import { m } from '$lib/paraglide/messages';
 /* Relative, not `$lib`: auto-export-scheduler.test.ts runs on the Node
-   tier, where the alias does not resolve (ADR-0017), and this rule is pure
+   tier, where the alias does not resolve (ADR-0016), and this rule is pure
    enough that mocking it out would only hide what the notice actually says. */
 import { notificationText } from '../../unprompted/notificationText';
+import { quietHoursOf } from '../../unprompted/quietHours';
 import { androidAutoExport } from './android-auto-export-bridge';
 import { isDue, runAndroidAutoExport } from './android-auto-export';
 import { exportFailureNoticeStep } from './failureNotice';
@@ -31,7 +32,7 @@ async function reportFailure(failedNow: boolean, at: number) {
     failedNow,
     held: prefs.heldExportFailureNotice,
     enabled: prefs.exportFailureNoticeEnabled,
-    quiet: { enabled: prefs.quietHoursEnabled, start: prefs.quietHoursStart, end: prefs.quietHoursEnd },
+    quiet: quietHoursOf(prefs),
     at: new Date(at)
   });
 

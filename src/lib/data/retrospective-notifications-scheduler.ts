@@ -19,7 +19,18 @@
    notifies. That is a hold rather than a drop, out of the fifteen-minute
    cadence this file already had. The disguise is notificationText's one
    rule, which these two declared in the registry and did not apply until
-   now. */
+   now.
+
+   **The hold does not carry on-this-day across midnight, on purpose.** The
+   default window is 22:00 to 07:00, so a day held at 23:30 is next checked
+   on the following day, and `onThisDayCandidates(today)` then answers about
+   *that* day. Wrapped is unaffected - a week or a month is still the offered
+   period the next morning - but an on-this-day notification is about one
+   specific day, and posting it at 07:00 would say "on this day" about
+   yesterday. So the day's offer lapses with the day rather than arriving
+   wrong, and the next qualifying day notifies normally. Nothing is lost that
+   the person could have acted on: the Home card carried the same day all day
+   and is what the notification only ever pointed at. */
 
 import { journal } from '$lib/data/live/journal.svelte';
 import { prefs } from '$lib/data/prefs/store.svelte';
@@ -30,9 +41,9 @@ import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod, type WrappedPeriod } from '$
 import { onThisDayCandidates } from '$lib/data/on-this-day';
 import { androidRetrospectiveNotifications } from '$lib/retrospective/android-bridge';
 /* Relative, not `$lib`: this file's own test runs on the Node tier, where
-   the alias does not resolve (ADR-0017), and both of these are pure rules
+   the alias does not resolve (ADR-0016), and both of these are pure rules
    the test wants to see actually applied rather than mocked away. */
-import { mayFireAt } from '../unprompted/quietHours';
+import { mayFireAt, quietHoursOf } from '../unprompted/quietHours';
 import { notificationText } from '../unprompted/notificationText';
 
 let active = false;
@@ -45,15 +56,10 @@ function wrappedPeriodKey(period: Pick<WrappedPeriod, 'cadence' | 'start'>): str
   return `${period.cadence}:${period.start}`;
 }
 
-const quietHours = () => ({
-  enabled: prefs.quietHoursEnabled,
-  start: prefs.quietHoursStart,
-  end: prefs.quietHoursEnd
-});
 
 async function checkWrapped(now: Date) {
   if (!prefs.wrappedEnabled || !prefs.wrappedNotificationsEnabled) return;
-  if (!mayFireAt(now, quietHours())) return;
+  if (!mayFireAt(now, quietHoursOf(prefs))) return;
 
   const period = offeredWrappedPeriod(todayEpochDay());
   const key = wrappedPeriodKey(period);
@@ -76,7 +82,7 @@ async function checkWrapped(now: Date) {
 
 async function checkOnThisDay(now: Date) {
   if (!prefs.onThisDayEnabled || !prefs.onThisDayNotificationsEnabled) return;
-  if (!mayFireAt(now, quietHours())) return;
+  if (!mayFireAt(now, quietHoursOf(prefs))) return;
 
   const today = todayEpochDay();
   if (prefs.lastOnThisDayNotifiedEpochDay === today) return;
