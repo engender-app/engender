@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 46);
+  assert.equal(db.getUserVersion(), 47);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -819,6 +819,29 @@ test('v44 adds procedure_id to milestone table, preserving existing milestones',
   assert.equal(row.uuid, 'm-1');
   assert.equal(row.name, 'HRT Start');
   assert.equal(row.procedure_id, null);
+});
+
+test('v47 adds tryout_id to milestone table, preserving existing milestones', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 46)
+  );
+
+  db.raw.exec("INSERT INTO milestone (uuid, name, epoch_day, updated_at) VALUES ('m-1', 'HRT Start', 20000, 0)");
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw.prepare('SELECT uuid, name, tryout_id FROM milestone WHERE uuid = ?').get('m-1') as {
+    uuid: string;
+    name: string;
+    tryout_id: string | null;
+  };
+  assert.equal(row.uuid, 'm-1');
+  assert.equal(row.name, 'HRT Start');
+  assert.equal(row.tryout_id, null);
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

@@ -22,6 +22,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
+  import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { timelineItems } from '$lib/data/timelineItems';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
@@ -77,6 +78,7 @@
             <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
           </div>
         {:else}
+          {@const origin = resolveMilestoneOrigin(item.milestone)}
           <div class="tl-item" class:is-future={item.future} data-tl-item={item.milestone.id}>
             <span class="tl-dot"></span>
             <div class="tl-body">
@@ -91,6 +93,12 @@
               </span>
               {#if item.milestone.photo}
                 <div class="tl-photo"><PhotoThumb photo={item.milestone.photo} size={88} /></div>
+              {/if}
+              {#if origin}
+                <p class="tl-provenance muted small">
+                  {origin.text}
+                  {#if origin.href}<a href={origin.href}>{m.prov_open_source()}</a>{/if}
+                </p>
               {/if}
             </div>
           </div>
@@ -223,6 +231,15 @@
   }
 
   .tl-photo { margin-top: var(--space-3); }
+
+  .tl-provenance {
+    margin: var(--space-1) 0 0;
+  }
+
+  .tl-provenance a {
+    color: inherit;
+    text-decoration: underline;
+  }
 
   /* The compressed stretch. It sits on the axis rather than replacing it: the
      line runs behind, and this is a label with the page colour behind it so
