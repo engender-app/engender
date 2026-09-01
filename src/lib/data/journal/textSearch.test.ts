@@ -255,20 +255,21 @@ test('a felt sense carries the tryout it belongs to, and a milestone one carries
   assert.equal(contexts.get('żółć two'), null);
 });
 
-test('the limit bounds the answer and says whether it cut it short', async () => {
+test('the limit bounds the page, and the count is of every match', async () => {
   const { journal } = await journalWithBuiltIns();
   for (let i = 0; i < 5; i++) await journal.milestones.upsertMilestone({ name: `żółć ${i}`, epochDay: DAY - i });
 
   const page = await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 3 });
   assert.equal(page.hits.length, 3);
-  assert.equal(page.hasMore, true);
+  // The count is of everything that matched, not of the page.
+  assert.equal(page.total, 5);
 
   const all = await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 5 });
   assert.equal(all.hits.length, 5);
-  assert.equal(all.hasMore, false);
+  assert.equal(all.total, 5);
 });
 
-test('a search is one round trip, whatever the registry grows to', async () => {
+test('a search is two round trips, whatever the registry grows to', async () => {
   const db = await migratedDb();
   const { driver, roundTrips, resetRoundTrips } = countingDriver(db);
   const journal = openJournal(driver, fakeFileStore());
@@ -277,7 +278,8 @@ test('a search is one round trip, whatever the registry grows to', async () => {
 
   resetRoundTrips();
   await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
-  assert.deepEqual(roundTrips(), { query: 1, run: 0 });
+  // The page and the count, and nothing per area.
+  assert.deepEqual(roundTrips(), { query: 2, run: 0 });
 });
 
 test('searching writes nothing', async () => {
