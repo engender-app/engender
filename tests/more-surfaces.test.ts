@@ -60,12 +60,14 @@ describe('what the More hub is built from', () => {
   });
 
   it('keeps every row, with an unchanged icon, href and group', () => {
-    /* 21 rows in four groups (5 + 6 + 5 + 5), doubt included. It was 23 in
+    /* 22 rows in four groups (5 + 6 + 6 + 5), doubt included. It was 23 in
        5 + 9 + 4 + 5 until deepening ticket 07 put labs, regimen,
        hormone-curve and doses behind the care row - the four surfaces /care
        opens on. Phase 5 deepening ticket 17 added `presentations` to the
-       Transition group beside `tryouts`; nothing else has moved since, and
-       no row changed its icon or href. */
+       Transition group beside `tryouts`, and phase 6 ticket 01 added `eras`
+       next to it - both are the person naming something of their own, one a
+       way of showing up and one a stretch of time. Nothing else has moved,
+       and no row changed its icon or href. */
     const EXPECTED: [string, string, string][] = [
       ['photos', 'image', '/settings/photos'],
       ['measurements', 'ruler', '/settings/measurements'],
@@ -83,6 +85,7 @@ describe('what the More hub is built from', () => {
       ['letters', 'book', '/settings/letters'],
       ['tryouts', 'tag', '/settings/tryouts'],
       ['presentations', 'palette', '/settings/presentations'],
+      ['eras', 'columns', '/settings/eras'],
       ['doubt', 'heart', '/doubt'],
       ['voice', 'mic', '/settings/voice'],
       ['wear', 'clock', '/settings/wear'],

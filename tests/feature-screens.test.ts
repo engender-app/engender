@@ -66,6 +66,10 @@ const ROUTES = [
   'settings/letters',
   'settings/tryouts',
   'settings/tryouts/[id]',
+  /* Phase 6 ticket 01. `settings/presentations` is absent from this list and
+     should not be - deepening ticket 17 added the screen and never joined it
+     here, which is a gap in that ticket rather than in this one. */
+  'settings/eras',
   // Practice
   'settings/voice',
   'settings/wear',
@@ -89,13 +93,14 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 27 of them', () => {
-  it('is the count SCREENS.md gives, plus the one added since', () => {
+describe('all 28 of them', () => {
+  it('is the count SCREENS.md gives, plus the two added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
-       /care. SCREENS.md is a ticket behind either way - see the note above
-       the list - and correcting it is still nobody's ticket. */
-    expect(ROUTES.length).toBe(27);
-    expect(new Set(ROUTES).size).toBe(27);
+       /care, 28 since phase 6 ticket 01 added /settings/eras. SCREENS.md is
+       a ticket behind either way - see the note above the list - and
+       correcting it is still nobody's ticket. */
+    expect(ROUTES.length).toBe(28);
+    expect(new Set(ROUTES).size).toBe(28);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
