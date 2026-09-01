@@ -152,7 +152,14 @@ export const TABLE_NAMES = [
      'personalEffect' markers name, built-in and custom alike. Its own
      name for the same reason 'measurementType' has one - hiding or adding
      an effect type has not touched a single marker, and the reverse. */
-  'personalEffectType'
+  'personalEffectType',
+  /* The fluidity engine's named presentations (phase 5 deepening ticket 17,
+     ADR-0048, CONTEXT: "Presentation"): a name and a flag-role colour, built
+     and hidden the way a tag or a measurement type is. An entry's own
+     `presentation_id` is announced under 'entry' instead, the same split
+     'tag' and 'entry_tag' get - resolving which presentation an id names is
+     this table's business, not the entry's. */
+  'presentation'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -244,6 +251,18 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteTag: ['tag', 'entry']
     },
     reads: { getTagGroups: ['tag'] }
+  }),
+  presentations: classify<Journal['presentations']>()({
+    writes: {
+      addPresentation: ['presentation'],
+      renamePresentation: ['presentation'],
+      setPresentationColour: ['presentation'],
+      setPresentationHidden: ['presentation']
+    },
+    // The MRU order joins the entry table's own timestamps
+    // (presentations.ts), so a chip's order has to refresh on an entry write
+    // too, not only on a rename or a recolour.
+    reads: { getPresentations: ['presentation', 'entry'] }
   }),
   affirmations: classify<Journal['affirmations']>()({
     writes: {

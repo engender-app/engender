@@ -6,6 +6,7 @@
   import type { Entry } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
 
   let {
     entry,
@@ -15,6 +16,7 @@
 
   let tags = $derived(entry.tags.map((id) => vocabulary.tag(id)).filter((t) => t != null).slice(0, 4));
   let more = $derived(entry.tags.length - tags.length);
+  let presentation = $derived(entryPresentation(entry));
 </script>
 
 <!-- The source half of the container transform, the same as the kit's day
@@ -64,6 +66,9 @@
       {#if entry.recordings?.length}<span class="entry-has-recording"><Icon name="mic" size={13} /></span>{/if}
       {#if entry.videos?.length}<span class="entry-has-video"><Icon name="video" size={13} /></span>{/if}
     </div>
+    {#if presentation}
+      <span class="entry-presentation" data-entry-presentation style="color: {presentation.color}">{presentation.name}</span>
+    {/if}
     {#if entry.note}<p class="entry-note" data-entry-note>{entry.note}</p>{/if}
     {#if tags.length}
       <div class="entry-tags">

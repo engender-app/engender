@@ -22,7 +22,8 @@ const existingEntry = (): Entry => ({
   recordings: [{ id: 'r1', fileName: 'r1.webm' }],
   videos: [{ id: 'n1', fileName: 'n1.webm' }],
   bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
-  starred: false
+  starred: false,
+  presentationId: null
 });
 
 test('a fresh draft with no existing entry starts empty on the given day', () => {
@@ -193,7 +194,8 @@ test('toUpsert() produces the exact upsertEntry payload for a new entry', () => 
     attachRecordings: [],
     removeRecordingIds: [],
     attachVideos: [],
-    removeVideoIds: []
+    removeVideoIds: [],
+    presentationId: null
   });
 });
 
@@ -220,7 +222,8 @@ test('toUpsert() for an existing entry carries its id, drops a falsy timestamp a
     attachRecordings: [new Uint8Array([9])],
     removeRecordingIds: ['r1'],
     attachVideos: [new Uint8Array([8])],
-    removeVideoIds: ['n1']
+    removeVideoIds: ['n1'],
+    presentationId: null
   });
 });
 
@@ -254,6 +257,23 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   assert.equal(draft.photos.length, 1);
   assert.equal(draft.recordings.length, 1);
   assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 60, euphoria: null } });
+});
+
+test('a fresh draft never arrives with a presentation pre-filled, and setPresentation replaces it', () => {
+  const draft = createEntryDraft(1);
+  assert.equal(draft.presentationId, null);
+
+  draft.setPresentation('femme');
+  assert.equal(draft.presentationId, 'femme');
+  draft.setPresentation('androgynous');
+  assert.equal(draft.presentationId, 'androgynous');
+  draft.setPresentation(null);
+  assert.equal(draft.presentationId, null);
+});
+
+test('hydrating from an existing entry copies its presentation', () => {
+  const draft = createEntryDraft(1, { ...existingEntry(), presentationId: 'femme' });
+  assert.equal(draft.presentationId, 'femme');
 });
 
 test('a fresh draft can be seeded with a mood and the seed survives hydration', () => {

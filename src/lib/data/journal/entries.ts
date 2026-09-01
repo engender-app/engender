@@ -151,6 +151,13 @@ export interface EntryInput {
   effectMarker?: EntryEffectMarkerInput;
   /** Contextual cycle event (ADR-0044). */
   cycleEvent?: EntryCycleEventInput;
+  /** The presentation this entry is filed under (phase 5 deepening ticket
+      17, ADR-0048), a domain id or null to clear it. Undefined leaves the
+      entry's current presentation alone, the same `undefined` vs. explicit
+      `null` rule `mood` and `note` already answer to - a save that never
+      touched the chip must not silently unset it. Commits with the rest of
+      the entry in this one transaction (ADR-0044). */
+  presentationId?: string | null;
 }
 
 export interface EntrySearchFilters {
@@ -245,6 +252,7 @@ type EntryRow = {
   mood: number | null;
   note: string | null;
   starred: number;
+  presentation_id: string | null;
 };
 
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
@@ -335,6 +343,14 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     for (const key of unique) {
       if (!known.has(key)) throw new Error(`unknown body region: ${key}`);
     }
+  };
+
+  // A presentation is addressed by its uuid alone - it ships no built-ins
+  // (ADR-0048), so unlike a tag or a body region there is no key to also
+  // check.
+  const assertKnownPresentation = async (id: string): Promise<void> => {
+    const rows = await driver.query<{ id: number }>('SELECT id FROM presentation WHERE uuid = ?', [id]);
+    if (rows.length === 0) throw new Error(`unknown presentation: ${id}`);
   };
 
   const countLoggedRegions = (bodyRegions: Record<string, BodyRegionFeeling>): number =>
@@ -526,7 +542,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       recordings: recordings.get(row.id) ?? [],
       videos: videos.get(row.id) ?? [],
       bodyRegions: bodyRegions.get(row.id) ?? {},
-      starred: bool(row.starred)
+      starred: bool(row.starred),
+      presentationId: row.presentation_id
     }));
   };
 
@@ -794,7 +811,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
-        'SELECT id, epoch_day, timestamp, mood, note, starred FROM entry WHERE id = ? AND trashed_at IS NULL',
+        'SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry WHERE id = ? AND trashed_at IS NULL',
         [id]
       );
       return rows[0] && (await hydrate(rows))[0];
@@ -802,7 +819,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
     async entriesForDay(epochDay) {
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry
          WHERE epoch_day = ? AND trashed_at IS NULL ORDER BY timestamp, id`,
         [epochDay]
       );
@@ -816,7 +833,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
          excluded from both: a day whose only entry is trashed must not
          count towards the days this picks. */
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry
          WHERE trashed_at IS NULL
            AND epoch_day IN (
              SELECT DISTINCT epoch_day FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day DESC LIMIT ?
@@ -831,7 +848,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // COALESCE(key, uuid) is a tag's domain id (ADR-0002), the same rule
       // searchEntries and the tag insights match on.
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          JOIN tag t ON t.id = et.tag_id
          WHERE COALESCE(t.key, t.uuid) = ? AND e.trashed_at IS NULL
@@ -858,7 +875,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       // reads.
       const placeholders = tagIds.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL
            AND (
              e.starred = 1
@@ -888,7 +905,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
             )`
           : '';
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL
            AND (
              (e.mood IS NOT NULL AND e.mood <= ?)
@@ -917,7 +934,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       if (!matches) return [];
 
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL AND ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          ${args.limit == null ? '' : 'LIMIT ?'}`,
@@ -938,7 +955,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
 
     async trashedEntries() {
       const rows = await driver.query<EntryRow & { trashed_at: number }>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, trashed_at FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id, trashed_at FROM entry
          WHERE trashed_at IS NOT NULL ORDER BY trashed_at DESC`
       );
       const trashedAtById = new Map(rows.map((row) => [row.id, row.trashed_at]));
@@ -950,7 +967,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       if (input.id != null) {
         const current = (
           await driver.query<EntryRow>(
-            'SELECT id, epoch_day, timestamp, mood, note FROM entry WHERE id = ? AND trashed_at IS NULL',
+            'SELECT id, epoch_day, timestamp, mood, note, presentation_id FROM entry WHERE id = ? AND trashed_at IS NULL',
             [input.id]
           )
         )[0];
@@ -984,6 +1001,11 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const dimIds = await resolveDimensionIds(input.dims ?? {});
         const tagIds = input.tags && (await resolveTagIds(input.tags));
         if (input.bodyRegions) await assertKnownBodyRegions(input.bodyRegions);
+        // undefined leaves the entry's current presentation alone; an
+        // explicit null clears it, and only a non-null value is checked
+        // against the table.
+        const presentationId = input.presentationId !== undefined ? input.presentationId : current.presentation_id;
+        if (presentationId !== null) await assertKnownPresentation(presentationId);
         const contextual = await resolveContextual(input);
         // The note that will be stored, whether this edit supplied one or
         // not - reindexing on input.note alone would blank the index for an
@@ -999,12 +1021,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         const targetEpochDay = input.epochDay ?? current.epoch_day;
         await driver.transaction(async () => {
           await driver.run(
-            'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, updated_at = ? WHERE id = ?',
+            'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, presentation_id = ?, updated_at = ? WHERE id = ?',
             [
               targetEpochDay,
               input.timestamp ?? current.timestamp,
               mood,
               note,
+              presentationId,
               now(),
               current.id
             ]
@@ -1073,6 +1096,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const dimIds = await resolveDimensionIds(dims);
       const tagIds = await resolveTagIds(tags);
       await assertKnownBodyRegions(bodyRegions);
+      const presentationId = input.presentationId ?? null;
+      if (presentationId !== null) await assertKnownPresentation(presentationId);
       const contextual = await resolveContextual(input);
       const stagedPhotos: StagedPhoto[] = [];
       for (const photo of attachingNew) stagedPhotos.push(await stagePhoto(files, photo));
@@ -1084,8 +1109,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const uuid = mintUuid();
       return driver.transaction(async () => {
         await driver.run(
-          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', now()]
+          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', presentationId, now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
         await indexEntry(entryId, input.note ?? '');

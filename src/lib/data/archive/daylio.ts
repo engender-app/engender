@@ -256,7 +256,8 @@ export async function daylioPreview(
       recordings: [],
       videos: [],
       bodyRegions: {},
-      starred: false
+      starred: false,
+      presentationId: null
     };
 
     if (

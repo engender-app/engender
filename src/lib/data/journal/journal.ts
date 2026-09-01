@@ -39,6 +39,7 @@ import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
+import { makePresentationsArea, type PresentationsArea } from './presentations';
 import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
@@ -103,6 +104,12 @@ export interface Journal {
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
+  /** The fluidity engine's named presentations (phase 5 deepening ticket 17,
+      ADR-0048, CONTEXT: "Presentation") - a name and a flag-role colour,
+      nothing more. `entries.upsertEntry` writes `presentationId` directly
+      onto the entry row; this area owns only the presentation rows
+      themselves. */
+  presentations: PresentationsArea;
   /** Every voice recording (ticket 24), read back dated and oldest first for
       the voice compare picker (ticket 25) - entry-only, so unlike photos
       this owns no attach/remove of its own; those stay on upsertEntry's
@@ -345,6 +352,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     dimensions,
     milestones,
     photos: makePhotosArea(driver, files),
+    presentations: makePresentationsArea(driver),
     voice: makeVoiceArea(driver),
     voiceBenchmarks,
     videos: makeVideoArea(driver),

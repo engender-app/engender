@@ -96,6 +96,7 @@ const AREA_ROWS: Record<
     href: (hit) => (hit.context ? `${TRYOUTS}/${hit.context}` : MILESTONES)
   },
   tryouts: { icon: 'tag', label: () => m.tryout_title(), href: (hit) => `${TRYOUTS}/${hit.id}` },
+  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/settings/presentations' },
   roadmapGoals: { icon: 'globe', label: () => m.roadmap_title(), href: () => '/settings/roadmap' },
   affirmations: {
     icon: 'sparkle',

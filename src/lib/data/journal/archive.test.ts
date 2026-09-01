@@ -199,7 +199,8 @@ test('entries travel by uuid, with their dimension values, tags, photos, recordi
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
     videos: [{ id: videoNote, fileName: `${videoNote}.webm` }],
     bodyRegions: { chest: { dysphoria: 40, euphoria: null } },
-    starred: false
+    starred: false,
+    presentationId: null
   });
   assert.equal(snapshot.journal.entries.length, 2);
 });
@@ -557,7 +558,8 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
    else in this suite would notice. A new column fails here until it is
    either carried or listed as deliberately left behind. */
 const CARRIED: Record<string, string[]> = {
-  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred'],
+  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_id'],
+  presentation: ['uuid', 'name', 'role_index', 'hidden'],
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
   entry_tag: ['entry_id', 'tag_id'],
   entry_body_region: ['entry_id', 'region', 'dysphoria', 'euphoria'],

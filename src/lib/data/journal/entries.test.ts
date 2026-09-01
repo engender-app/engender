@@ -53,12 +53,69 @@ test('an entry round-trips with mood, note, dimension values, tags and body regi
       recordings: [],
       videos: [],
       bodyRegions: { chest: { dysphoria: 60, euphoria: null }, voice_throat: { dysphoria: 30, euphoria: null } },
-      starred: false
+      starred: false,
+      presentationId: null
     }
   );
 
   const forDay = await journal.entries.entriesForDay(100);
   assert.deepEqual(forDay.map((e) => e.id), [id]);
+});
+
+test('a new entry never arrives with a presentation pre-filled', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.presentations.addPresentation('femme', 0);
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+  assert.equal((await journal.entries.getEntry(id))?.presentationId, null);
+});
+
+test('assigning a presentation to an entry replaces rather than adds - an entry holds at most one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const femme = await journal.presentations.addPresentation('femme', 0);
+  const androgynous = await journal.presentations.addPresentation('androgynous', 1);
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, presentationId: femme.id });
+  assert.equal((await journal.entries.getEntry(id))?.presentationId, femme.id);
+
+  await journal.entries.upsertEntry({ id, presentationId: androgynous.id });
+  assert.equal((await journal.entries.getEntry(id))?.presentationId, androgynous.id);
+});
+
+test('an edit that never touches the presentation leaves it exactly as it was', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const femme = await journal.presentations.addPresentation('femme', 0);
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, presentationId: femme.id });
+
+  await journal.entries.upsertEntry({ id, note: 'unrelated edit' });
+  assert.equal((await journal.entries.getEntry(id))?.presentationId, femme.id);
+});
+
+test('an explicit null clears a presentation', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const femme = await journal.presentations.addPresentation('femme', 0);
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, presentationId: femme.id });
+
+  await journal.entries.upsertEntry({ id, presentationId: null });
+  assert.equal((await journal.entries.getEntry(id))?.presentationId, null);
+});
+
+test('upsertEntry rejects an unknown presentation id, on create and on update', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.entries.upsertEntry({ epochDay: 100, mood: 3, presentationId: 'nope' }),
+    /unknown presentation/
+  );
+
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+  await assert.rejects(journal.entries.upsertEntry({ id, presentationId: 'nope' }), /unknown presentation/);
+});
+
+test('hiding a presentation leaves every entry that carries it unchanged', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const femme = await journal.presentations.addPresentation('femme', 0);
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 3, presentationId: femme.id });
+
+  await journal.presentations.setPresentationHidden(femme.id, true);
+  assert.equal((await journal.entries.getEntry(id))?.presentationId, femme.id);
 });
 
 test('body regions replace as a whole set on update, unlike dimension values', async () => {

@@ -341,7 +341,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
 
   await insertRows(
     driver,
-    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, starred, updated_at)',
+    'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, starred, presentation_id, updated_at)',
     inserting.map((entry) => [
       entry.uuid,
       entry.epochDay,
@@ -349,6 +349,11 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
       entry.mood,
       entry.note,
       flag(entry.starred),
+      // Absent on an archive written before this ticket - null, the same
+      // resting state an unset presentation always reads (ADR-0010).
+      // Written as-is (no rowid resolved): the same plain-text FK
+      // milestone.procedureId/tryoutId already carry.
+      entry.presentationId ?? null,
       ts
     ])
   );
