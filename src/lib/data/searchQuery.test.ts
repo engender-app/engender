@@ -6,7 +6,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { ftsMatchExpression, tagIdsMatching } from './searchQuery.ts';
+import { ftsMatchExpression, matchWindow, tagIdsMatching } from './searchQuery.ts';
 
 test('quotes each token and matches it by prefix', () => {
   assert.equal(ftsMatchExpression('coffee'), '"coffee"*');
@@ -79,4 +79,41 @@ test('no query means no tag matches', () => {
 
 test('a query matching nothing yields no ids', () => {
   assert.deepEqual(tagIdsMatching('pierogi', tags), []);
+});
+
+/* The window a hit shows (phase 5 deepening ticket 24): the third thing a
+   search needs, at the other end from the two above. */
+
+test('a short hit is shown whole, split at the match', () => {
+  assert.deepEqual(matchWindow('coffee with Marta', 'marta'), {
+    before: 'coffee with ',
+    match: 'Marta',
+    after: ''
+  });
+});
+
+test('the match is shown as it was written, not as it was folded', () => {
+  // The query folds and the text does not: someone who wrote "łóżko" sees
+  // "łóżko" back, which is the whole reason the slice happens on the
+  // original string.
+  assert.deepEqual(matchWindow('Spałem w łóżko do południa', 'lozko'), {
+    before: 'Spałem w ',
+    match: 'łóżko',
+    after: ' do południa'
+  });
+});
+
+test('long text is clipped around the match, with an ellipsis where it was cut', () => {
+  const window = matchWindow(`${'a'.repeat(200)} therapy ${'b'.repeat(200)}`, 'therapy');
+  assert.ok(window);
+  assert.ok(window.before.startsWith('…'), 'the run before the match should be marked as clipped');
+  assert.ok(window.after.endsWith('…'), 'the run after the match should be marked as clipped');
+  assert.equal(window.match, 'therapy');
+  // A row's worth, not a paragraph.
+  assert.ok(window.before.length + window.match.length + window.after.length < 160);
+});
+
+test('a query the text does not hold has no window', () => {
+  assert.equal(matchWindow('coffee with Marta', 'pierogi'), null);
+  assert.equal(matchWindow('coffee with Marta', '  '), null);
 });
