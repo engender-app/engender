@@ -30,7 +30,14 @@ vi.mock('$lib/data/prefs/store.svelte', () => ({
     onThisDayEnabled: true,
     onThisDayNotificationsEnabled: true,
     lastWrappedNotifiedPeriodKey: null as string | null,
-    lastOnThisDayNotifiedEpochDay: null as number | null
+    lastOnThisDayNotifiedEpochDay: null as number | null,
+    /* The registry's two cross-class rules (phase 6 ticket 04), at the
+       defaults a journal that has never opened /settings/notifications is
+       on. */
+    hideNotificationTitles: false,
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00'
   }
 }));
 vi.mock('$lib/data/live/journal.svelte', () => ({
@@ -86,6 +93,10 @@ describe('retrospective notifications scheduler', () => {
     prefs.onThisDayNotificationsEnabled = true;
     prefs.lastWrappedNotifiedPeriodKey = null;
     prefs.lastOnThisDayNotifiedEpochDay = null;
+    prefs.hideNotificationTitles = false;
+    prefs.quietHoursEnabled = false;
+    prefs.quietHoursStart = '22:00';
+    prefs.quietHoursEnd = '07:00';
   });
 
   afterEach(() => {
@@ -197,5 +208,103 @@ describe('retrospective notifications scheduler', () => {
     await flush();
 
     expect(notifyOnThisDay).not.toHaveBeenCalled();
+  });
+  test('holds both notifications inside quiet hours, and posts once the window ends', async () => {
+    /* Held rather than dropped, and with no flag to hold it in: neither
+       check writes its dedup key on the way out, so the period and the day
+       are still qualifying on the check after the window closes (phase 6
+       ticket 04). */
+    isGoodDay.mockResolvedValue(true);
+    prefs.quietHoursEnabled = true;
+    vi.setSystemTime(new Date(2026, 7, 18, 23, 30));
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyWrapped).not.toHaveBeenCalled();
+    expect(notifyOnThisDay).not.toHaveBeenCalled();
+    expect(prefs.lastWrappedNotifiedPeriodKey).toBeNull();
+    expect(prefs.lastOnThisDayNotifiedEpochDay).toBeNull();
+
+    vi.setSystemTime(new Date(2026, 7, 19, 8, 0));
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+
+    expect(notifyWrapped).toHaveBeenCalledTimes(1);
+    expect(notifyOnThisDay).toHaveBeenCalledTimes(1);
+  });
+
+  test('lets an on-this-day held past midnight lapse, and answers about the new day instead', async () => {
+    /* The one place the hold does not carry, and it is the honest answer
+       rather than an oversight: posting a held notice at 07:00 would say "on
+       this day" about yesterday. Wrapped in the same run still holds, because
+       a week is still the offered period the next morning - which is what
+       makes this a property of the payload's own span, not of quiet hours. */
+    isGoodDay.mockResolvedValue(true);
+    prefs.quietHoursEnabled = true;
+    vi.setSystemTime(new Date(2026, 7, 18, 23, 30));
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+    expect(notifyOnThisDay).not.toHaveBeenCalled();
+
+    // A new day, and so a new candidate list: the fixture's TODAY is what
+    // todayEpochDay is mocked to, so the day the check answers about is the
+    // one it reads now, never the one it was held on.
+    onThisDayCandidates.mockReturnValue([{ key: 'month', epochDay: TODAY - 30 }]);
+    vi.setSystemTime(new Date(2026, 7, 19, 8, 0));
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+
+    expect(notifyOnThisDay).toHaveBeenCalledTimes(1);
+    expect(notifyOnThisDay).toHaveBeenCalledWith(
+      expect.objectContaining({ route: '/on-this-day?lookback=month' })
+    );
+    // And wrapped, whose period outlives a night, held rather than lapsed.
+    expect(notifyWrapped).toHaveBeenCalledTimes(1);
+  });
+
+  test('posts inside the window when quiet hours are switched off', async () => {
+    isGoodDay.mockResolvedValue(true);
+    vi.setSystemTime(new Date(2026, 7, 18, 23, 30));
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyWrapped).toHaveBeenCalledTimes(1);
+  });
+
+  test('drops both bodies under the disguise, keeping each channel name as the title', async () => {
+    /* Both rows have declared `disguised: true` in the registry since ticket
+       02 and neither did anything about it until now. */
+    isGoodDay.mockResolvedValue(true);
+    prefs.hideNotificationTitles = true;
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyWrapped).toHaveBeenCalledWith({
+      title: 'Wrapped',
+      body: '',
+      route: '/wrapped/week',
+      channelName: 'Wrapped'
+    });
+    expect(notifyOnThisDay).toHaveBeenCalledWith({
+      title: 'On this day',
+      body: '',
+      route: '/on-this-day?lookback=year',
+      channelName: 'On this day'
+    });
+  });
+
+  test('says what it means to say while the disguise is off', async () => {
+    isGoodDay.mockResolvedValue(true);
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyWrapped).toHaveBeenCalledWith(
+      expect.objectContaining({ body: 'Open the app to look back.' })
+    );
   });
 });

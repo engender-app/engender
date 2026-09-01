@@ -19,13 +19,14 @@
    Live tiles are the third surface the ticket names and end up not needing
    any of this: a tile is never something a person wrote by hand, so there
    is no "who made this" ambiguity to resolve, and its own title is already
-   the feature name (live-tiles/rows.ts, and every Tile's own `title` prop
-   in src/routes/+page.svelte) - "Wear timer" over an elapsed time is
+   the feature name (unprompted/registry.ts, and every Tile's own `title`
+   prop in src/routes/+page.svelte) - "Wear timer" over an elapsed time is
    already what this module would otherwise be saying. One presentation,
    and one surface it turns out not to apply to rather than two shapes
    of it. */
 
 import { m } from '$lib/paraglide/messages';
+import { STOCK_PREFIX, WEAR_PREFIX } from './autoSource';
 import { POLISH_PACK, type RoadmapGoalKey } from './roadmap';
 import { roadmapGoalTitle } from './vocabulary/roadmapLabels';
 import type { Milestone, Reminder } from './types';
@@ -68,9 +69,6 @@ export interface ReminderOrigin extends Origin {
       (unlike resolveMilestoneOrigin's prov_open_source) would say less. */
   actionLabel: string | null;
 }
-
-const STOCK_PREFIX = 'stock:';
-const WEAR_PREFIX = 'wear:';
 
 /** null for a reminder a person made themselves, or one they have already
     taken over: the reminders editor never sets autoSource (reminders.ts),

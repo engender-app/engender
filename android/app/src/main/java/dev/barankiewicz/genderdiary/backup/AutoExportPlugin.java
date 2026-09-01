@@ -71,6 +71,9 @@ public class AutoExportPlugin extends Plugin {
     private static final String PASSWORD_CIPHER = "AES/GCM/NoPadding";
 
     private static final String FAILURE_CHANNEL = "backup_failures";
+    /* Only reached when the JS side sends nothing, which it does not: the
+       localized name and body come from messages/*.json (phase 6 ticket 04). */
+    private static final String FAILURE_CHANNEL_FALLBACK_NAME = "Backups";
     private static final int FAILURE_NOTIFICATION_ID = 1601;
 
     /** The archive profile (ADR-0013), pinned here rather than read off the
@@ -328,6 +331,18 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
+    /**
+     * Posts the failure notice with the strings the JS side hands over
+     * (phase 6 ticket 04). They used to be English literals here, which made
+     * the one notification in the app that nobody could turn off also the one
+     * nobody could read in Polish; the fallbacks below are those same
+     * literals, for a call that somehow arrives with nothing.
+     *
+     * <p>Under `hideNotificationTitles` the caller sends the channel's own
+     * name and an empty body - the registry's disguise rule, applied on that
+     * side because this plugin never sees a preference. An empty body is
+     * posted as no body at all rather than as a blank line.
+     */
     @PluginMethod
     public void notifyFailure(PluginCall call) {
         try {
@@ -335,15 +350,17 @@ public class AutoExportPlugin extends Plugin {
                 call.resolve();
                 return;
             }
-            ensureFailureChannel();
+            ensureFailureChannel(call.getString("channelName", FAILURE_CHANNEL_FALLBACK_NAME));
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(getContext(), FAILURE_CHANNEL)
                     .setSmallIcon(android.R.drawable.stat_notify_error)
-                    .setContentTitle("Scheduled backup failed")
-                    .setContentText("Nothing was saved. Open the app to try again.")
+                    .setContentTitle(call.getString("title", "Scheduled backup failed"))
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setAutoCancel(true)
                     .setVisibility(NotificationCompat.VISIBILITY_PRIVATE);
+
+            String body = call.getString("body", "");
+            if (body != null && !body.isEmpty()) builder.setContentText(body);
 
             NotificationManagerCompat.from(getContext()).notify(FAILURE_NOTIFICATION_ID, builder.build());
             call.resolve();
@@ -486,15 +503,18 @@ public class AutoExportPlugin extends Plugin {
             == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void ensureFailureChannel() {
+    /* Recreated on every notice rather than only when missing, the way
+       RemindersPlugin.ensureChannels and RetrospectiveNotificationsPlugin
+       already do it: cheap, and it keeps the channel's displayed name in the
+       app's current language instead of freezing it at whatever it was the
+       first time a backup failed. */
+    private void ensureFailureChannel(String channelName) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager manager = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
-        NotificationChannel channel = manager.getNotificationChannel(FAILURE_CHANNEL);
-        if (channel != null) return;
         NotificationChannel created = new NotificationChannel(
             FAILURE_CHANNEL,
-            "Backup failures",
+            channelName == null || channelName.isEmpty() ? FAILURE_CHANNEL_FALLBACK_NAME : channelName,
             NotificationManager.IMPORTANCE_DEFAULT
         );
         created.setDescription("Scheduled backup failures that need a new destination or retry.");

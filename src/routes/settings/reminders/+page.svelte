@@ -116,20 +116,6 @@
       {/if}
     </div>
 
-    <div class="card spread">
-      <span class="kit-row-text">
-        <span class="kit-row-title"><Icon name="shield" size={16} /> {m.rem_hide_titles_title()}</span>
-        <span class="kit-row-sub">{m.rem_hide_titles_sub()}</span>
-      </span>
-      <Switch
-        checked={prefs.hideNotificationTitles}
-        label={m.rem_hide_titles_title()}
-        onChange={(v) => {
-          prefs.hideNotificationTitles = v;
-        }}
-      />
-    </div>
-
     {#if status.notifications === 'denied' || status.exactAlarms === 'denied'}
       <div class="notice notice-warning">
         <Icon name="alert" size={20} />

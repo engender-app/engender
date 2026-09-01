@@ -21,6 +21,7 @@ import type { RegimenArea } from './regimen';
 import type { RemindersArea } from './reminders';
 import { projectStock, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
+import { stockAutoSource } from '../autoSource';
 
 export interface StockEntryInput {
   drug: string;
@@ -83,10 +84,10 @@ const toStock = (row: StockRow): MedicationStock => ({
 const STOCK_COLUMNS = 'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed';
 
 /** Where box 4's reminder marks which drug it belongs to
-    (stockReminder.ts). Not exported: nothing outside this module reads a
-    Reminder's `auto_source` well enough to build one - only stock.ts
-    writes them. */
-const autoSourceFor = (drug: string): string => `stock:${drug}`;
+    (stockReminder.ts). The marker itself lives in autoSource.ts, which is
+    also where provenance.ts reads it back from and where the registry's
+    switches ask what a row is. */
+const autoSourceFor = stockAutoSource;
 
 export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: RegimenArea, reminders: RemindersArea): StockArea {
   const getEntries = async (): Promise<MedicationStock[]> => {

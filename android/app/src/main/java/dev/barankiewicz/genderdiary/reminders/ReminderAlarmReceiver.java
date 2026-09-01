@@ -49,7 +49,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         if (reminder == null || !reminder.optBoolean("enabled", false)) return;
 
         postReminderNotification(context, payload, reminder);
-        ReminderScheduler.scheduleOneReminder(context, reminder, ZonedDateTime.now());
+        ReminderScheduler.scheduleOneReminder(context, payload, reminder, ZonedDateTime.now());
     }
 
     private void handleCheckIn(Context context, JSONObject payload) {

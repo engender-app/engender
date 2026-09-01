@@ -3042,6 +3042,55 @@ try {
   });
 } catch (e) { fail('Home bleeds decoration only', e); }
 
+/* The two views over the unprompted registry (phase 6 ticket 04). The
+   notifications view is the interesting one here precisely because this is a
+   browser: its entries are absent rather than shown and inert, since a
+   browser cannot fire a scheduled notification while the app is closed, so
+   what the walkthrough can hold on web is that absence plus the screen still
+   saying why. The switches themselves are Android-only and are held by
+   registry.test.ts and each producer's own test. */
+try {
+  await fresh('/settings');
+  await page.locator('[data-list-row="notifications"]').click();
+  await page.waitForSelector('[data-screen]');
+  if ((await page.getByRole('heading', { level: 1 }).count()) === 0) {
+    throw new Error('the notifications view rendered no heading');
+  }
+  if (await page.locator('[data-notification]').count()) {
+    throw new Error('a notification row rendered on web, where it can never fire');
+  }
+  if (await page.locator('[data-quiet-hours]').count()) {
+    throw new Error('quiet hours rendered on web, over notifications that cannot happen');
+  }
+  if (!(await page.locator('[data-notice-title]').count())) {
+    throw new Error('the empty screen explains nothing');
+  }
+
+  /* And the surfaces view beside it, which is not Android-only: its rows are
+     what Home may show. That the notification sub-toggles are gone from here
+     is a fact about the source, held by unprompted-views.test.ts - asserting
+     [data-live-tile-notify] absent in the browser would be unfalsifiable now
+     that no component owns that handle, which is the line
+     walkthrough-handles-exist.test.ts holds. */
+  await fresh('/settings');
+  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.waitForSelector('[data-live-tile="wrapped"]');
+  /* Not a hand-counted total: the registry's own claim is that a later
+     ticket adds one array entry and no markup, and a number here would make
+     that a walkthrough edit. registry.test.ts owns the list; what this holds
+     is that the screen drew the registry rather than nothing, and that the
+     two rows whose toggles moved are still on it. */
+  const tiles = await page.locator('[data-live-tile]').count();
+  if (tiles < 3) throw new Error('the surfaces view drew ' + tiles + ' rows');
+  for (const key of ['wrapped', 'on-this-day', 'stock-notice']) {
+    if (!(await page.locator(`[data-live-tile="${key}"]`).count())) {
+      throw new Error(key + ' is missing from the surfaces view');
+    }
+  }
+
+  ok('two views over one registry: notifications absent on web, surfaces still whole');
+} catch (e) { fail('the unprompted registry views', e); }
+
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
 

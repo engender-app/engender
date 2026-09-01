@@ -93,9 +93,16 @@ public final class ReminderScheduler {
         return ReminderPayloadStore.read(context);
     }
 
-    static void scheduleOneReminder(Context context, JSONObject reminder, ZonedDateTime now) {
+    /**
+     * Quiet hours are applied here rather than inside {@link ReminderPlanner}
+     * (phase 6 ticket 04): the planner answers what the rule says, which is
+     * what the shared reminder-rule fixture pins, and holding an alarm out of
+     * the window is a separate decision on top of that answer.
+     */
+    static void scheduleOneReminder(Context context, JSONObject payload, JSONObject reminder, ZonedDateTime now) {
         ZonedDateTime fireAt = ReminderPlanner.nextReminder(reminder, now);
         if (fireAt == null) return;
+        fireAt = QuietHours.hold(fireAt, payload.optJSONObject("quietHours"));
         String reminderId = reminder.optString("id", "");
         if (reminderId.isBlank()) return;
 
@@ -117,7 +124,10 @@ public final class ReminderScheduler {
         int latestEntryEpochDay = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE);
         boolean todayHasEntry = latestEntryEpochDay == today;
 
-        ZonedDateTime fireAt = ReminderPlanner.nextCheckIn(time, now, todayHasEntry);
+        ZonedDateTime fireAt = QuietHours.hold(
+            ReminderPlanner.nextCheckIn(time, now, todayHasEntry),
+            payload.optJSONObject("quietHours")
+        );
         PendingIntent pending = PendingIntent.getBroadcast(
             context,
             REQUEST_CHECK_IN,
@@ -214,7 +224,7 @@ public final class ReminderScheduler {
         if (reminders != null) {
             for (int i = 0; i < reminders.length(); i++) {
                 JSONObject reminder = reminders.optJSONObject(i);
-                if (reminder != null) scheduleOneReminder(context, reminder, now);
+                if (reminder != null) scheduleOneReminder(context, payload, reminder, now);
             }
         }
         scheduleCheckIn(context, payload, now);

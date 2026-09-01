@@ -23,6 +23,7 @@ describe('buildAndroidReminderPayload', () => {
       checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
+    quietHours: { enabled: false, start: '22:00', end: '07:00' },
       texts: {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
@@ -51,6 +52,7 @@ describe('buildAndroidReminderPayload', () => {
       checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
+    quietHours: { enabled: false, start: '22:00', end: '07:00' },
       texts: {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
@@ -84,6 +86,7 @@ describe('buildAndroidReminderPayload', () => {
       checkInAffirmations: affirmations,
       latestEntryEpochDay: 21000,
       hideNotificationTitles: false,
+    quietHours: { enabled: false, start: '22:00', end: '07:00' },
       texts: {
         channelReminders: 'A',
         channelCheckIn: 'B',
