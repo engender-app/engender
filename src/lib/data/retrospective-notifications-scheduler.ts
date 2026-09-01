@@ -10,7 +10,16 @@
    or per day (on-this-day) - lastWrappedNotifiedPeriodKey and
    lastOnThisDayNotifiedEpochDay are the dedup, so a period or day that stays
    qualifying for its whole freshness window is not renotified on every
-   15-minute check. */
+   15-minute check.
+
+   The registry's two cross-class rules reach both checks below (phase 6
+   ticket 04). Quiet hours need no state here: a check inside the window
+   returns before writing its dedup key, so the period or day is still
+   qualifying on the next check and the first one after the window ends
+   notifies. That is a hold rather than a drop, out of the fifteen-minute
+   cadence this file already had. The disguise is notificationText's one
+   rule, which these two declared in the registry and did not apply until
+   now. */
 
 import { journal } from '$lib/data/live/journal.svelte';
 import { prefs } from '$lib/data/prefs/store.svelte';
@@ -20,6 +29,8 @@ import { todayEpochDay } from '$lib/data/epochDay';
 import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod, type WrappedPeriod } from '$lib/data/wrapped';
 import { onThisDayCandidates } from '$lib/data/on-this-day';
 import { androidRetrospectiveNotifications } from '$lib/retrospective/android-bridge';
+import { mayFireAt } from '$lib/unprompted/quietHours';
+import { notificationText } from '$lib/unprompted/notificationText';
 
 let active = false;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -31,8 +42,15 @@ function wrappedPeriodKey(period: Pick<WrappedPeriod, 'cadence' | 'start'>): str
   return `${period.cadence}:${period.start}`;
 }
 
-async function checkWrapped() {
+const quietHours = () => ({
+  enabled: prefs.quietHoursEnabled,
+  start: prefs.quietHoursStart,
+  end: prefs.quietHoursEnd
+});
+
+async function checkWrapped(now: Date) {
   if (!prefs.wrappedEnabled || !prefs.wrappedNotificationsEnabled) return;
+  if (!mayFireAt(now, quietHours())) return;
 
   const period = offeredWrappedPeriod(todayEpochDay());
   const key = wrappedPeriodKey(period);
@@ -42,16 +60,20 @@ async function checkWrapped() {
   if (recap.entryCount < WRAPPED_ENTRY_FLOOR) return;
 
   await androidRetrospectiveNotifications.notifyWrapped({
-    title: m.wrapped(),
-    body: m.wrapped_notification_body(),
+    ...notificationText(
+      { title: m.wrapped(), body: m.wrapped_notification_body() },
+      m.wrapped(),
+      prefs.hideNotificationTitles
+    ),
     route: `/wrapped/${period.cadence}`,
     channelName: m.wrapped()
   });
   prefs.lastWrappedNotifiedPeriodKey = key;
 }
 
-async function checkOnThisDay() {
+async function checkOnThisDay(now: Date) {
   if (!prefs.onThisDayEnabled || !prefs.onThisDayNotificationsEnabled) return;
+  if (!mayFireAt(now, quietHours())) return;
 
   const today = todayEpochDay();
   if (prefs.lastOnThisDayNotifiedEpochDay === today) return;
@@ -63,8 +85,11 @@ async function checkOnThisDay() {
     if (!(await journal.stats.isGoodDay(candidate.epochDay))) continue;
 
     await androidRetrospectiveNotifications.notifyOnThisDay({
-      title: m.on_this_day(),
-      body: m.on_this_day_notification_body(),
+      ...notificationText(
+        { title: m.on_this_day(), body: m.on_this_day_notification_body() },
+        m.on_this_day(),
+        prefs.hideNotificationTitles
+      ),
       route: `/on-this-day?lookback=${candidate.key}`,
       channelName: m.on_this_day()
     });
@@ -77,8 +102,9 @@ async function maybeRun() {
   if (!active || running || !isAndroid()) return;
   running = true;
   try {
-    await checkWrapped();
-    await checkOnThisDay();
+    const at = new Date();
+    await checkWrapped(at);
+    await checkOnThisDay(at);
   } catch (error) {
     console.error('retrospective notification check failed', error);
   } finally {
