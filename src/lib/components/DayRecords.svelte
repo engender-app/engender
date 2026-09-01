@@ -37,6 +37,7 @@
   import type { DayRecords } from '$lib/data/journal/day';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
+  import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import type { Role } from '$lib/theme/roles';
   import PhotoThumb from './PhotoThumb.svelte';
   import Sheet from './Sheet.svelte';
@@ -98,6 +99,7 @@
     aside={m.entries_this_day({ count: entries.length })}
   >
     {#each entries as e (e.id)}
+      {@const presentation = entryPresentation(e)}
       <DayEntry
         key={String(e.id)}
         href={`/entry/${e.id}`}
@@ -106,6 +108,8 @@
         note={e.note ?? undefined}
         tags={entryTags(e)}
         marks={entryMarks(e)}
+        presentationName={presentation?.name}
+        presentationColor={presentation?.color}
       />
     {/each}
   </DayCard>

@@ -37,6 +37,7 @@
   import { smartBack } from '$lib/navigation/smart-back';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
+  import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -174,6 +175,7 @@
               <!-- It opens, the same way an entry opens everywhere else it is
                    drawn. A day you are being shown and cannot read back is a
                    dead end. -->
+              {@const presentation = entryPresentation(entry)}
               <DayEntry
                 key={String(entry.id)}
                 href={`/entry/${entry.id}`}
@@ -182,6 +184,8 @@
                 note={entry.note ?? undefined}
                 tags={entryTags(entry)}
                 marks={entryMarks(entry)}
+                presentationName={presentation?.name}
+                presentationColor={presentation?.color}
               />
             {/each}
           </DayCard>
