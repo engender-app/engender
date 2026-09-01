@@ -335,6 +335,7 @@
               role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
               title={m.vc_benchmarks_empty_title()}
               text={m.vc_benchmarks_empty_body()}
+              action={{ label: m.vb_record(), href: '/settings/voice/record' }}
             />
           {/if}
         </div>
