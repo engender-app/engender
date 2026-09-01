@@ -37,6 +37,18 @@ const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice' };
 export interface PersonaEntry extends EntryInput {
   epochDay: number;
   photoCount: number;
+  /** Which persona presentation this entry carries, by the name in
+      `Persona.presentations` rather than a uuid the persona has no way to
+      mint itself (phase 5 deepening ticket 17, ADR-0048) - journal-seed.ts
+      resolves it to the real id once the presentation rows exist. Absent on
+      most entries: an entry with none is the resting state this feature
+      leaves most of the journal in. */
+  presentationName?: string;
+}
+
+export interface PersonaPresentation {
+  name: string;
+  roleIndex: number;
 }
 
 export interface PersonaMilestone extends MilestoneInput {
@@ -45,6 +57,7 @@ export interface PersonaMilestone extends MilestoneInput {
 
 export interface Persona {
   customTag: { groupKey: string; label: string };
+  presentations: PersonaPresentation[];
   entries: PersonaEntry[];
   milestones: PersonaMilestone[];
   reminders: ReminderInput[];
@@ -114,6 +127,13 @@ function buildEntries(): PersonaEntry[] {
       const note = NOTES[Math.floor(r() * NOTES.length)];
       // Today's sample entry sits a few hours back so anything logged "now" sorts above it.
       const ts = back === 0 ? Date.now() - 3 * 3600000 : startOfDayTimestamp(day) + hour * 3600000 + minute * 60000;
+      /* The last three weeks alternate between the persona's two
+         presentations (phase 5 deepening ticket 17) - deterministic on
+         `back` rather than a further draw from `r()`, so adding this does
+         not shift a single existing entry's mood, note or tags. Everything
+         before that stays presentationless, which is most of the journal
+         and is the resting state this feature leaves untouched entries in. */
+      const presentationName = back <= 20 ? (back % 4 < 2 ? 'femme' : 'androgynous') : undefined;
       entries.push({
         epochDay: day,
         timestamp: ts,
@@ -121,7 +141,8 @@ function buildEntries(): PersonaEntry[] {
         note,
         dims: { euphoria_dysphoria: eu, femininity: fem },
         tags: [...new Set(tags)],
-        photoCount: r() < 0.1 ? 1 : 0
+        photoCount: r() < 0.1 ? 1 : 0,
+        ...(presentationName ? { presentationName } : {})
       });
     }
   }
@@ -195,6 +216,10 @@ export function persona(): Persona {
 
   return {
     customTag: VOICE_PRACTICE,
+    presentations: [
+      { name: 'femme', roleIndex: 0 },
+      { name: 'androgynous', roleIndex: 1 }
+    ],
     entries: buildEntries(),
     milestones: [
       { name: 'HRT start', epochDay: today - 745, templateKey: 'hrt_start', hasPhoto: true },
