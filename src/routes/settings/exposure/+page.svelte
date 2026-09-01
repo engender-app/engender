@@ -75,7 +75,12 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <p class="muted small">{m.exposure_dose_totals_empty()}</p>
+      <Notice
+        icon="clock"
+        key="exposure-dose-totals-empty"
+        text={m.exposure_dose_totals_empty()}
+        action={{ label: m.doses_empty_action(), href: '/doses' }}
+      />
     {/snippet}
   </ReadGate>
   {#if counters && counters.excludedDoses > 0}
@@ -101,7 +106,12 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <p class="muted small">{m.exposure_route_days_empty()}</p>
+      <Notice
+        icon="flask"
+        key="exposure-route-days-empty"
+        text={m.exposure_route_days_empty()}
+        action={{ label: m.regimen_empty_action(), href: '/settings/regimen' }}
+      />
     {/snippet}
   </ReadGate>
 
@@ -124,7 +134,12 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <p class="muted small">{m.exposure_regimen_days_empty()}</p>
+      <Notice
+        icon="flask"
+        key="exposure-regimen-days-empty"
+        text={m.exposure_regimen_days_empty()}
+        action={{ label: m.regimen_empty_action(), href: '/settings/regimen' }}
+      />
     {/snippet}
   </ReadGate>
 </div>
