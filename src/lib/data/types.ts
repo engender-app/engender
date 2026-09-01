@@ -177,7 +177,20 @@ export interface Milestone {
   roadmapGoalKey?: string | null;
   /** Linked surgical procedure uuid (phase 5 ticket 12, ADR-0045). */
   procedureId?: string | null;
+  /** Linked tryout uuid, set on adoption (phase 5 deepening ticket 22,
+      ADR-0045). Nulled out the same way procedureId is when the tryout it
+      names is deleted. */
+  tryoutId?: string | null;
   photo: Photo | null;
+  /** Resolved alongside the row for the provenance line (phase 5 deepening
+      ticket 22): a linked procedure's or tryout's own name, and a custom
+      roadmap goal's own text where roadmapGoalKey names one. Never stored
+      and never archived - a built-in goal's title is a compiled string
+      resolved by key in code instead (provenance.ts), and everything here
+      re-resolves fresh from whichever journal the row is read out of. */
+  procedureName?: string | null;
+  tryoutLabel?: string | null;
+  customRoadmapGoalText?: string | null;
 }
 
 /* Carries the rule from reminderRule.ts, never a next-fire instant

@@ -112,7 +112,7 @@ test('a keystore records which kind of secret wrapped it', async () => {
 
 test('the secret source survives serialization, so boot can pick a gate before unlocking', async () => {
   const { metadata } = await createKeystore('1234', CHEAP, 'pin');
-  const reparsed = parseKeystore(serializeKeystore(metadata));
+  const reparsed = parseKeystore(serializeKeystore({ ...metadata, pinBinding: 'browser' }));
 
   expect(reparsed.secretSource).toBe('pin');
   expect(reparsed.params).toEqual(CHEAP);
@@ -162,4 +162,51 @@ test('rewrapping without naming a source keeps the one it already had', async ()
   const rewrapped = await rewrapKeystore(metadata, '1234', '5678', CHEAP);
 
   expect(rewrapped.secretSource).toBe('pin');
+});
+
+/* --- which key the PIN was bound to (ticket sec-02-06) ------------------- */
+
+test('a PIN keystore carries its binding through serialization, so a later unlock uses the key that wrapped it', async () => {
+  const { metadata } = await createKeystore('1234', CHEAP, 'pin');
+  const reparsed = parseKeystore(serializeKeystore({ ...metadata, pinBinding: 'keystore' }));
+
+  expect(reparsed.pinBinding).toBe('keystore');
+});
+
+/* Every PIN journal made before the Android binding existed. Reading the
+   absent field as anything but the browser key would derive the secret from
+   a key that never wrapped the file, and arrive at the gate as a wrong PIN
+   on a correct one. */
+test('a PIN keystore written before the field existed reads as bound to the browser key', async () => {
+  const { metadata, dataKey } = await createKeystore('1234', CHEAP, 'pin');
+  const before = JSON.parse(serializeKeystore({ ...metadata, pinBinding: 'browser' })) as Record<string, unknown>;
+  delete before.pinBinding;
+
+  const reparsed = parseKeystore(JSON.stringify(before));
+  expect(reparsed.pinBinding).toBe('browser');
+  expect(await unlockKeystore(reparsed, '1234')).toEqual(dataKey);
+});
+
+test('a binding this build does not know fails by name rather than falling back to the browser key', async () => {
+  const { metadata } = await createKeystore('1234', CHEAP, 'pin');
+  const odd = JSON.parse(serializeKeystore({ ...metadata, pinBinding: 'browser' })) as Record<string, unknown>;
+  odd.pinBinding = 'strongbox';
+
+  expect(() => parseKeystore(JSON.stringify(odd))).toThrow(KeystoreUnreadableError);
+});
+
+/* The forgotten-attach case, refused where it can still be fixed. A PIN
+   keystore on disk with no binding named is one the next boot has to guess
+   about, and the wrong guess is a journal that will not open. */
+test('a PIN keystore that names no binding is refused rather than written', async () => {
+  const { metadata } = await createKeystore('1234', CHEAP, 'pin');
+
+  expect(() => serializeKeystore(metadata)).toThrow(KeystoreUnreadableError);
+});
+
+test('a keystore that is not a PIN one neither needs nor gains a binding', async () => {
+  const { metadata } = await createKeystore('a typed passphrase', CHEAP);
+  const reparsed = parseKeystore(serializeKeystore(metadata));
+
+  expect(reparsed.pinBinding).toBeUndefined();
 });

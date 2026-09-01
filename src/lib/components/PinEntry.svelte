@@ -20,6 +20,7 @@
      when a PIN is being picked, so AccessModeSetup mounts the bare pad. */
 
   import { m } from '$lib/paraglide/messages';
+  import { isAndroid } from '$lib/platform';
   import { localStorageAttempts } from '$lib/lock/attempt-store';
   import { createAttemptThrottle } from '$lib/lock/throttle';
   import type { Snippet } from 'svelte';
@@ -102,7 +103,11 @@
       if (outcome === 'device-gone') {
         /* Not counted against the throttle: nothing was guessed and no
            number of tries would get anywhere. */
-        error = m.su_device_key_gone();
+        /* Two sentences for one state, because the key is in two different
+           places: the browser's own store on the web, and Android Keystore
+           on a phone (ticket sec-02-06). "This browser" on a phone would be
+           telling somebody about a store their PIN was never bound to. */
+        error = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
         return;
       }
       throttle.recordWrong(Date.now());
