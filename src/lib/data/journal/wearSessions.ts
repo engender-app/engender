@@ -26,6 +26,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Reminder, WearSession } from '../types';
 import { assertChanged, mintUuid, now } from './support';
 import type { RemindersArea } from './reminders';
+import { wearAutoSource } from '../autoSource';
 
 export interface WearSessionInput {
   id?: string;
@@ -92,9 +93,10 @@ export function hoursMinutesSecondsOf(ms: number): { hours: number; minutes: num
 }
 
 /** Where this session's reminder marks which session it belongs to -
-    `feature:id`, the same shape stock.ts's own `autoSourceFor` builds. Not
-    exported: only this module writes one. */
-const autoSourceFor = (sessionId: string): string => `wear:${sessionId}`;
+    `feature:id`, the same shape stock.ts's own marker has. Both live in
+    autoSource.ts now, since phase 6 ticket 04 gave the registry a switch
+    that has to recognise this subset. */
+const autoSourceFor = wearAutoSource;
 
 /** A one-off Reminder rule for `hours` after `startTimestamp`, as the local
     epoch day and wall-clock time the schema's rule shape wants - a Reminder

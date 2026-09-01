@@ -26,7 +26,11 @@ export interface AndroidAutoExportBridge {
   deriveKey(options: { salt: string; kdf: Argon2Params }): Promise<{ key: string | null }>;
   clearPassword(): Promise<void>;
   writeBackup(options: { fileName: string; base64: string }): Promise<{ writtenAt: number }>;
-  notifyFailure(): Promise<void>;
+  /** Posts the scheduled-backup failure notice (phase 6 ticket 04). The
+      strings arrive from this side now, so the notice is localized and the
+      registry's disguise rule can reach it - the plugin used to hold English
+      literals and had no way to know about either. */
+  notifyFailure(options: { title: string; body: string; channelName: string }): Promise<void>;
 }
 
 export const androidAutoExport = registerAndroidPlugin<AndroidAutoExportBridge>(androidPluginOwners.autoExport);

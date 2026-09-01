@@ -248,9 +248,26 @@
       >
         {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
       </ListRow>
-      <!-- Ticket 51: the wrapped/on-this-day toggles and every live tile's
-           kind switch live behind this one row, not in this card. -->
+      <!-- The two views over the unprompted registry (phase 6 tickets 02 and
+           04). Two rows rather than one, because "stop putting things on my
+           home screen" and "stop buzzing my phone" are different requests -
+           the list behind them is the same one either way. -->
       <ListRow key="live-tiles" icon="grid" title={m.live_tiles_title()} subtitle={m.live_tiles_sub()} href="/settings/live-tiles" />
+      <!-- `zap` rather than a second bell: the row above is already the bell,
+           and two identical icons on adjacent rows read as one row drawn
+           twice. On web this row says what the reminders row above it says,
+           and in the same shape - the screen behind it is a notice, not a
+           list of switches. -->
+      <ListRow
+        key="notifications"
+        icon="zap"
+        title={m.notif_title()}
+        subtitle={isWeb ? m.notif_web_row_sub() : m.notif_sub()}
+        href="/settings/notifications"
+        chevron={false}
+      >
+        {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
+      </ListRow>
       <ListRow
         key="journey-anchor"
         icon="flag"

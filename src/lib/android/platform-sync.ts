@@ -35,6 +35,8 @@ import type { Reminder } from '$lib/data/types';
    module (unlike buildAndroidReminderPayload below) has no reason to be
    mocked out. */
 import { isPausedOn } from '../data/journalingPause';
+import { isWearAutoSource } from '../data/autoSource';
+import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import { resolveAndroidBackAction } from './back-navigation';
@@ -48,6 +50,15 @@ export interface PlatformSyncDeps {
     checkInTime: string;
     checkInAffirmationsEnabled: boolean;
     hideNotificationTitles: boolean;
+    /** The unprompted registry's two reminder switches (phase 6 ticket 04).
+        Gated here rather than by editing the rows themselves: a person who
+        turns reminders off keeps every rule exactly as they wrote it, and
+        turning them back on schedules the same alarms again. */
+    remindersEnabled: boolean;
+    wearElapsedEnabled: boolean;
+    quietHoursEnabled: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
     disguise: boolean;
     quickExit: boolean;
   };
@@ -106,9 +117,35 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
   return start;
 }
 
+/** Which reminder rows may actually be scheduled, given the unprompted
+    registry's two switches (phase 6 ticket 04). The rows themselves are
+    untouched by either: this is the one choke point every reminder alarm
+    passes through, native side included, so filtering here is what makes
+    "off" mean off for the whole path rather than for whichever caller
+    remembered to check.
+
+    A wear session's elapsed prompt is an ordinary Reminder row on a `wear:`
+    marker (CONTEXT.md), which is why `wearElapsedEnabled` is a filter over
+    the same list rather than a producer of its own. */
+export function schedulableReminders(
+  reminders: Reminder[],
+  gates: { remindersEnabled: boolean; wearElapsedEnabled: boolean }
+): Reminder[] {
+  if (!gates.remindersEnabled) return [];
+  if (gates.wearElapsedEnabled) return reminders;
+  return reminders.filter((reminder) => !isWearAutoSource(reminder.autoSource));
+}
+
 /** The one piece of the reminder schedule sync with an actual decision in it:
-    an empty affirmation list when the toggle is off rather than none fetched,
-    and the latest entry's day or null when there is none yet. */
+    which rows may be scheduled at all, an empty affirmation list when the
+    toggle is off rather than none fetched, and the latest entry's day or null
+    when there is none yet.
+
+    Quiet hours rides along as three fields rather than being applied here.
+    The window has to be read against each alarm's own fire time, and those
+    are computed on the Java side from the rule (ReminderPlanner), before any
+    WebView exists - so what crosses the bridge is the window itself and
+    QuietHours.java does the holding. */
 export function assembleReminderSyncPayload(input: {
   reminders: Reminder[];
   recentEntries: Array<{ epochDay: number }>;
@@ -117,6 +154,9 @@ export function assembleReminderSyncPayload(input: {
   checkInAffirmationsEnabled: boolean;
   affirmationLines: string[];
   hideNotificationTitles: boolean;
+  remindersEnabled: boolean;
+  wearElapsedEnabled: boolean;
+  quietHours: QuietHours;
   /** Whether a journaling pause covers today (phase 5 ticket 21). Gated
       here, not by clearing the `checkInEnabled` preference, so the prompt
       resumes on its own once the pause ends. */
@@ -124,12 +164,13 @@ export function assembleReminderSyncPayload(input: {
   texts: AndroidReminderTexts;
 }): AndroidReminderSyncPayload {
   return buildAndroidReminderPayload({
-    reminders: input.reminders,
+    reminders: schedulableReminders(input.reminders, input),
     checkInEnabled: input.checkInEnabled && !input.pausedToday,
     checkInTime: input.checkInTime,
     checkInAffirmations: input.checkInAffirmationsEnabled ? input.affirmationLines : [],
     latestEntryEpochDay: input.recentEntries[0]?.epochDay ?? null,
     hideNotificationTitles: input.hideNotificationTitles,
+    quietHours: input.quietHours,
     texts: input.texts
   });
 }
@@ -159,6 +200,9 @@ const syncReminderSchedules = coalescing(
         checkInAffirmationsEnabled: deps.prefs.checkInAffirmationsEnabled,
         affirmationLines: deps.affirmationLines(),
         hideNotificationTitles: deps.prefs.hideNotificationTitles,
+        remindersEnabled: deps.prefs.remindersEnabled,
+        wearElapsedEnabled: deps.prefs.wearElapsedEnabled,
+        quietHours: quietHoursOf(deps.prefs),
         pausedToday: isPausedOn(pauses, deps.todayEpochDay()),
         texts: deps.reminderTexts()
       })

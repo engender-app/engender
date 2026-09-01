@@ -25,8 +25,6 @@ export interface AndroidAutoExportDeps {
   recordBackup(at: number): void;
 }
 
-export type AutoExportTrigger = 'manual' | 'scheduled';
-
 const toBase64 = (bytes: Uint8Array): string => {
   let binary = '';
   for (let i = 0; i < bytes.length; i += BASE64_CHUNK) {
@@ -88,10 +86,15 @@ async function disable(status: AutoExportStatus) {
   await androidAutoExport.configure({ enabled: false, schedule: status.schedule });
 }
 
+/* Writes the file and says what happened. Whether a failure also reaches the
+   phone is not decided here any more (phase 6 ticket 04): it used to take a
+   `trigger` argument whose only job was to gate `notifyFailure`, and the
+   notice now answers to the unprompted registry - a preference, quiet hours
+   and the disguise - which is the auto-export scheduler's business, since the
+   scheduler is the only caller a notification was ever right for. */
 export async function runAndroidAutoExport(
   source: AndroidAutoExportSource,
-  deps: AndroidAutoExportDeps,
-  trigger: AutoExportTrigger = 'manual'
+  deps: AndroidAutoExportDeps
 ): Promise<AndroidAutoExportResult> {
   if (!isAndroid()) return { outcome: 'failed', reason: 'android-only' };
 
@@ -138,10 +141,8 @@ export async function runAndroidAutoExport(
     const reason = reasonText(error);
     if (isDestinationFailure(reason)) {
       await disable(status);
-      if (trigger === 'scheduled') await androidAutoExport.notifyFailure();
       return { outcome: 'needs-destination' };
     }
-    if (trigger === 'scheduled') await androidAutoExport.notifyFailure();
     return { outcome: 'failed', reason };
   }
 }

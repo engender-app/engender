@@ -377,6 +377,15 @@
     const checkInTime = prefs.checkInTime;
     const checkInAffirmationsEnabled = prefs.checkInAffirmationsEnabled;
     const hideNotificationTitles = prefs.hideNotificationTitles;
+    /* Read here rather than inside platform-sync.ts for the same reason every
+       preference above is: only a .svelte file has the reactivity that
+       re-runs this effect, and so re-syncs the schedule, when one of them
+       changes (phase 6 ticket 04's registry switches and quiet window). */
+    const remindersEnabled = prefs.remindersEnabled;
+    const wearElapsedEnabled = prefs.wearElapsedEnabled;
+    const quietHoursEnabled = prefs.quietHoursEnabled;
+    const quietHoursStart = prefs.quietHoursStart;
+    const quietHoursEnd = prefs.quietHoursEnd;
     const disguise = prefs.disguise;
     const quickExit = prefs.quickExit;
     if (!ready) return;
@@ -385,7 +394,19 @@
       isAndroid,
       isReady: () => isReadyState(bootState),
       todayEpochDay,
-      prefs: { checkInEnabled, checkInTime, checkInAffirmationsEnabled, hideNotificationTitles, disguise, quickExit },
+      prefs: {
+        checkInEnabled,
+        checkInTime,
+        checkInAffirmationsEnabled,
+        hideNotificationTitles,
+        remindersEnabled,
+        wearElapsedEnabled,
+        quietHoursEnabled,
+        quietHoursStart,
+        quietHoursEnd,
+        disguise,
+        quickExit
+      },
       journal: {
         reminders: journal.reminders,
         entries: journal.entries,
