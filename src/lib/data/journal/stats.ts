@@ -35,6 +35,19 @@ export interface DayAverage {
   count: number;
 }
 
+export interface DaySpread {
+  day: number;
+  /** The lowest and the highest value the day's entries carried, in native
+      units (CONTEXT: Spread). Equal when the day only ever said one thing,
+      which is a day with no ground covered rather than a missing answer -
+      whether that draws a mark is the screen's rule, not this read's. */
+  low: number;
+  high: number;
+  /** How many entries the two ends were taken from, the same count
+      `dayAverages` reports for the same day. */
+  count: number;
+}
+
 export interface TagInsight {
   /** No label: a built-in tag stores a key and its wording comes from the
       message catalogue at display time (ticket 05). */
@@ -101,6 +114,20 @@ export interface StatsArea {
       dimension since hidden, an archive from a build that knew a key this
       one does not - yields no points rather than an error. */
   dayAverages(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** The same days `dayAverages` answers for, reporting each one's lowest
+      and highest value instead of its middle (phase 6 unprompted ticket 11,
+      CONTEXT: Spread). One row per day that carried the metric, oldest
+      first, both ends of the range inclusive.
+
+      A separate read rather than two more fields on `DayAverage`: a day's
+      middle is what the week strip, the charts, the correlation cards and
+      every wrapped ask for, and none of them has anywhere to put an end.
+      One query for the range either way - what the calendar could not
+      afford is a query per day.
+
+      Descriptive only. Which end came first, and which entry the day
+      "really" was, are questions this deliberately cannot answer. */
+  daySpread(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DaySpread[]>;
   /** Every entry in the range carrying a value on both named scales, oldest
       first, both ends inclusive (phase 5 deepening ticket 19, ADR-0048).
 
@@ -295,6 +322,26 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
   };
 
+  /* Deliberately the same fragment, the same window and the same grouping
+     as averageByDay above: the calendar draws both on one cell, so a day
+     one of them counts and the other does not is a cell contradicting
+     itself. MIN and MAX over the same rows AVG runs over is what makes
+     that true by construction rather than by two statements agreeing. */
+  const spreadByDay = async (
+    values: { sql: string; params: (string | number)[] },
+    fromEpochDay: number,
+    toEpochDay: number
+  ): Promise<DaySpread[]> => {
+    const rows = await driver.query<{ day: number; low: number; high: number; entries: number }>(
+      `WITH metric_value AS (${values.sql})
+       SELECT epoch_day AS day, MIN(value) AS low, MAX(value) AS high, COUNT(*) AS entries FROM metric_value
+       WHERE epoch_day BETWEEN ? AND ?
+       GROUP BY epoch_day ORDER BY epoch_day`,
+      [...values.params, fromEpochDay, toEpochDay]
+    );
+    return rows.map((r) => ({ day: r.day, low: r.low, high: r.high, count: r.entries }));
+  };
+
   const bestStreakIn = async (fromEpochDay: number, toEpochDay: number): Promise<number> => {
     /* Gaps and islands: number the days in order and group by day - rn.
        Consecutive days share that difference, a gap starts a new group, so
@@ -313,6 +360,10 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
   return {
     async dayAverages(metric, fromEpochDay, toEpochDay) {
       return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
+    },
+
+    async daySpread(metric, fromEpochDay, toEpochDay) {
+      return spreadByDay(metricValues(metric), fromEpochDay, toEpochDay);
     },
 
     async constellationReadings(xKey, yKey, fromEpochDay, toEpochDay) {
