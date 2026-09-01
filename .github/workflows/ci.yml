@@ -74,8 +74,9 @@ jobs:
       # Android graph - runs in the Android job where Gradle can resolve the
       # release runtime classpath.
       #
-      # `npm audit` advisory verdict, checked 2026-08-27, six open, none
-      # reachable, nothing to patch:
+      # `npm audit` advisory verdict, checked 2026-09-01 (sec-02-09), six
+      # open, none reachable, nothing to patch - same two paths as the
+      # 2026-08-27 check, re-verified rather than assumed still true:
       #   - cookie <0.7.0, low, arrives through @sveltejs/kit ->
       #     adapter-static. The advisory is about server-side cookie
       #     parsing; this app builds with adapter-static, has no server and
