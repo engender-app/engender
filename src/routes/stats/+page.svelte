@@ -47,6 +47,7 @@
   import EntryCard from '$lib/components/EntryCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
+  import GenderConstellationChart from '$lib/components/GenderConstellationChart.svelte';
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -60,6 +61,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DayAverage } from '$lib/data/journal/stats';
+  import { plotPoints, type ConstellationPoint } from '$lib/data/constellationData';
   import type { CorrelationCard } from '$lib/data/correlationCards';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
@@ -316,6 +318,90 @@
     )
   );
 
+  /* The constellation (phase 5 deepening ticket 19, ADR-0048). Gated on
+     data and on nothing else: the card exists once the journal holds a
+     presentation, and there is no preference to turn it on, because a
+     feature useful to a specific handful of people should cost everyone
+     else nothing. For anyone with no modes this screen is what it was.
+
+     Its two axes are the person's own scales, defaulting to the first two
+     they have ticked. No dimension key is written here or in the chart:
+     naming two would be the app telling a nonbinary reader which two
+     numbers matter, which is the one thing PRODUCT.md rules out.
+
+     It reads the screen's range like every other card here, rather than the
+     whole history the two interval charts take: the range picker says how
+     much journal, and the chart's own scrubber says where in it. */
+  let xKey = $state('');
+  let yKey = $state('');
+
+  /* Held to the ticked scales on the way out, the same rule `activeMetric`
+     follows: unticking the scale an axis was on drops that axis to the
+     first one still ticked rather than leaving the chart pointed at
+     something the person no longer logs. */
+  $effect(() => {
+    const active = vocabulary.activeDimensions;
+    if (active.length < 2) return;
+    if (!active.some((d) => d.key === xKey)) xKey = active[0].key;
+    if (!active.some((d) => d.key === yKey) || yKey === xKey) {
+      yKey = (active.find((d) => d.key !== xKey) ?? active[0]).key;
+    }
+  });
+
+  let xScale = $derived(vocabulary.activeDimensions.find((d) => d.key === xKey));
+  let yScale = $derived(vocabulary.activeDimensions.find((d) => d.key === yKey));
+  let hasConstellation = $derived(vocabulary.presentations.length > 0);
+  let canPlot = $derived(hasConstellation && xScale !== undefined && yScale !== undefined);
+
+  /* Picking a scale that is already on the other axis swaps the two rather
+     than refusing: with exactly two ticked there is nothing else to pick,
+     and flipping the plot is what somebody doing that meant. */
+  const pickX = (key: string) => {
+    if (key === yKey) yKey = xKey;
+    xKey = key;
+  };
+  const pickY = (key: string) => {
+    if (key === xKey) xKey = yKey;
+    yKey = key;
+  };
+
+  let constellationQuery = liveList((j) => {
+    const [x, y] = [xKey, yKey];
+    if (!canPlot) return Promise.resolve([]);
+    return j.stats.constellationReadings(x, y, from, today);
+  });
+  /* Kept beside the plotted points rather than folded into them: a position
+     is 0 to 1 and a readout is native units (ADR-0012), and the chart is
+     handed the first while the sentence a screen reader hears is built from
+     the second. */
+  let readings = $derived(new Map(constellationQuery.rows.map((r) => [r.id, r])));
+  let constellationPoints = $derived(
+    xScale && yScale
+      ? plotPoints(constellationQuery.rows, { min: xScale.min, max: xScale.max }, { min: yScale.min, max: yScale.max })
+      : []
+  );
+  /* Every mode, hidden ones included. A hidden presentation drops out of
+     the chip that offers it and never out of the entries that carry it
+     (CONTEXT: "Hidden"), so a point logged under one keeps its colour. */
+  let constellationModes = $derived(
+    vocabulary.presentations.map((presentation) => ({
+      id: presentation.id,
+      name: presentation.name,
+      role: roleAt(activeFlag.roles, presentation.roleIndex)
+    }))
+  );
+  const constellationDay = (day: number) => fmtDay(day, { day: 'numeric', month: 'short' });
+  const constellationReading = (point: ConstellationPoint) => {
+    const raw = readings.get(point.id);
+    return m.constellation_reading_aria({
+      date: fmtDay(point.day, { weekday: 'long', day: 'numeric', month: 'long' }),
+      xName: xScale?.name ?? '',
+      x: fmtNativeValue(xKey, raw?.x ?? 0),
+      yName: yScale?.name ?? '',
+      y: fmtNativeValue(yKey, raw?.y ?? 0)
+    });
+  };
+
   const GRAIN_SPAN: Record<Grain, number> = { day: 0, week: 6, month: 27 };
   const grainLabel = (grain: Grain) => (point: { x: number }) => {
     const short = { day: 'numeric', month: 'short' } as const;
@@ -402,6 +488,64 @@
       <BarRows rows={scaleRows} />
     {/if}
   </ChartCard>
+
+  <!-- The constellation. No role on the card: its marks already carry one
+       role each, resolved from the mode they were logged under, and a
+       stripe on the frame would be a ninth colour on a surface that is
+       already showing eight. The mood distribution takes no role for the
+       same shape of reason. -->
+  {#if hasConstellation}
+    <ChartCard heading={m.stats_constellation()} kind="constellation">
+      {#if canPlot && xScale && yScale}
+        <ReadGate read={constellationQuery} variant="block">
+          {#snippet rows()}
+            <GenderConstellationChart
+              points={constellationPoints}
+              modes={constellationModes}
+              x={{ low: xScale.low, high: xScale.high }}
+              y={{ low: yScale.low, high: yScale.high }}
+              dayLabel={constellationDay}
+              readingLabel={constellationReading}
+              scrubLabel={m.constellation_scrub()}
+              ariaLabel={m.constellation_aria({ x: xScale.name, y: yScale.name })}
+            />
+          {/snippet}
+          {#snippet empty()}
+            <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+          {/snippet}
+        </ReadGate>
+        <!-- Under the plot rather than on the heading's line. There are two
+             of them, which is one more than a chart card's control slot
+             holds, and the plot already says which scale is on which axis
+             in the scales' own words: these are how you change that, not
+             how you read it. -->
+        <div class="stats-axes">
+          <p class="stats-axis">
+            <span id="constellation-x">{m.constellation_x_label()}</span>
+            <ChartPicker
+              key="constellation-x"
+              labelledBy="constellation-x"
+              value={xKey}
+              options={vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))}
+              onPick={pickX}
+            />
+          </p>
+          <p class="stats-axis">
+            <span id="constellation-y">{m.constellation_y_label()}</span>
+            <ChartPicker
+              key="constellation-y"
+              labelledBy="constellation-y"
+              value={yKey}
+              options={vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))}
+              onPick={pickY}
+            />
+          </p>
+        </div>
+      {:else}
+        <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
+      {/if}
+    </ChartCard>
+  {/if}
 
   <ChartCard heading={m.stats_mood_days()} kind="mood-days">
     {#if seriesQuery.loading}
@@ -588,3 +732,42 @@
     {/if}
   </Sheet>
 </div>
+
+<style>
+  /* The constellation's two axis pickers (phase 5 deepening ticket 19). Under
+     the plot rather than on the heading's line, because there are two of them
+     and a chart card holds one control there. A row each, the word on the left
+     and the picker on the right, so the two read as a pair of settings for one
+     picture rather than as two more charts starting. */
+  .stats-axes {
+    display: grid;
+    gap: var(--space-1);
+    margin-top: var(--space-3);
+  }
+
+  .stats-axis {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
+  /* The picker's own cap is 52% of its row, which is right on a chart
+     heading's line - the heading is the other half of it. Here the other
+     half is one word, so the same cap truncated "Dysphoria" and "euphoria"
+     into "Dysphoria ↔ euph...".
+
+     Reaching into a kit class from a route, knowingly. The alternatives are
+     worse: scoping kit.css's own rule to `.kit-chart-head` would relax the
+     cap under four call sites that are not on a heading line and were laid
+     out with it (Home, the calendar, the body map, the sizes screen), and a
+     `wide` prop would be a kit option with one caller. Widened rather than
+     removed, because a custom scale can be named anything and the pill
+     still has to leave its label room. */
+  .stats-axis :global(.kit-chart-pick) {
+    max-width: 74%;
+  }
+</style>

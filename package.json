@@ -21,6 +21,7 @@
     "gallery:scales": "VITE_DEMO=1 npm run build && node tests/scales-gallery.mjs",
     "gallery:gates": "VITE_DEMO=1 npm run build && node tests/gates-gallery.mjs",
     "gallery:day": "node tests/day-gallery.mjs",
+    "gallery:constellation": "VITE_DEMO=1 npm run build && node tests/constellation-gallery.mjs",
     "gallery:dose-sheet": "VITE_DEMO=1 npm run build && node tests/dose-sheet-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",

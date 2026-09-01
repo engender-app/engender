@@ -638,6 +638,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
        dimension vocabulary as well as on entries. */
     reads: {
       dayAverages: ['entry', 'dimension'],
+      /* The constellation reads both scales through the dimension
+         vocabulary the same way, and carries the entry's presentation, so
+         renaming a mode has to reach it (ticket 19). */
+      constellationReadings: ['entry', 'dimension', 'presentation'],
       bodyRegionTrend: ['entry'],
       bodyRegionBreakdown: ['entry', 'measurement', 'photo', 'hairRemoval', 'hairProgress'],
       wearTimeTrend: ['wearSession'],
