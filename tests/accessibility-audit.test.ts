@@ -42,8 +42,11 @@ describe('phase 2 accessibility seams', () => {
     /* And a second scale joins that list rather than only the picture
        (phase 6 ticket 12). The plot is one image to a screen reader and a
        scrub is a way of reading a picture, so a comparison whose numbers
-       lived on the plot alone would be a reading only sighted people get. */
-    expect(stats).toContain('comparedByDay');
+       lived on the plot alone would be a reading only sighted people get.
+       Held to the catalogue message the row is written with rather than to
+       whatever the variable holding it is called this month. */
+    expect(stats).toContain('m.values_second');
+    expect(stats).toContain('m.values_two_title');
   });
 
   /* Ticket 17: --touch-target was 44px, which is the iOS number. The app

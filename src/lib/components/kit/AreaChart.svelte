@@ -41,6 +41,7 @@
   import { m } from '$lib/paraglide/messages';
   import {
     areaPath,
+    bridgeGaps,
     lerpSamples,
     resample,
     type Point,
@@ -218,7 +219,12 @@
   let width = $state(0);
   let plotWidth = $derived(Math.max(width, 1));
   let plotBox = $derived({ width: Math.max(plotWidth - PAD * 2, 1), height: HEIGHT - PAD * 2 });
-  let path = $derived(areaPath(shown[0] ?? [], { ...plotBox, min, max }, !moving));
+  /* Drawn off the bridged shape and never read off it: a position one metric
+     has no reading at is still somewhere its line passes through, and
+     breaking there would draw a sparse metric as marks nobody can see. The
+     numbers the readout shows come from the props, which carry only what was
+     logged. */
+  let path = $derived(areaPath(bridgeGaps(shown[0] ?? []), { ...plotBox, min, max }, !moving));
   /* Placed against its own bounds, which is what puts two metrics with
      different ranges on one plot at all. Read off `shown` rather than off
      `overlaid` so a frame where the two disagree - the props have changed
@@ -226,7 +232,7 @@
      second series against the first one's scale. */
   let overlayPath = $derived(
     shown.length > 1 && overlay
-      ? areaPath(shown[1], { ...plotBox, min: overlay.min, max: overlay.max }, !moving)
+      ? areaPath(bridgeGaps(shown[1]), { ...plotBox, min: overlay.min, max: overlay.max }, !moving)
       : null
   );
 
@@ -269,8 +275,12 @@
       dot,
       overlayDot,
       point: points[scrub],
-      value: shown[0]?.[scrub] ?? null,
-      overlayValue: shown[1]?.[scrub] ?? null
+      /* Off the props rather than off `shown`. `shown` is the tween buffer:
+         mid-flight it holds a number on its way between two datasets, and
+         between the props changing and the effect running it holds the last
+         dataset or nothing. Neither is a reading anybody logged. */
+      value: points[scrub].y,
+      overlayValue: overlaid ? (overlay?.values[scrub] ?? null) : null
     };
   });
   /* The dotted rule stops at the higher of the two marks: it exists to say
@@ -530,9 +540,9 @@
             {#if scrubLabel && scrub !== null}
               <span class="kit-area-readout-at">{scrubLabel(at.point, scrub)}</span>
             {/if}
-          {:else}
+          {:else if at.value !== null}
             <span class="kit-area-readout-value">
-              <b>{formatValue(at.value ?? 0)}</b>
+              <b>{formatValue(at.value)}</b>
               {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
             </span>
           {/if}

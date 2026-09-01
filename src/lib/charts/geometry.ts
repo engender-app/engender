@@ -80,6 +80,34 @@ export function lerpSamples(from: Sample[], to: Sample[], t: number): Sample[] {
   });
 }
 
+/** A series' readings with its interior gaps filled in, for drawing only.
+
+    A position between two of a series' own readings is one the line already
+    crossed before anything put a position there - two metrics on one plot
+    give each other positions the other never logged (charts/grain's
+    alignSeries), and breaking the line at each of them would draw a sparse
+    metric as a row of unconnected marks nobody can see.
+
+    So the drawn shape bridges those, and the readings do not: what comes out
+    here is handed to areaPath and to nothing else, and the number under a
+    finger still comes from what the person actually logged. Outside the
+    series' own span nothing is filled, because before its first reading
+    there is no line to take a point from. */
+export function bridgeGaps(values: Sample[]): Sample[] {
+  const out = [...values];
+  let last = -1;
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] === null) continue;
+    if (last >= 0 && i - last > 1) {
+      const from = out[last] as number;
+      const step = ((out[i] as number) - from) / (i - last);
+      for (let j = last + 1; j < i; j++) out[j] = from + step * (j - last);
+    }
+    last = i;
+  }
+  return out;
+}
+
 export interface AreaBox {
   width: number;
   height: number;
