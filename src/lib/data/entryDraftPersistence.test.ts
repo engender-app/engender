@@ -33,7 +33,8 @@ const existingEntry = (): Entry => ({
     { id: 'n2', fileName: 'n2.webm' }
   ],
   bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
-  starred: false
+  starred: false,
+  presentationId: null
 });
 
 test('serializeDraft keeps only the storage-shaped, JSON-safe fields', () => {
