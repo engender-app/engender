@@ -69,6 +69,12 @@ export const TABLE_NAMES = [
   /* The journaling pause (phase 5 ticket 21) - Streak's own reads key on
      this too, since a pause changes what Streak answers. */
   'journalingPause',
+  /* The person's named eras (phase 6 ticket 01, ADR-0049). Its own name and
+     not folded into 'entry', even though `getJournalBounds` reads the entry
+     table: an era read has to re-run when an era is written, and an entry
+     write already announces 'entry', so the two names together are what
+     keeps a clamped range from going stale in either direction. */
+  'era',
   /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
      nothing reads one without the other, the same reasoning 'dose' gives -
      the screen shows both against the same anchor. */
@@ -397,6 +403,13 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   journalingPauses: classify<Journal['journalingPauses']>()({
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
     reads: { getPauses: ['journalingPause'] }
+  }),
+  eras: classify<Journal['eras']>()({
+    writes: { upsertEra: ['era'], deleteEra: ['era'] },
+    // getJournalBounds is the journal's own first and last entry day, which
+    // an open bound clamps to at read time (ADR-0010) - so it keys on
+    // 'entry' and not on 'era' at all.
+    reads: { getEras: ['era'], getJournalBounds: ['entry'] }
   }),
   wearSessions: classify<Journal['wearSessions']>()({
     writes: {

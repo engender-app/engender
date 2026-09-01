@@ -59,6 +59,7 @@ const SECTIONS = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
+  'eras',
   'effectCategories',
   'personalEffectTypes',
   'personalEffects',

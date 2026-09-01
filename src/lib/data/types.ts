@@ -607,6 +607,26 @@ export interface JournalingPause {
   endEpochDay: number | null;
 }
 
+/** A named stretch of the person's own timeline (phase 6 ticket 01,
+    ADR-0049, CONTEXT: "Era") - "before I knew", "first year", "after I
+    moved". Owns a name and two bounds and nothing else: no colour, no mute
+    rule, no photo policy, for the reason Presentation owns none. Anything
+    hung on it becomes a second place to configure the app, and the second
+    such thing makes this the only place two rules can be read together.
+
+    Both bounds are nullable, and the two invariants that make an era-filtered
+    read a partition rather than a double-count are in `eras.ts`: at most one
+    era with no start, at most one with no end, and no two overlapping. */
+export interface Era {
+  id: string;
+  name: string;
+  /** Absent means the era reaches back before the journal does. */
+  startEpochDay: number | null;
+  /** Absent means it is still running, the same reasoning
+      JournalingPause.endEpochDay gives. */
+  endEpochDay: number | null;
+}
+
 /* No episode reference (CONTEXT: "Side effect"): this record stands alone
    and has to work before a regimen episode exists. */
 export interface SideEffect {

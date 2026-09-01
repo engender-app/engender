@@ -32,6 +32,7 @@ import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
+import { makeErasArea, type ErasArea } from './eras';
 import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLettersArea, type LettersArea } from './letters';
@@ -168,6 +169,12 @@ export interface Journal {
       days inside a pause do not count as a gap; this area owns only the
       rows themselves. */
   journalingPauses: JournalingPausesArea;
+  /** The person's own named stretches of their timeline (phase 6 ticket 01,
+      ADR-0049, CONTEXT: "Era"). Rows and the journal edge an open bound
+      clamps to, nothing else: an era owns no colour, no mute and no other
+      setting, and the surfaces that adopt it as a filter resolve days
+      through `eras.ts` rather than through this area. */
+  eras: ErasArea;
   /** What was happening around the numbers a time chart draws (phase 5
       deepening ticket 23): milestones, regimen episodes, dose and journaling
       pauses, tryouts, and a procedure's surgery day and recovery window, for
@@ -369,6 +376,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     sideEffects,
     cycleEvents,
     journalingPauses,
+    eras: makeErasArea(driver),
     chartAnnotations: makeChartAnnotationsArea({
       milestones,
       regimen,

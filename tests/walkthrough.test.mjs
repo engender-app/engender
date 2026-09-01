@@ -2379,6 +2379,7 @@ try {
     '/settings/cycle-events', '/settings/side-effects', '/settings/surgery',
     '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
     '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/presentations',
+    '/settings/eras',
     '/settings/voice', '/settings/wear', '/settings/effects', '/settings/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
@@ -2465,6 +2466,87 @@ try {
   ok('every More-hub area shows real content once "Fill every feature" has run, not just its empty state');
 } catch (e) {
   fail('fill every feature', e);
+}
+
+/* Eras (phase 6 ticket 01, ADR-0049). Two things worth walking that no unit
+   test reaches: leaving a bound open is a choice on screen rather than an
+   empty field, and a collision is answered inside the sheet - a sentence
+   naming the era it hit, and a save that will not fire - rather than thrown
+   after a tap.
+
+   After "Fill every feature" rather than on a first-run journal, because the
+   line saying what an open bound comes to is computed against the journal's
+   own first and last entry: on an empty journal there is nothing to clamp to
+   and the line is correctly absent. The demo seeds no era of its own, so
+   this flow still starts from the empty state and authors both of them. */
+try {
+  await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
+  await booted();
+  if ((await page.locator('[data-notice="eras-empty"]').count()) === 0) {
+    throw new Error('a journal with no eras should show its empty state');
+  }
+
+  // Both bounds left alone. An era with neither is the case that has to save
+  // without a date being entered anywhere.
+  await page.click('[data-add]');
+  await page.fill('#era-name', 'all of it');
+  if ((await page.locator('[data-era-resolved]').count()) === 0) {
+    throw new Error('an era with an open bound should say what that comes to in the journal');
+  }
+  await page.click('[data-save-era]');
+  await page.waitForSelector('[data-era]');
+
+  const firstRow = await page.locator('[data-era]').first().innerText();
+  if (!firstRow.includes('all of it')) throw new Error(`the era should read back by name, got: ${firstRow}`);
+
+  /* A second era with the same open bounds collides three ways in turn, and
+     each answer has to name the era it hit rather than say "invalid". Closing
+     one bound at a time walks from the open-start refusal, through the
+     open-end one, to the plain overlap - no date typed anywhere, because
+     each bound is a two-way choice. */
+  await page.click('[data-add]');
+  await page.fill('#era-name', 'earlier still');
+  await page.waitForSelector('[data-era-conflict]');
+  const conflictNow = () => page.locator('[data-era-conflict]').innerText();
+  const openStartConflict = await conflictNow();
+  if (!openStartConflict.includes('all of it')) {
+    throw new Error(`the conflict should name the era it hit, got: ${openStartConflict}`);
+  }
+  if (!(await page.isDisabled('[data-save-era]'))) {
+    throw new Error('save should be off while the era collides with another');
+  }
+
+  await page.click('[data-segmented="era-start"] [data-segment="day"]');
+  const openEndConflict = await conflictNow();
+  if (openEndConflict === openStartConflict) {
+    throw new Error('an era given a start of its own should stop being refused as a second open start');
+  }
+
+  await page.click('[data-segmented="era-end"] [data-segment="day"]');
+  const overlapConflict = await conflictNow();
+  if (overlapConflict === openEndConflict || !overlapConflict.includes('all of it')) {
+    throw new Error(`an era inside another should be refused as an overlap naming it, got: ${overlapConflict}`);
+  }
+  if (!(await page.isDisabled('[data-save-era]'))) {
+    throw new Error('save should still be off while the era overlaps another');
+  }
+
+  /* Escape and not a scrim click: the scrim's own handler ignores anything
+     that did not land on the scrim itself, and a click at its centre lands
+     on the sheet. */
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
+  // Deleting is a plain delete: nothing references an era, so nothing can
+  // block it.
+  await page.click('[data-era]');
+  await page.click('[data-delete-era]');
+  await page.click('[data-confirm-delete-era]');
+  await page.waitForSelector('[data-notice="eras-empty"]');
+
+  ok('eras: an open bound is a choice, a collision is answered in the sheet, and deleting is not blocked');
+} catch (e) {
+  fail('eras', e);
 }
 
 /* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
