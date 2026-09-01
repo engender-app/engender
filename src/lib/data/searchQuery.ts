@@ -18,7 +18,11 @@
    needs paraglide, which the Node tier cannot import (ADR-0016). They stay
    on substring matching, exactly as the demo store had them: there are tens
    of labels, they are short, and it keeps the one search case the
-   walkthrough pins behaving as it does today. */
+   walkthrough pins behaving as it does today.
+
+   Phase 5 deepening ticket 24 added a third thing a search needs, at the
+   other end: what to show of a hit once one comes back. `matchWindow` is at
+   the bottom of the file. */
 
 import type { Tag } from './types';
 import { foldText } from './fold';
@@ -55,4 +59,55 @@ export function tagIdsMatching(raw: string, tags: Pick<Tag, 'id' | 'label'>[]): 
   const q = foldText(raw).trim();
   if (!q) return [];
   return tags.filter((t) => foldText(t.label).includes(q)).map((t) => t.id);
+}
+
+/** The three parts of a hit's text: what runs up to the match, the match
+    itself, and what follows. Null when the query is not in the text at all,
+    which is the caller's signal to show the text as it stands.
+
+    Long text is clipped around the match rather than shown whole - a letter
+    runs to paragraphs and a hit has one line - so `before` and `after` carry
+    an ellipsis where something was cut. */
+export interface MatchWindow {
+  before: string;
+  match: string;
+  after: string;
+}
+
+/** How much of the text survives around the match: enough before it to read
+    into the phrase, and a line's worth after it. */
+const BEFORE = 30;
+const AFTER = 110;
+
+/** The window around the first place `query` appears in `text`, both folded
+    (ADR-0005), or null when it does not appear.
+
+    Folding is length-preserving for every letterform it covers, so the index
+    of the match in the folded text is the index in the original - which is
+    what lets the *unfolded* text be sliced by a folded match, and how a hit
+    shows what the person actually wrote rather than a stripped copy of it.
+    `toLowerCase()` can change a string's length on letters outside the fold
+    (İ is the well-known one), and where it has, this gives up and returns
+    null rather than slicing at an index that has shifted.
+
+    Above the journal seam because it is presentation: the journal returns
+    the whole matched field, and how much of it fits on a row is the
+    screen's business (textSearch.ts). */
+export function matchWindow(text: string, query: string): MatchWindow | null {
+  const foldedQuery = foldText(query).trim();
+  const foldedText = foldText(text);
+  if (!foldedQuery || foldedText.length !== text.length) return null;
+
+  const at = foldedText.indexOf(foldedQuery);
+  if (at < 0) return null;
+
+  const end = at + foldedQuery.length;
+  const from = Math.max(0, at - BEFORE);
+  const to = Math.min(text.length, end + AFTER);
+
+  return {
+    before: (from > 0 ? '…' : '') + text.slice(from, at),
+    match: text.slice(at, end),
+    after: text.slice(end, to) + (to < text.length ? '…' : '')
+  };
 }
