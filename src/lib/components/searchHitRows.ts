@@ -7,19 +7,26 @@
    vocabulary/ for the reason dayRows.ts is: none of it is vocabulary, it is
    one screen's reading of rows other screens own.
 
-   Three rules the whole map answers to, and the first two are dayRows.ts's:
+   Three rules the whole map answers to, and the first and third are
+   dayRows.ts's:
 
    *A hit's icon is the icon of the screen it goes to.* Not one glyph per
    record type - the disc says where the hit leads, so a milestone and a
    surgery journey both wearing `flag` is the app agreeing with itself. The
    More hub is where those icons are decided.
 
-   *Every hit says what kind of thing it is.* That is the ticket's own
-   condition, and grouping is how it is met: hits arrive newest-first across
-   eighteen areas, and a flat run mixing Tuesday's entry with a letter and a
-   consult question would be worse than no search at all. Each group carries
-   the area's own name and icon, in the registry's declared order, so the
-   kind is stated once above the hits rather than repeated on each of them.
+   *Every hit says what kind of thing it is, on the row.* That is the
+   ticket's own condition, and it was first met by grouping - a heading per
+   area, in the registry's order. Built and looked at, that was wrong for the
+   same reason DayRecords.svelte gives for refusing it: eighteen areas can
+   answer a query, and a display-size heading over a card of one row turns
+   three hits into a screen of framework with slivers of content in it.
+   Grouping also threw away the order the hits arrived in, which is newest
+   first across every area and is the useful one.
+
+   So the kind is the row's subtitle and the hits stay in one list, newest
+   first. `search_elsewhere_heading` names the list once, the way
+   "Also this day" names a day's context list.
 
    *A hit goes to the record where there is a screen for one, and to the
    screen that owns it otherwise.* A letter and a tryout have their own
@@ -29,13 +36,18 @@
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
 import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
-import { SEARCH_AREA_KEYS, type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
+import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
 
 /** One hit as a row: where it goes, and what it says. */
 export interface SearchHitRow {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
   key: string;
+  /** The registered area's key, for the walkthrough's handle on the row. */
+  area: SearchAreaKey;
+  /** What kind of thing this is, in the words its own screen uses. */
+  label: string;
+  icon: string;
   href: string;
   /** The day the record belongs to, already worded, or undefined for an area
       whose records have no day (a roadmap goal, an affirmation). */
@@ -46,19 +58,11 @@ export interface SearchHitRow {
   excerpt: string;
 }
 
-/** Every hit of one area, under that area's own name. */
-export interface SearchHitGroup {
-  key: SearchAreaKey;
-  label: string;
-  icon: string;
-  rows: SearchHitRow[];
-}
-
 const MILESTONES = '/settings/milestones';
 const SURGERY = '/settings/surgery';
 const TRYOUTS = '/settings/tryouts';
 
-/** How each registered area reads as a group of hits.
+/** How each registered area reads as a row.
 
     A full `Record` over the registry's own keys, and that is the half of the
     registry's promise this file owes. textSearch.ts makes an area registered
@@ -126,32 +130,28 @@ function excerptOf(text: string, query: string): string {
   return window === null ? text : `${window.before}${window.match}${window.after}`;
 }
 
-/** The hits grouped by area, in the registry's declared order, with empty
-    groups left out.
+/** The hits as rows, in the order they arrived - newest first across every
+    area (textSearch.ts), which is the order somebody scanning results wants.
 
-    Off SEARCH_AREA_KEYS rather than a sequence written here, so the order
-    groups appear in is the order areas are declared in, and an area moved
-    there moves here with it. */
-export function searchHitGroups(hits: readonly SearchHit[], query: string): SearchHitGroup[] {
-  const groups: SearchHitGroup[] = [];
-
-  for (const key of SEARCH_AREA_KEYS) {
-    const declared = AREA_ROWS[key];
-    const mine = hits.filter((hit) => hit.area === key);
-    if (mine.length === 0) continue;
-
-    groups.push({
-      key,
-      label: declared.label(),
-      icon: declared.icon,
-      rows: mine.map((hit) => ({
-        key: `${key}-${hit.id}`,
+    A hit whose area this file has never heard of is dropped rather than
+    drawn without a name: `AREA_ROWS` being a full Record makes that
+    unreachable through the registry, and the guard is for the one path that
+    is not the registry - a journal from a build that had an area this one
+    does not. */
+export function searchHitRows(hits: readonly SearchHit[], query: string): SearchHitRow[] {
+  return hits.flatMap((hit) => {
+    const declared = AREA_ROWS[hit.area as SearchAreaKey];
+    if (!declared) return [];
+    return [
+      {
+        key: `${hit.area}-${hit.id}`,
+        area: hit.area as SearchAreaKey,
+        label: declared.label(),
+        icon: declared.icon,
         href: declared.href(hit),
         date: hit.epochDay === null ? undefined : fmtDay(hit.epochDay, { month: 'short', year: '2-digit' }),
         excerpt: excerptOf(hit.value, query)
-      }))
-    });
-  }
-
-  return groups;
+      }
+    ];
+  });
 }
