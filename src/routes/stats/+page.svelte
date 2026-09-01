@@ -756,4 +756,14 @@
     font-size: var(--text-sm);
     color: var(--text-2);
   }
+
+  /* The picker's own cap is 52% of its row, which is right on a chart
+     heading's line - the heading is the other half of it. Here the other
+     half is one word, so the same cap truncated "Dysphoria" and "euphoria"
+     into "Dysphoria ↔ euph...". Widened rather than removed: a custom scale
+     can be named anything, and the pill still has to leave its label room
+     to be read. */
+  .stats-axis :global(.kit-chart-pick) {
+    max-width: 74%;
+  }
 </style>
