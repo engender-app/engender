@@ -14,6 +14,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
+import { makeChartAnnotationsArea, type ChartAnnotationsArea } from './chartAnnotations';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
 import { makeJournalBookArea, type JournalBookArea } from './journalBook';
@@ -159,6 +160,12 @@ export interface Journal {
       days inside a pause do not count as a gap; this area owns only the
       rows themselves. */
   journalingPauses: JournalingPausesArea;
+  /** What was happening around the numbers a time chart draws (phase 5
+      deepening ticket 23): milestones, regimen episodes, dose and journaling
+      pauses, tryouts, and a procedure's surgery day and recovery window, for
+      one date range. A view over rows six other areas own, storing nothing of
+      its own - the same kind of area `exposure` and `clinicianSummary` are. */
+  chartAnnotations: ChartAnnotationsArea;
   /** The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
       session"). Owns its own optional Reminder by an auto_source marker,
       the same way stock owns its run-out reminder - hence the dependency
@@ -318,6 +325,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const hairRemoval = makeHairRemovalArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
+  const journalingPauses = makeJournalingPausesArea(driver);
 
   return {
     entries,
@@ -342,7 +350,15 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
     sideEffects,
     cycleEvents,
-    journalingPauses: makeJournalingPausesArea(driver),
+    journalingPauses,
+    chartAnnotations: makeChartAnnotationsArea({
+      milestones,
+      regimen,
+      doses,
+      journalingPauses,
+      tryouts,
+      procedures
+    }),
     wearSessions,
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
     day: makeDayArea({

@@ -55,6 +55,12 @@ describe('the surfaces', () => {
       'AreaChart.svelte',
       'BarRows.svelte',
       'BareStrip.svelte',
+      /* Not a surface: a `<g>` the area chart composes into its own plot,
+         drawing what was happening around the readings (phase 5 deepening
+         ticket 23). Beside the chart kit rather than inside any one screen,
+         because five charts across four screens draw it and none of them
+         may draw a sixth version of it. */
+      'ChartAnnotations.svelte',
       'ChartCard.svelte',
       /* Not a surface: it draws one paragraph inside a chart card's own
          body, the "nothing logged in this range" text seven call sites

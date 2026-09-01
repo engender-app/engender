@@ -37,9 +37,17 @@
      tier 2's crossfade: a change inside a screen has no journey for a fade
      to stand in for. */
   import { untrack } from 'svelte';
-  import { fade } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { areaPath, lerpSamples, resample, type Point } from '$lib/charts/geometry';
+  import {
+    MIN_PLOT_POSITIONS,
+    annotationsAtPoint,
+    placeAnnotations,
+    type ChartAnnotation
+  } from '$lib/charts/annotations';
+  import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
+  import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
 
@@ -51,7 +59,8 @@
     from,
     to,
     formatValue = (v: number) => String(Math.round(v)),
-    scrubLabel
+    scrubLabel,
+    annotations = []
   }: {
     /** Already bucketed to the grain the caller chose. */
     points: Point[];
@@ -74,12 +83,20 @@
         the caller formats, the chart places. Without it the readout shows
         the value alone. */
     scrubLabel?: (point: Point, index: number) => string;
+    /** What was happening around these readings, in the same units `points`
+        counts in - epoch days (charts/annotations.ts). Empty by default: a
+        chart opts into annotations, and a chart that would be worse for them
+        passes none. */
+    annotations?: ChartAnnotation[];
   } = $props();
 
   const HEIGHT = 132;
   /* Room for the ring on the latest reading and for the stroke at the top
      and bottom of the scale. */
   const PAD = 7;
+  /* How far a hover label stands off the mark it names. Enough that the two
+     read as a label and a mark rather than as one taller mark. */
+  const LABEL_GAP = 6;
 
   let target = $derived(points.map((p) => p.y));
   let shown = $state<number[]>([]);
@@ -157,6 +174,47 @@
   let scrub = $state<number | null>(null);
   let at = $derived(scrub !== null && path.dots[scrub] ? { dot: path.dots[scrub], point: points[scrub] } : null);
 
+  /* Laid out against the plot's own positions rather than against the
+     calendar: the chart draws its buckets evenly spaced whatever the days
+     behind them are, so an annotation has to be placed the same way or it
+     lands beside the reading it belongs to. */
+  /* Nothing is annotated on a chart with one reading on it: there is no
+     distance for a band to have and no position for a mark to be at, so the
+     caption would name things the plot never drew. The threshold is the
+     placement's own, rather than a second copy of it here. */
+  let shownAnnotations = $derived(points.length >= MIN_PLOT_POSITIONS ? annotations : []);
+  let placed = $derived(placeAnnotations(shownAnnotations, points, Math.max(plotWidth - PAD * 2, 1)));
+  /* What the pointer is on, and what to write beside it. A hover names one
+     mark where the scrub names a whole bucket, which is the difference
+     between pointing at a thing and reading a position - so this is its own
+     label rather than a second way of filling the readout. */
+  let hovered = $state<HoveredAnnotations | null>(null);
+
+  /* The readout's own annotations go quiet while a mark is hovered. A mouse
+     moving across the plot scrubs it as well as hovering, so both would
+     otherwise write the same names twice on one card - and the two answer
+     different questions anyway: the pill says what is at this position, the
+     label says what this mark is. The value stays either way. */
+  let atAnnotations = $derived(
+    annotationReadout(scrub === null || hovered ? [] : annotationsAtPoint(shownAnnotations, points, scrub))
+  );
+  let caption = $derived(annotationCaption(shownAnnotations));
+  /* Named here rather than called in the markup, for the reason the scrub
+     handlers above are: kit-surfaces.test.ts reads a component's copy with a
+     regex, and a message call carrying an object argument is a nested brace
+     it cannot see past - so the key itself reads as inline copy. */
+  let restLabel = $derived(m.chart_annotations_and_more({ count: String(atAnnotations.rest) }));
+
+  let hoveredLabels = $derived(annotationReadout(hovered?.annotations ?? []));
+  let hoveredRest = $derived(m.chart_annotations_and_more({ count: String(hoveredLabels.rest) }));
+  /* Centred on the mark, then held inside the plot: a mark near either end
+     would otherwise carry its label off the card. Half the label's own
+     maximum, which is the width the stylesheet caps it at. */
+  const LABEL_HALF = 84;
+  let hoveredLeft = $derived(
+    Math.min(Math.max((hovered?.x ?? 0) + PAD, LABEL_HALF), Math.max(plotWidth - LABEL_HALF, LABEL_HALF))
+  );
+
   /* Named rather than written inline. An arrow in an attribute is also an
      arrow to anything reading this markup with a regex, and
      tests/kit-surfaces.test.ts strips tags with one. */
@@ -213,6 +271,9 @@
         aria-hidden="true"
       >
         <g transform="translate({PAD}, {PAD})">
+          <!-- Under the fill and the line, never over them: context sits
+               behind the readings it is context for. -->
+          <ChartAnnotations {placed} height={HEIGHT - PAD * 2} onHover={(next) => (hovered = next)} />
           <path class="kit-area-fill" d={path.fill} />
           <path class="kit-area-line" d={path.line} />
           {#if lastMovingPath}
@@ -253,10 +314,39 @@
         </g>
       </svg>
 
+      {#if hovered}
+        <!-- Beside the mark rather than in the corner: a hover is somebody
+             pointing at one thing, and an answer that appeared somewhere else
+             on the card would not be an answer to that. Rises the short way
+             it is written, which is toward the mark it belongs to. -->
+        <div
+          class="kit-area-annotation-label"
+          data-annotation-label
+          style:left="{hoveredLeft}px"
+          style:top={hovered.above ? 'auto' : `${PAD + hovered.y + LABEL_GAP}px`}
+          style:bottom={hovered.above ? `${HEIGHT - PAD - hovered.y + LABEL_GAP}px` : 'auto'}
+          in:fly={{ y: hovered.above ? 4 : -4, duration: motionDuration('--dur-fast'), easing: EASE_OUT }}
+        >
+          {#each hoveredLabels.labels as label (label)}<span>{label}</span>{/each}
+          {#if hoveredLabels.rest}<span>{hoveredRest}</span>{/if}
+        </div>
+      {/if}
+
       {#if at}
         <output class="kit-area-readout" data-chart-readout>
-          <b>{formatValue(at.point.y)}</b>
-          {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
+          <span class="kit-area-readout-value">
+            <b>{formatValue(at.point.y)}</b>
+            {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
+          </span>
+          <!-- What was going on at the position under the finger, stated
+               beside the reading and never joined to it: the readout says
+               both, and says nothing about the two being related. -->
+          {#each atAnnotations.labels as label (label)}
+            <span class="kit-area-readout-annotation">{label}</span>
+          {/each}
+          {#if atAnnotations.rest}
+            <span class="kit-area-readout-annotation">{restLabel}</span>
+          {/if}
         </output>
       {/if}
     </div>
@@ -267,6 +357,25 @@
       <span>{from ?? ''}</span>
       <span>{to ?? ''}</span>
     </div>
+  {/if}
+
+  {#if shownAnnotations.length}
+    <!-- What the marks are, once, under the plot. Names only: the dates are
+         where the marks are, and a caption that repeated them would be a
+         second axis written in words. -->
+    <p class="kit-area-annotations" data-chart-annotations aria-hidden="true">{caption}</p>
+    <!-- The same thing for somebody who cannot see where a mark sits. A
+         scrub is a way of reading a picture, so it is no use here, and the
+         chart's own numbers are already offered as a list by the screens
+         that draw one. -->
+    <!-- Named after the chart it belongs to: a screen drawing two charts off
+         one range draws this list twice, and an unlabelled second copy is a
+         list of dates with nothing saying what they are a list of. -->
+    <ul class="visually-hidden" aria-label={ariaLabel}>
+      {#each shownAnnotations as annotation (annotation.id)}
+        <li>{annotationLine(annotation)}</li>
+      {/each}
+    </ul>
   {/if}
 {:else}
   <p class="kit-chart-empty">{m.not_enough_data()}</p>

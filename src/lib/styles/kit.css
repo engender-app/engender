@@ -1496,6 +1496,12 @@ a.kit-entry:active {
 .kit-area-plot {
   display: block;
   overflow: visible;
+  /* The plot takes no pointer events of its own. Everything drawn in here is
+     decoration - the drag that scrubs is handled by the element around it, and
+     events pass straight through - which leaves the annotation layer's own
+     targets below as the only things in the SVG a pointer can find. Without
+     this the area fill, being painted after them, swallows every one. */
+  pointer-events: none;
 }
 
 .kit-area-fill {
@@ -1545,9 +1551,12 @@ a.kit-entry:active {
   position: absolute;
   top: 0;
   right: 0;
+  /* A column, so an annotation goes under the reading rather than beside it:
+     side by side, a long name pushes the number off the plot at 390px. It
+     collapses to one line on its own where there is nothing to annotate. */
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: flex-end;
   padding: 3px var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--surface-2);
@@ -1562,6 +1571,123 @@ a.kit-entry:active {
 .kit-area-readout b {
   font-size: var(--text-sm);
   color: var(--text);
+}
+
+.kit-area-readout-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* Under the reading and quieter than it: what was going on is context for a
+   number, never a second number.
+
+   Blocks, not spans, and capped: a name is the person's own text and can be
+   any length, and inline elements ignore both `max-width` and the ellipsis
+   that goes with it - which is how a two-word readout grew into a pill lying
+   across most of the plot it was annotating. */
+.kit-area-readout-annotation {
+  display: block;
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- annotations (phase 5 deepening ticket 23) ---
+
+   What was happening around the readings. Neutral ink at every weight here,
+   never a role colour: the fill under an annotation is one of eight flag
+   palettes in one of two themes, and a hue that read clearly against half of
+   those would be lost against the rest. Ink is what they all share.
+
+   The three weights are a wash, an edge and a mark, and they are deliberately
+   far apart. A band has to darken the card without being read as data, so it
+   sits below the weight of anything else drawn; a tick has to be findable
+   against a filled area, so it sits above the gutter's text and below the
+   line's own stroke. */
+.kit-annotation-band {
+  fill: color-mix(in oklab, var(--text) 7%, transparent);
+}
+
+/* The day a stretch began, hung from the top of the plot and only where that
+   day is really inside the range. Its own register, opposite the marks along
+   the baseline, so a chart says what began above the readings and what
+   happened below them without either one crossing the line. */
+.kit-annotation-edge {
+  stroke: color-mix(in oklab, var(--text) 42%, transparent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* A moment, off the baseline. Solid where the scrub is dotted: the dotted
+   line means "under your finger, right now" and this one means "this
+   happened", and two marks that mean different things may not look alike. */
+.kit-annotation-mark {
+  stroke: color-mix(in oklab, var(--text) 52%, transparent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* The pointer target around a mark. Invisible, and only where hovering is
+   real: a finger has no hover, and on a touch screen these would swallow the
+   drag that scrubs the chart, which is how the same names are read there. */
+.kit-annotation-hit {
+  fill: transparent;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kit-annotation-hit {
+    pointer-events: auto;
+    cursor: default;
+  }
+
+  /* The mark answers before the label arrives, so the pointer knows it has
+     found something in the frame before it can read what. */
+  .kit-annotation-mark.is-hovered,
+  .kit-annotation-edge.is-hovered {
+    stroke: color-mix(in oklab, var(--text) 80%, transparent);
+  }
+}
+
+/* What one mark is, beside the mark. The scrub's pill answers "what is at
+   this position"; this answers "what is this", so it stands at the mark
+   rather than in the corner, and it is the only text this layer draws. */
+.kit-area-annotation-label {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 168px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--outline);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.kit-area-annotation-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Names for the marks, once, under the plot. Wraps to two lines and stops:
+   the caption is a footnote to a chart and never a paragraph beside one. */
+.kit-area-annotations {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 /* The range beneath, under the plot rather than under the gutter. */
