@@ -29,8 +29,11 @@ import { todayEpochDay } from '$lib/data/epochDay';
 import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod, type WrappedPeriod } from '$lib/data/wrapped';
 import { onThisDayCandidates } from '$lib/data/on-this-day';
 import { androidRetrospectiveNotifications } from '$lib/retrospective/android-bridge';
-import { mayFireAt } from '$lib/unprompted/quietHours';
-import { notificationText } from '$lib/unprompted/notificationText';
+/* Relative, not `$lib`: this file's own test runs on the Node tier, where
+   the alias does not resolve (ADR-0017), and both of these are pure rules
+   the test wants to see actually applied rather than mocked away. */
+import { mayFireAt } from '../unprompted/quietHours';
+import { notificationText } from '../unprompted/notificationText';
 
 let active = false;
 let timer: ReturnType<typeof setInterval> | null = null;
