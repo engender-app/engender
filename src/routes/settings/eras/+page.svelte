@@ -118,11 +118,14 @@
 
   /** What an open bound comes to against the journal as it stands today.
       Null where nothing is open, where the name is still blank, or where the
-      era holds no day the journal has an entry for. */
+      era holds no day the journal has an entry for - and null while the era
+      collides with another, because saying what a span comes to underneath a
+      line saying it cannot be saved states a fact about nothing. */
   function resolvedText(draft: EraDraft): string | null {
     if (draft.start !== '' && draft.end !== '') return null;
     const candidate = spanOf(draft);
     if (candidate === null || bounds === null) return null;
+    if (eraConflict(eras, candidate)) return null;
     const range = eraRange(candidate, bounds);
     if (range === null) return null;
     return m.era_resolves_to({
@@ -230,6 +233,7 @@
         {#snippet children()}
           <div class="era-bound">
             <Segmented
+              key="era-start"
               name={m.era_start_label()}
               compact
               options={[
@@ -250,6 +254,7 @@
         {#snippet children()}
           <div class="era-bound">
             <Segmented
+              key="era-end"
               name={m.era_end_label()}
               compact
               options={[
