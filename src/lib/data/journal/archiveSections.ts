@@ -149,6 +149,25 @@ const SECTIONS = [
     read: read.readTagGroups,
     apply: apply.applyTagGroups
   }),
+  /* The fluidity engine's presentations (phase 5 deepening ticket 17,
+     ADR-0048). Flat: one table, no children, no built-ins to preserve -
+     every row is a custom, so unlike dimensions/tagGroups/affirmations
+     there is no "only the customs" discard statement. No `after`: an
+     entry's own `presentation_id` is plain text (entries' own section
+     resolves no rowid against it), the same reason milestones needs none
+     for procedureId/tryoutId. */
+  flat({
+    name: 'presentations',
+    table: 'presentation',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: {
+      uuid: 'id',
+      name: 'name',
+      role_index: 'roleIndex',
+      hidden: { field: 'hidden', bool: true }
+    }
+  }),
   section({
     name: 'affirmations',
     // Only the customs, the same reasoning dimensions' own statement gives: a

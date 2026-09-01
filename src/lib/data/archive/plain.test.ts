@@ -40,6 +40,7 @@ function entry(fields: Partial<ArchiveEntry>): ArchiveEntry {
     videos: [],
     bodyRegions: {},
     starred: false,
+    presentationId: null,
     ...fields
   };
 }
@@ -136,13 +137,14 @@ test('the JSON reads as a file, indented, version first', () => {
   const written = journalJson(empty, portablePreferences({ ...PREFERENCE_DEFAULTS, name: 'Ola', palette: 'lesbian' }));
 
   assert.equal(
-    written.split('\n').slice(0, 43).join('\n'),
+    written.split('\n').slice(0, 44).join('\n'),
     `{
   "formatVersion": 2,
   "journal": {
     "dimensions": [],
     "presets": [],
     "tagGroups": [],
+    "presentations": [],
     "affirmations": [],
     "bodyRegions": [],
     "entries": [],

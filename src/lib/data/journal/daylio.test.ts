@@ -159,7 +159,11 @@ test('a malformed Daylio CSV is rejected during preview, before anything is writ
 
 test('Daylio commit does not scale round trips per imported row', async () => {
   const smallCount = 20;
-  const largeCount = 140;
+  // Below insertRows' own per-row chunk size for the entry table
+  // (floor(999 / 8 columns) = 124, archiveApply.ts): past that, entry's own
+  // insert takes a second statement and the two counts stop costing the
+  // same round trips for a reason that has nothing to do with scaling.
+  const largeCount = 100;
 
   const small = await daylioCommitRoundTrips(smallCount);
   const large = await daylioCommitRoundTrips(largeCount);

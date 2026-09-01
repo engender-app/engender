@@ -129,6 +129,10 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const bodyRegion = await journal.bodyRegions.addCustomRegion('scar tissue');
   await journal.bodyRegions.setRegionHidden('hairline', true);
 
+  const femme = await journal.presentations.addPresentation('femme', 0);
+  const androgynous = await journal.presentations.addPresentation('androgynous', 1);
+  await journal.presentations.setPresentationHidden(androgynous.id, true);
+
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
     timestamp: 1_700_000_000_000,
@@ -142,7 +146,8 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
       chest: { dysphoria: 45, euphoria: null },
       [bodyRegion.id]: { dysphoria: 30, euphoria: 55 },
       voice_throat: { dysphoria: null, euphoria: 70 }
-    }
+    },
+    presentationId: femme.id
   });
   await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });

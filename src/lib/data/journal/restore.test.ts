@@ -192,7 +192,11 @@ const rowCount = async (db: Awaited<ReturnType<typeof migratedDb>>, sql: string)
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
 
 const SMALL_RESTORE_FIXTURE_ENTRIES = 20;
-const LARGE_RESTORE_FIXTURE_ENTRIES = 140;
+// Below insertRows' own per-row chunk size for the entry table
+// (floor(999 / 8 columns) = 124, archiveApply.ts): past that, entry's own
+// insert takes a second statement and the two fixtures stop costing the
+// same round trips for a reason that has nothing to do with scaling.
+const LARGE_RESTORE_FIXTURE_ENTRIES = 100;
 
 async function countingDevice() {
   const db = await migratedDb();

@@ -283,11 +283,12 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     mood: number | null;
     note: string | null;
     starred: number;
+    presentation_id: string | null;
   }>(
     // Trashed entries are excluded (phase 5 ticket 19): trash is out of
     // scope for archives, and readRowContext has already left their photos
     // and recordings out of `photos`/`recordings` for the same reason.
-    'SELECT id, uuid, epoch_day, timestamp, mood, note, starred FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day, timestamp, id'
+    'SELECT id, uuid, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day, timestamp, id'
   );
 
   const dimensionValues = await driver.query<{ entry_id: number; key: string; value: number }>(
@@ -328,7 +329,8 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     recordings: recordingsByEntry.get(r.id) ?? [],
     videos: videosByEntry.get(r.id) ?? [],
     bodyRegions: Object.fromEntries(bodyRegions.get(r.id) ?? []),
-    starred: bool(r.starred)
+    starred: bool(r.starred),
+    presentationId: r.presentation_id
   }));
 }
 
