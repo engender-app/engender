@@ -70,6 +70,10 @@
   let comparisonQuery = liveQuery((j) => j.doses.getComparison({ fromEpochDay: today - 1, toEpochDay: today }));
   let comparison = $derived(comparisonQuery.value ?? null);
   let activeEpisode = $derived(comparison && 'activeEpisode' in comparison ? comparison.activeEpisode : null);
+  /* More than one regimen running at once (e.g. estradiol and progesterone
+     together) has no single "current" episode to name - the same case
+     care/+page.svelte names rather than silently drops. */
+  let severalRegimens = $derived(comparison?.reason === 'multipleEpisodes');
 
   /* "Since last time" has nothing to scope from until a date is on record
      (ticket 25's design note) - these two stay empty rather than falling
@@ -224,6 +228,8 @@
             subtitle={m.care_regimen_sub({ dose: String(activeEpisode.dose), unit: activeEpisode.doseUnit, interval: activeEpisode.interval })}
             href="/settings/regimen"
           />
+        {:else if severalRegimens}
+          <ListRow key="regimen" icon="curve" title={m.care_regimen_several()} href="/settings/regimen" />
         {/if}
         <ListRow
           key="clinician-summary"
