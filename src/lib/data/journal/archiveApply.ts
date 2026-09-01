@@ -615,12 +615,13 @@ export async function applyChecklists({ driver, mode, journal, ts }: Restoring):
 
   for (const checklist of journal.checklists) {
     if (!checklists.has(checklist.id)) {
-      await driver.run('INSERT INTO checklist (uuid, owner_kind, owner_uuid, updated_at) VALUES (?, ?, ?, ?)', [
-        checklist.id,
-        checklist.ownerKind,
-        checklist.ownerId,
-        ts
-      ]);
+      await driver.run(
+        'INSERT INTO checklist (uuid, owner_kind, owner_uuid, appointment_epoch_day, updated_at) VALUES (?, ?, ?, ?, ?)',
+        // ?? null: an archive written before ticket 25 has no such key at
+        // all, not even a null one, and JSON.parse leaves that as
+        // undefined rather than the column's own resting value.
+        [checklist.id, checklist.ownerKind, checklist.ownerId, checklist.appointmentEpochDay ?? null, ts]
+      );
     }
 
     const checklistRowId = await rowidWhere(driver, 'checklist', 'uuid = ?', [checklist.id], 'checklist uuid');
