@@ -49,12 +49,24 @@ export async function clearJournal(journal: Journal): Promise<void> {
 }
 
 export async function seedPersonaJournal(journal: Journal): Promise<void> {
-  const { customTag, entries, milestones, reminders, labResults, tallyEvents } = persona();
+  const { customTag, presentations, entries, milestones, reminders, labResults, tallyEvents } = persona();
 
   await journal.tags.addTag(customTag.groupKey, customTag.label);
 
-  for (const { photoCount, ...entry } of entries) {
-    const entryId = await journal.entries.upsertEntry(entry);
+  // Presentations before entries: an entry naming one by `presentationName`
+  // needs the real id, which only exists once the row is written
+  // (phase 5 deepening ticket 17).
+  const presentationIds = new Map<string, string>();
+  for (const { name, roleIndex } of presentations) {
+    const created = await journal.presentations.addPresentation(name, roleIndex);
+    presentationIds.set(name, created.id);
+  }
+
+  for (const { photoCount, presentationName, ...entry } of entries) {
+    const entryId = await journal.entries.upsertEntry({
+      ...entry,
+      presentationId: presentationName ? presentationIds.get(presentationName) : undefined
+    });
     for (let i = 0; i < photoCount; i++) {
       await journal.photos.attach({ entryId }, await demoPhoto(entry.epochDay + i));
     }
