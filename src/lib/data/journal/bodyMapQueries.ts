@@ -5,7 +5,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { HairRemovalMethod, HairRemovalSession, HairStage, Measurement } from '../types';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
-import { bool } from './support';
+import { bool, entryPresentationFilter } from './support';
 
 export interface RegionFeelingTrajectory {
   entryId: number;
@@ -131,16 +131,23 @@ type HairStageRow = {
 
 export async function getRegionSomaticBreakdown(
   driver: SqliteDriver,
-  region: string
+  region: string,
+  /** Filters the trajectory and its progress photos by presentation
+      (ADR-0048, ticket 18) - the two tracks joined against `entry`.
+      Measurements, hair removal sessions and hair staging carry no
+      presentation of their own and are never filtered by this. */
+  presentationId?: string | null
 ): Promise<RegionSomaticBreakdown> {
+  const presFilter = entryPresentationFilter(presentationId);
+
   // 1. Feelings trajectory
   const trajectoryRows = await driver.query<TrajectoryRow>(
     `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.dysphoria AS dysphoria, ebr.euphoria AS euphoria, e.note AS note
      FROM entry_body_region ebr
      JOIN entry e ON e.id = ebr.entry_id
-     WHERE ebr.region = ? AND e.trashed_at IS NULL
+     WHERE ebr.region = ? AND e.trashed_at IS NULL${presFilter.sql}
      ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC`,
-    [region]
+    [region, ...presFilter.params]
   );
 
   const trajectory: RegionFeelingTrajectory[] = trajectoryRows.map((r) => ({
@@ -187,9 +194,9 @@ export async function getRegionSomaticBreakdown(
      FROM photo p
      JOIN entry e ON e.id = p.entry_id
      JOIN entry_body_region ebr ON ebr.entry_id = e.id
-     WHERE ebr.region = ? AND e.trashed_at IS NULL
+     WHERE ebr.region = ? AND e.trashed_at IS NULL${presFilter.sql}
      ORDER BY e.epoch_day DESC, p.order_index, p.id`,
-    [region]
+    [region, ...presFilter.params]
   );
 
   const photos: RegionSomaticPhoto[] = entryPhotoRows.map((r) => ({

@@ -24,7 +24,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
 import { EUPHORIA_TAG_KEYS } from '../vocabulary/builtins';
 import { getRegionSomaticBreakdown, type RegionSomaticBreakdown } from './bodyMapQueries';
-import { bool } from './support';
+import { bool, entryPresentationFilter } from './support';
 
 export interface DayAverage {
   day: number;
@@ -136,15 +136,25 @@ export interface StatsArea {
       the two series have their own days and their own counts and nothing
       here pairs them up. A caller drawing both asks twice and the chart
       overlays the results. Days where the axis is null are absent, not
-      zero - "said nothing" is not "said none". */
+      zero - "said nothing" is not "said none".
+
+      `presentationId` filters by entry.presentation_id (ADR-0048, ticket
+      18): omitted or absent keeps every entry - the unfiltered view, byte
+      for byte what this returned before the filter existed - `null` keeps
+      only entries carrying no presentation, and a uuid keeps only that
+      one's. This is the read that answers "does this region feel different
+      depending on how I am presenting". */
   bodyRegionTrend(
     region: string,
     axis: BodyRegionAxis,
     fromEpochDay: number,
-    toEpochDay: number
+    toEpochDay: number,
+    presentationId?: string | null
   ): Promise<DayAverage[]>;
-  /** Multi-track somatic breakdown for an anatomical zone (phase 5 ticket 08). */
-  bodyRegionBreakdown(region: string): Promise<RegionSomaticBreakdown>;
+  /** Multi-track somatic breakdown for an anatomical zone (phase 5 ticket 08).
+      `presentationId` is ticket 18's same filter, forwarded to
+      getRegionSomaticBreakdown. */
+  bodyRegionBreakdown(region: string, presentationId?: string | null): Promise<RegionSomaticBreakdown>;
   /** One point per day at least one completed wear session started in the
       range, oldest first, both ends inclusive - the same DayAverage shape
       as bodyRegionTrend, so a wear-time trend overlays the same chart
@@ -222,17 +232,22 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
    The axis names a column rather than binding a parameter, so it is a
    closed union and not a caller's string: nothing user-supplied reaches
    the SQL. `IS NOT NULL` is what keeps an unlogged axis out of the average
-   entirely instead of dragging it towards zero. */
+   entirely instead of dragging it towards zero.
+
+   `presentationId` is entryPresentationFilter's three-state filter
+   (ADR-0048, ticket 18), appended after the region's own parameter. */
 function bodyRegionValues(
   region: string,
-  axis: BodyRegionAxis
+  axis: BodyRegionAxis,
+  presentationId?: string | null
 ): { sql: string; params: (string | number)[] } {
+  const presFilter = entryPresentationFilter(presentationId);
   return {
     sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
           FROM entry e
           JOIN entry_body_region ebr ON ebr.entry_id = e.id
-          WHERE ebr.region = ? AND ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL`,
-    params: [region]
+          WHERE ebr.region = ? AND ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL${presFilter.sql}`,
+    params: [region, ...presFilter.params]
   };
 }
 
@@ -275,12 +290,12 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
     },
 
-    async bodyRegionTrend(region, axis, fromEpochDay, toEpochDay) {
-      return averageByDay(bodyRegionValues(region, axis), fromEpochDay, toEpochDay);
+    async bodyRegionTrend(region, axis, fromEpochDay, toEpochDay, presentationId) {
+      return averageByDay(bodyRegionValues(region, axis, presentationId), fromEpochDay, toEpochDay);
     },
 
-    async bodyRegionBreakdown(region) {
-      return getRegionSomaticBreakdown(driver, region);
+    async bodyRegionBreakdown(region, presentationId) {
+      return getRegionSomaticBreakdown(driver, region, presentationId);
     },
 
     async wearTimeTrend(fromEpochDay, toEpochDay) {
