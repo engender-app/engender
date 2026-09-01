@@ -453,6 +453,24 @@
   overflow: hidden;
 }
 
+/* A search hit's title is a run out of the middle of whatever it matched
+   (phase 5 deepening ticket 24, searchHitRows.ts), so it can be a sentence
+   or two where every other row's title is a few words. Two lines, the same
+   allowance the letter preview above takes, and at the body weight rather
+   than the row title's medium: the whole row is the quotation, and a
+   paragraph set in medium reads as a heading.
+
+   Keyed on the hit's own attribute rather than on `[data-list-row]`, because
+   a hit's row key is its area and its id and there is no fixed value to
+   match. */
+[data-search-hit] .kit-row-title {
+  font-weight: var(--weight-regular);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
 /* ---------- the box on a tickable row ----------
 
    Phase 5 ticket 35. The box carries the row's state; the row does not

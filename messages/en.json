@@ -177,10 +177,10 @@
   "day_recovery_photos": "Recovery photos",
   "day_tryout_photos": "Photos",
   "search": "Search",
-  "search_placeholder": "Search notes and tags…",
-  "search_hint": "Notes and tags, with or without diacritics. “lozko” finds “łóżko”.",
+  "search_placeholder": "Search the whole journal…",
+  "search_hint": "Notes, tags, letters, questions, anything with words in it. With or without diacritics: “lozko” finds “łóżko”.",
   "search_more": "Show {count} more",
-  "search_try": "Try “euphoria”, “coffee”, or a tag like “therapy”.",
+  "search_try": "Try “euphoria”, a tag like “therapy”, or a word from a letter you wrote.",
   "search_filters": "Filters",
   "search_filter_moods_aria": "Mood filters",
   "search_filter_tags_label": "Tags",
@@ -192,6 +192,9 @@
   "search_filter_start_chip": "From: {date}",
   "search_filter_end_chip": "To: {date}",
   "search_filters_clear_all": "Clear all",
+  "search_area_felt_sense": "Felt sense",
+  "search_entries_heading": "Entries",
+  "search_filters_entries_only": "Tags, moods, notes and photos narrow entries only.",
   "results_count": [
     {
       "declarations": [
@@ -208,7 +211,7 @@
     }
   ],
   "no_results": "Nothing found",
-  "no_results_body": "No entries match “{query}”. Try a shorter word: prefixes match too.",
+  "no_results_body": "Nothing matches “{query}”. Try a shorter word: prefixes match too.",
   "search_no_results_filtered": "No entries match these filters yet.",
   "starred_shelf_open": "Starred",
   "starred_shelf_title": "Starred",

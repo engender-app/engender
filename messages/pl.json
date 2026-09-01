@@ -181,8 +181,8 @@
   "day_recovery_photos": "Zdjęcia z rekonwalescencji",
   "day_tryout_photos": "Zdjęcia",
   "search": "Szukaj",
-  "search_placeholder": "Szukaj w notatkach i tagach…",
-  "search_hint": "Notatki i tagi, z polskimi znakami lub bez. „lozko” znajdzie „łóżko”.",
+  "search_placeholder": "Szukaj w całym dzienniku…",
+  "search_hint": "Notatki, tagi, listy, pytania, wszystko, co ma słowa. Z polskimi znakami lub bez: „lozko” znajdzie „łóżko”.",
   "search_more": [
     {
       "declarations": [
@@ -200,7 +200,7 @@
       }
     }
   ],
-  "search_try": "Spróbuj „euforia”, „kawa” albo tagu „terapia”.",
+  "search_try": "Spróbuj „euforia”, tagu „terapia” albo słowa z listu do siebie.",
   "search_filters": "Filtry",
   "search_filter_moods_aria": "Filtry nastroju",
   "search_filter_tags_label": "Tagi",
@@ -212,6 +212,9 @@
   "search_filter_start_chip": "Od: {date}",
   "search_filter_end_chip": "Do: {date}",
   "search_filters_clear_all": "Wyczyść wszystko",
+  "search_area_felt_sense": "Odczucia",
+  "search_entries_heading": "Wpisy",
+  "search_filters_entries_only": "Tagi, nastroje, notatki i zdjęcia zawężają tylko wpisy.",
   "results_count": [
     {
       "declarations": [
@@ -230,7 +233,7 @@
     }
   ],
   "no_results": "Nic nie znaleziono",
-  "no_results_body": "Żaden wpis nie pasuje do „{query}”. Spróbuj krótszego słowa. Początki słów też działają.",
+  "no_results_body": "Nic nie pasuje do „{query}”. Spróbuj krótszego słowa. Początki słów też działają.",
   "search_no_results_filtered": "Żaden wpis nie pasuje jeszcze do tych filtrów.",
   "starred_shelf_open": "Ulubione",
   "starred_shelf_title": "Ulubione",

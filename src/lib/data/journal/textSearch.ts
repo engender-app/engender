@@ -53,15 +53,18 @@
        encrypted database (ADR-0020): the scan happens inside SQLite, which
        is also why the fold has a SQL spelling at all.
 
-   **The cost, and the strategy chosen for it.** One statement, not twenty.
+   **The cost, and the strategy chosen for it.** Two statements, not forty.
    Every area is a branch of one UNION ALL with a uniform projection, so a
-   search is one round trip whatever the registry grows to - which matters
-   most where it is a bridge call rather than a function call (ADR-0020's
-   Android driver). The compound select carries the LIMIT, so a search reads
-   a page and stops. Measured against the ten-year fixture as
-   `search-everywhere` in tests/long-journal (budgets.json carries the
-   number); entries stay on their own FTS query beside it, as the screen has
-   always run them.
+   search costs a page and a count whatever the registry grows to - which
+   matters most where a statement is a bridge call rather than a function
+   call (ADR-0020's Android driver). The page carries the LIMIT and stops;
+   the count is the same union without one, for the reason the entry side
+   counts separately (entries.ts) - a screen that says how many results a
+   query found cannot take that number off a page of thirty. Measured
+   against the ten-year fixture as `search-everywhere` in
+   tests/long-journal, which budgets.json carries the number for; entries
+   stay on their own FTS queries beside it, as the screen has always run
+   them.
 
    It is a pure read. Searching writes nothing - no recent-searches history,
    no index, no counter - and textSearch.test.ts holds that against the
@@ -141,15 +144,19 @@ export interface SearchArea {
   where?: { sql: string; params(request: SearchRequest): unknown[] };
 }
 
-/** Keeps `covers` from widening at the declaration site.
+/** Keeps the key and `covers` from widening at the declaration site.
 
     `const` for the reason day.ts's is: declared as a plain
     `readonly ArchiveSectionName[]` it widens to every section name, which
     makes `Covered` below the whole union, `Exclude` empty, and the opt-out
     record accept anything at all - a compile-time check that silently
-    checks nothing. */
-function area<const Covers extends readonly ArchiveSectionName[]>(declared: {
-  key: string;
+    checks nothing. The key is a `const` parameter for the mirror of that
+    reason: widened to `string` it makes `SearchAreaKey` a string, and
+    searchHitRows.ts's full Record over the keys - the half of the registry's
+    promise that says what a hit looks like - would accept anything at all
+    too. */
+function area<const Key extends string, const Covers extends readonly ArchiveSectionName[]>(declared: {
+  key: Key;
   covers: Covers;
   tables: readonly TableName[];
   from: string;
@@ -446,7 +453,7 @@ export const SEARCH_AREAS: readonly SearchArea[] = AREAS;
 
 /** Every area's key, in the order they are declared - which is the order
     hits are grouped in on the screen, so it never names an area itself. */
-export const SEARCH_AREA_KEYS: readonly string[] = AREAS.map((a) => a.key);
+export const SEARCH_AREA_KEYS: readonly SearchAreaKey[] = AREAS.map((a) => a.key);
 
 /** Every table any area reads, de-duplicated: what `textSearch.search`
     depends on, single-sourced here because this is the module that knows
@@ -559,10 +566,12 @@ interface HitRow extends Record<string, unknown> {
 
 export interface SearchResults {
   hits: SearchHit[];
-  /** Whether the limit cut the answer short, read off one row more than was
-      asked for rather than off "the page came back full" - which cannot tell
-      a last page that happens to be exactly full from a full one. */
-  hasMore: boolean;
+  /** How many hits there are in total, which is not the page's length: the
+      screen states how many results a query found and shows a page of them.
+      Its own query beside the page, the same split the entry side keeps
+      (entries.ts's countSearchMatches) and for the same reason - taking the
+      count from the page would report thirty for a query with fifty. */
+  total: number;
 }
 
 export interface TextSearchArea {
@@ -571,7 +580,9 @@ export interface TextSearchArea {
   search(request: SearchRequest): Promise<SearchResults>;
 }
 
-const NOTHING_FOUND: SearchResults = { hits: [], hasMore: false };
+/** One default for the whole answer rather than one per field: the page and
+    its count come back together or not at all. */
+const NOTHING_FOUND: SearchResults = { hits: [], total: 0 };
 
 export function makeTextSearchArea(
   driver: SqliteDriver,
@@ -583,26 +594,31 @@ export function makeTextSearchArea(
       if (pattern === null || areas.length === 0) return NOTHING_FOUND;
 
       const branches = areas.map((declared) => branchFor(declared, pattern, request));
+      const union = branches.map((b) => b.sql).join('\nUNION ALL\n');
+      const params = branches.flatMap((b) => b.params);
+
       /* The compound select is wrapped rather than ordered directly: a
          compound's own ORDER BY may only name an output column, and the rule
          here is an expression over one - undated hits last, then newest
          first, then by area so a page is stable across runs. */
-      const sql = `SELECT * FROM (
-          ${branches.map((b) => b.sql).join('\nUNION ALL\n')}
-        )
-        ORDER BY sort_key IS NULL, sort_key DESC, area
-        LIMIT ?`;
-      const params = [...branches.flatMap((b) => b.params), request.limit + 1];
+      const [rows, counted] = await Promise.all([
+        driver.query<HitRow>(
+          `SELECT * FROM (${union})
+             ORDER BY sort_key IS NULL, sort_key DESC, area
+             LIMIT ?`,
+          [...params, request.limit]
+        ),
+        driver.query<{ total: number }>(`SELECT COUNT(*) AS total FROM (${union})`, params)
+      ]);
 
-      const rows = await driver.query<HitRow>(sql, params);
-      const hits = rows.slice(0, request.limit).map((row) => ({
+      const hits = rows.map((row) => ({
         area: row.area,
         id: row.id,
         epochDay: row.epoch_day ?? (row.timestamp === null ? null : epochDayFromTimestamp(row.timestamp)),
         value: row.value,
         context: row.context
       }));
-      return { hits, hasMore: rows.length > request.limit };
+      return { hits, total: counted[0]?.total ?? hits.length };
     }
   };
 }
