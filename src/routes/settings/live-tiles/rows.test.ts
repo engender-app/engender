@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { PREFERENCE_DEFAULTS, type PreferenceKey } from '../../../lib/data/prefs/catalogue.ts';
-import { LIVE_TILE_ROWS, UNPROMPTED_KINDS, unregisteredKinds } from './rows.ts';
+import { LIVE_TILE_ROWS, unregisteredKinds } from './rows.ts';
 
 const kindKeys = LIVE_TILE_ROWS.map((row) => row.prefKey);
 const notifyKeys = LIVE_TILE_ROWS.flatMap((row) => (row.notify ? [row.notify.prefKey] : []));
@@ -79,13 +79,5 @@ describe('the unprompted registry', () => {
   it('the completeness check can fail: a shortened registry names exactly the kind it is missing', () => {
     const shortened = LIVE_TILE_ROWS.filter((row) => row.key !== 'wrapped');
     expect(unregisteredKinds(shortened)).toEqual(['wrapped']);
-  });
-
-  it('reports nothing missing for the real registry', () => {
-    expect(unregisteredKinds(LIVE_TILE_ROWS)).toEqual([]);
-  });
-
-  it('registers every kind exactly once', () => {
-    expect(LIVE_TILE_ROWS.map((row) => row.key)).toEqual(UNPROMPTED_KINDS);
   });
 });

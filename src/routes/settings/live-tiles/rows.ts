@@ -49,25 +49,6 @@ export type UnpromptedKind =
   | 'wrapped'
   | 'on-this-day';
 
-/** `UnpromptedKind` as a value: the type erases at compile time, and
-    `unregisteredKinds` below needs the list to actually iterate. */
-export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = [
-  'wear-timer',
-  'dose-panel',
-  'ready-letter',
-  'surgery-countdown',
-  'safe-space-nudge',
-  'stock-notice',
-  'active-tryout-tile',
-  'patch-schedule-tile',
-  'voice-benchmark-nudge',
-  'pause-active-banner',
-  'hair-removal-recovery',
-  'measurements-nudge',
-  'wrapped',
-  'on-this-day'
-];
-
 /** Which Android notification channel a firing kind uses. Reminders and the
     daily check-in share the two fixed channels android-bridge.ts already
     declares; wrapped and on-this-day each name a channel after their own
@@ -236,6 +217,15 @@ type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
 
 export const LIVE_TILE_ROWS: readonly LiveTileRow[] = ROWS;
+
+/** `UnpromptedKind` as a value, read off `ROWS` itself rather than typed out
+    a second time - a hand-kept second copy of the same 14 literals would be
+    exactly the kind of list `EveryKindRegistered` exists to stop needing.
+    Safe to derive here, unlike `Unregistered` above: this only has to name
+    what today's registry actually holds for `unregisteredKinds` to check a
+    *shortened copy* against, not stand as its own independent source of
+    truth - that job is `UnpromptedKind`'s. */
+export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row.key);
 
 /** The runtime half of `EveryKindRegistered`: which kinds a given list of
     rows is missing, checked against the full `UNPROMPTED_KINDS` domain
