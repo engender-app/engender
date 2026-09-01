@@ -147,3 +147,44 @@ test('addToStandaloneChecklist reuses the same checklist on later calls', async 
     ['first question', 'second question']
   );
 });
+
+test('the appointment date is null until set, and setAppointmentDate creates the standalone checklist on first use', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.checklists.getAppointmentDate(), null);
+  assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
+
+  await journal.checklists.setAppointmentDate(19800);
+
+  assert.equal(await journal.checklists.getAppointmentDate(), 19800);
+  const checklist = await journal.checklists.getStandaloneChecklist();
+  assert.equal(checklist?.owner, null);
+  assert.deepEqual(checklist?.items, []);
+});
+
+test('setAppointmentDate on an existing standalone checklist replaces the date and leaves its items alone', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const item = await journal.checklists.addToStandaloneChecklist('ask about labs');
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.setAppointmentDate(19830);
+
+  assert.equal(await journal.checklists.getAppointmentDate(), 19830);
+  const checklist = await journal.checklists.getStandaloneChecklist();
+  assert.deepEqual(checklist?.items, [item]);
+});
+
+test('setAppointmentDate(null) clears a previously set date', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.setAppointmentDate(null);
+  assert.equal(await journal.checklists.getAppointmentDate(), null);
+});
+
+test('an owned checklist never carries the appointment date', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.checklists.createChecklist({ kind: 'procedure', id: 'p-1' });
+  await journal.checklists.setAppointmentDate(19800);
+
+  const owned = await journal.checklists.getChecklistByOwner({ kind: 'procedure', id: 'p-1' });
+  assert.equal(owned?.owner?.id, 'p-1');
+  assert.equal(await journal.checklists.getAppointmentDate(), 19800);
+});

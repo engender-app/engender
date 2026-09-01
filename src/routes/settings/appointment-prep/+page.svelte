@@ -15,14 +15,23 @@
      that remain each get a full touch target, which the 28px squares and
      the buttons packed against them did not have. */
   import { m } from '$lib/paraglide/messages';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { ChecklistItem } from '$lib/data/types';
+  import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
+  import { fmtDay } from '$lib/data/dates';
+  import { readLabResultsInRange } from '$lib/data/journal/clinicianSummary';
+  import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
+  import { severityName } from '$lib/data/vocabulary/labels';
+  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -30,8 +39,54 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
+  const today = todayEpochDay();
+  const todayInput = dateInputValueFromEpochDay(today);
+  const dayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
+
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
+  /* The context block below is the "day before" mood (design note): it
+     only earns its place once there is something being prepared for. An
+     empty list stays the quiet screen it already was. */
+  let hasQuestions = $derived(items.length > 0);
+
+  /* The standalone checklist's own appointment date (checklists.ts,
+     migrations.ts v48): the one thing this ticket adds storage for.
+     Read live and written straight through - no local draft state, since
+     the field has exactly one source of truth and nothing here needs to
+     hold an in-progress edit across a popup closing. */
+  let appointmentDateQuery = liveQuery((j) => j.checklists.getAppointmentDate());
+  let appointmentDate = $derived(appointmentDateQuery.value ?? null);
+  let appointmentDateInput = $derived(appointmentDate === null ? '' : dateInputValueFromEpochDay(appointmentDate));
+
+  function setAppointmentDate(value: string) {
+    journal.checklists.setAppointmentDate(value ? epochDayFromDateInputValue(value) : null);
+  }
+
+  /* The current regimen, read the same way the care overview reads it
+     (care/+page.svelte) rather than a second look at the episode log:
+     `getComparison` is doses.ts's own answer to "which episode is in
+     effect", and this screen wants that answer, not a new one. */
+  let comparisonQuery = liveQuery((j) => j.doses.getComparison({ fromEpochDay: today - 1, toEpochDay: today }));
+  let comparison = $derived(comparisonQuery.value ?? null);
+  let activeEpisode = $derived(comparison && 'activeEpisode' in comparison ? comparison.activeEpisode : null);
+
+  /* "Since last time" has nothing to scope from until a date is on record
+     (ticket 25's design note) - these two stay empty rather than falling
+     back to some arbitrary window, which would silently answer a question
+     nobody asked. readLabResultsInRange is clinicianSummary.ts's own range
+     read, not a second assembly of it. */
+  let labsQuery = liveList((j) =>
+    appointmentDate === null ? Promise.resolve([]) : readLabResultsInRange(j.labs, appointmentDate, today)
+  );
+  let sideEffectsQuery = liveList((j) =>
+    appointmentDate === null ? Promise.resolve([]) : j.sideEffects.getSideEffectsInRange(appointmentDate, today)
+  );
+
+  /* The stock horizon is a live snapshot, not a range - it answers "how
+     long until this runs out", which has nothing to do with when the last
+     appointment was. */
+  let stockQuery = liveList((j) => j.stock.getProjections(today));
 
   let addSheet = $state(false);
   let newItemText = $state('');
@@ -139,6 +194,108 @@
     {/snippet}
   </ReadGate>
 
+  {#if hasQuestions}
+    <!-- The "day before" mood (design note): everything below is a live
+         read of a module that already owns the figure - regimen.ts through
+         doses.getComparison, labs.ts, sideEffects.ts, stock.ts - and prints
+         only once there is a question on the list to prep for. -->
+    <div class="screen-part">
+      <SectionHeading text={m.appointment_prep_context_heading()} />
+      <ListCard role={roleAt(activeFlag.roles, 1)}>
+        <div class="rows-divide date-row">
+          <label class="date-row-label" for="appointment-prep-date">{m.appointment_prep_last_appointment_label()}</label>
+          <span class="date-row-value">{appointmentDate === null ? m.appointment_prep_last_appointment_unset() : dayShort(appointmentDate)}</span>
+          <span class="date-row-icon"><Icon name="calendar" size={18} /></span>
+          <DatePicker
+            id="appointment-prep-date"
+            value={appointmentDateInput}
+            max={todayInput}
+            ariaLabel={m.appointment_prep_last_appointment_aria()}
+            invis
+            onchange={setAppointmentDate}
+            data-appointment-date
+          />
+        </div>
+        {#if activeEpisode}
+          <ListRow
+            key="regimen"
+            icon="curve"
+            title={activeEpisode.drug}
+            subtitle={m.care_regimen_sub({ dose: String(activeEpisode.dose), unit: activeEpisode.doseUnit, interval: activeEpisode.interval })}
+            href="/settings/regimen"
+          />
+        {/if}
+        <ListRow
+          key="clinician-summary"
+          icon="share"
+          title={m.clinician_summary_row()}
+          subtitle={m.clinician_summary_row_sub()}
+          href="/settings/clinician-summary"
+        />
+      </ListCard>
+    </div>
+
+    {#if labsQuery.rows.length}
+      <div class="screen-part">
+        <SectionHeading text={m.appointment_prep_labs_heading()} />
+        <ListCard role={roleAt(activeFlag.roles, 1)}>
+          {#each labsQuery.rows as lab (lab.id)}
+            <ListRow
+              key={lab.id}
+              icon="flask"
+              title={lab.analyte}
+              subtitle={[
+                `${lab.value} ${lab.unit}`.trim(),
+                `${dayShort(lab.epochDay)}${lab.timing ? ` · ${labTimingLabel(lab.timing)}` : ''}`
+              ]}
+              href="/settings/labs"
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/if}
+
+    {#if sideEffectsQuery.rows.length}
+      <div class="screen-part">
+        <SectionHeading text={m.appointment_prep_side_effects_heading()} />
+        <ListCard role={roleAt(activeFlag.roles, 1)}>
+          {#each sideEffectsQuery.rows as effect (effect.id)}
+            <ListRow
+              key={effect.id}
+              icon="zap"
+              title={effect.name}
+              subtitle={[severityName(effect.severity), dayShort(effect.epochDay)]}
+              href="/settings/side-effects"
+            />
+          {/each}
+        </ListCard>
+      </div>
+    {/if}
+
+    {#if stockQuery.rows.length}
+      <div class="screen-part">
+        <SectionHeading text={m.regimen_stock_link()} />
+        <ListCard role={roleAt(activeFlag.roles, 1)}>
+          {#each stockQuery.rows as row (row.entry.id)}
+            {@const runOut = stockRunOutLabel(row.projection, today)}
+            <ListRow
+              key={row.entry.id}
+              title={row.entry.drug}
+              subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
+              href="/settings/stock"
+            >
+              {#snippet leading()}
+                <span class="kit-row-ico" class:is-warn={runOut.warn}>
+                  <Icon name="package" size={22} />
+                </span>
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      </div>
+    {/if}
+  {/if}
+
   <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
     <h3>{m.appointment_prep_new_sheet()}</h3>
     <Field label={m.appointment_prep_new_sheet()} id="appointment-prep-input" hidden>
@@ -203,5 +360,16 @@
 
   .ap-flagged {
     color: var(--role-mark);
+  }
+
+  /* The stock horizon's warn signal, the same rule /settings/stock's own
+     rows use (ADR-0046's surfaces): a disc that takes the warn pair only
+     when a run-out is close, ordinary role colour otherwise. Not shared
+     kit CSS because .kit-row-ico itself is (kit.css) and this variant is
+     the one thing each stock-reading screen adds on top of it. */
+  .kit-row-ico.is-warn {
+    background: var(--warn-soft);
+    color: var(--on-warn-soft);
+    border-color: transparent;
   }
 </style>

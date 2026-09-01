@@ -396,9 +396,13 @@ export async function readRoadmapChecks({ driver }: SectionRead): Promise<Archiv
 }
 
 export async function readChecklists({ driver }: SectionRead): Promise<ArchiveChecklist[]> {
-  const checklists = await driver.query<{ id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null }>(
-    'SELECT id, uuid, owner_kind, owner_uuid FROM checklist ORDER BY id'
-  );
+  const checklists = await driver.query<{
+    id: number;
+    uuid: string;
+    owner_kind: string | null;
+    owner_uuid: string | null;
+    appointment_epoch_day: number | null;
+  }>('SELECT id, uuid, owner_kind, owner_uuid, appointment_epoch_day FROM checklist ORDER BY id');
   const items = await driver.query<{ checklist_id: number; uuid: string; content: string; checked: number; carried_forward: number }>(
     'SELECT checklist_id, uuid, content, checked, carried_forward FROM checklist_item ORDER BY order_index, id'
   );
@@ -416,6 +420,7 @@ export async function readChecklists({ driver }: SectionRead): Promise<ArchiveCh
     id: c.uuid,
     ownerKind: c.owner_kind,
     ownerId: c.owner_uuid,
+    appointmentEpochDay: c.appointment_epoch_day,
     items: byChecklist.get(c.id) ?? []
   }));
 }

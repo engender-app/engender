@@ -34,6 +34,18 @@ export interface ChecklistsArea {
       07's procedure is the first owner): the rule that a checklist appears
       when its first item does lives here once, rather than at each owner. */
   addToOwnedChecklist(owner: ChecklistOwner, content: string): Promise<ChecklistItem>;
+  /** The standalone checklist's own appointment date (phase 5 deepening
+      ticket 25, ADR-0010): null until the person sets one. Not part of the
+      `Checklist` shape returned elsewhere, because that shape is shared
+      with every owned checklist (a procedure's recovery list has no
+      appointment of its own) - these two are the only way the column is
+      read or written, so an owned checklist can never carry a value here. */
+  getAppointmentDate(): Promise<number | null>;
+  /** Creates the standalone checklist on first use, the same as
+      `addToStandaloneChecklist` - setting a date before adding a single
+      question is a real order of operations, not an error. `null` clears
+      it. */
+  setAppointmentDate(epochDay: number | null): Promise<void>;
   editItem(itemId: string, content: string): Promise<void>;
   setItemChecked(itemId: string, checked: boolean): Promise<void>;
   setItemCarriedForward(itemId: string, carriedForward: boolean): Promise<void>;
@@ -46,6 +58,7 @@ export interface ChecklistsArea {
 }
 
 type ChecklistRow = { id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null };
+type StandaloneAppointmentRow = { id: number; appointment_epoch_day: number | null };
 type ItemRow = { uuid: string; content: string; checked: number; carried_forward: number };
 
 const toItem = (row: ItemRow): ChecklistItem => ({
@@ -134,6 +147,23 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     addToStandaloneChecklist: (content) => addToLazyChecklist(undefined, content),
 
     addToOwnedChecklist: (owner, content) => addToLazyChecklist(owner, content),
+
+    async getAppointmentDate() {
+      const rows = await driver.query<StandaloneAppointmentRow>(
+        'SELECT id, appointment_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+      );
+      return rows[0]?.appointment_epoch_day ?? null;
+    },
+
+    async setAppointmentDate(epochDay) {
+      const existing = await standaloneChecklist();
+      const checklistId = existing ? existing.id : (await area.createChecklist()).id;
+      await driver.run('UPDATE checklist SET appointment_epoch_day = ?, updated_at = ? WHERE uuid = ?', [
+        epochDay,
+        now(),
+        checklistId
+      ]);
+    },
 
     async editItem(itemId, content) {
       const result = await driver.run('UPDATE checklist_item SET content = ?, updated_at = ? WHERE uuid = ?', [
