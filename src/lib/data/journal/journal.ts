@@ -187,7 +187,7 @@ export interface Journal {
       imports on the screen. Reads only: opening a day writes nothing. */
   day: DayArea;
   /** Every area that holds text, matched against one query (phase 5
-      deepening ticket 24, ADR-0005). A view over rows twenty areas own, like
+      deepening ticket 24, ADR-0005). A view over rows eighteen areas own, like
       `day` above and for the same reason - which areas are searchable, and
       which are written down as deliberately holding nothing to search, is
       textSearch.ts's registry rather than a list of imports on the screen.

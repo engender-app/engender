@@ -1,7 +1,9 @@
 /* The measurement harness (phase 2 ticket 20).
 
    Five places decide whether a decade of Journal works: the calendar, the
-   stats screen, search, Archive export and the photo grid. Each one below
+   stats screen, search, Archive export and the photo grid. Search is two
+   questions since phase 5 deepening ticket 24: the entry index, and one
+   scan across every other area that holds text. Each one below
    asks the journal exactly what its screen asks it, over the same
    `openJournal(driver, files)` handle (ADR-0017) - so what runs against
    SQLocal over OPFS today runs against ticket 11's native SQLite driver
@@ -23,6 +25,7 @@ import { normalizePhoto } from '../../src/lib/data/photos/normalize.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { readThumbnail, setPhotoFiles } from '../../src/lib/stores/photoFiles.ts';
 import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
+import { SEARCH_AREA_KEYS } from '../../src/lib/data/journal/textSearch.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
 import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
@@ -242,6 +245,36 @@ export async function measureLongJournal(
       };
     });
   }
+
+  /* Everything outside the entry note (phase 5 deepening ticket 24). One
+     statement across the whole registry - eighteen areas as branches of
+     one UNION ALL - plus its count, which is what the screen runs per search
+     beside the two entry queries above (textSearch.ts).
+
+     The same word the first search measurement uses, and the number it
+     reports is the scan rather than the hits: none of these areas has an
+     index, so what this watches is what a folded LIKE over every text
+     column in the journal costs at decade scale. The fixture's non-entry
+     text is written in English and the word is Polish, so the hit count is
+     usually zero and the cost is the same either way - a scan pays for the
+     rows it reads, not for the ones it returns.
+
+     If this ever grows out of budget, the strategy to reach for is the one
+     deliberately not taken here: search on submit rather than per keystroke.
+     Debouncing was not needed at these numbers and would have cost the live
+     feel the entry side has.
+  */
+  await measure('search-everywhere', 'search, every area outside entries in one statement', async () => {
+    const results = await journal.textSearch.search({
+      query: summary.commonWord,
+      today,
+      limit: SEARCH_PAGE
+    });
+    return {
+      result: results,
+      detail: `${results.hits.length} shown of ${results.total} matches across ${SEARCH_AREA_KEYS.length} areas`
+    };
+  });
 
   // --- photo grid ---------------------------------------------------------
   // The rows first, which is one query however many photos there are, and

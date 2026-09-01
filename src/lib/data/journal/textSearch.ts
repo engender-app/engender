@@ -9,7 +9,7 @@
    findable. Somebody who remembers writing something and not where they
    wrote it had nowhere to type it.
 
-   A registry rather than a screen that names twenty areas, for the reason
+   A registry rather than a screen that names eighteen areas, for the reason
    the two registries before it are (ADR-0027, ADR-0031): the alternative is
    a list a new area is silently missing from, with no test able to notice.
    An area declares what text it holds and how to reach it; adding one later

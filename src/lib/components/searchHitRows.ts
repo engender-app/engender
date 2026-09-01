@@ -16,7 +16,7 @@
 
    *Every hit says what kind of thing it is.* That is the ticket's own
    condition, and grouping is how it is met: hits arrive newest-first across
-   twenty areas, and a flat run mixing Tuesday's entry with a letter and a
+   eighteen areas, and a flat run mixing Tuesday's entry with a letter and a
    consult question would be worse than no search at all. Each group carries
    the area's own name and icon, in the registry's declared order, so the
    kind is stated once above the hits rather than repeated on each of them.
