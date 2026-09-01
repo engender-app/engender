@@ -315,11 +315,17 @@ export interface ArchiveChecklistItem {
 /** A checklist, standalone or scoped to an owner record (phase 5 ticket 05).
     `ownerKind`/`ownerId` travel as a pair, both present or both absent, the
     same nullable pairing the row itself keeps (migrations.ts v20) - there is
-    no owner table to resolve either against yet. */
+    no owner table to resolve either against yet.
+
+    `appointmentEpochDay` (migrations.ts v48, phase 5 deepening ticket 25) is
+    the standalone checklist's own date, null on every owned one - the same
+    column travels for both because there is one `checklist` table, not
+    because an owned checklist has an appointment of its own. */
 export interface ArchiveChecklist {
   id: string;
   ownerKind: string | null;
   ownerId: string | null;
+  appointmentEpochDay: number | null;
   items: ArchiveChecklistItem[];
 }
 

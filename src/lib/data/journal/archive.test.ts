@@ -700,7 +700,7 @@ const CARRIED: Record<string, string[]> = {
     'note'
   ],
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
-  checklist: ['uuid', 'owner_kind', 'owner_uuid'],
+  checklist: ['uuid', 'owner_kind', 'owner_uuid', 'appointment_epoch_day'],
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],

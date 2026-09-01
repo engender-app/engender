@@ -1587,6 +1587,22 @@ const SCHEMA_V47 = `
 ALTER TABLE milestone ADD COLUMN tryout_id TEXT REFERENCES tryout(uuid);
 `;
 
+/* v48: the standalone appointment prep checklist gains its own appointment
+   date (phase 5 deepening ticket 25, ADR-0010). "Since last time" has
+   nothing to scope from without knowing when last time was, and nothing in
+   `checklist` or `procedure` already held it (the audit ticket 25 asks for).
+   Stored on the checklist row rather than a new table: the standalone
+   checklist already is the appointment prep list (checklists.ts's
+   `getStandaloneChecklist`), so the date belongs to the record that is
+   already that list's home. Null on every owned checklist (a procedure's
+   recovery list has no appointment of its own) and null on the standalone
+   one until the person sets it - only checklists.ts's
+   get/setAppointmentDate touch the column, so an owned checklist can never
+   pick up a stray value through the shared table. */
+const SCHEMA_V48 = `
+ALTER TABLE checklist ADD COLUMN appointment_epoch_day INTEGER;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1634,5 +1650,6 @@ export const migrations: Migration[] = [
   { version: 44, sql: SCHEMA_V44 },
   { version: 45, sql: SCHEMA_V45 },
   { version: 46, sql: SCHEMA_V46 },
-  { version: 47, sql: SCHEMA_V47 }
+  { version: 47, sql: SCHEMA_V47 },
+  { version: 48, sql: SCHEMA_V48 }
 ];

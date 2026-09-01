@@ -501,12 +501,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       setItemChecked: ['checklist'],
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
-      reorder: ['checklist']
+      reorder: ['checklist'],
+      setAppointmentDate: ['checklist']
     },
     reads: {
       getChecklist: ['checklist'],
       getChecklistByOwner: ['checklist'],
-      getStandaloneChecklist: ['checklist']
+      getStandaloneChecklist: ['checklist'],
+      getAppointmentDate: ['checklist']
     }
   }),
   tally: classify<Journal['tally']>()({
