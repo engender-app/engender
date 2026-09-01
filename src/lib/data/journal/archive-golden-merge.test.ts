@@ -53,6 +53,7 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   sideEffects: (r) => r.id,
   cycleEvents: (r) => r.id,
   journalingPauses: (r) => r.id,
+  eras: (r) => r.id,
   effectCategories: (r) => r.key,
   personalEffectTypes: (r) => r.key,
   personalEffects: (r) => r.id,
