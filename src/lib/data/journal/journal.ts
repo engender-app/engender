@@ -48,6 +48,7 @@ import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
+import { makeTextSearchArea, type TextSearchArea } from './textSearch';
 import { makeTallyArea, type TallyArea } from './tally';
 import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { makeVideoArea, type VideoArea } from './videoNotes';
@@ -185,6 +186,15 @@ export interface Journal {
       deliberately not showing, is day.ts's registry rather than a list of
       imports on the screen. Reads only: opening a day writes nothing. */
   day: DayArea;
+  /** Every area that holds text, matched against one query (phase 5
+      deepening ticket 24, ADR-0005). A view over rows twenty areas own, like
+      `day` above and for the same reason - which areas are searchable, and
+      which are written down as deliberately holding nothing to search, is
+      textSearch.ts's registry rather than a list of imports on the screen.
+      The entry note is not among them: it has an FTS index behind it and the
+      screen matches it through `entries.searchEntries`. Reads only:
+      searching writes nothing. */
+  textSearch: TextSearchArea;
   /** A keepsake print of a chosen range, carrying only the record types the
       person picked (phase 5 ticket 17). A view over rows entries,
       milestones and side effects own, like clinicianSummary above and for
@@ -380,6 +390,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       procedures,
       tryouts
     }),
+    textSearch: makeTextSearchArea(driver),
     journalBook: makeJournalBookArea({ entries, milestones, sideEffects, stats, tags }),
     personalEffects,
     effectCategories: makeEffectCategoriesArea(driver),
