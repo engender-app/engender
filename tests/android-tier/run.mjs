@@ -58,7 +58,7 @@ const NATIVE_ONLY = new Set(['gd26']);
 /* The three suites that need no WebView: what the native SQLite build has
    (ticket 11), what Android Keystore does with the journal's data key
    (ticket 13), and which authenticators BiometricManager reports available
-   (ticket 09/sec-02-09). All three are worth having on the older emulator
+   (ticket 09). All three are worth having on the older emulator
    in particular - below API 30 the Keystore key is authorized by time
    rather than per-operation, and androidx.biometric's device-credential
    fallback exists specifically for that floor. */
