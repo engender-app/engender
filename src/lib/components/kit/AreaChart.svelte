@@ -367,7 +367,7 @@
          would be read against numbers that are not its own. The scrub
          readout says both values in their own units instead. -->
     {#if !overlaid}
-      <div class="kit-area-scale" aria-hidden="true">
+      <div class="kit-area-scale" data-chart-scale aria-hidden="true">
         <span>{formatValue(max)}</span>
         <span>{formatValue(min + (max - min) / 2)}</span>
         <span>{formatValue(min)}</span>
