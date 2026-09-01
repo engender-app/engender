@@ -9,11 +9,13 @@
    the screen resolves it through `roleAt()`, so a palette switch recolours
    the whole chart and nothing here has to know a colour exists.
 
-   Both axes are read to 0..1 rather than to pixels, because the two scales
-   are usually not the same scale - a 0-10 custom one against a 0-100
-   built-in - and a plane whose two directions mean different amounts is not
-   a plane. Native units are the rule for anything shown as a number
-   (ADR-0012); a position is not a number shown.
+   Both axes are read to 0..1 through `normalize` (metricRange.ts), the same
+   function that turns a value into a colour, and for the same reason: the
+   two scales are usually not the same scale - a 0-10 custom one against a
+   0-100 built-in - and a plane whose two directions mean different amounts
+   is not a plane. Native units are the rule for anything shown as a number
+   (ADR-0012); a position is not a number shown, which is the line that
+   module's own note draws.
 
    ## The overlap answer
 
@@ -44,6 +46,8 @@
    position is a stretch of path rather than a whole journal poured onto one
    square. */
 
+import { normalize, type MetricRange } from './metricRange';
+
 export interface ConstellationReading {
   /** The entry's travelling uuid (ADR-0002), which is also the point's key. */
   id: string;
@@ -55,12 +59,6 @@ export interface ConstellationReading {
       rather than a gap (ADR-0048). The point still plots; it just has no
       role to take a colour from. */
   presentationId: string | null;
-}
-
-/** One scale's two ends, as the dimension itself declares them. */
-export interface ConstellationAxis {
-  min: number;
-  max: number;
 }
 
 export interface PlottedPoint extends Omit<ConstellationReading, 'x' | 'y'> {
@@ -100,17 +98,24 @@ export const TRACE_WINDOW = 120;
     so the floor has to clear a ground the dark theme never tested. */
 export const TRACE_FLOOR = 0.25;
 
+/** Each reading's position on the plane, both values held inside their own
+    scale's ends.
+
+    Held, because a scale's range is editable and a value logged against the
+    old one can fall outside the new one. The reading happened, so it belongs
+    at the edge of the plot rather than off it - which is `normalize`'s own
+    clamp, taken rather than rewritten. */
 export function plotPoints(
   readings: ConstellationReading[],
-  x: ConstellationAxis,
-  y: ConstellationAxis
+  x: MetricRange,
+  y: MetricRange
 ): PlottedPoint[] {
   return readings.map((reading) => ({
     id: reading.id,
     day: reading.day,
     presentationId: reading.presentationId,
-    x: along(reading.x, x),
-    y: along(reading.y, y)
+    x: normalize(reading.x, x),
+    y: normalize(reading.y, y)
   }));
 }
 
@@ -121,26 +126,12 @@ export function plotPoints(
     this chart: neither axis is a date, so a gap in journalling has nowhere
     to be drawn and scrubbing by calendar day would spend most of the track
     on stretches with nothing in them. */
-export function tracedThrough(
-  points: PlottedPoint[],
-  index: number,
-  window: number = TRACE_WINDOW
-): ConstellationPoint[] {
+export function tracedThrough(points: PlottedPoint[], index: number): ConstellationPoint[] {
   if (points.length === 0) return [];
   const head = Math.min(Math.max(index, 0), points.length - 1);
-  const first = Math.max(0, head - window + 1);
+  const first = Math.max(0, head - TRACE_WINDOW + 1);
   return points.slice(first, head + 1).map((point, i) => ({
     ...point,
     weight: TRACE_FLOOR + (1 - TRACE_FLOOR) * 0.5 ** ((head - first - i) / TRACE_HALF_LIFE)
   }));
-}
-
-/** Where a value sits between an axis's two ends, held inside them.
-
-    Held, because a scale's range is editable and a value logged against the
-    old one can fall outside the new one. The reading happened, so it belongs
-    at the edge of the plot rather than off it. */
-function along(value: number, axis: ConstellationAxis): number {
-  const t = (value - axis.min) / Math.max(axis.max - axis.min, 1);
-  return Math.min(Math.max(t, 0), 1);
 }

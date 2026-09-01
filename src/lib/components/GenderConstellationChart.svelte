@@ -42,9 +42,11 @@
      Points are grouped by mode, one <g> per mode carrying that mode's role,
      because that is how a surface takes a flag stripe (kit/role.ts) and
      because 120 inline style attributes is not. Grouping costs the
-     chronological paint order, and it costs nothing visible: the oldest
-     marks are drawn at 0.12 alpha, so whichever way round two of them land
-     the newer one still reads.
+     chronological paint order, and it costs little: an older mark is drawn
+     at a fraction of a newer one's alpha, so a newer mark landing under an
+     older one is still the one that reads. The uncoloured group is drawn
+     first, which is the one place the order is worth fixing - a mark with no
+     mode should never cover one that has a colour to say.
 
      The trail is short on purpose, and the first build had it wrong. Joining
      forty readings that all sit inside one corner of the plane draws forty
@@ -68,13 +70,20 @@
     role: Role | undefined;
   }
 
+  /** A scale's own two end words, which is all of a scale this chart draws.
+      One object per axis rather than four loose strings: they travel
+      together, they come off one dimension row each, and two of them
+      swapped by hand is the bug that pair exists to prevent. */
+  export interface ScaleEnds {
+    low: string;
+    high: string;
+  }
+
   let {
     points,
     modes,
-    xLow,
-    xHigh,
-    yLow,
-    yHigh,
+    x,
+    y,
     dayLabel,
     readingLabel,
     scrubLabel,
@@ -84,13 +93,11 @@
         values against their own scales. */
     points: PlottedPoint[];
     modes: ConstellationMode[];
-    /** The scales' own end words, which is what labels the plot. No
-        dimension name is written here and none is written by the caller
+    /** The two scales' own end words, which is what labels the plot. No
+        dimension name is written here, and none is written by the caller
         either: these come off the dimension rows themselves. */
-    xLow: string;
-    xHigh: string;
-    yLow: string;
-    yHigh: string;
+    x: ScaleEnds;
+    y: ScaleEnds;
     /** How the scrubbed reading's day is written. Dates are written against
         the active locale in $lib/data/dates and a chart is not a second
         place that decides how this app writes one. */
@@ -208,8 +215,8 @@
          turned on their side: rotated text at 12px on a phone is a thing
          nobody reads twice. -->
     <div class="cn-gutter" aria-hidden="true">
-      <span>{yHigh}</span>
-      <span>{yLow}</span>
+      <span>{y.high}</span>
+      <span>{y.low}</span>
     </div>
 
     <div class="cn-plot-wrap" bind:clientWidth={size}>
@@ -285,8 +292,8 @@
     <!-- The x scale's two ends, under the plot and inset with it so each
          word sits under the edge it names. -->
     <div class="cn-ends" aria-hidden="true">
-      <span>{xLow}</span>
-      <span>{xHigh}</span>
+      <span>{x.low}</span>
+      <span>{x.high}</span>
     </div>
 
     {#if points.length > 1}

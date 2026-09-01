@@ -502,10 +502,8 @@
             <GenderConstellationChart
               points={constellationPoints}
               modes={constellationModes}
-              xLow={xScale.low}
-              xHigh={xScale.high}
-              yLow={yScale.low}
-              yHigh={yScale.high}
+              x={{ low: xScale.low, high: xScale.high }}
+              y={{ low: yScale.low, high: yScale.high }}
               dayLabel={constellationDay}
               readingLabel={constellationReading}
               scrubLabel={m.constellation_scrub()}
@@ -746,7 +744,7 @@
     gap: var(--space-1);
     margin-top: var(--space-3);
   }
-  
+
   .stats-axis {
     display: flex;
     align-items: center;
@@ -760,9 +758,15 @@
   /* The picker's own cap is 52% of its row, which is right on a chart
      heading's line - the heading is the other half of it. Here the other
      half is one word, so the same cap truncated "Dysphoria" and "euphoria"
-     into "Dysphoria ↔ euph...". Widened rather than removed: a custom scale
-     can be named anything, and the pill still has to leave its label room
-     to be read. */
+     into "Dysphoria ↔ euph...".
+
+     Reaching into a kit class from a route, knowingly. The alternatives are
+     worse: scoping kit.css's own rule to `.kit-chart-head` would relax the
+     cap under four call sites that are not on a heading line and were laid
+     out with it (Home, the calendar, the body map, the sizes screen), and a
+     `wide` prop would be a kit option with one caller. Widened rather than
+     removed, because a custom scale can be named anything and the pill
+     still has to leave its label room. */
   .stats-axis :global(.kit-chart-pick) {
     max-width: 74%;
   }

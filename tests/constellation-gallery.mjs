@@ -8,6 +8,12 @@
    from are already swept across all eight by tests/kit-gallery.mjs; what
    this is for is the plot itself.
 
+   The last shot is the reduced-motion one, which is a check and not a
+   picture of a state: the sweep has to substitute rather than delete
+   (DIRECTION.md's reduced-motion contract), so the whole path must be there
+   in the first frame instead of walking to it. The line printed beside it
+   says whether it was.
+
    Run: VITE_DEMO=1 npm run build first, then
         node tests/constellation-gallery.mjs [outDir]
    Default outDir is .claude/constellation-shots, gitignored and durable. */
@@ -110,6 +116,32 @@ await page.locator('[data-chart-card="constellation"]').screenshot({
   path: `${outDir}/constellation-one-scale-dark.png`
 });
 console.log('constellation-one-scale-dark');
+
+/* Reduced motion. The head starts at the last reading rather than walking
+   to it, so the count of marks in the first frame is the count it settles
+   at - tier 3's instant cut, and nothing is lost by it, because the whole
+   picture is what the sweep arrives at. */
+const reduced = await browser.newPage({
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 2,
+  reducedMotion: 'reduce'
+});
+await reduced.goto(`${base}/stats`, { waitUntil: 'networkidle' });
+await reduced.waitForSelector('[data-app-root][data-boot="ready"]');
+await reduced.waitForSelector('[data-chart-card="constellation"] svg');
+const marks = () =>
+  reduced.evaluate(() => document.querySelectorAll('[data-chart-card="constellation"] circle').length);
+const atOnce = await marks();
+await reduced.waitForTimeout(1200);
+const settled = await marks();
+await reduced.locator('[data-chart-card="constellation"]').screenshot({
+  path: `${outDir}/constellation-reduced-motion.png`
+});
+console.log(
+  atOnce === settled
+    ? `constellation-reduced-motion (whole path in the first frame: ${atOnce} marks)`
+    : `constellation-reduced-motion FAILED: ${atOnce} marks at first, ${settled} after`
+);
 
 await browser.close();
 await app.close();
