@@ -1,5 +1,6 @@
 package dev.barankiewicz.genderdiary.keystore;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -11,7 +12,9 @@ import static org.junit.Assume.assumeTrue;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.os.Build;
+import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyInfo;
+import android.security.keystore.KeyProperties;
 import android.security.keystore.UserNotAuthenticatedException;
 import android.util.Log;
 
@@ -26,12 +29,18 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.spec.MGF1ParameterSpec;
 import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 
 /**
  * The Keystore half of ticket 13, on a device, because none of it is true
@@ -159,6 +168,80 @@ public class JournalKeystoreTest {
         PrivateKey wrappingKey = (PrivateKey) androidKeystore.getKey(ALIAS, null);
         assertNotNull(wrappingKey);
         assertNull("the wrapping key handed out its own material", wrappingKey.getEncoded());
+    }
+
+    /**
+     * Ticket 08's own claim: a key made before it - no MGF1 digest declared -
+     * still unwraps under the current code. There is no real pre-ticket key
+     * to load, so this rebuilds exactly what {@code generateKeyPair()} made
+     * before the ticket ({@link #generateKeyWithoutMgf1Declaration()}) and
+     * wraps a data key under it by hand, then hands the result to the
+     * current, unchanged {@link JournalKeystore#unwrapCipher()}.
+     *
+     * <p>A full round trip only proves out where a live authentication can
+     * be faked at all: below API 30, setting the lock screen is itself an
+     * authentication (see {@link #withoutAuthenticationTheKeyDoesNotCome()}),
+     * so this test uses that to open a fresh window, and only on an emulator
+     * - the same restriction the lock-toggling cases above have, since
+     * forcing a new authentication event is what {@link #setLockScreen()}
+     * does. From API 30 nothing here can authenticate the operation, so the
+     * strongest provable claim is the one already used for a brand-new key
+     * in {@link #withoutAuthenticationTheKeyDoesNotCome()}: refused for lack
+     * of authentication, not rejected as a malformed old key.
+     */
+    @Test
+    public void aKeyMadeBeforeThisTicketStillUnwraps() throws Exception {
+        PublicKey wrappingKey = generateKeyWithoutMgf1Declaration();
+
+        byte[] dataKey = new byte[32];
+        new SecureRandom().nextBytes(dataKey);
+        Cipher wrap = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
+        wrap.init(Cipher.ENCRYPT_MODE, wrappingKey,
+            new OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT));
+        Files.write(keystore.wrappedKeyFile().toPath(), wrap.doFinal(dataKey));
+
+        if (JournalKeystore.authorizationWindowSeconds() > 0 && isEmulator()) {
+            setLockScreen(); // a fresh authentication event, safe here only
+            Cipher unwrap = keystore.unwrapCipher();
+            assertArrayEquals(
+                "a pre-ticket key stopped unwrapping to the data key it wrapped", dataKey, keystore.unwrap(unwrap));
+            return;
+        }
+
+        try {
+            byte[] leaked = keystore.unwrap(keystore.unwrapCipher());
+            fail("unwrapped " + leaked.length + " bytes without authenticating");
+        } catch (UserNotAuthenticatedException expected) {
+            assertNotNull(expected);
+        } catch (android.security.keystore.KeyPermanentlyInvalidatedException gone) {
+            fail("the pre-ticket key was rejected outright, not merely unauthorized: " + gone);
+        } catch (Exception expected) {
+            Log.i(TAG, "the pre-ticket key's unwrap was refused with " + expected.getClass().getName());
+        }
+    }
+
+    /** What {@code generateKeyPair()} made before this ticket - the same
+        spec, minus the MGF1 declaration a pre-ticket key never has. */
+    @SuppressWarnings("deprecation")
+    private static PublicKey generateKeyWithoutMgf1Declaration() throws Exception {
+        KeyGenParameterSpec.Builder spec =
+            new KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setKeySize(2048)
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
+                .setUserAuthenticationRequired(true)
+                .setInvalidatedByBiometricEnrollment(false);
+
+        if (JournalKeystore.authorizesTheCipherItself()) {
+            spec.setUserAuthenticationParameters(
+                0, KeyProperties.AUTH_BIOMETRIC_STRONG | KeyProperties.AUTH_DEVICE_CREDENTIAL);
+        } else {
+            spec.setUserAuthenticationValidityDurationSeconds(JournalKeystore.authorizationWindowSeconds());
+        }
+
+        KeyPairGenerator generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
+        generator.initialize(spec.build());
+        return generator.generateKeyPair().getPublic();
     }
 
     /** The key is bound to the lock screen, not merely stored behind one. */
