@@ -44,6 +44,10 @@
   let doseTotals = liveListIn(countersQuery, (c) => c.doseTotals);
   let routeDays = liveListIn(countersQuery, (c) => c.routeDays);
   let regimenDays = liveListIn(countersQuery, (c) => c.regimenDays);
+
+  /* Both route-days and regimen-days are empty for the same reason - no
+     regimen episode logged in range - so they point at the same place. */
+  const regimenAction = { label: m.regimen_empty_action(), href: '/settings/regimen' };
 </script>
 
 <div class="screen">
@@ -75,7 +79,12 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <p class="muted small">{m.exposure_dose_totals_empty()}</p>
+      <Notice
+        icon="clock"
+        key="exposure-dose-totals-empty"
+        text={m.exposure_dose_totals_empty()}
+        action={{ label: m.doses_empty_action(), href: '/doses' }}
+      />
     {/snippet}
   </ReadGate>
   {#if counters && counters.excludedDoses > 0}
@@ -101,7 +110,12 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <p class="muted small">{m.exposure_route_days_empty()}</p>
+      <Notice
+        icon="flask"
+        key="exposure-route-days-empty"
+        text={m.exposure_route_days_empty()}
+        action={regimenAction}
+      />
     {/snippet}
   </ReadGate>
 
@@ -124,7 +138,12 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <p class="muted small">{m.exposure_regimen_days_empty()}</p>
+      <Notice
+        icon="flask"
+        key="exposure-regimen-days-empty"
+        text={m.exposure_regimen_days_empty()}
+        action={regimenAction}
+      />
     {/snippet}
   </ReadGate>
 </div>
