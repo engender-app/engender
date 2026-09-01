@@ -172,10 +172,7 @@
     // Nothing to travel from on a first draw, and nothing to travel with
     // under reduced motion: arrive at the dataset instead. The first draw's
     // own arrival is the wipe below, not this.
-    // A second line appearing or leaving is the same case: there is no
-    // outgoing shape for it, and tweening the one line that stayed while the
-    // other cut in would read as a fault rather than as a comparison.
-    if (duration === 0 || previous.length !== next.length) {
+    if (duration === 0 || previous.length === 0) {
       shown = next;
       return;
     }
@@ -183,13 +180,21 @@
     // The outgoing shape, counted the way the incoming one is counted.
     // Positions the outgoing dataset had no reading at are dropped before it
     // is resampled: a gap is an absence of shape, not a shape at zero.
+    //
+    // Per series, so a second scale arriving does not cut the line that was
+    // already there. The two share their positions, so adding one re-counts
+    // the other, and the first line moving to its new positions is a journey
+    // it can take. The new line has no outgoing shape of its own and starts
+    // where it ends; what marks its arrival is the fade in the markup.
     const start = next.map((series, i) =>
-      resample(
-        previous[i]
-          .map((y, j) => ({ x: j / Math.max(1, previous[i].length - 1), y }))
-          .filter((point): point is Point => point.y !== null),
-        series.length
-      )
+      previous[i]
+        ? resample(
+            previous[i]
+              .map((y, j) => ({ x: j / Math.max(1, previous[i].length - 1), y }))
+              .filter((point): point is Point => point.y !== null),
+            series.length
+          )
+        : series
     );
     let frame = 0;
     const began = performance.now();
@@ -296,8 +301,16 @@
      otherwise write the same names twice on one card - and the two answer
      different questions anyway: the pill says what is at this position, the
      label says what this mark is. The value stays either way. */
+  /* And with two metrics up they go quiet altogether. The readout carries a
+     number per line then, and the pill would be six rows laid over a 132px
+     plot - covering the marks it is answering about. What was happening is
+     still named under the plot, where it was already named. */
   let atAnnotations = $derived(
-    annotationReadout(scrub === null || hovered ? [] : annotationsAtPoint(shownAnnotations, points, scrub))
+    annotationReadout(
+      scrub === null || hovered || overlaid
+        ? []
+        : annotationsAtPoint(shownAnnotations, points, scrub)
+    )
   );
   let caption = $derived(annotationCaption(shownAnnotations));
   /* Named here rather than called in the markup, for the reason the scrub
@@ -367,7 +380,12 @@
          would be read against numbers that are not its own. The scrub
          readout says both values in their own units instead. -->
     {#if !overlaid}
-      <div class="kit-area-scale" data-chart-scale aria-hidden="true">
+      <div
+        class="kit-area-scale"
+        data-chart-scale
+        aria-hidden="true"
+        out:fade={{ duration: motionDuration('--dur-fast') }}
+      >
         <span>{formatValue(max)}</span>
         <span>{formatValue(min + (max - min) / 2)}</span>
         <span>{formatValue(min)}</span>
@@ -393,7 +411,17 @@
           {#if !overlaid}<path class="kit-area-fill" d={path.fill} />{/if}
           <path class="kit-area-line" d={path.line} />
           {#if overlayPath}
-            <path class="kit-area-line is-overlay" d={overlayPath.line} />
+            <!-- Faded in and out rather than cut. It has no outgoing shape to
+                 travel from - it was not on the plot a moment ago - so what
+                 says it arrived is the arrival itself. Tier 3's substitute
+                 under reduced motion is an instant cut, which motionDuration
+                 gives it for free. -->
+            <path
+              class="kit-area-line is-overlay"
+              d={overlayPath.line}
+              in:fade={{ duration: motionDuration('--dur-med') }}
+              out:fade={{ duration: motionDuration('--dur-fast') }}
+            />
           {/if}
           {#if lastMovingPath}
             <!-- The settling frame, laid over the smoothed geometry
@@ -451,7 +479,13 @@
                not the same day. -->
           {#if path.last}<circle class="kit-area-ring" cx={path.last.x} cy={path.last.y} r="5" />{/if}
           {#if overlayPath?.last}
-            <circle class="kit-area-ring is-overlay" cx={overlayPath.last.x} cy={overlayPath.last.y} r="5" />
+            <circle
+              class="kit-area-ring is-overlay"
+              cx={overlayPath.last.x}
+              cy={overlayPath.last.y}
+              r="5"
+              in:fade={{ duration: motionDuration('--dur-med') }}
+            />
           {/if}
         </g>
       </svg>
@@ -483,18 +517,16 @@
                  off a shared scale, and the only honest place for a figure
                  is beside the name of the metric it belongs to. The position
                  is written once underneath, because it is one position. -->
-            {#if at.value !== null}
-              <span class="kit-area-readout-value">
+            <span class="kit-area-readout-pair">
+              {#if at.value !== null}
                 <b>{formatValue(at.value)}</b>
                 <span>{name ?? ''}</span>
-              </span>
-            {/if}
-            {#if at.overlayValue !== null && overlay}
-              <span class="kit-area-readout-value">
+              {/if}
+              {#if at.overlayValue !== null && overlay}
                 <b>{overlay.formatValue(at.overlayValue)}</b>
                 <span>{overlay.name}</span>
-              </span>
-            {/if}
+              {/if}
+            </span>
             {#if scrubLabel && scrub !== null}
               <span class="kit-area-readout-at">{scrubLabel(at.point, scrub)}</span>
             {/if}

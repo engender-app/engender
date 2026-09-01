@@ -32,13 +32,18 @@ describe('phase 2 accessibility seams', () => {
        "All values" control exists at all rather than being a convenience. */
     const stats = read('src/routes/stats/+page.svelte');
     expect(stats).toContain('data-values-open');
-    expect(stats).toContain('Sheet open={valueSheet}');
+    expect(stats).toMatch(/<Sheet\s+open=\{valueSheet\}/);
     /* The sheet is the screen's own bar rows now, and a bar carries its
        value as text - which is the property this check is about. It used to
        be three columns of text per row, which is a table with one column
        that matters. */
     expect(stats).toContain('valueRows');
     expect(stats).toContain('<BarRows rows={valueRows} />');
+    /* And a second scale joins that list rather than only the picture
+       (phase 6 ticket 12). The plot is one image to a screen reader and a
+       scrub is a way of reading a picture, so a comparison whose numbers
+       lived on the plot alone would be a reading only sighted people get. */
+    expect(stats).toContain('comparedByDay');
   });
 
   /* Ticket 17: --touch-target was 44px, which is the iOS number. The app

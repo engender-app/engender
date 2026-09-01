@@ -1569,6 +1569,15 @@ a.kit-entry:active {
   stroke-dasharray: 7 5;
 }
 
+/* The annotation band gives way when the area fill does. With one series the
+   band sits under a filled shape and reads as context behind it; with the
+   fill gone it is the only filled thing on the plot, and at its usual
+   strength it read as a panel the chart was drawn on, hard right edge and
+   all. Same context, quieter, because there is nothing in front of it now. */
+.kit-area.has-overlay .kit-annotation-band {
+  opacity: 0.5;
+}
+
 /* The latest reading, ringed on the line rather than annotated beside it:
    the mark is the label. Filled with the card colour so the line does not
    show through it. */
@@ -1642,6 +1651,22 @@ a.kit-entry:active {
   gap: var(--space-2);
 }
 
+/* The two readings, one per line, in two columns: number then name. A column
+   each rather than a row each, because the numbers are the thing being
+   compared and ragged numbers are not comparable - "4.0" and "69" have to
+   start at the same place for the pair to be read as a pair, and the names
+   they carry are different lengths. */
+.kit-area-readout-pair {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+}
+
+.kit-area-readout-pair b {
+  text-align: right;
+}
+
 /* Where the finger is, under the two readings rather than beside one of
    them: with two metrics up the position is the one thing they share, and
    hanging it off either number would make it look like that number's date. */
@@ -1663,7 +1688,9 @@ a.kit-entry:active {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
-  margin: var(--space-3) 0 0;
+  /* Close to the plot: it is part of the picture rather than the first of
+     the rows underneath it. */
+  margin: var(--space-2) 0 0;
   font-size: var(--text-xs);
   color: var(--text-2);
 }

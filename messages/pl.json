@@ -2563,6 +2563,7 @@
   "stats_compare_open": "Dodaj drugą skalę",
   "stats_compare_label": "Druga skala",
   "stats_compare_none": "Bez drugiej skali",
+  "stats_compare_empty": "Nic nie zapisano na tej skali w tym zakresie.",
   "stats_look_back": "Spojrzenie wstecz",
   "wrapped_stat_streak_ever": "Rekord",
   "wrapped_cadence_range": "Zakres",

@@ -2517,6 +2517,7 @@
   "stats_compare_open": "Add a second scale",
   "stats_compare_label": "Second scale",
   "stats_compare_none": "No second scale",
+  "stats_compare_empty": "Nothing logged on that scale in this range.",
   "stats_look_back": "Look back",
   "wrapped_stat_streak_ever": "Best ever",
   "wrapped_cadence_range": "Range",
