@@ -19,6 +19,7 @@
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { isPausedOn } from '../journalingPause';
+import type { ConstellationReading } from '../constellationData';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionAxis, Photo, TallyKind } from '../types';
@@ -100,6 +101,30 @@ export interface StatsArea {
       dimension since hidden, an archive from a build that knew a key this
       one does not - yields no points rather than an error. */
   dayAverages(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** Every entry in the range carrying a value on both named scales, oldest
+      first, both ends inclusive (phase 5 deepening ticket 19, ADR-0048).
+
+      One row per entry rather than one per day, which is the difference
+      between this and `dayAverages` above and the whole reason it is a
+      separate read: the constellation plots readings, and averaging two
+      entries from one day would place a point at a pair of values nobody
+      logged. Two entries on one day are two points.
+
+      An entry that carries only one of the two scales has no position on a
+      plane and is absent, the same way a day that said nothing is absent
+      from `dayAverages`. Its presentation travels with it and is null as
+      often as not - that is a resting state, and the chart draws the point
+      uncoloured rather than dropping it.
+
+      Mood is deliberately not addressable here, unlike `dayAverages`: it
+      has its own colour system (ADR-0025) and its own cards, and the two
+      axes this answers are the person's own scales. */
+  constellationReadings(
+    xKey: string,
+    yKey: string,
+    fromEpochDay: number,
+    toEpochDay: number
+  ): Promise<ConstellationReading[]>;
   /** How many entries each day in the range holds, oldest first, days with
       none left out. Not the same question as `dayAverages`: the calendar
       shades a day by the metric but links it by whether anything was logged
@@ -288,6 +313,41 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
   return {
     async dayAverages(metric, fromEpochDay, toEpochDay) {
       return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
+    },
+
+    async constellationReadings(xKey, yKey, fromEpochDay, toEpochDay) {
+      /* Two joins onto the same pair of tables, one per axis, which is what
+         makes this an inner join on both: an entry reaches the plane only
+         by carrying both readings. Ordered by day and then by timestamp
+         because the order is the chart's only clock - neither axis is a
+         date, so the path is drawn in the sequence rows come back in. */
+      const rows = await driver.query<{
+        uuid: string;
+        epoch_day: number;
+        x: number;
+        y: number;
+        presentation_id: string | null;
+      }>(
+        `SELECT e.uuid, e.epoch_day, xv.value AS x, yv.value AS y, e.presentation_id
+         FROM entry e
+         JOIN entry_dimension_value xv ON xv.entry_id = e.id
+         JOIN gender_dimension gx ON gx.id = xv.dimension_id AND gx.key = ?
+         JOIN entry_dimension_value yv ON yv.entry_id = e.id
+         JOIN gender_dimension gy ON gy.id = yv.dimension_id AND gy.key = ?
+         WHERE e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
+         ORDER BY e.epoch_day, e.timestamp, e.id`,
+        [xKey, yKey, fromEpochDay, toEpochDay]
+      );
+      // Rebuilt rather than returned, for averageByDay's own reason: a
+      // driver row is a null-prototype object and nothing past this seam
+      // should have to know that.
+      return rows.map((row) => ({
+        id: row.uuid,
+        day: row.epoch_day,
+        x: row.x,
+        y: row.y,
+        presentationId: row.presentation_id
+      }));
     },
 
     async bodyRegionTrend(region, axis, fromEpochDay, toEpochDay, presentationId) {
