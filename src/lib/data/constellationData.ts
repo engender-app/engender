@@ -1,0 +1,140 @@
+/* The constellation chart's geometry (phase 5 deepening ticket 19,
+   ADR-0048): where a reading sits on a plane of two scales, and how much of
+   the path behind the scrubber is drawn.
+
+   Two things this deliberately does not decide. It does not choose the two
+   scales - they are the person's, picked on the screen, and no dimension key
+   appears anywhere in this file or in the component that draws it. And it
+   does not know what a presentation looks like: a reading carries the id and
+   the screen resolves it through `roleAt()`, so a palette switch recolours
+   the whole chart and nothing here has to know a colour exists.
+
+   Both axes are read to 0..1 rather than to pixels, because the two scales
+   are usually not the same scale - a 0-10 custom one against a 0-100
+   built-in - and a plane whose two directions mean different amounts is not
+   a plane. Native units are the rule for anything shown as a number
+   (ADR-0012); a position is not a number shown.
+
+   ## The overlap answer
+
+   A year of daily entries is 365 readings inside a square about 330px
+   across, which is the honest risk the ticket names. Four things were
+   available - jitter, opacity, binning and recency weighting - and the
+   choice here is the last two words of that list and none of the first two.
+
+   No jitter. A point's position is its two readings, and moving it so the
+   picture reads better is the chart lying about the values it exists to
+   show. No binning either: a bin is an average, and the average of two
+   opposite days is a day nobody had.
+
+   What is left is depth, and a bound on how much is drawn at once. Each
+   reading is drawn at a strength that halves every TRACE_HALF_LIFE readings
+   back from the scrubber, down to a floor it never goes below, so the recent
+   stretch reads as a path and everything older sits behind it as a cloud.
+   Coincident readings stack their alpha, so a spot returned to many times
+   comes out darker, which is density as information rather than as a smear.
+   The half-life counts readings rather than days, so the recent stretch
+   looks the same whether the journal holds thirty of them or three hundred.
+
+   And the plot holds TRACE_WINDOW readings, not all of them. A year of
+   daily entries at once is 365 marks inside a square 330px across: about
+   270 square pixels each, which is a smear whatever is done to the alpha.
+   The window is what the scrubber moves, so nothing is unreachable - drag
+   back and the older stretch is on the plot - and the picture at any one
+   position is a stretch of path rather than a whole journal poured onto one
+   square. */
+
+export interface ConstellationReading {
+  /** The entry's travelling uuid (ADR-0002), which is also the point's key. */
+  id: string;
+  day: number;
+  /** The x scale's value in its own native units, straight off the entry. */
+  x: number;
+  y: number;
+  /** Null where the entry carries no presentation, which is a resting state
+      rather than a gap (ADR-0048). The point still plots; it just has no
+      role to take a colour from. */
+  presentationId: string | null;
+}
+
+/** One scale's two ends, as the dimension itself declares them. */
+export interface ConstellationAxis {
+  min: number;
+  max: number;
+}
+
+export interface PlottedPoint extends Omit<ConstellationReading, 'x' | 'y'> {
+  /** 0 at the x scale's low end, 1 at its high end. */
+  x: number;
+  /** 0 at the y scale's low end, 1 at its high end. Nothing is flipped for
+      SVG here: which way up a plot is drawn belongs to the thing drawing
+      it. */
+  y: number;
+}
+
+export interface ConstellationPoint extends PlottedPoint {
+  /** How strongly this reading is drawn, 0 to 1. See the overlap note
+      above. */
+  weight: number;
+}
+
+/** How many readings back a reading's strength halves. Twelve is about a
+    fortnight of daily journalling, which is the stretch a path has to hold
+    for a trajectory to be readable at all. */
+export const TRACE_HALF_LIFE = 12;
+
+/** How many readings are on the plot at once. About four months of daily
+    journalling, which is long enough for a season to be visible in it and
+    short enough that the oldest marks are still separate marks. */
+export const TRACE_WINDOW = 120;
+
+/** The strength an old reading never drops below. Low enough that a year of
+    them reads as ground rather than as data, high enough that a single old
+    reading on its own is still visible - it happened, and a chart that hides
+    it is a chart with a memory. */
+export const TRACE_FLOOR = 0.12;
+
+export function plotPoints(
+  readings: ConstellationReading[],
+  x: ConstellationAxis,
+  y: ConstellationAxis
+): PlottedPoint[] {
+  return readings.map((reading) => ({
+    id: reading.id,
+    day: reading.day,
+    presentationId: reading.presentationId,
+    x: along(reading.x, x),
+    y: along(reading.y, y)
+  }));
+}
+
+/** The path up to and including the scrubbed reading, each point carrying
+    the strength it is drawn at.
+
+    An index rather than a day, because order is the only thing time is on
+    this chart: neither axis is a date, so a gap in journalling has nowhere
+    to be drawn and scrubbing by calendar day would spend most of the track
+    on stretches with nothing in them. */
+export function tracedThrough(
+  points: PlottedPoint[],
+  index: number,
+  window: number = TRACE_WINDOW
+): ConstellationPoint[] {
+  if (points.length === 0) return [];
+  const head = Math.min(Math.max(index, 0), points.length - 1);
+  const first = Math.max(0, head - window + 1);
+  return points.slice(first, head + 1).map((point, i) => ({
+    ...point,
+    weight: TRACE_FLOOR + (1 - TRACE_FLOOR) * 0.5 ** ((head - first - i) / TRACE_HALF_LIFE)
+  }));
+}
+
+/** Where a value sits between an axis's two ends, held inside them.
+
+    Held, because a scale's range is editable and a value logged against the
+    old one can fall outside the new one. The reading happened, so it belongs
+    at the edge of the plot rather than off it. */
+function along(value: number, axis: ConstellationAxis): number {
+  const t = (value - axis.min) / Math.max(axis.max - axis.min, 1);
+  return Math.min(Math.max(t, 0), 1);
+}
