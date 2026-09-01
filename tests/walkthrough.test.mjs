@@ -2985,16 +2985,26 @@ try {
   }
 
   /* And the surfaces view beside it, which is not Android-only: its rows are
-     what Home may show. The notification sub-toggles that used to hang under
-     wrapped and on-this-day here have moved to the screen above. */
+     what Home may show. That the notification sub-toggles are gone from here
+     is a fact about the source, held by unprompted-views.test.ts - asserting
+     [data-live-tile-notify] absent in the browser would be unfalsifiable now
+     that no component owns that handle, which is the line
+     walkthrough-handles-exist.test.ts holds. */
   await fresh('/settings');
   await page.locator('[data-list-row="live-tiles"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
-  if (await page.locator('[data-live-tile-notify]').count()) {
-    throw new Error("a notification sub-toggle is still on the surfaces view");
-  }
+  /* Not a hand-counted total: the registry's own claim is that a later
+     ticket adds one array entry and no markup, and a number here would make
+     that a walkthrough edit. registry.test.ts owns the list; what this holds
+     is that the screen drew the registry rather than nothing, and that the
+     two rows whose toggles moved are still on it. */
   const tiles = await page.locator('[data-live-tile]').count();
-  if (tiles !== 14) throw new Error('the surfaces view drew ' + tiles + ' rows, expected 14');
+  if (tiles < 3) throw new Error('the surfaces view drew ' + tiles + ' rows');
+  for (const key of ['wrapped', 'on-this-day', 'stock-notice']) {
+    if (!(await page.locator(`[data-live-tile="${key}"]`).count())) {
+      throw new Error(key + ' is missing from the surfaces view');
+    }
+  }
 
   ok('two views over one registry: notifications absent on web, surfaces still whole');
 } catch (e) { fail('the unprompted registry views', e); }

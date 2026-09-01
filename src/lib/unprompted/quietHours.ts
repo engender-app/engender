@@ -20,7 +20,7 @@
      the window posts it.
 
    Kept relative-import-free and rune-free so registry.test.ts's tier can
-   read it (ADR-0017), and pure so the shared fixture can pin it against the
+   read it (ADR-0016), and pure so the shared fixture can pin it against the
    Java side (ADR-0028).
 
    No "hold until" arithmetic here, deliberately: nothing on this side needs
@@ -75,4 +75,17 @@ export function isQuiet(minute: number, quiet: QuietHours): boolean {
     producers call; `isQuiet` above is the arithmetic the fixture pins. */
 export function mayFireAt(at: Date, quiet: QuietHours): boolean {
   return !isQuiet(at.getHours() * 60 + at.getMinutes(), quiet);
+}
+
+/** The window as the preferences hold it. Three flat keys rather than one
+    stored object, because the settings screen binds a switch and two time
+    inputs straight to them (prefs/catalogue.ts) - so this is the one place
+    that puts them back together, instead of each producer rebuilding the
+    same three-field literal. */
+export function quietHoursOf(prefs: {
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+}): QuietHours {
+  return { enabled: prefs.quietHoursEnabled, start: prefs.quietHoursStart, end: prefs.quietHoursEnd };
 }

@@ -71,6 +71,12 @@ const ROUTES = [
   'settings/wear',
   'settings/effects',
   'settings/resources',
+  /* Two views over the unprompted registry (phase 6 ticket 04). The
+     notifications view joins the list because its own milestone spec says so
+     ("feature-screens.test.ts covers /settings/eras and the notifications
+     view"); its sibling /settings/live-tiles predates that line and is not
+     on it. */
+  'settings/notifications',
   // Reached from inside a feature screen
   'settings/stock',
   'settings/exposure',
@@ -89,13 +95,14 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 27 of them', () => {
-  it('is the count SCREENS.md gives, plus the one added since', () => {
+describe('all 28 of them', () => {
+  it('is the count SCREENS.md gives, plus the two added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
-       /care. SCREENS.md is a ticket behind either way - see the note above
-       the list - and correcting it is still nobody's ticket. */
-    expect(ROUTES.length).toBe(27);
-    expect(new Set(ROUTES).size).toBe(27);
+       /care, 28 since phase 6 ticket 04 added the notifications view.
+       SCREENS.md is two tickets behind either way - see the note above the
+       list - and correcting it is still nobody's ticket. */
+    expect(ROUTES.length).toBe(28);
+    expect(new Set(ROUTES).size).toBe(28);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
@@ -176,11 +183,13 @@ describe('what a first-run journal sees', () => {
 
 describe('what the worker is still fetching', () => {
   /** Reference data is held in memory and read synchronously (CONTEXT.md),
-      so a screen reading only that owes no loading state. Two here:
-      milestones reads the milestone catalogue, and resources reads a
-      directory compiled into the bundle. */
+      so a screen reading only that owes no loading state. Three here:
+      milestones reads the milestone catalogue, resources reads a directory
+      compiled into the bundle, and the notifications view reads nothing but
+      the preference store, which is the same shape - a projection already in
+      memory, with no round trip to wait on. */
   const ENTRY_DATA = ROUTES.filter(
-    (route) => !['settings/milestones', 'settings/resources'].includes(route)
+    (route) => !['settings/milestones', 'settings/resources', 'settings/notifications'].includes(route)
   );
 
   it('keeps a loading state on every screen that reads the journal', () => {

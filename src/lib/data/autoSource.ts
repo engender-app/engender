@@ -9,7 +9,7 @@
    two literals: stock.ts and wearSessions.ts each built their own with a
    template string, provenance.ts re-declared both prefixes to read them
    back, and phase 6 ticket 04 needed a fourth reader on the Node tier, where
-   provenance.ts's own `$lib/paraglide` import does not resolve (ADR-0017). A
+   provenance.ts's own `$lib/paraglide` import does not resolve (ADR-0016). A
    fourth copy of `'wear:'` is the kind of drift that shows up as a
    preference switch that silently stops matching the rows it gates. */
 

@@ -234,6 +234,36 @@ describe('retrospective notifications scheduler', () => {
     expect(notifyOnThisDay).toHaveBeenCalledTimes(1);
   });
 
+  test('lets an on-this-day held past midnight lapse, and answers about the new day instead', async () => {
+    /* The one place the hold does not carry, and it is the honest answer
+       rather than an oversight: posting a held notice at 07:00 would say "on
+       this day" about yesterday. Wrapped in the same run still holds, because
+       a week is still the offered period the next morning - which is what
+       makes this a property of the payload's own span, not of quiet hours. */
+    isGoodDay.mockResolvedValue(true);
+    prefs.quietHoursEnabled = true;
+    vi.setSystemTime(new Date(2026, 7, 18, 23, 30));
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+    expect(notifyOnThisDay).not.toHaveBeenCalled();
+
+    // A new day, and so a new candidate list: the fixture's TODAY is what
+    // todayEpochDay is mocked to, so the day the check answers about is the
+    // one it reads now, never the one it was held on.
+    onThisDayCandidates.mockReturnValue([{ key: 'month', epochDay: TODAY - 30 }]);
+    vi.setSystemTime(new Date(2026, 7, 19, 8, 0));
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+
+    expect(notifyOnThisDay).toHaveBeenCalledTimes(1);
+    expect(notifyOnThisDay).toHaveBeenCalledWith(
+      expect.objectContaining({ route: '/on-this-day?lookback=month' })
+    );
+    // And wrapped, whose period outlives a night, held rather than lapsed.
+    expect(notifyWrapped).toHaveBeenCalledTimes(1);
+  });
+
   test('posts inside the window when quiet hours are switched off', async () => {
     isGoodDay.mockResolvedValue(true);
     vi.setSystemTime(new Date(2026, 7, 18, 23, 30));

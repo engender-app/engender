@@ -36,7 +36,7 @@ import type { Reminder } from '$lib/data/types';
    mocked out. */
 import { isPausedOn } from '../data/journalingPause';
 import { isWearAutoSource } from '../data/autoSource';
-import type { QuietHours } from '../unprompted/quietHours';
+import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import { resolveAndroidBackAction } from './back-navigation';
@@ -202,11 +202,7 @@ const syncReminderSchedules = coalescing(
         hideNotificationTitles: deps.prefs.hideNotificationTitles,
         remindersEnabled: deps.prefs.remindersEnabled,
         wearElapsedEnabled: deps.prefs.wearElapsedEnabled,
-        quietHours: {
-          enabled: deps.prefs.quietHoursEnabled,
-          start: deps.prefs.quietHoursStart,
-          end: deps.prefs.quietHoursEnd
-        },
+        quietHours: quietHoursOf(deps.prefs),
         pausedToday: isPausedOn(pauses, deps.todayEpochDay()),
         texts: deps.reminderTexts()
       })
