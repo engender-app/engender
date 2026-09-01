@@ -9,7 +9,7 @@ ext {
     minSdkVersion = 26
     compileSdkVersion = 36
     targetSdkVersion = 36
-    sqlcipherVersion = '4.9.0'
+    sqlcipherVersion = '4.9.0' // latest on Maven Central, checked 2026-09-01 (sec-02-09)
     androidxSqliteVersion = '2.4.0'
     androidxTestRunnerVersion = '1.6.2'
     androidxTestCoreVersion = '1.6.1'
