@@ -784,3 +784,67 @@ test('a day with nothing logged on it is not a good day', async () => {
   const { journal } = await journalWithBuiltIns();
   assert.equal(await journal.stats.isGoodDay(100), false);
 });
+
+test('the constellation reads one row per entry that carries both scales (ticket 19)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+
+  // Both scales, with a presentation.
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    timestamp: 1,
+    mood: 3,
+    dims: { femininity: 70, masculinity: 20 },
+    presentationId: girl.id
+  });
+  // Both scales, with none - a resting state, and still a point.
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    timestamp: 2,
+    mood: 3,
+    dims: { femininity: 40, masculinity: 60 }
+  });
+  // One scale only: no position on a plane, so no row.
+  await journal.entries.upsertEntry({ epochDay: 102, timestamp: 3, mood: 3, dims: { femininity: 90 } });
+
+  const readings = await journal.stats.constellationReadings('femininity', 'masculinity', 100, 102);
+  assert.deepEqual(
+    readings.map((r) => ({ day: r.day, x: r.x, y: r.y, presentationId: r.presentationId })),
+    [
+      { day: 100, x: 70, y: 20, presentationId: girl.id },
+      { day: 101, x: 40, y: 60, presentationId: null }
+    ]
+  );
+});
+
+test('two entries on one day are two constellation points, never their average', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, dims: { femininity: 0, masculinity: 100 } });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, dims: { femininity: 100, masculinity: 0 } });
+
+  const readings = await journal.stats.constellationReadings('femininity', 'masculinity', 100, 100);
+  assert.deepEqual(readings.map((r) => r.x), [0, 100]);
+});
+
+test('a trashed entry leaves the constellation, and the range holds both ends', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 99, mood: 3, dims: { femininity: 10, masculinity: 10 } });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { femininity: 20, masculinity: 20 } });
+  const gone = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, dims: { femininity: 30, masculinity: 30 } });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3, dims: { femininity: 40, masculinity: 40 } });
+
+  await journal.entries.deleteEntry(gone);
+
+  const readings = await journal.stats.constellationReadings('femininity', 'masculinity', 100, 102);
+  assert.deepEqual(readings.map((r) => r.day), [100, 102]);
+});
+
+// A scale nobody has - a custom one hidden since, or an archive from a build
+// that knew a key this one does not - reads as an empty chart rather than an
+// error, the same answer dayAverages gives.
+test('a constellation axis naming no scale plots nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, dims: { femininity: 50, masculinity: 50 } });
+
+  assert.deepEqual(await journal.stats.constellationReadings('femininity', 'nope', 100, 100), []);
+});

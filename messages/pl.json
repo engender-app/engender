@@ -2693,5 +2693,12 @@
   "presentation_colour_label": "Kolor",
   "presentation_colour_swatch_aria": "Kolor {index}",
   "presentation_hide_aria": "Ukryj {name}",
-  "presentation_show_aria": "Pokaż {name}"
+  "presentation_show_aria": "Pokaż {name}",
+  "stats_constellation": "Dwie skale naraz",
+  "constellation_x_label": "W poziomie",
+  "constellation_y_label": "W pionie",
+  "constellation_scrub": "Pozycja na ścieżce",
+  "constellation_needs_scales": "Zaznacz dwie skale, żeby zestawić je ze sobą.",
+  "constellation_aria": "Twoje wpisy na dwóch skalach: {x}, {y}.",
+  "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}."
 }
