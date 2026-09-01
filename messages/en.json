@@ -258,6 +258,7 @@
   "avg_of": "avg of {count}",
   "body_map_title": "Body map",
   "body_map_sub": "track one spot's dysphoria and euphoria over time",
+  "body_map_mode_filter_all": "All",
   "back": "Back",
   "done": "Done",
   "settings_appearance": "Appearance",

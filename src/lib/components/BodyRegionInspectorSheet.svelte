@@ -27,10 +27,15 @@
   let {
     open = $bindable(false),
     region,
+    presentationId,
     onClose
   }: {
     open: boolean;
     region: string;
+    /** Ticket 18's body-map filter (ADR-0048), carried over from whichever
+        mode /body-map is currently reading - so the trajectory this sheet
+        shows agrees with the trend chart that opened it. */
+    presentationId?: string;
     onClose?: () => void;
   } = $props();
 
@@ -39,7 +44,7 @@
   );
 
   let breakdownQuery = liveQuery((j) =>
-    region ? j.stats.bodyRegionBreakdown(region) : Promise.resolve(undefined)
+    region ? j.stats.bodyRegionBreakdown(region, presentationId) : Promise.resolve(undefined)
   );
 
   let breakdown = $derived(breakdownQuery.value);

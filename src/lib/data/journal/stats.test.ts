@@ -149,6 +149,46 @@ test('a region nothing was ever logged against comes back empty rather than thro
   assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 'dysphoria', 100, 100), []);
 });
 
+test('a body-region trend filters by presentation, and partitions the unfiltered view (ADR-0048, ticket 18)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+  const boy = await journal.presentations.addPresentation('Boy mode', 1);
+
+  await journal.entries.upsertEntry({
+    epochDay: 100,
+    mood: 3,
+    presentationId: girl.id,
+    bodyRegions: { chest: { dysphoria: 20, euphoria: null } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 101,
+    mood: 3,
+    presentationId: boy.id,
+    bodyRegions: { chest: { dysphoria: 80, euphoria: null } }
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 102,
+    mood: 3,
+    bodyRegions: { chest: { dysphoria: 50, euphoria: null } }
+  });
+
+  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102, girl.id), [
+    { day: 100, value: 20, count: 1 }
+  ]);
+  assert.deepEqual(await journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102, null), [
+    { day: 102, value: 50, count: 1 }
+  ]);
+
+  const [unfiltered, byGirl, byBoy, byNone] = await Promise.all([
+    journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102),
+    journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102, girl.id),
+    journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102, boy.id),
+    journal.stats.bodyRegionTrend('chest', 'dysphoria', 100, 102, null)
+  ]);
+  const totalCount = (rows: { count: number }[]) => rows.reduce((sum, r) => sum + r.count, 0);
+  assert.equal(totalCount(byGirl) + totalCount(byBoy) + totalCount(byNone), totalCount(unfiltered));
+});
+
 /* wear-time trend (phase 5 ticket 04) */
 
 test('a wear-time trend averages completed sessions per day, in hours', async () => {
