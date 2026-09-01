@@ -225,9 +225,15 @@ describe('search', () => {
     expect(search).toMatch(/pages = 1;/);
   });
 
-  it('still counts every match rather than the page it drew', () => {
+  it('still counts every match rather than the page it drew, across both reads', () => {
+    /* The count used to be the entry total, which was every match there
+       was. Since deepening ticket 24 the screen also searches every other
+       area that holds text, so the same rule now means the sum: stating the
+       entries' total alone over a screen that also found five letters would
+       be the screen describing half of what it found. */
     expect(search).toContain('countSearchMatches');
-    expect(search).toContain('results_count({ count: total })');
+    expect(search).toMatch(/foundTotal = \$derived\(total \+ elsewhereResults\.total\)/);
+    expect(search).toContain('results_count({ count: foundTotal })');
   });
 
   it('puts no entry count on a search day bar', () => {

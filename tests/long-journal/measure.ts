@@ -1,7 +1,9 @@
 /* The measurement harness (phase 2 ticket 20).
 
    Five places decide whether a decade of Journal works: the calendar, the
-   stats screen, search, Archive export and the photo grid. Each one below
+   stats screen, search, Archive export and the photo grid. Search is two
+   questions since phase 5 deepening ticket 24: the entry index, and one
+   scan across every other area that holds text. Each one below
    asks the journal exactly what its screen asks it, over the same
    `openJournal(driver, files)` handle (ADR-0017) - so what runs against
    SQLocal over OPFS today runs against ticket 11's native SQLite driver
@@ -23,6 +25,7 @@ import { normalizePhoto } from '../../src/lib/data/photos/normalize.ts';
 import { thumbFileName } from '../../src/lib/data/photos/names.ts';
 import { readThumbnail, setPhotoFiles } from '../../src/lib/stores/photoFiles.ts';
 import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
+import { SEARCH_AREA_KEYS } from '../../src/lib/data/journal/textSearch.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
 import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
@@ -65,6 +68,12 @@ const CHARTED_METRICS = [
 
 /** What the search screen asks for one page of hits. */
 const SEARCH_PAGE = 30;
+
+/** A word the fixture writes outside the entry note - its letters are
+    addressed to a future self (generate.ts) - so the registry search is
+    measured over rows it actually returns rather than over a scan that
+    matches nothing. */
+const NON_ENTRY_SEARCH_WORD = 'future self';
 
 /** A built-in gender dimension, for the half of the metric that is not
     mood. Any of the five would do; the generator logs values against all
@@ -242,6 +251,43 @@ export async function measureLongJournal(
       };
     });
   }
+
+  /* Everything outside the entry note (phase 5 deepening ticket 24). One
+     statement across the whole registry - eighteen areas as branches of
+     one UNION ALL - plus its count, which is what the screen runs per search
+     beside the two entry queries above (textSearch.ts).
+
+     None of these areas has an index, so most of what this watches is what a
+     folded LIKE over every text column in the journal costs at decade scale.
+     But it is measured with a word the fixture's non-entry text actually
+     holds - the letters are addressed to a future self - rather than with the
+     Polish note word the three measurements above use, so the CASE that picks
+     the matched column, the ORDER BY over the union and the LIMIT are all on
+     the measured path instead of only the scan. That the word still matches
+     is asserted rather than assumed: a fixture that stops writing it would
+     otherwise quietly turn this into a scan with nothing to return.
+
+     If this ever grows out of budget, the strategy to reach for is the one
+     deliberately not taken here: search on submit rather than per keystroke.
+     Debouncing was not needed at these numbers and would have cost the live
+     feel the entry side has.
+  */
+  await measure('search-everywhere', 'search, every area outside entries in one statement', async () => {
+    const results = await journal.textSearch.search({
+      query: NON_ENTRY_SEARCH_WORD,
+      today,
+      limit: SEARCH_PAGE
+    });
+    if (results.total === 0) {
+      throw new Error(
+        `long-journal fixture holds no non-entry text matching "${NON_ENTRY_SEARCH_WORD}", so search-everywhere would measure a scan with nothing to return`
+      );
+    }
+    return {
+      result: results,
+      detail: `${results.hits.length} shown of ${results.total} matches across ${SEARCH_AREA_KEYS.length} areas`
+    };
+  });
 
   // --- photo grid ---------------------------------------------------------
   // The rows first, which is one query however many photos there are, and
