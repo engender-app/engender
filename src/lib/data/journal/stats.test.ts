@@ -94,6 +94,83 @@ test('an entry without the metric contributes nothing, and neither does a day ou
   );
 });
 
+/* the day's spread (phase 6 unprompted ticket 11) */
+
+test('a day reports the lowest and the highest of what was logged on it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 2 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 5 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 3, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 4 });
+
+  assert.deepEqual(await journal.stats.daySpread('mood', 100, 101), [
+    { day: 100, low: 2, high: 5, count: 3 },
+    // A single entry is its own low and high. Whether that counts as a
+    // spread is the screen's rule, not this read's.
+    { day: 101, low: 4, high: 4, count: 1 }
+  ]);
+});
+
+test('a day whose entries all said the same thing has no ground between its ends', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3 });
+
+  assert.deepEqual(await journal.stats.daySpread('mood', 100, 100), [{ day: 100, low: 3, high: 3, count: 2 }]);
+});
+
+test('the spread is in the metric\'s own units, whatever range those are on', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const voice = await journal.dimensions.addCustomDimension({
+    name: 'Voice comfort',
+    low: 'strained',
+    high: 'easy',
+    min: 0,
+    max: 10
+  });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, dims: { femininity: 20, [voice.key]: 3 } });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 4, dims: { femininity: 85, [voice.key]: 8 } });
+
+  assert.deepEqual(await journal.stats.daySpread('femininity', 100, 100), [
+    { day: 100, low: 20, high: 85, count: 2 }
+  ]);
+  assert.deepEqual(await journal.stats.daySpread(voice.key, 100, 100), [{ day: 100, low: 3, high: 8, count: 2 }]);
+});
+
+test('the spread agrees with the average about which days and which entries counted', async () => {
+  /* The calendar draws both on one cell, so a day the average knows about
+     and the spread does not - a trashed entry counted by one and not the
+     other, a day one of them rounds into the range - is a cell contradicting
+     itself. */
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 99, mood: 1 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 1 });
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 5 });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 2, note: 'no mood?' });
+  const trashed = await journal.entries.upsertEntry({ epochDay: 102, timestamp: 1, mood: 5 });
+  await journal.entries.upsertEntry({ epochDay: 102, timestamp: 2, mood: 3 });
+  await journal.entries.upsertEntry({ epochDay: 104, mood: 4 });
+  await journal.entries.deleteEntry(trashed);
+
+  const averages = await journal.stats.dayAverages('mood', 100, 103);
+  const spreads = await journal.stats.daySpread('mood', 100, 103);
+  assert.deepEqual(spreads.map((s) => s.day), averages.map((a) => a.day));
+  assert.deepEqual(spreads.map((s) => s.count), averages.map((a) => a.count));
+  // The trashed 5 is gone from both ends, not just from the average.
+  assert.deepEqual(spreads, [
+    { day: 100, low: 1, high: 5, count: 2 },
+    { day: 101, low: 2, high: 2, count: 1 },
+    { day: 102, low: 3, high: 3, count: 1 }
+  ]);
+});
+
+test('a metric nothing was logged against has no spread rather than an error', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+  assert.deepEqual(await journal.stats.daySpread('masculinity', 100, 100), []);
+  assert.deepEqual(await journal.stats.daySpread('no-such-dimension', 100, 100), []);
+});
+
 /* body region trend (ticket 09) */
 
 test('a body-region trend reports per-day averages the same way dayAverages does', async () => {
