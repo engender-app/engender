@@ -1603,6 +1603,38 @@ const SCHEMA_V48 = `
 ALTER TABLE checklist ADD COLUMN appointment_epoch_day INTEGER;
 `;
 
+/* v49: the fluidity engine's presentation table and the entry it labels
+   (phase 5 deepening ticket 17, ADR-0048, CONTEXT: "Presentation").
+
+   No `key` column: unlike tag, gender_dimension and measurement_type,
+   presentation ships nothing built in (ADR-0048 - the app assumes nothing
+   about direction), so every row is a custom and `uuid` alone is its
+   travelling identity. `role_index` is a role into the active flag
+   (roles.ts's `roleAt`, which resolves any stored value by modulo), never a
+   hex - switching palette recolours every presentation for free. `hidden`
+   is the only way a presentation stops offering itself; there is no delete
+   (CONTEXT: "Hidden").
+
+   `entry.presentation_id` is nullable and unindexed by a backfill on
+   purpose - existing entries stay null, which is a resting state and not a
+   gap (ADR-0010) - and carries the uuid directly the same way
+   milestone.procedure_id and milestone.tryout_id do, so nothing here
+   resolves it to a rowid. Indexed because the fluidity engine's own MRU
+   read (presentations.ts) and ticket 18's body-map filter both equality-
+   match on it. */
+const SCHEMA_V49 = `
+CREATE TABLE presentation (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  role_index  INTEGER NOT NULL,
+  hidden      INTEGER NOT NULL DEFAULT 0,
+  updated_at  INTEGER NOT NULL
+);
+ALTER TABLE entry ADD COLUMN presentation_id TEXT REFERENCES presentation(uuid);
+CREATE INDEX idx_entry_presentation_id ON entry(presentation_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1651,5 +1683,6 @@ export const migrations: Migration[] = [
   { version: 45, sql: SCHEMA_V45 },
   { version: 46, sql: SCHEMA_V46 },
   { version: 47, sql: SCHEMA_V47 },
-  { version: 48, sql: SCHEMA_V48 }
+  { version: 48, sql: SCHEMA_V48 },
+  { version: 49, sql: SCHEMA_V49 }
 ];

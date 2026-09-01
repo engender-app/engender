@@ -2378,8 +2378,8 @@ try {
     '/settings/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
     '/settings/cycle-events', '/settings/side-effects', '/settings/surgery',
     '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
-    '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/voice',
-    '/settings/wear', '/settings/effects', '/settings/resources',
+    '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/presentations',
+    '/settings/voice', '/settings/wear', '/settings/effects', '/settings/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });

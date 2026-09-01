@@ -35,6 +35,7 @@ import type {
   MeasurementType,
   Milestone,
   PersonalEffectCatalogEntry,
+  Presentation,
   Tag,
   TagGroup
 } from '../types';
@@ -51,6 +52,7 @@ const mirror = $state<{
   measurementTypes: MeasurementType[];
   effectCategories: EffectCategory[];
   personalEffectTypes: PersonalEffectCatalogEntry[];
+  presentations: Presentation[];
 }>({
   dimensions: [],
   tagGroups: [],
@@ -59,7 +61,8 @@ const mirror = $state<{
   bodyRegions: [],
   measurementTypes: [],
   effectCategories: [],
-  personalEffectTypes: []
+  personalEffectTypes: [],
+  presentations: []
 });
 
 type MirrorSlice =
@@ -70,11 +73,15 @@ type MirrorSlice =
   | 'bodyRegions'
   | 'measurementTypes'
   | 'effectCategories'
-  | 'personalEffectTypes';
+  | 'personalEffectTypes'
+  | 'presentations';
 
 /** Which slices a written table invalidates. Photos are in here because a
     milestone carries its photo on the mirrored row, so attaching one changes
-    what the timeline should draw. */
+    what the timeline should draw. `entry` is here for one slice only:
+    `presentations` reads most-recently-used first by joining the entry
+    table's own timestamps (presentations.ts), so a save has to refresh it
+    too, not only a rename or a recolour. */
 const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
   dimension: ['dimensions'],
   tag: ['tagGroups'],
@@ -84,7 +91,9 @@ const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
   bodyRegion: ['bodyRegions'],
   measurementType: ['measurementTypes'],
   effectCategory: ['effectCategories'],
-  personalEffectType: ['personalEffectTypes']
+  personalEffectType: ['personalEffectTypes'],
+  presentation: ['presentations'],
+  entry: ['presentations']
 };
 
 let registered = false;
@@ -93,17 +102,27 @@ let registered = false;
     it: fills the mirror before the first screen renders, so nothing has to
     cope with an app whose vocabulary is briefly empty. */
 export async function hydrateReference(journal: Journal): Promise<void> {
-  const [dimensions, tagGroups, milestones, affirmations, bodyRegions, measurementTypes, effectCategories, personalEffectTypes] =
-    await Promise.all([
-      journal.dimensions.getDimensions(),
-      journal.tags.getTagGroups(),
-      journal.milestones.getMilestones(),
-      journal.affirmations.getAffirmations(),
-      journal.bodyRegions.getBodyRegions(),
-      journal.measurements.getMeasurementTypes(),
-      journal.effectCategories.getEffectCategories(),
-      journal.personalEffects.getEffectTypes()
-    ]);
+  const [
+    dimensions,
+    tagGroups,
+    milestones,
+    affirmations,
+    bodyRegions,
+    measurementTypes,
+    effectCategories,
+    personalEffectTypes,
+    presentations
+  ] = await Promise.all([
+    journal.dimensions.getDimensions(),
+    journal.tags.getTagGroups(),
+    journal.milestones.getMilestones(),
+    journal.affirmations.getAffirmations(),
+    journal.bodyRegions.getBodyRegions(),
+    journal.measurements.getMeasurementTypes(),
+    journal.effectCategories.getEffectCategories(),
+    journal.personalEffects.getEffectTypes(),
+    journal.presentations.getPresentations()
+  ]);
   mirror.dimensions = dimensions;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;
@@ -112,6 +131,7 @@ export async function hydrateReference(journal: Journal): Promise<void> {
   mirror.measurementTypes = measurementTypes;
   mirror.effectCategories = effectCategories;
   mirror.personalEffectTypes = personalEffectTypes;
+  mirror.presentations = presentations;
 
   if (registered) return;
   registered = true;
@@ -132,6 +152,7 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('measurementTypes')) mirror.measurementTypes = await journal.measurements.getMeasurementTypes();
     if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
     if (slices.has('personalEffectTypes')) mirror.personalEffectTypes = await journal.personalEffects.getEffectTypes();
+    if (slices.has('presentations')) mirror.presentations = await journal.presentations.getPresentations();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -283,5 +304,18 @@ export const reference = {
 
   tag(id: string): Tag | null {
     return this.tags.find((t) => t.id === id) ?? null;
+  },
+
+  /** Every presentation, most-recently-used first (presentations.ts),
+      hidden ones included - what the management screen under /more offers
+      (CONTEXT: "Hidden"). */
+  get presentations(): Presentation[] {
+    return mirror.presentations;
+  },
+
+  /** What the entry editor's chip offers: hidden presentations removed, the
+      same "not hidden" filter `visibleTagGroups` already applies to tags. */
+  get visiblePresentations(): Presentation[] {
+    return mirror.presentations.filter((p) => !p.hidden);
   }
 };

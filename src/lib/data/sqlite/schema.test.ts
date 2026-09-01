@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 48);
+  assert.equal(db.getUserVersion(), 49);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -42,6 +42,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'personal_effect',
     'personal_effect_type',
     'photo',
+    'presentation',
     'pref',
     'preset_dimension',
     'regimen_episode',
@@ -842,6 +843,43 @@ test('v47 adds tryout_id to milestone table, preserving existing milestones', as
   assert.equal(row.uuid, 'm-1');
   assert.equal(row.name, 'HRT Start');
   assert.equal(row.tryout_id, null);
+});
+
+test('v49 adds the presentation table and entry.presentation_id, both nullable/unfilled by default', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 48)
+  );
+
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e-1', 100, 1000, '', 1000)");
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const entryRow = db.raw.prepare("SELECT presentation_id FROM entry WHERE uuid = 'e-1'").get() as {
+    presentation_id: string | null;
+  };
+  assert.equal(entryRow.presentation_id, null);
+
+  db.raw.exec(
+    "INSERT INTO presentation (uuid, name, role_index, updated_at) VALUES ('p-1', 'femme', 0, 1000)"
+  );
+  const presentationRow = db.raw.prepare("SELECT name, role_index, hidden FROM presentation WHERE uuid = 'p-1'").get() as {
+    name: string;
+    role_index: number;
+    hidden: number;
+  };
+  assert.equal(presentationRow.name, 'femme');
+  assert.equal(presentationRow.role_index, 0);
+  assert.equal(presentationRow.hidden, 0);
+
+  db.raw.exec("UPDATE entry SET presentation_id = 'p-1' WHERE uuid = 'e-1'");
+  const linked = db.raw.prepare("SELECT presentation_id FROM entry WHERE uuid = 'e-1'").get() as {
+    presentation_id: string | null;
+  };
+  assert.equal(linked.presentation_id, 'p-1');
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

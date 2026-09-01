@@ -709,6 +709,16 @@ a.kit-entry:active {
   overflow: hidden;
 }
 
+/* The fluidity engine's presentation, in its own colour (phase 5 deepening
+   ticket 17, ADR-0048) - set inline per entry by the caller, since it names
+   a specific presentation rather than this row's own section role, the same
+   split components.css's .entry-presentation makes. */
+.kit-entry-presentation {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
 /* What the entry carries besides its words. One line, wrapping, at the
    smallest size the kit sets: the note is what is read and this is what is
    glanced at. The media marks come first because there are at most three of

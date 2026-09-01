@@ -2676,5 +2676,21 @@
   "vb_mic_unsupported_body": "Aplikacja na Androida potrafi. Nic innego tutaj od tego nie zależy.",
   "vb_mic_ask": "Poproś o mikrofon",
   "vb_mic_denied_again_body": "Ponowna prośba nic nie dała, więc wybór nie jest już proponowany. Przełącznik jest w uprawnieniach tej aplikacji, przy mikrofonie.",
-  "vb_hub_sub": "nagranie według stałych zasad, porównywalne miesiąc do miesiąca"
+  "vb_hub_sub": "nagranie według stałych zasad, porównywalne miesiąc do miesiąca",
+  "presentation_label": "Tryb",
+  "presentations_title": "Tryby",
+  "presentations_row_sub": "Tryb prezentacji przy zapisie wpisu.",
+  "presentations_intro": "Nazwa i kolor dla sposobu prezentacji. Nic więcej.",
+  "presentations_empty_title": "Nie ma jeszcze żadnego trybu.",
+  "presentations_empty_body": "Na sposób prezentacji, między którymi się przełączasz: tryb chłopięcy, tryb dziewczęcy, jakkolwiek to nazwiesz.",
+  "presentations_add": "Dodaj tryb",
+  "presentation_new_sheet": "Nowy tryb",
+  "presentation_edit_sheet": "Edytuj tryb",
+  "presentation_save": "Zapisz tryb",
+  "presentation_name_label": "Nazwa",
+  "presentation_name_placeholder": "np. Femme, W pracy",
+  "presentation_colour_label": "Kolor",
+  "presentation_colour_swatch_aria": "Kolor {index}",
+  "presentation_hide_aria": "Ukryj {name}",
+  "presentation_show_aria": "Pokaż {name}"
 }

@@ -41,6 +41,7 @@
   import Icon from '../Icon.svelte';
   import MoodFace from '../MoodFace.svelte';
   import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
+  import type { EntryPresentationLabel } from '$lib/data/vocabulary/entryPresentation';
 
   let {
     time,
@@ -49,6 +50,7 @@
     note,
     tags,
     marks,
+    presentation,
     href,
     key
   }: {
@@ -64,6 +66,12 @@
     /** Icon names for the media the entry holds - a photo, a recording, a
         video note. */
     marks?: string[];
+    /** The fluidity engine's presentation (phase 5 deepening ticket 17,
+        ADR-0048), already resolved to a name and an ink colour by the
+        caller - the same reason `tags` arrives as labels rather than ids.
+        Absent for an entry that carries none, which shows nothing at all:
+        absence, not a label. */
+    presentation?: EntryPresentationLabel;
     /** Where the entry opens. Omitted, the row is a plain article. */
     href?: string;
     key?: string;
@@ -77,6 +85,9 @@
   </span>
   <div class="kit-entry-body">
     {#if title}<b class="kit-entry-title">{title}</b>{/if}
+    {#if presentation}
+      <span class="kit-entry-presentation" data-entry-presentation style="color: {presentation.color}">{presentation.name}</span>
+    {/if}
     {#if note}<p class="kit-entry-note" data-entry-note>{note}</p>{/if}
     {#if tags?.length || marks?.length}
       <span class="kit-entry-meta">
