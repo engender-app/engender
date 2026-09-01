@@ -124,6 +124,33 @@ export interface Entry {
       the doubt journal's counterevidence pool (entries.ts,
       counterevidencePool). */
   starred: boolean;
+  /** The presentation this entry was logged under (phase 5 deepening
+      ticket 17, ADR-0048, CONTEXT: "Presentation") - a domain id (uuid) or
+      null. An entry holds at most one, and null is a resting state rather
+      than a gap: most entries carry none, and the fluidity engine's chip
+      never pre-fills the last one used. */
+  presentationId: string | null;
+}
+
+/** A named way of showing up that a person moves between repeatedly - "mode"
+    on screen, after the vernacular (phase 5 deepening ticket 17, ADR-0048,
+    CONTEXT: "Presentation"). Owns a name and a colour and nothing else: no
+    scales, no body regions, no tags - `prefs.activeScales` keeps sole
+    ownership of which scales the editor offers. Nothing ships built in
+    (ADR-0048: the app assumes nothing about direction), so unlike Tag or
+    GenderDimension there is no `builtIn` flag. */
+export interface Presentation {
+  id: string;
+  name: string;
+  /** An index into the active flag's roles (theme/roles.ts's `roleAt`),
+      never a hex - resolved at render time so a palette switch recolours
+      every presentation for free. `roleAt` resolves any stored value by
+      modulo, so no stored index can dangle. */
+  roleIndex: number;
+  /** Hides rather than deletes (CONTEXT: "Hidden") - a hidden presentation
+      drops out of the entry editor's chip while every entry that already
+      carries it keeps it. */
+  hidden: boolean;
 }
 
 export interface GenderDimension {
