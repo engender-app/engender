@@ -221,7 +221,10 @@ public class JournalKeystoreTest {
     }
 
     /** What {@code generateKeyPair()} made before this ticket - the same
-        spec, minus the MGF1 declaration a pre-ticket key never has. */
+        spec, minus the MGF1 declaration a pre-ticket key never has. Frozen
+        on purpose rather than sharing code with the real method: if that
+        method's auth-window branching changes later for unrelated reasons,
+        this should keep making the *old* shape, not drift alongside it. */
     @SuppressWarnings("deprecation")
     private static PublicKey generateKeyWithoutMgf1Declaration() throws Exception {
         KeyGenParameterSpec.Builder spec =
