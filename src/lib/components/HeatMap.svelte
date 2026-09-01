@@ -251,14 +251,14 @@
      proportions at 46px on a phone and at twice that on a tablet. */
   .cal-spread {
     position: absolute;
-    inset-inline: 14%;
-    bottom: 12%;
-    height: max(3px, 6.5%);
+    inset-inline: 11%;
+    bottom: 11%;
+    height: max(4px, 8%);
     border-radius: 999px;
     /* The scale the run is read against, in the cell's own ink so that a
        palette can never leave it invisible on one fill and heavy on
        another. */
-    background: color-mix(in oklab, currentColor 22%, transparent);
+    background: color-mix(in oklab, currentColor 28%, transparent);
   }
   .cal-spread-run {
     position: absolute;
