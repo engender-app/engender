@@ -2647,5 +2647,12 @@
   "presentation_colour_label": "Colour",
   "presentation_colour_swatch_aria": "Colour {index}",
   "presentation_hide_aria": "Hide {name}",
-  "presentation_show_aria": "Show {name}"
+  "presentation_show_aria": "Show {name}",
+  "stats_constellation": "Two scales at once",
+  "constellation_x_label": "Across",
+  "constellation_y_label": "Up",
+  "constellation_scrub": "Position on the path",
+  "constellation_needs_scales": "Tick two scales to plot one against the other.",
+  "constellation_aria": "Your entries on two scales: {x}, {y}.",
+  "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}."
 }
