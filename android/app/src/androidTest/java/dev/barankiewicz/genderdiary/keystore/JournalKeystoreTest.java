@@ -6,9 +6,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import android.app.KeyguardManager;
 import android.content.Context;
+import android.os.Build;
 import android.security.keystore.KeyInfo;
 import android.security.keystore.UserNotAuthenticatedException;
 import android.util.Log;
@@ -37,12 +39,15 @@ import javax.crypto.Cipher;
  * really bound to the lock screen, and what the platform does when that lock
  * screen is removed are properties of the platform rather than of this code.
  *
- * <p>A lock screen is set for the run and cleared afterwards, through the
- * shell that instrumentation can reach: a Keystore key that requires user
- * authentication cannot be created on a device with no lock screen at all,
- * which is itself one of the states asserted below. The emulators come up
- * without one ({@code -wipe-data} on every run), so the test makes the device
- * it needs and puts it back.
+ * <p>Most cases only need a lock screen to already exist, so {@link
+ * #ensureLockScreen()} sets one through the shell only when none is there -
+ * on a real phone that is never, so its own credential is left untouched.
+ * Only the two cases that need to see the screen come off entirely -
+ * creating with none, and losing the key when one that existed is removed -
+ * clear it, and they run only on an emulator ({@link #isEmulator()}): a
+ * throwaway lock screen can be put back the way this class found it
+ * afterwards, a phone's daily-driver credential cannot, so those two are
+ * skipped rather than failed anywhere else.
  *
  * <p>What this deliberately does not do is authenticate. An emulator cannot
  * be made to present a finger, so the unwrap is asserted from the other
@@ -92,6 +97,18 @@ public class JournalKeystoreTest {
         return keyguard != null && keyguard.isDeviceSecure();
     }
 
+    /** Only an AVD's lock screen can be put back the way this class found
+        it; a phone's daily-driver credential cannot. {@code ranchu} and
+        {@code goldfish} are the hardware names Android Studio's emulator
+        reports, which is every device {@code tests/android-tier/run.mjs}
+        boots for this suite. */
+    private static boolean isEmulator() {
+        return Build.FINGERPRINT.startsWith("generic")
+            || Build.HARDWARE.contains("ranchu")
+            || Build.HARDWARE.contains("goldfish")
+            || Build.PRODUCT.contains("sdk");
+    }
+
     private static void setLockScreen() throws Exception {
         Log.i(TAG, "locksettings set-pin: " + shell("locksettings set-pin " + PIN));
         assertTrue("the emulator did not take a lock screen; nothing below can be asserted", deviceIsSecure());
@@ -101,17 +118,26 @@ public class JournalKeystoreTest {
         Log.i(TAG, "locksettings clear: " + shell("locksettings clear --old " + PIN));
     }
 
+    /** What every case but the two lock-toggling ones needs: a lock screen,
+        no matter whose. A phone already has its own, so this never touches
+        it there; only a bare emulator gets one made, and only because
+        making it is safe to leave in place for the tests after this one. */
+    private static void ensureLockScreen() throws Exception {
+        if (deviceIsSecure()) return;
+        assumeTrue("no lock screen, and only an emulator's can be set from here", isEmulator());
+        setLockScreen();
+    }
+
     @Before
     public void freshKeystore() throws Exception {
         keystore = new JournalKeystore(context());
         keystore.erase();
-        setLockScreen();
+        ensureLockScreen();
     }
 
     @After
     public void tidy() throws Exception {
         keystore.erase();
-        clearLockScreen();
     }
 
     /** The ticket's first box, in the only place it can be checked. */
@@ -213,9 +239,15 @@ public class JournalKeystoreTest {
      * Removing the lock screen destroys the key, and the app reports that as
      * its own state rather than as a finger that did not match (ticket 13's
      * third box - a retry loop here would be a trap with no way out).
+     *
+     * <p>Emulator only: putting the lock screen back afterwards means putting
+     * back this class's own throwaway PIN, which is not an option on a phone
+     * whose actual credential this test would otherwise be clearing.
      */
     @Test
     public void removingTheLockScreenDestroysTheKeyAndIsReportedAsItself() throws Exception {
+        assumeTrue("needs an emulator; a phone's lock screen cannot be restored", isEmulator());
+
         keystore.create();
         assertTrue(keystore.hasKey());
 
@@ -236,13 +268,16 @@ public class JournalKeystoreTest {
             Log.i(TAG, "the invalidated key surfaced as " + other.getClass().getName());
         }
 
-        // Put it back, so @After's clearLockScreen has the PIN it expects.
+        // Put it back, so the next test's ensureLockScreen sees one already there.
         setLockScreen();
     }
 
-    /** A device with no lock screen is told to set one, not handed a crash. */
+    /** A device with no lock screen is told to set one, not handed a crash.
+        Emulator only, for the same reason as the case above. */
     @Test
     public void withNoLockScreenThereIsNothingToBindAKeyTo() throws Exception {
+        assumeTrue("needs an emulator; a phone's lock screen cannot be restored", isEmulator());
+
         clearLockScreen();
         assertFalse(deviceIsSecure());
 
