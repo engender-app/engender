@@ -44,8 +44,7 @@
           note={entry.note ?? undefined}
           tags={entryTags(entry)}
           marks={entryMarks(entry)}
-          presentationName={presentation?.name}
-          presentationColor={presentation?.color}
+          {presentation}
         />
       {/each}
     </DayCard>
