@@ -84,6 +84,25 @@
       : annotationsInRange(ANNOTATION_SOURCES, { from: 0, to: 364, today: 364 })
   );
 
+  /* Two scales on one plot (phase 6 ticket 12), which is where the palettes
+     have to be looked at: two roles of one flag, and on several of them the
+     second is a shade rather than a colour. The dash is what has to carry the
+     pair there.
+
+     Mood against a 0-to-100 dimension, so the two ranges really are
+     different and each line is placed against its own. The overlay stops 40
+     positions short of the end and starts 30 in, which is the case a person
+     who took up a scale partway through their journal has: the line is
+     absent at those positions rather than drawn flat. */
+  const TWO_POSITIONS = 90;
+  const TWO_PRIMARY = Array.from({ length: TWO_POSITIONS }, (_, i) => ({
+    x: i,
+    y: 3 + 1.6 * Math.sin(i / 9)
+  }));
+  const TWO_OVERLAY = Array.from({ length: TWO_POSITIONS }, (_, i) =>
+    i < 30 || i > TWO_POSITIONS - 12 ? null : 52 + 30 * Math.sin(i / 11 + 0.9)
+  );
+
   function readRoles() {
     roles = readFlagRoles();
     flagFill = readFlagFill();
@@ -295,6 +314,27 @@
       ariaLabel="Dysphoria ↔ euphoria, day by day"
       from={range === 'week' ? '18 Aug' : '25 Aug 2025'}
       to="24 Aug"
+    />
+  </ChartCard>
+
+  <ChartCard heading="Day by day, two scales" kind="two-metrics" role={roleAt(roles, 0)}>
+    <AreaChart
+      points={TWO_PRIMARY}
+      min={1}
+      max={5}
+      name="Mood"
+      formatValue={(v) => String(Math.round(v))}
+      overlay={{
+        values: TWO_OVERLAY,
+        min: 0,
+        max: 100,
+        name: 'Dysphoria ↔ euphoria',
+        formatValue: (v) => `${Math.round(v)}`,
+        role: roleAt(roles, 1)
+      }}
+      ariaLabel="Mood and dysphoria ↔ euphoria, day by day"
+      from="1 Jun"
+      to="29 Aug"
     />
   </ChartCard>
 

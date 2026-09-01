@@ -1656,6 +1656,10 @@ a.kit-entry:active {
    Under the plot and quiet: it says what the marks are and never what they
    mean. */
 .kit-area-legend {
+  /* Declared here too, not only on the plot: the legend is the plot's
+     sibling, so the stripe the component sets on one does not reach the
+     other. */
+  --role-2-draw: var(--role-2, var(--accent-2));
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);

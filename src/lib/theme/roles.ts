@@ -36,6 +36,25 @@ export interface Role {
       the difference is what keeps the app looking like the flag rather
       than like a darkened copy of it. */
   mark: string;
+  /** The stripe as a mark drawn beside another mark: the stripe itself
+      where it is a colour, and the nearest version of it that clears 3:1
+      where it is one of the flag's shades.
+
+      A lone mark on a card owes no ratio and takes the stripe exactly - that
+      is `--role-draw`, and it is the decision that stopped nonbinary's
+      yellow turning olive. It holds because a faint mark is still the only
+      mark there: nothing depends on separating it from something else. Two
+      chart lines on one plot do (phase 6 ticket 12), and a stripe that
+      cannot be seen against the card is not a faint line, it is no line at
+      all.
+
+      Only a shade is ever moved. A flag's white band on the light theme and
+      its near-black band on the dark theme sit on their own ground; a
+      colour, at any lightness, still reads as itself, so trans's pink stays
+      pink and rainbow's orange stays orange on both themes. Agender is why
+      this exists: its flag holds one colour and three shades, so a second
+      line on it lands on #1A1A1A, which on a dark card is the card. */
+  paired: string;
   /** The five steps of the heat ramp in this stripe's hue, deepest last.
       A week cell has nothing written on it and a calendar cell has the day
       number, so each step carries the ink that number is written in. */
@@ -211,12 +230,16 @@ export function flagRoles(
     ...stripeRoles(stripes).filter((s) => chromaOf(s) >= ACHROMATIC),
     ...stripeRoles(stripes).filter((s) => chromaOf(s) < ACHROMATIC)
   ];
-  return ordered.map((stripe) => ({
-    stripe,
-    ink: legibleInk(stripe, text, grounds, TEXT_FLOOR),
-    mark: legibleInk(stripe, text, grounds, MARK_FLOOR),
-    heat: heatRamp(stripe, text, heatGround)
-  }));
+  return ordered.map((stripe) => {
+    const mark = legibleInk(stripe, text, grounds, MARK_FLOOR);
+    return {
+      stripe,
+      ink: legibleInk(stripe, text, grounds, TEXT_FLOOR),
+      mark,
+      paired: chromaOf(stripe) >= ACHROMATIC ? stripe : mark,
+      heat: heatRamp(stripe, text, heatGround)
+    };
+  });
 }
 
 /** The role for the nth area of a screen, wrapping where a screen has more
