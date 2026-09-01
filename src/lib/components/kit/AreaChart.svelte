@@ -39,7 +39,15 @@
   import { untrack } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
-  import { areaPath, lerpSamples, resample, type Point } from '$lib/charts/geometry';
+  import {
+    areaPath,
+    lerpSamples,
+    resample,
+    type Point,
+    type Sample,
+    type SeriesPoint
+  } from '$lib/charts/geometry';
+  import type { Role } from '$lib/theme/roles';
   import {
     MIN_PLOT_POSITIONS,
     annotationsAtPoint,
@@ -60,10 +68,12 @@
     to,
     formatValue = (v: number) => String(Math.round(v)),
     scrubLabel,
-    annotations = []
+    annotations = [],
+    name,
+    overlay
   }: {
     /** Already bucketed to the grain the caller chose. */
-    points: Point[];
+    points: SeriesPoint[];
     min?: number;
     max?: number;
     /** What the whole chart is, for a screen reader. The marks are
@@ -82,13 +92,49 @@
         position on a cycle. Same division of labour as `from` and `to`:
         the caller formats, the chart places. Without it the readout shows
         the value alone. */
-    scrubLabel?: (point: Point, index: number) => string;
+    scrubLabel?: (point: SeriesPoint, index: number) => string;
     /** What was happening around these readings, in the same units `points`
         counts in - epoch days (charts/annotations.ts). Empty by default: a
         chart opts into annotations, and a chart that would be worse for them
         passes none. */
     annotations?: ChartAnnotation[];
+    /** What this series is. Only read when a second metric shares the plot,
+        where the heading no longer answers it on its own. */
+    name?: string;
+    /** A second metric on the same plot (phase 6 ticket 12).
+
+        No `x` of its own: it is read onto `points`' positions by the caller
+        (charts/grain.ts's alignSeries), so `values` is the same length and a
+        `null` is a position this metric has no reading at. Aligning here
+        instead would mean the chart deciding what a position is, which is
+        the one thing the caller owns.
+
+        Its own range, because that is the point of it: mood's 1 to 5 and a
+        dimension's 0 to 100 are placed by where each sits inside its own
+        bounds, and the two lines are then comparable in shape without
+        either being rescaled into the other's units. That placement is the
+        **Normalized value** and it is never shown - the plot prints no
+        value gutter once there are two series on it, and every number
+        anybody reads here comes back out of `formatValue` in the metric's
+        own **Native units**. */
+    overlay?: {
+      values: Sample[];
+      min: number;
+      max: number;
+      name: string;
+      formatValue: (value: number) => string;
+      /** A second stripe of the active flag, so a palette switch recolours
+          both lines. Colour is never the only thing telling them apart: the
+          second line is dashed and the legend under the plot repeats the
+          dash beside the name. */
+      role?: Role;
+    };
   } = $props();
+
+  /* An overlay whose values do not line up with the positions they are
+     supposed to share is not drawn. There is no honest way to place it, and
+     a second line spread across the wrong dates is worse than one line. */
+  let overlaid = $derived(overlay !== undefined && overlay.values.length === points.length);
 
   const HEIGHT = 132;
   /* Room for the ring on the latest reading and for the stroke at the top
@@ -98,8 +144,14 @@
      read as a label and a mark rather than as one taller mark. */
   const LABEL_GAP = 6;
 
-  let target = $derived(points.map((p) => p.y));
-  let shown = $state<number[]>([]);
+  /* Both series tween on one clock rather than one each. They are drawn on
+     one plot and switched by one control, so two timelines would show up as
+     the pair arriving out of step - and `moving`, which decides whether the
+     geometry is smoothed yet, is one answer for the whole chart. */
+  let target = $derived<Sample[][]>(
+    overlaid ? [points.map((p) => p.y), overlay!.values] : [points.map((p) => p.y)]
+  );
+  let shown = $state<Sample[][]>([]);
   /* Straight segments while the line is moving, smoothed once it settles -
      see the note in $lib/charts/geometry. */
   let moving = $state(false);
@@ -112,22 +164,31 @@
     // Nothing to travel from on a first draw, and nothing to travel with
     // under reduced motion: arrive at the dataset instead. The first draw's
     // own arrival is the wipe below, not this.
-    if (duration === 0 || previous.length === 0) {
+    // A second line appearing or leaving is the same case: there is no
+    // outgoing shape for it, and tweening the one line that stayed while the
+    // other cut in would read as a fault rather than as a comparison.
+    if (duration === 0 || previous.length !== next.length) {
       shown = next;
       return;
     }
 
     // The outgoing shape, counted the way the incoming one is counted.
-    const start = resample(
-      previous.map((y, i) => ({ x: i / Math.max(1, previous.length - 1), y })),
-      next.length
+    // Positions the outgoing dataset had no reading at are dropped before it
+    // is resampled: a gap is an absence of shape, not a shape at zero.
+    const start = next.map((series, i) =>
+      resample(
+        previous[i]
+          .map((y, j) => ({ x: j / Math.max(1, previous[i].length - 1), y }))
+          .filter((point): point is Point => point.y !== null),
+        series.length
+      )
     );
     let frame = 0;
     const began = performance.now();
     moving = true;
     const step = (now: number) => {
       const t = Math.min(1, (now - began) / duration);
-      shown = lerpSamples(start, next, EASE_OUT(t));
+      shown = next.map((series, i) => lerpSamples(start[i], series, EASE_OUT(t)));
       if (t < 1) frame = requestAnimationFrame(step);
       else moving = false;
     };
@@ -143,8 +204,17 @@
      turns every circle in it into an ellipse. */
   let width = $state(0);
   let plotWidth = $derived(Math.max(width, 1));
-  let path = $derived(
-    areaPath(shown, { width: Math.max(plotWidth - PAD * 2, 1), height: HEIGHT - PAD * 2, min, max }, !moving)
+  let plotBox = $derived({ width: Math.max(plotWidth - PAD * 2, 1), height: HEIGHT - PAD * 2 });
+  let path = $derived(areaPath(shown[0] ?? [], { ...plotBox, min, max }, !moving));
+  /* Placed against its own bounds, which is what puts two metrics with
+     different ranges on one plot at all. Read off `shown` rather than off
+     `overlaid` so a frame where the two disagree - the props have changed
+     and the tween has not run yet - draws nothing rather than drawing the
+     second series against the first one's scale. */
+  let overlayPath = $derived(
+    shown.length > 1 && overlay
+      ? areaPath(shown[1], { ...plotBox, min: overlay.min, max: overlay.max }, !moving)
+      : null
   );
 
   /* The settle crossfade. Swapping straight segments for the monotone curve
@@ -160,11 +230,11 @@
      faded to nothing, never a second live copy recomputed on every frame -
      rebuilding the smoothed curve that often is the cost geometry.ts's own
      note measured and ruled out. */
-  let lastMovingPath = $state<{ line: string; fill: string } | null>(null);
+  let lastMovingPath = $state<{ line: string; fill: string; overlay: string } | null>(null);
   let wasMoving = false;
 
   $effect(() => {
-    if (moving) lastMovingPath = { line: path.line, fill: path.fill };
+    if (moving) lastMovingPath = { line: path.line, fill: path.fill, overlay: overlayPath?.line ?? '' };
     else if (wasMoving) lastMovingPath = null; // out:fade below plays it out
     wasMoving = moving;
   });
@@ -172,7 +242,30 @@
   /* The scrub. Held as an index rather than as a pixel, so it survives a
      resize and a re-tween without pointing at a position that has moved. */
   let scrub = $state<number | null>(null);
-  let at = $derived(scrub !== null && path.dots[scrub] ? { dot: path.dots[scrub], point: points[scrub] } : null);
+  /* What the finger is on: a position, and whichever of the two series has
+     a reading there. Either may be missing - a position one metric was not
+     being logged over is a real position on the plot, and the readout says
+     the other metric's number and nothing where there is nothing. */
+  let at = $derived.by(() => {
+    if (scrub === null || !points[scrub]) return null;
+    const dot = path.dots[scrub] ?? null;
+    const overlayDot = overlayPath?.dots[scrub] ?? null;
+    if (!dot && !overlayDot) return null;
+    return {
+      x: (dot ?? overlayDot)!.x,
+      dot,
+      overlayDot,
+      point: points[scrub],
+      value: shown[0]?.[scrub] ?? null,
+      overlayValue: shown[1]?.[scrub] ?? null
+    };
+  });
+  /* The dotted rule stops at the higher of the two marks: it exists to say
+     where along the plot the finger is, and running it past the readings it
+     is pointing at would draw the axis this chart does not have. */
+  let scrubTop = $derived(
+    at ? Math.min(...[at.dot?.y, at.overlayDot?.y].filter((y) => y !== undefined)) : 0
+  );
 
   /* Laid out against the plot's own positions rather than against the
      calendar: the chart draws its buckets evenly spaced whatever the days
@@ -233,7 +326,7 @@
   }
 </script>
 
-{#if path.last}
+{#if path.last || overlayPath?.last}
   <!-- pan-y, not none: a drag across the plot scrubs it and a drag down the
        screen still scrolls the screen, which is the gesture a chart in the
        middle of a long page owes. -->
@@ -244,9 +337,11 @@
        numbers also live in a list the screen offers separately. -->
   <div
     class="kit-area"
+    class:has-overlay={overlaid}
     data-chart="area"
     role="img"
     aria-label={ariaLabel}
+    style:--role-2={overlay?.role?.stripe}
     in:wipe={{ authored: true }}
     onpointerdown={scrubTo}
     onpointermove={scrubIfHeld}
@@ -255,12 +350,21 @@
     onpointerleave={clearScrub}
   >
     <!-- The value gutter. No gridlines, no legend, no tick marks: the ends
-         of the scale and its middle, and the marks carry the rest. -->
-    <div class="kit-area-scale" aria-hidden="true">
-      <span>{formatValue(max)}</span>
-      <span>{formatValue(min + (max - min) / 2)}</span>
-      <span>{formatValue(min)}</span>
-    </div>
+         of the scale and its middle, and the marks carry the rest.
+
+         Gone once a second metric shares the plot, because there is no
+         longer one scale for it to be the ends of. Two metrics are placed by
+         where each sits inside its own range, so a gutter here would be one
+         of the two ranges printed beside both lines, and the other line
+         would be read against numbers that are not its own. The scrub
+         readout says both values in their own units instead. -->
+    {#if !overlaid}
+      <div class="kit-area-scale" aria-hidden="true">
+        <span>{formatValue(max)}</span>
+        <span>{formatValue(min + (max - min) / 2)}</span>
+        <span>{formatValue(min)}</span>
+      </div>
+    {/if}
 
     <div class="kit-area-plot-wrap" bind:clientWidth={width}>
       <svg
@@ -274,21 +378,42 @@
           <!-- Under the fill and the line, never over them: context sits
                behind the readings it is context for. -->
           <ChartAnnotations {placed} height={HEIGHT - PAD * 2} onHover={(next) => (hovered = next)} />
-          <path class="kit-area-fill" d={path.fill} />
+          <!-- The fill goes when a second metric arrives. A filled line
+               beside an unfilled one reads as the reading and its footnote,
+               and neither of these two is the other's footnote - so both are
+               plain strokes of equal weight, and the second is dashed. -->
+          {#if !overlaid}<path class="kit-area-fill" d={path.fill} />{/if}
           <path class="kit-area-line" d={path.line} />
+          {#if overlayPath}
+            <path class="kit-area-line is-overlay" d={overlayPath.line} />
+          {/if}
           {#if lastMovingPath}
             <!-- The settling frame, laid over the smoothed geometry
                  underneath and faded out rather than swapped in an instant -
                  see the note above `lastMovingPath`. -->
-            <path class="kit-area-fill" d={lastMovingPath.fill} out:fade={{ duration: motionDuration('--dur-med') }} />
+            {#if !overlaid}
+              <path class="kit-area-fill" d={lastMovingPath.fill} out:fade={{ duration: motionDuration('--dur-med') }} />
+            {/if}
             <path class="kit-area-line" d={lastMovingPath.line} out:fade={{ duration: motionDuration('--dur-med') }} />
+            {#if lastMovingPath.overlay}
+              <path
+                class="kit-area-line is-overlay"
+                d={lastMovingPath.overlay}
+                out:fade={{ duration: motionDuration('--dur-med') }}
+              />
+            {/if}
           {/if}
-          {#if path.dots.length <= 60}
+          {#if path.dots.length <= 60 && !overlaid}
             <!-- A mark per reading, once there is room for one to be looked
                  at. Past that they are a dotted smear and the line says it
-                 better on its own. -->
+                 better on its own.
+
+                 None at all with two series up: a mark per reading on one of
+                 them and not the other would weight the pair, and on both it
+                 is two dotted smears crossing each other. The two lines, the
+                 dash and the scrub carry it. -->
             {#each path.dots.slice(0, -1) as dot, i (i)}
-              <circle class="kit-area-dot" cx={dot.x} cy={dot.y} r="2.5" />
+              {#if dot}<circle class="kit-area-dot" cx={dot.x} cy={dot.y} r="2.5" />{/if}
             {/each}
           {/if}
           {#if at}
@@ -298,19 +423,28 @@
             <!-- From the baseline up to the reading and no further: a line
                  that carries on past the value is a gridline, and it made the
                  chart look like it had an axis it does not have (Alicja,
-                 2026-08-25). -->
+                 2026-08-25). With two series that is the higher of the two
+                 marks, for the same reason. -->
             <line
               class="kit-area-scrub"
-              x1={at.dot.x}
-              x2={at.dot.x}
+              x1={at.x}
+              x2={at.x}
               y1={HEIGHT - PAD * 2}
-              y2={at.dot.y}
+              y2={scrubTop}
             />
-            <circle class="kit-area-scrub-dot" cx={at.dot.x} cy={at.dot.y} r="4.5" />
+            {#if at.dot}<circle class="kit-area-scrub-dot" cx={at.dot.x} cy={at.dot.y} r="4.5" />{/if}
+            {#if at.overlayDot}
+              <circle class="kit-area-scrub-dot is-overlay" cx={at.overlayDot.x} cy={at.overlayDot.y} r="4.5" />
+            {/if}
           {/if}
           <!-- The latest reading, ringed on the line rather than annotated
-               beside it: the mark is the label. -->
-          <circle class="kit-area-ring" cx={path.last.x} cy={path.last.y} r="5" />
+               beside it: the mark is the label. One per series, because each
+               line ends where its own metric was last logged and those are
+               not the same day. -->
+          {#if path.last}<circle class="kit-area-ring" cx={path.last.x} cy={path.last.y} r="5" />{/if}
+          {#if overlayPath?.last}
+            <circle class="kit-area-ring is-overlay" cx={overlayPath.last.x} cy={overlayPath.last.y} r="5" />
+          {/if}
         </g>
       </svg>
 
@@ -334,10 +468,34 @@
 
       {#if at}
         <output class="kit-area-readout" data-chart-readout>
-          <span class="kit-area-readout-value">
-            <b>{formatValue(at.point.y)}</b>
-            {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
-          </span>
+          {#if overlaid}
+            <!-- Each series' own number, in its own units, named. This is
+                 where the value gutter went: the two lines are placed
+                 against their own ranges, so nothing on the plot can be read
+                 off a shared scale, and the only honest place for a figure
+                 is beside the name of the metric it belongs to. The position
+                 is written once underneath, because it is one position. -->
+            {#if at.value !== null}
+              <span class="kit-area-readout-value">
+                <b>{formatValue(at.value)}</b>
+                <span>{name ?? ''}</span>
+              </span>
+            {/if}
+            {#if at.overlayValue !== null && overlay}
+              <span class="kit-area-readout-value">
+                <b>{overlay.formatValue(at.overlayValue)}</b>
+                <span>{overlay.name}</span>
+              </span>
+            {/if}
+            {#if scrubLabel && scrub !== null}
+              <span class="kit-area-readout-at">{scrubLabel(at.point, scrub)}</span>
+            {/if}
+          {:else}
+            <span class="kit-area-readout-value">
+              <b>{formatValue(at.value ?? 0)}</b>
+              {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
+            </span>
+          {/if}
           <!-- What was going on at the position under the finger, stated
                beside the reading and never joined to it: the readout says
                both, and says nothing about the two being related. -->
@@ -351,6 +509,24 @@
       {/if}
     </div>
   </div>
+
+  {#if overlaid && overlay}
+    <!-- Which line is which. DIRECTION.md's chart rules refuse a legend and
+         name one exception, the wear trend's: that rule is about a
+         single-series chart whose marks carry their own values, and two
+         unnamed lines are not a chart. This is the same case - two metrics
+         on two ranges against one axis - so it takes the same exception.
+
+         The swatches are line segments repeating the plot's own strokes, one
+         solid and one dashed, so the pairing holds for anybody who cannot
+         separate the two colours. -->
+    <p class="kit-area-legend" data-chart-legend aria-hidden="true">
+      <span class="kit-area-legend-item"><span class="kit-area-legend-mark"></span>{name ?? ''}</span>
+      <span class="kit-area-legend-item"
+        ><span class="kit-area-legend-mark is-overlay"></span>{overlay.name}</span
+      >
+    </p>
+  {/if}
 
   {#if from || to}
     <div class="kit-area-range" aria-hidden="true">

@@ -21,6 +21,14 @@ export interface Point {
     yet (charts/grain.ts's alignSeries). */
 export type Sample = number | null;
 
+/** A position on a chart and what was read there. The area chart's own
+    input: `Point[]` is one of these, and a series sharing its positions
+    with a second metric is the other. */
+export interface SeriesPoint {
+  x: number;
+  y: Sample;
+}
+
 /** Reads `points` onto `n` evenly spaced positions across its own x range.
 
     This is what makes a re-tween possible at all: a week and a year have
