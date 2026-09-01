@@ -61,3 +61,18 @@ export function domainIdOf(row: { key: string | null; uuid: string | null }, wha
 export function assertChanged(result: { changes: number }, what: string): void {
   if (result.changes === 0) throw new Error(`unknown ${what}`);
 }
+
+/** The SQL and params for filtering an already-joined `entry e` by
+    presentation (ADR-0048, phase 5 deepening ticket 18) - three states:
+    omitted keeps every entry (the default, unfiltered view), `null` keeps
+    only entries that carry none, and a uuid keeps only that presentation's.
+    Shared because bodyRegionTrend (stats.ts) and the somatic breakdown
+    (bodyMapQueries.ts) both filter the same column the same way. */
+export function entryPresentationFilter(presentationId: string | null | undefined): {
+  sql: string;
+  params: string[];
+} {
+  if (presentationId === undefined) return { sql: '', params: [] };
+  if (presentationId === null) return { sql: ' AND e.presentation_id IS NULL', params: [] };
+  return { sql: ' AND e.presentation_id = ?', params: [presentationId] };
+}
