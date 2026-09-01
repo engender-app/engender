@@ -205,19 +205,72 @@
     )
   );
 
+  /* A second scale on the same chart (phase 6 ticket 12). The manual,
+     hypothesis-driven companion to the app noticing things for you:
+     somebody who suspects two of their scales move together can look,
+     rather than wait.
+
+     Opt-in and empty by default. A second picker sitting on the card
+     whatever anyone asked for would put a comparison in front of every
+     person who opened the screen, and a comparison is a question somebody
+     has to have first. `seriesQuery` already fetches every scale's series in
+     one go, so choosing one costs no query.
+
+     Held to the scales that still exist, the same rule the constellation's
+     two axes follow: a scale unticked in settings, or the one the primary
+     picker has just moved onto, drops the comparison rather than leaving the
+     chart pointed at something nobody logs. */
+  let compareKey = $state('');
+  let comparing = $state(false);
+  $effect(() => {
+    if (compareKey && !metrics.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
+      compareKey = '';
+    }
+  });
+  let compared = $derived(metrics.find((mt) => mt.key === compareKey));
+  let compareOptions = $derived([
+    { value: '', label: m.stats_compare_none() },
+    ...metricOptions.filter((option) => option.value !== shown.key)
+  ]);
+
   /* The values sheet, in the same bars as everything else on the screen. The
      bar's length is where the day sits in the metric's own range, which is
-     what makes a quiet week visible as a run of short bars. */
+     what makes a quiet week visible as a run of short bars.
+
+     This list is the whole non-visual path to the chart's numbers: the plot
+     is one image to a screen reader, and a scrub is a way of reading a
+     picture. So when a second scale joins the chart it joins this too, as
+     the day's note - otherwise the second line would be a reading only
+     somebody who can see it can have. Days the second scale carries and the
+     first does not get a row of their own, with an empty bar: the chart
+     draws that stretch, and a list that quietly dropped it would disagree
+     with the picture it is standing in for. */
+  let comparedByDay = $derived(
+    compared ? new Map(seriesFor(compared.key).map((point) => [point.day, point])) : null
+  );
+  let valueDays = $derived(
+    [...new Set([...seriesFor(shown.key), ...(compared ? seriesFor(compared.key) : [])].map((p) => p.day))]
+      .sort((a, b) => b - a)
+  );
   let valueRows = $derived<BarRow[]>(
-    seriesFor(shown.key)
-      .toReversed()
-      .map((point) => ({
-        key: String(point.day),
-        name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
-        note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
-        value: fmtNativeValue(shown.key, point.value),
-        amount: (point.value - shown.min) / Math.max(shown.max - shown.min, 1)
-      }))
+    valueDays.map((day) => {
+      const point = seriesFor(shown.key).find((p) => p.day === day);
+      const second = comparedByDay?.get(day);
+      const notes = [
+        point && point.count > 1 ? m.avg_of({ count: String(point.count) }) : null,
+        compared && second ? `${compared.name}: ${fmtNativeValue(compared.key, second.value)}` : null
+      ].filter(Boolean);
+      return {
+        key: String(day),
+        name: fmtDay(day, { weekday: 'short', day: 'numeric', month: 'short' }),
+        note: notes.length ? notes.join(' · ') : undefined,
+        /* Empty rather than a dash on a day this scale was not logged, the
+           same way a scale with no days shows an empty value in the bars
+           above: docs/ui-copy.md has no dashes in it. */
+        value: point ? fmtNativeValue(shown.key, point.value) : '',
+        amount: point ? (point.value - shown.min) / Math.max(shown.max - shown.min, 1) : 0
+      };
+    })
   );
 
   let insightEntriesQuery = liveList((j) => {
@@ -318,33 +371,6 @@
     )
   );
 
-  /* A second scale on the same chart (phase 6 ticket 12). The manual,
-     hypothesis-driven companion to the app noticing things for you:
-     somebody who suspects two of their scales move together can look,
-     rather than wait.
-
-     Opt-in and empty by default. A second picker sitting on the card
-     whatever anyone asked for would put a comparison in front of every
-     person who opened the screen, and a comparison is a question somebody
-     has to have first. `seriesQuery` already fetches every scale's series in
-     one go, so choosing one costs no query.
-
-     Held to the scales that still exist, the same rule the constellation's
-     two axes follow: a scale unticked in settings, or the one the primary
-     picker has just moved onto, drops the comparison rather than leaving the
-     chart pointed at something nobody logs. */
-  let compareKey = $state('');
-  let comparing = $state(false);
-  $effect(() => {
-    if (compareKey && !metrics.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
-      compareKey = '';
-    }
-  });
-  let compared = $derived(metrics.find((mt) => mt.key === compareKey));
-  let compareOptions = $derived([
-    { value: '', label: m.stats_compare_none() },
-    ...metricOptions.filter((option) => option.value !== shown.key)
-  ]);
 
   /* Bucketed on its own and then read onto the first series' positions. The
      chart places its points by index, so two series bucketed separately
@@ -361,6 +387,13 @@
   let aligned = $derived(
     comparePlotted ? alignSeries(plotted.points, comparePlotted.points) : null
   );
+  /* A scale nothing was logged on over this range has no line to draw. The
+     chart would take the overlay, place nothing, and leave a legend naming a
+     line that is not there - so the second series is not handed over at all
+     and the screen says why instead. Read off the aligned values rather than
+     off the query, because a scale can hold readings that all fall outside
+     the range the screen is showing. */
+  let comparedHasReadings = $derived(aligned?.some((row) => row.b !== null) ?? false);
   /* One role along from the card's own, so the two lines are two stripes of
      the same flag and a palette switch recolours both. */
   let compareRole = $derived(roleAt(activeFlag.roles, AREA_ROLE.charts + 1));
@@ -508,7 +541,7 @@
         min={shown.min}
         max={shown.max}
         name={shown.name}
-        overlay={aligned && compared
+        overlay={aligned && compared && comparedHasReadings
           ? {
               values: aligned.map((row) => row.b),
               min: compared.min,
@@ -523,23 +556,33 @@
         formatValue={(v) => fmtNativeValue(shown.key, v)}
         scrubLabel={grainLabel(plotted.grain)}
         annotations={annotationsQuery.rows}
-        ariaLabel={compared
+        ariaLabel={compared && comparedHasReadings
           ? m.values_two_title({ first: shown.name, second: compared.name })
           : m.values_title({ name: shown.name })}
       />
+      {#if compared && !comparedHasReadings}
+        <p class="stats-note">{m.stats_compare_empty()}</p>
+      {/if}
       <!-- The second scale, offered rather than presented: a comparison is a
            question somebody has to have first, so until they ask there is a
            line of text here and no second control on the card. Nothing to
            offer at all where the journal holds one scale. -->
       {#if metrics.length > 1}
-        {#if comparing || compared}
-          <!-- The word on the left and the picker on the right, in the
-               constellation's own axis row: it is the same kind of control in
-               the same place - one setting for the picture above it, under
-               the plot because the card's heading line already holds the
-               chart's own picker. -->
-          <div class="stats-axes">
-            <p class="stats-axis">
+        <!-- The offer and the picker it becomes, in one row that does not
+             move. The constellation's own axis row, because it is the same
+             kind of control in the same place: one setting for the picture
+             above it, under the plot because the card's heading line already
+             holds the chart's own picker.
+
+             The offer stays inside that row rather than sitting where the
+             card's other text action sits. Right-aligned under the plot it
+             was the twin of "All values" below the card - same weight, same
+             colour, two different right edges - and those two are not peers:
+             one reconfigures the chart above it and the other opens a sheet
+             about something else. -->
+        <div class="stats-axes">
+          <p class="stats-axis">
+            {#if comparing || compared}
               <span id="stats-compare">{m.stats_compare_label()}</span>
               <ChartPicker
                 key="stats-compare"
@@ -551,13 +594,13 @@
                   comparing = value !== '';
                 }}
               />
-            </p>
-          </div>
-        {:else}
-          <button class="stats-open" data-compare-open onclick={() => (comparing = true)}>
-            {m.stats_compare_open()}
-          </button>
-        {/if}
+            {:else}
+              <button class="stats-compare-add" data-compare-open onclick={() => (comparing = true)}>
+                {m.stats_compare_open()}
+              </button>
+            {/if}
+          </p>
+        </div>
       {/if}
     {/if}
   </ChartCard>
@@ -803,7 +846,14 @@
        and the bar puts it where it sits in the scale - so a run of quiet days
        is visible in the list and not only in the chart above it. Newest
        first, because that is the end of the range you came from. -->
-  <Sheet open={valueSheet} title={shown.name} onClose={() => (valueSheet = false)}>
+  <!-- Named after both scales while both are on the chart: this is where
+       their numbers are read, and a sheet titled after one of them would be
+       hiding the other's. -->
+  <Sheet
+    open={valueSheet}
+    title={compared ? `${shown.name} · ${compared.name}` : shown.name}
+    onClose={() => (valueSheet = false)}
+  >
     <BarRows rows={valueRows} />
     <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
       <span>{m.done()}</span>
@@ -861,5 +911,23 @@
      still has to leave its label room. */
   .stats-axis :global(.kit-chart-pick) {
     max-width: 74%;
+  }
+
+  /* The offer of a second scale (phase 6 ticket 12), in the row the picker
+     will take. An action, so it keeps the accent and the weight the screen's
+     other text actions have; on the left, in the row, so it is not the
+     right-aligned twin of the "All values" link under the card. At the touch
+     floor like every other control here. */
+  .stats-compare-add {
+    min-height: var(--touch-target);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent-ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    text-align: left;
+    cursor: pointer;
   }
 </style>
