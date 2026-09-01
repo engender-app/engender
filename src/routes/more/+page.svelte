@@ -66,6 +66,7 @@
     { key: 'letters', icon: 'book', title: () => m.letters_title(), subtitle: () => m.letters_row_sub(), href: '/settings/letters' },
     { key: 'tryouts', icon: 'tag', title: () => m.tryout_title(), subtitle: () => m.tryout_row_sub(), href: '/settings/tryouts' },
     { key: 'presentations', icon: 'palette', title: () => m.presentations_title(), subtitle: () => m.presentations_row_sub(), href: '/settings/presentations' },
+    { key: 'eras', icon: 'columns', title: () => m.eras_title(), subtitle: () => m.eras_row_sub(), href: '/settings/eras' },
   ];
 
   const PRACTICE_ROWS: HubRow[] = [
