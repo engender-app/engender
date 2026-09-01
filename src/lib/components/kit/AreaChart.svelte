@@ -126,7 +126,15 @@
       /** A second stripe of the active flag, so a palette switch recolours
           both lines. Colour is never the only thing telling them apart: the
           second line is dashed and the legend under the plot repeats the
-          dash beside the name. */
+          dash beside the name.
+
+          Drawn in the role's `paired` rather than its raw stripe: the flag's
+          own colour wherever the stripe is one, and a visible version of it
+          where the stripe is one of the flag's shades. A lone mark on a card
+          owes no contrast ratio and takes the stripe exactly; two lines on
+          one plot are the case that rule was not written for, and agender is
+          where it shows - its flag's second band is #1A1A1A, which on a dark
+          card is the card. See Role.paired in $lib/theme/roles. */
       role?: Role;
     };
   } = $props();
@@ -341,7 +349,7 @@
     data-chart="area"
     role="img"
     aria-label={ariaLabel}
-    style:--role-2={overlay?.role?.stripe}
+    style:--role-2={overlay?.role?.paired}
     in:wipe={{ authored: true }}
     onpointerdown={scrubTo}
     onpointermove={scrubIfHeld}
@@ -520,7 +528,15 @@
          The swatches are line segments repeating the plot's own strokes, one
          solid and one dashed, so the pairing holds for anybody who cannot
          separate the two colours. -->
-    <p class="kit-area-legend" data-chart-legend aria-hidden="true">
+    <!-- The stripe is set here as well as on the plot: the two are siblings
+         rather than one inside the other, so a custom property declared on
+         the plot does not reach the swatch that names its line. -->
+    <p
+      class="kit-area-legend"
+      data-chart-legend
+      aria-hidden="true"
+      style:--role-2={overlay.role?.paired}
+    >
       <span class="kit-area-legend-item"><span class="kit-area-legend-mark"></span>{name ?? ''}</span>
       <span class="kit-area-legend-item"
         ><span class="kit-area-legend-mark is-overlay"></span>{overlay.name}</span
