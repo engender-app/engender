@@ -1,0 +1,24 @@
+[
+  {
+    "date": "2026-9-1",
+    "type": "MOOD",
+    "scores": [3],
+    "notes": "Told them my name, out loud.",
+    "tags": [
+      { "type": "Emotions", "entries": ["Grateful", "Excited"] },
+      { "type": "Activities", "entries": ["Paid Bills", "Laundry"] },
+      { "type": "Symptoms", "entries": ["Insomnia", "Dizziness"] },
+      { "type": "Cycle", "entries": ["Heavy Flow", "Pre-Menstrual (PMS)"] }
+    ]
+  },
+  { "date": "2026-09-02", "type": "MOOD", "scores": [4], "notes": "", "tags": [] },
+  { "date": "2026-09-03", "type": "MOOD", "scores": [3, 5], "notes": "", "tags": [] },
+  {
+    "date": "2026-09-04",
+    "type": "MOOD",
+    "scores": [2],
+    "notes": "",
+    "tags": [{ "type": "Weather", "entries": ["Rain"] }]
+  },
+  { "date": "2026-09-05", "type": "HABIT", "scores": [1], "notes": "not a mood record", "tags": [] }
+]
