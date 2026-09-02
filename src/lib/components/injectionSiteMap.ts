@@ -17,6 +17,11 @@ export const MAP_WIDTH = 280;
     cannot read. The test next door holds the two in step. */
 export const MAP_TOUCH_TARGET = 48;
 
+/** The clear space Android asks for between two touch targets, on top of
+    the targets themselves. Twelve dots on one small figure is exactly the
+    layout where that guidance earns its keep. */
+export const MAP_TOUCH_GAP = 8;
+
 /** Where each region sits on the silhouette, as percentages of the box.
     The left/right pair mirrors around the midline, so one entry per region
     places both.
@@ -25,17 +30,19 @@ export const MAP_TOUCH_TARGET = 48;
     it is wide: the torso runs from 15% to 44% of the height, the pelvis to
     49%, and the legs from there down.
 
-    Spaced so that no two of the twelve targets overlap - see the test. The
-    binding constraint is the widest pair, because a region's two sides sit
-    `100 - 2 * inset` apart: at 280px, an inset of 41% is as far out as the
-    abdomen can go and still leave its own two dots a target apart. */
+    Spaced so that no two of the twelve targets come within 8px of each
+    other - see the test. The binding constraint is the widest pair, because
+    a region's two sides sit `100 - 2 * inset` apart: at 280px, an inset of
+    40% is as far out as the abdomen can go and still leave its own two dots
+    a target and a gap apart. The stack then has 274px of height for six
+    rows, which is why the vertical steps are as even as they are. */
 const PLACEMENT: Record<InjectionSiteRegion, { top: number; inset: number }> = {
-  deltoid: { top: 19, inset: 25 },
-  abdomen: { top: 30, inset: 41 },
-  loveHandle: { top: 38, inset: 34 },
-  ventrogluteal: { top: 47, inset: 37 },
-  dorsogluteal: { top: 55.5, inset: 33 },
-  thigh: { top: 64, inset: 40 }
+  deltoid: { top: 18, inset: 25 },
+  abdomen: { top: 28, inset: 40 },
+  loveHandle: { top: 37.5, inset: 33 },
+  ventrogluteal: { top: 47.5, inset: 36 },
+  dorsogluteal: { top: 57.5, inset: 33 },
+  thigh: { top: 67, inset: 40 }
 };
 
 /** A site's dot as percentages of the box, for the component's inline

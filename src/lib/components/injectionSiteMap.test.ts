@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { INJECTION_SITES } from '../data/doseSchedule';
-import { MAP_TOUCH_TARGET, MAP_WIDTH, siteCentre } from './injectionSiteMap';
+import { MAP_TOUCH_GAP, MAP_TOUCH_TARGET, MAP_WIDTH, siteCentre } from './injectionSiteMap';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -16,7 +16,7 @@ const root = fileURLToPath(new URL('../../..', import.meta.url));
    text list instead of on the dots, so this is the seam that let the ramp
    onto the map. */
 describe('injection site map layout', () => {
-  it('keeps every pair of sites at least one touch target apart', () => {
+  it('keeps every pair of sites a touch target and a gap apart', () => {
     const centres = INJECTION_SITES.map((site) => ({ key: site.key, ...siteCentre(site) }));
     let closest = { gap: Infinity, pair: '' };
     for (const [i, a] of centres.entries()) {
@@ -25,10 +25,12 @@ describe('injection site map layout', () => {
         if (gap < closest.gap) closest = { gap, pair: `${a.key} and ${b.key}` };
       }
     }
-    // Round targets, so centres a full target apart are tangent at worst
-    // and every dot keeps a tap aimed anywhere inside its own circle.
+    // Round targets, so centres a target apart are tangent at worst and
+    // every dot keeps a tap aimed anywhere inside its own circle. Android
+    // asks for 8dp of clear space between two targets on top of that,
+    // which is the number here.
     expect(closest.gap, `${closest.pair} are ${closest.gap.toFixed(1)}px apart`).toBeGreaterThanOrEqual(
-      MAP_TOUCH_TARGET
+      MAP_TOUCH_TARGET + MAP_TOUCH_GAP
     );
   });
 

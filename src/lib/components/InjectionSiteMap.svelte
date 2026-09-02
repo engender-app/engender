@@ -18,7 +18,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { INJECTION_SITES, type InjectionSiteKey } from '$lib/data/doseSchedule';
-  import { recencyHeatLevel } from '$lib/data/metricRange';
+  import { recencyHeatLevel, recencySpan } from '$lib/data/metricRange';
   import { injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
   import { sitePosition } from './injectionSiteMap';
 
@@ -42,21 +42,24 @@
     onChange: (site: InjectionSiteKey) => void;
   } = $props();
 
+  /** The ramp shades across this journal's own span of recency rather than
+      across day bands the app picked, so a weekly rotation and a
+      fortnightly one both use the whole ramp (metricRange.ts). */
+  const span = $derived(recency ? recencySpan(Object.values(recency)) : null);
+
   /** The swatch a site's recency lands on, or null where the caller passed
       no recency at all. Level 0 is the never-used state, which is drawn as
       an empty dot rather than as the pale end of the ramp: neither a large
       number nor zero reads as "never". */
   const levelOf = (key: InjectionSiteKey) =>
-    recency ? recencyHeatLevel(recency[key]) : null;
+    recency && span ? recencyHeatLevel(recency[key], span) : null;
 
-  /** The dot's own two colours as custom properties. `--on-heat-N` is the
-      ink palettes.css already tunes for a fill that deep, which is what
-      keeps the dashed last-used edge legible on the strongest swatch and on
-      the empty one alike. */
+  /** The dot's fill as a custom property, so the list's swatches can be
+      the same colour by the same route. Level 0 sets nothing: an empty dot
+      is drawn by the absence of a fill rather than by a colour that stands
+      for absence. */
   const swatchStyle = (level: number | null) =>
-    level === null
-      ? ''
-      : `--dot-fill:var(--heat-${level});--dot-ink:var(--on-heat-${level})`;
+    level === null || level === 0 ? '' : `--dot-fill:var(--heat-${level})`;
 
   const dotStyle = (site: (typeof INJECTION_SITES)[number]) => {
     const { top, left } = sitePosition(site);
@@ -172,42 +175,66 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    border: 1.5px solid var(--border);
+    /* --outline-strong, not --border: this is palettes.css's line for a
+       control that has to hold its own edge against a fill, and the dot has
+       to hold it against the silhouette's own surface as well - --border
+       over --surface-2 is close to invisible in both themes. */
+    border: 1.5px solid var(--outline-strong);
     background: var(--dot-fill, var(--surface));
     transition:
       background var(--dur-fast) var(--ease-out),
       border-color var(--dur-fast) var(--ease-out);
   }
-  /* Never used. Empty and a size down, two channels rather than one,
-     because the faintest step of the ramp is a 22% tint and "never" must
-     not read as "a long time ago". */
+  /* Never used: no fill and a firmer edge, at the same size as the rest.
+     Hollow against filled is the whole difference, and it has to hold
+     against the faintest step of the ramp rather than against nothing - a
+     dot a size down would also read as a site the map thinks less of, and
+     a site nobody has used yet is a site to consider. */
   .site-dot.is-never::after {
-    width: 15px;
-    height: 15px;
     background: none;
+    border-width: 2px;
   }
   .site-dot:hover::after {
     border-color: var(--accent);
   }
-  /* The site tapped for this dose. A ring around the dot rather than a
-     fill, because the fill is spoken for: picking a site must not erase
-     what the map says about it. */
-  .site-dot.is-selected::before {
+  /* Both of the map's other two things are a ring around the dot rather
+     than a change to it, because the dot itself is spoken for: neither
+     picking a site nor having used it last may erase what the map says
+     about when it was used.
+
+     One ring, two strokes. They cannot appear together - a site that is
+     the current pick is not also marked as history - so the difference
+     they have to carry is against the plain dot, not against each other.
+
+     Drawn on every dot and revealed, so the ring has something to ease
+     from; base.css flattens the transition under reduced motion. */
+  .site-dot::before {
     content: '';
     position: absolute;
     inset: 50% auto auto 50%;
-    transform: translate(-50%, -50%);
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    border: 2px solid var(--accent);
+    border: 2px solid transparent;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.82);
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
   }
-  /* Where the last injection went. Dashed, in the ink tuned for whatever
-     swatch it sits on: it is history, not the current pick, and the two
-     must not read alike. */
-  .site-dot.is-last::after {
-    border-color: var(--dot-ink, var(--accent));
+  /* The site tapped for this dose. */
+  .site-dot.is-selected::before {
+    border-color: var(--accent);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  /* Where the last injection went. Dashed: it is history, not a pick. */
+  .site-dot.is-last::before {
+    border-width: 1.5px;
     border-style: dashed;
+    border-color: var(--accent);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
   .site-map-caption {
     text-align: center;
@@ -233,14 +260,12 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 1.5px solid var(--border);
+    border: 1.5px solid var(--outline-strong);
     background: var(--dot-fill, var(--surface));
   }
   .site-recency-row.is-never .site-recency-swatch {
-    width: 9px;
-    height: 9px;
-    margin: 0 1.5px;
     background: none;
+    border-width: 2px;
   }
   .site-recency-row span:last-child {
     white-space: nowrap;
