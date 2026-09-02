@@ -36,6 +36,7 @@ import {
 import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylioBackup';
 import { dayonePreview, type DayOnePreview } from '../archive/dayone';
 import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
+import { trackAndGraphPreview, type TrackAndGraphPreview } from '../archive/trackAndGraph';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
@@ -53,6 +54,11 @@ export interface TransTracksCommitResult {
 export interface DayOneCommitResult {
   entriesAdded: number;
   photosAdded: number;
+}
+
+export interface TrackAndGraphCommitResult {
+  measurementsAdded: number;
+  typesAdded: number;
 }
 
 export interface ArchiveSnapshot {
@@ -121,6 +127,11 @@ export interface ArchiveArea {
     preview: DayOnePreview,
     normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
   ): Promise<DayOneCommitResult>;
+  /** Parses and resolves a Track & Graph CSV export without writing. */
+  previewTrackAndGraphImport(csv: string): Promise<TrackAndGraphPreview>;
+  /** Always Merge. Writes one import_log record on success (ticket 03), the
+      same as commitDaylioImport and commitTransTracksImport. */
+  commitTrackAndGraphImport(preview: TrackAndGraphPreview): Promise<TrackAndGraphCommitResult>;
   /** The import history, most recent first, for the settings screen
       (ticket 03). Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
@@ -315,6 +326,25 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         photosAdded: photosOf(after.journal) - photosOf(before.journal)
       };
       await recordImport(driver, 'dayone', { entries: result.entriesAdded, photos: result.photosAdded });
+      return result;
+    },
+
+    async previewTrackAndGraphImport(csv) {
+      return trackAndGraphPreview(csv, (await area.snapshot()).journal);
+    },
+
+    async commitTrackAndGraphImport(preview) {
+      const before = await area.snapshot();
+      await restoreArchive(driver, files, 'merge', {
+        journal: preview.journal,
+        files: (async function* () {})()
+      });
+      const after = await area.snapshot();
+      const result = {
+        measurementsAdded: after.journal.measurements.length - before.journal.measurements.length,
+        typesAdded: after.journal.measurementTypes.length - before.journal.measurementTypes.length
+      };
+      await recordImport(driver, 'trackAndGraph', { measurements: result.measurementsAdded, types: result.typesAdded });
       return result;
     },
 

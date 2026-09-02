@@ -19,9 +19,14 @@ import { daylioPreview, REQUIRED_COLUMNS as DAYLIO_REQUIRED_COLUMNS, detectDayli
 import { REQUIRED_FIELDS as DAYLIO_BACKUP_REQUIRED_FIELDS, daylioBackupPreview, detectDaylioBackup } from './daylioBackup';
 import { REQUIRED_COLUMNS as DAYONE_REQUIRED_COLUMNS, dayonePreview, detectDayOne } from './dayone';
 import { detectTransTracks, transTracksPreview } from './transtracks';
+import {
+  REQUIRED_COLUMNS as TRACK_AND_GRAPH_REQUIRED_COLUMNS,
+  detectTrackAndGraph,
+  trackAndGraphPreview
+} from './trackAndGraph';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'dayone' | 'transtracks';
+export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'dayone' | 'transtracks' | 'trackAndGraph';
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
@@ -93,6 +98,14 @@ const SOURCES = [
     detect: detectTransTracks,
     async preview(file, existing) {
       return (await transTracksPreview(file, existing)).journal;
+    }
+  },
+  {
+    name: 'trackAndGraph',
+    requiredFields: TRACK_AND_GRAPH_REQUIRED_COLUMNS,
+    detect: (file) => detectTrackAndGraph(text(file.subarray(0, HEAD_BYTES))),
+    async preview(file, existing) {
+      return (await trackAndGraphPreview(text(file), existing)).journal;
     }
   }
 ] as const satisfies readonly ArchiveSource[];
