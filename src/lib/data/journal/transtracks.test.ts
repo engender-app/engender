@@ -80,7 +80,11 @@ test('preview counts equal the merge, and importing the same TransTracks backup 
   assert.deepEqual(new TextDecoder().decode((await fileStore.read(fileName))!), 'the photo bytes');
   assert.deepEqual(new TextDecoder().decode((await fileStore.read(thumbFileName(fileName)))!), 'thumb:the photo bytes');
 
-  const beforeRepeat = (await journal.archive.snapshot()).journal;
+  const afterFirstImport = (await journal.archive.snapshot()).journal;
+  assert.equal(afterFirstImport.importLog.length, 1, 'a committed import writes one import_log record');
+  assert.equal(afterFirstImport.importLog[0].source, 'transtracks');
+  assert.deepEqual(afterFirstImport.importLog[0].counts, { milestones: 1, photos: 1 });
+
   const repeatPreview = await journal.archive.previewTransTracksImport(bytes);
   assert.equal(repeatPreview.milestoneCount, 0);
   assert.equal(repeatPreview.photoCount, 0);
@@ -88,7 +92,13 @@ test('preview counts equal the merge, and importing the same TransTracks backup 
     milestonesAdded: 0,
     photosAdded: 0
   });
-  assert.deepEqual((await journal.archive.snapshot()).journal, beforeRepeat);
+
+  // A no-op re-import still writes its own import_log record - confirming
+  // happened either way - so the journal otherwise matches, minus that log.
+  const afterRepeat = (await journal.archive.snapshot()).journal;
+  assert.deepEqual({ ...afterRepeat, importLog: [] }, { ...afterFirstImport, importLog: [] });
+  assert.equal(afterRepeat.importLog.length, 2);
+  assert.deepEqual(afterRepeat.importLog[1].counts, { milestones: 0, photos: 0 });
 });
 
 test('a photo whose file is absent from the zip is rejected before anything is written', async () => {
