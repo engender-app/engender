@@ -2,15 +2,19 @@
    calendar month and the values sheet on /stats, across all 8 palettes and
    both themes.
 
-   The mark is drawn in the cell's own computed ink, and the ink is a
-   different colour on every one of the 16 combinations, so this is the only
-   way to see whether it stays legible on a pale fill and stops short of
-   fighting the date on a deep one. The demo persona logs a second entry on
-   about one day in eight, which is what a real month looks like and is why
-   a month here has a handful of marks rather than a wall of them.
+   Two sweeps, because the screen has two colour systems on it. A gender
+   dimension shades in the active flag's stripe, so it sweeps all 8 palettes
+   in both themes. Mood draws its own five faces on its own ramp (ADR-0025),
+   which the flag does not reach at all, so it sweeps the 4 mood presets
+   instead - shooting it across the flags would be 16 identical pictures.
+
+   The demo persona logs a second entry on about one day in eight, which is
+   what a real month looks like and is why a month here has three split or
+   stacked days rather than a wall of them.
 
    The calendar shots come in pairs: the month as a person sees it, and the
-   same month again at 3x so the mark can actually be judged.
+   grid alone at 3x, where the split's seam and the deck's edge are at a
+   size they can be argued about.
 
    Run: VITE_DEMO=1 npm run build first, then
         node tests/spread-gallery.mjs [outDir]
@@ -21,6 +25,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
+
+/* Mood carries its own ramp, chosen independently of the flag (ADR-0025),
+   so a mood month looks the same on all 8 palettes and different on all 4
+   of these. Sweeping the flags for it would be 16 identical pictures. */
+const MOOD_PRESETS = ['amber', 'teal', 'plum', 'moss'];
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/spread-shots'));
@@ -49,11 +58,20 @@ async function settle(path) {
    the app's own settings rather than by writing the attribute: a later
    page.goto would drop a hand-set one and every shot after it would be a
    picture of the previous palette. */
-async function dress(palette, theme) {
+async function dress(palette, theme, moodPreset) {
   await settle('/settings');
   await page.locator(`[data-palette-pick="${palette}"]`).click();
+  if (moodPreset) await page.locator(`[data-mood-preset-pick="${moodPreset}"]`).click();
   await page.locator(`[data-segment="${theme}"]`).click();
   await page.waitForFunction((want) => document.documentElement.dataset.theme === want, theme);
+}
+
+async function month(metric) {
+  await settle('/calendar');
+  await page.locator('[data-cal-step="prev"]').click();
+  await page.selectOption('#calendar-metric', metric);
+  await page.waitForSelector('[data-cal-grid]:not([aria-busy="true"])');
+  await page.waitForTimeout(200);
 }
 
 async function shoot(name, selector) {
@@ -63,52 +81,46 @@ async function shoot(name, selector) {
   shots.push(name);
 }
 
+/* A gender dimension is the flag's, so it sweeps the flags. Both the whole
+   screen and the grid alone: the grid at this scale is the split's seam and
+   the deck's edge at a size they can be argued about. */
 for (const palette of PALETTES) {
   for (const theme of THEMES) {
     await dress(palette, theme);
-
-    /* Last month rather than this one. The persona logs today and stops, so
-       the current month is one cell of colour and 29 empty ones - and what
-       is being looked at is a month of days, several of which covered
-       ground.
-
-       Both metrics, because the two ranges make different pictures and the
-       ticket asks for both. Mood is five integers, so two entries on a day
-       land on the same value about as often as not and a month carries a
-       couple of marks; a dimension runs 0 to 100 and almost every
-       two-entry day covered some ground, which is the dense case and the
-       one that says whether a month of marks reads as noise. */
-    await settle('/calendar');
-    await page.locator('[data-cal-step="prev"]').click();
-    for (const metric of ['mood', 'euphoria_dysphoria']) {
-      await page.selectOption('#calendar-metric', metric);
-      await page.waitForSelector('[data-cal-grid]:not([aria-busy="true"])');
-      await page.waitForTimeout(200);
-      await shoot(`calendar-${metric}-${palette}-${theme}`, '[data-app-root]');
-      // The grid alone, which at this scale is the mark at a size it can be
-      // argued about.
-      await shoot(`grid-${metric}-${palette}-${theme}`, '[data-cal-grid]');
-    }
-
-    await settle('/stats');
-    await page.waitForSelector('[data-values-open]');
-    await page.locator('[data-values-open]').click();
-    await page.waitForSelector('[data-sheet] [data-bar-row]');
-    // The sheet rises (DIRECTION, tier 2); a shot taken on the click is a
-    // picture of it half transparent over the screen behind.
-    await page.waitForTimeout(600);
-    /* Scrolled to a day that covered ground. Two entries on one day is
-       about one day in eight, so the top of a 30-day list is mostly days
-       with nothing to say and a picture of it would show none of this. */
-    // text-under-test: the English catalogue's own wording for a spread.
-    // A gallery is a dev script and this is the cheapest way to find a row
-    // that has one; under `pl`, or after a copy edit, it finds nothing and
-    // the scroll below fails rather than quietly shooting the wrong row.
-    const marked = page.locator('[data-sheet] [data-bar-row]').filter({ hasText: ' to ' }).first();
-    await marked.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(200);
-    await shoot(`values-${palette}-${theme}`, '[data-sheet]');
+    await month('euphoria_dysphoria');
+    await shoot(`calendar-dimension-${palette}-${theme}`, '[data-app-root]');
+    await shoot(`grid-dimension-${palette}-${theme}`, '[data-cal-grid]');
   }
+}
+
+/* Mood sweeps its own four ramps instead, on one flag, because the flag
+   reaches none of it. */
+for (const preset of MOOD_PRESETS) {
+  for (const theme of THEMES) {
+    await dress('trans', theme, preset);
+    await month('mood');
+    await shoot(`calendar-mood-${preset}-${theme}`, '[data-app-root]');
+    await shoot(`grid-mood-${preset}-${theme}`, '[data-cal-grid]');
+  }
+}
+
+/* And the values sheet, which is words rather than colour and so needs one
+   of each theme rather than a sweep. */
+for (const theme of THEMES) {
+  await dress('lesbian', theme);
+  await settle('/stats');
+  await page.waitForSelector('[data-values-open]');
+  await page.locator('[data-values-open]').click();
+  await page.waitForSelector('[data-sheet] [data-bar-row]');
+  await page.waitForTimeout(600);
+  // text-under-test: the English catalogue's own wording for a spread.
+  // A gallery is a dev script and this is the cheapest way to find a row
+  // that has one; under `pl`, or after a copy edit, it finds nothing and
+  // the scroll below fails rather than quietly shooting the wrong row.
+  const marked = page.locator('[data-sheet] [data-bar-row]').filter({ hasText: ' to ' }).first();
+  await marked.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  await shoot(`values-${theme}`, '[data-sheet]');
 }
 
 await browser.close();

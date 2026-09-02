@@ -19,7 +19,7 @@
    screen in the metric's native units (ADR-0012). */
 
 import type { DayAverage, DaySpread } from './journal/stats';
-import { MOOD_RANGE, heatLevel, normalize, type MetricRange } from './metricRange';
+import { MOOD_RANGE, moodStep, normalize, type MetricRange } from './metricRange';
 
 /** The average of a day series, or null where nothing was logged. */
 export function seriesAverage(points: DayAverage[]): number | null {
@@ -92,7 +92,7 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
   const counts = new Map<number, number>();
   for (let step = MOOD_RANGE.min; step <= MOOD_RANGE.max; step++) counts.set(step, 0);
   for (const day of days) {
-    const step = Math.min(MOOD_RANGE.max, Math.max(MOOD_RANGE.min, Math.round(day.value)));
+    const step = moodStep(day.value);
     counts.set(step, (counts.get(step) ?? 0) + 1);
   }
   return [...counts].map(([step, count]) => ({ step, count }));
@@ -123,16 +123,26 @@ export type DayShape =
     a day of two readings that landed on different steps is **split** down
     the middle, one half per reading; a day whose readings all landed on the
     same step has no edge to draw, so it **stacks** instead; and a day of
-    three or more readings always stacks, because four bands at 46px is a
+    three or more readings always stacks, because four bands at 36px is a
     texture rather than four readings.
+
+    `stepOf` is what a step means on the metric being drawn, and the caller
+    owns it because the two answers are different systems: a gender
+    dimension resolves through the heat ramp's four levels, and mood
+    resolves to one of its own five faces (ADR-0025). Daylio's rule is
+    "two of the same mood", and this is that rule wherever the app has a
+    notion of the same.
 
     A stack says how many, not how much. That is the honest claim: the deck
     is countable and the day's two ends are read out in words beside it. */
-export function dayShape(spread: DaySpread | undefined, range: MetricRange): DayShape | null {
+export function dayShape(
+  spread: DaySpread | undefined,
+  stepOf: (value: number) => number
+): DayShape | null {
   if (!spread) return null;
   if (spread.count <= 1) return { kind: 'one' };
-  const low = heatLevel(spread.low, range);
-  const high = heatLevel(spread.high, range);
+  const low = stepOf(spread.low);
+  const high = stepOf(spread.high);
   if (spread.count === 2 && low !== high) return { kind: 'split', low, high };
   return { kind: 'stack', cards: Math.min(spread.count, MAX_STACK_CARDS) };
 }

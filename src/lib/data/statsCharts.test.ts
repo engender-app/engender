@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { DayAverage } from './journal/stats';
 import { MOOD_RANGE } from './metricRange';
 import { MAX_STACK_CARDS, coveredGround, dayShape, metricStandings, moodDistribution, seriesAverage } from './statsCharts';
+import { heatLevel, moodStep } from './metricRange';
 
 const days = (...values: number[]): DayAverage[] =>
   values.map((value, i) => ({ day: 20100 + i, value, count: 1 }));
@@ -67,45 +68,52 @@ describe('how many days landed on each mood', () => {
 describe('what a day is drawn as on the calendar', () => {
   const FEMININITY = { min: 0, max: 100 };
   const day = (low: number, high: number, count: number) => ({ day: 20100, low, high, count });
+  /* The two step systems a caller can hand in: a gender dimension resolves
+     through the heat ramp, mood through its own five faces (ADR-0025). */
+  const onRamp = (range: { min: number; max: number }) => (value: number) => heatLevel(value, range);
 
   it('draws nothing for a day the metric was never logged on', () => {
-    expect(dayShape(undefined, MOOD_RANGE)).toBeNull();
+    expect(dayShape(undefined, moodStep)).toBeNull();
   });
 
   it('leaves a day of one reading whole', () => {
-    expect(dayShape(day(4, 4, 1), MOOD_RANGE)).toEqual({ kind: 'one' });
+    expect(dayShape(day(4, 4, 1), moodStep)).toEqual({ kind: 'one' });
   });
 
   it('splits a day of two readings that landed on different steps, low half first', () => {
     /* The half is a fill, and a fill is a step, so the split carries steps
        rather than values. Low first and no further order: which one came
        first is a question this cannot answer. */
-    expect(dayShape(day(2, 5, 2), MOOD_RANGE)).toEqual({ kind: 'split', low: 1, high: 4 });
+    expect(dayShape(day(2, 5, 2), moodStep)).toEqual({ kind: 'split', low: 2, high: 5 });
   });
 
   it('stacks a day of two readings that landed on the same step', () => {
     // Nothing to draw an edge between: both halves would be one colour, and
     // a split with no visible edge reads as a day that said one thing.
-    expect(dayShape(day(4, 4, 2), MOOD_RANGE)).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(4, 4, 2), moodStep)).toEqual({ kind: 'stack', cards: 2 });
     // Two different values inside one step is the same case.
-    expect(dayShape(day(30, 44, 2), FEMININITY)).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(30, 44, 2), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 2 });
+    // And on mood, "the same step" is Daylio's "the same mood": 3.6 and 4.2
+    // are one face, so the day stacks rather than splitting.
+    expect(dayShape(day(3.6, 4.2, 2), moodStep)).toEqual({ kind: 'stack', cards: 2 });
   });
 
   it('stacks a day of three or more readings however far apart they were', () => {
     // Four bands at 46px is a texture rather than four readings.
-    expect(dayShape(day(1, 5, 3), MOOD_RANGE)).toEqual({ kind: 'stack', cards: 3 });
-    expect(dayShape(day(10, 90, 4), FEMININITY)).toEqual({ kind: 'stack', cards: 4 });
+    expect(dayShape(day(1, 5, 3), moodStep)).toEqual({ kind: 'stack', cards: 3 });
+    expect(dayShape(day(10, 90, 4), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 4 });
   });
 
   it('stops the deck where it stops being countable', () => {
-    expect(dayShape(day(1, 5, 9), MOOD_RANGE)).toEqual({ kind: 'stack', cards: MAX_STACK_CARDS });
+    expect(dayShape(day(1, 5, 9), moodStep)).toEqual({ kind: 'stack', cards: MAX_STACK_CARDS });
   });
 
-  it('splits the same pair of readings the same way whatever the range is', () => {
-    // A 1-to-5 metric and a 0-to-100 one both resolve through the heat
-    // steps, so a split means the same thing on either (ADR-0012).
-    expect(dayShape(day(1, 5, 2), MOOD_RANGE)).toEqual({ kind: 'split', low: 1, high: 4 });
-    expect(dayShape(day(0, 100, 2), FEMININITY)).toEqual({ kind: 'split', low: 1, high: 4 });
+  it('splits the ends of either scale, in that scale\'s own steps', () => {
+    /* The two systems do not agree on how many steps there are and they do
+       not have to: a half is drawn in whatever a step of the metric on
+       screen means, mood's five faces or the ramp's four levels. */
+    expect(dayShape(day(1, 5, 2), moodStep)).toEqual({ kind: 'split', low: 1, high: 5 });
+    expect(dayShape(day(0, 100, 2), onRamp(FEMININITY))).toEqual({ kind: 'split', low: 1, high: 4 });
   });
 });
 

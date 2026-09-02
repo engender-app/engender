@@ -13,7 +13,7 @@
    does to February's row. */
 
 import { epochDayFromLocalDate } from '../data/epochDay';
-import { MOOD_RANGE } from '../data/metricRange';
+import { moodStep } from '../data/metricRange';
 
 export interface MoodCell {
   epochDay: number;
@@ -71,7 +71,7 @@ export function moodYear(year: number, days: { day: number; value: number }[]): 
         step:
           value === null
             ? null
-            : Math.min(MOOD_RANGE.max, Math.max(MOOD_RANGE.min, Math.round(value)))
+            : moodStep(value)
       });
     }
   }

@@ -34,6 +34,23 @@
      rather than four readings. The rule is ../data/statsCharts.ts's, and
      it has a test; this file only draws it.
 
+     **On mood, the cell is the face a person chose.** Mood already owns
+     five drawn faces and a colour ramp of its own (ADR-0025, MoodFace),
+     and kit/MoodYear.svelte already draws a year of days as those faces -
+     with the size they stay legible at settled by tests/mood-faces.test.ts
+     and by Alicja twice on 2026-08-25. A calendar cell is bigger than any
+     of those, so this is that same drawing on a bigger grid, and the fill
+     is mood's own hex rather than the flag's stripe because those two
+     quantities looking alike is the beta report ADR-0025 came out of.
+
+     A gender dimension gets no face, and that is a rule rather than an
+     omission: neither end of binary <-> nonbinary is the better one, and a
+     mouth is the most direct way there is to say otherwise (ADR-0012, F15).
+     So a dimension keeps the flag-hued square and its legend, and mood is
+     round, faced, and has no legend at all - the faces are the picker's
+     own five, and naming them under the grid is the app explaining itself
+     to its reader (MoodYear's own note, Alicja, 2026-08-25).
+
      The form is Daylio's, which Alicja asked for by name on 2026-09-02
      against a screenshot of its month. Its calendar is the reason the date
      moved out from under the fill: a split cell has two fills under one
@@ -54,7 +71,8 @@
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { heatLevel } from '$lib/data/metricRange';
+  import { heatLevel, moodStep } from '$lib/data/metricRange';
+  import MoodFace from '$lib/components/MoodFace.svelte';
   import { dayShape, type DayShape } from '$lib/data/statsCharts';
   import { spreadNote } from '$lib/data/wrappedDisplay';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -83,7 +101,16 @@
   /* One lookup for a cell and for its legend swatch, so the two cannot
      disagree. `var(--heat-N)` rather than a colour because the fallback is
      the stylesheet's, hand-tuned per palette; the role's ramp is computed. */
-  const fillAt = (level: number) => role?.heat[level].fill ?? `var(--heat-${level})`;
+  /* One lookup for a cell, a card, a half and a legend swatch, so none of
+     them can disagree. On mood it is mood's own hex (ADR-0025); otherwise
+     it is the role's computed ramp, falling back to the stylesheet's
+     hand-tuned tokens where there is no flag to shade with. Step 0 is the
+     empty end of both systems: a day nobody logged is not a day at the
+     bottom of a scale (kit/MoodYear.svelte's own rule). */
+  const fillAt = (step: number) =>
+    step === 0 || !isMood
+      ? (role?.heat[step].fill ?? `var(--heat-${step})`)
+      : `var(--mood-${step})`;
 
   /* The month, as two epoch days. Both queries below read them before their
      first await, so stepping to another month re-runs them. */
@@ -110,10 +137,17 @@
      six. While it is loading a cell says the date and stops there. */
   let loading = $derived(averages.loading || counts.loading || spreads.loading);
 
+  /** Mood is the one metric with faces and a ramp of its own (ADR-0025). */
+  let isMood = $derived(vocabulary.activeMetric === 'mood');
+
   let cells = $derived.by(() => {
-    // The day's value stays native; only the swatch it picks is normalized,
+    // The day's value stays native; only the step it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
     const range = vocabulary.rangeOf(vocabulary.activeMetric);
+    /* What a step means on the metric on screen: one of mood's five faces,
+       or one of the ramp's four levels. Both the fill and the split's own
+       "same reading twice" rule read it, so there is one of them. */
+    const stepOf = isMood ? moodStep : (value: number) => heatLevel(value, range);
     const valueByDay = new Map(averages.rows.map((point) => [point.day, point.value]));
     const countByDay = new Map(counts.rows.map((point) => [point.day, point.count]));
     const spreadByDay = new Map(spreads.rows.map((point) => [point.day, point]));
@@ -123,7 +157,10 @@
     const out: {
       day: number;
       epochDay: number;
-      level: number;
+      /** The day's average as a step of whatever is on screen, or 0 for a
+          day that carried none of the metric - which is the empty end of
+          both systems and not a reading at the bottom of either. */
+      step: number;
       count: number;
       /** Split, stacked or whole (../data/statsCharts.ts), or null for a
           day the metric was never logged on. Null while the read is in
@@ -137,9 +174,10 @@
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;
       const count = countByDay.get(epochDay) ?? 0;
+      const average = valueByDay.get(epochDay) ?? null;
       const spread = spreadByDay.get(epochDay);
       const date = fmtDay(epochDay, { day: 'numeric', month: 'long' });
-      const shape = loading ? null : dayShape(spread, range);
+      const shape = loading ? null : dayShape(spread, stepOf);
       /* The same words the values sheet on /stats writes for the same day,
          in native units (ADR-0012). Only the drawing is normalized, and
          nothing normalized is ever read out.
@@ -153,7 +191,7 @@
       out.push({
         day: d,
         epochDay,
-        level: heatLevel(valueByDay.get(epochDay) ?? null, range),
+        step: average === null ? 0 : stepOf(average),
         count,
         shape,
         isToday: epochDay === today,
@@ -202,45 +240,59 @@
      they were. That question is answered by the split, and by the words the
      cell reads out. -->
 {#snippet swatch(c: (typeof cells.days)[number])}
-  <span class="cal-stack">
+  <span class="cal-stack" class:is-round={isMood}>
     {#if c.shape?.kind === 'stack'}
       {#each Array.from({ length: c.shape.cards - 1 }) as _, i (i)}
         <span
           class="cal-card"
           data-hm-cell-stack
-          style="background:{fillAt(c.level)};--card:{i + 1}"
+          style="background:{fillAt(c.step)};--card:{i + 1}"
         ></span>
       {/each}
     {/if}
-    <span class="cal-swatch" style="background:{fillAt(c.level)}">
+    <span class="cal-swatch" style="background:{fillAt(c.step)}">
       {#if c.shape?.kind === 'split'}
         <span class="cal-half" data-hm-cell-split style="background:{fillAt(c.shape.low)}"></span>
         <span class="cal-half is-high" style="background:{fillAt(c.shape.high)}"></span>
       {/if}
     </span>
+    <!-- Over the halves rather than under them, and without its own disc,
+         so one face reads across a split day the way Daylio's does. It is
+         drawn for the day's average step: which of the two readings the day
+         "really" was is the question none of this answers. -->
+    {#if isMood && c.step > 0}
+      <span class="cal-face"><MoodFace step={c.step} size="100%" disc={false} /></span>
+    {/if}
   </span>
 {/snippet}
 
 <!-- The ends are the metric's own words, never "worst" and "best": neither
      end of binary <-> nonbinary is the better one, and colour that judges is
-     the one thing this app cannot do (ADR-0012, F15). -->
-<div
-  class="cal-legend"
-  data-cal-legend
-  aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
->
-  <span class="cal-legend-scale">
-    <span class="cal-legend-end">{legend.low}</span>
-    {#each SHADED as level (level)}
-      <span class="cal-legend-swatch" style="background:{fillAt(level)}"></span>
-    {/each}
-    <span class="cal-legend-end">{legend.high}</span>
-  </span>
-  <span class="cal-legend-none">
-    <span class="cal-legend-swatch" style="background:{fillAt(0)}"></span>
-    {m.legend_none()}
-  </span>
-</div>
+     the one thing this app cannot do (ADR-0012, F15).
+
+     Mood has none. Its five faces are the same five a person picks a mood
+     from every day, so a legend under them is the app explaining itself to
+     its reader - which is the call kit/MoodYear.svelte already made, and
+     Alicja's on 2026-08-25. -->
+{#if !isMood}
+  <div
+    class="cal-legend"
+    data-cal-legend
+    aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
+  >
+    <span class="cal-legend-scale">
+      <span class="cal-legend-end">{legend.low}</span>
+      {#each SHADED as level (level)}
+        <span class="cal-legend-swatch" style="background:{fillAt(level)}"></span>
+      {/each}
+      <span class="cal-legend-end">{legend.high}</span>
+    </span>
+    <span class="cal-legend-none">
+      <span class="cal-legend-swatch" style="background:{fillAt(0)}"></span>
+      {m.legend_none()}
+    </span>
+  </div>
+{/if}
 
 <style>
   .cal-grid {
@@ -277,12 +329,20 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1;
+    /* Written in the slash form so one declaration rounds both shapes: a
+       square cell's corner radius is a length, and a mood cell's is a
+       percentage of each axis, which is what makes a half of it a real
+       half-disc rather than a rectangle with rounded corners. */
+    --r: var(--radius-xs);
   }
+  /* Mood is round, because a mood is a face and a face is a disc
+     (MoodFace.svelte). A gender dimension is not and stays square. */
+  .cal-stack.is-round { --r: 50%; }
   .cal-card,
   .cal-swatch {
     position: absolute;
     inset: 0;
-    border-radius: var(--radius-xs);
+    border-radius: var(--r);
     /* The empty cells carry the same edge the shaded ones get from their
        fill, so a month reads as a grid rather than as scattered colour - and
        so a day with nothing logged is still a day. It is what separates one
@@ -290,15 +350,39 @@
     border: 1px solid var(--outline);
   }
   .cal-card { left: calc(var(--card) * -3px); }
-  .cal-swatch { background: var(--heat-0); overflow: hidden; }
+  .cal-swatch { background: var(--heat-0); }
+
+  /* A split is two pieces laid over each other rather than two halves butted
+     together, which is the detail Alicja read off Daylio's month on
+     2026-09-02: the upper half stands a pixel proud on each of its outer
+     sides and a pixel over the middle, so the seam reads as an edge with a
+     side in front of it. Butted, the two colours meet on a line and the cell
+     looks like one shape someone recoloured half of. */
   .cal-half {
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
     width: 50%;
+    border-radius: var(--r) 0 0 var(--r) / var(--r) 0 0 var(--r);
   }
-  .cal-half.is-high { left: 50%; }
+  .cal-half.is-high {
+    left: auto;
+    right: -1px;
+    top: -1px;
+    bottom: -1px;
+    width: calc(50% + 2px);
+    border-radius: 0 var(--r) var(--r) 0 / 0 var(--r) var(--r) 0;
+    box-shadow: -1px 0 0 var(--outline);
+  }
+
+  /* Over the halves, and the reason the face carries no disc of its own. */
+  .cal-face {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
   /* Today, marked by an outline rather than by a fill, because the fill is
      already saying something else. Above the deck, so a stacked today is
      still ringed once. */

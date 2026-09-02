@@ -156,6 +156,37 @@ describe('the heat map', () => {
     expect(markupOf(heatMap)).toContain('data-hm-cell-stack');
   });
 
+  it('draws mood as its own faces on its own ramp, and never the flag\'s', () => {
+    /* ADR-0025: mood and a gender metric looking alike is the beta report
+       that scale came out of, so a mood cell is mood's hex and not a stripe
+       of the active flag. The faces are the picker's own five (MoodFace),
+       at a size tests/mood-faces.test.ts holds them legible at, and a
+       calendar cell is bigger than the year grid that already draws them. */
+    expect(heatMap).toContain("import MoodFace from '$lib/components/MoodFace.svelte'");
+    expect(heatMap).toMatch(/isMood\s*=\s*\$derived\(vocabulary\.activeMetric === 'mood'\)/);
+    expect(heatMap).toContain('`var(--mood-${step})`');
+    // The face sits over the halves, so it brings no disc of its own.
+    expect(markupOf(heatMap)).toMatch(/<MoodFace[^>]*disc=\{false\}/);
+  });
+
+  it('gives a gender dimension no face, which is a rule and not an omission', () => {
+    /* F15 and ADR-0012: neither end of binary <-> nonbinary is the better
+       one, and a mouth is the most direct way there is to say otherwise. So
+       the faces are gated on mood alone - a later ticket dropping the gate
+       to "every metric gets a face" would be the judgment this app cannot
+       make, and no other test in the tree would see it. */
+    expect(heatMap).toMatch(/\{#if isMood && c\.step > 0\}/);
+    // And the flag's ramp is still what a dimension shades in.
+    expect(heatMap).toMatch(/role\?\.heat\[step\]\.fill/);
+  });
+
+  it('keeps the legend for the ramp it explains, and drops it where the faces are', () => {
+    /* kit/MoodYear.svelte made this call first and says why: the faces are
+       the same five a person picks a mood from every day, so naming them
+       under the grid is the app explaining itself to its reader. */
+    expect(markupOf(heatMap)).toMatch(/\{#if !isMood\}[\s\S]*?data-cal-legend/);
+  });
+
   it('keeps the date off the fill, now that a cell can carry two of them', () => {
     /* The reason the date moved out from under the swatch: the per-step ink
        (roles.ts) answers to one fill, and a split cell has two. Two steps
