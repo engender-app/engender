@@ -25,7 +25,7 @@
    format and the registry, and the ordering rule an import turns on
    (ADR-0011) is long enough to be worth reading on its own. */
 
-import { filesOf } from '../photos/names';
+import { filesOf, thumbFileName } from '../photos/names';
 import { restoreArchive, type RestoreContents } from './restore';
 import {
   daylioPreview,
@@ -33,6 +33,8 @@ import {
   type DaylioNaming,
   type DaylioPreview
 } from '../archive/daylio';
+import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylioBackup';
+import type { NormalizedPhoto } from './photos';
 import type { ArchiveFile, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
@@ -50,6 +52,18 @@ export interface ArchiveSnapshot {
   readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
+/** What a committed backup import added, taken from the preview rather
+    than measured again afterwards: the preview is defined as the exact
+    work a commit performs, and re-reading the whole journal twice to
+    subtract seven numbers would be a second answer to a question that
+    already has one. */
+export interface DaylioBackupCommitResult {
+  entriesAdded: number;
+  milestonesAdded: number;
+  tagsAdded: number;
+  attachmentsAdded: number;
+}
+
 export interface ArchiveArea {
   snapshot(): Promise<ArchiveSnapshot>;
   /** Parses and resolves a Daylio CSV without writing. Counts are net
@@ -57,6 +71,17 @@ export interface ArchiveArea {
   previewDaylioImport(csv: string, naming: DaylioNaming): Promise<DaylioPreview>;
   /** Always Merge. An unmapped mood is refused before restore sees a row. */
   commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
+  /** The same two steps for a `.daylio` backup rather than a CSV export
+      (phase 7 ticket 09), which carries milestones, tag groups, custom
+      scales, writing templates, photos and voice notes as well. */
+  previewDaylioBackupImport(file: Uint8Array, naming: DaylioNaming): Promise<DaylioBackupPreview>;
+  /** Always Merge. `normalize` is the photo pipeline (photos/normalize.ts),
+      passed in rather than imported: it needs a canvas, and this seam is
+      Node-tested. */
+  commitDaylioBackupImport(
+    preview: DaylioBackupPreview,
+    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
+  ): Promise<DaylioBackupCommitResult>;
   /** Discards this device's journal and installs the archive's, keeping the
       built-in vocabulary by key and leaving preferences alone (ADR-0011).
       One operation: the order it happens in is not a caller's to compose. */
@@ -122,6 +147,48 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         tagsAdded:
           after.journal.tagGroups.flatMap((group) => group.tags).length -
           before.journal.tagGroups.flatMap((group) => group.tags).length
+      };
+    },
+
+    async previewDaylioBackupImport(file, naming) {
+      return daylioBackupPreview(file, (await area.snapshot()).journal, naming);
+    },
+
+    async commitDaylioBackupImport(preview, normalize) {
+      if (preview.unmappedMoodNames.length > 0) {
+        throw new Error(
+          `Daylio mood ${preview.unmappedMoodNames.join(', ')} has no scale position; nothing was imported`
+        );
+      }
+
+      /* The photos are re-encoded on the way in rather than stored as
+         Daylio held them: that is what strips their metadata, caps them at
+         the stored edge and produces the thumbnail whose name every screen
+         derives (photos/normalize.ts, photos/names.ts, ADR-0008). Files
+         are written before any row is (restore.ts), so a photo this
+         cannot decode fails the import with the journal untouched.
+
+         One asset at a time, because the alternative is holding a
+         journal's worth of decoded bitmaps at once. */
+      const assetFiles = async function* () {
+        for (const asset of preview.assets) {
+          const bytes = await asset.read();
+          if (asset.kind !== 'photo') {
+            yield { name: asset.fileName, bytes };
+            continue;
+          }
+          const normalized = await normalize(bytes);
+          yield { name: asset.fileName, bytes: normalized.full };
+          yield { name: thumbFileName(asset.fileName), bytes: normalized.thumb };
+        }
+      };
+
+      await restoreArchive(driver, files, 'merge', { journal: preview.journal, files: assetFiles() });
+      return {
+        entriesAdded: preview.entryCount,
+        milestonesAdded: preview.milestoneCount,
+        tagsAdded: preview.newTagCount,
+        attachmentsAdded: preview.photoCount + preview.audioCount
       };
     },
 
