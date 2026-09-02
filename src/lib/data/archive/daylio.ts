@@ -64,7 +64,9 @@ const MOODS = new Map<string, number>([
   ['świetnie', 5]
 ]);
 
-const REQUIRED_COLUMNS = ['full_date', 'time', 'mood', 'activities', 'note_title', 'note'] as const;
+/** Exported for the source registry (ticket 02): what `detectDaylio` sniffs
+    for and what `parseRows` below still enforces on the real parse. */
+export const REQUIRED_COLUMNS = ['full_date', 'time', 'mood', 'activities', 'note_title', 'note'] as const;
 
 type DaylioRow = Record<(typeof REQUIRED_COLUMNS)[number], string>;
 
@@ -142,6 +144,23 @@ function parseRows(csv: string): DaylioRow[] {
     }
     return Object.fromEntries(REQUIRED_COLUMNS.map((column) => [column, fields[headers.indexOf(column)]])) as DaylioRow;
   });
+}
+
+/** The source registry's own sniff (ticket 02): does the header look like
+    Daylio's, with no commitment to the rest of the file parsing. Reads only
+    the first line, not the whole file through `csvRows`, so a file that is
+    unmistakably Daylio by its header still detects as Daylio even when a
+    later row is damaged - detecting picks a source to try, parseRows is
+    still what decides whether the file is well-formed. */
+export function detectDaylio(text: string): boolean {
+  const withoutBom = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const firstLine = withoutBom.split(/\r\n|\r|\n/, 1)[0] ?? '';
+  try {
+    const headers = csvRows(firstLine)[0]?.map((header) => header.trim().toLowerCase()) ?? [];
+    return REQUIRED_COLUMNS.every((required) => headers.includes(required));
+  } catch {
+    return false;
+  }
 }
 
 function localDay(value: string, rowNumber: number): number {
