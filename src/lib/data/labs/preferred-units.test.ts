@@ -12,6 +12,8 @@ describe('manual labs preferred-unit defaults', () => {
   });
 
   test('new rows stay blank for analytes without a preferred unit', () => {
+    // Prolactin is no longer a preferred-unit analyte at all (ticket 14), so
+    // this passes the same way an unrecognised name like 'shbg' would.
     expect(defaultUnitForAnalyte('prolactin', preferred)).toBe('');
   });
 
