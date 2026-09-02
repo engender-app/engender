@@ -44,6 +44,7 @@
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
   import { wrappedStreaks, wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
   import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
+  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import {
     WRAPPED_RANGE_CHOICES,
     parseWrappedRangeParams,
@@ -92,6 +93,8 @@
      (ADR-0010). */
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
+  // Phase 6 ticket 05: which of those eras are muted.
+  let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
 
   /* The picked range lives in the URL rather than in component state, the
      same way a cadence does, so it survives a reload, a back gesture and a
@@ -108,6 +111,16 @@
 
   let period = $derived(cadence ? completedWrappedPeriod(cadence, today) : null);
   let range = $derived(isRange ? picked.range : period ? { start: period.start, end: period.end } : null);
+
+  /* Phase 6 ticket 05: whether any day the range covers falls inside a
+     muted era - not just the two ends, so a wide range with a muted stretch
+     in the middle of it is caught too (resurfacingConsent.ts). Checked
+     against the whole range regardless of how it was picked: an era chosen
+     directly and a cadence that happens to fall inside a muted era are the
+     same situation from here. */
+  let muted = $derived(
+    range ? touchesMutedEra(erasQuery.rows, mutedQuery.value ?? new Set(), range.start, range.end) : false
+  );
 
   /* The four tabs. Ordered shortest first, the way a person thinks about
      looking back, with the arbitrary range last because it is the one that
@@ -217,12 +230,12 @@
   let on = $derived(prefs.wrappedEnabled);
 
   let recapQuery = liveQuery((j) =>
-    on && range ? j.stats.recap(range.start, range.end) : Promise.resolve(null)
+    on && range && !muted ? j.stats.recap(range.start, range.end) : Promise.resolve(null)
   );
   let recap = $derived(recapQuery.value);
 
   let moodTrendQuery = liveList((j) =>
-    on && range ? j.stats.dayAverages('mood', range.start, range.end) : Promise.resolve([])
+    on && range && !muted ? j.stats.dayAverages('mood', range.start, range.end) : Promise.resolve([])
   );
   let moodTrend = $derived((moodTrendQuery.rows) as DayAverage[]);
 
@@ -231,11 +244,11 @@
      or worse days" is measured on is one preference with one control, and it
      is set on the screen that draws the scales. */
   let insightsQuery = liveList((j) =>
-    on && range ? j.stats.tagInsights(metricKey(prefs), range.start, range.end) : Promise.resolve([])
+    on && range && !muted ? j.stats.tagInsights(metricKey(prefs), range.start, range.end) : Promise.resolve([])
   );
 
   let tallyQuery = liveQuery(async (j) => {
-    if (!on || !range) return null;
+    if (!on || !range || muted) return null;
     const [misgendered, correctlyGendered] = await Promise.all([
       j.stats.tallyTrend('misgendered', range.start, range.end),
       j.stats.tallyTrend('correctly_gendered', range.start, range.end)
@@ -248,7 +261,7 @@
      a whole-history streak query behind a screen that shows none is the
      thing the branch exists to prevent. */
   let bestEverQuery = liveQuery((j) =>
-    on && range ? j.stats.bestStreakEver(today) : Promise.resolve(0)
+    on && range && !muted ? j.stats.bestStreakEver(today) : Promise.resolve(0)
   );
 
   let insights = $derived(nameTagInsights(wrappedTagInsights(insightsQuery.rows) ?? []));
@@ -264,10 +277,10 @@
      the ticket names the annual recap. Sealed ones never reach the
      component: letterRetrospective.ts answers the seal question. */
   let lettersQuery = liveList((j) =>
-    on && cadence === 'year' ? j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT) : Promise.resolve([])
+    on && cadence === 'year' && !muted ? j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT) : Promise.resolve([])
   );
   let yearLetters = $derived(
-    period && cadence === 'year' ? wrappedLetters(lettersQuery.rows, period.start, period.end, today) : []
+    period && cadence === 'year' && !muted ? wrappedLetters(lettersQuery.rows, period.start, period.end, today) : []
   );
 
   /* Both templates take the dimension and the tags already named, so neither
@@ -419,6 +432,19 @@
            a wrong answer rather than a pending one. -->
     {:else if loading}
       <Skeleton variant="block" count={1} />
+    {:else if muted}
+      <!-- Phase 6 ticket 05: an era somewhere in this period is muted, so
+         nothing is read for it at all - not a thin recap, no recap.
+         Checked before the entry-floor branch below, which would otherwise
+         read a null recap as "not much here yet" rather than "kept out". -->
+      <Notice
+        icon="eyeOff"
+        key="wrapped-muted"
+        title={m.wrapped_muted_title()}
+        text={m.wrapped_muted_body()}
+        action={{ label: m.eras_title(), href: '/settings/eras' }}
+        aria-live="polite"
+      />
     {:else if !recap || recap.entryCount < WRAPPED_ENTRY_FLOOR}
       <!-- The same floor Home applies before offering the card, and now the
            same one a picked range gets. Reachable anyway through a bookmark

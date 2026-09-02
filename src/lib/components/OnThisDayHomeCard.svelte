@@ -19,15 +19,23 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { onThisDayCandidates } from '$lib/data/on-this-day';
+  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import Tile from './kit/Tile.svelte';
 
   const candidates = onThisDayCandidates(todayEpochDay());
 
-  /* Invalidated on entry or tag writes: those are the only two things the
-     good-day rule reads (day average mood, the euphoria tag). */
+  /* Invalidated on entry or tag writes (the good-day rule's own two
+     dependencies), and on either half of the mute layer (phase 6 ticket
+     05): eras and era mutes. */
   let goodDaysQuery = liveList(async (j) => {
-    const results = await Promise.all(candidates.map((c) => j.stats.isGoodDay(c.epochDay)));
-    return candidates.filter((_, i) => results[i]);
+    const [eras, mutedEraUuids, goodDays] = await Promise.all([
+      j.eras.getEras(),
+      j.eraMutes.getMutedEraUuids(),
+      Promise.all(candidates.map((c) => j.stats.isGoodDay(c.epochDay)))
+    ]);
+    return candidates.filter(
+      (c, i) => goodDays[i] && !touchesMutedEra(eras, mutedEraUuids, c.epochDay, c.epochDay)
+    );
   });
   let qualifying = $derived(goodDaysQuery.rows);
 

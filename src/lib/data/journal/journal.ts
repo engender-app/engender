@@ -33,6 +33,7 @@ import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
 import { makeErasArea, type ErasArea } from './eras';
+import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
 import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLettersArea, type LettersArea } from './letters';
@@ -175,6 +176,12 @@ export interface Journal {
       setting, and the surfaces that adopt it as a filter resolve days
       through `eras.ts` rather than through this area. */
   eras: ErasArea;
+  /** Which of those eras are muted from resurfacing (phase 6 ticket 05,
+      ADR-0049, CONTEXT: "Resurfacing consent"). A second area rather than a
+      field on `eras`, for the same reason `era` owns no mute column: the
+      rows here outlive the era they name, and resurfacingConsent.ts is the
+      one place that reads the two areas together. */
+  eraMutes: EraMutesArea;
   /** What was happening around the numbers a time chart draws (phase 5
       deepening ticket 23): milestones, regimen episodes, dose and journaling
       pauses, tryouts, and a procedure's surgery day and recovery window, for
@@ -351,6 +358,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const journalingPauses = makeJournalingPausesArea(driver);
   const eras = makeErasArea(driver);
+  const eraMutes = makeEraMutesArea(driver);
 
   return {
     entries,
@@ -378,6 +386,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     cycleEvents,
     journalingPauses,
     eras,
+    eraMutes,
     chartAnnotations: makeChartAnnotationsArea({
       milestones,
       regimen,

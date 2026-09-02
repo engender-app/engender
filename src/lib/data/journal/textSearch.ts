@@ -473,6 +473,9 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   tallyEvents: 'no text of its own: a kind on a day, and a context column nothing writes',
   dosePauses: 'no text of its own: a start day, an end day and a reason from a closed pair',
   journalingPauses: 'no text of its own: a start day and an end day',
+  // The row is a uuid pointing at an era, whose own name is what `eras`
+  // above already searches - and a mute is presence, not a value.
+  eraMutes: 'no text of its own: a uuid naming a muted era',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
   hairPhotos: 'no text of its own: a dated photograph',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
