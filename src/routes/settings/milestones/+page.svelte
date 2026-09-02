@@ -59,6 +59,7 @@
     id?: string;
     name: string;
     date: string;
+    description: string;
     photo: EditorPhoto | null;
     storedPhotoId: string | null;
     originalPhoto: Photo | null;
@@ -84,6 +85,7 @@
     blank: () => ({
       name: template?.name ?? '',
       date: dateInputValueFromEpochDay(todayEpochDay()),
+      description: '',
       photo: null,
       storedPhotoId: null,
       originalPhoto: null,
@@ -93,6 +95,7 @@
       id: existing.id,
       name: existing.name,
       date: dateInputValueFromEpochDay(existing.epochDay),
+      description: existing.description,
       photo: existing.photo && { kind: 'stored', photo: existing.photo },
       storedPhotoId: existing.photo?.id ?? null,
       originalPhoto: existing.photo ?? null,
@@ -111,6 +114,7 @@
         id: draft.id,
         name: draft.name.trim() || m.ms_default_name(),
         epochDay: epochDayFromDateInputValueOrToday(draft.date),
+        description: draft.description,
         templateKey: draft.templateKey,
         photo
       });
@@ -288,6 +292,18 @@
       <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
         {#snippet children(id)}
           <DatePicker name="ms-date" bind:value={editor.date} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.ms_description_label()} id="ms-description">
+        {#snippet children(id)}
+          <textarea
+            class="input"
+            {id}
+            name="ms-description"
+            rows="3"
+            placeholder={m.ms_description_placeholder()}
+            bind:value={editor.description}
+          ></textarea>
         {/snippet}
       </Field>
       <Field label={m.ms_photo_label()} legend>

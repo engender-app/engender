@@ -331,10 +331,11 @@ export function makeProceduresArea(
         uuid: string;
         name: string;
         epoch_day: number;
+        description: string;
         template_key: string | null;
         procedure_id: string | null;
       }>(
-        'SELECT id, uuid, name, epoch_day, template_key, procedure_id FROM milestone WHERE procedure_id = ? LIMIT 1',
+        'SELECT id, uuid, name, epoch_day, description, template_key, procedure_id FROM milestone WHERE procedure_id = ? LIMIT 1',
         [procedureId]
       );
       if (rows.length === 0) return null;
@@ -343,6 +344,7 @@ export function makeProceduresArea(
         id: rows[0].uuid,
         name: rows[0].name,
         epochDay: rows[0].epoch_day,
+        description: rows[0].description,
         templateKey: rows[0].template_key,
         procedureId: rows[0].procedure_id,
         photo: photos.get(rows[0].id) ?? null

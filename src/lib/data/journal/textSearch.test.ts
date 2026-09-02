@@ -240,6 +240,28 @@ test('a row that matched on two of its columns shows the one its area prefers', 
   assert.deepEqual(await found(journal, 'zolc'), ['żółć journey']);
 });
 
+test('a milestone matches on its description when its name does not', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.milestones.upsertMilestone({
+    name: 'first laser session',
+    epochDay: DAY,
+    description: 'żółć, cried a little after'
+  });
+
+  assert.deepEqual(await found(journal, 'zolc'), ['żółć, cried a little after']);
+});
+
+test('a milestone that matches on both name and description shows its name', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.milestones.upsertMilestone({
+    name: 'żółć day',
+    epochDay: DAY,
+    description: 'żółć again in the description'
+  });
+
+  assert.deepEqual(await found(journal, 'zolc'), ['żółć day']);
+});
+
 test('a felt sense carries the tryout it belongs to, and a milestone one carries nothing', async () => {
   const { journal } = await journalWithBuiltIns();
   const tryoutId = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Marta', startEpochDay: DAY, endEpochDay: null });

@@ -175,6 +175,11 @@ export interface ArchiveMilestone {
   id: string;
   name: string;
   epochDay: number;
+  /** What happened, in the person's own words (ticket 15). Absent on an
+      archive written before this ticket, read as '' rather than undefined -
+      no null check at every read, and existing milestones have no
+      description to lose. */
+  description: string;
   templateKey: string | null;
   roadmapGoalKey: string | null;
   procedureId: string | null;

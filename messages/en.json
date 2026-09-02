@@ -857,6 +857,8 @@
   "ms_name_placeholder": "e.g. First laser session",
   "ms_date_label": "Date",
   "ms_date_hint": "(past or future)",
+  "ms_description_label": "Notes (optional)",
+  "ms_description_placeholder": "What happened, how it felt",
   "ms_photo_label": "Photo (optional)",
   "ms_photo_delete_sheet": "Remove photo",
   "ms_photo_delete_q": "Remove this photo?",

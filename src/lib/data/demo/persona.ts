@@ -222,7 +222,13 @@ export function persona(): Persona {
     ],
     entries: buildEntries(),
     milestones: [
-      { name: 'HRT start', epochDay: today - 745, templateKey: 'hrt_start', hasPhoto: true },
+      {
+        name: 'HRT start',
+        epochDay: today - 745,
+        description: 'The pharmacist barely looked up. I cried in the car after.',
+        templateKey: 'hrt_start',
+        hasPhoto: true
+      },
       { name: 'Coming out to my parents', epochDay: today - 940, templateKey: 'coming_out', hasPhoto: false },
       { name: 'First time presenting publicly', epochDay: today - 512, templateKey: 'first_public', hasPhoto: true },
       { name: 'Name-change hearing', epochDay: today + 16, templateKey: 'name_change', hasPhoto: false },

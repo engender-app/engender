@@ -156,6 +156,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const milestone = await journal.milestones.upsertMilestone({
     name: 'HRT start',
     epochDay: 19000,
+    description: 'the pharmacist barely looked up',
     templateKey: 'hrt_start'
   });
   await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
