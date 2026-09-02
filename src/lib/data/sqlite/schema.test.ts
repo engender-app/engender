@@ -31,6 +31,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'entry_dimension_value',
     'entry_tag',
     'era',
+    'era_mute',
     'gender_dimension',
     'gender_preset',
     'hair_photo',
@@ -918,6 +919,36 @@ test('v50 adds the era table, with both bounds nullable and no fifth column', as
      four columns it knew about. */
   const columns = (db.raw.prepare('PRAGMA table_info(era)').all() as { name: string }[]).map((c) => c.name);
   assert.deepEqual(columns, ['id', 'uuid', 'name', 'start_epoch_day', 'end_epoch_day', 'updated_at']);
+});
+
+test('v51 adds era_mute, presence keyed by era_uuid alone', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 50)
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  db.raw.exec("INSERT INTO era_mute (era_uuid, updated_at) VALUES ('era-1', 1000)");
+  const row = db.raw.prepare("SELECT era_uuid FROM era_mute WHERE era_uuid = 'era-1'").get() as {
+    era_uuid: string;
+  };
+  assert.equal(row.era_uuid, 'era-1');
+
+  // No foreign key to era: a mute can be inserted for a uuid no era table
+  // row names at all, the same free-text shape roadmap_check's pack_key has.
+  db.raw.exec("INSERT INTO era_mute (era_uuid, updated_at) VALUES ('no-such-era', 1000)");
+  assert.equal(
+    (db.raw.prepare("SELECT era_uuid FROM era_mute WHERE era_uuid = 'no-such-era'").get() as { era_uuid: string })
+      .era_uuid,
+    'no-such-era'
+  );
+
+  const columns = (db.raw.prepare('PRAGMA table_info(era_mute)').all() as { name: string }[]).map((c) => c.name);
+  assert.deepEqual(columns, ['id', 'era_uuid', 'updated_at']);
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

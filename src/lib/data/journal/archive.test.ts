@@ -652,6 +652,7 @@ const CARRIED: Record<string, string[]> = {
   cycle_event: ['uuid', 'kind', 'epoch_day'],
   journaling_pause: ['uuid', 'start_epoch_day', 'end_epoch_day'],
   era: ['uuid', 'name', 'start_epoch_day', 'end_epoch_day'],
+  era_mute: ['era_uuid'],
   personal_effect: ['uuid', 'effect', 'first_noticed_epoch_day'],
   effect_category: ['key', 'name', 'enabled'],
   personal_effect_type: ['uuid', 'key', 'name', 'is_built_in', 'category_key', 'direction', 'hidden'],

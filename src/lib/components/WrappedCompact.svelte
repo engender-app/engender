@@ -43,7 +43,7 @@
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
   import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
-  import PhotoThumb from './PhotoThumb.svelte';
+  import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import AreaChart from './kit/AreaChart.svelte';
   import BarRows from './kit/BarRows.svelte';
   import ChartCard from './kit/ChartCard.svelte';
@@ -231,7 +231,7 @@
   <SectionHeading text={m.wrapped_photos()} />
   <div class="wrapped-photos" data-wrapped-photos>
     {#each recap.photoHighlights as photo (photo.id)}
-      <PhotoThumb {photo} size={72} label={fmtDay(photo.epochDay, { day: 'numeric', month: 'short' })} />
+      <ResurfacedPhoto {photo} size={72} label={fmtDay(photo.epochDay, { day: 'numeric', month: 'short' })} />
     {/each}
   </div>
 {/if}

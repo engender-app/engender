@@ -40,12 +40,13 @@
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
+  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { Entry } from '$lib/data/types';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import ResurfacedPhoto from '$lib/components/ResurfacedPhoto.svelte';
   import LookBackLetterCard from '$lib/components/LookBackLetterCard.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
@@ -86,9 +87,20 @@
      resurfacing a *day*, and this card is about the letter. */
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
-    const letters = await j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT);
+    /* Phase 6 ticket 05: eras and their mutes, read once here rather than
+       per candidate - resurfacingConsent.ts stays pure over what it is
+       handed (ADR-0010), the same split eraForDay's own callers already
+       follow. */
+    const [letters, eras, mutedEraUuids] = await Promise.all([
+      j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
+      j.eras.getEras(),
+      j.eraMutes.getMutedEraUuids()
+    ]);
     const results = await Promise.all(
       candidates.map(async (c): Promise<QualifyingDay | null> => {
+        // A muted era's day resurfaces nothing at all - not the entries,
+        // not the letters - so this is checked before either read.
+        if (touchesMutedEra(eras, mutedEraUuids, c.epochDay, c.epochDay)) return null;
         const dayLetters = onThisDayLetters(letters, c.epochDay, today);
         const good = await j.stats.isGoodDay(c.epochDay);
         if (!good && dayLetters.length === 0) return null;
@@ -204,7 +216,7 @@
         {#if d.photos.length}
           <div class="otd-photos" data-lookback-photos>
             {#each d.photos as photo (photo.id)}
-              <PhotoThumb {photo} size={88} />
+              <ResurfacedPhoto {photo} size={88} />
             {/each}
           </div>
         {/if}
