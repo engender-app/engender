@@ -795,7 +795,7 @@
   ],
   "daylio_imported_toast": "{entries} entries and {tags} new tags imported.",
   "dlb_row_title": "Import from Daylio (backup)",
-  "dlb_row_sub": "moods, tags, milestones, photos and voice notes, always a merge",
+  "dlb_row_sub": "milestones, photos and voice notes as well, always a merge",
   "dlb_sheet_title": "Import a Daylio backup",
   "dlb_file_label": "Daylio backup",
   "dlb_file_placeholder": "Choose a .daylio file…",
@@ -2801,6 +2801,7 @@
   "imp_log_section": "Import history",
   "imp_log_source_daylio": "Daylio",
   "imp_log_row_sub": "{counts} · {when}",
+  "imp_log_nothing": "nothing new",
   "imp_log_n_entries": [
     {
       "declarations": [
