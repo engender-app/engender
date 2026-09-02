@@ -170,7 +170,13 @@ export const TABLE_NAMES = [
      `presentation_id` is announced under 'entry' instead, the same split
      'tag' and 'entry_tag' get - resolving which presentation an id names is
      this table's business, not the entry's. */
-  'presentation'
+  'presentation',
+  /* Entry templates (phase 6 ticket 07, ADR-0002): the folded-in guided
+     prompts and the six original templates alike, built and hidden the way
+     a tag or a measurement type is. An entry created from one carries no
+     link back to it - applying a template only ever seeds the draft
+     (types.ts) - so no read here depends on 'entry'. */
+  'entryTemplate'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -274,6 +280,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // (presentations.ts), so a chip's order has to refresh on an entry write
     // too, not only on a rename or a recolour.
     reads: { getPresentations: ['presentation', 'entry'] }
+  }),
+  entryTemplates: classify<Journal['entryTemplates']>()({
+    writes: {
+      addEntryTemplate: ['entryTemplate'],
+      updateEntryTemplate: ['entryTemplate'],
+      setEntryTemplateHidden: ['entryTemplate']
+    },
+    reads: { getEntryTemplates: ['entryTemplate'] }
   }),
   affirmations: classify<Journal['affirmations']>()({
     writes: {

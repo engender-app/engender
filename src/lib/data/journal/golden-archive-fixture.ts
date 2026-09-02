@@ -92,9 +92,11 @@ async function seedLegacyBuiltInPresets(driver: SqliteDriver): Promise<void> {
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
     hidden affirmation, a custom body region logged on the entry alongside a
     built-in one, a custom measurement type alongside a hidden built-in one,
-    a disabled effect category, and a custom effect type alongside a hidden
-    built-in one. Built by `everySectionDevice` below, which is the same thing
-    with the connection handed back too. */
+    a disabled effect category, a custom effect type alongside a hidden
+    built-in one, and an authored entry template carrying a custom tag, a
+    custom dimension value, a note scaffold and a presentation. Built by
+    `everySectionDevice` below, which is the same thing with the connection
+    handed back too. */
 export const everySection = async (): Promise<Journal> => (await everySectionDevice()).journal;
 
 /** The same journal, with its connection alongside it, for the tests that
@@ -132,6 +134,18 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const femme = await journal.presentations.addPresentation('femme', 0);
   const androgynous = await journal.presentations.addPresentation('androgynous', 1);
   await journal.presentations.setPresentationHidden(androgynous.id, true);
+
+  // An authored template (phase 6 ticket 07): the built-ins already travel
+  // through reconcile, so what a round trip has to prove here is a
+  // custom one - its own tags, a custom dimension value, a note scaffold
+  // and a presentation, all at once.
+  await journal.entryTemplates.addEntryTemplate({
+    name: 'After a hard day',
+    tags: [tag.id],
+    dims: { [voice.key]: 3 },
+    noteScaffold: 'What made today hard?',
+    presentationId: femme.id
+  });
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
