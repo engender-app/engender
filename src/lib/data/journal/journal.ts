@@ -43,6 +43,7 @@ import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makePresentationsArea, type PresentationsArea } from './presentations';
+import { makeEntryTemplatesArea, type EntryTemplatesArea } from './entryTemplates';
 import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
@@ -113,6 +114,12 @@ export interface Journal {
       onto the entry row; this area owns only the presentation rows
       themselves. */
   presentations: PresentationsArea;
+  /** Entry templates (phase 6 ticket 07, ADR-0002, CONTEXT: "Entry"):
+      `ENTRY_TEMPLATES`' six and the eight folded-in guided prompts alike,
+      now editable, hideable and reachable from one screen. Built-ins
+      reconcile by key on boot (reconcile.ts); this area owns reading them
+      back and every edit. */
+  entryTemplates: EntryTemplatesArea;
   /** Every voice recording (ticket 24), read back dated and oldest first for
       the voice compare picker (ticket 25) - entry-only, so unlike photos
       this owns no attach/remove of its own; those stay on upsertEntry's
@@ -377,6 +384,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     milestones,
     photos: makePhotosArea(driver, files),
     presentations: makePresentationsArea(driver),
+    entryTemplates: makeEntryTemplatesArea(driver),
     voice: makeVoiceArea(driver),
     voiceBenchmarks,
     videos: makeVideoArea(driver),

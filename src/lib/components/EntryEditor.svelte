@@ -21,7 +21,7 @@
   import { VIDEO_MAX_DURATION_MS } from '$lib/data/videoNotes/limits';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { EntryPrompt, EntryTemplate, GenderDimension } from '$lib/data/types';
+  import type { EntryTemplate, GenderDimension } from '$lib/data/types';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -156,25 +156,31 @@
      something to surface while editing an already-saved entry - `entryId`
      is undefined only for a new one. Read once, like `seedMood` above: the
      route wraps this component in {#key}, so a fresh editor always means a
-     fresh prompt, never a stale one left over from a previous mount. */
+     fresh prompt, never a stale one left over from a previous mount. A
+     prompt is a template whose only content is a note scaffold (ticket 07);
+     `randomPrompt()` can now come back null once every one has been
+     hidden. */
   // svelte-ignore state_referenced_locally
-  let prompt = $state<EntryPrompt | null>(
+  let prompt = $state<EntryTemplate | null>(
     entryId == null && prefs.guidedPromptsEnabled ? vocabulary.randomPrompt() : null
   );
 
   /* A template only ever pre-fills what this install currently shows -
-     a hidden dimension or tag stays out of the draft even if the template
-     names it, because the picker that would let someone edit it back off
-     is exactly what `hidden` took out of the editor (CONTEXT: "Hidden").
-     Applying the same template twice cannot double up: applyTemplate()
-     unions the tags and overwrites the dims by key. */
+     a hidden dimension, tag or presentation stays out of the draft even if
+     the template names it, because the picker that would let someone edit
+     it back off is exactly what `hidden` took out of the editor (CONTEXT:
+     "Hidden"). Applying the same template twice cannot double up:
+     applyTemplate() unions the tags and overwrites the dims by key. */
   function applyTemplate(tpl: EntryTemplate) {
     const visibleTagIds = new Set(vocabulary.visibleTagGroups.flatMap((g) => g.tags.map((t) => t.id)));
     const visibleDimKeys = new Set(vocabulary.visibleDimensions.map((d) => d.key));
-    entryDraft.applyTemplate(
-      tpl.tags.filter((id) => visibleTagIds.has(id)),
-      Object.fromEntries(Object.entries(tpl.dims).filter(([key]) => visibleDimKeys.has(key)))
-    );
+    const visiblePresentationIds = new Set(vocabulary.visiblePresentations.map((p) => p.id));
+    entryDraft.applyTemplate({
+      ...tpl,
+      tags: tpl.tags.filter((id) => visibleTagIds.has(id)),
+      dims: Object.fromEntries(Object.entries(tpl.dims).filter(([key]) => visibleDimKeys.has(key))),
+      presentationId: tpl.presentationId && visiblePresentationIds.has(tpl.presentationId) ? tpl.presentationId : null
+    });
     templateSheetOpen = false;
   }
   /* The union of the ticked scales and the entry's own: an entry logged
@@ -513,7 +519,7 @@
       icon="sparkle"
       key="entry-prompt"
       {role}
-      text={prompt.text}
+      text={prompt.noteScaffold}
       dismiss={{ label: m.dismiss(), onclick: () => (promptDismissed = true) }}
       aria-live="polite"
     />
@@ -945,8 +951,8 @@
   <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
     <SectionHeading text={m.use_template()} />
     <ListCard {role}>
-      {#each vocabulary.entryTemplates as tpl (tpl.key)}
-        <ListRow key={tpl.key} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
+      {#each vocabulary.visibleEntryTemplates as tpl (tpl.id)}
+        <ListRow key={tpl.id} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
       {/each}
     </ListCard>
   </Sheet>

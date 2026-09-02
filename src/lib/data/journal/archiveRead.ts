@@ -29,6 +29,7 @@ import type {
   ArchiveDoseSchedule,
   ArchiveEffectCategory,
   ArchiveEntry,
+  ArchiveEntryTemplate,
   ArchiveFeltSenseEntry,
   ArchiveHairPhoto,
   ArchiveHairRemovalPhoto,
@@ -218,6 +219,42 @@ export async function readPresets({ driver }: SectionRead): Promise<ArchivePrese
     name: r.name,
     builtIn: bool(r.is_built_in),
     dims: dims.get(r.id) ?? []
+  }));
+}
+
+export async function readEntryTemplates({ driver }: SectionRead): Promise<ArchiveEntryTemplate[]> {
+  const rows = await driver.query<{
+    id: number;
+    uuid: string | null;
+    key: string | null;
+    name: string;
+    note_scaffold: string;
+    presentation_id: string | null;
+    hidden: number;
+  }>('SELECT id, uuid, key, name, note_scaffold, presentation_id, hidden FROM entry_template ORDER BY id');
+
+  const tagLinks = await driver.query<{ template_id: number; key: string | null; uuid: string | null }>(
+    `SELECT ett.template_id, t.key, t.uuid FROM entry_template_tag ett
+     JOIN tag t ON t.id = ett.tag_id
+     ORDER BY t.id`
+  );
+  const dimLinks = await driver.query<{ template_id: number; key: string; value: number }>(
+    `SELECT etdv.template_id, gd.key, etdv.value FROM entry_template_dimension_value etdv
+     JOIN gender_dimension gd ON gd.id = etdv.dimension_id
+     ORDER BY gd.id`
+  );
+  const tagsByTemplate = groupBy(tagLinks, (l) => l.template_id, (l) => domainIdOf(l, 'tag'));
+  const dimsByTemplate = groupBy(dimLinks, (l) => l.template_id, (l) => [l.key, l.value] as const);
+
+  return rows.map((r) => ({
+    id: domainIdOf(r, 'entry template'),
+    name: r.name,
+    tags: tagsByTemplate.get(r.id) ?? [],
+    dims: Object.fromEntries(dimsByTemplate.get(r.id) ?? []),
+    noteScaffold: r.note_scaffold,
+    presentationId: r.presentation_id,
+    builtIn: r.key !== null,
+    hidden: bool(r.hidden)
   }));
 }
 
