@@ -27,9 +27,9 @@ import {
   daylioPayload,
   makeDaylioBackup,
   makeDaylioBackupFrom,
-  makeMalformedDaylioBackup
+  makeMalformedDaylioBackup,
+  makeZip
 } from './test-support/daylio-backup.ts';
-import { makeZip } from './test-support/zip.ts';
 
 const naming = { tagLabels: () => [] };
 const preview = async (payload: unknown = daylioPayload(), assets = daylioAssetFiles()) =>
@@ -459,7 +459,7 @@ test('a file that is not a zip is refused', async () => {
 });
 
 test('a zip with no backup.daylio member is refused by name', async () => {
-  const zip = await makeZip([{ name: 'readme.txt', bytes: new TextEncoder().encode('hello') }]);
+  const zip = makeZip([{ name: 'readme.txt', bytes: new TextEncoder().encode('hello') }]);
 
   await assert.rejects(() => daylioBackupPreview(zip, emptyArchiveJournal(), naming), (error: Error) => {
     assert.match(error.message, /backup\.daylio/);
@@ -616,7 +616,7 @@ test('detectDaylioBackup sniffs a zip carrying a backup.daylio member', async ()
 
 test('detectDaylioBackup refuses a CSV, a plain zip and an empty file', async () => {
   assert.ok(!detectDaylioBackup(new TextEncoder().encode('full_date,time,mood,activities,note_title,note\n')));
-  assert.ok(!detectDaylioBackup(await makeZip([{ name: 'notes.txt', bytes: new TextEncoder().encode('x') }])));
+  assert.ok(!detectDaylioBackup(makeZip([{ name: 'notes.txt', bytes: new TextEncoder().encode('x') }])));
   assert.ok(!detectDaylioBackup(new Uint8Array(0)));
 });
 

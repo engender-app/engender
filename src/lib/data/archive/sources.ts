@@ -17,14 +17,17 @@
 
 import { daylioPreview, REQUIRED_COLUMNS as DAYLIO_REQUIRED_COLUMNS, detectDaylio, type DaylioNaming } from './daylio';
 import { REQUIRED_FIELDS as DAYLIO_BACKUP_REQUIRED_FIELDS, daylioBackupPreview, detectDaylioBackup } from './daylioBackup';
+import { detectTransTracks, transTracksPreview } from './transtracks';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio' | 'daylio-backup';
+export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'transtracks';
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
   /** The fields or columns this source's file must carry, for a caller that
-      wants to name what a near-miss file is missing. */
+      wants to name what a near-miss file is missing. Empty for a source
+      with no fixed set, such as a zip container that carries whatever the
+      other app put in it. */
   requiredFields: readonly string[];
   /** A non-throwing sniff: does this file look like this source's own kind
       at all? Never the full structural validation - that stays in
@@ -37,6 +40,10 @@ export interface ArchiveSource {
   /** Resolves the file into the exact work a commit would do - a preview is
       never an instruction to re-parse a file that may have changed by then
       (ADR-0002's own reasoning for Daylio, which every source now shares).
+      Only the journal: a source with richer preview data (Daylio's mood
+      mappings, TransTracks' photo bytes and ignored-field list) exposes its
+      own preview function for a caller that wants that; this is the
+      lowest common shape every source can produce.
       `naming` is source-specific context (Daylio's own tag-label lookup);
       erased to `unknown` here because the registry holds every source at
       once.
@@ -69,6 +76,14 @@ const SOURCES = [
     detect: detectDaylioBackup,
     async preview(file, existing, naming) {
       return (await daylioBackupPreview(file, existing, naming as DaylioNaming)).journal;
+    }
+  },
+  {
+    name: 'transtracks',
+    requiredFields: [],
+    detect: detectTransTracks,
+    async preview(file, existing) {
+      return (await transTracksPreview(file, existing)).journal;
     }
   }
 ] as const satisfies readonly ArchiveSource[];
