@@ -67,7 +67,17 @@ describe('how many days landed on each mood', () => {
 
 describe('what a day is drawn as on the calendar', () => {
   const FEMININITY = { min: 0, max: 100 };
-  const day = (low: number, high: number, count: number) => ({ day: 20100, low, high, count });
+  /* Written in the order the day was logged, which is the order the split
+     draws. `low` and `high` fall out of it, so a fixture cannot say one
+     thing about size and a contradictory thing about time. */
+  const day = (...values: number[]) => ({
+    day: 20100,
+    low: Math.min(...values),
+    high: Math.max(...values),
+    first: values[0],
+    last: values[values.length - 1],
+    count: values.length
+  });
   /* The two step systems a caller can hand in: a gender dimension resolves
      through the heat ramp, mood through its own five faces (ADR-0025). */
   const onRamp = (range: { min: number; max: number }) => (value: number) => heatLevel(value, range);
@@ -77,43 +87,55 @@ describe('what a day is drawn as on the calendar', () => {
   });
 
   it('leaves a day of one reading whole', () => {
-    expect(dayShape(day(4, 4, 1), moodStep)).toEqual({ kind: 'one' });
+    expect(dayShape(day(4), moodStep)).toEqual({ kind: 'one' });
   });
 
   it('splits a day of two readings that landed on different steps, low half first', () => {
     /* The half is a fill, and a fill is a step, so the split carries steps
        rather than values. Low first and no further order: which one came
        first is a question this cannot answer. */
-    expect(dayShape(day(2, 5, 2), moodStep)).toEqual({ kind: 'split', low: 2, high: 5 });
+    expect(dayShape(day(2, 5), moodStep)).toEqual({ kind: 'split', first: 2, last: 5 });
   });
 
   it('stacks a day of two readings that landed on the same step', () => {
     // Nothing to draw an edge between: both halves would be one colour, and
     // a split with no visible edge reads as a day that said one thing.
-    expect(dayShape(day(4, 4, 2), moodStep)).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(4, 4), moodStep)).toEqual({ kind: 'stack', cards: 2 });
     // Two different values inside one step is the same case.
-    expect(dayShape(day(30, 44, 2), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(30, 44), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 2 });
     // And on mood, "the same step" is Daylio's "the same mood": 3.6 and 4.2
     // are one face, so the day stacks rather than splitting.
-    expect(dayShape(day(3.6, 4.2, 2), moodStep)).toEqual({ kind: 'stack', cards: 2 });
+    expect(dayShape(day(3.6, 4.2), moodStep)).toEqual({ kind: 'stack', cards: 2 });
   });
 
   it('stacks a day of three or more readings however far apart they were', () => {
     // Four bands at 46px is a texture rather than four readings.
-    expect(dayShape(day(1, 5, 3), moodStep)).toEqual({ kind: 'stack', cards: 3 });
-    expect(dayShape(day(10, 90, 4), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 4 });
+    expect(dayShape(day(1, 3, 5), moodStep)).toEqual({ kind: 'stack', cards: 3 });
+    expect(dayShape(day(10, 40, 60, 90), onRamp(FEMININITY))).toEqual({ kind: 'stack', cards: 4 });
   });
 
   it('stops the deck where it stops being countable', () => {
-    expect(dayShape(day(1, 5, 9), moodStep)).toEqual({ kind: 'stack', cards: MAX_STACK_CARDS });
+    expect(dayShape(day(1, 2, 3, 4, 5, 4, 3, 2, 1), moodStep)).toEqual({
+      kind: 'stack',
+      cards: MAX_STACK_CARDS
+    });
   });
 
   it('splits the ends of either scale, in that scale\'s own steps', () => {
     /* The two systems do not agree on how many steps there are and they do
        not have to: a half is drawn in whatever a step of the metric on
        screen means, mood's five faces or the ramp's four levels. */
-    expect(dayShape(day(1, 5, 2), moodStep)).toEqual({ kind: 'split', low: 1, high: 5 });
-    expect(dayShape(day(0, 100, 2), onRamp(FEMININITY))).toEqual({ kind: 'split', low: 1, high: 4 });
+    expect(dayShape(day(1, 5), moodStep)).toEqual({ kind: 'split', first: 1, last: 5 });
+    expect(dayShape(day(0, 100), onRamp(FEMININITY))).toEqual({ kind: 'split', first: 1, last: 4 });
+  });
+
+  it('puts the earlier reading on the left even when it is the higher one', () => {
+    /* The split is chronological (Alicja, 2026-09-02), so a day that went
+       from good to bad and a day that went from bad to good are not the
+       same picture. This is the assertion that would still pass if the
+       halves were ordered by size, which is what it exists to stop. */
+    expect(dayShape(day(5, 2), moodStep)).toEqual({ kind: 'split', first: 5, last: 2 });
+    expect(dayShape(day(2, 5), moodStep)).toEqual({ kind: 'split', first: 2, last: 5 });
   });
 });
 
