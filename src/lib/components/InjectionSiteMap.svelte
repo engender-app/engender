@@ -12,8 +12,8 @@
      used, so the question "where should this one go" is answered off the
      picture instead of by reading a twelve-row table against it. The dots
      carry three things at once and each one has its own channel: the fill
-     is recency, an outer ring is the site tapped for this dose, and a
-     dashed edge is where the last injection went. Nothing here says a site
+     is recency, a solid ring is the site tapped for this dose, and a
+     dashed ring is where the last injection went. Nothing here says a site
      is due. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
