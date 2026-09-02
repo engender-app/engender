@@ -4,7 +4,8 @@
 
    What Daylio itself does with a recognised file is not re-tested here -
    that is daylio.ts's own journal.test.ts, which this ticket leaves
-   unchanged. */
+   unchanged. Day One's own preview/detect are dayone.test.ts's, for the
+   same reason. */
 
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -13,9 +14,11 @@ import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { daylioPreview, detectDaylio } from './daylio.ts';
 import { ARCHIVE_SOURCES, UnrecognizedArchiveSourceError, recognizeSource, requireSource, type ArchiveSource } from './sources.ts';
 
-const fixture = (name: string) => readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
+const enc = new TextEncoder();
+const fixtureText = (name: string) => readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
+const fixtureBytes = async (name: string) => new Uint8Array(await readFile(new URL(`fixtures/${name}`, import.meta.url)));
 
-const stub = (name: string, detect: (text: string) => boolean): ArchiveSource => ({
+const stub = (name: string, detect: (bytes: Uint8Array) => boolean): ArchiveSource => ({
   name: name as ArchiveSource['name'],
   requiredColumns: [],
   detect,
@@ -25,36 +28,48 @@ const stub = (name: string, detect: (text: string) => boolean): ArchiveSource =>
 });
 
 const daylioEntry = ARCHIVE_SOURCES.find((source) => source.name === 'daylio')!;
+const dayoneEntry = ARCHIVE_SOURCES.find((source) => source.name === 'dayone')!;
 
-test('the daylio entry is registered, carrying its own required columns', () => {
-  assert.equal(ARCHIVE_SOURCES.length, 1);
+test('daylio and day one are both registered, each carrying its own required fields', () => {
+  assert.equal(ARCHIVE_SOURCES.length, 2);
   assert.deepEqual(daylioEntry.requiredColumns, ['full_date', 'time', 'mood', 'activities', 'note_title', 'note']);
+  assert.deepEqual(dayoneEntry.requiredColumns, ['metadata', 'entries']);
 });
 
 test('recognizeSource runs each candidate\'s real detect, not a name filter', async () => {
-  const csv = await fixture('daylio-edge-cases.csv');
-  const other = stub('other', (text) => text.includes('MARKER'));
+  const csv = enc.encode(await fixtureText('daylio-edge-cases.csv'));
+  const other = stub('other', (bytes) => new TextDecoder().decode(bytes).includes('MARKER'));
   const shortened = [other, daylioEntry];
 
   // A stub that would match everything is not enough to fool this: only the
   // one whose own detect actually returns true for this text is picked.
   assert.equal(recognizeSource(csv, shortened), daylioEntry);
-  assert.equal(recognizeSource('MARKER,anything\n1,2', shortened), other);
-  assert.equal(recognizeSource('nothing here matches either one', shortened), null);
+  assert.equal(recognizeSource(enc.encode('MARKER,anything\n1,2'), shortened), other);
+  assert.equal(recognizeSource(enc.encode('nothing here matches either one'), shortened), null);
 });
 
 test('a file matching no source is declined by name, with no preview attempted', () => {
   const other = stub('other', () => false);
-  assert.throws(() => requireSource('not a known file shape', [other]), UnrecognizedArchiveSourceError);
+  assert.throws(() => requireSource(enc.encode('not a known file shape'), [other]), UnrecognizedArchiveSourceError);
 });
 
 test('detectDaylio sniffs the header alone, so a malformed body still detects as Daylio', async () => {
-  const wellFormed = await fixture('daylio-edge-cases.csv');
-  const malformed = await fixture('daylio-malformed.csv');
+  const wellFormed = await fixtureText('daylio-edge-cases.csv');
+  const malformed = await fixtureText('daylio-malformed.csv');
 
   assert.ok(detectDaylio(wellFormed));
   assert.ok(detectDaylio(malformed));
   assert.ok(!detectDaylio('name,unrelated,columns\nA,B,C'));
+});
+
+test('the daylio and day one entries each detect only their own fixture', async () => {
+  const daylioCsv = await fixtureBytes('daylio-edge-cases.csv');
+  const dayoneZip = await fixtureBytes('dayone-edge-cases.zip');
+
+  assert.ok(daylioEntry.detect(daylioCsv));
+  assert.ok(!daylioEntry.detect(dayoneZip));
+  assert.ok(dayoneEntry.detect(dayoneZip));
+  assert.ok(!dayoneEntry.detect(daylioCsv));
 });
 
 // New tag ids are minted at random (mintUuid), so two independent calls
@@ -70,11 +85,11 @@ function byLabel(journal: Awaited<ReturnType<typeof daylioPreview>>['journal']) 
 }
 
 test('the registry entry maps to the same journal daylioPreview itself resolves', async () => {
-  const csv = await fixture('daylio-edge-cases.csv');
+  const csv = enc.encode(await fixtureText('daylio-edge-cases.csv'));
   const existing = emptyArchiveJournal();
   const naming = { tagLabels: () => [] };
 
-  const direct = await daylioPreview(csv, existing, naming);
+  const direct = await daylioPreview(await fixtureText('daylio-edge-cases.csv'), existing, naming);
   const throughRegistry = await daylioEntry.preview(csv, existing, naming);
 
   assert.deepEqual(byLabel(throughRegistry), byLabel(direct.journal));
