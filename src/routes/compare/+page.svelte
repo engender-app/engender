@@ -308,6 +308,7 @@
         <ListRow
           key={`compare-era-${era.id}`}
           title={era.name}
+          chevron={false}
           onclick={() => {
             if (eraPickerSide === 'a') aEraId = era.id;
             else if (eraPickerSide === 'b') bEraId = era.id;
