@@ -53,29 +53,43 @@ export function heatLevel(value: number | null, range: MetricRange): number {
   return Math.min(HEAT_LEVELS, Math.max(1, Math.ceil(normalize(value, range) * HEAT_LEVELS)));
 }
 
-/** The band edges, in days, that split "how long ago" into the ramp's four
-    swatches: today or yesterday, within the week, within the month, longer
-    ago than that.
+/** The narrowest span of recency the ramp will shade across, in days.
 
-    Calendar granularities on purpose. An injection cadence is weekly for
-    some people and fortnightly for others, and bands drawn from a cadence
-    would be the app implying a site was used too soon (phase 6 ticket 13).
-    Three edges for four swatches - HEAT_LEVELS above is the other half of
-    this pair. */
-export const RECENCY_DAY_BANDS = [1, 7, 30];
+    Someone who injects daily, or who started this week, can have every
+    site within a day or two of every other; without a floor the ramp would
+    turn "yesterday and the day before" into its widest difference. */
+export const RECENCY_FLOOR_DAYS = 7;
 
-/** Which swatch a "days since last used" reading gets. The most recent use
-    is the strongest fill and it fades from there, so the ramp describes
-    where the recent ones went rather than pointing at where the next one
-    should go.
+/** The range a set of "days since last used" readings shades across: zero
+    to the longest of them, or the floor above where they are closer
+    together than that. Sites never used are skipped - they have no place on
+    the ramp (see below).
+
+    A span rather than fixed day bands because an injection cadence is
+    weekly for some people and fortnightly for others: six sites on a weekly
+    rotation are 0 to 42 days apart and the same six on a fortnightly one 0
+    to 84, so any fixed set of edges leaves one of those two rotations
+    almost entirely in one swatch. This is the same reason a mood value and
+    a 0-100 dimension get a range each rather than one scale (ADR-0012), and
+    it keeps the comparison to the person's own history rather than to a
+    cadence the app decided was normal. */
+export function recencySpan(readings: Iterable<number | null>): MetricRange {
+  let longest = 0;
+  for (const days of readings) if (days !== null && days > longest) longest = days;
+  return { min: 0, max: Math.max(longest, RECENCY_FLOOR_DAYS) };
+}
+
+/** Which swatch a "days since last used" reading gets within that span. The
+    most recent use is the strongest fill and it fades from there, so the
+    ramp describes where the recent ones went rather than pointing at where
+    the next one should go.
 
     `null` - a site with no dose ever recorded against it - is level 0, the
     empty swatch, because neither a large number nor zero reads as "never".
 
     A reading below zero, which a dose dated later today can produce, shades
     as the most recent rather than falling off the end. */
-export function recencyHeatLevel(daysAgo: number | null): number {
+export function recencyHeatLevel(daysAgo: number | null, span: MetricRange): number {
   if (daysAgo === null) return 0;
-  const band = RECENCY_DAY_BANDS.findIndex((edge) => daysAgo <= edge);
-  return band === -1 ? 1 : HEAT_LEVELS - band;
+  return heatLevel(span.max - Math.max(0, daysAgo), span);
 }
