@@ -63,6 +63,14 @@
     journal.checklists.setAppointmentDate(value ? epochDayFromDateInputValue(value) : null);
   }
 
+  /* The completed debrief, findable from the appointment it belongs to
+     (phase 6 ticket 08, What to Build #2). `debrief_entry_id` is
+     device-local and cleared the moment the appointment date changes
+     (checklists.ts), so this can never point at a different appointment
+     than the one on screen. */
+  let debriefEntryIdQuery = liveQuery((j) => j.checklists.getDebriefEntryId());
+  let debriefEntryId = $derived(debriefEntryIdQuery.value ?? null);
+
   /* The current regimen, read the same way the care overview reads it
      (care/+page.svelte) rather than a second look at the episode log:
      `getComparison` is doses.ts's own answer to "which episode is in
@@ -227,6 +235,14 @@
             />
           {/snippet}
         </ListRow>
+        {#if debriefEntryId !== null}
+          <ListRow
+            key="debrief"
+            icon="book"
+            title={m.appointment_debrief_row()}
+            href={`/entry/${debriefEntryId}`}
+          />
+        {/if}
         {#if activeEpisode}
           <ListRow
             key="regimen"

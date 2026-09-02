@@ -51,6 +51,7 @@
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
+  import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -313,6 +314,26 @@
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
   let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
 
+  /* The appointment debrief offer (phase 6 ticket 08): one read of the
+     standalone checklist's own state, folded through the pure predicate
+     (vocabulary/entryTemplates.ts) rather than re-deriving the rule here.
+     `getStandaloneChecklist` rather than a bare item count, since an
+     appointment with no prep item at all still has to read as "nothing to
+     prepare for" (What to Build #1) - a checklist that has never been
+     created answers that the same way an empty one does. */
+  let debriefStateQuery = liveQuery(async (j) => {
+    const [checklist, appointmentEpochDay, dismissedEpochDay, debriefEntryId] = await Promise.all([
+      j.checklists.getStandaloneChecklist(),
+      j.checklists.getAppointmentDate(),
+      j.checklists.getDebriefDismissedEpochDay(),
+      j.checklists.getDebriefEntryId()
+    ]);
+    return { itemCount: checklist?.items.length ?? 0, appointmentEpochDay, dismissedEpochDay, debriefEntryId };
+  });
+  let showDebriefOffer = $derived(
+    !!debriefStateQuery.value && debriefOfferVisible({ ...debriefStateQuery.value, todayEpochDay: today })
+  );
+
   let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
   let isStockNoticeSnoozedState = $state(false);
   $effect(() => {
@@ -547,6 +568,32 @@
       }}
       aria-live="polite"
       data-stock-notice=""
+    />
+  {/if}
+
+  <!-- The appointment debrief offer (phase 6 ticket 08): in-app only, per
+       the unprompted registry's admission rule (registry.ts) - nothing here
+       schedules a notification. Offered once; dismissing or writing about
+       it both stop it for good until a new appointment date is set
+       (debriefOfferVisible, checklists.ts). No coloured side border and no
+       role, the same reasoning the backup notice's own comment gives:
+       this is the app naming a date the person recorded, not one of the
+       journal's own coloured areas. -->
+  {#if showDebriefOffer}
+    <Notice
+      icon="calendar"
+      key="debrief-offer"
+      title={m.debrief_offer_title()}
+      action={{
+        label: m.debrief_offer_write(),
+        href: `/entry/new/today?debriefFor=${debriefStateQuery.value!.appointmentEpochDay}`
+      }}
+      dismiss={{
+        label: m.dismiss(),
+        onclick: () => journal.checklists.setDebriefDismissed(debriefStateQuery.value!.appointmentEpochDay!)
+      }}
+      aria-live="polite"
+      data-debrief-offer=""
     />
   {/if}
 
