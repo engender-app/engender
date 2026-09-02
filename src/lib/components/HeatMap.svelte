@@ -157,6 +157,11 @@
         count,
         shape,
         isToday: epochDay === today,
+        /* Joined here rather than as one message per case, which would
+           mean a second set of plural forms in both languages for the sake
+           of one comma. The comma is the separator on purpose: a screen
+           reader pauses on it, and the middle dot this app joins visible
+           asides with is read out as a word. */
         label: loading
           ? date
           : count

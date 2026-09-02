@@ -100,6 +100,10 @@ for (const palette of PALETTES) {
     /* Scrolled to a day that covered ground. Two entries on one day is
        about one day in eight, so the top of a 30-day list is mostly days
        with nothing to say and a picture of it would show none of this. */
+    // text-under-test: the English catalogue's own wording for a spread.
+    // A gallery is a dev script and this is the cheapest way to find a row
+    // that has one; under `pl`, or after a copy edit, it finds nothing and
+    // the scroll below fails rather than quietly shooting the wrong row.
     const marked = page.locator('[data-sheet] [data-bar-row]').filter({ hasText: ' to ' }).first();
     await marked.scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);

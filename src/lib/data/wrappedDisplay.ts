@@ -9,7 +9,15 @@
    number.
 
    Naming is next door in recapDisplay.ts, which owns turning a stored key
-   into a word. This owns turning an answer into a row. */
+   into a word. This owns turning an answer into a row.
+
+   It has outgrown the two wrapped screens and the name has not caught up.
+   `nativeValue` is what /stats writes every number with, and `spreadNote`
+   (phase 6 unprompted ticket 11) is read out by the calendar as well. The
+   through line is still one thing: this is where an answer becomes the
+   words a person reads, wherever they read them. Renaming the file is a
+   change to every importer and belongs to whoever next has a reason to
+   touch them all. */
 
 import { m } from '$lib/paraglide/messages';
 import type { BarRow } from '$lib/components/kit/barRow';
