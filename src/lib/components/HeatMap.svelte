@@ -329,15 +329,26 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1;
-    /* Written in the slash form so one declaration rounds both shapes: a
-       square cell's corner radius is a length, and a mood cell's is a
-       percentage of each axis, which is what makes a half of it a real
-       half-disc rather than a rectangle with rounded corners. */
     --r: var(--radius-xs);
+    /* A half's own radii, which are not the cell's. A border-radius
+       percentage resolves against the box it is on, so `50%` on a box half
+       as wide as the cell draws an ellipse half as wide as the disc, and
+       the two halves meet as a lopsided blob rather than as a circle
+       (Alicja, 2026-09-02: "wrong shape for mood icons"). A true half-disc
+       wants the full width of the half on its curved side and half the
+       height on each corner, which is what `100% / 50%` says. A square
+       cell's corner is a length and needs no such correction, so the two
+       shapes cannot share one declaration. */
+    --half-low: var(--radius-xs) 0 0 var(--radius-xs) / var(--radius-xs) 0 0 var(--radius-xs);
+    --half-high: 0 var(--radius-xs) var(--radius-xs) 0 / 0 var(--radius-xs) var(--radius-xs) 0;
   }
   /* Mood is round, because a mood is a face and a face is a disc
      (MoodFace.svelte). A gender dimension is not and stays square. */
-  .cal-stack.is-round { --r: 50%; }
+  .cal-stack.is-round {
+    --r: 50%;
+    --half-low: 100% 0 0 100% / 50% 0 0 50%;
+    --half-high: 0 100% 100% 0 / 0 50% 50% 0;
+  }
   .cal-card,
   .cal-swatch {
     position: absolute;
@@ -357,14 +368,19 @@
      2026-09-02: the upper half stands a pixel proud on each of its outer
      sides and a pixel over the middle, so the seam reads as an edge with a
      side in front of it. Butted, the two colours meet on a line and the cell
-     looks like one shape someone recoloured half of. */
+     looks like one shape someone recoloured half of.
+
+     The lower half wears the swatch's own border, since the swatch is
+     underneath it and drawn to the same shape. The upper half is outside
+     that border on three sides, so it carries its own - without one it was
+     the one piece of the cell with no edge at all (Alicja, same round). */
   .cal-half {
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
     width: 50%;
-    border-radius: var(--r) 0 0 var(--r) / var(--r) 0 0 var(--r);
+    border-radius: var(--half-low);
   }
   .cal-half.is-high {
     left: auto;
@@ -372,8 +388,8 @@
     top: -1px;
     bottom: -1px;
     width: calc(50% + 2px);
-    border-radius: 0 var(--r) var(--r) 0 / 0 var(--r) var(--r) 0;
-    box-shadow: -1px 0 0 var(--outline);
+    border-radius: var(--half-high);
+    border: 1px solid var(--outline);
   }
 
   /* Over the halves, and the reason the face carries no disc of its own. */
