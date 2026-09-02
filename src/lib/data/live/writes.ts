@@ -586,13 +586,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: { getEntries: ['stock'], getProjections: ['stock', 'dose', 'regimen'] }
   }),
   /* Read-only for the same reason exposure below is: an annotation is
-     selected out of six other areas' rows on every read and stored nowhere
+     selected out of seven other areas' rows on every read and stored nowhere
      (ADR-0010, phase 5 deepening ticket 23). One table per area behind it -
-     'dose' covers the pauses, which is where DosePause lives. */
+     'dose' covers the pauses, which is where DosePause lives. 'era' joined
+     in phase 6 ticket 03, for the boundary a bounded era's start draws. */
   chartAnnotations: classify<Journal['chartAnnotations']>()({
     writes: {},
     reads: {
-      getAnnotations: ['milestone', 'regimen', 'dose', 'journalingPause', 'tryout', 'procedure']
+      getAnnotations: ['milestone', 'regimen', 'dose', 'journalingPause', 'tryout', 'procedure', 'era']
     }
   }),
   // Read-only, like stats below: exposure counters never write (phase 4

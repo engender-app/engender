@@ -32,12 +32,30 @@ test('gathers every dated area a chart can be annotated with', async () => {
   await journal.journalingPauses.upsertPause({ startEpochDay: 20130, endEpochDay: 20134 });
   await journal.tryouts.upsertTryout({ kind: 'name', label: 'Ada', startEpochDay: 20140, endEpochDay: 20150 });
   await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20160 });
+  await journal.eras.upsertEra({ name: 'first year', startEpochDay: 20155, endEpochDay: null });
 
   const found = await journal.chartAnnotations.getAnnotations(20080, 20199, TODAY);
 
   assert.deepEqual(
     found.map((a) => a.kind),
-    ['regimen', 'milestone', 'dosePause', 'journalingPause', 'tryout', 'surgery', 'recovery']
+    ['regimen', 'milestone', 'dosePause', 'journalingPause', 'tryout', 'era', 'surgery', 'recovery']
+  );
+});
+
+/* Phase 6 ticket 03: an era joins the six other areas, but only where it has
+   a day to mark. An open start reaches back before the journal and has no
+   boundary of its own to draw. */
+test('a bounded era marks the day it starts, and an open start marks nothing', async () => {
+  const journal = await journalWith();
+
+  await journal.eras.upsertEra({ name: 'first year', startEpochDay: 20100, endEpochDay: 20200 });
+  await journal.eras.upsertEra({ name: 'before I knew', startEpochDay: null, endEpochDay: 20099 });
+
+  const found = await journal.chartAnnotations.getAnnotations(20000, 20300, TODAY);
+
+  assert.deepEqual(
+    found.filter((a) => a.kind === 'era').map((a) => ({ name: a.name, from: a.fromEpochDay, to: a.toEpochDay })),
+    [{ name: 'first year', from: 20100, to: 20100 }]
   );
 });
 

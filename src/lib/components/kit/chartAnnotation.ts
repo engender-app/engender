@@ -28,7 +28,8 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   recovery: m.chart_annotation_recovery,
   dosePause: m.chart_annotation_dose_pause,
   journalingPause: m.chart_annotation_journaling_pause,
-  tryout: m.chart_annotation_tryout
+  tryout: m.chart_annotation_tryout,
+  era: m.chart_annotation_era
 };
 
 function kindWord(kind: ChartAnnotationKind): string {

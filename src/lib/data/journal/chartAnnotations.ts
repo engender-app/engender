@@ -22,6 +22,11 @@
      dosePause  named by the drug of the episode it hangs off, because
                 "pause" alone on a chart with two regimens on it does not
                 say which regimen paused.
+     era        a point at the day a bounded era starts (phase 6 ticket 03):
+                the boundary a reader wants a chart's own change to sit
+                against, computed here rather than stored, the same as
+                everything else eraRange resolves at read time (ADR-0010).
+                An open start has no day to mark.
 
    What is deliberately not here, and why:
 
@@ -41,6 +46,7 @@
 import { annotationsInRange, type ChartAnnotation, type ChartAnnotationSource } from '../../charts/annotations';
 import { SURGERY_RECOVERY_CUTOFF_DAYS } from '../recoveryDay';
 import type { DosesArea } from './doses';
+import type { ErasArea } from './eras';
 import type { JournalingPausesArea } from './journalingPauses';
 import type { MilestonesArea } from './milestones';
 import type { ProceduresArea } from './procedures';
@@ -61,18 +67,20 @@ interface Areas {
   journalingPauses: JournalingPausesArea;
   tryouts: TryoutsArea;
   procedures: ProceduresArea;
+  eras: ErasArea;
 }
 
 export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
   return {
     async getAnnotations(fromEpochDay, toEpochDay, todayEpochDay) {
-      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures] = await Promise.all([
+      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures, eras] = await Promise.all([
         areas.milestones.getMilestones(),
         areas.regimen.getEpisodes(),
         areas.doses.getPauses(),
         areas.journalingPauses.getPauses(),
         areas.tryouts.getTryouts(),
-        areas.procedures.getProcedures()
+        areas.procedures.getProcedures(),
+        areas.eras.getEras()
       ]);
 
       const drugOf = new Map(episodes.map((episode) => [episode.id, episode.drug]));
@@ -111,7 +119,16 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           name: tryout.label,
           startEpochDay: tryout.startEpochDay,
           endEpochDay: tryout.endEpochDay
-        }))
+        })),
+        ...eras
+          .filter((era) => era.startEpochDay !== null)
+          .map((era) => ({
+            id: era.id,
+            kind: 'era' as const,
+            name: era.name,
+            startEpochDay: era.startEpochDay as number,
+            endEpochDay: null
+          }))
       ];
 
       for (const procedure of procedures) {

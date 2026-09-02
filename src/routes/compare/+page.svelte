@@ -22,7 +22,8 @@
     epochDayFromDateInputValue,
     todayEpochDay
   } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { eraRangeOrNull } from '$lib/data/eras';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { Journal } from '$lib/data/journal/journal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -30,7 +31,11 @@
   import Icon from '$lib/components/Icon.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -40,6 +45,14 @@
     end: number;
     label: string;
   }
+
+  /* Phase 6 ticket 03: each side takes either a date range, as before, or
+     one of the person's own eras - the two sides may be any mix, including
+     one of each, since neither side knows or cares what the other is. */
+  type PeriodMode = 'range' | 'era';
+
+  let erasQuery = liveList((j) => j.eras.getEras());
+  let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
 
   interface ComparisonSideStats {
     entryCount: number;
@@ -52,12 +65,20 @@
   let today = $derived(todayEpochDay());
   let todayInput = $derived(dateInputValueFromEpochDay(today));
 
+  let aMode = $state<PeriodMode>('range');
+  let bMode = $state<PeriodMode>('range');
   let aStart = $state('');
   let aEnd = $state('');
   let bStart = $state('');
   let bEnd = $state('');
+  let aEraId = $state('');
+  let bEraId = $state('');
 
-  function periodFrom(start: string, end: string): Period | null {
+  /** Which side the era-picker sheet is open for, or none. One sheet rather
+      than two: only one side is ever being picked at a time. */
+  let eraPickerSide = $state<'a' | 'b' | null>(null);
+
+  function periodFromRange(start: string, end: string): Period | null {
     const range = customInclusiveRange(epochDayFromDateInputValue(start), epochDayFromDateInputValue(end));
     if (!range || range.end > today) return null;
     return {
@@ -70,8 +91,18 @@
     };
   }
 
-  let periodA = $derived(periodFrom(aStart, aEnd));
-  let periodB = $derived(periodFrom(bStart, bEnd));
+  /* An era id naming nothing - never picked yet, or an era deleted after it
+     was - resolves to no period, the same resting state every other
+     era-adopting surface falls back to (ADR-0049). */
+  function periodFromEra(eraId: string): Period | null {
+    const found = erasQuery.rows.find((e) => e.id === eraId);
+    if (!found) return null;
+    const range = eraRangeOrNull(found, boundsQuery.value ?? null);
+    return range ? { start: range.startEpochDay, end: range.endEpochDay, label: found.name } : null;
+  }
+
+  let periodA = $derived(aMode === 'era' ? periodFromEra(aEraId) : periodFromRange(aStart, aEnd));
+  let periodB = $derived(bMode === 'era' ? periodFromEra(bEraId) : periodFromRange(bStart, bEnd));
 
   async function sideStats(j: Journal, period: Period): Promise<ComparisonSideStats> {
     const recap = await j.stats.recap(period.start, period.end);
@@ -134,45 +165,87 @@
     </div>
   {/snippet}
 
+  <!-- The mode switch, one per side - a side is a date range or an era,
+       never both at once, so only one of the two rows below ever shows. -->
+  {#snippet modeSwitch(key: string, period: string, mode: PeriodMode, onPick: (v: PeriodMode) => void)}
+    <div class="compare-mode">
+      <Segmented
+        key={`compare-mode-${key}`}
+        name={m.compare_start_label({ period })}
+        compact
+        options={[
+          { value: 'range', label: m.compare_mode_range() },
+          { value: 'era', label: m.compare_mode_era() }
+        ]}
+        value={mode}
+        onChange={(v) => onPick(v as PeriodMode)}
+      />
+    </div>
+  {/snippet}
+
   <SectionHeading text={m.compare_period_a_label()} />
-  <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-    {@render dateRow(
-      'compare-a-start',
-      m.recap_custom_start_label(),
-      m.compare_start_label({ period: m.compare_period_a_label() }),
-      aStart,
-      (v) => (aStart = v),
-      undefined
-    )}
-    {@render dateRow(
-      'compare-a-end',
-      m.recap_custom_end_label(),
-      m.compare_end_label({ period: m.compare_period_a_label() }),
-      aEnd,
-      (v) => (aEnd = v),
-      aStart || undefined
-    )}
-  </div>
+  {@render modeSwitch('a', m.compare_period_a_label(), aMode, (v) => (aMode = v))}
+  {#if aMode === 'era'}
+    <ListCard role={roleAt(activeFlag.roles, 0)}>
+      <ListRow
+        key="compare-era-row-a"
+        icon="curve"
+        title={erasQuery.rows.find((e) => e.id === aEraId)?.name ?? m.compare_pick_era()}
+        onclick={() => (eraPickerSide = 'a')}
+      />
+    </ListCard>
+  {:else}
+    <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+      {@render dateRow(
+        'compare-a-start',
+        m.recap_custom_start_label(),
+        m.compare_start_label({ period: m.compare_period_a_label() }),
+        aStart,
+        (v) => (aStart = v),
+        undefined
+      )}
+      {@render dateRow(
+        'compare-a-end',
+        m.recap_custom_end_label(),
+        m.compare_end_label({ period: m.compare_period_a_label() }),
+        aEnd,
+        (v) => (aEnd = v),
+        aStart || undefined
+      )}
+    </div>
+  {/if}
 
   <SectionHeading text={m.compare_period_b_label()} />
-  <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 1))}>
-    {@render dateRow(
-      'compare-b-start',
-      m.recap_custom_start_label(),
-      m.compare_start_label({ period: m.compare_period_b_label() }),
-      bStart,
-      (v) => (bStart = v),
-      undefined
-    )}
-    {@render dateRow(
-      'compare-b-end',
-      m.recap_custom_end_label(),
-      m.compare_end_label({ period: m.compare_period_b_label() }),
-      bEnd,
-      (v) => (bEnd = v),
-      bStart || undefined
-    )}
-  </div>
+  {@render modeSwitch('b', m.compare_period_b_label(), bMode, (v) => (bMode = v))}
+  {#if bMode === 'era'}
+    <ListCard role={roleAt(activeFlag.roles, 1)}>
+      <ListRow
+        key="compare-era-row-b"
+        icon="curve"
+        title={erasQuery.rows.find((e) => e.id === bEraId)?.name ?? m.compare_pick_era()}
+        onclick={() => (eraPickerSide = 'b')}
+      />
+    </ListCard>
+  {:else}
+    <div class="compare-picker" {...roleAttrs(roleAt(activeFlag.roles, 1))}>
+      {@render dateRow(
+        'compare-b-start',
+        m.recap_custom_start_label(),
+        m.compare_start_label({ period: m.compare_period_b_label() }),
+        bStart,
+        (v) => (bStart = v),
+        undefined
+      )}
+      {@render dateRow(
+        'compare-b-end',
+        m.recap_custom_end_label(),
+        m.compare_end_label({ period: m.compare_period_b_label() }),
+        bEnd,
+        (v) => (bEnd = v),
+        bStart || undefined
+      )}
+    </div>
+  {/if}
 
   {#if !periodA || !periodB}
     <Notice icon="info" key="compare-empty" title={m.compare_empty()} />
@@ -220,3 +293,45 @@
     </div>
   {/if}
 </div>
+
+<!-- Which era a side takes, picked whole rather than as two dates - the
+     same sheet Wrapped's own era picker is (phase 6 ticket 03). One sheet
+     for both sides, since only one is ever open at a time. -->
+<Sheet
+  open={eraPickerSide !== null}
+  title={m.eras_title()}
+  onClose={() => (eraPickerSide = null)}
+>
+  {#if erasQuery.rows.length}
+    <ListCard>
+      {#each erasQuery.rows as era (era.id)}
+        <ListRow
+          key={`compare-era-${era.id}`}
+          title={era.name}
+          onclick={() => {
+            if (eraPickerSide === 'a') aEraId = era.id;
+            else if (eraPickerSide === 'b') bEraId = era.id;
+            eraPickerSide = null;
+          }}
+        >
+          {#snippet trailing()}
+            {#if (eraPickerSide === 'a' && aEraId === era.id) || (eraPickerSide === 'b' && bEraId === era.id)}
+              <Icon name="check" size={20} />
+            {/if}
+          {/snippet}
+        </ListRow>
+      {/each}
+    </ListCard>
+  {:else}
+    <Notice icon="info" key="compare-eras-empty" title={m.eras_empty_title()} text={m.eras_empty_body()} />
+  {/if}
+</Sheet>
+
+<style>
+  /* The range/era switch above each side (phase 6 ticket 03): its own row
+     rather than inside the card below, since Segmented already draws its
+     own pill and a second border around it would be a card inside a card. */
+  .compare-mode {
+    margin-bottom: var(--space-2);
+  }
+</style>
