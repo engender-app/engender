@@ -1,40 +1,26 @@
 /* Day One import at the source-module seam: preview resolves the whole
-   journal a commit would write, the same contract daylio.test.ts exercises
-   for its own source. The fixtures are real zip files - see
-   test-support/zip-builder.ts's own header for why - rather than inline
-   strings, because the container is exactly where a hand-written reader
-   tends to get an offset wrong. */
+   journal a commit would write, the same contract daylio.test.ts and
+   transtracks.test.ts exercise for their own sources. Photo bytes stay raw
+   here (dayone.ts's own header says why) - normalizing them is
+   journal/dayone.test.ts's concern, at the ArchiveArea seam. */
 
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { test } from 'vitest';
 import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import type { ArchiveJournal } from './payload.ts';
-import { extractZipEntry, readZipEntries } from './dayone-zip.ts';
-import { buildZip } from './test-support/zip-builder.ts';
 import {
-  DayOneImportError,
-  dayonePreview,
-  detectDayOne,
-  localDayInZone,
-  normalizeDayOneUuid,
-  type PhotoNormalizer
-} from './dayone.ts';
-
-const fixture = async (name: string) => new Uint8Array(await readFile(new URL(`fixtures/${name}`, import.meta.url)));
+  makeDayOneExport,
+  makeMalformedDayOneExport,
+  PHOTO_1_BYTES,
+  PHOTO_2_BYTES
+} from './test-support/dayone.ts';
+import { DayOneImportError, dayonePreview, detectDayOne, localDayInZone, normalizeDayOneUuid } from './dayone.ts';
 
 const naming = {
   tagLabels(id: string): string[] {
     return id === 'a-good-day' ? ['good day'] : [];
   }
 };
-
-/** A stand-in for the browser-only `normalizePhoto` (dayone.ts's own
-    `PhotoNormalizer` doc comment says why this is injected rather than
-    imported): echoes the raw bytes back as both full and thumb, so this
-    file can test resolution, verification and attachment without a
-    decoder or a canvas. */
-const echoNormalize: PhotoNormalizer = async (bytes) => ({ full: bytes, thumb: bytes });
 
 const existingWithGoodDayTag: ArchiveJournal = {
   ...emptyArchiveJournal(),
@@ -50,32 +36,33 @@ const existingWithGoodDayTag: ArchiveJournal = {
 };
 
 test('detectDayOne recognises the fixture, and only the fixture', async () => {
-  const wellFormed = await fixture('dayone-edge-cases.zip');
-  const malformed = await fixture('dayone-malformed.zip');
+  const wellFormed = await makeDayOneExport();
+  const malformed = makeMalformedDayOneExport();
   const notAZip = new TextEncoder().encode('not a zip at all');
 
   assert.ok(detectDayOne(wellFormed));
   // Malformed at the JSON level, not the zip level: still a zip carrying
-  // one top-level journal file, which is all detect ever promises - the
-  // same split detectDaylio's own header/body distinction draws.
-  assert.ok(detectDayOne(malformed));
+  // one top-level journal file with the two keys detect checks for -
+  // detecting picks a source to try, dayonePreview decides well-formed.
+  assert.ok(!detectDayOne(malformed));
   assert.ok(!detectDayOne(notAZip));
 });
 
 test('the whole edge-cases fixture resolves: counts, tags, notes and photos', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, existingWithGoodDayTag, naming, echoNormalize);
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, existingWithGoodDayTag, naming);
 
   assert.equal(preview.entryCount, 4);
   assert.equal(preview.matchedTagCount, 1); // "good day", used by two entries, matched once
   assert.equal(preview.newTagCount, 2); // "exercise" and "reading"
   assert.equal(preview.photoCount, 2);
   assert.equal(preview.unresolvedPhotoCount, 0);
+  assert.equal(preview.rawPhotos.size, 2);
 });
 
 test('a heading becomes the note\'s own first line, with the # marker dropped and backslash-escaped punctuation restored', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
 
   const withHeading = preview.journal.entries.find((e) => e.note.startsWith('A good day'))!;
   assert.ok(withHeading.note.startsWith('A good day\n'), withHeading.note);
@@ -84,40 +71,39 @@ test('a heading becomes the note\'s own first line, with the # marker dropped an
 });
 
 test('no heading in text is exactly as sensible: the note is the content, unmodified', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
 
   const noHeading = preview.journal.entries.find((e) => e.note.startsWith('Just a normal note'))!;
   assert.equal(noHeading.note, 'Just a normal note about the day. Nothing fancy, just glad it happened.');
 });
 
 test('an entry with no tags key imports without throwing, and richText fills in for empty text', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
 
   const onboarding = preview.journal.entries.find((e) => e.note.startsWith('An onboarding entry'))!;
   assert.deepEqual(onboarding.tags, []);
   assert.ok(onboarding.note.includes('Welcome to your journal, written entirely in richText.'), onboarding.note);
 });
 
-test('a photo\'s bytes verify against its md5 and the file attaches', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+test('a photo\'s bytes verify against its md5 and travel raw for the caller to normalize', async () => {
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
 
   const withPhoto = preview.journal.entries.find((e) => e.note.startsWith('A good day'))!;
   assert.equal(withPhoto.photos.length, 1);
-  const [photo] = withPhoto.photos;
-  const [full, thumb] = preview.files.filter((f) => f.name.startsWith(photo.fileName.replace('.jpg', '')));
-  assert.ok(full.bytes.length > 0);
-  assert.ok(thumb.bytes.length > 0);
+  const raw = preview.rawPhotos.get(withPhoto.photos[0].fileName);
+  assert.deepEqual(raw, PHOTO_1_BYTES);
 });
 
 test('an unresolvable md5Thumbnail does not fail the import, and its own full photo still resolves', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
 
   const dangling = preview.journal.entries.find((e) => e.note.startsWith('A day with a photo'))!;
   assert.equal(dangling.photos.length, 1, 'the full photo resolves even though md5Thumbnail names a file the zip does not carry');
+  assert.deepEqual(preview.rawPhotos.get(dangling.photos[0].fileName), PHOTO_2_BYTES);
   assert.equal(preview.unresolvedPhotoCount, 0);
 });
 
@@ -127,13 +113,13 @@ test('a photo with no date of its own does not throw - this app has nowhere to p
   // ArchivePhoto has no date field for one to land in - so the only real
   // claim this makes is "importing does not choke on the absent key",
   // which the fixture-wide test above already proves by not throwing.
-  const zip = await fixture('dayone-edge-cases.zip');
-  await assert.doesNotReject(dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize));
+  const zip = await makeDayOneExport();
+  await assert.doesNotReject(dayonePreview(zip, emptyArchiveJournal(), naming));
 });
 
 test('re-importing the same fixture is a no-op: uuid normalisation is deterministic and import is append-only', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const first = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+  const zip = await makeDayOneExport();
+  const first = await dayonePreview(zip, emptyArchiveJournal(), naming);
   assert.equal(first.entryCount, 4);
 
   // Simulate the merge that would have committed `first`: importing again
@@ -141,33 +127,29 @@ test('re-importing the same fixture is a no-op: uuid normalisation is determinis
   // them a second time, which only holds if the same uuid was minted both
   // times from the same source uuid.
   const alreadyImported: ArchiveJournal = { ...emptyArchiveJournal(), entries: first.journal.entries };
-  const second = await dayonePreview(zip, alreadyImported, naming, echoNormalize);
+  const second = await dayonePreview(zip, alreadyImported, naming);
   assert.equal(second.entryCount, 0);
-  assert.equal(second.files.length, 0, 'an already-imported entry\'s photos are not re-resolved into orphaned files');
+  assert.equal(second.rawPhotos.size, 0, 'an already-imported entry\'s photos are not re-resolved into orphaned bytes');
 });
 
 test('a metadata.version other than "1.0" is refused by name, no partial import', async () => {
-  const zip = await fixture('dayone-edge-cases.zip');
-  const journal = JSON.parse(new TextDecoder().decode(await extractJournalJson(zip)));
-  journal.metadata.version = '2.0';
-
-  const rebuilt = rezip(journal);
-  await assert.rejects(dayonePreview(rebuilt, emptyArchiveJournal(), naming, echoNormalize), /metadata\.version.*"2\.0".*"1\.0"/s);
+  const zip = await makeDayOneExport({ metadata: { version: '2.0' } });
+  await assert.rejects(dayonePreview(zip, emptyArchiveJournal(), naming), /metadata\.version.*"2\.0".*"1\.0"/s);
 });
 
 test('a malformed journal file is rejected during preview, before anything is written', async () => {
-  const zip = await fixture('dayone-malformed.zip');
-  await assert.rejects(dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize), DayOneImportError);
+  const zip = makeMalformedDayOneExport();
+  await assert.rejects(dayonePreview(zip, emptyArchiveJournal(), naming), DayOneImportError);
 });
 
-test('dayone-moment:// resolves through the photos array, and identifier/md5 case is never conflated', async () => {
+test('dayone-moment:// photos resolve through photos[], and identifier/md5 case is never conflated', async () => {
   // The real export's own shapes (see the ticket): identifier uppercase,
   // md5 lowercase, on the SAME photos[] entry - so a photo referenced
   // mid-text (not as the whole entry) still resolves to the right file,
-  // and a deliberately mixed-case identifier that happens to share
-  // characters with a lowercase md5 must not be treated as a match.
-  const zip = await fixture('dayone-edge-cases.zip');
-  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming, echoNormalize);
+  // matched on `photos[].md5` alone rather than on any case-folded
+  // guess at the identifier.
+  const zip = await makeDayOneExport();
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
   const withPhoto = preview.journal.entries.find((e) => e.note.startsWith('A good day'))!;
   assert.equal(withPhoto.photos.length, 1, 'resolved via photos[].md5, matched to the file the zip actually carries');
 });
@@ -198,16 +180,3 @@ test('normalizeDayOneUuid reshapes the 32-hex form deterministically', () => {
   assert.equal(a, b, 'case in the source uuid does not change the result');
   assert.throws(() => normalizeDayOneUuid('not-a-uuid', 'a'), DayOneImportError);
 });
-
-// --- helper for the version-refusal test, which needs a fixture the
-// normal build script does not produce -------------------------------
-
-async function extractJournalJson(zip: Uint8Array): Promise<Uint8Array> {
-  const entries = readZipEntries(zip);
-  const journalEntry = entries.find((e) => e.name === 'Journal.json')!;
-  return extractZipEntry(zip, journalEntry);
-}
-
-function rezip(journal: unknown): Uint8Array {
-  return buildZip([{ name: 'Journal.json', data: new TextEncoder().encode(JSON.stringify(journal)), method: 0 }]);
-}
