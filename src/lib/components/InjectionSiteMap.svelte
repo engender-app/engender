@@ -6,11 +6,21 @@
 
      Real buttons positioned over a decorative SVG rather than tappable SVG
      shapes: a `<button>` gets the focus ring, the touch target and the
-     accessible name for free, and the silhouette is then just a picture. -->
+     accessible name for free, and the silhouette is then just a picture.
+
+     Phase 6 ticket 13: each dot now shades by how long ago its site was
+     used, so the question "where should this one go" is answered off the
+     picture instead of by reading a twelve-row table against it. The dots
+     carry three things at once and each one has its own channel: the fill
+     is recency, an outer ring is the site tapped for this dose, and a
+     dashed edge is where the last injection went. Nothing here says a site
+     is due. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import { INJECTION_SITES, type InjectionSiteKey, type InjectionSiteRegion } from '$lib/data/doseSchedule';
+  import { INJECTION_SITES, type InjectionSiteKey } from '$lib/data/doseSchedule';
+  import { recencyHeatLevel } from '$lib/data/metricRange';
   import { injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
+  import { sitePosition } from './injectionSiteMap';
 
   let {
     value,
@@ -26,34 +36,31 @@
     lastUsed?: string | null;
     /** Days since each site was last used, or null for a site never used
         (ticket 10: doseSchedule.ts's siteRecency). Omitted where the caller
-        has no dose history at hand - the map still renders, just without
-        the recency list below it. */
+        has no dose history at hand - the dots then carry no recency and the
+        list below is absent. */
     recency?: Record<InjectionSiteKey, number | null>;
     onChange: (site: InjectionSiteKey) => void;
   } = $props();
 
-  /** Where each region sits on the silhouette, as percentages of the box.
-      The left/right pair mirrors around the midline, so one entry per region
-      places both. Read against the SVG below, whose viewBox is twice as tall
-      as it is wide: the torso runs from 15% to 44% of the height, the pelvis
-      to 49%, and the legs from there down.
+  /** The swatch a site's recency lands on, or null where the caller passed
+      no recency at all. Level 0 is the never-used state, which is drawn as
+      an empty dot rather than as the pale end of the ramp: neither a large
+      number nor zero reads as "never". */
+  const levelOf = (key: InjectionSiteKey) =>
+    recency ? recencyHeatLevel(recency[key]) : null;
 
-      Kept far enough apart that two neighbouring dots never overlap at the
-      map's narrowest - six sided regions on one small figure is the tightest
-      this layout gets. */
-  const PLACEMENT: Record<InjectionSiteRegion, { top: number; inset: number }> = {
-    deltoid: { top: 19, inset: 25 },
-    abdomen: { top: 32, inset: 42 },
-    loveHandle: { top: 39, inset: 35 },
-    ventrogluteal: { top: 45, inset: 36 },
-    dorsogluteal: { top: 51, inset: 29 },
-    thigh: { top: 62, inset: 40 }
-  };
+  /** The dot's own two colours as custom properties. `--on-heat-N` is the
+      ink palettes.css already tunes for a fill that deep, which is what
+      keeps the dashed last-used edge legible on the strongest swatch and on
+      the empty one alike. */
+  const swatchStyle = (level: number | null) =>
+    level === null
+      ? ''
+      : `--dot-fill:var(--heat-${level});--dot-ink:var(--on-heat-${level})`;
 
-  const positionOf = (site: (typeof INJECTION_SITES)[number]) => {
-    const place = PLACEMENT[site.region];
-    const left = site.side === 'left' ? place.inset : 100 - place.inset;
-    return `top:${place.top}%;left:${left}%`;
+  const dotStyle = (site: (typeof INJECTION_SITES)[number]) => {
+    const { top, left } = sitePosition(site);
+    return `top:${top}%;left:${left}%;${swatchStyle(levelOf(site.key))}`;
   };
 </script>
 
@@ -68,8 +75,10 @@
     <!-- The pelvis: the hip and buttock dots need something to sit on, and
          without it they floated beside the figure. -->
     <rect x="32" y="82" width="36" height="16" rx="8" />
-    <rect x="34" y="94" width="14" height="52" rx="7" />
-    <rect x="52" y="94" width="14" height="52" rx="7" />
+    <!-- The upper legs run flush with the pelvis: the buttock dot sits at
+         the top of one, and at 14 units wide it hung off the side. -->
+    <rect x="32" y="94" width="16" height="52" rx="8" />
+    <rect x="52" y="94" width="16" height="52" rx="8" />
     <rect x="35" y="144" width="12" height="44" rx="6" />
     <rect x="53" y="144" width="12" height="44" rx="6" />
   </svg>
@@ -80,7 +89,8 @@
       class="site-dot"
       class:is-selected={value === site.key}
       class:is-last={lastUsed === site.key && value !== site.key}
-      style={positionOf(site)}
+      class:is-never={levelOf(site.key) === 0}
+      style={dotStyle(site)}
       role="radio"
       aria-checked={value === site.key}
       aria-label={lastUsed === site.key
@@ -96,14 +106,21 @@
   <p class="muted small site-map-caption">{injectionSiteLabel(value)}</p>
 {/if}
 
-<!-- Ticket 10: recency for every site, not just the tapped one, so it lives
-     as a list rather than crowding the map's dots - PLACEMENT above already
-     runs the silhouette at its tightest fit. -->
+<!-- Ticket 10's list, kept: a colour ramp is not readable by a screen
+     reader, so this is the recency in words rather than a duplicate to be
+     tidied away now the map carries it. Each row shows its own dot's
+     swatch, which makes the list the map's key as well as its equivalent. -->
 {#if recency}
   <ul class="site-recency-list" aria-label={m.dose_site_recency_aria()}>
     {#each INJECTION_SITES as site (site.key)}
       {@const days = recency[site.key]}
-      <li class="site-recency-row" data-site={site.key}>
+      <li
+        class="site-recency-row"
+        class:is-never={days === null}
+        data-site={site.key}
+        style={swatchStyle(levelOf(site.key))}
+      >
+        <span class="site-recency-swatch" aria-hidden="true"></span>
         <span>{injectionSiteLabel(site.key)}</span>
         <span class="muted">
           {days === null ? m.dose_site_never_used() : m.dose_site_days_ago({ days: m.n_days({ n: days }) })}
@@ -117,6 +134,8 @@
   .site-map {
     position: relative;
     width: 100%;
+    /* injectionSiteMap.ts spaces the dots against this number in px, and
+       its test holds the two apart by a touch target. */
     max-width: 280px;
     aspect-ratio: 1 / 2;
     margin: 0 auto var(--space-2);
@@ -142,32 +161,52 @@
     border-radius: 50%;
   }
   /* The visible dot, drawn inside the touch target so neighbouring sites
-     look separate while staying tappable. */
+     look separate while staying tappable. Its fill is the recency swatch;
+     the hairline edge is what keeps the palest swatch and the empty one
+     visible against the silhouette's own surface. */
   .site-dot::after {
     content: '';
     position: absolute;
     inset: 50% auto auto 50%;
     transform: translate(-50%, -50%);
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    border: 2px solid var(--accent-border);
-    background: var(--surface);
+    border: 1.5px solid var(--border);
+    background: var(--dot-fill, var(--surface));
     transition:
       background var(--dur-fast) var(--ease-out),
       border-color var(--dur-fast) var(--ease-out);
   }
+  /* Never used. Empty and a size down, two channels rather than one,
+     because the faintest step of the ramp is a 22% tint and "never" must
+     not read as "a long time ago". */
+  .site-dot.is-never::after {
+    width: 15px;
+    height: 15px;
+    background: none;
+  }
   .site-dot:hover::after {
     border-color: var(--accent);
   }
-  .site-dot.is-selected::after {
-    background: var(--accent);
-    border-color: var(--accent);
+  /* The site tapped for this dose. A ring around the dot rather than a
+     fill, because the fill is spoken for: picking a site must not erase
+     what the map says about it. */
+  .site-dot.is-selected::before {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
   }
-  /* Where the last injection went. A ring rather than a fill: it is history,
-     not the current pick, and the two must not read alike. */
+  /* Where the last injection went. Dashed, in the ink tuned for whatever
+     swatch it sits on: it is history, not the current pick, and the two
+     must not read alike. */
   .site-dot.is-last::after {
-    border-color: var(--accent);
+    border-color: var(--dot-ink, var(--accent));
     border-style: dashed;
   }
   .site-map-caption {
@@ -182,10 +221,26 @@
     gap: var(--space-1);
   }
   .site-recency-row {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
     gap: var(--space-2);
     font-size: var(--text-sm);
+  }
+  /* The same dot, at row scale: the list says in words what the map says
+     in colour, and this is the join between them. */
+  .site-recency-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--dot-fill, var(--surface));
+  }
+  .site-recency-row.is-never .site-recency-swatch {
+    width: 9px;
+    height: 9px;
+    margin: 0 1.5px;
+    background: none;
   }
   .site-recency-row span:last-child {
     white-space: nowrap;
