@@ -117,9 +117,15 @@ function requireString(value: unknown, field: string, index: number): string {
   return value;
 }
 
-function requireScores(value: unknown, index: number): number[] {
+/** `scores` is the one MOOD field ticket 17 does not put in the "date and
+    type are the only structural guard" camp: a record missing it, or
+    carrying something that is not a non-empty array of numbers, is not
+    unlike a record with no notes and no tags (spec's own leniency) - it
+    still has a real day and a real identity, so it imports with no mood
+    rather than taking the whole file down over one absent field. */
+function parseScores(value: unknown): number[] | null {
   if (!Array.isArray(value) || value.length === 0 || !value.every((score) => typeof score === 'number')) {
-    throw new PixelsBackupError(`record ${index} has an invalid scores array`);
+    return null;
   }
   return value as number[];
 }
@@ -225,9 +231,9 @@ export async function pixelsPreview(file: Uint8Array, existing: ArchiveJournal):
 
     const epochDay = pixelsLocalDay(raw.date, index);
     const date = raw.date as string;
-    const scores = requireScores(raw.scores, index);
-    if (scores.length > 1) averagedRecordCount += 1;
-    const mood = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+    const scores = parseScores(raw.scores);
+    if (scores && scores.length > 1) averagedRecordCount += 1;
+    const mood = scores ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
     const notes = typeof raw.notes === 'string' ? raw.notes : '';
 
     const tagIds: string[] = [];
