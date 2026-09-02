@@ -78,6 +78,25 @@
       than two: only one side is ever being picked at a time. */
   let eraPickerSide = $state<'a' | 'b' | null>(null);
 
+  /* A side pointing at an era that has since been deleted falls back to its
+     pre-era behaviour - a plain, empty date-range side - the same resting
+     state every other era-adopting surface gives a stale reference (the
+     acceptance criterion this ticket states for all four). `erasQuery.rows`
+     is empty both before the read lands and after a real deletion, so this
+     waits on `!erasQuery.loading` to tell the two apart. */
+  $effect(() => {
+    if (aMode === 'era' && aEraId && !erasQuery.loading && !erasQuery.rows.some((e) => e.id === aEraId)) {
+      aMode = 'range';
+      aEraId = '';
+    }
+  });
+  $effect(() => {
+    if (bMode === 'era' && bEraId && !erasQuery.loading && !erasQuery.rows.some((e) => e.id === bEraId)) {
+      bMode = 'range';
+      bEraId = '';
+    }
+  });
+
   function periodFromRange(start: string, end: string): Period | null {
     const range = customInclusiveRange(epochDayFromDateInputValue(start), epochDayFromDateInputValue(end));
     if (!range || range.end > today) return null;

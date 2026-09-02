@@ -1750,7 +1750,7 @@
   "compare_period_b_label": "Okres B",
   "compare_start_label": "{period}: dzień początkowy",
   "compare_end_label": "{period}: dzień końcowy",
-  "compare_empty": "Dokończ wybór obu okresów - zakresu dat albo ery - żeby zobaczyć je obok siebie.",
+  "compare_empty": "Dokończ wybór obu okresów, zakresu dat albo ery, żeby zobaczyć je obok siebie.",
   "compare_mode_range": "Zakres dat",
   "compare_mode_era": "Era",
   "compare_pick_era": "Wybierz erę",
