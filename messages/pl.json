@@ -827,7 +827,7 @@
   ],
   "daylio_imported_toast": "Zaimportowano wpisy: {entries}, nowe tagi: {tags}.",
   "dlb_row_title": "Import z Daylio (kopia)",
-  "dlb_row_sub": "nastroje, tagi, kamienie milowe, zdjęcia i notatki głosowe, zawsze jako dołączenie",
+  "dlb_row_sub": "też kamienie milowe, zdjęcia i notatki głosowe, zawsze jako dołączenie",
   "dlb_sheet_title": "Import kopii z Daylio",
   "dlb_file_label": "Kopia z Daylio",
   "dlb_file_placeholder": "Wybierz plik .daylio…",
@@ -2847,6 +2847,7 @@
   "imp_log_section": "Historia importów",
   "imp_log_source_daylio": "Daylio",
   "imp_log_row_sub": "{counts} · {when}",
+  "imp_log_nothing": "nic nowego",
   "imp_log_n_entries": [
     {
       "declarations": [

@@ -253,10 +253,16 @@
     return IMPORT_LOG_SOURCE_LABEL[source]?.() ?? source;
   }
 
+  /* Zeros are left out rather than listed. The record keeps them - it is
+     the whole answer to what an import did - but a line reading "3
+     entries, 0 milestones, 0 tags, 0 photos and voice notes" spends four
+     phrases saying one thing, and an import that added nothing at all says
+     so in two words instead of four zeroes. */
   function importLogCountsText(counts: Record<string, number>): string {
-    return Object.entries(counts)
-      .map(([kind, n]) => IMPORT_LOG_KIND_LABEL[kind]?.(n) ?? `${n} ${kind}`)
-      .join(', ');
+    const listed = Object.entries(counts)
+      .filter(([, n]) => n > 0)
+      .map(([kind, n]) => IMPORT_LOG_KIND_LABEL[kind]?.(n) ?? `${n} ${kind}`);
+    return listed.length > 0 ? listed.join(', ') : m.imp_log_nothing();
   }
 
   /* One function behind all three exports, so the backup timestamp is

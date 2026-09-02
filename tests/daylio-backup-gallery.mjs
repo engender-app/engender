@@ -95,7 +95,11 @@ for (const theme of ['dark', 'light']) {
   await page.locator('[data-confirm-backup]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached', timeout: 60000 });
   await page.waitForTimeout(700);
-  await shot(`imported-${theme}`);
+  await shot(`imported-${theme}`, '[data-import-rows]');
+  // The record this import wrote, in the history the same screen keeps.
+  await page.locator('[data-import-log-row]').first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await shot(`history-${theme}`, '[data-import-log-row]');
 
   // Second pick of the same file: everything in it is already here.
   await page.locator('[data-daylio-backup]').click();
