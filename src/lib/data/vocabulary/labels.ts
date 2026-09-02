@@ -21,7 +21,6 @@ import type {
   BuiltInPersonalEffectKey,
   BuiltInTagGroupKey,
   BuiltInTagKey,
-  EntryPromptKey,
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
@@ -477,10 +476,25 @@ const ENTRY_TEMPLATE_NAME: Record<EntryTemplateKey, Message> = {
   gendered_correctly: m.tpl_entry_gendered_correctly,
   misgendered: m.tpl_entry_misgendered,
   good_day: m.tpl_entry_good_day,
-  hard_day: m.tpl_entry_hard_day
+  hard_day: m.tpl_entry_hard_day,
+  // Folded in from the guided prompts (ticket 07): these six had no name of
+  // their own, only the cue text below, because nothing before this ticket
+  // showed them in a titled list.
+  euphoria_moment: m.tpl_entry_euphoria_moment,
+  dysphoria_moment: m.tpl_entry_dysphoria_moment,
+  body_feeling: m.tpl_entry_body_feeling,
+  seen_moment: m.tpl_entry_seen_moment,
+  self_care: m.tpl_entry_self_care,
+  presentation_feeling: m.tpl_entry_presentation_feeling,
+  name_pronouns_feeling: m.tpl_entry_name_pronouns_feeling,
+  proud_moment: m.tpl_entry_proud_moment
 };
 
-const ENTRY_PROMPT_TEXT: Record<EntryPromptKey, Message> = {
+/* Partial: only the folded-in guided prompts carry a note scaffold, the
+   same wording they had as prompts - a scaffold-less built-in (the original
+   six) is a resting state, not a gap, the same "no message" answer `lookup`
+   already gives. */
+const ENTRY_TEMPLATE_NOTE_SCAFFOLD: Partial<Record<EntryTemplateKey, Message>> = {
   euphoria_moment: m.prompt_euphoria_moment,
   dysphoria_moment: m.prompt_dysphoria_moment,
   body_feeling: m.prompt_body_feeling,
@@ -531,4 +545,8 @@ export const effectCategoryName = (key: string): string => lookup(EFFECT_CATEGOR
 export const milestoneTemplateName = (key: string) => lookup(TEMPLATE_NAME, key);
 export const bodyRegionName = (key: string) => lookup(BODY_REGION_NAME, key);
 export const entryTemplateName = (key: string) => lookup(ENTRY_TEMPLATE_NAME, key);
-export const entryPromptText = (key: string) => lookup(ENTRY_PROMPT_TEXT, key);
+/** The note scaffold a folded-in guided prompt carries, or null for a
+    built-in that never had one - the same shape `dimensionNote` gives a
+    dimension with no catalogue line. */
+export const entryTemplateNoteScaffold = (key: string): string | null =>
+  (ENTRY_TEMPLATE_NOTE_SCAFFOLD as Record<string, Message | undefined>)[key]?.() ?? null;

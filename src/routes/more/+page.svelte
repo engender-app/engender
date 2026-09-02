@@ -91,6 +91,7 @@
        starts, and the Home nudge - which only fires once one exists - is the
        reminder rather than the entrance. */
     { key: 'voice-benchmark', icon: 'mic', title: () => m.vb_title(), subtitle: () => m.vb_hub_sub(), href: '/settings/voice/record' },
+    { key: 'entry-templates', icon: 'grid', title: () => m.entry_templates_title(), subtitle: () => m.entry_templates_row_sub(), href: '/settings/entry-templates' },
     { key: 'wear', icon: 'clock', title: () => m.wear_log(), subtitle: () => m.wear_log_sub(), href: '/settings/wear' },
     { key: 'effects', icon: 'sparkle', title: () => m.effects_timeline(), subtitle: () => m.effects_timeline_sub(), href: '/settings/effects' },
     { key: 'resources', icon: 'globe', title: () => m.resources_title(), subtitle: () => m.resources_row_sub(), href: '/settings/resources' },

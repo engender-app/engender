@@ -14,8 +14,6 @@
    message fails the typecheck rather than showing a raw key to someone. */
 
 import type {
-  EntryPrompt,
-  EntryTemplate,
   GenderDimension,
   GenderPreset,
   Lean,
@@ -401,33 +399,32 @@ export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
    in labels.ts" split BUILT_IN_PRESETS uses for its own `dims`. Values sit
    on the euphoria_dysphoria scale, the one dimension every built-in preset
    includes (BUILT_IN_PRESETS above), so a template's dial reading makes
-   sense under any preset a person has chosen. */
+   sense under any preset a person has chosen.
+
+   The last eight were guided prompts (phase 4 features ticket 17) until
+   phase 6 ticket 07 folded the two concepts into one: a prompt is a
+   template with empty tags and empty dims, its note scaffold the whole of
+   its content, the same wording it always had (labels.ts's
+   `entryTemplateNoteScaffold`) but now editable, hideable and reachable
+   from the "use template" sheet like any other. */
 export const ENTRY_TEMPLATES = [
   { key: 'euphoria_day', tags: ['g-euphoria', 'g-body-eu', 'g-soc-eu'], dims: { euphoria_dysphoria: 85 } },
   { key: 'dysphoria_day', tags: ['g-body-dys', 'g-soc-dys'], dims: { euphoria_dysphoria: 20 } },
   { key: 'gendered_correctly', tags: ['g-gendered-ok'], dims: {} },
   { key: 'misgendered', tags: ['g-misgendered'], dims: {} },
   { key: 'good_day', tags: ['e-happy', 'e-calm'], dims: { euphoria_dysphoria: 75 } },
-  { key: 'hard_day', tags: ['e-sad', 'e-anxious'], dims: { euphoria_dysphoria: 30 } }
+  { key: 'hard_day', tags: ['e-sad', 'e-anxious'], dims: { euphoria_dysphoria: 30 } },
+  { key: 'euphoria_moment', tags: [], dims: {} },
+  { key: 'dysphoria_moment', tags: [], dims: {} },
+  { key: 'body_feeling', tags: [], dims: {} },
+  { key: 'seen_moment', tags: [], dims: {} },
+  { key: 'self_care', tags: [], dims: {} },
+  { key: 'presentation_feeling', tags: [], dims: {} },
+  { key: 'name_pronouns_feeling', tags: [], dims: {} },
+  { key: 'proud_moment', tags: [], dims: {} }
 ] as const;
 
 export type EntryTemplateKey = (typeof ENTRY_TEMPLATES)[number]['key'];
-
-/* Guided prompts (phase 4 features ticket 17): keys only, like milestone
-   templates - the reflection text itself is wording, so it lives in
-   labels.ts, not here. */
-export const ENTRY_PROMPT_KEYS = [
-  'euphoria_moment',
-  'dysphoria_moment',
-  'body_feeling',
-  'seen_moment',
-  'self_care',
-  'presentation_feeling',
-  'name_pronouns_feeling',
-  'proud_moment'
-] as const;
-
-export type EntryPromptKey = (typeof ENTRY_PROMPT_KEYS)[number];
 
 /* Presets and milestone templates are not stored rows in Phase 1 - the
    journal holds only what the user added - so these hand back the built-in
@@ -451,14 +448,6 @@ export function regimenTemplateRows(): RegimenTemplate[] {
     route: '',
     lean: REGIMEN_TEMPLATE_LEAN[key]
   }));
-}
-
-export function entryTemplateRows(): EntryTemplate[] {
-  return ENTRY_TEMPLATES.map((t) => ({ key: t.key, name: '', tags: [...t.tags], dims: { ...t.dims } }));
-}
-
-export function entryPromptRows(): EntryPrompt[] {
-  return ENTRY_PROMPT_KEYS.map((key) => ({ key, text: '' }));
 }
 
 /* Reconciling, not seeding-if-empty. Both functions add what is missing by
