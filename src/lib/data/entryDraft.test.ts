@@ -5,10 +5,22 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { createEntryDraft } from './entryDraft.ts';
-import type { Entry } from './types.ts';
+import type { Entry, EntryTemplate } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
 
 const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thumb: new Uint8Array([n]) });
+
+const template = (overrides: Partial<EntryTemplate> = {}): EntryTemplate => ({
+  id: 'tpl',
+  name: 'Template',
+  tags: [],
+  dims: {},
+  noteScaffold: '',
+  presentationId: null,
+  builtIn: true,
+  hidden: false,
+  ...overrides
+});
 
 const existingEntry = (): Entry => ({
   id: 7,
@@ -289,7 +301,7 @@ test('applyTemplate adds its tags without duplicating one already selected', () 
   const draft = createEntryDraft(1);
   draft.toggleTag('g-euphoria');
 
-  draft.applyTemplate(['g-euphoria', 'g-body-eu'], {});
+  draft.applyTemplate(template({ tags: ['g-euphoria', 'g-body-eu'] }));
 
   assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
 });
@@ -298,7 +310,7 @@ test('applyTemplate sets dims without clobbering a value the draft already had',
   const draft = createEntryDraft(1);
   draft.setDim('masculinity', 40);
 
-  draft.applyTemplate([], { euphoria_dysphoria: 85 });
+  draft.applyTemplate(template({ dims: { euphoria_dysphoria: 85 } }));
 
   assert.deepEqual(draft.dims, { masculinity: 40, euphoria_dysphoria: 85 });
 });
@@ -306,7 +318,7 @@ test('applyTemplate sets dims without clobbering a value the draft already had',
 test('applyTemplate pre-fills a fresh draft, and every value stays editable afterwards', () => {
   const draft = createEntryDraft(1);
 
-  draft.applyTemplate(['g-euphoria', 'g-body-eu'], { euphoria_dysphoria: 85 });
+  draft.applyTemplate(template({ tags: ['g-euphoria', 'g-body-eu'], dims: { euphoria_dysphoria: 85 } }));
   assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
   assert.deepEqual(draft.dims, { euphoria_dysphoria: 85 });
 
@@ -314,6 +326,26 @@ test('applyTemplate pre-fills a fresh draft, and every value stays editable afte
   draft.setDim('euphoria_dysphoria', 60);
   assert.deepEqual(draft.tags, ['g-body-eu']);
   assert.deepEqual(draft.dims, { euphoria_dysphoria: 60 });
+});
+
+test('applyTemplate fills an empty note from the scaffold but never overwrites what is already written', () => {
+  const blank = createEntryDraft(1);
+  blank.applyTemplate(template({ noteScaffold: 'What felt euphoric today?' }));
+  assert.equal(blank.note, 'What felt euphoric today?');
+
+  const written = createEntryDraft(1);
+  written.setNote('already writing');
+  written.applyTemplate(template({ noteScaffold: 'What felt euphoric today?' }));
+  assert.equal(written.note, 'already writing');
+});
+
+test('applyTemplate sets the presentation when the template carries one, and leaves it otherwise', () => {
+  const draft = createEntryDraft(1);
+  draft.applyTemplate(template({ presentationId: 'p1' }));
+  assert.equal(draft.presentationId, 'p1');
+
+  draft.applyTemplate(template());
+  assert.equal(draft.presentationId, 'p1', 'a template with no presentation is not an error and changes nothing');
 });
 
 test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', () => {

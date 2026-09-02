@@ -344,6 +344,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   affirmations: 'reference data',
   bodyRegions: 'reference data',
   presentations: 'reference data',
+  entryTemplates: 'reference data',
   measurementTypes: 'reference data',
   effectCategories: 'reference data',
   personalEffectTypes: 'reference data',

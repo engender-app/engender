@@ -123,7 +123,16 @@ test('reconciling built-ins announces the reference tables it may have filled', 
   await journal.reconcileBuiltIns();
 
   assert.deepEqual(announced, [
-    ['tag', 'dimension', 'affirmation', 'bodyRegion', 'measurementType', 'effectCategory', 'personalEffectType']
+    [
+      'tag',
+      'dimension',
+      'affirmation',
+      'bodyRegion',
+      'measurementType',
+      'effectCategory',
+      'personalEffectType',
+      'entryTemplate'
+    ]
   ]);
 });
 

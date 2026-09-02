@@ -485,6 +485,13 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // text is already searchable where it was written; matching it here would
   // show the same words twice and file a bad hour into an ordinary search.
   counterevidenceSnapshots: 'a Safe Space artefact, and its text is the entries’ own',
+
+  // A template's name and note scaffold are the person's own words for an
+  // authored one, but they name a creation aid rather than journal
+  // content - nobody searching their journal is looking for the templates
+  // they write entries from (phase 6 ticket 07).
+  entryTemplates: 'a creation aid, not journal content - what it seeds is what search finds',
+
   // The same Safe Space artefact class as the row above, for a different
   // reason: a comfort item's text is not duplicated anywhere, but ticket 14
   // (phase 6) built this list to be reached behind Safe Space's own single

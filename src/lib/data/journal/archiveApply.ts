@@ -224,6 +224,74 @@ export async function applyPresets({ driver, mode, journal, ts }: Restoring): Pr
   }
 }
 
+/** Entry templates (phase 6 ticket 07, ADR-0002) - the same shape
+    applyPresets gives a built-in-or-authored area with child links: a
+    matched row's children only ever come from a Replace, the same "Merge
+    keeps what is already offered" rule presets gives, and a template with
+    no presentation on the far side is exactly `presentationId ?? null`,
+    the same resting state applyEntries gives an entry (ADR-0010). */
+export async function applyEntryTemplates({ driver, mode, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT COALESCE(key, uuid) AS id FROM entry_template');
+
+  for (const template of journal.entryTemplates) {
+    if (present.has(template.id)) {
+      if (mode === 'merge') continue;
+      await driver.run(
+        `UPDATE entry_template SET name = ?, note_scaffold = ?, presentation_id = ?, hidden = ?, updated_at = ?
+         WHERE COALESCE(key, uuid) = ?`,
+        [template.name, template.noteScaffold, template.presentationId ?? null, flag(template.hidden), ts, template.id]
+      );
+      const templateId = await rowidWhere(
+        driver,
+        'entry_template',
+        'COALESCE(key, uuid) = ?',
+        [template.id],
+        'entry template id'
+      );
+      await driver.run('DELETE FROM entry_template_tag WHERE template_id = ?', [templateId]);
+      await driver.run('DELETE FROM entry_template_dimension_value WHERE template_id = ?', [templateId]);
+    } else {
+      await driver.run(
+        `INSERT INTO entry_template (uuid, key, name, note_scaffold, presentation_id, hidden, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          template.builtIn ? null : template.id,
+          template.builtIn ? template.id : null,
+          template.name,
+          template.noteScaffold,
+          template.presentationId ?? null,
+          flag(template.hidden),
+          ts
+        ]
+      );
+    }
+
+    const templateId = await rowidWhere(
+      driver,
+      'entry_template',
+      'COALESCE(key, uuid) = ?',
+      [template.id],
+      'entry template id'
+    );
+    for (const tagId of template.tags ?? []) {
+      const result = await driver.run(
+        `INSERT INTO entry_template_tag (template_id, tag_id)
+         SELECT ?, id FROM tag WHERE key = ? OR uuid = ?`,
+        [templateId, tagId, tagId]
+      );
+      assertChanged(result, `tag ${tagId} in entry template ${template.id}`);
+    }
+    for (const [key, value] of Object.entries(template.dims ?? {})) {
+      const result = await driver.run(
+        `INSERT INTO entry_template_dimension_value (template_id, dimension_id, value)
+         SELECT ?, id, ? FROM gender_dimension WHERE key = ?`,
+        [templateId, value, key]
+      );
+      assertChanged(result, `dimension ${key} in entry template ${template.id}`);
+    }
+  }
+}
+
 const nextTagOrderIndex = async (driver: SqliteDriver, groupId: number): Promise<number> => {
   const rows = await driver.query<{ next: number }>(
     'SELECT COALESCE(MAX(order_index), -1) + 1 AS next FROM tag WHERE group_id = ?',

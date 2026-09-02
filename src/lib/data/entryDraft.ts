@@ -11,7 +11,8 @@
 
 import { bodyRegionIsLogged, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
-import type { BodyRegionFeeling, Entry } from './types';
+import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
+import type { BodyRegionFeeling, Entry, EntryTemplate } from './types';
 import type {
   EntryCycleEventInput,
   EntryDoseLogInput,
@@ -64,13 +65,17 @@ export interface EntryDraft {
   setNote(note: string): void;
   setDim(key: string, value: number): void;
   toggleTag(id: string): void;
-  /** Merges a template's pre-fill into the draft (ticket 17): tags join the
+  /** Merges a template's pre-fill into the draft (ticket 17, extended by
+      ticket 07 for the note scaffold and presentation): tags join the
       selection already there rather than toggling it, so applying the same
-      template twice cannot flip a tag back off, and dims overwrite by key
-      the way `setDim` does. Every value it sets is a plain field afterwards
-      - `toggleTag`/`setDim` edit it same as anything the person picked
-      themselves. */
-  applyTemplate(tags: string[], dims: Record<string, number>): void;
+      template twice cannot flip a tag back off, dims overwrite by key the
+      way `setDim` does, a note scaffold only ever fills an empty note, and
+      a template's own presentation replaces the draft's when it has one.
+      Every value it sets is a plain field afterwards - `toggleTag`/`setDim`
+      edit it same as anything the person picked themselves. The merge math
+      itself is `applyEntryTemplateToDraft` (vocabulary/entryTemplates.ts),
+      the same pure seam ticket 08's debrief offer reads. */
+  applyTemplate(template: EntryTemplate): void;
   /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
       a region picked and then left alone carries nothing and is dropped on
       save (ticket 31), so picking one is not itself content. */
@@ -172,9 +177,15 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.tags = this.tags.includes(id) ? this.tags.filter((x: string) => x !== id) : [...this.tags, id];
     },
 
-    applyTemplate(tags, dims) {
-      this.tags = [...new Set([...this.tags, ...tags])];
-      this.dims = { ...this.dims, ...dims };
+    applyTemplate(template) {
+      const merged = applyEntryTemplateToDraft(
+        { tags: this.tags, dims: this.dims, note: this.note, presentationId: this.presentationId },
+        template
+      );
+      this.tags = merged.tags;
+      this.dims = merged.dims;
+      this.note = merged.note;
+      this.presentationId = merged.presentationId;
     },
 
     toggleBodyRegion(key) {

@@ -31,6 +31,7 @@ const stub = (name: string, after: readonly string[] = [], discard: readonly str
   name,
   after,
   discard,
+  travels: 'none',
   read: async () => [],
   apply: async () => {}
 });
@@ -118,6 +119,7 @@ test('a section added to the registry travels in a packed archive and comes back
   const throwaway: ArchiveSection = {
     name: 'moonPhases',
     after: [],
+    travels: 'none',
     async read({ driver }) {
       return driver.query<{ epoch_day: number; phase: string }>(
         'SELECT epoch_day, phase FROM moon_phase ORDER BY epoch_day'
@@ -280,4 +282,51 @@ test('every section declares its discard as plain single-table deletes', () => {
   for (const section of ARCHIVE_SECTIONS) {
     for (const statement of section.discard) assert.ok(tableOf(statement));
   }
+});
+
+/* What travels (ticket 04, ADR-0049): the real registry against the spec's
+   own worked cases, not a restatement of whatever archiveSections.ts
+   happens to say - each assertion below is a fact settled in
+   .scratch/phase-7/portability/spec.md, so a wrong declaration here fails
+   against the spec rather than against itself. */
+test('the registry answers the spec\'s worked cases for what travels', () => {
+  const travelsOf = (name: string) => ARCHIVE_SECTIONS.find((s) => s.name === name)!.travels;
+
+  assert.equal(travelsOf('dimensions'), 'whole', 'a custom gender dimension travels whole');
+  assert.equal(travelsOf('roadmapGoals'), 'whole', "a roadmap's goals travel");
+  assert.equal(travelsOf('roadmapChecks'), 'none', 'a roadmap tick does not');
+  assert.deepEqual(travelsOf('milestones'), { fields: ['name'] }, 'a milestone set travels as names, not dates');
+  assert.equal(travelsOf('checklists'), 'whole', 'an appointment question list travels whole');
+  assert.equal(travelsOf('eras'), 'none', 'an era would travel as a name with no bounds, so eras do not travel');
+
+  /* "Entries, photos, doses, labs, measurements and every other record of
+     what happened" - one section standing in for each of those five. */
+  for (const record of ['entries', 'hairPhotos', 'doseEvents', 'labResults', 'measurements']) {
+    assert.equal(travelsOf(record), 'none', `${record} is a record of what happened and must not travel`);
+  }
+});
+
+/* The 'fields' rule itself, run against the real milestones declaration
+   and a real-shaped row rather than restating what the declaration says:
+   narrowing to the declared fields must actually drop the epochDay and the
+   links into this device's own records (roadmapGoalKey, procedureId,
+   tryoutId, photo), not just claim to. */
+test('a fields declaration on the real registry keeps only the field it names', () => {
+  const milestones = ARCHIVE_SECTIONS.find((s) => s.name === 'milestones')!;
+  const row = {
+    id: 'm-1',
+    name: 'Started HRT',
+    epochDay: 19000,
+    templateKey: 'hrt_start',
+    roadmapGoalKey: null,
+    procedureId: null,
+    tryoutId: null,
+    photo: null
+  };
+  assert.ok(typeof milestones.travels === 'object', 'milestones travels as a named subset of fields');
+  const { fields } = milestones.travels as { fields: readonly string[] };
+
+  const kept = Object.fromEntries(fields.map((field) => [field, (row as Record<string, unknown>)[field]]));
+
+  assert.deepEqual(kept, { name: 'Started HRT' });
 });
