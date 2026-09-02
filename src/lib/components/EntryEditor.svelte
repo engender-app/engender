@@ -45,7 +45,24 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
-  let { epochDay, entryId, seedMood }: { epochDay?: number; entryId?: number; seedMood?: number | null } = $props();
+  let {
+    epochDay,
+    entryId,
+    seedMood,
+    debriefForAppointment
+  }: {
+    epochDay?: number;
+    entryId?: number;
+    seedMood?: number | null;
+    /** The appointment date this new entry debriefs (phase 6 ticket 08),
+        arriving as a query param the same way `seedMood` does. Applies the
+        hidden `appointment_debrief` template once on mount and, once the
+        entry is first saved, links it back to the appointment
+        (`recordDebriefEntry`) - never on an edit of an existing entry,
+        the same "creation aid, not an editing one" rule the prompt and the
+        template sheet already follow. */
+    debriefForAppointment?: number;
+  } = $props();
 
   /* The editor is a writing surface rather than a set of areas to look at,
      so it spends almost none of the flag: what colour it does take goes on
@@ -183,6 +200,21 @@
     });
     templateSheetOpen = false;
   }
+
+  /* The debrief offer's deep link (phase 6 ticket 08): applied once, the
+     same "read once at mount" rule `prompt` above follows, and only for a
+     new entry - taking the offer never reaches an existing one. Looked up
+     against the full list rather than `visibleEntryTemplates`, because the
+     template seeds hidden by design (builtins.ts) and the offer is the one
+     path that reaches it regardless. Silently does nothing if the built-in
+     has gone missing somehow (deleted from the archive by hand, say) -
+     the entry still opens as a blank one rather than failing to load. */
+  // svelte-ignore state_referenced_locally
+  if (entryId == null && debriefForAppointment != null) {
+    const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
+    if (debriefTemplate) applyTemplate(debriefTemplate);
+  }
+
   /* The union of the ticked scales and the entry's own: an entry logged
      when more was ticked keeps its extra scales on screen (marked below),
      instead of silently dropping their history on save. */
@@ -427,6 +459,9 @@
     saving = true;
     try {
       const id = await journal.entries.upsertEntry(entryDraft.toUpsert());
+      if (entryId == null && debriefForAppointment != null) {
+        await journal.checklists.recordDebriefEntry(id, debriefForAppointment);
+      }
       /* A quick log (seedMood set) that is still mood-only at save time
          offers to fill in the active preset's scales too, right on Home
          (ticket 13, beta B2) - the entry id travels there as a query param

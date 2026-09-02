@@ -576,13 +576,18 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
       reorder: ['checklist'],
-      setAppointmentDate: ['checklist']
+      setAppointmentDate: ['checklist'],
+      setDebriefDismissed: ['checklist'],
+      recordDebriefEntry: ['checklist']
     },
     reads: {
       getChecklist: ['checklist'],
       getChecklistByOwner: ['checklist'],
       getStandaloneChecklist: ['checklist'],
-      getAppointmentDate: ['checklist']
+      getAppointmentDate: ['checklist'],
+      getDebriefState: ['checklist'],
+      getDebriefDismissedEpochDay: ['checklist'],
+      getDebriefEntryId: ['checklist']
     }
   }),
   tally: classify<Journal['tally']>()({
