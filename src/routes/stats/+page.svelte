@@ -37,7 +37,7 @@
   import { isPausedOn } from '$lib/data/journalingPause';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
-  import { nativeValue, signedValue, tagInsightRows } from '$lib/data/wrappedDisplay';
+  import { nativeValue, signedValue, spreadNote, tagInsightRows } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -233,6 +233,23 @@
     ...metricOptions.filter((option) => option.value !== shown.key)
   ]);
 
+  /* Where the picked metric's days ran between, for the sheet below (phase
+     6 unprompted ticket 11). One read for the shown metric rather than one
+     per metric the way the averages are read: the sheet is the only place on
+     this screen that prints a single day, and the bars, the distribution and
+     the insights all speak for a period. */
+  let spreadsQuery = liveList((j) => j.stats.daySpread(shown.key, from, today));
+  /* Empty while the read is in flight, and that is the point rather than an
+     accident: an unloaded range and a range of single-entry days come back
+     identically empty, so a row saying nothing extra would claim the day
+     covered no ground before the answer arrived. The calendar holds the
+     same line for the same reason. */
+  let spreadByDay = $derived(
+    spreadsQuery.loading
+      ? new Map<number, (typeof spreadsQuery.rows)[number]>()
+      : new Map(spreadsQuery.rows.map((point) => [point.day, point]))
+  );
+
   /* The values sheet, in the same bars as everything else on the screen. The
      bar's length is where the day sits in the metric's own range, which is
      what makes a quiet week visible as a run of short bars.
@@ -241,7 +258,10 @@
      is one image to a screen reader, and a scrub is a way of reading a
      picture. So when a second scale joins the chart it joins this too, as
      the day's note - otherwise the second line would be a reading only
-     somebody who can see it can have. Days the second scale carries and the
+     somebody who can see it can have. A day that covered ground says so in
+     the same note, in the same words the calendar reads out over that day's
+     cell: the two surfaces draw one day from one pair of reads, and a person
+     who checks one against the other has to find the same answer. Days the second scale carries and the
      first does not get a row of their own, with an empty bar: the chart
      draws that stretch, and a list that quietly dropped it would disagree
      with the picture it is standing in for. */
@@ -258,6 +278,7 @@
       const second = comparedByDay?.get(day);
       const notes = [
         point && point.count > 1 ? m.avg_of({ count: String(point.count) }) : null,
+        spreadNote(shown.key, spreadByDay.get(day)),
         compared && second
           ? m.values_second({
               name: compared.name,

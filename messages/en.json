@@ -145,7 +145,7 @@
   "cal_jump_month": "Jump to month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average. Tap a filled day to see its entries.",
+  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries.",
   "legend_none": "no entry",
   "day_avg": "avg {metric}",
   "entries_this_day": [
@@ -258,6 +258,7 @@
   "values_two_title": "{first} and {second}: values",
   "values_second": "{name}: {value}",
   "avg_of": "avg of {count}",
+  "day_spread": "from {low} to {high}",
   "body_map_title": "Body map",
   "body_map_sub": "track one spot's dysphoria and euphoria over time",
   "body_map_mode_filter_all": "All",

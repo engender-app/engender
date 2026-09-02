@@ -35,6 +35,27 @@ export interface DayAverage {
   count: number;
 }
 
+export interface DaySpread {
+  day: number;
+  /** The lowest and the highest value the day's entries carried, in native
+      units (CONTEXT: Spread). Equal when the day only ever said one thing,
+      which is a day with no ground covered rather than a missing answer -
+      whether that draws a mark is the screen's rule, not this read's. */
+  low: number;
+  high: number;
+  /** The day's earliest and latest reading, in the order they were logged.
+      Not the same pair as `low` and `high` past two readings, and not the
+      same order even at two: a day that ran 5 then 2 has `low` 2 and
+      `first` 5. The calendar's split draws these (Alicja, 2026-09-02:
+      chronological, earliest half on the left) and every word the app
+      writes about a spread draws the two above. */
+  first: number;
+  last: number;
+  /** How many entries the ends were taken from, the same count
+      `dayAverages` reports for the same day. */
+  count: number;
+}
+
 export interface TagInsight {
   /** No label: a built-in tag stores a key and its wording comes from the
       message catalogue at display time (ticket 05). */
@@ -101,6 +122,20 @@ export interface StatsArea {
       dimension since hidden, an archive from a build that knew a key this
       one does not - yields no points rather than an error. */
   dayAverages(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** The same days `dayAverages` answers for, reporting each one's lowest
+      and highest value instead of its middle (phase 6 unprompted ticket 11,
+      CONTEXT: Spread). One row per day that carried the metric, oldest
+      first, both ends of the range inclusive.
+
+      A separate read rather than two more fields on `DayAverage`: a day's
+      middle is what the week strip, the charts, the correlation cards and
+      every wrapped ask for, and none of them has anywhere to put an end.
+      One query for the range either way - what the calendar could not
+      afford is a query per day.
+
+      Descriptive only. Which end came first, and which entry the day
+      "really" was, are questions this deliberately cannot answer. */
+  daySpread(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DaySpread[]>;
   /** Every entry in the range carrying a value on both named scales, oldest
       first, both ends inclusive (phase 5 deepening ticket 19, ADR-0048).
 
@@ -231,17 +266,25 @@ export const GOOD_DAY_REGION_EUPHORIA_FLOOR = 50;
 
    The fragment's own parameter comes first in every statement that embeds
    it, because the fragment opens the statement: callers pass
-   `[...params, ...their own]` and must keep it that way round. */
+   `[...params, ...their own]` and must keep it that way round.
+
+   `ordinal` is the entry's own clock, and only `spreadByDay` reads it: the
+   calendar draws a two-reading day chronologically, earliest half on the
+   left (Alicja, 2026-09-02), which is a question about order and not about
+   size. Ties break on the entry id, the same pair `constellationReadings`
+   orders by, so two entries stamped the same second still have one
+   answer. `bodyRegionValues` below carries no ordinal because nothing asks
+   a body region for its order. */
 function metricValues(metric: string): { sql: string; params: (string | number)[] } {
   if (metric === 'mood') {
     return {
-      sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, e.mood AS value
+      sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, e.mood AS value, e.timestamp AS ordinal
             FROM entry e WHERE e.mood IS NOT NULL AND e.trashed_at IS NULL`,
       params: []
     };
   }
   return {
-    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, edv.value AS value
+    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, edv.value AS value, e.timestamp AS ordinal
           FROM entry e
           JOIN entry_dimension_value edv ON edv.entry_id = e.id
           JOIN gender_dimension gd ON gd.id = edv.dimension_id
@@ -295,6 +338,65 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
   };
 
+  /* Deliberately the same fragment, the same window and the same grouping
+     as averageByDay above: the calendar draws both on one cell, so a day
+     one of them counts and the other does not is a cell contradicting
+     itself. MIN and MAX over the same rows AVG runs over is what makes
+     that true by construction rather than by two statements agreeing. */
+  const spreadByDay = async (
+    values: { sql: string; params: (string | number)[] },
+    fromEpochDay: number,
+    toEpochDay: number
+  ): Promise<DaySpread[]> => {
+    /* Deliberately the same fragment, the same window and the same grouping
+       as averageByDay above: the calendar draws both on one cell, so a day
+       one of them counts and the other does not is a cell contradicting
+       itself. MIN and MAX over the same rows AVG runs over is what makes
+       that true by construction rather than by two statements agreeing.
+
+       The two ends come back twice over, and they are two different
+       questions. `low` and `high` are the day's smallest and largest, which
+       is what the words say. `first` and `last` are its earliest and latest,
+       which is what the split draws - and on a day of two readings those are
+       the same pair in a different order, while on a day of three they are
+       not the same pair at all. The frame is the whole partition on both
+       sides, so LAST_VALUE answers the day rather than the row. */
+    const rows = await driver.query<{
+      day: number;
+      low: number;
+      high: number;
+      first_value: number;
+      last_value: number;
+      entries: number;
+    }>(
+      `WITH metric_value AS (${values.sql}),
+            in_range AS (
+              SELECT epoch_day, value,
+                     FIRST_VALUE(value) OVER day_order AS first_value,
+                     LAST_VALUE(value) OVER day_order AS last_value
+              FROM metric_value
+              WHERE epoch_day BETWEEN ? AND ?
+              WINDOW day_order AS (
+                PARTITION BY epoch_day ORDER BY ordinal, entry_id
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+              )
+            )
+       SELECT epoch_day AS day, MIN(value) AS low, MAX(value) AS high, COUNT(*) AS entries,
+              MIN(first_value) AS first_value, MIN(last_value) AS last_value
+       FROM in_range
+       GROUP BY epoch_day ORDER BY epoch_day`,
+      [...values.params, fromEpochDay, toEpochDay]
+    );
+    return rows.map((r) => ({
+      day: r.day,
+      low: r.low,
+      high: r.high,
+      first: r.first_value,
+      last: r.last_value,
+      count: r.entries
+    }));
+  };
+
   const bestStreakIn = async (fromEpochDay: number, toEpochDay: number): Promise<number> => {
     /* Gaps and islands: number the days in order and group by day - rn.
        Consecutive days share that difference, a gap starts a new group, so
@@ -313,6 +415,10 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
   return {
     async dayAverages(metric, fromEpochDay, toEpochDay) {
       return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
+    },
+
+    async daySpread(metric, fromEpochDay, toEpochDay) {
+      return spreadByDay(metricValues(metric), fromEpochDay, toEpochDay);
     },
 
     async constellationReadings(xKey, yKey, fromEpochDay, toEpochDay) {

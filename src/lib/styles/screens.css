@@ -268,8 +268,9 @@
 
    The shading is the active flag's stripe on the heat ramp's five steps, so
    a cell here and a cell of Home's week strip shade one reading the same way
-   (HeatMap.svelte). Both the fill and the ink of a cell arrive as inline
-   values, because the ink is computed per step - see roles.ts. */
+   (HeatMap.svelte). A cell's fills arrive as inline values, because the ramp
+   is computed per step rather than written down - see roles.ts. A day of two
+   readings carries two of them. */
 .cal-monthbar {
   display: flex;
   align-items: center;
