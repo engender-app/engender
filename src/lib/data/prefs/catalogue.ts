@@ -231,7 +231,7 @@ export interface PreferenceValues {
       `lastWrappedNotifiedPeriodKey` is. */
   lastOnThisDayNotifiedEpochDay: number | null;
   /** Optional per-analyte default units for labs entry/review. */
-  preferredLabUnits: Partial<Record<'estradiol' | 'testosterone' | 'prolactin', string>>;
+  preferredLabUnits: Partial<Record<'estradiol' | 'testosterone', string>>;
   /** The unit body measurements chart in (phase 5, "units should be
       choosable in settings"). A measurement is still logged and stored in
       whatever unit it was typed in, never converted (measurements.ts) -
