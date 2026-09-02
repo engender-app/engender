@@ -98,12 +98,14 @@ test('an invalid date such as 2026-13-1 is a named structural error', async () =
   );
 });
 
-test('an invalid scores value is a named structural error, not a silent first-element read', async () => {
-  await assert.rejects(
-    pixelsPreview(backup([record({ scores: [] })]), empty()),
-    (error: unknown) => error instanceof PixelsBackupError && /scores/i.test((error as Error).message)
-  );
-  await assert.rejects(pixelsPreview(backup([record({ scores: 'not-an-array' })]), empty()), PixelsBackupError);
+test('a missing or malformed scores value imports with no mood, rather than failing the whole file', async () => {
+  const missing = await pixelsPreview(backup([record({ scores: [] })]), empty());
+  assert.equal(missing.entryCount, 1);
+  assert.equal(missing.journal.entries[0].mood, null);
+
+  const wrongType = await pixelsPreview(backup([record({ scores: 'not-an-array' })]), empty());
+  assert.equal(wrongType.entryCount, 1);
+  assert.equal(wrongType.journal.entries[0].mood, null);
 });
 
 test('a scores array with more than one element averages, rounded to the nearest whole number, and is counted', async () => {
