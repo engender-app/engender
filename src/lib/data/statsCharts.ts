@@ -8,17 +8,18 @@
    read of its own. Kept here, away from the markup, because the awkward part
    of both is a unit problem and a unit problem is worth a test.
 
-   The calendar's spread mark (phase 6 unprompted ticket 11) is here for the
-   same reason, though the calendar is not the stats screen: where a day's
-   two ends land inside a metric's own range is the same unit problem the
-   bars have, and it is the half of that mark a test can hold.
+   The shape a calendar cell takes (phase 6 unprompted ticket 11) is here
+   for the same reason, though the calendar is not the stats screen: which
+   step each of a day's readings landed on is the same unit problem the bars
+   have, and the rule between split, stack and neither is the half of that
+   cell a test can hold.
 
    Nothing here names anything and nothing here formats anything: a metric's
    own wording comes from the vocabulary and a value is written by the
    screen in the metric's native units (ADR-0012). */
 
 import type { DayAverage, DaySpread } from './journal/stats';
-import { MOOD_RANGE, normalize, type MetricRange } from './metricRange';
+import { MOOD_RANGE, heatLevel, normalize, type MetricRange } from './metricRange';
 
 /** The average of a day series, or null where nothing was logged. */
 export function seriesAverage(points: DayAverage[]): number | null {
@@ -97,51 +98,55 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
   return [...counts].map(([step, count]) => ({ step, count }));
 }
 
+/** How many cards a stack ever draws, however many entries the day holds.
+    Past this the deck stops being countable and starts being a texture, and
+    the exact number is read out on the cell rather than counted off it. */
+export const MAX_STACK_CARDS = 4;
+
+/** What a day's cell is drawn as, once the day's own entries are known
+    (phase 6 unprompted ticket 11, CONTEXT: Spread).
+
+    `split` carries two heat steps rather than two values: a step is what a
+    fill is, and two entries inside one step have no edge to draw between
+    them. Low first, and that is the whole of the order - which entry came
+    first, and which one the day "really" was, are questions this
+    deliberately cannot answer. */
+export type DayShape =
+  | { kind: 'one' }
+  | { kind: 'split'; low: number; high: number }
+  | { kind: 'stack'; cards: number };
+
+/** How a day that carried the metric is drawn, or null for a day that
+    carried none of it.
+
+    Three shapes, and the rule between them is the one a person can state:
+    a day of two readings that landed on different steps is **split** down
+    the middle, one half per reading; a day whose readings all landed on the
+    same step has no edge to draw, so it **stacks** instead; and a day of
+    three or more readings always stacks, because four bands at 46px is a
+    texture rather than four readings.
+
+    A stack says how many, not how much. That is the honest claim: the deck
+    is countable and the day's two ends are read out in words beside it. */
+export function dayShape(spread: DaySpread | undefined, range: MetricRange): DayShape | null {
+  if (!spread) return null;
+  if (spread.count <= 1) return { kind: 'one' };
+  const low = heatLevel(spread.low, range);
+  const high = heatLevel(spread.high, range);
+  if (spread.count === 2 && low !== high) return { kind: 'split', low, high };
+  return { kind: 'stack', cards: Math.min(spread.count, MAX_STACK_CARDS) };
+}
+
 /** Whether a day ran between two different values at all (CONTEXT: Spread).
 
-    The one rule behind "a day with one entry shows no spread" and "a day
-    whose entries all said the same thing shows no spread", so that the mark
-    on the calendar and the words on /stats cannot end up disagreeing about
-    which days covered ground. */
-export function coveredGround(spread: Pick<DaySpread, 'low' | 'high'> | undefined): spread is DaySpread {
+    The one rule behind "a day with one entry says nothing extra" and "a day
+    whose entries all said the same thing says nothing extra", so that the
+    cell on the calendar and the words on /stats cannot end up disagreeing
+    about which days covered ground. Values rather than steps, unlike
+    `dayShape` above: a difference too small to draw an edge for is still a
+    difference worth reading out. */
+export function coveredGround(
+  spread: Pick<DaySpread, 'low' | 'high'> | undefined
+): spread is Pick<DaySpread, 'low' | 'high'> {
   return spread !== undefined && spread.high > spread.low;
-}
-
-/** The narrowest mark the calendar draws, as a fraction of the metric's
-    range. A dimension running 0 to 100 can hold two entries two points
-    apart, which is well under a pixel of a 46px cell: the day did cover
-    ground and a mark thinner than the eye can see would say it did not. */
-export const MIN_SPREAD_MARK = 0.12;
-
-export interface SpreadMark {
-  /** Where the mark begins inside the metric's own range, 0 to 1. */
-  start: number;
-  /** How much of the range it covers, 0 to 1. */
-  width: number;
-}
-
-/** Where a day's spread sits on the track under its calendar cell, or null
-    for a day with no mark to draw (CONTEXT: Spread).
-
-    Normalized, for metricStandings' own reason and ADR-0012's: a mood of 2
-    to 5 and a dimension of 20 to 85 have to be marks a person can compare
-    across a month without being told which scale is showing. The numbers
-    themselves stay native and are read out rather than drawn.
-
-    A day with one entry, and a day whose entries all landed on the same
-    value, get no mark at all. Both are days that covered no ground, and the
-    honest mark for that is none - not a mark of no width, which at this
-    size is a smudge that reads as a very narrow range.
-
-    Descriptive only: a mark says the day ran between these two points, never
-    which end it started at. */
-export function spreadMark(spread: Pick<DaySpread, 'low' | 'high'> | undefined, range: MetricRange): SpreadMark | null {
-  if (!coveredGround(spread)) return null;
-  const low = normalize(spread.low, range);
-  const high = normalize(spread.high, range);
-  const width = Math.min(1, Math.max(high - low, MIN_SPREAD_MARK));
-  // Widened around its own middle and then pushed back inside the track, so
-  // a floor applied at either end of the scale does not hang off it.
-  const start = Math.min(1 - width, Math.max(0, (low + high) / 2 - width / 2));
-  return { start, width };
 }

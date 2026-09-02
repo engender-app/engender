@@ -147,7 +147,7 @@
   "cal_jump_month": "Przejdź do miesiąca",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
-  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dni z kilkoma wpisami pokazują średnią, a znacznik pod spodem biegnie od najniższej zapisanej wartości do najwyższej. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
+  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
   "legend_none": "brak wpisu",
   "day_avg": "śr. {metric}",
   "entries_this_day": [
