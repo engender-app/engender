@@ -734,11 +734,20 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
      would be a list to keep in step with what a restore happens to touch,
      and a Replace touches everything by definition. */
   archive: classify<Journal['archive']>()({
-    writes: { replace: [...TABLE_NAMES], merge: [...TABLE_NAMES], commitDaylioImport: [...TABLE_NAMES] },
+    writes: {
+      replace: [...TABLE_NAMES],
+      merge: [...TABLE_NAMES],
+      commitDaylioImport: [...TABLE_NAMES],
+      commitTransTracksImport: [...TABLE_NAMES]
+    },
     // And a snapshot reads all of it, for the same reason: every section of
-    // the archive is one area's rows (archiveSections.ts). The Daylio
-    // preview resolves against a snapshot, so it reads the same set.
-    reads: { snapshot: [...TABLE_NAMES], previewDaylioImport: [...TABLE_NAMES] }
+    // the archive is one area's rows (archiveSections.ts). Both sources'
+    // previews resolve against a snapshot, so they read the same set.
+    reads: {
+      snapshot: [...TABLE_NAMES],
+      previewDaylioImport: [...TABLE_NAMES],
+      previewTransTracksImport: [...TABLE_NAMES]
+    }
   })
 };
 
