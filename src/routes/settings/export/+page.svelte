@@ -13,6 +13,9 @@
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
   import { verifyArchive } from '$lib/data/journal/restore';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
+  import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
+  import { normalizePhoto } from '$lib/data/photos/normalize';
+  import { recognizeSource } from '$lib/data/archive/sources';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -53,6 +56,11 @@
   let daylioPreview = $state.raw<DaylioPreview | null>(null);
   let daylioError = $state('');
   let daylioImporting = $state(false);
+  let backupSheet = $state(false);
+  let backupName = $state('');
+  let backupPreview = $state.raw<DaylioBackupPreview | null>(null);
+  let backupError = $state('');
+  let backupImporting = $state(false);
   let exportWarningOpen = $state(false);
   /* Which export is under way, or null. Not a boolean: the encrypted
      button says what it is doing, and it is not encrypting when the CSV
@@ -406,6 +414,112 @@
     }
   }
 
+  /* The backup import, beside the CSV one above and deliberately not folded
+     into it: the two files carry different things, and somebody holding a
+     CSV export has a CSV export (phase 7 ticket 09). */
+
+  function openBackup() {
+    backupName = '';
+    backupPreview = null;
+    backupError = '';
+    backupSheet = true;
+  }
+
+  /** What the preview counts, in the order the sheet lists them. Rows with
+      nothing in them are not rendered: at 390px, a row per collection
+      whether or not the file held any is a wall to read past, and every
+      line left standing is work the commit will really do. */
+  const arrivingRows = (preview: DaylioBackupPreview): { label: string; value: string }[] =>
+    [
+      { label: m.dlb_entries(), count: preview.entryCount, value: String(preview.entryCount) },
+      { label: m.dlb_milestones(), count: preview.milestoneCount, value: String(preview.milestoneCount) },
+      {
+        /* Counted on the new tags alone, though it reports both: a matched
+           tag is one this journal already has, so a file whose every
+           activity is already a tag here is adding nothing and this row
+           would otherwise be the only thing standing under "Arriving". */
+        label: m.dlb_tags(),
+        count: preview.newTagCount,
+        value: m.dlb_tag_counts({ matched: String(preview.matchedTagCount), new: String(preview.newTagCount) })
+      },
+      { label: m.dlb_scales(), count: preview.dimensionCount, value: String(preview.dimensionCount) },
+      { label: m.dlb_templates(), count: preview.templateCount, value: String(preview.templateCount) },
+      {
+        label: m.dlb_attachments(),
+        count: preview.photoCount + preview.audioCount,
+        value: String(preview.photoCount + preview.audioCount)
+      }
+    ].filter((row) => row.count > 0);
+
+  const SKIP_LABELS: Record<DaylioSkipKind, () => string> = {
+    goals: m.dlb_skip_goals,
+    statistics: m.dlb_skip_statistics,
+    achievements: m.dlb_skip_achievements,
+    preferences: m.dlb_skip_preferences,
+    reminders: m.dlb_skip_reminders,
+    icons: m.dlb_skip_icons,
+    anniversaries: m.dlb_skip_anniversaries,
+    scales: m.dlb_skip_scales,
+    assets: m.dlb_skip_assets
+  };
+
+  const nothingArriving = (preview: DaylioBackupPreview): boolean => arrivingRows(preview).length === 0;
+
+  async function chooseBackup() {
+    try {
+      const [file] = await chooseFiles('.daylio,application/zip');
+      if (!file) return;
+      backupName = file.name;
+      backupPreview = null;
+      backupError = '';
+
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      // A CSV handed to the backup row is a mistake worth naming, since the
+      // row that reads it is one screen away (archive/sources.ts).
+      if (recognizeSource(bytes)?.name === 'daylio') {
+        backupError = m.dlb_is_csv();
+        return;
+      }
+
+      backupPreview = await journal.archive.previewDaylioBackupImport(bytes, { tagLabels });
+      if (backupPreview.unmappedMoodNames.length > 0) {
+        backupError = m.dlb_unmapped({ names: backupPreview.unmappedMoodNames.join(', ') });
+      }
+    } catch (error) {
+      console.error('the Daylio backup preview failed', error);
+      backupPreview = null;
+      /* The parse detail is a console diagnostic, like importFailure's, with
+         one exception: an iPhone backup is a different schema rather than a
+         damaged file, and telling somebody their file is unreadable when the
+         real answer is "not this platform" sends them looking for a fix that
+         does not exist. */
+      const platform = error instanceof DaylioBackupError && /Android backups only/.test(error.message);
+      backupError = platform ? m.dlb_not_android() : m.dlb_unreadable();
+    }
+  }
+
+  async function importBackup() {
+    if (!backupPreview || backupPreview.unmappedMoodNames.length > 0 || backupImporting) return;
+    backupImporting = true;
+    backupError = '';
+    try {
+      const result = await journal.archive.commitDaylioBackupImport(backupPreview, normalizePhoto);
+      backupSheet = false;
+      toast(
+        m.dlb_imported_toast({
+          entries: String(result.entriesAdded),
+          milestones: String(result.milestonesAdded),
+          attachments: String(result.attachmentsAdded)
+        })
+      );
+    } catch (error) {
+      console.error('the Daylio backup import failed', error);
+      backupError = m.dlb_failed();
+    } finally {
+      backupImporting = false;
+    }
+  }
+
 </script>
 
 <div class="screen">
@@ -573,6 +687,7 @@
       </button>
     </div>
     <div class="hr"></div>
+    <div data-import-rows>
     <ListRow
       icon="book"
       title={m.daylio_row_title()}
@@ -581,6 +696,15 @@
       data-daylio
       style="border-radius:var(--radius-md);background:var(--surface-2)"
     />
+    <ListRow
+      icon="package"
+      title={m.dlb_row_title()}
+      subtitle={m.dlb_row_sub()}
+      onclick={openBackup}
+      data-daylio-backup
+      style="border-radius:var(--radius-md);background:var(--surface-2);margin-top:var(--space-2)"
+    />
+    </div>
   </div>
 
   <SectionTitle text={m.plain_section()} />
@@ -678,6 +802,94 @@
         </button>
       {/if}
       <button class="btn btn-ghost" onclick={() => (daylioSheet = false)}><span>{m.cancel()}</span></button>
+    </div>
+  </Sheet>
+
+  <Sheet bind:open={backupSheet} title={m.dlb_sheet_title()}>
+    <h3>{m.dlb_sheet_title()}</h3>
+    <Field label={m.dlb_file_label()} legend>
+      {#snippet children()}
+        <button class="input" style="text-align:left;color:var(--text-2)" data-pick-backup onclick={chooseBackup}>
+          <Icon name="upload" size={18} />
+          <span style={backupName ? 'color:var(--text)' : ''}>
+            {backupName || m.dlb_file_placeholder()}
+          </span>
+        </button>
+      {/snippet}
+    </Field>
+    {#if backupError}
+      <div class="notice notice-danger" style="margin-bottom:var(--space-4)" role="alert">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">{backupError}</div>
+      </div>
+    {/if}
+    {#if backupPreview}
+      {#if backupPreview.unexpectedVersion !== null}
+        <div class="notice notice-info" style="margin-bottom:var(--space-4)">
+          <Icon name="info" size={20} />
+          <div class="notice-body">{m.dlb_version_note({ version: String(backupPreview.unexpectedVersion) })}</div>
+        </div>
+      {/if}
+      <!-- One card holding three blocks rather than three cards: what is
+           arriving, how each mood landed, and what stays behind. The rows
+           arrive in sequence on the app's own stagger, which reads down the
+           list in the order somebody would check it. -->
+      <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
+        {#if nothingArriving(backupPreview)}
+          <p class="muted small" style="margin:0">{m.dlb_nothing_new()}</p>
+        {:else}
+          <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.dlb_arriving()}</strong></p>
+          {#each arrivingRows(backupPreview) as row, i (row.label)}
+            <div class="rows-divide value-row stagger-in" style="--stagger-i:{i}">
+              <span>{row.label}</span><strong>{row.value}</strong>
+            </div>
+          {/each}
+        {/if}
+
+        <div class="hr"></div>
+        <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.dlb_moods()}</strong></p>
+        {#if backupPreview.moods.length > 0}
+          <!-- A mood Daylio named itself has no name in the file, so its
+               own row is headed by this app's word for that position and
+               says the position alone rather than repeating the word. -->
+          {#each backupPreview.moods as mood, i (mood.name ?? `built-in-${i}`)}
+            <div class="rows-divide value-row">
+              <span>{mood.name ?? (mood.mood === null ? m.dlb_mood_unmapped() : moodName(mood.mood))}</span>
+              <strong>
+                {mood.mood === null
+                  ? m.dlb_mood_unmapped()
+                  : mood.name === null
+                    ? mood.mood
+                    : `${mood.mood} · ${moodName(mood.mood)}`}
+              </strong>
+            </div>
+          {/each}
+        {:else}
+          <p class="muted small">{m.dlb_no_moods()}</p>
+        {/if}
+
+        {#if backupPreview.skipped.length > 0}
+          <div class="hr"></div>
+          <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.dlb_left_behind()}</strong></p>
+          {#each backupPreview.skipped as skip (skip.kind)}
+            <div class="rows-divide value-row">
+              <span>{SKIP_LABELS[skip.kind]()}</span>
+              {#if skip.count !== undefined}<strong>{skip.count}</strong>{/if}
+            </div>
+          {/each}
+          <p class="muted small" style="margin:var(--space-3) 0 0">{m.dlb_left_behind_note()}</p>
+        {/if}
+      </div>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.daylio_always_merge()}</p>
+    {/if}
+    <div class="stack-3">
+      {#if backupPreview && !nothingArriving(backupPreview)}
+        <button class="btn btn-primary" data-confirm-backup onclick={importBackup}
+          disabled={backupPreview.unmappedMoodNames.length > 0 || backupImporting}>
+          <span>{backupImporting ? m.imp_running() : m.dlb_confirm()}</span>
+        </button>
+      {/if}
+      <button class="btn btn-ghost" onclick={() => (backupSheet = false)}><span>{m.cancel()}</span></button>
     </div>
   </Sheet>
 </div>

@@ -27,9 +27,22 @@ export const PHOTO_CHECKSUM = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1';
 export const AUDIO_CHECKSUM = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2';
 export const MILESTONE_CHECKSUM = 'ccccccccccccccccccccccccccccccc3';
 
-export const PHOTO_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+/* Real image bytes, not just a plausible magic number: the photo half of
+   the import runs each one through a decoder and a canvas, so a fixture
+   that only looked like a JPEG would pass every Node test here and fail
+   the moment a browser opened it. Two distinct 1x1 PNGs, one per photo
+   asset, so the two never resolve to the same identity by accident. */
+const png = (base64: string) => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+
+export const PHOTO_BYTES = png(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGO40bPlPwAHcAMYkRQ28AAAAABJRU5ErkJggg=='
+);
+export const MILESTONE_PHOTO_BYTES = png(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGPw6bnxHwAFiAKwXKVCNQAAAABJRU5ErkJggg=='
+);
+/** An ISO base media header, which is what the type sniff reads: nothing
+    plays a fixture, so the bytes past it are not the point. */
 export const AUDIO_BYTES = new Uint8Array([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]);
-export const MILESTONE_PHOTO_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 9, 9]);
 
 /** A well-formed Android v15 payload, fresh on every call so a test can
     bend one collection without reaching the next test. */
