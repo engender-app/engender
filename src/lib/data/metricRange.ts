@@ -34,6 +34,17 @@ export function normalize(value: number, range: MetricRange): number {
   return Math.min(1, Math.max(0, (value - range.min) / width));
 }
 
+/** Which of the five mood steps a value rounds to (ADR-0025).
+
+    A day's mood is its entries averaged, so it is a fraction, and every
+    surface that draws mood as one of its five faces or five hexes has to
+    land it on a step. Clamped as well as rounded: a stored value from an
+    import can sit outside 1 to 5, and it belongs at the end of the ramp
+    rather than off it. */
+export function moodStep(value: number): number {
+  return Math.min(MOOD_RANGE.max, Math.max(MOOD_RANGE.min, Math.round(value)));
+}
+
 /** Which swatch a day gets: 0 for a day with no value, otherwise 1 to
     HEAT_LEVELS. A logged low and an empty day are different things, so the
     floor of the range still lands on level 1. */

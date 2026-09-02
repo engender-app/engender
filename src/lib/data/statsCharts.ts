@@ -8,12 +8,18 @@
    read of its own. Kept here, away from the markup, because the awkward part
    of both is a unit problem and a unit problem is worth a test.
 
+   The shape a calendar cell takes (phase 6 unprompted ticket 11) is here
+   for the same reason, though the calendar is not the stats screen: which
+   step each of a day's readings landed on is the same unit problem the bars
+   have, and the rule between split, stack and neither is the half of that
+   cell a test can hold.
+
    Nothing here names anything and nothing here formats anything: a metric's
    own wording comes from the vocabulary and a value is written by the
    screen in the metric's native units (ADR-0012). */
 
-import type { DayAverage } from './journal/stats';
-import { MOOD_RANGE, normalize, type MetricRange } from './metricRange';
+import type { DayAverage, DaySpread } from './journal/stats';
+import { MOOD_RANGE, moodStep, normalize, type MetricRange } from './metricRange';
 
 /** The average of a day series, or null where nothing was logged. */
 export function seriesAverage(points: DayAverage[]): number | null {
@@ -86,8 +92,79 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
   const counts = new Map<number, number>();
   for (let step = MOOD_RANGE.min; step <= MOOD_RANGE.max; step++) counts.set(step, 0);
   for (const day of days) {
-    const step = Math.min(MOOD_RANGE.max, Math.max(MOOD_RANGE.min, Math.round(day.value)));
+    const step = moodStep(day.value);
     counts.set(step, (counts.get(step) ?? 0) + 1);
   }
   return [...counts].map(([step, count]) => ({ step, count }));
+}
+
+/** How many cards a stack ever draws, however many entries the day holds.
+    Past this the deck stops being countable and starts being a texture, and
+    the exact number is read out on the cell rather than counted off it. */
+export const MAX_STACK_CARDS = 4;
+
+/** What a day's cell is drawn as, once the day's own entries are known
+    (phase 6 unprompted ticket 11, CONTEXT: Spread).
+
+    `split` carries two steps rather than two values: a step is what a fill
+    is, and two entries inside one step have no edge to draw between them.
+
+    `first` and `last` are the day's own order, earliest half on the left
+    (Alicja, 2026-09-02: chronological). That is a claim the app used not to
+    make - CONTEXT.md's entry for Spread said a day never says which reading
+    came first - and it is now hers to make, so the entry says so. Nothing
+    else changed with it: the words beside the cell are still the day's
+    lowest and highest, which have no order at all. */
+export type DayShape =
+  | { kind: 'one' }
+  | { kind: 'split'; first: number; last: number }
+  | { kind: 'stack'; cards: number };
+
+/** How a day that carried the metric is drawn, or null for a day that
+    carried none of it.
+
+    Three shapes, and the rule between them is the one a person can state:
+    a day of two readings that landed on different steps is **split** down
+    the middle, one half per reading, earliest on the left; a day whose readings all landed on the
+    same step has no edge to draw, so it **stacks** instead; and a day of
+    three or more readings always stacks, because four bands at 36px is a
+    texture rather than four readings.
+
+    `stepOf` is what a step means on the metric being drawn, and the caller
+    owns it because the two answers are different systems: a gender
+    dimension resolves through the heat ramp's four levels, and mood
+    resolves to one of its own five faces (ADR-0025). Daylio's rule is
+    "two of the same mood", and this is that rule wherever the app has a
+    notion of the same.
+
+    A stack says how many, not how much. That is the honest claim: the deck
+    is countable and the day's two ends are read out in words beside it. */
+export function dayShape(
+  spread: DaySpread | undefined,
+  stepOf: (value: number) => number
+): DayShape | null {
+  if (!spread) return null;
+  if (spread.count <= 1) return { kind: 'one' };
+  /* Whether to split is a question about size and which side is a question
+     about time, so the two ends are read twice from two pairs. At two
+     readings they are the same pair either way round, which is why the
+     condition below can be written on the chronological one. */
+  const first = stepOf(spread.first);
+  const last = stepOf(spread.last);
+  if (spread.count === 2 && first !== last) return { kind: 'split', first, last };
+  return { kind: 'stack', cards: Math.min(spread.count, MAX_STACK_CARDS) };
+}
+
+/** Whether a day ran between two different values at all (CONTEXT: Spread).
+
+    The one rule behind "a day with one entry says nothing extra" and "a day
+    whose entries all said the same thing says nothing extra", so that the
+    cell on the calendar and the words on /stats cannot end up disagreeing
+    about which days covered ground. Values rather than steps, unlike
+    `dayShape` above: a difference too small to draw an edge for is still a
+    difference worth reading out. */
+export function coveredGround(
+  spread: Pick<DaySpread, 'low' | 'high'> | undefined
+): spread is Pick<DaySpread, 'low' | 'high'> {
+  return spread !== undefined && spread.high > spread.low;
 }
