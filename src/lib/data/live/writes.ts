@@ -97,6 +97,11 @@ export const TABLE_NAMES = [
   /* Counterevidence snapshots (phase 4 ticket 11; the doubt-entry half of
      this screen's writes retired by phase 5 ticket 16). */
   'doubtJournal',
+  /* The person's own comfort list (phase 6 ticket 14). Its own name and not
+     folded into 'doubtJournal': the two live on the same screen but neither
+     reads the other's table, so a write to one must not re-run the other's
+     query. */
+  'comfortItem',
   /* A tryout's own fields (phase 4 ticket 16). Its felt-sense history is
      'feltSense' instead, below: once a milestone could own one too (phase
      5 ticket 24), folding it into 'tryout' the way 'doubtJournal' folds
@@ -489,6 +494,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteSnapshot: ['doubtJournal']
     },
     reads: { getSnapshots: ['doubtJournal'] }
+  }),
+  comfortItems: classify<Journal['comfortItems']>()({
+    writes: {
+      addItem: ['comfortItem'],
+      editItem: ['comfortItem'],
+      deleteItem: ['comfortItem'],
+      reorder: ['comfortItem']
+    },
+    reads: { getItems: ['comfortItem'] }
   }),
   tryouts: classify<Journal['tryouts']>()({
     writes: {

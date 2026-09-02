@@ -8,7 +8,11 @@
    read - every one of them a place a future edit could slip in a write
    without the screen itself changing shape. So the contract is pinned
    here at the driver, on every read `src/routes/doubt/+page.svelte`
-   performs on mount, rather than trusted to a re-reading of the diff. */
+   performs on mount, rather than trusted to a re-reading of the diff.
+
+   Phase 6 ticket 14 adds a fourth: the comfort list's own `getItems`,
+   held to the same promise the ticket itself states outright ("opening a
+   Safe space must not write anything"). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -36,6 +40,7 @@ test('opening Safe Space performs zero writes, across the pool, stats, snapshots
     { full: new Uint8Array([1, 2, 3]), thumb: new Uint8Array([4, 5, 6]) }
   );
   await journal.photos.setStarred(photoId, true);
+  await journal.comfortItems.addItem('text a friend');
   void taggedEntry;
 
   const counting = countingDriver(db);
@@ -48,6 +53,7 @@ test('opening Safe Space performs zero writes, across the pool, stats, snapshots
   await reading.doubtJournal.getSnapshots(HISTORY_LIMIT);
   await reading.letters.getLetters(LETTER_LOOKBACK);
   await reading.photos.starredPhotos();
+  await reading.comfortItems.getItems();
 
   assert.equal(counting.roundTrips().run, 0, 'opening Safe Space must not run a single write statement');
 });

@@ -369,6 +369,15 @@ export interface CounterevidenceSnapshot {
   items: CounterevidenceEntry[];
 }
 
+/** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
+    "Comfort list"): who to text, which walk, which playlist - entirely
+    their own words, with nothing shipped by the app behind it, the same
+    distinction ChecklistItem's own doc comment draws. */
+export interface ComfortItem {
+  id: string;
+  text: string;
+}
+
 /** What someone is trying out (phase 4 ticket 16, widened past name/pronoun
     by phase 5 ticket 13, CONTEXT: "Tryout"): a name or pronoun set, a
     style, a garment, makeup, or a presentation step - one record type
