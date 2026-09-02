@@ -748,17 +748,19 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       merge: [...TABLE_NAMES],
       commitDaylioImport: [...TABLE_NAMES],
       commitDaylioBackupImport: [...TABLE_NAMES],
-      commitTransTracksImport: [...TABLE_NAMES]
+      commitTransTracksImport: [...TABLE_NAMES],
+      commitTrackAndGraphImport: [...TABLE_NAMES]
     },
     // And a snapshot reads all of it, for the same reason: every section of
     // the archive is one area's rows (archiveSections.ts). Every source's
-    // previews resolve against a snapshot, so they read the same set.
+    // preview resolves against a snapshot, so they all read the same set.
     reads: {
       snapshot: [...TABLE_NAMES],
       previewDaylioImport: [...TABLE_NAMES],
       previewDaylioBackupImport: [...TABLE_NAMES],
       previewTransTracksImport: [...TABLE_NAMES],
-      // Its own table only, unlike the four above: the settings screen
+      previewTrackAndGraphImport: [...TABLE_NAMES],
+      // Its own table only, unlike the five above: the settings screen
       // showing this should not re-run on an entry edit.
       importLog: ['importLog']
     }
