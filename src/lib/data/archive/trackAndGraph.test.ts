@@ -46,6 +46,25 @@ test('an unparseable value is refused rather than silently coerced to zero or Na
   assert.equal(parseTrackAndGraphValue('not a number'), null);
 });
 
+test('an explicit Label column and an in-band label on the same row both drop, and the value parses the same either way', async () => {
+  const withBoth = await trackAndGraphPreview(
+    'FeatureName,Timestamp,Value,Label\r\nRun duration,2022-01-01T00:00:00Z,1:02:03:in-band,explicit column\r\n',
+    empty()
+  );
+  const inBandOnly = await trackAndGraphPreview(
+    'FeatureName,Timestamp,Value\r\nRun duration,2022-01-01T00:00:00Z,1:02:03:in-band\r\n',
+    empty()
+  );
+
+  // Neither label has anywhere to go (Mapping's own rule), so the explicit
+  // column "winning" is trivial: the value parses identically whether or
+  // not a Label column is even present, and exactly one reading results.
+  assert.equal(withBoth.measurementCount, 1);
+  assert.equal(withBoth.journal.measurements[0].value, 3723);
+  assert.equal(withBoth.journal.measurements[0].unit, 'seconds');
+  assert.equal(withBoth.journal.measurements[0].value, inBandOnly.journal.measurements[0].value);
+});
+
 test('the well-formed fixture: three features become three custom types, four readings, the extra column and the ignored Label/Note columns are named', async () => {
   const preview = await trackAndGraphPreview(await fixtureText('track-and-graph-edge-cases.csv'), empty());
 
