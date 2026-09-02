@@ -733,7 +733,19 @@ const CARRIED: Record<string, string[]> = {
    to the row), and every other table's own `hidden` column stays carried
    as before - this is scoped to `regimen_episode` alone by the per-table
    CARRIED lists above, not by this flat list. */
-const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at', 'context', 'hidden'];
+// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08): device-
+// local bookkeeping for the appointment debrief offer, scoped to `checklist`
+// alone by migrations.ts v54's own comment - never part of what the
+// checklist travels, the same reason `id` and `updated_at` never are.
+const LEFT_BEHIND = [
+  'id',
+  'updated_at',
+  'trashed_at',
+  'context',
+  'hidden',
+  'debrief_entry_id',
+  'debrief_dismissed_epoch_day'
+];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();

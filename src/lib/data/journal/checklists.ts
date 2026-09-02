@@ -44,8 +44,32 @@ export interface ChecklistsArea {
   /** Creates the standalone checklist on first use, the same as
       `addToStandaloneChecklist` - setting a date before adding a single
       question is a real order of operations, not an error. `null` clears
-      it. */
+      it. Changing the date to a genuinely different value also clears
+      `debrief_entry_id` and `debrief_dismissed_epoch_day` (phase 6 ticket
+      08): both name a fact about the appointment this column currently
+      holds, and a new appointment has neither a debrief nor a dismissal
+      yet. Setting the same date again, or setting it for the first time,
+      leaves them alone - there is nothing to clear. */
   setAppointmentDate(epochDay: number | null): Promise<void>;
+  /** Which appointment date's debrief offer was dismissed, or null - reset
+      by `setAppointmentDate` the moment the date changes, so a stored value
+      is only ever read against the date it was set for (phase 6 ticket 08,
+      CONTEXT: "Checklist"). */
+  getDebriefDismissedEpochDay(): Promise<number | null>;
+  /** Dismissing the offer for the appointment currently on record. Creates
+      the standalone checklist on first use like every other write here,
+      though in practice the offer cannot show before a checklist with an
+      appointment date exists. */
+  setDebriefDismissed(epochDay: number): Promise<void>;
+  /** The entry that debriefs the appointment currently on record, or null.
+      Device-local (migrations.ts v54's own comment says why), so this is
+      never part of the `Checklist` shape returned elsewhere. */
+  getDebriefEntryId(): Promise<number | null>;
+  /** Links an entry as the debrief for the appointment currently on
+      record - a no-op if the appointment date has since moved on from
+      `epochDay`, which stops a slow save racing a changed appointment from
+      linking an entry to the wrong one. */
+  recordDebriefEntry(entryId: number, epochDay: number): Promise<void>;
   editItem(itemId: string, content: string): Promise<void>;
   setItemChecked(itemId: string, checked: boolean): Promise<void>;
   setItemCarriedForward(itemId: string, carriedForward: boolean): Promise<void>;
@@ -59,6 +83,12 @@ export interface ChecklistsArea {
 
 type ChecklistRow = { id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null };
 type StandaloneAppointmentRow = { id: number; appointment_epoch_day: number | null };
+type StandaloneDebriefRow = {
+  id: number;
+  appointment_epoch_day: number | null;
+  debrief_entry_id: number | null;
+  debrief_dismissed_epoch_day: number | null;
+};
 type ItemRow = { uuid: string; content: string; checked: number; carried_forward: number };
 
 const toItem = (row: ItemRow): ChecklistItem => ({
@@ -157,12 +187,52 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
 
     async setAppointmentDate(epochDay) {
       const existing = await standaloneChecklist();
+      if (!existing) {
+        await area.createChecklist();
+      }
+      const rows = await driver.query<StandaloneAppointmentRow>(
+        'SELECT id, appointment_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+      );
+      const row = rows[0]!;
+      const changed = row.appointment_epoch_day !== epochDay;
+      await driver.run(
+        `UPDATE checklist SET appointment_epoch_day = ?, updated_at = ?
+         ${changed ? ', debrief_entry_id = NULL, debrief_dismissed_epoch_day = NULL' : ''}
+         WHERE id = ?`,
+        [epochDay, now(), row.id]
+      );
+    },
+
+    async getDebriefDismissedEpochDay() {
+      const rows = await driver.query<StandaloneDebriefRow>(
+        'SELECT id, appointment_epoch_day, debrief_entry_id, debrief_dismissed_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+      );
+      return rows[0]?.debrief_dismissed_epoch_day ?? null;
+    },
+
+    async setDebriefDismissed(epochDay) {
+      const existing = await standaloneChecklist();
       const checklistId = existing ? existing.id : (await area.createChecklist()).id;
-      await driver.run('UPDATE checklist SET appointment_epoch_day = ?, updated_at = ? WHERE uuid = ?', [
+      await driver.run('UPDATE checklist SET debrief_dismissed_epoch_day = ?, updated_at = ? WHERE uuid = ?', [
         epochDay,
         now(),
         checklistId
       ]);
+    },
+
+    async getDebriefEntryId() {
+      const rows = await driver.query<StandaloneDebriefRow>(
+        'SELECT id, appointment_epoch_day, debrief_entry_id, debrief_dismissed_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+      );
+      return rows[0]?.debrief_entry_id ?? null;
+    },
+
+    async recordDebriefEntry(entryId, epochDay) {
+      await driver.run(
+        `UPDATE checklist SET debrief_entry_id = ?, updated_at = ?
+         WHERE owner_kind IS NULL AND appointment_epoch_day = ?`,
+        [entryId, now(), epochDay]
+      );
     },
 
     async editItem(itemId, content) {
