@@ -23,9 +23,10 @@ import {
   detectTrackAndGraph,
   trackAndGraphPreview
 } from './trackAndGraph';
+import { detectPixels, pixelsPreview } from './pixels';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'transtracks' | 'trackAndGraph';
+export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'transtracks' | 'trackAndGraph' | 'pixels';
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
@@ -97,6 +98,18 @@ const SOURCES = [
     detect: (file) => detectTrackAndGraph(text(file.subarray(0, HEAD_BYTES))),
     async preview(file, existing) {
       return (await trackAndGraphPreview(text(file), existing)).journal;
+    }
+  },
+  {
+    name: 'pixels',
+    requiredFields: [],
+    // A bare JSON array cannot be sniffed from a HEAD_BYTES prefix the way a
+    // CSV header or zip signature can - slicing a JSON document anywhere but
+    // its end breaks its closing bracket - so detectPixels reads the file
+    // it is actually given, the same as detectTransTracks does for its zip.
+    detect: detectPixels,
+    async preview(file, existing) {
+      return (await pixelsPreview(file, existing)).journal;
     }
   }
 ] as const satisfies readonly ArchiveSource[];
