@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { audioMimeOf } from '$lib/data/voiceRecordings/mime';
   import { readRecording } from '$lib/stores/voiceFiles';
 
   /* Plays a recording directly from the entry view/editor - no separate
@@ -36,7 +37,12 @@
     const source = given ? Promise.resolve(given) : readRecording(name!);
     source.then((loaded) => {
       if (stale || !loaded) return;
-      objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'audio/webm' }));
+      /* A recording made here is a webm; an imported one is whatever the
+         app it came from recorded, so the type comes from the stored name
+         (voiceRecordings/mime.ts). Bytes with no name at all are one
+         just recorded, which is always this app's own container. */
+      const type = name ? audioMimeOf(name) : 'audio/webm';
+      objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], type ? { type } : undefined));
       url = objectUrl;
     });
 
