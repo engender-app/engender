@@ -25,7 +25,7 @@
    format and the registry, and the ordering rule an import turns on
    (ADR-0011) is long enough to be worth reading on its own. */
 
-import { filesOf } from '../photos/names';
+import { filesOf, thumbFileName } from '../photos/names';
 import { restoreArchive, type RestoreContents } from './restore';
 import {
   daylioPreview,
@@ -33,13 +33,20 @@ import {
   type DaylioNaming,
   type DaylioPreview
 } from '../archive/daylio';
+import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
+import type { NormalizedPhoto } from './photos';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
 import { IMPORT_LOG_COLUMNS, importLogRow } from './archiveApply';
 import { mintUuid, now } from './support';
+
+export interface TransTracksCommitResult {
+  milestonesAdded: number;
+  photosAdded: number;
+}
 
 export interface ArchiveSnapshot {
   journal: ArchiveJournal;
@@ -61,6 +68,18 @@ export interface ArchiveArea {
       Writes one import_log record on success (ticket 03) - never on the
       unmapped-mood refusal above, which never reaches restore either. */
   commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
+  /** Parses and resolves a TransTracks `.ttbackup` zip without writing. */
+  previewTransTracksImport(bytes: Uint8Array): Promise<TransTracksPreview>;
+  /** Always Merge. `normalize` turns each raw photo the zip carried into
+      stored JPEG bytes plus a thumbnail - normalizePhoto() needs a canvas
+      and stays a caller's job, the same division photoPicking.ts already
+      draws for every other photo-writing area (photos.ts's attach,
+      hairProgress.ts, tryouts.ts, ...). Writes one import_log record on
+      success (ticket 03), the same as commitDaylioImport. */
+  commitTransTracksImport(
+    preview: TransTracksPreview,
+    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
+  ): Promise<TransTracksCommitResult>;
   /** The import history, most recent first, for the settings screen
       (ticket 03). Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
@@ -150,6 +169,33 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async importLog() {
       return (await readImportLog(driver)).toReversed();
+    },
+
+    async previewTransTracksImport(bytes) {
+      return transTracksPreview(bytes, (await area.snapshot()).journal);
+    },
+
+    async commitTransTracksImport(preview, normalize) {
+      const before = await area.snapshot();
+      await restoreArchive(driver, files, 'merge', {
+        journal: preview.journal,
+        files: (async function* () {
+          for (const [fileName, raw] of preview.rawPhotos) {
+            const normalized = await normalize(raw);
+            yield { name: fileName, bytes: normalized.full };
+            yield { name: thumbFileName(fileName), bytes: normalized.thumb };
+          }
+        })()
+      });
+      const after = await area.snapshot();
+      const result = {
+        milestonesAdded: after.journal.milestones.length - before.journal.milestones.length,
+        // Every TransTracks photo becomes exactly one synthetic entry
+        // (transtracks.ts), so diffing entries is diffing photos here.
+        photosAdded: after.journal.entries.length - before.journal.entries.length
+      };
+      await recordImport(driver, 'transtracks', { milestones: result.milestonesAdded, photos: result.photosAdded });
+      return result;
     },
 
     async snapshot() {

@@ -10,36 +10,55 @@
    compile-time check that nothing in the set is left out of the array. */
 
 import { daylioPreview, REQUIRED_COLUMNS as DAYLIO_REQUIRED_COLUMNS, detectDaylio, type DaylioNaming } from './daylio';
+import { detectTransTracks, transTracksPreview } from './transtracks';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio';
+export type ArchiveSourceName = 'daylio' | 'transtracks';
+
+/** Bytes always, text or not: TransTracks is a zip and Daylio is UTF-8 CSV,
+    so a source that wants text decodes it itself (daylioText below) rather
+    than the registry choosing a decoding for everyone. */
+const daylioText = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
   /** The fields or columns this source's file must carry, for a caller that
-      wants to name what a near-miss file is missing. */
+      wants to name what a near-miss file is missing. Empty for a source
+      with no fixed column set, such as a zip container. */
   requiredColumns: readonly string[];
   /** A non-throwing sniff: does this file look like this source's own kind
       at all? Never the full structural validation - that stays in
       `preview`, which throws by naming the row or column (the failure
       contract every source shares, spec's own "3"). */
-  detect(text: string): boolean;
+  detect(bytes: Uint8Array): boolean;
   /** Resolves the file into the exact work a commit would do - a preview is
       never an instruction to re-parse a file that may have changed by then
       (ADR-0002's own reasoning for Daylio, which every source now shares).
+      Only the journal: a source with richer preview data (Daylio's mood
+      mappings, TransTracks' photo bytes and ignored-field list) exposes its
+      own preview function for a caller that wants that; this is the
+      lowest common shape every source can produce.
       `naming` is source-specific context (Daylio's own tag-label lookup);
       erased to `unknown` here because the registry holds every source at
       once. */
-  preview(text: string, existing: ArchiveJournal, naming: unknown): Promise<ArchiveJournal>;
+  preview(bytes: Uint8Array, existing: ArchiveJournal, naming: unknown): Promise<ArchiveJournal>;
 }
 
 const SOURCES = [
   {
     name: 'daylio',
     requiredColumns: DAYLIO_REQUIRED_COLUMNS,
-    detect: detectDaylio,
-    async preview(text, existing, naming) {
-      return (await daylioPreview(text, existing, naming as DaylioNaming)).journal;
+    detect: (bytes) => detectDaylio(daylioText(bytes)),
+    async preview(bytes, existing, naming) {
+      return (await daylioPreview(daylioText(bytes), existing, naming as DaylioNaming)).journal;
+    }
+  },
+  {
+    name: 'transtracks',
+    requiredColumns: [],
+    detect: detectTransTracks,
+    async preview(bytes, existing) {
+      return (await transTracksPreview(bytes, existing)).journal;
     }
   }
 ] as const satisfies readonly ArchiveSource[];
@@ -66,17 +85,17 @@ export class UnrecognizedArchiveSourceError extends Error {
     `orderedSections` does, so a test can run real detection over a
     shortened list rather than restating `filter`. */
 export function recognizeSource(
-  text: string,
+  bytes: Uint8Array,
   sources: readonly ArchiveSource[] = ARCHIVE_SOURCES
 ): ArchiveSource | null {
-  return sources.find((candidate) => candidate.detect(text)) ?? null;
+  return sources.find((candidate) => candidate.detect(bytes)) ?? null;
 }
 
 /** `recognizeSource`, declined by name rather than by returning null - no
     source's `preview` is ever reached for a file nothing detects ("no
     fallback to guessing"). */
-export function requireSource(text: string, sources: readonly ArchiveSource[] = ARCHIVE_SOURCES): ArchiveSource {
-  const found = recognizeSource(text, sources);
+export function requireSource(bytes: Uint8Array, sources: readonly ArchiveSource[] = ARCHIVE_SOURCES): ArchiveSource {
+  const found = recognizeSource(bytes, sources);
   if (!found) throw new UnrecognizedArchiveSourceError();
   return found;
 }
