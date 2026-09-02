@@ -20,6 +20,7 @@ import {
   emptyArchiveJournal,
   orderedSections,
   readArchiveJournal,
+  travellingJournal,
   ARCHIVE_SECTIONS,
   ARCHIVE_SECTION_NAMES,
   type ArchiveSection
@@ -31,6 +32,7 @@ const stub = (name: string, after: readonly string[] = [], discard: readonly str
   name,
   after,
   discard,
+  travels: 'none',
   read: async () => [],
   apply: async () => {}
 });
@@ -118,6 +120,7 @@ test('a section added to the registry travels in a packed archive and comes back
   const throwaway: ArchiveSection = {
     name: 'moonPhases',
     after: [],
+    travels: 'none',
     async read({ driver }) {
       return driver.query<{ epoch_day: number; phase: string }>(
         'SELECT epoch_day, phase FROM moon_phase ORDER BY epoch_day'
@@ -280,4 +283,61 @@ test('every section declares its discard as plain single-table deletes', () => {
   for (const section of ARCHIVE_SECTIONS) {
     for (const statement of section.discard) assert.ok(tableOf(statement));
   }
+});
+
+/* What travels (ticket 04, ADR-0049): the real registry against the spec's
+   own worked cases, not a restatement of whatever archiveSections.ts
+   happens to say - each assertion below is a fact settled in
+   .scratch/phase-7/portability/spec.md, so a wrong declaration here fails
+   against the spec rather than against itself. */
+test('the registry answers the spec\'s worked cases for what travels', () => {
+  const travelsOf = (name: string) => ARCHIVE_SECTIONS.find((s) => s.name === name)!.travels;
+
+  assert.equal(travelsOf('dimensions'), 'whole', 'a custom gender dimension travels whole');
+  assert.equal(travelsOf('roadmapGoals'), 'whole', "a roadmap's goals travel");
+  assert.equal(travelsOf('roadmapChecks'), 'none', 'a roadmap tick does not');
+  assert.deepEqual(travelsOf('milestones'), { fields: ['name'] }, 'a milestone set travels as names, not dates');
+  assert.equal(travelsOf('checklists'), 'whole', 'an appointment question list travels whole');
+  assert.equal(travelsOf('eras'), 'none', 'an era would travel as a name with no bounds, so eras do not travel');
+
+  /* "Entries, photos, doses, labs, measurements and every other record of
+     what happened" - one section standing in for each of those five. */
+  for (const record of ['entries', 'hairPhotos', 'doseEvents', 'labResults', 'measurements']) {
+    assert.equal(travelsOf(record), 'none', `${record} is a record of what happened and must not travel`);
+  }
+});
+
+/* The rule itself, run over real rows rather than stubs: a 'whole' section
+   comes through untouched, a 'fields' declaration keeps only what it named
+   and nothing else, and a 'none' section is missing from the result rather
+   than present as an empty array. */
+test('travellingJournal keeps a whole section, narrows a fields section, and drops a none section', () => {
+  const journal = {
+    ...emptyArchiveJournal(),
+    dimensions: [
+      { key: 'k', name: 'Custom', low: 'Low', high: 'High', min: 0, max: 10, builtIn: false, hidden: false }
+    ],
+    milestones: [
+      {
+        id: 'm-1',
+        name: 'Started HRT',
+        epochDay: 19000,
+        templateKey: 'hrt_start',
+        roadmapGoalKey: null,
+        procedureId: null,
+        tryoutId: null,
+        photo: null
+      }
+    ]
+  };
+
+  const result = travellingJournal(journal);
+
+  assert.deepEqual(result.dimensions, journal.dimensions, "a 'whole' section travels every field, unchanged");
+  assert.deepEqual(
+    result.milestones,
+    [{ name: 'Started HRT' }],
+    "a 'fields' declaration keeps the named field and drops the epochDay and the links to this device's own records"
+  );
+  assert.ok(!('entries' in result), "a 'none' section is left out of the result entirely, not carried as []");
 });

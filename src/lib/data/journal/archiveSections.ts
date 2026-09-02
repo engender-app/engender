@@ -20,6 +20,15 @@
                a hair photo and a counterevidence snapshot both own child
                rows and depend on no other section, because they insert
                those children themselves
+     travels   what of this area may leave in a structure file handed to
+               someone else (phase 7, ADR-0049) - a different question from
+               whether it is backed up, which every section above already
+               is. 'none', 'whole', or the named few fields of a row that
+               do. The boundary is not "has a date" but "is a record of
+               something that happened to you", which is a judgement made
+               per area rather than a property a type can expose - so this
+               is required the same way `discard` is, and a section added
+               without an answer is a compile error
      read      how the area's rows come out of the journal (archiveRead.ts)
      apply     how they go back in, mode and all (archiveApply.ts)
 
@@ -51,6 +60,19 @@ export type { Restoring } from './archiveApply';
 
 export type ArchiveSectionName = keyof ArchiveJournal;
 
+/** What one area contributes to a structure file (ticket 04, ADR-0049) -
+    a plaintext container a person hands to someone else, unlike the
+    encrypted archive every section above already travels in whole. Never
+    the fields that stay behind, so a row that grows a new field defaults to
+    being withheld from a 'fields' declaration rather than leaking into one
+    silently.
+
+    Kept against the row's own keys at the declaration site (`section` and
+    `flat` below), the same reason `FlatColumn` is: a typo'd or renamed
+    field is a compile error here rather than a silently-empty column in
+    someone else's import. */
+export type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] };
+
 /** One area's declaration that it travels. Erased over the row type, because
     the list holds every section at once and because a test registers
     sections `ArchiveJournal` has never heard of. */
@@ -62,6 +84,10 @@ export interface ArchiveSection {
       only where a section holds nothing a Replace may remove, and required
       rather than optional so a new area cannot be left out of it silently. */
   discard: readonly string[];
+  /** What of this area may leave in a structure file. Required for the same
+      reason `discard` is: a new section cannot be added without answering
+      the question. */
+  travels: 'none' | 'whole' | { fields: readonly string[] };
   read(reading: SectionRead): Promise<unknown[]>;
   apply(restoring: Restoring): Promise<void>;
 }
@@ -72,6 +98,7 @@ function section<Name extends ArchiveSectionName>(declared: {
   name: Name;
   after?: readonly ArchiveSectionName[];
   discard: readonly string[];
+  travels: Travel<ArchiveJournal[Name][number]>;
   read(reading: SectionRead): Promise<ArchiveJournal[Name]>;
   apply(restoring: Restoring): Promise<void>;
 }) {
@@ -91,6 +118,7 @@ function flat<
 >(declared: {
   name: Name;
   after?: readonly ArchiveSectionName[];
+  travels: Travel<FlatRow<Name>>;
   table: string;
   columns: Columns;
   identity: keyof Columns & string;
@@ -100,6 +128,7 @@ function flat<
   return {
     name: declared.name,
     after: declared.after ?? [],
+    travels: declared.travels,
     // A flat area is one table and no children, which is the same thing that
     // makes it flat - so emptying it needs nothing declared here either.
     discard: [`DELETE FROM ${declared.table}`],
@@ -117,6 +146,9 @@ const SECTIONS = [
     // resolve against. What the user put on a built-in is overwritten by
     // `apply` afterwards, row by row.
     discard: ['DELETE FROM gender_dimension WHERE is_built_in = 0'],
+    // A custom gender dimension is exactly the shape of thing a structure
+    // file exists for (ticket 04's own worked case).
+    travels: 'whole',
     read: read.readDimensions,
     apply: apply.applyDimensions
   }),
@@ -135,6 +167,9 @@ const SECTIONS = [
       'DELETE FROM preset_dimension WHERE preset_id IN (SELECT id FROM gender_preset WHERE key IS NULL)',
       'DELETE FROM gender_preset WHERE key IS NULL'
     ],
+    // A named grouping of dimensions to show is structure, not a record of
+    // what happened - the same reasoning `dimensions` above gives.
+    travels: 'whole',
     read: read.readPresets,
     apply: apply.applyPresets
   }),
@@ -146,6 +181,8 @@ const SECTIONS = [
       // is that same uuid, so the uuid is what tells them apart (tags.ts).
       'DELETE FROM tag_group WHERE uuid IS NOT NULL'
     ],
+    // Custom vocabulary, the same reasoning `dimensions` above gives.
+    travels: 'whole',
     read: read.readTagGroups,
     apply: apply.applyTagGroups
   }),
@@ -158,6 +195,9 @@ const SECTIONS = [
      for procedureId/tryoutId. */
   flat({
     name: 'presentations',
+    // Named roles, not a record of what happened - the same reasoning
+    // `dimensions` above gives.
+    travels: 'whole',
     table: 'presentation',
     identity: 'uuid',
     orderBy: 'id',
@@ -174,6 +214,8 @@ const SECTIONS = [
     // built-in line the archive does not carry keeps the wording reconciling
     // gave it rather than losing its row entirely.
     discard: ['DELETE FROM affirmation WHERE key IS NULL'],
+    // Custom vocabulary, the same reasoning `dimensions` above gives.
+    travels: 'whole',
     read: read.readAffirmations,
     apply: apply.applyAffirmations
   }),
@@ -185,6 +227,8 @@ const SECTIONS = [
     name: 'bodyRegions',
     // Same reasoning as affirmations' own statement: only the customs.
     discard: ['DELETE FROM body_region WHERE key IS NULL'],
+    // Custom vocabulary, the same reasoning `dimensions` above gives.
+    travels: 'whole',
     read: read.readBodyRegions,
     apply: apply.applyBodyRegions
   }),
@@ -210,6 +254,8 @@ const SECTIONS = [
          without knowing the index exists. */
       'DELETE FROM entry'
     ],
+    // A journal entry is the record the boundary is drawn around.
+    travels: 'none',
     read: read.readEntries,
     apply: apply.applyEntries
   }),
@@ -217,6 +263,12 @@ const SECTIONS = [
     name: 'milestones',
     // The other half of the photo table, per entries' own note above.
     discard: ['DELETE FROM photo WHERE milestone_id IS NOT NULL', 'DELETE FROM milestone'],
+    // Ticket 04's own worked case: a milestone set travels as names, not as
+    // dates. Everything else here is either a date (epochDay) or a link
+    // into this device's own records (roadmapGoalKey, procedureId, tryoutId,
+    // photo), so `name` is the whole of what is structure rather than
+    // record.
+    travels: { fields: ['name'] },
     read: read.readMilestones,
     apply: apply.applyMilestones
   }),
@@ -235,6 +287,8 @@ const SECTIONS = [
      a result logged before the feature carries. */
   flat({
     name: 'labResults',
+    // A lab result is a record of what happened to you.
+    travels: 'none',
     table: 'lab_result',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -260,6 +314,8 @@ const SECTIONS = [
        here - they simply keep a key nothing resolves any more, the same
        forward-compatible treatment lab_result.analyte already gets. */
     discard: ['DELETE FROM measurement_type WHERE is_built_in = 0'],
+    // Custom vocabulary, the same reasoning `dimensions` above gives.
+    travels: 'whole',
     read: read.readMeasurementTypes,
     apply: apply.applyMeasurementTypes
   }),
@@ -268,6 +324,8 @@ const SECTIONS = [
   // section above and no `after` to declare.
   flat({
     name: 'measurements',
+    // A measurement is a record of what happened to you.
+    travels: 'none',
     table: 'measurement',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -275,6 +333,8 @@ const SECTIONS = [
   }),
   flat({
     name: 'sizeRecords',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'size_record',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -289,6 +349,8 @@ const SECTIONS = [
   }),
   flat({
     name: 'sideEffects',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'side_effect',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -296,6 +358,8 @@ const SECTIONS = [
   }),
   flat({
     name: 'cycleEvents',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'cycle_event',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -303,6 +367,8 @@ const SECTIONS = [
   }),
   flat({
     name: 'journalingPauses',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'journaling_pause',
     identity: 'uuid',
     orderBy: 'start_epoch_day, id',
@@ -327,8 +393,13 @@ const SECTIONS = [
      /settings/eras and editable there, and every read stays total meanwhile
      - `eraForDay` answers with the first era covering the day, so a day
      still resolves to at most one. */
+  /* Does not travel (ticket 04's own worked case). An era carries a name
+     and two dates and nothing else, so what would travel is a name with no
+     bounds - nearly nothing, and not worth a structure section over. Said
+     explicitly here rather than left to be rediscovered. */
   flat({
     name: 'eras',
+    travels: 'none',
     table: 'era',
     identity: 'uuid',
     orderBy: 'start_epoch_day IS NULL DESC, start_epoch_day, id',
@@ -349,6 +420,9 @@ const SECTIONS = [
      the same era_uuid rather than reconciling one row per device's mute. */
   flat({
     name: 'eraMutes',
+    // Which of a person's own eras they have muted is a record about them,
+    // and points at an era, which does not travel either.
+    travels: 'none',
     table: 'era_mute',
     identity: 'era_uuid',
     orderBy: 'id',
@@ -362,6 +436,10 @@ const SECTIONS = [
        a built-in row keeps what reconciling gave it the same way every other
        reference row does. */
     discard: [],
+    // Every row is built-in, but `enabled` is the person's own toggle over
+    // it - the same reference-vocabulary shape `dimensions`' own `hidden`
+    // is, not a record of what happened.
+    travels: 'whole',
     read: read.readEffectCategories,
     apply: apply.applyEffectCategories
   }),
@@ -371,6 +449,10 @@ const SECTIONS = [
     // gives: a marker naming a custom effect just removed here simply keeps a
     // key nothing resolves any more.
     discard: ['DELETE FROM personal_effect_type WHERE is_built_in = 0'],
+    // Custom vocabulary, the same reasoning `dimensions` above gives. Not to
+    // be confused with `personalEffects` below, the record of noticing one
+    // on a date, which does not travel.
+    travels: 'whole',
     read: read.readPersonalEffectTypes,
     apply: apply.applyPersonalEffectTypes
   }),
@@ -390,6 +472,9 @@ const SECTIONS = [
   flat({
     name: 'personalEffects',
     after: ['personalEffectTypes'],
+    // The record of noticing an effect on a date - see
+    // `personalEffectTypes`' own note above.
+    travels: 'none',
     table: 'personal_effect',
     identity: 'effect',
     orderBy: 'effect',
@@ -404,6 +489,8 @@ const SECTIONS = [
      from a future build. */
   flat({
     name: 'hairStages',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'hair_stage',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -418,6 +505,8 @@ const SECTIONS = [
   section({
     name: 'hairPhotos',
     discard: ['DELETE FROM hair_photo'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readHairPhotos,
     apply: apply.applyHairPhotos
   }),
@@ -426,6 +515,8 @@ const SECTIONS = [
   section({
     name: 'hairRemovalSessions',
     discard: ['DELETE FROM hair_removal_photo', 'DELETE FROM hair_removal_session'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readHairRemovalSessions,
     apply: apply.applyHairRemovalSessions
   }),
@@ -436,6 +527,8 @@ const SECTIONS = [
   section({
     name: 'procedures',
     discard: ['DELETE FROM procedure_photo', 'DELETE FROM procedure_consult', 'DELETE FROM procedure'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readProcedures,
     apply: apply.applyProcedures
   }),
@@ -446,6 +539,10 @@ const SECTIONS = [
   // such field at all.
   flat({
     name: 'reminders',
+    // Not structure to hand a stranger: `auto_source` ties a reminder to
+    // this device's own stock or wear-session state (reminderAutoSource has
+    // two writers), which means nothing on a receiving device.
+    travels: 'none',
     table: 'reminder',
     identity: 'uuid',
     orderBy: 'id',
@@ -464,6 +561,8 @@ const SECTIONS = [
   }),
   flat({
     name: 'tallyEvents',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'tally_event',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -472,12 +571,16 @@ const SECTIONS = [
   section({
     name: 'counterevidenceSnapshots',
     discard: ['DELETE FROM doubt_snapshot_entry', 'DELETE FROM doubt_snapshot'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readCounterevidenceSnapshots,
     apply: apply.applyCounterevidenceSnapshots
   }),
 
   flat({
     name: 'letters',
+    // A private letter to your own future or past self.
+    travels: 'none',
     table: 'letter',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -486,6 +589,10 @@ const SECTIONS = [
   section({
     name: 'roadmapChecks',
     discard: ['DELETE FROM roadmap_check'],
+    // Ticket 04's own worked case: a tick names bundled built-in content and
+    // records that the person did it, so unlike `roadmapGoals` below it does
+    // not travel.
+    travels: 'none',
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
@@ -498,6 +605,10 @@ const SECTIONS = [
      device recorded itself. */
   flat({
     name: 'roadmapGoals',
+    // Ticket 04's own worked case: a custom goal carries its own text and
+    // track rather than naming bundled content, so it travels whether or
+    // not it is checked - unlike `roadmapChecks` above.
+    travels: 'whole',
     table: 'roadmap_goal',
     identity: 'uuid',
     orderBy: 'id',
@@ -507,6 +618,9 @@ const SECTIONS = [
   // still ongoing, the same as every pre-existing episode's backfill (v40).
   flat({
     name: 'regimenEpisodes',
+    // Your own treatment history - a record, not structure to hand a
+    // stranger.
+    travels: 'none',
     table: 'regimen_episode',
     identity: 'uuid',
     orderBy: 'start_epoch_day, id',
@@ -529,6 +643,8 @@ const SECTIONS = [
   // without one.
   flat({
     name: 'doseEvents',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'dose_event',
     identity: 'uuid',
     orderBy: 'timestamp, id',
@@ -553,6 +669,8 @@ const SECTIONS = [
   section({
     name: 'doseSchedules',
     after: ['regimenEpisodes'],
+    // Hangs off your own regimen episode, the same reasoning that gives.
+    travels: 'none',
     /* The weekdays and dose amounts hang off the schedule, so they clear
        first. That the schedule itself clears before the episodes it hangs off
        is `after` doing the work: the discard order is the insert order
@@ -571,6 +689,8 @@ const SECTIONS = [
     name: 'dosePauses',
     after: ['regimenEpisodes'],
     discard: ['DELETE FROM dose_pause'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readDosePauses,
     apply: apply.applyDosePauses
   }),
@@ -582,6 +702,8 @@ const SECTIONS = [
      one (see ArchiveMedicationStock's own comment). */
   flat({
     name: 'medicationStock',
+    // Your own current inventory count, not structure to hand a stranger.
+    travels: 'none',
     table: 'medication_stock',
     identity: 'drug',
     orderBy: 'drug',
@@ -600,6 +722,8 @@ const SECTIONS = [
   section({
     name: 'tryouts',
     discard: ['DELETE FROM tryout_photo', 'DELETE FROM tryout'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readTryouts,
     apply: apply.applyTryouts
   }),
@@ -611,12 +735,20 @@ const SECTIONS = [
     // Clears before both tryout and milestone, which is `after` reversed
     // again rather than anything stated here.
     discard: ['DELETE FROM felt_sense'],
+    // A record of what happened to you.
+    travels: 'none',
     read: read.readFeltSenseEntries,
     apply: apply.applyFeltSenseEntries
   }),
   section({
     name: 'checklists',
     discard: ['DELETE FROM checklist_item', 'DELETE FROM checklist'],
+    // Ticket 04's own worked case: an appointment question list travels
+    // whole. One section covers both the standalone appointment checklist
+    // and a procedure's owned recovery list, so this declares the whole
+    // area could travel; which particular checklist an export actually
+    // includes is ticket 07's own choice, not this one's.
+    travels: 'whole',
     read: read.readChecklists,
     apply: apply.applyChecklists
   }),
@@ -626,6 +758,8 @@ const SECTIONS = [
      link this section would have to carry. */
   flat({
     name: 'wearSessions',
+    // A record of what happened to you.
+    travels: 'none',
     table: 'wear_session',
     identity: 'uuid',
     orderBy: 'start_timestamp, id',
@@ -642,6 +776,8 @@ const SECTIONS = [
      writer binds undefined as a raw driver error rather than as a null. */
   flat({
     name: 'voiceBenchmarks',
+    // A record of what happened to you, audio included.
+    travels: 'none',
     table: 'voice_benchmark',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
@@ -672,6 +808,9 @@ const SECTIONS = [
      stable rather than silently reshuffled on every read. */
   flat({
     name: 'comfortItems',
+    // Authored text with no chronology, the same reasoning `affirmations`
+    // above gives - not a record of what happened to you.
+    travels: 'whole',
     table: 'comfort_item',
     identity: 'uuid',
     orderBy: 'position, id',
@@ -786,4 +925,34 @@ export async function applyArchiveJournal(
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
 ): Promise<void> {
   for (const s of orderedSections(sections)) await s.apply(restoring);
+}
+
+/** What of a journal a structure file may carry (ticket 04, ADR-0049),
+    read straight off each section's own `travels`. A 'none' section is left
+    out of the result entirely, rather than carried across as an empty
+    array, so the result's own keys already say what a structure file
+    covers - the container (ticket 07) still has to choose which of a
+    'whole' or 'fields' section's rows to include, the same way exporting a
+    milestone set does not mean exporting every milestone. */
+export function travellingJournal(
+  journal: ArchiveJournal,
+  sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
+): Partial<ArchiveJournal> {
+  const journeyed: Record<string, unknown> = {};
+  for (const s of sections) {
+    const travels = s.travels;
+    if (travels === 'none') continue;
+    const rows = journal[s.name as ArchiveSectionName] as readonly unknown[];
+    journeyed[s.name] = travels === 'whole' ? rows : rows.map((row) => travellingRow(row, travels));
+  }
+  return journeyed as Partial<ArchiveJournal>;
+}
+
+/** One row narrowed to the fields its section declared as travelling. Only
+    called for a 'fields' declaration - `travellingJournal` above keeps
+    'whole' rows untouched and skips 'none' sections before reaching here. */
+function travellingRow(row: unknown, travels: Exclude<ArchiveSection['travels'], 'none' | 'whole'>): unknown {
+  const kept: Record<string, unknown> = {};
+  for (const field of travels.fields) kept[field] = (row as Record<string, unknown>)[field];
+  return kept;
 }
