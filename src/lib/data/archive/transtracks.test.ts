@@ -1,17 +1,23 @@
 /* transtracks.ts's own tests, at the parsing/resolving seam - the same
-   layer daylio.test.ts covers for Daylio. Fixtures are built here with
-   fflate's zipSync rather than committed as binary files: a zip carrying a
-   JSON payload and JPEGs is not something a diff can usefully show either
-   way, and a builder function documents exactly what "malformed" means
-   next to the assertion that depends on it. */
+   layer daylio.test.ts covers for Daylio. `transtracks-edge-cases.ttbackup`
+   and `transtracks-malformed.ttbackup` are the committed fixture pair
+   spec.md's Testing Decisions ask every source to ship, built the same way
+   `daylio-edge-cases.csv` bundles several real scenarios into one file
+   rather than one fixture per scenario. Narrower single-purpose cases
+   (a bad data.json, one malformed field) stay inline with fflate's zipSync,
+   the same mix daylio.test.ts itself uses alongside its own fixtures. */
 
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { strToU8, zipSync } from 'fflate';
 import { test } from 'vitest';
 import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { photoFileName } from '../photos/names.ts';
 import { TransTracksBackupError, detectTransTracks, transTracksPreview } from './transtracks.ts';
 import type { ArchiveJournal } from './payload.ts';
+
+const fixtureBytes = async (name: string): Promise<Uint8Array> =>
+  new Uint8Array(await readFile(new URL(`fixtures/${name}`, import.meta.url)));
 
 interface RawMilestone {
   id: string;
@@ -33,7 +39,6 @@ function backup(opts: {
   milestones?: Partial<RawMilestone>[];
   photos?: Partial<RawPhoto>[];
   photoFiles?: Record<string, Uint8Array>;
-  extra?: Record<string, unknown>;
   dataJsonBytes?: Uint8Array;
   omitDataJson?: boolean;
 }): Uint8Array {
@@ -43,8 +48,7 @@ function backup(opts: {
     const payload = {
       settings: { currentAndroidVersion: 448, startDate: 18628, theme: 'pink' },
       photos: opts.photos ?? [],
-      milestones: opts.milestones ?? [],
-      ...opts.extra
+      milestones: opts.milestones ?? []
     };
     files['data.json'] = opts.dataJsonBytes ?? strToU8(JSON.stringify(payload));
   }
@@ -78,13 +82,57 @@ const photo = (overrides: Partial<RawPhoto> = {}): RawPhoto => ({
 
 const empty = (): ArchiveJournal => emptyArchiveJournal();
 
-test('detectTransTracks recognises a real backup and declines everything else', () => {
-  const valid = backup({ milestones: [milestone()], photos: [] });
-  assert.ok(detectTransTracks(valid));
+test('detectTransTracks sniffs data.json\'s shape alone, so a malformed body still detects as TransTracks', async () => {
+  const wellFormed = await fixtureBytes('transtracks-edge-cases.ttbackup');
+  const malformed = await fixtureBytes('transtracks-malformed.ttbackup');
+
+  assert.ok(detectTransTracks(wellFormed));
+  assert.ok(detectTransTracks(malformed));
 
   assert.ok(!detectTransTracks(strToU8('not a zip at all')));
   assert.ok(!detectTransTracks(zipSync({ 'readme.txt': strToU8('no data.json here') })));
   assert.ok(!detectTransTracks(zipSync({ 'data.json': strToU8('{"settings":{}}') })));
+});
+
+test('the well-formed fixture: two milestones map directly, the one real photo becomes a dated entry, the orphan is counted, the unknown key and the face/body flag are named', async () => {
+  const preview = await transTracksPreview(await fixtureBytes('transtracks-edge-cases.ttbackup'), empty());
+
+  assert.equal(preview.milestoneCount, 2);
+  const withDescription = preview.journal.milestones.find((m) => m.name === 'Started HRT')!;
+  assert.equal(withDescription.description, 'First injection, hands shaking');
+  const withoutDescription = preview.journal.milestones.find((m) => m.name === 'Told a friend')!;
+  assert.equal(withoutDescription.description, '', 'a milestone with no description field reads as empty, not missing');
+
+  assert.equal(preview.photoCount, 1);
+  const [entry] = preview.journal.entries;
+  assert.equal(entry.uuid, '8b4e1f1a-6b7a-4e7a-9c1a-2f6b0a9d1c11');
+  assert.equal(entry.photos[0].fileName, photoFileName(entry.uuid));
+
+  // photos/orphaned-not-in-data-json.jpg rides along in the zip but no
+  // photo record names it - counted, never imported as a loose photo.
+  assert.equal(preview.orphanedPhotoCount, 1);
+
+  assert.deepEqual(preview.unknownTopLevelKeys, ['fromABuildWeDoNotKnowAbout']);
+  assert.deepEqual(preview.ignoredFields, ['type (face or body)']);
+});
+
+test('the malformed fixture: a photo record names a file the zip does not carry, and preview refuses it by name', async () => {
+  await assert.rejects(
+    transTracksPreview(await fixtureBytes('transtracks-malformed.ttbackup'), empty()),
+    (error: unknown) => error instanceof TransTracksBackupError && /missing\.jpg/.test((error as Error).message)
+  );
+});
+
+test('re-importing the well-formed fixture a second time adds nothing, by the file\'s own uuids', async () => {
+  const bytes = await fixtureBytes('transtracks-edge-cases.ttbackup');
+
+  const first = await transTracksPreview(bytes, empty());
+  const second = await transTracksPreview(bytes, first.journal);
+
+  assert.equal(second.milestoneCount, 0);
+  assert.equal(second.photoCount, 0);
+  assert.deepEqual(second.journal.milestones, []);
+  assert.deepEqual(second.journal.entries, []);
 });
 
 test('a milestone maps nearly directly: title to name, description to description, epochDay untouched', async () => {
@@ -136,32 +184,6 @@ test('a photo becomes a dated entry carrying it, identified by the photo\'s own 
   assert.deepEqual(preview.rawPhotos.get(photoFileName('photo-uuid')), bytes);
 });
 
-test('re-importing the same file adds nothing, by the file\'s own uuids', async () => {
-  const source = milestone();
-  const photoSource = photo();
-  const bytes = backup({
-    milestones: [source],
-    photos: [photoSource],
-    photoFiles: { [photoSource.fileName]: jpeg('again') }
-  });
-
-  const first = await transTracksPreview(bytes, empty());
-  const second = await transTracksPreview(bytes, first.journal);
-
-  assert.equal(second.milestoneCount, 0);
-  assert.equal(second.photoCount, 0);
-  assert.deepEqual(second.journal.milestones, []);
-  assert.deepEqual(second.journal.entries, []);
-});
-
-test('a photo whose file is absent from the zip is a named structural error', async () => {
-  const source = photo({ fileName: 'missing.jpg' });
-  await assert.rejects(
-    transTracksPreview(backup({ photos: [source] }), empty()),
-    (error: unknown) => error instanceof TransTracksBackupError && /missing\.jpg/.test((error as Error).message)
-  );
-});
-
 test('a referenced photo file that is present but empty is also a structural error', async () => {
   const source = photo({ fileName: 'empty.jpg' });
   await assert.rejects(
@@ -189,16 +211,6 @@ test('the face/body flag is named as ignored when the file carries photos, and n
 
   const withoutPhotos = await transTracksPreview(backup({ photos: [] }), empty());
   assert.deepEqual(withoutPhotos.ignoredFields, []);
-});
-
-test('an unknown top-level key is named and skipped, not fatal', async () => {
-  const preview = await transTracksPreview(
-    backup({ milestones: [milestone()], extra: { newFieldFutureVersionAdds: 'whatever' } }),
-    empty()
-  );
-
-  assert.deepEqual(preview.unknownTopLevelKeys, ['newFieldFutureVersionAdds']);
-  assert.equal(preview.milestoneCount, 1);
 });
 
 test('a missing data.json is a named structural error', async () => {
