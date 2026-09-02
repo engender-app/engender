@@ -211,7 +211,16 @@
      this screen that prints a single day, and the bars, the distribution and
      the insights all speak for a period. */
   let spreadsQuery = liveList((j) => j.stats.daySpread(shown.key, from, today));
-  let spreadByDay = $derived(new Map(spreadsQuery.rows.map((point) => [point.day, point])));
+  /* Empty while the read is in flight, and that is the point rather than an
+     accident: an unloaded range and a range of single-entry days come back
+     identically empty, so a row saying nothing extra would claim the day
+     covered no ground before the answer arrived. The calendar holds the
+     same line for the same reason. */
+  let spreadByDay = $derived(
+    spreadsQuery.loading
+      ? new Map<number, (typeof spreadsQuery.rows)[number]>()
+      : new Map(spreadsQuery.rows.map((point) => [point.day, point]))
+  );
 
   /* The values sheet, in the same bars as everything else on the screen. The
      bar's length is where the day sits in the metric's own range, which is

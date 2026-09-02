@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DayAverage } from './journal/stats';
 import { MOOD_RANGE } from './metricRange';
-import { MIN_SPREAD_MARK, metricStandings, moodDistribution, seriesAverage, spreadMark } from './statsCharts';
+import { MAX_STACK_CARDS, coveredGround, dayShape, metricStandings, moodDistribution, seriesAverage } from './statsCharts';
 
 const days = (...values: number[]): DayAverage[] =>
   values.map((value, i) => ({ day: 20100 + i, value, count: 1 }));
@@ -64,53 +64,61 @@ describe('how many days landed on each mood', () => {
   });
 });
 
-describe('the mark a day covering ground gets on the calendar', () => {
+describe('what a day is drawn as on the calendar', () => {
   const FEMININITY = { min: 0, max: 100 };
+  const day = (low: number, high: number, count: number) => ({ day: 20100, low, high, count });
 
-  it('marks nothing on a day the read said nothing about', () => {
-    expect(spreadMark(undefined, MOOD_RANGE)).toBeNull();
+  it('draws nothing for a day the metric was never logged on', () => {
+    expect(dayShape(undefined, MOOD_RANGE)).toBeNull();
   });
 
-  it('marks nothing on a day that only ever said one thing', () => {
-    /* One entry, or six entries all at the same value. Neither covered any
-       ground, and a mark of no width would be a smudge claiming otherwise. */
-    expect(spreadMark({ low: 4, high: 4 }, MOOD_RANGE)).toBeNull();
+  it('leaves a day of one reading whole', () => {
+    expect(dayShape(day(4, 4, 1), MOOD_RANGE)).toEqual({ kind: 'one' });
   });
 
-  it('runs from the lowest to the highest, inside the metric\'s own range', () => {
-    const mark = spreadMark({ low: 2, high: 5 }, MOOD_RANGE);
-    expect(mark?.start).toBeCloseTo(0.25);
-    expect(mark?.width).toBeCloseTo(0.75);
+  it('splits a day of two readings that landed on different steps, low half first', () => {
+    /* The half is a fill, and a fill is a step, so the split carries steps
+       rather than values. Low first and no further order: which one came
+       first is a question this cannot answer. */
+    expect(dayShape(day(2, 5, 2), MOOD_RANGE)).toEqual({ kind: 'split', low: 1, high: 4 });
   });
 
-  it('reads the same way on a range that is not mood\'s', () => {
-    /* The acceptance criterion behind this: a 1-to-5 metric and a 0-to-100
-       one have to produce a mark a person can compare between two months
-       without knowing which scale is showing. */
-    const mark = spreadMark({ low: 20, high: 85 }, FEMININITY);
-    expect(mark?.start).toBeCloseTo(0.2);
-    expect(mark?.width).toBeCloseTo(0.65);
+  it('stacks a day of two readings that landed on the same step', () => {
+    // Nothing to draw an edge between: both halves would be one colour, and
+    // a split with no visible edge reads as a day that said one thing.
+    expect(dayShape(day(4, 4, 2), MOOD_RANGE)).toEqual({ kind: 'stack', cards: 2 });
+    // Two different values inside one step is the same case.
+    expect(dayShape(day(30, 44, 2), FEMININITY)).toEqual({ kind: 'stack', cards: 2 });
   });
 
-  it('keeps a difference too small to draw visible, centred on where it was', () => {
-    // Two points apart on a 0-to-100 scale is under a pixel of a calendar
-    // cell. The day did cover ground, so the mark says so at the floor.
-    const mark = spreadMark({ low: 50, high: 52 }, FEMININITY);
-    expect(mark?.width).toBeCloseTo(MIN_SPREAD_MARK);
-    expect(mark?.start).toBeCloseTo(0.51 - MIN_SPREAD_MARK / 2);
+  it('stacks a day of three or more readings however far apart they were', () => {
+    // Four bands at 46px is a texture rather than four readings.
+    expect(dayShape(day(1, 5, 3), MOOD_RANGE)).toEqual({ kind: 'stack', cards: 3 });
+    expect(dayShape(day(10, 90, 4), FEMININITY)).toEqual({ kind: 'stack', cards: 4 });
   });
 
-  it('keeps that floor inside the track rather than hanging off its end', () => {
-    const top = spreadMark({ low: 98, high: 100 }, FEMININITY);
-    expect(top?.start).toBeCloseTo(1 - MIN_SPREAD_MARK);
-    const bottom = spreadMark({ low: 0, high: 2 }, FEMININITY);
-    expect(bottom?.start).toBeCloseTo(0);
+  it('stops the deck where it stops being countable', () => {
+    expect(dayShape(day(1, 5, 9), MOOD_RANGE)).toEqual({ kind: 'stack', cards: MAX_STACK_CARDS });
   });
 
-  it('holds a value from outside the range to the range, the way the fill does', () => {
-    // An archive from a build whose dimension ran wider (metricRange.ts).
-    const mark = spreadMark({ low: -20, high: 140 }, FEMININITY);
-    expect(mark?.start).toBeCloseTo(0);
-    expect(mark?.width).toBeCloseTo(1);
+  it('splits the same pair of readings the same way whatever the range is', () => {
+    // A 1-to-5 metric and a 0-to-100 one both resolve through the heat
+    // steps, so a split means the same thing on either (ADR-0012).
+    expect(dayShape(day(1, 5, 2), MOOD_RANGE)).toEqual({ kind: 'split', low: 1, high: 4 });
+    expect(dayShape(day(0, 100, 2), FEMININITY)).toEqual({ kind: 'split', low: 1, high: 4 });
+  });
+});
+
+describe('whether a day covered ground at all', () => {
+  it('says no for a day that only ever held one value', () => {
+    expect(coveredGround(undefined)).toBe(false);
+    expect(coveredGround({ low: 4, high: 4 })).toBe(false);
+  });
+
+  it('says yes for a difference too small to draw an edge for', () => {
+    /* The words and the drawing part company here on purpose: two readings
+       two points apart share a step, so the cell stacks rather than splits,
+       and /stats still prints "from 50 to 52". */
+    expect(coveredGround({ low: 50, high: 52 })).toBe(true);
   });
 });

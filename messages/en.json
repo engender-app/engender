@@ -145,7 +145,7 @@
   "cal_jump_month": "Jump to month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. Days with several entries show the day’s average, with a mark underneath running from the lowest value logged to the highest. Tap a filled day to see its entries.",
+  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries.",
   "legend_none": "no entry",
   "day_avg": "avg {metric}",
   "entries_this_day": [
