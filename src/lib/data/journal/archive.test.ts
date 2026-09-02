@@ -719,6 +719,8 @@ const CARRIED: Record<string, string[]> = {
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
   wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
   comfort_item: ['uuid', 'text', 'position'],
+  // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column.
+  import_log: ['uuid', 'source', 'counts', 'imported_at'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };

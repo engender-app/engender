@@ -33,11 +33,12 @@ import {
   type DaylioNaming,
   type DaylioPreview
 } from '../archive/daylio';
-import type { ArchiveFile, ArchiveJournal } from '../archive/payload';
+import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
-import { readRowContext } from './archiveRead';
+import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
+import { mintUuid, now } from './support';
 
 export interface ArchiveSnapshot {
   journal: ArchiveJournal;
@@ -55,8 +56,15 @@ export interface ArchiveArea {
   /** Parses and resolves a Daylio CSV without writing. Counts are net
       additions, so they are the counts commit reports (PRD F28). */
   previewDaylioImport(csv: string, naming: DaylioNaming): Promise<DaylioPreview>;
-  /** Always Merge. An unmapped mood is refused before restore sees a row. */
+  /** Always Merge. An unmapped mood is refused before restore sees a row.
+      Writes one import_log record on success (ticket 03) - never on the
+      unmapped-mood refusal above, which never reaches restore either. */
   commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
+  /** The import history, most recent first, for the settings screen
+      (ticket 03). Its own read rather than a slice of `snapshot()`: every
+      other archive read costs the whole journal, and a settings screen
+      asking "where did this come from" should not pay for it. */
+  importLog(): Promise<ArchiveImportLogRecord[]>;
   /** Discards this device's journal and installs the archive's, keeping the
       built-in vocabulary by key and leaving preferences alone (ADR-0011).
       One operation: the order it happens in is not a caller's to compose. */
@@ -64,6 +72,21 @@ export interface ArchiveArea {
   /** Adds what this device does not have and leaves matched rows alone, so
       importing the same archive twice is a no-op the second time. */
   merge(contents: RestoreContents): Promise<void>;
+}
+
+/** One import_log row, direct rather than through the ordinary merge: this
+    record is not content a device might already have and skip (ADR-0002's
+    own insert-if-absent shape) - it is a new fact every time, minted here
+    the way any other user-owned row is (ticket 03). */
+async function recordImport(driver: SqliteDriver, source: string, counts: Record<string, number>): Promise<void> {
+  const ts = now();
+  await driver.run('INSERT INTO import_log (uuid, source, counts, imported_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+    mintUuid(),
+    source,
+    JSON.stringify(counts),
+    ts,
+    ts
+  ]);
 }
 
 export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): ArchiveArea {
@@ -117,12 +140,18 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         files: (async function* () {})()
       });
       const after = await area.snapshot();
-      return {
+      const result = {
         entriesAdded: after.journal.entries.length - before.journal.entries.length,
         tagsAdded:
           after.journal.tagGroups.flatMap((group) => group.tags).length -
           before.journal.tagGroups.flatMap((group) => group.tags).length
       };
+      await recordImport(driver, 'daylio', { entries: result.entriesAdded, tags: result.tagsAdded });
+      return result;
+    },
+
+    async importLog() {
+      return (await readImportLog(driver)).toReversed();
     },
 
     async snapshot() {

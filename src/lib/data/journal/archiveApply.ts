@@ -1024,3 +1024,18 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
   }
 }
 
+
+/** The import log (phase 7 ticket 03): ordinary insert-if-absent by uuid,
+    the same as every other user-owned row. Every record already carries its
+    own minted uuid and timestamp (journal/archive.ts writes it once, on
+    commit), so `ts` here only stamps `updated_at` - the bookkeeping column
+    every insert carries, not the moment the import itself happened. */
+export async function applyImportLog({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM import_log');
+  const inserting = journal.importLog.filter((record) => !present.has(record.id));
+  await insertRows(
+    driver,
+    'INSERT INTO import_log (uuid, source, counts, imported_at, updated_at)',
+    inserting.map((record) => [record.id, record.source, JSON.stringify(record.counts), record.importedAt, ts])
+  );
+}

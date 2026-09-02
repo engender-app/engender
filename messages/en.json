@@ -2756,5 +2756,38 @@
   "constellation_scrub": "Position on the path",
   "constellation_needs_scales": "Tick two scales to plot one against the other.",
   "constellation_aria": "Your entries on two scales: {x}, {y}.",
-  "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}."
+  "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}.",
+  "imp_log_section": "Import history",
+  "imp_log_source_daylio": "Daylio",
+  "imp_log_row_sub": "{counts} · {when}",
+  "imp_log_n_entries": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} entry",
+        "nPlural=other": "{n} entries"
+      }
+    }
+  ],
+  "imp_log_n_tags": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} tag",
+        "nPlural=other": "{n} tags"
+      }
+    }
+  ]
 }
