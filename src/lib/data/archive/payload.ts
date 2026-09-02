@@ -670,6 +670,7 @@ export interface ArchiveJournal {
   voiceBenchmarks: ArchiveVoiceBenchmark[];
   presentations: ArchivePresentation[];
   entryTemplates: ArchiveEntryTemplate[];
+  comfortItems: ArchiveComfortItem[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,
@@ -694,6 +695,16 @@ export interface ArchiveEra {
     merge on the far side without either device having to reconcile that. */
 export interface ArchiveEraMute {
   eraUuid: string;
+}
+
+/** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
+    "Comfort list"). `position` travels explicitly rather than being
+    inferred from array order, the same as any other flat area with a
+    person-set order. */
+export interface ArchiveComfortItem {
+  id: string;
+  text: string;
+  position: number;
 }
 
 /** A named presentation (phase 5 deepening ticket 17, ADR-0048, CONTEXT:
