@@ -185,6 +185,10 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.eras.upsertEra({ name: 'before I knew', startEpochDay: null, endEpochDay: 19000 });
   await journal.eras.upsertEra({ name: 'first year', startEpochDay: 19001, endEpochDay: 19365 });
   await journal.eras.upsertEra({ name: 'after I moved', startEpochDay: 19366, endEpochDay: null });
+  // Two lines, so the fixture pins an order beyond "the only one" (phase 6
+  // ticket 14).
+  await journal.comfortItems.addItem('text a friend');
+  await journal.comfortItems.addItem('walk by the river');
   await journal.effectCategories.setCategoryEnabled('sensory', true);
   const customEffect = await journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape');
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);

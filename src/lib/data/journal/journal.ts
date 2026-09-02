@@ -17,6 +17,7 @@ import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import { makeChartAnnotationsArea, type ChartAnnotationsArea } from './chartAnnotations';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
+import { makeComfortItemsArea, type ComfortItemsArea } from './comfortItems';
 import { makeJournalBookArea, type JournalBookArea } from './journalBook';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
 import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
@@ -250,6 +251,12 @@ export interface Journal {
       list itself from 'g-euphoria' alone to all three euphoria tags) -
       this area owns only what it alone writes. */
   doubtJournal: DoubtJournalArea;
+  /** The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
+      list"): who to text, which walk, which playlist, entirely their own
+      words. Reachable only from inside Safe space; nothing seeds it and
+      nothing offers it, so this area is only ever read and written from
+      the one screen. */
+  comfortItems: ComfortItemsArea;
   /** Name and pronoun tryouts (phase 4 ticket 16). Reads the entries in a
       tryout's date range through entries.searchEntries('', [], {
       startEpochDay, endEpochDay }) rather than owning a link of its own
@@ -351,6 +358,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const journalingPauses = makeJournalingPausesArea(driver);
   const eras = makeErasArea(driver);
+  const comfortItems = makeComfortItemsArea(driver);
 
   return {
     entries,
@@ -416,6 +424,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hairRemoval,
     procedures,
     doubtJournal,
+    comfortItems,
     feltSense,
     tryouts,
     letters: makeLettersArea(driver),
