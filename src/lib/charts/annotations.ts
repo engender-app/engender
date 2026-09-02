@@ -86,10 +86,16 @@ export type ChartAnnotationKind =
   | 'recovery'
   | 'dosePause'
   | 'journalingPause'
-  | 'tryout';
+  | 'tryout'
+  | 'era';
 
 /** Whether a kind is a moment or a stretch. Here rather than on each record,
-    so no caller can hand in a milestone that claims to be a period. */
+    so no caller can hand in a milestone that claims to be a period.
+
+    `era` is a point rather than a span (phase 6 ticket 03): the mark is the
+    boundary an era's start draws, not the stretch itself - the calendar
+    shades the stretch, and a chart would need a wash in every era's colour
+    to do the same, which is a second mechanism the ticket rules out. */
 const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   milestone: 'point',
   surgery: 'point',
@@ -97,7 +103,8 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   recovery: 'span',
   dosePause: 'span',
   journalingPause: 'span',
-  tryout: 'span'
+  tryout: 'span',
+  era: 'point'
 };
 
 /** One dated thing, as the query hands it over: stored days, untouched.

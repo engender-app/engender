@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertEraFits, eraConflict, eraForDay, eraCoversDay, eraRange, type EraSpan } from './eras';
+import { assertEraFits, eraConflict, eraForDay, eraCoversDay, eraRange, eraRangeOrNull, type EraSpan } from './eras';
 
 const era = (name: string, startEpochDay: number | null, endEpochDay: number | null, id = name): EraSpan => ({
   id,
@@ -152,5 +152,25 @@ describe('eraRange', () => {
   it('resolves to nothing when the era holds no day the journal has', () => {
     expect(eraRange(era('before I knew', null, 100), bounds)).toBe(null);
     expect(eraRange(era('later', 500, null), bounds)).toBe(null);
+  });
+});
+
+/* Phase 6 ticket 03: `/compare` and Wrapped both read `getJournalBounds()`
+   as a liveQuery, which is null both while it loads and on a journal that
+   has never held an entry - a moment `eraRange` itself never has to answer
+   for, since its own tests always hand it real bounds. */
+describe('eraRangeOrNull', () => {
+  it('answers exactly as eraRange does once bounds are known', () => {
+    const bounds = { firstEpochDay: 120, lastEpochDay: 400 };
+    expect(eraRangeOrNull(era('first year', 150, 200), bounds)).toEqual({ startEpochDay: 150, endEpochDay: 200 });
+  });
+
+  it('resolves a fully-dated era with no bounds at all', () => {
+    expect(eraRangeOrNull(era('first year', 150, 200), null)).toEqual({ startEpochDay: 150, endEpochDay: 200 });
+  });
+
+  it('has nothing to clamp an open bound against without bounds', () => {
+    expect(eraRangeOrNull(era('before I knew', null, 200), null)).toBe(null);
+    expect(eraRangeOrNull(era('now', 300, null), null)).toBe(null);
   });
 });

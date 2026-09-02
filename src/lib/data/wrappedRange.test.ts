@@ -16,8 +16,8 @@ const TODAY = epochDayFromDateInputValue('2026-06-15') as number;
 const day = (value: string) => epochDayFromDateInputValue(value) as number;
 
 describe('the named ranges wrapped absorbed from recap', () => {
-  it('offers every one of recap\'s own choices', () => {
-    expect([...WRAPPED_RANGE_CHOICES]).toEqual(['prevMonth', 'prevYear', 'd7', 'd30', 'd90', 'ytd', 'custom']);
+  it('offers every one of recap\'s own choices, plus an era', () => {
+    expect([...WRAPPED_RANGE_CHOICES]).toEqual(['prevMonth', 'prevYear', 'd7', 'd30', 'd90', 'ytd', 'custom', 'era']);
   });
 
   it('sends the two completed periods to the cadence that already has a screen', () => {
@@ -61,6 +61,41 @@ describe('a custom range', () => {
   it('does not run past today, since there is nothing there to look back on', () => {
     expect(resolveWrappedRange('custom', TODAY, { start: '2026-06-01', end: '2026-06-15' })).not.toBeNull();
     expect(resolveWrappedRange('custom', TODAY, { start: '2026-06-01', end: '2026-06-16' })).toBeNull();
+  });
+});
+
+describe('an era as the range', () => {
+  const firstYear = { id: 'e1', name: 'first year', startEpochDay: day('2025-01-01'), endEpochDay: day('2025-12-31') };
+  const beforeIKnew = { id: 'e2', name: 'before I knew', startEpochDay: null, endEpochDay: day('2024-12-31') };
+  const stillRunning = { id: 'e3', name: 'this year', startEpochDay: day('2026-01-01'), endEpochDay: null };
+  const eras = [firstYear, beforeIKnew, stillRunning];
+  const bounds = { firstEpochDay: day('2023-06-01'), lastEpochDay: day('2026-06-01') };
+
+  it('resolves a fully-dated era with no journal to clamp against', () => {
+    expect(resolveWrappedRange('era', TODAY, undefined, { eraId: 'e1', eras, bounds: null })).toEqual({
+      start: firstYear.startEpochDay,
+      end: firstYear.endEpochDay
+    });
+  });
+
+  it('clamps an open bound to the journal\'s own edges', () => {
+    expect(resolveWrappedRange('era', TODAY, undefined, { eraId: 'e2', eras, bounds })).toEqual({
+      start: bounds.firstEpochDay,
+      end: beforeIKnew.endEpochDay
+    });
+    expect(resolveWrappedRange('era', TODAY, undefined, { eraId: 'e3', eras, bounds })).toEqual({
+      start: stillRunning.startEpochDay,
+      end: bounds.lastEpochDay
+    });
+  });
+
+  it('has nothing to resolve an open bound against when the journal holds no entries', () => {
+    expect(resolveWrappedRange('era', TODAY, undefined, { eraId: 'e2', eras, bounds: null })).toBeNull();
+  });
+
+  it('answers null for an era id that names nothing, the way a deleted era does everywhere else', () => {
+    expect(resolveWrappedRange('era', TODAY, undefined, { eraId: 'gone', eras, bounds })).toBeNull();
+    expect(resolveWrappedRange('era', TODAY)).toBeNull();
   });
 });
 
@@ -117,6 +152,42 @@ describe('the range in the URL', () => {
     expect(parseWrappedRangeParams(custom.get('named'), custom.get('from'), custom.get('to'), TODAY)).toMatchObject({
       choice: 'custom',
       range: { start: day('2026-05-01'), end: day('2026-05-31') }
+    });
+  });
+
+  describe('an era in the URL', () => {
+    const era = { id: 'e1', name: 'first year', startEpochDay: day('2025-01-01'), endEpochDay: day('2025-12-31') };
+
+    it('resolves the era the id names', () => {
+      const parsed = parseWrappedRangeParams('era', null, null, TODAY, { eraId: 'e1', eras: [era], bounds: null });
+      expect(parsed.choice).toBe('era');
+      expect(parsed.eraId).toBe('e1');
+      expect(parsed.range).toEqual({ start: era.startEpochDay, end: era.endEpochDay });
+    });
+
+    /* The acceptance criterion every era-adopting surface answers to:
+       deleting an era leaves the screen working, falling back to its
+       pre-era behaviour rather than showing a range that no longer names
+       anything. */
+    it('falls back to the default window when the era named is gone', () => {
+      const parsed = parseWrappedRangeParams('era', null, null, TODAY, { eraId: 'e1', eras: [], bounds: null });
+      expect(parsed.choice).toBe(WRAPPED_RANGE_DEFAULT);
+      expect(parsed.eraId).toBe('');
+    });
+
+    it('falls back the same way with no era id at all', () => {
+      expect(parseWrappedRangeParams('era', null, null, TODAY).choice).toBe(WRAPPED_RANGE_DEFAULT);
+    });
+
+    it('writes and reads back the query it names', () => {
+      const query = new URLSearchParams(wrappedRangeQuery('era', undefined, 'e1'));
+      const parsed = parseWrappedRangeParams(query.get('named'), null, null, TODAY, {
+        eraId: query.get('era'),
+        eras: [era],
+        bounds: null
+      });
+      expect(parsed.choice).toBe('era');
+      expect(parsed.eraId).toBe('e1');
     });
   });
 });

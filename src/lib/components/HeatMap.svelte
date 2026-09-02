@@ -32,6 +32,8 @@
   import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { eraCoversDay } from '$lib/data/eras';
+  import type { Era } from '$lib/data/types';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -40,7 +42,8 @@
   let {
     year,
     month,
-    role
+    role,
+    eras = []
   }: {
     year: number;
     month: number /* 0-based */;
@@ -48,6 +51,13 @@
         or before the flag has landed - the accent ramp's own tokens stand
         in. */
     role?: Role;
+    /** Which era each day belongs to (phase 6 ticket 03), each already
+        carrying the role it draws in. Resolved by the caller, the same
+        division of labour `role` above keeps: an era stores no colour of
+        its own (ADR-0049), and under disguise there is no flag to draw one
+        from - the caller hands over nothing rather than this component
+        reaching for `activeFlag` itself. */
+    eras?: { era: Era; role: Role }[];
   } = $props();
 
   const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -102,10 +112,19 @@
       count: number;
       isToday: boolean;
       label: string;
+      /** The era border a day draws, or none for a day in no era - a
+          resting state rather than a gap (ADR-0049), so it draws like any
+          other day. The first era covering the day, which the no-overlap
+          invariant makes the only one, so a day spanning two named eras
+          never happens - only a month doing so does, and each of its days
+          still answers for itself. */
+      eraName: string | null;
+      eraMark: string | null;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;
       const count = countByDay.get(epochDay) ?? 0;
+      const covering = eras.find((e) => eraCoversDay(e.era, epochDay));
       out.push({
         day: d,
         epochDay,
@@ -117,9 +136,23 @@
           : count
             ? m.heat_cell_entries({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }), count })
             : m.heat_cell_none({ date: fmtDay(epochDay, { day: 'numeric', month: 'long' }) }),
+        eraName: covering?.era.name ?? null,
+        eraMark: covering?.role.mark ?? null
       });
     }
     return { startDow, days: out };
+  });
+
+  /* The eras actually in view, named once each for the strip under the
+     grid - a month spanning two eras draws both, and a month in none draws
+     no strip at all rather than an empty-state or "Uncategorized"
+     (ADR-0049). */
+  let eraLegend = $derived.by(() => {
+    const seen = new Map<string, string>();
+    for (const c of cells.days) {
+      if (c.eraName && c.eraMark && !seen.has(c.eraName)) seen.set(c.eraName, c.eraMark);
+    }
+    return [...seen.entries()].map(([name, mark]) => ({ name, mark }));
   });
 </script>
 
@@ -132,12 +165,17 @@
         class="cal-cell has-entries press"
         class:is-today={c.isToday}
         data-hm-cell-filled
-        style="background:{fillAt(c.level)};color:{inkAt(c.level)}"
+        style="background:{fillAt(c.level)};color:{inkAt(c.level)};{c.eraMark ? `border-color:${c.eraMark};` : ''}"
         href="/day/{c.epochDay}"
         aria-label={c.label}><span class="cal-num">{c.day}</span></a
       >
     {:else}
-      <span class="cal-cell" class:is-today={c.isToday} aria-label={c.label}><span class="cal-num">{c.day}</span></span>
+      <span
+        class="cal-cell"
+        class:is-today={c.isToday}
+        style={c.eraMark ? `border-color:${c.eraMark}` : undefined}
+        aria-label={c.label}><span class="cal-num">{c.day}</span></span
+      >
     {/if}
   {/each}
 </div>
@@ -162,6 +200,21 @@
     {m.legend_none()}
   </span>
 </div>
+
+{#if eraLegend.length}
+  <!-- Which era's border a day is drawing (phase 6 ticket 03), named next
+       to its colour the same way the metric legend already is. A month in
+       no era draws no strip at all, rather than an empty state or
+       "Uncategorized" (ADR-0049). -->
+  <div class="cal-era-legend" data-cal-era-legend>
+    {#each eraLegend as e (e.name)}
+      <span class="cal-era-legend-item">
+        <span class="cal-legend-swatch" style="border-color:{e.mark}"></span>
+        {e.name}
+      </span>
+    {/each}
+  </div>
+{/if}
 
 <style>
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -212,4 +265,15 @@
     border: 1px solid var(--outline);
   }
   .cal-legend-end { max-width: 9ch; }
+
+  .cal-era-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    margin-top: var(--space-2);
+  }
+  .cal-era-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 </style>

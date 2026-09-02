@@ -39,10 +39,12 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import { liveList } from '$lib/data/live/journal.svelte';
+  import type { Era } from '$lib/data/types';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { roleAt, type Role } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   const now = new Date();
@@ -51,6 +53,22 @@
 
   let metricName = $derived(vocabulary.metricName);
   let monthLabel = $derived(fmtMonthYear(year, month));
+
+  /* Which era each month belongs to (phase 6 ticket 03): each era paired
+     with the role it draws in, the same way role 0 is picked for the
+     metric below - by position, since an era stores no colour of its own
+     (ADR-0049). Under disguise `activeFlag.roles` is empty and `roleAt`
+     answers undefined for every index, so the pairing drops every era
+     rather than handing HeatMap a colour there is no flag to have drawn. */
+  let erasQuery = liveList((j) => j.eras.getEras());
+  let eraRoles = $derived.by(() => {
+    const out: { era: Era; role: Role }[] = [];
+    erasQuery.rows.forEach((era, i) => {
+      const role = roleAt(activeFlag.roles, i);
+      if (role) out.push({ era, role });
+    });
+    return out;
+  });
 
   /* Mood plus whichever scales this install shows, which is the same list
      Home offers - the vocabulary decides what a metric can be, in one place.
@@ -242,7 +260,7 @@
     />
   </div>
 
-  <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} />
+  <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} />
 
   <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
 </div>
