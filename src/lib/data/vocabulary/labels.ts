@@ -487,7 +487,8 @@ const ENTRY_TEMPLATE_NAME: Record<EntryTemplateKey, Message> = {
   self_care: m.tpl_entry_self_care,
   presentation_feeling: m.tpl_entry_presentation_feeling,
   name_pronouns_feeling: m.tpl_entry_name_pronouns_feeling,
-  proud_moment: m.tpl_entry_proud_moment
+  proud_moment: m.tpl_entry_proud_moment,
+  appointment_debrief: m.tpl_entry_appointment_debrief
 };
 
 /* Partial: only the folded-in guided prompts carry a note scaffold, the
@@ -502,7 +503,8 @@ const ENTRY_TEMPLATE_NOTE_SCAFFOLD: Partial<Record<EntryTemplateKey, Message>> =
   self_care: m.prompt_self_care,
   presentation_feeling: m.prompt_presentation_feeling,
   name_pronouns_feeling: m.prompt_name_pronouns_feeling,
-  proud_moment: m.prompt_proud_moment
+  proud_moment: m.prompt_proud_moment,
+  appointment_debrief: m.prompt_appointment_debrief
 };
 
 /* Each lookup falls back to the key itself. A key with no message means a

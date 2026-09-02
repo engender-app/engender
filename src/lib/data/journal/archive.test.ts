@@ -719,6 +719,8 @@ const CARRIED: Record<string, string[]> = {
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
   wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
   comfort_item: ['uuid', 'text', 'position'],
+  // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column.
+  import_log: ['uuid', 'source', 'counts', 'imported_at'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };
@@ -739,7 +741,19 @@ const CARRIED: Record<string, string[]> = {
    to the row), and every other table's own `hidden` column stays carried
    as before - this is scoped to `regimen_episode` alone by the per-table
    CARRIED lists above, not by this flat list. */
-const LEFT_BEHIND = ['id', 'updated_at', 'trashed_at', 'context', 'hidden'];
+// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08): device-
+// local bookkeeping for the appointment debrief offer, scoped to `checklist`
+// alone by migrations.ts v54's own comment - never part of what the
+// checklist travels, the same reason `id` and `updated_at` never are.
+const LEFT_BEHIND = [
+  'id',
+  'updated_at',
+  'trashed_at',
+  'context',
+  'hidden',
+  'debrief_entry_id',
+  'debrief_dismissed_epoch_day'
+];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();
