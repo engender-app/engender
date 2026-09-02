@@ -1941,6 +1941,8 @@
       }
     }
   ],
+  "wrapped_muted_title": "Nic stąd nie wraca",
+  "wrapped_muted_body": "Ten okres obejmuje erę, którą trzymasz z dala od przywracania.",
   "wrapped_stat_entries": "Wpisy",
   "wrapped_stat_streak": "Najdłuższa seria",
   "wrapped_stat_mood": "Średni nastrój",
@@ -1976,6 +1978,7 @@
   "on_this_day_month_title": "Miesiąc temu",
   "on_this_day_six_months_title": "Pół roku temu",
   "on_this_day_year_title": "Rok temu",
+  "resurfacing_photo_reveal": "Pokaż zdjęcie",
   "retro_notify_capabilities_title": "Powiadomienia są zablokowane",
   "retro_notify_capabilities_body": "Nic z tej listy nie dotrze, dopóki powiadomienia są zablokowane. Każdy rodzaj ma własny kanał w ustawieniach powiadomień telefonu.",
   "tally_misgendered": "Zmisgenderowano mnie",
@@ -2743,6 +2746,8 @@
   "era_resolves_to": "Na teraz to {start} do {end}.",
   "era_start_label": "Początek",
   "era_end_label": "Koniec",
+  "era_resurfacing_label": "Przywracanie",
+  "era_resurfacing_hint": "Wspomnienia, Bilans i zdjęcia mogą przywracać dni z tej ery. Wyłącz, żeby żaden z nich nie wracał.",
   "era_span_both": "{start} do {end}",
   "era_span_open_start": "Do {end}, bez początku",
   "era_span_open_end": "Od {start}, wciąż trwa",
