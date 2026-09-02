@@ -254,7 +254,6 @@ const SECTIONS = [
          without knowing the index exists. */
       'DELETE FROM entry'
     ],
-    // A journal entry is the record the boundary is drawn around.
     travels: 'none',
     read: read.readEntries,
     apply: apply.applyEntries
@@ -287,7 +286,6 @@ const SECTIONS = [
      a result logged before the feature carries. */
   flat({
     name: 'labResults',
-    // A lab result is a record of what happened to you.
     travels: 'none',
     table: 'lab_result',
     identity: 'uuid',
@@ -324,7 +322,6 @@ const SECTIONS = [
   // section above and no `after` to declare.
   flat({
     name: 'measurements',
-    // A measurement is a record of what happened to you.
     travels: 'none',
     table: 'measurement',
     identity: 'uuid',
@@ -333,7 +330,6 @@ const SECTIONS = [
   }),
   flat({
     name: 'sizeRecords',
-    // A record of what happened to you.
     travels: 'none',
     table: 'size_record',
     identity: 'uuid',
@@ -349,7 +345,6 @@ const SECTIONS = [
   }),
   flat({
     name: 'sideEffects',
-    // A record of what happened to you.
     travels: 'none',
     table: 'side_effect',
     identity: 'uuid',
@@ -358,7 +353,6 @@ const SECTIONS = [
   }),
   flat({
     name: 'cycleEvents',
-    // A record of what happened to you.
     travels: 'none',
     table: 'cycle_event',
     identity: 'uuid',
@@ -367,7 +361,6 @@ const SECTIONS = [
   }),
   flat({
     name: 'journalingPauses',
-    // A record of what happened to you.
     travels: 'none',
     table: 'journaling_pause',
     identity: 'uuid',
@@ -489,7 +482,6 @@ const SECTIONS = [
      from a future build. */
   flat({
     name: 'hairStages',
-    // A record of what happened to you.
     travels: 'none',
     table: 'hair_stage',
     identity: 'uuid',
@@ -505,7 +497,6 @@ const SECTIONS = [
   section({
     name: 'hairPhotos',
     discard: ['DELETE FROM hair_photo'],
-    // A record of what happened to you.
     travels: 'none',
     read: read.readHairPhotos,
     apply: apply.applyHairPhotos
@@ -515,7 +506,6 @@ const SECTIONS = [
   section({
     name: 'hairRemovalSessions',
     discard: ['DELETE FROM hair_removal_photo', 'DELETE FROM hair_removal_session'],
-    // A record of what happened to you.
     travels: 'none',
     read: read.readHairRemovalSessions,
     apply: apply.applyHairRemovalSessions
@@ -527,7 +517,6 @@ const SECTIONS = [
   section({
     name: 'procedures',
     discard: ['DELETE FROM procedure_photo', 'DELETE FROM procedure_consult', 'DELETE FROM procedure'],
-    // A record of what happened to you.
     travels: 'none',
     read: read.readProcedures,
     apply: apply.applyProcedures
@@ -561,7 +550,6 @@ const SECTIONS = [
   }),
   flat({
     name: 'tallyEvents',
-    // A record of what happened to you.
     travels: 'none',
     table: 'tally_event',
     identity: 'uuid',
@@ -571,7 +559,6 @@ const SECTIONS = [
   section({
     name: 'counterevidenceSnapshots',
     discard: ['DELETE FROM doubt_snapshot_entry', 'DELETE FROM doubt_snapshot'],
-    // A record of what happened to you.
     travels: 'none',
     read: read.readCounterevidenceSnapshots,
     apply: apply.applyCounterevidenceSnapshots
@@ -618,8 +605,6 @@ const SECTIONS = [
   // still ongoing, the same as every pre-existing episode's backfill (v40).
   flat({
     name: 'regimenEpisodes',
-    // Your own treatment history - a record, not structure to hand a
-    // stranger.
     travels: 'none',
     table: 'regimen_episode',
     identity: 'uuid',
@@ -643,7 +628,6 @@ const SECTIONS = [
   // without one.
   flat({
     name: 'doseEvents',
-    // A record of what happened to you.
     travels: 'none',
     table: 'dose_event',
     identity: 'uuid',
@@ -689,7 +673,8 @@ const SECTIONS = [
     name: 'dosePauses',
     after: ['regimenEpisodes'],
     discard: ['DELETE FROM dose_pause'],
-    // A record of what happened to you.
+    // Hangs off your own regimen episode, the same reasoning `doseSchedules`
+    // above gives.
     travels: 'none',
     read: read.readDosePauses,
     apply: apply.applyDosePauses
@@ -722,7 +707,6 @@ const SECTIONS = [
   section({
     name: 'tryouts',
     discard: ['DELETE FROM tryout_photo', 'DELETE FROM tryout'],
-    // A record of what happened to you.
     travels: 'none',
     read: read.readTryouts,
     apply: apply.applyTryouts
@@ -735,7 +719,6 @@ const SECTIONS = [
     // Clears before both tryout and milestone, which is `after` reversed
     // again rather than anything stated here.
     discard: ['DELETE FROM felt_sense'],
-    // A record of what happened to you.
     travels: 'none',
     read: read.readFeltSenseEntries,
     apply: apply.applyFeltSenseEntries
@@ -743,11 +726,18 @@ const SECTIONS = [
   section({
     name: 'checklists',
     discard: ['DELETE FROM checklist_item', 'DELETE FROM checklist'],
-    // Ticket 04's own worked case: an appointment question list travels
-    // whole. One section covers both the standalone appointment checklist
-    // and a procedure's owned recovery list, so this declares the whole
-    // area could travel; which particular checklist an export actually
-    // includes is ticket 07's own choice, not this one's.
+    /* Ticket 04's own worked case: an appointment question list travels
+       whole. One `ArchiveChecklist` shape covers both the standalone
+       appointment checklist and a procedure's owned recovery list, so
+       there is no section boundary between the two to declare separately
+       - splitting them into two sections would be changing what a section
+       contains, which is out of this ticket's scope. `ownerKind`/`ownerId`,
+       `appointmentEpochDay` and each item's `checked`/`carriedForward` ride
+       along as a consequence: this declaration says the shape may travel,
+       the same way `Travel` cannot say "keep an item's text but not
+       whether it is checked" (it names top-level fields, not a nested
+       item's). Which checklist an export actually offers, and whether a
+       finer per-field cut is ever worth adding, is ticket 07's decision. */
     travels: 'whole',
     read: read.readChecklists,
     apply: apply.applyChecklists
@@ -758,7 +748,6 @@ const SECTIONS = [
      link this section would have to carry. */
   flat({
     name: 'wearSessions',
-    // A record of what happened to you.
     travels: 'none',
     table: 'wear_session',
     identity: 'uuid',
@@ -776,7 +765,6 @@ const SECTIONS = [
      writer binds undefined as a raw driver error rather than as a null. */
   flat({
     name: 'voiceBenchmarks',
-    // A record of what happened to you, audio included.
     travels: 'none',
     table: 'voice_benchmark',
     identity: 'uuid',
@@ -925,34 +913,4 @@ export async function applyArchiveJournal(
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
 ): Promise<void> {
   for (const s of orderedSections(sections)) await s.apply(restoring);
-}
-
-/** What of a journal a structure file may carry (ticket 04, ADR-0049),
-    read straight off each section's own `travels`. A 'none' section is left
-    out of the result entirely, rather than carried across as an empty
-    array, so the result's own keys already say what a structure file
-    covers - the container (ticket 07) still has to choose which of a
-    'whole' or 'fields' section's rows to include, the same way exporting a
-    milestone set does not mean exporting every milestone. */
-export function travellingJournal(
-  journal: ArchiveJournal,
-  sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
-): Partial<ArchiveJournal> {
-  const journeyed: Record<string, unknown> = {};
-  for (const s of sections) {
-    const travels = s.travels;
-    if (travels === 'none') continue;
-    const rows = journal[s.name as ArchiveSectionName] as readonly unknown[];
-    journeyed[s.name] = travels === 'whole' ? rows : rows.map((row) => travellingRow(row, travels));
-  }
-  return journeyed as Partial<ArchiveJournal>;
-}
-
-/** One row narrowed to the fields its section declared as travelling. Only
-    called for a 'fields' declaration - `travellingJournal` above keeps
-    'whole' rows untouched and skips 'none' sections before reaching here. */
-function travellingRow(row: unknown, travels: Exclude<ArchiveSection['travels'], 'none' | 'whole'>): unknown {
-  const kept: Record<string, unknown> = {};
-  for (const field of travels.fields) kept[field] = (row as Record<string, unknown>)[field];
-  return kept;
 }
