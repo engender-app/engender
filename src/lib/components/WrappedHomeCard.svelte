@@ -30,11 +30,21 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthName } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { liveQueryWatchingOnly } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery, liveQueryWatchingOnly } from '$lib/data/live/journal.svelte';
   import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod } from '$lib/data/wrapped';
+  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import Tile from './kit/Tile.svelte';
 
   const period = offeredWrappedPeriod(todayEpochDay());
+
+  /* Phase 6 ticket 05: whether the offered period touches a muted era. The
+     period is always a recent week, month or year rather than one the
+     person chose, but nothing stops it landing inside an era someone muted
+     - "now" is as nameable an era as "before I knew" - so this is checked
+     rather than assumed impossible. */
+  let erasQuery = liveList((j) => j.eras.getEras());
+  let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
+  let muted = $derived(touchesMutedEra(erasQuery.rows, mutedQuery.value ?? new Set(), period.start, period.end));
 
   /* The recap seam, the same one the wrapped screen reads, so the count on
      the card and the count on the screen cannot disagree. Narrowed to entry
@@ -42,7 +52,9 @@
      screen does: a recap reads dimension values, tags, milestones and photos
      too, and `entryCount` is the one field this card uses - attaching a photo
      or renaming a milestone cannot change it. */
-  let recapQuery = liveQueryWatchingOnly(['entry'], (j) => j.stats.recap(period.start, period.end));
+  let recapQuery = liveQueryWatchingOnly(['entry'], (j) =>
+    muted ? Promise.resolve(null) : j.stats.recap(period.start, period.end)
+  );
   let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
 
   let title = $derived(

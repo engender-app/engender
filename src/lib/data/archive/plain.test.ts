@@ -157,6 +157,7 @@ test('the JSON reads as a file, indented, version first', () => {
     "cycleEvents": [],
     "journalingPauses": [],
     "eras": [],
+    "eraMutes": [],
     "effectCategories": [],
     "personalEffectTypes": [],
     "personalEffects": [],

@@ -182,9 +182,12 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
      bound is the case a round trip can lose silently by defaulting it to a
      day, and it has two sides: the era that reaches back before the journal
      and the one still running (phase 6 ticket 01). */
-  await journal.eras.upsertEra({ name: 'before I knew', startEpochDay: null, endEpochDay: 19000 });
+  const beforeIKnew = await journal.eras.upsertEra({ name: 'before I knew', startEpochDay: null, endEpochDay: 19000 });
   await journal.eras.upsertEra({ name: 'first year', startEpochDay: 19001, endEpochDay: 19365 });
   await journal.eras.upsertEra({ name: 'after I moved', startEpochDay: 19366, endEpochDay: null });
+  // One mute, so the section is non-empty and a round trip has a row to
+  // lose (phase 6 ticket 05).
+  await journal.eraMutes.setEraMuted(beforeIKnew, true);
   // Two lines, so the fixture pins an order beyond "the only one" (phase 6
   // ticket 14).
   await journal.comfortItems.addItem('text a friend');

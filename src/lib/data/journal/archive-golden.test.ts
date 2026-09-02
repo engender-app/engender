@@ -60,6 +60,7 @@ const SECTIONS = [
   'cycleEvents',
   'journalingPauses',
   'eras',
+  'eraMutes',
   'effectCategories',
   'personalEffectTypes',
   'personalEffects',

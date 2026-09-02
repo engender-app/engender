@@ -42,7 +42,7 @@
   import type { RecapDimChange } from '$lib/data/recapDisplay';
   import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
   import type { RetrospectiveLetter } from '$lib/data/letterRetrospective';
-  import PhotoThumb from './PhotoThumb.svelte';
+  import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
   import type { BarRow } from './kit/barRow';
@@ -232,7 +232,7 @@
   <SectionHeading text={m.wrapped_photos()} />
   <div class="wrapped-photo-strip" data-wrapped-photos>
     {#each recap.photoHighlights as photo (photo.id)}
-      <PhotoThumb {photo} size={116} label={fmtDay(photo.epochDay, { day: 'numeric', month: 'short' })} />
+      <ResurfacedPhoto {photo} size={116} label={fmtDay(photo.epochDay, { day: 'numeric', month: 'short' })} />
     {/each}
   </div>
 {/if}

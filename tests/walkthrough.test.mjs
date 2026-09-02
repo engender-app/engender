@@ -2501,6 +2501,138 @@ try {
   fail('fill every feature', e);
 }
 
+/* The rotation map's dots at the narrowest phone the app supports (phase 6
+   ticket 13). Ticket 10 read the crowding on that figure as a reason to put
+   recency in a text list instead of on the dots, and the crowding was real:
+   two of the twelve 48px targets sat 33.7px apart, so a fifth of six of
+   them belonged to a neighbour. injectionSiteMap.test.ts holds the spacing
+   in the abstract; what only a browser can say is that the figure renders
+   at the width that spacing assumes, that the targets come out at
+   --touch-target, and that a tap aimed at a dot lands on that dot.
+
+   After "Fill every feature", whose 500 days of weekly injections around
+   six of the twelve sites are the only seed with a rotation behind them -
+   which is also what makes the never-used half of the map checkable here.
+
+   The viewport is narrowed for this flow alone and put back afterwards:
+   every other flow in this file reads a 440px screen. */
+try {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('[data-sheet]');
+  // Two regimens run at once in this seed, so which one this dose is has to
+  // be answered before the sheet asks about an injection site at all. The
+  // sheet opens that group itself on exactly this state.
+  await page.locator('[data-dose-drug="Estradiol valerate"]').click();
+  await page.waitForSelector('button[data-site="thigh-left"]');
+  await page.locator('button[data-site="thigh-left"]').scrollIntoViewIfNeeded();
+
+  /* The clear space Android asks for between two touch targets, on top of
+     the targets themselves. Read out of the module that spaces the dots by
+     it rather than written here as well, so raising it cannot leave this
+     check asserting the old number. */
+  const layout = await readFile(
+    new URL('../src/lib/components/injectionSiteMap.ts', import.meta.url),
+    'utf8'
+  );
+  const gap = Number(/MAP_TOUCH_GAP = (\d+)/.exec(layout)?.[1]);
+  if (!Number.isFinite(gap)) throw new Error('injectionSiteMap.ts declares no MAP_TOUCH_GAP');
+
+  const map = await page.evaluate((gap) => {
+    const target = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--touch-target')
+    );
+    const dots = [...document.querySelectorAll('button[data-site]')].map((el) => {
+      const box = el.getBoundingClientRect();
+      return {
+        key: el.dataset.site,
+        x: box.x + box.width / 2,
+        y: box.y + box.height / 2,
+        width: box.width,
+        height: box.height,
+        never: el.classList.contains('is-never'),
+        fill: getComputedStyle(el, '::after').backgroundColor
+      };
+    });
+    let closest = { gap: Infinity, pair: '' };
+    for (const [i, a] of dots.entries()) {
+      for (const b of dots.slice(i + 1)) {
+        const gap = Math.hypot(a.x - b.x, a.y - b.y);
+        if (gap < closest.gap) closest = { gap, pair: `${a.key} and ${b.key}` };
+      }
+    }
+    const transparent = (fill) => fill === 'transparent' || fill === 'rgba(0, 0, 0, 0)';
+    return {
+      count: dots.length,
+      target,
+      closest,
+      undersized: dots.filter((d) => d.width < target || d.height < target).map((d) => d.key),
+      sites: dots.map((d) => d.key),
+      never: dots.filter((d) => d.never).map((d) => d.key),
+      unshaded: dots.filter((d) => !d.never && transparent(d.fill)).map((d) => d.key),
+      shadedNever: dots.filter((d) => d.never && !transparent(d.fill)).map((d) => d.key),
+      clearance: target + gap
+    };
+  }, gap);
+
+  /* Whether a tap aimed at a dot lands on that dot, which is the half of
+     the crowding question a rect cannot answer: two 48px targets 33.7px
+     apart both have their centres clear, and the one drawn later still
+     takes the overlap. A trial click is Playwright's own hit-target check -
+     it scrolls the dot into view, waits for it to settle and refuses if
+     anything else would receive the press - and it presses nothing, so the
+     dose being drafted is untouched. Aimed one dot at a time because the
+     figure is 560px tall on an 844px screen: half of it is always scrolled
+     out of the sheet, where a point in the viewport belongs to whatever is
+     painted over it. */
+  const misaimed = [];
+  for (const site of map.sites) {
+    try {
+      await page.locator(`button[data-site="${site}"]`).click({ trial: true, timeout: 4000 });
+    } catch (e) {
+      misaimed.push(`${site} (${e.message.split('\n')[0]})`);
+    }
+  }
+
+  if (map.count !== 12) throw new Error(`the map drew ${map.count} dots`);
+  if (map.undersized.length) {
+    throw new Error(`under --touch-target (${map.target}px): ${map.undersized.join(', ')}`);
+  }
+  if (map.closest.gap < map.clearance) {
+    throw new Error(
+      `${map.closest.pair} are ${map.closest.gap.toFixed(1)}px apart, closer than the ${map.clearance}px a ${map.target}px target and its gap need`
+    );
+  }
+  if (misaimed.length) {
+    throw new Error(`a tap aimed at these dots would land elsewhere: ${misaimed.join('; ')}`);
+  }
+  /* The demo's rotation covers six of the twelve sites, so the other six
+     are the never-used state, drawn empty rather than at the pale end of
+     the ramp - and every site it did use carries a swatch. */
+  if (map.never.length !== 6) {
+    throw new Error(
+      `${map.never.length} sites drawn as never used, expected the six this seed has never injected: ${map.never.join(', ')}`
+    );
+  }
+  if (map.unshaded.length) {
+    throw new Error(`used sites with no recency swatch: ${map.unshaded.join(', ')}`);
+  }
+  /* The other half of that, which is the criterion a colour ramp cannot
+     meet on its own: a site never used is drawn empty rather than at the
+     pale end of the ramp, so it is not merely the faintest fill. */
+  if (map.shadedNever.length) {
+    throw new Error(`sites never used but drawn with a fill: ${map.shadedNever.join(', ')}`);
+  }
+
+  ok('every dot on the injection map is separately tappable at 320px, and the sites the demo never used are drawn apart from the ones it did');
+} catch (e) {
+  fail('injection map recency', e);
+} finally {
+  await page.setViewportSize({ width: 440, height: 940 });
+}
+
 /* Eras (phase 6 ticket 01, ADR-0049). Two things worth walking that no unit
    test reaches: leaving a bound open is a choice on screen rather than an
    empty field, and a collision is answered inside the sheet - a sentence
