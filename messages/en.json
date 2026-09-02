@@ -1195,7 +1195,7 @@
   "dose_route_label": "Route",
   "dose_status_label": "Status",
   "dose_injection_site_label": "Injection site",
-  "dose_injection_site_hint": "Tap where it went. The map marks where the last one went, so you can see what to rotate to.",
+  "dose_injection_site_hint": "Tap where it went. Each site is shaded by how long ago it was used, and a dashed ring marks the last one.",
   "dose_vehicle_label": "Vehicle",
   "dose_app_site_label": "Application site",
   "dose_scheduled_legend": "What was scheduled",
