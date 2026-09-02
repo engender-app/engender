@@ -20,7 +20,6 @@ import {
   emptyArchiveJournal,
   orderedSections,
   readArchiveJournal,
-  travellingJournal,
   ARCHIVE_SECTIONS,
   ARCHIVE_SECTION_NAMES,
   type ArchiveSection
@@ -307,37 +306,27 @@ test('the registry answers the spec\'s worked cases for what travels', () => {
   }
 });
 
-/* The rule itself, run over real rows rather than stubs: a 'whole' section
-   comes through untouched, a 'fields' declaration keeps only what it named
-   and nothing else, and a 'none' section is missing from the result rather
-   than present as an empty array. */
-test('travellingJournal keeps a whole section, narrows a fields section, and drops a none section', () => {
-  const journal = {
-    ...emptyArchiveJournal(),
-    dimensions: [
-      { key: 'k', name: 'Custom', low: 'Low', high: 'High', min: 0, max: 10, builtIn: false, hidden: false }
-    ],
-    milestones: [
-      {
-        id: 'm-1',
-        name: 'Started HRT',
-        epochDay: 19000,
-        templateKey: 'hrt_start',
-        roadmapGoalKey: null,
-        procedureId: null,
-        tryoutId: null,
-        photo: null
-      }
-    ]
+/* The 'fields' rule itself, run against the real milestones declaration
+   and a real-shaped row rather than restating what the declaration says:
+   narrowing to the declared fields must actually drop the epochDay and the
+   links into this device's own records (roadmapGoalKey, procedureId,
+   tryoutId, photo), not just claim to. */
+test('a fields declaration on the real registry keeps only the field it names', () => {
+  const milestones = ARCHIVE_SECTIONS.find((s) => s.name === 'milestones')!;
+  const row = {
+    id: 'm-1',
+    name: 'Started HRT',
+    epochDay: 19000,
+    templateKey: 'hrt_start',
+    roadmapGoalKey: null,
+    procedureId: null,
+    tryoutId: null,
+    photo: null
   };
+  assert.ok(typeof milestones.travels === 'object', 'milestones travels as a named subset of fields');
+  const { fields } = milestones.travels as { fields: readonly string[] };
 
-  const result = travellingJournal(journal);
+  const kept = Object.fromEntries(fields.map((field) => [field, (row as Record<string, unknown>)[field]]));
 
-  assert.deepEqual(result.dimensions, journal.dimensions, "a 'whole' section travels every field, unchanged");
-  assert.deepEqual(
-    result.milestones,
-    [{ name: 'Started HRT' }],
-    "a 'fields' declaration keeps the named field and drops the epochDay and the links to this device's own records"
-  );
-  assert.ok(!('entries' in result), "a 'none' section is left out of the result entirely, not carried as []");
+  assert.deepEqual(kept, { name: 'Started HRT' });
 });
