@@ -632,6 +632,22 @@ export interface ArchiveWearSession {
   note: string | null;
 }
 
+/** One completed import, named by its own uuid (phase 7 ticket 03). Answers
+    "where did this come from" at the granularity it is actually asked at -
+    which source, when, and what it added - rather than a per-row marker
+    kept forever on every table an import can reach. `counts` is by kind
+    (`{ entries: 12, tags: 3 }`) rather than a list of row ids, because the
+    question is never "which of these fourteen". Written once, on commit,
+    never on a preview or a failed import, and never edited afterwards - so
+    unlike most of this file's records it carries no update path, only an
+    insert. */
+export interface ArchiveImportLogRecord {
+  id: string;
+  source: string;
+  importedAt: number;
+  counts: Record<string, number>;
+}
+
 /** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
@@ -676,6 +692,7 @@ export interface ArchiveJournal {
   presentations: ArchivePresentation[];
   entryTemplates: ArchiveEntryTemplate[];
   comfortItems: ArchiveComfortItem[];
+  importLog: ArchiveImportLogRecord[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

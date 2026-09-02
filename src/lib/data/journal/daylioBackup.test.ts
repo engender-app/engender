@@ -64,6 +64,33 @@ test('a backup imports through the journal, and the second import adds nothing',
   assert.equal((await journal.entries.recentDays(10)).length, 3);
 });
 
+test('a committed import writes one import_log record, and a refused one writes none', async () => {
+  const { journal } = await journalWithFiles();
+  const backup = await makeDaylioBackup();
+
+  const preview = await journal.archive.previewDaylioBackupImport(backup, naming);
+  assert.deepEqual(await journal.archive.importLog(), [], 'a preview on its own records nothing');
+
+  await journal.archive.commitDaylioBackupImport(preview, normalize);
+  const log = await journal.archive.importLog();
+  assert.equal(log.length, 1);
+  // The registry's own source name, not a second spelling of it.
+  assert.equal(log[0].source, 'daylio-backup');
+  assert.deepEqual(log[0].counts, { entries: 3, milestones: 2, tags: 2, attachments: 3 });
+
+  /* An import that fails partway leaves no record either. On its own
+     journal, because a second run against this one has no photo left to
+     fail on: the entries are already here, so nothing reads the zip. */
+  const failing = await journalWithFiles();
+  const doomed = await failing.journal.archive.previewDaylioBackupImport(await makeDaylioBackup(), naming);
+  await assert.rejects(
+    failing.journal.archive.commitDaylioBackupImport(doomed, async () => {
+      throw new Error('unreadable image');
+    })
+  );
+  assert.deepEqual(await failing.journal.archive.importLog(), []);
+});
+
 test('an imported photo arrives as its full file and its derived thumbnail', async () => {
   const { journal, files } = await journalWithFiles();
 

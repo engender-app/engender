@@ -34,6 +34,7 @@ import type {
   ArchiveHairPhoto,
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
+  ArchiveImportLogRecord,
   ArchiveMeasurementType,
   ArchiveMilestone,
   ArchivePersonalEffectType,
@@ -684,5 +685,27 @@ export async function readDosePauses({ driver }: SectionRead): Promise<ArchiveDo
     startEpochDay: r.start_epoch_day,
     endEpochDay: r.end_epoch_day,
     reason: r.reason
+  }));
+}
+
+/** The import history (phase 7 ticket 03): source, when, and net additions
+    by kind. Ordered so the wire order is stable and a round trip compares
+    row by row - the settings screen that shows these most-recent-first
+    reverses this itself, the same split `readComfortItems` and its
+    position-ordered read leave to the caller.
+
+    Takes the connection directly rather than a whole `SectionRead`, unlike
+    every other reader here: `ArchiveArea.importLog()` (journal/archive.ts)
+    calls this straight, for the settings screen, without paying for the
+    seven file-owning tables a section's read is otherwise bundled with. */
+export async function readImportLog(driver: SqliteDriver): Promise<ArchiveImportLogRecord[]> {
+  const rows = await driver.query<{ uuid: string; source: string; counts: string; imported_at: number }>(
+    'SELECT uuid, source, counts, imported_at FROM import_log ORDER BY imported_at, uuid'
+  );
+  return rows.map((row) => ({
+    id: row.uuid,
+    source: row.source,
+    importedAt: row.imported_at,
+    counts: JSON.parse(row.counts) as Record<string, number>
   }));
 }
