@@ -15,6 +15,7 @@
   "cycleEvents": 1,
   "journalingPauses": 1,
   "eras": 3,
+  "eraMutes": 1,
   "effectCategories": 5,
   "personalEffectTypes": 70,
   "personalEffects": 2,

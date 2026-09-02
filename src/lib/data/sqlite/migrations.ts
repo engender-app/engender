@@ -1666,6 +1666,28 @@ CREATE TABLE era (
 );
 `;
 
+/* v51: which eras are muted from resurfacing (phase 6 ticket 05, ADR-0049,
+   CONTEXT: "Resurfacing consent"). Rows here, never a column on era - ADR-0049
+   names this exact table as the reason era owns nothing else.
+
+   `era_uuid` is free text rather than a foreign key, the same reason
+   roadmap_check's `pack_key` is (v18): a row naming an era that gets deleted
+   afterwards is a stale, harmless row rather than a dangling reference
+   needing a cleanup job - eraForDay never again returns that era for
+   anything to check the mute against, so the stale row simply stops
+   mattering, the same resting state a day in no era already has.
+
+   Presence is the whole of the state, the same shape roadmap_check gives an
+   unchecked goal: no row means not muted, and unmuting deletes the row
+   rather than storing a value. */
+const SCHEMA_V51 = `
+CREATE TABLE era_mute (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  era_uuid   TEXT NOT NULL UNIQUE,
+  updated_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1716,5 +1738,6 @@ export const migrations: Migration[] = [
   { version: 47, sql: SCHEMA_V47 },
   { version: 48, sql: SCHEMA_V48 },
   { version: 49, sql: SCHEMA_V49 },
-  { version: 50, sql: SCHEMA_V50 }
+  { version: 50, sql: SCHEMA_V50 },
+  { version: 51, sql: SCHEMA_V51 }
 ];

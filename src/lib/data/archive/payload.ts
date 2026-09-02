@@ -644,6 +644,7 @@ export interface ArchiveJournal {
   cycleEvents: ArchiveCycleEvent[];
   journalingPauses: ArchiveJournalingPause[];
   eras: ArchiveEra[];
+  eraMutes: ArchiveEraMute[];
   personalEffects: ArchivePersonalEffect[];
   effectCategories: ArchiveEffectCategory[];
   personalEffectTypes: ArchivePersonalEffectType[];
@@ -682,6 +683,16 @@ export interface ArchiveEra {
   name: string;
   startEpochDay: number | null;
   endEpochDay: number | null;
+}
+
+/** Which eras are muted from resurfacing (phase 6 ticket 05, ADR-0049,
+    CONTEXT: "Resurfacing consent"). A uuid an importing device has no era
+    for names nothing there either, the same resting state it is on the
+    device it travelled from - nothing here resolves it against
+    `ArchiveEra`, so an archive can carry a mute for an era trimmed by a
+    merge on the far side without either device having to reconcile that. */
+export interface ArchiveEraMute {
+  eraUuid: string;
 }
 
 /** A named presentation (phase 5 deepening ticket 17, ADR-0048, CONTEXT:

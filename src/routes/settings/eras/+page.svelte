@@ -38,6 +38,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -67,6 +68,11 @@
 
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let bounds = $derived(boundsQuery.value ?? null);
+
+  // Phase 6 ticket 05: which eras are muted, so the sheet's switch reads
+  // and writes the same layer on-this-day and Wrapped honour.
+  let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
+  let mutedEraUuids = $derived(mutedQuery.value ?? new Set<string>());
 
   /** The start a "start an era here" arrival brought with it, read by
       `blank` on the one openEditor call below. A plain let and not `$state`:
@@ -270,6 +276,30 @@
           </div>
         {/snippet}
       </Field>
+
+      {#if editor.id}
+        <!-- Muting is its own write, applied the moment the switch moves
+             rather than waiting for Save (phase 6 ticket 05, ADR-0049) - the
+             era already exists, so there is nothing here for a save to
+             commit. Not offered while creating: an era with no id yet has
+             nothing for a mute to key by. -->
+        <Field label={m.era_resurfacing_label()} legend>
+          {#snippet children()}
+            <div class="kit-row is-static" data-era-mute={editor.id}>
+              <span class="kit-row-text">
+                <span class="kit-row-sub">{m.era_resurfacing_hint()}</span>
+              </span>
+              <span class="kit-row-trail">
+                <Switch
+                  checked={!mutedEraUuids.has(editor.id!)}
+                  label={m.era_resurfacing_label()}
+                  onChange={(v) => journal.eraMutes.setEraMuted(editor.id!, !v)}
+                />
+              </span>
+            </div>
+          {/snippet}
+        </Field>
+      {/if}
 
       <!-- Each read once. Both functions rebuild the draft's span and rescan
            the era list, and `canSave` asks for the conflict a third time on
