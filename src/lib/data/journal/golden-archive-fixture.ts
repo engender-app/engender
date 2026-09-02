@@ -322,6 +322,16 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     note: 'quiet room, morning'
   });
 
+  // The import log's only writer is a real commit (ticket 03): run one
+  // rather than hand-seeding the row, the same reason nothing else in this
+  // function writes SQL directly.
+  await journal.archive.commitDaylioImport(
+    await journal.archive.previewDaylioImport(
+      'full_date,time,mood,activities,note_title,note\n2026-01-01,08:00,good,,,a golden Daylio row\n',
+      { tagLabels: () => [] }
+    )
+  );
+
   return { driver, journal };
 }
 

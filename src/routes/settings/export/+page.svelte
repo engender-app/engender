@@ -13,6 +13,7 @@
   import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
   import { verifyArchive } from '$lib/data/journal/restore';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
+  import type { ArchiveImportLogRecord } from '$lib/data/archive/payload';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -53,6 +54,7 @@
   let daylioPreview = $state.raw<DaylioPreview | null>(null);
   let daylioError = $state('');
   let daylioImporting = $state(false);
+  let importLog = $state.raw<ArchiveImportLogRecord[]>([]);
   let exportWarningOpen = $state(false);
   /* Which export is under way, or null. Not a boolean: the encrypted
      button says what it is doing, and it is not encrypting when the CSV
@@ -216,7 +218,34 @@
 
   onMount(() => {
     if (android) void refreshAutoStatus();
+    void refreshImportLog();
   });
+
+  async function refreshImportLog() {
+    importLog = await journal.archive.importLog();
+  }
+
+  /* Only Daylio writes a record today (ticket 03); a source not in this map
+     falls back to its own registry key rather than going unlabelled, the
+     same tolerance the counts below give an unknown kind. */
+  const IMPORT_LOG_SOURCE_LABEL: Record<string, () => string> = {
+    daylio: m.imp_log_source_daylio
+  };
+
+  const IMPORT_LOG_KIND_LABEL: Record<string, (n: number) => string> = {
+    entries: (n) => m.imp_log_n_entries({ n }),
+    tags: (n) => m.imp_log_n_tags({ n })
+  };
+
+  function importLogSourceLabel(source: string): string {
+    return IMPORT_LOG_SOURCE_LABEL[source]?.() ?? source;
+  }
+
+  function importLogCountsText(counts: Record<string, number>): string {
+    return Object.entries(counts)
+      .map(([kind, n]) => IMPORT_LOG_KIND_LABEL[kind]?.(n) ?? `${n} ${kind}`)
+      .join(', ');
+  }
 
   /* One function behind all three exports, so the backup timestamp is
      stamped once for every path there is (F21) rather than at three call
@@ -398,6 +427,7 @@
       const result = await journal.archive.commitDaylioImport(daylioPreview);
       daylioSheet = false;
       toast(m.daylio_imported_toast({ entries: String(result.entriesAdded), tags: String(result.tagsAdded) }));
+      void refreshImportLog();
     } catch (error) {
       console.error('the Daylio import failed', error);
       daylioError = m.daylio_failed();
@@ -447,6 +477,21 @@
       <Icon name="shield" size={20} />
     </div>
   </div>
+
+  {#if importLog.length > 0}
+    <SectionTitle text={m.imp_log_section()} />
+    <div class="card editor-section">
+      {#each importLog as record, i (record.id)}
+        {#if i > 0}<div class="hr"></div>{/if}
+        <ListRow
+          static
+          data-import-log-row
+          title={importLogSourceLabel(record.source)}
+          subtitle={m.imp_log_row_sub({ counts: importLogCountsText(record.counts), when: stampText(record.importedAt) })}
+        />
+      {/each}
+    </div>
+  {/if}
 
   <SectionTitle text={m.exp_encrypted_section()} />
   <div class="card editor-section">
