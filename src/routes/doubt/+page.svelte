@@ -7,6 +7,10 @@
      - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries,
        plus (ticket 14) an unlocked letter and starred photos drawn alongside it
      - Snapshots: frozen captures of past counterevidence pools
+     - Comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"): who to
+       text, which walk, which playlist, entirely the person's own words.
+       Nothing seeds it, nothing offers it, and nothing anywhere else in the
+       app triggers it - the only route in is this screen's own single tap.
      - A panel pointing at the bundled support directory
        (/settings/resources), added at Alicja's request during this
        ticket's review, then reworked from a heading-action link into its
@@ -27,7 +31,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtins';
-  import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
+  import type { ComfortItem, CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { featuredLetter } from '$lib/data/letterRetrospective';
@@ -52,6 +56,9 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -142,6 +149,34 @@
 
   const dayLabel = (epochDay: number) =>
     fmtDay(epochDay, { weekday: 'short', day: 'numeric', month: 'short' });
+
+  /* The comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"): entirely
+     the person's own words, so this read is the only thing on the screen
+     with nothing built in behind it - no starter list, no suggestion. */
+  let comfortItemsQuery = liveList((j) => j.comfortItems.getItems());
+  let comfortItems = $derived(comfortItemsQuery.rows);
+
+  const comfortRecord = recordEditor<ComfortItem, { id?: string; text: string }>({
+    blank: () => ({ text: '' }),
+    fromRecord: (item) => ({ id: item.id, text: item.text }),
+    async upsert(draft) {
+      const text = draft.text.trim();
+      if (!text) return false;
+      if (draft.id) await journal.comfortItems.editItem(draft.id, text);
+      else await journal.comfortItems.addItem(text);
+    },
+    remove: (id) => journal.comfortItems.deleteItem(id),
+    findById: (id) => comfortItems.find((item) => item.id === id)
+  });
+
+  /* The journal speaks whole orders (a drag), so the up-button builds the
+     order it wants and hands it over - the same reason TagsArea.reorder
+     takes it (settings/tags/+page.svelte). */
+  function moveComfortItemUp(index: number) {
+    const ids = comfortItems.map((item) => item.id);
+    [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
+    journal.comfortItems.reorder(ids);
+  }
 </script>
 
 <div class="screen">
@@ -300,4 +335,73 @@
     onConfirm={deleteSnapshot}
     onCancel={() => (snapshotDeleteTarget = null)}
   />
+
+  <SectionHeading text={m.comfort_list_title()} />
+  {#if comfortItems.length}
+    <ListCard role={roleAt(activeFlag.roles, 4)}>
+      {#each comfortItems as item, i (item.id)}
+        <ListRow
+          key={item.id}
+          data-comfort-item={item.id}
+          title={item.text}
+          chevron={false}
+          onclick={() => comfortRecord.openEditor(item)}
+          action={{
+            icon: 'chevronLeft',
+            label: m.comfort_list_move_up_aria({ text: item.text }),
+            onclick: () => moveComfortItemUp(i),
+            attrs: i === 0 ? { 'data-up': '', disabled: 'true' } : { 'data-up': '' }
+          }}
+        />
+      {/each}
+    </ListCard>
+    <button
+      type="button"
+      class="btn btn-soft btn-block press"
+      data-add-comfort-item
+      onclick={() => comfortRecord.openEditor(null)}
+    >
+      <Icon name="plus" size={18} /> <span>{m.comfort_list_add()}</span>
+    </button>
+  {:else}
+    <Notice
+      icon="heart"
+      key="comfort-list-empty"
+      role={roleAt(activeFlag.roles, 4)}
+      title={m.comfort_list_empty_title()}
+      text={m.comfort_list_empty_body()}
+      action={{ label: m.comfort_list_add(), primary: true, onclick: () => comfortRecord.openEditor(null) }}
+    />
+  {/if}
+
+  <RecordSheet
+    record={comfortRecord}
+    handle="comfort-item"
+    newTitle={m.comfort_list_new_sheet()}
+    editTitle={m.comfort_list_edit_sheet()}
+    saveLabel={m.comfort_list_save()}
+    deleteLabel={m.comfort_list_delete()}
+    confirm={{
+      title: m.comfort_list_delete_sheet(),
+      question: (item) => m.comfort_list_delete_q({ text: item.text }),
+      hint: () => m.comfort_list_delete_hint(),
+      confirmLabel: m.comfort_list_delete(),
+      cancelLabel: m.keep_it()
+    }}
+  >
+    {#snippet fields(editor)}
+      <Field label={m.comfort_list_item_label()} id="comfort-item-text" hidden>
+        {#snippet children(id)}
+          <textarea
+            class="input"
+            {id}
+            name="comfort-item-text"
+            rows="2"
+            placeholder={m.comfort_list_item_placeholder()}
+            bind:value={editor.text}
+          ></textarea>
+        {/snippet}
+      </Field>
+    {/snippet}
+  </RecordSheet>
 </div>

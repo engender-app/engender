@@ -481,7 +481,13 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // ADR-0037 and ADR-0040. A snapshot holds copies of entry notes, so its
   // text is already searchable where it was written; matching it here would
   // show the same words twice and file a bad hour into an ordinary search.
-  counterevidenceSnapshots: 'a Safe Space artefact, and its text is the entries’ own'
+  counterevidenceSnapshots: 'a Safe Space artefact, and its text is the entries’ own',
+  // The same Safe Space artefact class as the row above, for a different
+  // reason: a comfort item's text is not duplicated anywhere, but ticket 14
+  // (phase 6) built this list to be reached behind Safe Space's own single
+  // tap and nowhere else. An ordinary search result is exactly the kind of
+  // unasked-for door the ticket rules out.
+  comfortItems: 'a Safe Space artefact, kept behind its own single-tap door'
 };
 
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;

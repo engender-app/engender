@@ -1666,6 +1666,28 @@ CREATE TABLE era (
 );
 `;
 
+/* v51: the comfort list (phase 6 ticket 14, ADR-0040, CONTEXT: "Comfort
+   list") - who to text, which walk, which playlist, in the person's own
+   words.
+
+   Four columns, the same shape checklist_item already has and for the same
+   reason: entirely the user's own content, nothing bundled behind it, so
+   `uuid` alone is the row's travelling identity and there is no `key`
+   column for a built-in that will never exist - the ticket itself forbids
+   a starter list, on purpose, so nothing here is ever seeded.
+   `position` orders it the same way `order_index` orders a tag or a
+   checklist item; named `position` rather than `order_index` because the
+   ticket that specified this table named it that. */
+const SCHEMA_V51 = `
+CREATE TABLE comfort_item (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  text        TEXT NOT NULL,
+  position    INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1716,5 +1738,6 @@ export const migrations: Migration[] = [
   { version: 47, sql: SCHEMA_V47 },
   { version: 48, sql: SCHEMA_V48 },
   { version: 49, sql: SCHEMA_V49 },
-  { version: 50, sql: SCHEMA_V50 }
+  { version: 50, sql: SCHEMA_V50 },
+  { version: 51, sql: SCHEMA_V51 }
 ];
