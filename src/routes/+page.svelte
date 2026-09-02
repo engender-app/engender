@@ -315,21 +315,14 @@
   let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
 
   /* The appointment debrief offer (phase 6 ticket 08): one read of the
-     standalone checklist's own state, folded through the pure predicate
-     (vocabulary/entryTemplates.ts) rather than re-deriving the rule here.
-     `getStandaloneChecklist` rather than a bare item count, since an
-     appointment with no prep item at all still has to read as "nothing to
-     prepare for" (What to Build #1) - a checklist that has never been
-     created answers that the same way an empty one does. */
-  let debriefStateQuery = liveQuery(async (j) => {
-    const [checklist, appointmentEpochDay, dismissedEpochDay, debriefEntryId] = await Promise.all([
-      j.checklists.getStandaloneChecklist(),
-      j.checklists.getAppointmentDate(),
-      j.checklists.getDebriefDismissedEpochDay(),
-      j.checklists.getDebriefEntryId()
-    ]);
-    return { itemCount: checklist?.items.length ?? 0, appointmentEpochDay, dismissedEpochDay, debriefEntryId };
-  });
+     standalone checklist's own state (checklists.ts's `getDebriefState`),
+     folded through the pure predicate (vocabulary/entryTemplates.ts) rather
+     than re-deriving the rule here. Its own `itemCount` rather than a bare
+     presence check, since an appointment with no prep item at all still has
+     to read as "nothing to prepare for" (What to Build #1) - a checklist
+     that has never been created answers that the same way an empty one
+     does. */
+  let debriefStateQuery = liveQuery((j) => j.checklists.getDebriefState());
   let showDebriefOffer = $derived(
     !!debriefStateQuery.value && debriefOfferVisible({ ...debriefStateQuery.value, todayEpochDay: today })
   );

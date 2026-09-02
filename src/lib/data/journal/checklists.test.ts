@@ -195,6 +195,28 @@ test('the debrief dismissal and entry link are both null until set', async () =>
   assert.equal(await journal.checklists.getDebriefEntryId(), null);
 });
 
+test('getDebriefState reads everything the offer predicate needs in one call', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.checklists.getDebriefState(), {
+    appointmentEpochDay: null,
+    itemCount: 0,
+    dismissedEpochDay: null,
+    debriefEntryId: null
+  });
+
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.addToStandaloneChecklist('ask about labs');
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.recordDebriefEntry(entryId, 19800);
+
+  assert.deepEqual(await journal.checklists.getDebriefState(), {
+    appointmentEpochDay: 19800,
+    itemCount: 1,
+    dismissedEpochDay: null,
+    debriefEntryId: entryId
+  });
+});
+
 test('setDebriefDismissed records which date the offer was dismissed for', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.checklists.setAppointmentDate(19800);
