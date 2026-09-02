@@ -34,6 +34,7 @@ import {
   type DaylioPreview
 } from '../archive/daylio';
 import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylioBackup';
+import { dayonePreview, type DayOnePreview } from '../archive/dayone';
 import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
 import { trackAndGraphPreview, type TrackAndGraphPreview } from '../archive/trackAndGraph';
 import { pixelsPreview, type PixelsPreview } from '../archive/pixels';
@@ -48,6 +49,11 @@ import { mintUuid, now } from './support';
 
 export interface TransTracksCommitResult {
   milestonesAdded: number;
+  photosAdded: number;
+}
+
+export interface DayOneCommitResult {
+  entriesAdded: number;
   photosAdded: number;
 }
 
@@ -116,6 +122,17 @@ export interface ArchiveArea {
     preview: TransTracksPreview,
     normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
   ): Promise<TransTracksCommitResult>;
+  /** Parses and resolves a Day One JSON export (a zip) without writing. */
+  previewDayOneImport(bytes: Uint8Array, naming: DaylioNaming): Promise<DayOnePreview>;
+  /** Always Merge. `normalize` turns each raw photo the zip carried into
+      stored JPEG bytes plus a thumbnail, the same division
+      commitTransTracksImport draws and for the same reason. Writes one
+      import_log record on success (ticket 03), the same as
+      commitDaylioImport. */
+  commitDayOneImport(
+    preview: DayOnePreview,
+    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
+  ): Promise<DayOneCommitResult>;
   /** Parses and resolves a Track & Graph CSV export without writing. */
   previewTrackAndGraphImport(csv: string): Promise<TrackAndGraphPreview>;
   /** Always Merge. Writes one import_log record on success (ticket 03), the
@@ -295,6 +312,32 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         photosAdded: after.journal.entries.length - before.journal.entries.length
       };
       await recordImport(driver, 'transtracks', { milestones: result.milestonesAdded, photos: result.photosAdded });
+      return result;
+    },
+
+    async previewDayOneImport(bytes, naming) {
+      return dayonePreview(bytes, (await area.snapshot()).journal, naming);
+    },
+
+    async commitDayOneImport(preview, normalize) {
+      const photosOf = (journal: ArchiveJournal) => journal.entries.reduce((n, e) => n + e.photos.length, 0);
+      const before = await area.snapshot();
+      await restoreArchive(driver, files, 'merge', {
+        journal: preview.journal,
+        files: (async function* () {
+          for (const [fileName, raw] of preview.rawPhotos) {
+            const normalized = await normalize(raw);
+            yield { name: fileName, bytes: normalized.full };
+            yield { name: thumbFileName(fileName), bytes: normalized.thumb };
+          }
+        })()
+      });
+      const after = await area.snapshot();
+      const result = {
+        entriesAdded: after.journal.entries.length - before.journal.entries.length,
+        photosAdded: photosOf(after.journal) - photosOf(before.journal)
+      };
+      await recordImport(driver, 'dayone', { entries: result.entriesAdded, photos: result.photosAdded });
       return result;
     },
 
