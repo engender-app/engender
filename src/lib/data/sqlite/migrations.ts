@@ -1797,6 +1797,35 @@ CREATE TABLE import_log (
 );
 `;
 
+/* v56: the appointment debrief loop (phase 6 ticket 08, CONTEXT: "Checklist").
+   Numbered v56 rather than v54: ticket-15's milestone.description and
+   ticket-03's import_log both landed on main first and took v54/v55.
+   Both columns are device-local bookkeeping, not part of what the checklist
+   travels in an archive - they name a row this device happens to hold, not
+   a fact an importing device should adopt (archive.test.ts's LEFT_BEHIND
+   list carries the reasoning).
+
+   `debrief_entry_id` references `entry(id)`, the plain integer FK every
+   other row that belongs to one entry already uses (photo, dose_event and
+   the rest) - not `entry.uuid`, which is what a cross-device pointer
+   (milestone.procedureId, entry.presentationId) reaches for instead. The
+   difference is what has to survive: those two are read back after an
+   archive round trip against rows an import mints fresh integer ids for,
+   and this one never leaves the device it was written on. `ON DELETE SET
+   NULL` because a purged debrief entry (TRASH_WINDOW_DAYS) should leave the
+   appointment looking un-debriefed again, not point at nothing.
+
+   `debrief_dismissed_epoch_day` is one column rather than a dismissed flag
+   plus the date it applies to, because `setAppointmentDate` clears both
+   columns the moment the date actually changes (checklists.ts) - so a
+   stored value is never read against any date but the one it was set for,
+   the same reasoning that lets era_mute's presence alone be the whole of
+   its state. */
+const SCHEMA_V56 = `
+ALTER TABLE checklist ADD COLUMN debrief_entry_id INTEGER REFERENCES entry(id) ON DELETE SET NULL;
+ALTER TABLE checklist ADD COLUMN debrief_dismissed_epoch_day INTEGER;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1852,5 +1881,6 @@ export const migrations: Migration[] = [
   { version: 52, sql: SCHEMA_V52 },
   { version: 53, sql: SCHEMA_V53 },
   { version: 54, sql: SCHEMA_V54 },
-  { version: 55, sql: SCHEMA_V55 }
+  { version: 55, sql: SCHEMA_V55 },
+  { version: 56, sql: SCHEMA_V56 }
 ];
