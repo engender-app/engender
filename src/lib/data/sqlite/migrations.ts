@@ -1666,7 +1666,7 @@ CREATE TABLE era (
 );
 `;
 
-/* v51: the comfort list (phase 6 ticket 14, ADR-0040, CONTEXT: "Comfort
+/* v52: the comfort list (phase 6 ticket 14, ADR-0040, CONTEXT: "Comfort
    list") - who to text, which walk, which playlist, in the person's own
    words.
 
@@ -1677,8 +1677,13 @@ CREATE TABLE era (
    a starter list, on purpose, so nothing here is ever seeded.
    `position` orders it the same way `order_index` orders a tag or a
    checklist item; named `position` rather than `order_index` because the
-   ticket that specified this table named it that. */
-const SCHEMA_V51 = `
+   ticket that specified this table named it that.
+
+   Numbered v52 rather than v51: ticket-05's era_mute landed on main first
+   and took v51 (the merge hazard schema-version.ts's own header warns
+   about), so this was renumbered here rather than fought over during the
+   merge. */
+const SCHEMA_V52 = `
 CREATE TABLE comfort_item (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid        TEXT NOT NULL UNIQUE,
@@ -1739,5 +1744,5 @@ export const migrations: Migration[] = [
   { version: 48, sql: SCHEMA_V48 },
   { version: 49, sql: SCHEMA_V49 },
   { version: 50, sql: SCHEMA_V50 },
-  { version: 51, sql: SCHEMA_V51 }
+  { version: 52, sql: SCHEMA_V52 }
 ];
