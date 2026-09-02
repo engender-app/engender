@@ -107,6 +107,29 @@ test('an unresolvable md5Thumbnail does not fail the import, and its own full ph
   assert.equal(preview.unresolvedPhotoCount, 0);
 });
 
+test('a photo whose file is missing from the zip is counted as unresolved rather than failing the import', async () => {
+  const withMissingPhoto = {
+    entries: [
+      {
+        uuid: '9D6FABC910965782B906008E1E5B8443',
+        creationDate: '2026-04-01T09:00:00Z',
+        modifiedDate: '2026-04-01T09:00:00Z',
+        timeZone: 'UTC',
+        text: 'a photo the zip never actually carries',
+        richText: JSON.stringify({ contents: [{ text: 'a photo the zip never actually carries' }] }),
+        photos: [{ identifier: 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', md5: 'ffffffffffffffffffffffffffffffff', type: 'jpg' }]
+      }
+    ]
+  };
+  const zip = await makeDayOneExport(withMissingPhoto);
+  const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
+
+  assert.equal(preview.entryCount, 1);
+  assert.equal(preview.journal.entries[0].photos.length, 0, 'the entry itself still imports, just without the missing photo');
+  assert.equal(preview.unresolvedPhotoCount, 1);
+  assert.equal(preview.rawPhotos.size, 0);
+});
+
 test('a photo with no date of its own does not throw - this app has nowhere to put one anyway', async () => {
   // photo objects in the fixture never carry a `date` field at all (module
   // header, point 2/the corrections: absent, not present-and-null), and
@@ -142,12 +165,14 @@ test('a malformed journal file is rejected during preview, before anything is wr
   await assert.rejects(dayonePreview(zip, emptyArchiveJournal(), naming), DayOneImportError);
 });
 
-test('dayone-moment:// photos resolve through photos[], and identifier/md5 case is never conflated', async () => {
-  // The real export's own shapes (see the ticket): identifier uppercase,
-  // md5 lowercase, on the SAME photos[] entry - so a photo referenced
-  // mid-text (not as the whole entry) still resolves to the right file,
-  // matched on `photos[].md5` alone rather than on any case-folded
-  // guess at the identifier.
+test('a photo resolves by its own md5, ignoring the differently-cased identifier the same object also carries', async () => {
+  // The real export's own shapes (see the ticket): `photos[0].identifier`
+  // is uppercase and names the `dayone-moment://` reference the fixture
+  // embeds mid-text; `photos[0].md5` is lowercase and names the file on
+  // disk. resolveDayOnePhoto reads only `md5`/`type` - never `identifier` -
+  // so there is no code path where folding one's case to compare against
+  // the other could conflate them; this proves resolution succeeds using
+  // exactly the field the file system agrees with.
   const zip = await makeDayOneExport();
   const preview = await dayonePreview(zip, emptyArchiveJournal(), naming);
   const withPhoto = preview.journal.entries.find((e) => e.note.startsWith('A good day'))!;
