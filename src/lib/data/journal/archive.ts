@@ -37,6 +37,7 @@ import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylio
 import { dayonePreview, type DayOnePreview } from '../archive/dayone';
 import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
 import { trackAndGraphPreview, type TrackAndGraphPreview } from '../archive/trackAndGraph';
+import { pixelsPreview, type PixelsPreview } from '../archive/pixels';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
@@ -59,6 +60,11 @@ export interface DayOneCommitResult {
 export interface TrackAndGraphCommitResult {
   measurementsAdded: number;
   typesAdded: number;
+}
+
+export interface PixelsCommitResult {
+  entriesAdded: number;
+  tagsAdded: number;
 }
 
 export interface ArchiveSnapshot {
@@ -132,6 +138,12 @@ export interface ArchiveArea {
   /** Always Merge. Writes one import_log record on success (ticket 03), the
       same as commitDaylioImport and commitTransTracksImport. */
   commitTrackAndGraphImport(preview: TrackAndGraphPreview): Promise<TrackAndGraphCommitResult>;
+  /** Parses and resolves a Pixels backup JSON without writing. */
+  previewPixelsImport(file: Uint8Array): Promise<PixelsPreview>;
+  /** Always Merge. An unrecognised `type` is skipped by pixelsPreview and
+      never blocks a commit. Writes one import_log record on success
+      (ticket 03), the same as commitDaylioImport/commitTransTracksImport. */
+  commitPixelsImport(preview: PixelsPreview): Promise<PixelsCommitResult>;
   /** The import history, most recent first, for the settings screen
       (ticket 03). Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
@@ -345,6 +357,27 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         typesAdded: after.journal.measurementTypes.length - before.journal.measurementTypes.length
       };
       await recordImport(driver, 'trackAndGraph', { measurements: result.measurementsAdded, types: result.typesAdded });
+      return result;
+    },
+
+    async previewPixelsImport(file) {
+      return pixelsPreview(file, (await area.snapshot()).journal);
+    },
+
+    async commitPixelsImport(preview) {
+      const before = await area.snapshot();
+      await restoreArchive(driver, files, 'merge', {
+        journal: preview.journal,
+        files: (async function* () {})()
+      });
+      const after = await area.snapshot();
+      const result = {
+        entriesAdded: after.journal.entries.length - before.journal.entries.length,
+        tagsAdded:
+          after.journal.tagGroups.flatMap((group) => group.tags).length -
+          before.journal.tagGroups.flatMap((group) => group.tags).length
+      };
+      await recordImport(driver, 'pixels', { entries: result.entriesAdded, tags: result.tagsAdded });
       return result;
     },
 
