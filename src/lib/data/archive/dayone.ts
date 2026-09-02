@@ -3,6 +3,16 @@
    place is skipped rather than failing the whole import, the same split
    ticket 02 set for every source.
 
+   The container is a real zip - one JSON file plus `photos/`, `videos/`,
+   `audios/` and `pdfs/` folders - so this reads it through fflate rather
+   than the platform's own DecompressionStream, for the reason
+   transtracks.ts found first: this app's WebView floor is Chrome 87
+   (capacitor.config.ts) and the 'deflate-raw' format only arrived in
+   Chrome 103, so the platform decoder fails on the devices this app
+   supports. `zipRead` below decompresses one member at a time, the same
+   discipline daylioBackup.ts's own version keeps, so a preview never pays
+   to decompress every photo an entry did not ask for.
+
    The vendor publishes no prose schema - the file they host as their own
    import spec is the schema - and this module was written against a real
    export read once and then deleted (2026-09-01). Where the vendor's own
@@ -36,30 +46,22 @@
    4. `text` usually carries the same content as `richText`, as Markdown
       with punctuation backslash-escaped - but an onboarding entry in the
       real export had `text: ""` with a fully populated `richText`, so the
-      richText fallback is load-bearing, not a hypothetical. */
+      richText fallback is load-bearing, not a hypothetical.
 
+   Photo bytes travel raw, not normalized: `normalizePhoto()` needs a
+   canvas, and this seam is Node-tested, the same division
+   photoPicking.ts already draws for every other photo-writing area and
+   transtracks.ts/daylioBackup.ts already draw for this one. */
+
+import { strFromU8, unzipSync } from 'fflate';
 import { md5 } from 'hash-wasm';
 import { epochDayFromLocalDate } from '../epochDay';
-import { filesOf, photoFileName, thumbFileName } from '../photos/names';
+import { photoFileName } from '../photos/names';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
-import type { NormalizedPhoto } from '../journal/photos';
 import { mintUuid } from '../journal/support';
-import { extractZipEntry, readZipEntries, type ZipEntry } from './dayone-zip';
+import type { DaylioNaming } from './daylio';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
-
-export interface DayOneNaming {
-  tagLabels(id: string): readonly string[];
-}
-
-/** Turns a photo's raw extracted bytes into what a photo row owns
-    (ADR-0008). Injected rather than imported: `data/photos/normalize.ts`
-    needs a decoder and a canvas, which the Node tier this module is
-    otherwise tested in has neither - the same reason `stores/photoPicking
-    .ts`, not `data/journal/photos.ts`, is where normalization already
-    happens for a photo picked in an editor. The real caller (the settings
-    screen) passes the real `normalizePhoto`; a test passes a stand-in. */
-export type PhotoNormalizer = (bytes: Uint8Array) => Promise<NormalizedPhoto>;
 
 export interface DayOnePreview {
   /** Net additions, not the raw entry count - candidates already excluded
@@ -75,10 +77,10 @@ export interface DayOnePreview {
       person confirming sees what will not travel. */
   unresolvedPhotoCount: number;
   journal: ArchiveJournal;
-  /** The files `journal`'s photo rows name, resolved and ready - a preview
-      is the exact work a commit does, never an instruction to re-read a
-      zip that may have changed (ADR-0002's own reasoning for Daylio). */
-  files: { name: string; bytes: Uint8Array }[];
+  /** Every newly added photo's original bytes, keyed by the
+      `ArchivePhoto.fileName` used inside `journal` - not normalized,
+      the caller's job (module header). */
+  rawPhotos: Map<string, Uint8Array>;
 }
 
 export class DayOneImportError extends Error {
@@ -88,8 +90,7 @@ export class DayOneImportError extends Error {
   }
 }
 
-const REQUIRED_TOP_LEVEL_KEYS = ['metadata', 'entries'] as const;
-export const REQUIRED_COLUMNS: readonly string[] = REQUIRED_TOP_LEVEL_KEYS;
+export const REQUIRED_COLUMNS = ['metadata', 'entries'] as const;
 
 interface DayOneRawPhoto {
   identifier?: string;
@@ -99,7 +100,6 @@ interface DayOneRawPhoto {
 
 interface DayOneRichTextNode {
   text: string;
-  attributes?: { line?: { header?: number } };
 }
 
 interface DayOneRichText {
@@ -123,12 +123,33 @@ interface DayOneExportFile {
   entries?: DayOneRawEntry[];
 }
 
-/** Finds the one top-level `<journal>.json` a Day One zip carries -
+/** Every entry name the zip carries, decompressing none of them: the
+    filter is called once per entry and always says no, which walks the
+    central directory and stops there (daylioBackup.ts's own idiom). */
+function zipNames(file: Uint8Array): string[] {
+  const names: string[] = [];
+  unzipSync(file, {
+    filter: (entry) => {
+      names.push(entry.name);
+      return false;
+    }
+  });
+  return names;
+}
+
+/** One entry's bytes, or null when the zip has no such member.
+    Decompresses that member alone, which is what keeps a preview off
+    every photo an entry did not ask for. */
+function zipRead(file: Uint8Array, name: string): Uint8Array | null {
+  const found = unzipSync(file, { filter: (entry) => entry.name === name });
+  return Object.values(found)[0] ?? null;
+}
+
+/** The one top-level `<journal>.json` a Day One zip carries -
     `photos/`, `videos/`, `audios/` and `pdfs/` are folders, so anything
     with a `/` in its name is never the payload. */
-function findJournalEntry(entries: readonly ZipEntry[]): ZipEntry | null {
-  const candidates = entries.filter((entry) => !entry.name.includes('/') && entry.name.endsWith('.json'));
-  return candidates[0] ?? null;
+function findJournalEntryName(names: readonly string[]): string | null {
+  return names.find((name) => !name.includes('/') && name.endsWith('.json')) ?? null;
 }
 
 /** A non-throwing sniff (the registry's own contract, ADR: phase 7 ticket
@@ -139,7 +160,12 @@ function findJournalEntry(entries: readonly ZipEntry[]): ZipEntry | null {
     well-formed. */
 export function detectDayOne(bytes: Uint8Array): boolean {
   try {
-    return findJournalEntry(readZipEntries(bytes)) !== null;
+    const journalName = findJournalEntryName(zipNames(bytes));
+    if (!journalName) return false;
+    const raw = zipRead(bytes, journalName);
+    if (!raw) return false;
+    const parsed = JSON.parse(strFromU8(raw)) as DayOneExportFile;
+    return typeof parsed.metadata?.version === 'string' && Array.isArray(parsed.entries);
   } catch {
     return false;
   }
@@ -185,7 +211,7 @@ function noteFromRichText(richText: string, entryLabel: string): string {
   try {
     parsed = JSON.parse(richText) as DayOneRichText;
   } catch (cause) {
-    throw new DayOneImportError(`has richText that is not valid JSON, for entry ${entryLabel}`, { cause } as ErrorOptions);
+    throw new DayOneImportError(`has richText that is not valid JSON, for entry ${entryLabel}`, { cause });
   }
   const contents = Array.isArray(parsed.contents) ? parsed.contents : [];
   return contents
@@ -209,7 +235,7 @@ export function localDayInZone(instantMs: number, timeZone: string): number {
       new Date(instantMs)
     );
   } catch (cause) {
-    throw new DayOneImportError(`has an unrecognised time zone: ${timeZone}`, { cause } as ErrorOptions);
+    throw new DayOneImportError(`has an unrecognised time zone: ${timeZone}`, { cause });
   }
   const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   return epochDayFromLocalDate(new Date(Date.UTC(part('year'), part('month') - 1, part('day'))));
@@ -227,7 +253,7 @@ export function normalizeDayOneUuid(raw: string, entryLabel: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function tagMatches(journal: ArchiveJournal, naming: DayOneNaming): Map<string, string> {
+function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
   const matches = new Map<string, string>();
   for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {
     const labels = tag.builtIn ? [...naming.tagLabels(tag.id), tag.label] : [tag.label];
@@ -245,63 +271,44 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   entries
 });
 
-interface ResolvedPhoto {
-  archivePhoto: { id: string; fileName: string; starred: boolean };
-  files: { name: string; bytes: Uint8Array }[];
-  resolved: boolean;
-}
-
 /** One `photos[]` entry, resolved from `photos/<md5>.<type>` in the zip
-    through to the two normalized files a photo row owns (module header,
-    point 3). A photo whose file is missing, or whose bytes do not match
-    its own `md5`, is skipped rather than failing the entire import - the
-    same tolerance the vendor's own dangling `md5Thumbnail` needs, applied
-    to the full photo too, since either can go missing from a real export
-    the same way. */
+    (module header, point 3). A photo whose file is missing, or whose bytes
+    do not match its own `md5`, is skipped rather than failing the entire
+    import - the same tolerance the vendor's own dangling `md5Thumbnail`
+    needs, applied to the full photo too, since either can go missing from
+    a real export the same way. */
 async function resolveDayOnePhoto(
   zipBytes: Uint8Array,
-  zipEntries: readonly ZipEntry[],
-  photo: DayOneRawPhoto,
-  normalize: PhotoNormalizer
-): Promise<ResolvedPhoto | null> {
+  photo: DayOneRawPhoto
+): Promise<{ id: string; fileName: string; raw: Uint8Array } | null> {
   if (!photo.md5 || !photo.type) return null;
-  const wanted = `photos/${photo.md5}.${photo.type}`;
-  const zipEntry = zipEntries.find((entry) => entry.name === wanted);
-  if (!zipEntry) return null;
+  const raw = zipRead(zipBytes, `photos/${photo.md5}.${photo.type}`);
+  if (!raw) return null;
 
-  const raw = await extractZipEntry(zipBytes, zipEntry);
   const digest = await md5(raw);
   if (digest !== photo.md5.toLowerCase()) return null;
 
-  const normalized = await normalize(raw);
-  const uuid = mintUuid();
-  const fileName = photoFileName(uuid);
-  const [fullName, thumbName] = filesOf(fileName);
-  return {
-    archivePhoto: { id: uuid, fileName, starred: false },
-    files: [
-      { name: fullName, bytes: normalized.full },
-      { name: thumbName, bytes: normalized.thumb }
-    ],
-    resolved: true
-  };
+  const id = mintUuid();
+  return { id, fileName: photoFileName(id), raw };
 }
 
 export async function dayonePreview(
   zipBytes: Uint8Array,
   existing: ArchiveJournal,
-  naming: DayOneNaming,
-  normalize: PhotoNormalizer
+  naming: DaylioNaming
 ): Promise<DayOnePreview> {
-  const zipEntries = readZipEntries(zipBytes);
-  const journalEntry = findJournalEntry(zipEntries);
-  if (!journalEntry) throw new DayOneImportError('has no top-level journal JSON file');
+  const names = zipNames(zipBytes);
+  const journalName = findJournalEntryName(names);
+  if (!journalName) throw new DayOneImportError('has no top-level journal JSON file');
 
   let parsed: DayOneExportFile;
   try {
-    parsed = JSON.parse(new TextDecoder().decode(await extractZipEntry(zipBytes, journalEntry))) as DayOneExportFile;
+    const raw = zipRead(zipBytes, journalName);
+    if (!raw) throw new DayOneImportError('has no top-level journal JSON file');
+    parsed = JSON.parse(strFromU8(raw)) as DayOneExportFile;
   } catch (cause) {
-    throw new DayOneImportError('has a journal file that is not valid JSON', { cause } as ErrorOptions);
+    if (cause instanceof DayOneImportError) throw cause;
+    throw new DayOneImportError('has a journal file that is not valid JSON', { cause });
   }
 
   if (parsed.metadata?.version !== '1.0') {
@@ -311,7 +318,7 @@ export async function dayonePreview(
 
   const existingEntries = new Set(existing.entries.map((entry) => entry.uuid));
   const candidates: { entry: ArchiveEntry; tags: string[] }[] = [];
-  const files: { name: string; bytes: Uint8Array }[] = [];
+  const rawPhotos = new Map<string, Uint8Array>();
   let unresolvedPhotoCount = 0;
 
   for (const raw of parsed.entries) {
@@ -319,31 +326,31 @@ export async function dayonePreview(
       throw new DayOneImportError('has an entry missing uuid, creationDate or timeZone');
     }
     const uuid = normalizeDayOneUuid(raw.uuid, raw.uuid);
+    // Skipped before any photo work happens: a device that already has
+    // this entry gets nothing new to write, and resolving its photos
+    // anyway would leave their bytes in `rawPhotos` with no row left to
+    // name them - exactly the orphan a preview handing over "the exact
+    // work a commit does" must never produce.
+    if (existingEntries.has(uuid)) continue;
+
     const timestamp = Date.parse(raw.creationDate);
     if (Number.isNaN(timestamp)) {
       throw new DayOneImportError(`has an invalid creationDate for entry ${raw.uuid}: ${raw.creationDate}`);
     }
     const epochDay = localDayInZone(timestamp, raw.timeZone);
 
-    // Skipped before any photo work happens: a device that already has
-    // this entry gets nothing new to write, and resolving its photos
-    // anyway would leave their bytes in `files` with no row left to name
-    // them - exactly the orphan a preview handing over "the exact work a
-    // commit does" must never produce.
-    if (existingEntries.has(uuid)) continue;
-
     const text = raw.text ?? '';
     const note = text.trim() !== '' ? noteFromText(text) : noteFromRichText(raw.richText ?? '{}', raw.uuid);
 
     const photoRows: { id: string; fileName: string; starred: boolean }[] = [];
     for (const photo of raw.photos ?? []) {
-      const resolved = await resolveDayOnePhoto(zipBytes, zipEntries, photo, normalize);
+      const resolved = await resolveDayOnePhoto(zipBytes, photo);
       if (!resolved) {
         unresolvedPhotoCount += 1;
         continue;
       }
-      photoRows.push(resolved.archivePhoto);
-      files.push(...resolved.files);
+      photoRows.push({ id: resolved.id, fileName: resolved.fileName, starred: false });
+      rawPhotos.set(resolved.fileName, resolved.raw);
     }
 
     const entry: ArchiveEntry = {
@@ -400,6 +407,6 @@ export async function dayonePreview(
     photoCount: entries.reduce((n, e) => n + e.photos.length, 0),
     unresolvedPhotoCount,
     journal: emptyImportJournal(imported, entries),
-    files
+    rawPhotos
   };
 }

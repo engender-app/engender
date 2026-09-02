@@ -576,13 +576,18 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
       reorder: ['checklist'],
-      setAppointmentDate: ['checklist']
+      setAppointmentDate: ['checklist'],
+      setDebriefDismissed: ['checklist'],
+      recordDebriefEntry: ['checklist']
     },
     reads: {
       getChecklist: ['checklist'],
       getChecklistByOwner: ['checklist'],
       getStandaloneChecklist: ['checklist'],
-      getAppointmentDate: ['checklist']
+      getAppointmentDate: ['checklist'],
+      getDebriefState: ['checklist'],
+      getDebriefDismissedEpochDay: ['checklist'],
+      getDebriefEntryId: ['checklist']
     }
   }),
   tally: classify<Journal['tally']>()({
@@ -738,15 +743,23 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
      would be a list to keep in step with what a restore happens to touch,
      and a Replace touches everything by definition. */
   archive: classify<Journal['archive']>()({
-    writes: { replace: [...TABLE_NAMES], merge: [...TABLE_NAMES], commitDaylioImport: [...TABLE_NAMES] },
+    writes: {
+      replace: [...TABLE_NAMES],
+      merge: [...TABLE_NAMES],
+      commitDaylioImport: [...TABLE_NAMES],
+      commitDaylioBackupImport: [...TABLE_NAMES],
+      commitTransTracksImport: [...TABLE_NAMES]
+    },
     // And a snapshot reads all of it, for the same reason: every section of
-    // the archive is one area's rows (archiveSections.ts). The Daylio
-    // preview resolves against a snapshot, so it reads the same set.
+    // the archive is one area's rows (archiveSections.ts). Every source's
+    // previews resolve against a snapshot, so they read the same set.
     reads: {
       snapshot: [...TABLE_NAMES],
       previewDaylioImport: [...TABLE_NAMES],
-      // Its own table only, unlike snapshot/previewDaylioImport above: the
-      // settings screen showing this should not re-run on an entry edit.
+      previewDaylioBackupImport: [...TABLE_NAMES],
+      previewTransTracksImport: [...TABLE_NAMES],
+      // Its own table only, unlike the four above: the settings screen
+      // showing this should not re-run on an entry edit.
       importLog: ['importLog']
     }
   })

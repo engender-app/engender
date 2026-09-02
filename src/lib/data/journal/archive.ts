@@ -25,7 +25,7 @@
    format and the registry, and the ordering rule an import turns on
    (ADR-0011) is long enough to be worth reading on its own. */
 
-import { filesOf } from '../photos/names';
+import { filesOf, thumbFileName } from '../photos/names';
 import { restoreArchive, type RestoreContents } from './restore';
 import {
   daylioPreview,
@@ -33,13 +33,21 @@ import {
   type DaylioNaming,
   type DaylioPreview
 } from '../archive/daylio';
+import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylioBackup';
+import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
+import type { NormalizedPhoto } from './photos';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
 import { IMPORT_LOG_COLUMNS, importLogRow } from './archiveApply';
 import { mintUuid, now } from './support';
+
+export interface TransTracksCommitResult {
+  milestonesAdded: number;
+  photosAdded: number;
+}
 
 export interface ArchiveSnapshot {
   journal: ArchiveJournal;
@@ -52,6 +60,18 @@ export interface ArchiveSnapshot {
   readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
+/** What a committed backup import added, taken from the preview rather
+    than measured again afterwards: the preview is defined as the exact
+    work a commit performs, and re-reading the whole journal twice to
+    subtract seven numbers would be a second answer to a question that
+    already has one. */
+export interface DaylioBackupCommitResult {
+  entriesAdded: number;
+  milestonesAdded: number;
+  tagsAdded: number;
+  attachmentsAdded: number;
+}
+
 export interface ArchiveArea {
   snapshot(): Promise<ArchiveSnapshot>;
   /** Parses and resolves a Daylio CSV without writing. Counts are net
@@ -61,6 +81,29 @@ export interface ArchiveArea {
       Writes one import_log record on success (ticket 03) - never on the
       unmapped-mood refusal above, which never reaches restore either. */
   commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
+  /** The same two steps for a `.daylio` backup rather than a CSV export
+      (phase 7 ticket 09), which carries milestones, tag groups, custom
+      scales, writing templates, photos and voice notes as well. */
+  previewDaylioBackupImport(file: Uint8Array, naming: DaylioNaming): Promise<DaylioBackupPreview>;
+  /** Always Merge. `normalize` is the photo pipeline (photos/normalize.ts),
+      passed in rather than imported: it needs a canvas, and this seam is
+      Node-tested. */
+  commitDaylioBackupImport(
+    preview: DaylioBackupPreview,
+    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
+  ): Promise<DaylioBackupCommitResult>;
+  /** Parses and resolves a TransTracks `.ttbackup` zip without writing. */
+  previewTransTracksImport(bytes: Uint8Array): Promise<TransTracksPreview>;
+  /** Always Merge. `normalize` turns each raw photo the zip carried into
+      stored JPEG bytes plus a thumbnail - normalizePhoto() needs a canvas
+      and stays a caller's job, the same division photoPicking.ts already
+      draws for every other photo-writing area (photos.ts's attach,
+      hairProgress.ts, tryouts.ts, ...). Writes one import_log record on
+      success (ticket 03), the same as commitDaylioImport. */
+  commitTransTracksImport(
+    preview: TransTracksPreview,
+    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
+  ): Promise<TransTracksCommitResult>;
   /** The import history, most recent first, for the settings screen
       (ticket 03). Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
@@ -150,6 +193,86 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async importLog() {
       return (await readImportLog(driver)).toReversed();
+    },
+
+    async previewDaylioBackupImport(file, naming) {
+      return daylioBackupPreview(file, (await area.snapshot()).journal, naming);
+    },
+
+    async commitDaylioBackupImport(preview, normalize) {
+      if (preview.unmappedMoodNames.length > 0) {
+        throw new Error(
+          `Daylio mood ${preview.unmappedMoodNames.join(', ')} has no scale position; nothing was imported`
+        );
+      }
+
+      /* The photos are re-encoded on the way in rather than stored as
+         Daylio held them: that is what strips their metadata, caps them at
+         the stored edge and produces the thumbnail whose name every screen
+         derives (photos/normalize.ts, photos/names.ts, ADR-0008). Files
+         are written before any row is (restore.ts), so a photo this
+         cannot decode fails the import with the journal untouched.
+
+         One asset at a time, because the alternative is holding a
+         journal's worth of decoded bitmaps at once. */
+      const assetFiles = async function* () {
+        for (const asset of preview.assets) {
+          const bytes = await asset.read();
+          if (asset.kind !== 'photo') {
+            yield { name: asset.fileName, bytes };
+            continue;
+          }
+          const normalized = await normalize(bytes);
+          yield { name: asset.fileName, bytes: normalized.full };
+          yield { name: thumbFileName(asset.fileName), bytes: normalized.thumb };
+        }
+      };
+
+      await restoreArchive(driver, files, 'merge', { journal: preview.journal, files: assetFiles() });
+      /* The source name is the registry's own (archive/sources.ts), so the
+         log names what read the file rather than a second spelling of it.
+         Written after restore and never before: a preview somebody
+         abandoned, and an import that threw on an undecodable photo, both
+         leave no record because neither reached here (ticket 03). */
+      await recordImport(driver, 'daylio-backup', {
+        entries: preview.entryCount,
+        milestones: preview.milestoneCount,
+        tags: preview.newTagCount,
+        attachments: preview.photoCount + preview.audioCount
+      });
+      return {
+        entriesAdded: preview.entryCount,
+        milestonesAdded: preview.milestoneCount,
+        tagsAdded: preview.newTagCount,
+        attachmentsAdded: preview.photoCount + preview.audioCount
+      };
+    },
+
+    async previewTransTracksImport(bytes) {
+      return transTracksPreview(bytes, (await area.snapshot()).journal);
+    },
+
+    async commitTransTracksImport(preview, normalize) {
+      const before = await area.snapshot();
+      await restoreArchive(driver, files, 'merge', {
+        journal: preview.journal,
+        files: (async function* () {
+          for (const [fileName, raw] of preview.rawPhotos) {
+            const normalized = await normalize(raw);
+            yield { name: fileName, bytes: normalized.full };
+            yield { name: thumbFileName(fileName), bytes: normalized.thumb };
+          }
+        })()
+      });
+      const after = await area.snapshot();
+      const result = {
+        milestonesAdded: after.journal.milestones.length - before.journal.milestones.length,
+        // Every TransTracks photo becomes exactly one synthetic entry
+        // (transtracks.ts), so diffing entries is diffing photos here.
+        photosAdded: after.journal.entries.length - before.journal.entries.length
+      };
+      await recordImport(driver, 'transtracks', { milestones: result.milestonesAdded, photos: result.photosAdded });
+      return result;
     },
 
     async snapshot() {

@@ -421,7 +421,15 @@ export const ENTRY_TEMPLATES = [
   { key: 'self_care', tags: [], dims: {} },
   { key: 'presentation_feeling', tags: [], dims: {} },
   { key: 'name_pronouns_feeling', tags: [], dims: {} },
-  { key: 'proud_moment', tags: [], dims: {} }
+  { key: 'proud_moment', tags: [], dims: {} },
+  /* The appointment debrief (phase 6 ticket 08, CONTEXT: "Checklist"):
+     reachable by default only through the debrief offer, never through the
+     "use template" sheet or the entry-creation banner's random pool - both
+     of those read the visible list, and this seeds hidden. Editable and
+     un-hideable like any other built-in (What to Build #4) if someone
+     wants it in their own rotation; the offer applies it directly by key
+     regardless of its hidden flag. */
+  { key: 'appointment_debrief', tags: [], dims: {}, hidden: true }
 ] as const;
 
 export type EntryTemplateKey = (typeof ENTRY_TEMPLATES)[number]['key'];
