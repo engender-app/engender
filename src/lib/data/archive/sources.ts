@@ -10,13 +10,14 @@
    compile-time check that nothing in the set is left out of the array.
 
    A source is handed bytes rather than text (phase 7 ticket 09). Daylio's
-   own `.daylio` backup is a zip, so a registry that could only offer a
-   string could not hold it, and a text source decodes for itself - which
-   is cheaper than it looks, because detection reads a header rather than
-   a whole file. */
+   own `.daylio` backup is a zip, and so is Day One's export, so a registry
+   that could only offer a string could not hold either; a text source
+   decodes for itself - which is cheaper than it looks, because detection
+   reads a header rather than a whole file. */
 
 import { daylioPreview, REQUIRED_COLUMNS as DAYLIO_REQUIRED_COLUMNS, detectDaylio, type DaylioNaming } from './daylio';
 import { REQUIRED_FIELDS as DAYLIO_BACKUP_REQUIRED_FIELDS, daylioBackupPreview, detectDaylioBackup } from './daylioBackup';
+import { REQUIRED_COLUMNS as DAYONE_REQUIRED_COLUMNS, dayonePreview, detectDayOne } from './dayone';
 import { detectTransTracks, transTracksPreview } from './transtracks';
 import {
   REQUIRED_COLUMNS as TRACK_AND_GRAPH_REQUIRED_COLUMNS,
@@ -26,7 +27,7 @@ import {
 import { detectPixels, pixelsPreview } from './pixels';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'transtracks' | 'trackAndGraph' | 'pixels';
+export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'dayone' | 'transtracks' | 'trackAndGraph' | 'pixels';
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
@@ -47,12 +48,12 @@ export interface ArchiveSource {
       never an instruction to re-parse a file that may have changed by then
       (ADR-0002's own reasoning for Daylio, which every source now shares).
       Only the journal: a source with richer preview data (Daylio's mood
-      mappings, TransTracks' photo bytes and ignored-field list) exposes its
-      own preview function for a caller that wants that; this is the
-      lowest common shape every source can produce.
-      `naming` is source-specific context (Daylio's own tag-label lookup);
-      erased to `unknown` here because the registry holds every source at
-      once.
+      mappings, TransTracks' and Day One's raw photo bytes) exposes its own
+      preview function for a caller that wants that; this is the lowest
+      common shape every source can produce.
+      `naming` is source-specific context (Daylio's own tag-label lookup,
+      which Day One reuses); erased to `unknown` here because the registry
+      holds every source at once.
 
       The journal is the part every source has in common. A source with
       more to report - which moods it resolved, what it could not bring
@@ -82,6 +83,14 @@ const SOURCES = [
     detect: detectDaylioBackup,
     async preview(file, existing, naming) {
       return (await daylioBackupPreview(file, existing, naming as DaylioNaming)).journal;
+    }
+  },
+  {
+    name: 'dayone',
+    requiredFields: DAYONE_REQUIRED_COLUMNS,
+    detect: detectDayOne,
+    async preview(file, existing, naming) {
+      return (await dayonePreview(file, existing, naming as DaylioNaming)).journal;
     }
   },
   {

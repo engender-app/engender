@@ -749,6 +749,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       commitDaylioImport: [...TABLE_NAMES],
       commitDaylioBackupImport: [...TABLE_NAMES],
       commitTransTracksImport: [...TABLE_NAMES],
+      commitDayOneImport: [...TABLE_NAMES],
       commitTrackAndGraphImport: [...TABLE_NAMES],
       commitPixelsImport: [...TABLE_NAMES]
     },
@@ -760,9 +761,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       previewDaylioImport: [...TABLE_NAMES],
       previewDaylioBackupImport: [...TABLE_NAMES],
       previewTransTracksImport: [...TABLE_NAMES],
+      previewDayOneImport: [...TABLE_NAMES],
       previewTrackAndGraphImport: [...TABLE_NAMES],
       previewPixelsImport: [...TABLE_NAMES],
-      // Its own table only, unlike the six above: the settings screen
+      // Its own table only, unlike the seven above: the settings screen
       // showing this should not re-run on an entry edit.
       importLog: ['importLog']
     }
