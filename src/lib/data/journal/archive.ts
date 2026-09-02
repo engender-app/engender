@@ -34,12 +34,14 @@ import {
   type DaylioPreview
 } from '../archive/daylio';
 import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
-import type { ArchiveFile, ArchiveJournal } from '../archive/payload';
+import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
 import type { NormalizedPhoto } from './photos';
-import { readRowContext } from './archiveRead';
+import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
+import { IMPORT_LOG_COLUMNS, importLogRow } from './archiveApply';
+import { mintUuid, now } from './support';
 
 export interface TransTracksCommitResult {
   milestonesAdded: number;
@@ -62,7 +64,9 @@ export interface ArchiveArea {
   /** Parses and resolves a Daylio CSV without writing. Counts are net
       additions, so they are the counts commit reports (PRD F28). */
   previewDaylioImport(csv: string, naming: DaylioNaming): Promise<DaylioPreview>;
-  /** Always Merge. An unmapped mood is refused before restore sees a row. */
+  /** Always Merge. An unmapped mood is refused before restore sees a row.
+      Writes one import_log record on success (ticket 03) - never on the
+      unmapped-mood refusal above, which never reaches restore either. */
   commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
   /** Parses and resolves a TransTracks `.ttbackup` zip without writing. */
   previewTransTracksImport(bytes: Uint8Array): Promise<TransTracksPreview>;
@@ -70,11 +74,17 @@ export interface ArchiveArea {
       stored JPEG bytes plus a thumbnail - normalizePhoto() needs a canvas
       and stays a caller's job, the same division photoPicking.ts already
       draws for every other photo-writing area (photos.ts's attach,
-      hairProgress.ts, tryouts.ts, ...). */
+      hairProgress.ts, tryouts.ts, ...). Writes one import_log record on
+      success (ticket 03), the same as commitDaylioImport. */
   commitTransTracksImport(
     preview: TransTracksPreview,
     normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
   ): Promise<TransTracksCommitResult>;
+  /** The import history, most recent first, for the settings screen
+      (ticket 03). Its own read rather than a slice of `snapshot()`: every
+      other archive read costs the whole journal, and a settings screen
+      asking "where did this come from" should not pay for it. */
+  importLog(): Promise<ArchiveImportLogRecord[]>;
   /** Discards this device's journal and installs the archive's, keeping the
       built-in vocabulary by key and leaving preferences alone (ADR-0011).
       One operation: the order it happens in is not a caller's to compose. */
@@ -82,6 +92,18 @@ export interface ArchiveArea {
   /** Adds what this device does not have and leaves matched rows alone, so
       importing the same archive twice is a no-op the second time. */
   merge(contents: RestoreContents): Promise<void>;
+}
+
+/** One import_log row, direct rather than through the ordinary merge: this
+    record is not content a device might already have and skip (ADR-0002's
+    own insert-if-absent shape) - it is a new fact every time, minted here
+    the way any other user-owned row is (ticket 03). */
+async function recordImport(driver: SqliteDriver, source: string, counts: Record<string, number>): Promise<void> {
+  const ts = now();
+  await driver.run(
+    `INSERT INTO import_log (${IMPORT_LOG_COLUMNS}) VALUES (?, ?, ?, ?, ?)`,
+    importLogRow({ id: mintUuid(), source, counts, importedAt: ts }, ts)
+  );
 }
 
 export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): ArchiveArea {
@@ -135,12 +157,18 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         files: (async function* () {})()
       });
       const after = await area.snapshot();
-      return {
+      const result = {
         entriesAdded: after.journal.entries.length - before.journal.entries.length,
         tagsAdded:
           after.journal.tagGroups.flatMap((group) => group.tags).length -
           before.journal.tagGroups.flatMap((group) => group.tags).length
       };
+      await recordImport(driver, 'daylio', { entries: result.entriesAdded, tags: result.tagsAdded });
+      return result;
+    },
+
+    async importLog() {
+      return (await readImportLog(driver)).toReversed();
     },
 
     async previewTransTracksImport(bytes) {
@@ -160,12 +188,14 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         })()
       });
       const after = await area.snapshot();
-      return {
+      const result = {
         milestonesAdded: after.journal.milestones.length - before.journal.milestones.length,
         // Every TransTracks photo becomes exactly one synthetic entry
         // (transtracks.ts), so diffing entries is diffing photos here.
         photosAdded: after.journal.entries.length - before.journal.entries.length
       };
+      await recordImport(driver, 'transtracks', { milestones: result.milestonesAdded, photos: result.photosAdded });
+      return result;
     },
 
     async snapshot() {
