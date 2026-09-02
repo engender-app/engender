@@ -75,6 +75,11 @@ export const TABLE_NAMES = [
      write already announces 'entry', so the two names together are what
      keeps a clamped range from going stale in either direction. */
   'era',
+  /* Which eras are muted (phase 6 ticket 05, ADR-0049). Its own name rather
+     than folded into 'era': plenty of era reads (/compare, the calendar, a
+     chart's boundaries) have no reason to re-run when a mute changes, and a
+     mute write does not change anything `getEras()` itself returns. */
+  'eraMute',
   /* One name for hair stagings and hair photos alike (phase 4 ticket 09):
      nothing reads one without the other, the same reasoning 'dose' gives -
      the screen shows both against the same anchor. */
@@ -410,6 +415,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // an open bound clamps to at read time (ADR-0010) - so it keys on
     // 'entry' and not on 'era' at all.
     reads: { getEras: ['era'], getJournalBounds: ['entry'] }
+  }),
+  eraMutes: classify<Journal['eraMutes']>()({
+    writes: { setEraMuted: ['eraMute'] },
+    reads: { getMutedEraUuids: ['eraMute'] }
   }),
   wearSessions: classify<Journal['wearSessions']>()({
     writes: {

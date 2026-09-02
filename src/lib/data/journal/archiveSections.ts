@@ -339,6 +339,21 @@ const SECTIONS = [
       end_epoch_day: 'endEpochDay'
     }
   }),
+  /* Which of those eras are muted (phase 6 ticket 05, ADR-0049). Flat, and
+     the smallest kind of flat: one column, no `after` - `era_uuid` is free
+     text the same way `era` itself carries no foreign key to anything, so
+     nothing here has to resolve against the `eras` section landing first.
+     A device that never named the era a merge brings a mute for simply
+     never resolves that mute to anything, the resting state ADR-0049 gives
+     it - matching for identity keeps a repeated merge from double-inserting
+     the same era_uuid rather than reconciling one row per device's mute. */
+  flat({
+    name: 'eraMutes',
+    table: 'era_mute',
+    identity: 'era_uuid',
+    orderBy: 'id',
+    columns: { era_uuid: 'eraUuid' }
+  }),
   section({
     name: 'effectCategories',
     /* The one section with nothing to discard, and not by omission: the
