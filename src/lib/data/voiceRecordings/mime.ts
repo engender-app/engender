@@ -15,16 +15,19 @@
    app's own recordings are `.webm` by construction
    (voiceRecordings/names.ts). */
 
+/* Exactly the extensions a recording in this app can be stored under: the
+   `.webm` it records itself, the five containers the import sniffs out of
+   an asset's own bytes, and `.3gp` and `.aac`, which reach it through a
+   Daylio asset's file name when the bytes name no container
+   (archive/daylioBackup.ts). Nothing speculative - an extension this app
+   cannot produce would be a case that never runs. */
 const BY_EXTENSION = new Map([
   ['.webm', 'audio/webm'],
   ['.m4a', 'audio/mp4'],
-  ['.mp4', 'audio/mp4'],
   ['.3gp', 'audio/3gpp'],
   ['.aac', 'audio/aac'],
   ['.mp3', 'audio/mpeg'],
   ['.ogg', 'audio/ogg'],
-  ['.oga', 'audio/ogg'],
-  ['.opus', 'audio/ogg'],
   ['.wav', 'audio/wav'],
   ['.amr', 'audio/amr']
 ]);

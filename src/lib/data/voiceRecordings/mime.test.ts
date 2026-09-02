@@ -12,6 +12,9 @@ test('an imported recording is named as its own container, not as a webm', () =>
   assert.equal(audioMimeOf('abc.3gp'), 'audio/3gpp');
   assert.equal(audioMimeOf('abc.OGG'), 'audio/ogg');
   assert.equal(audioMimeOf('abc.amr'), 'audio/amr');
+  assert.equal(audioMimeOf('abc.wav'), 'audio/wav');
+  assert.equal(audioMimeOf('abc.mp3'), 'audio/mpeg');
+  assert.equal(audioMimeOf('abc.aac'), 'audio/aac');
 });
 
 test('a name that says nothing recognisable declares nothing, leaving the browser to sniff', () => {

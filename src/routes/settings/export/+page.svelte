@@ -500,7 +500,8 @@
     icons: m.dlb_skip_icons,
     anniversaries: m.dlb_skip_anniversaries,
     scales: m.dlb_skip_scales,
-    assets: m.dlb_skip_assets
+    assets: m.dlb_skip_assets,
+    unnamed: m.dlb_skip_unnamed
   };
 
   const nothingArriving = (preview: DaylioBackupPreview): boolean => arrivingRows(preview).length === 0;
@@ -528,12 +529,13 @@
     } catch (error) {
       console.error('the Daylio backup preview failed', error);
       backupPreview = null;
-      /* The parse detail is a console diagnostic, like importFailure's, with
-         one exception: an iPhone backup is a different schema rather than a
-         damaged file, and telling somebody their file is unreadable when the
-         real answer is "not this platform" sends them looking for a fix that
-         does not exist. */
-      const platform = error instanceof DaylioBackupError && /Android backups only/.test(error.message);
+      /* The parse detail is a console diagnostic, like importFailure's,
+         and the error's own `kind` is what this branches on. One kind gets
+         its own sentence: an iPhone backup is a different schema rather
+         than a damaged file, and telling somebody their file is unreadable
+         when the real answer is "not this platform" sends them looking for
+         a fix that does not exist. */
+      const platform = error instanceof DaylioBackupError && error.kind === 'platform';
       backupError = platform ? m.dlb_not_android() : m.dlb_unreadable();
     }
   }
@@ -892,7 +894,7 @@
            list in the order somebody would check it. -->
       <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
         {#if nothingArriving(backupPreview)}
-          <p class="muted small" style="margin:0">{m.dlb_nothing_new()}</p>
+          <p class="muted small" style="margin:0" data-import-nothing-new>{m.dlb_nothing_new()}</p>
         {:else}
           <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.dlb_arriving()}</strong></p>
           {#each arrivingRows(backupPreview) as row, i (row.label)}

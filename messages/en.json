@@ -826,6 +826,7 @@
   "dlb_skip_anniversaries": "Yearly repeats on milestones",
   "dlb_skip_scales": "Scales this app can’t read",
   "dlb_skip_assets": "Attachments missing from the file",
+  "dlb_skip_unnamed": "Records with no name of their own",
   "dlb_version_note": "This backup says it is version {version}, which this app hasn’t seen before. It gets read field by field anyway, and anything unfamiliar is left behind.",
   "dlb_nothing_new": "Everything in this backup is already here.",
   "dlb_confirm": "Import what’s listed",

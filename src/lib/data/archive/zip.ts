@@ -54,6 +54,22 @@ export interface ZipArchive {
   read(name: string): Promise<Uint8Array | null>;
 }
 
+/** Where the central directory starts, or null when this is not a zip at
+    all. Synchronous and non-throwing, for a caller that only wants to sniff
+    an entry name: every name in the archive is listed in that directory,
+    which is a few tens of kilobytes at the tail of even a large file, so
+    matching a name there costs nothing next to scanning the whole thing. */
+export function centralDirectoryAt(file: Uint8Array): number | null {
+  if (file.byteLength < 22) return null;
+  const view = new DataView(file.buffer, file.byteOffset, file.byteLength);
+  try {
+    const at = view.getUint32(findEnd(file, view) + 16, true);
+    return at < file.byteLength ? at : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function openZip(file: Uint8Array): Promise<ZipArchive> {
   const view = new DataView(file.buffer, file.byteOffset, file.byteLength);
   const end = findEnd(file, view);
