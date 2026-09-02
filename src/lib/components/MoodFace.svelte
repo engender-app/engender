@@ -34,25 +34,36 @@
   let {
     step,
     size = 28,
-    blink = false
+    blink = false,
+    disc = true
   }: {
     /** 1 to 5 on the mood ramp. */
     step: number;
-    size?: number;
+    /** A number is pixels. A CSS length lets a fluid cell hand it "100%":
+        the calendar's cells are a seventh of whatever width the screen has,
+        so the one surface that cannot name a pixel size is the one that
+        most wants a face (phase 6 unprompted ticket 11). */
+    size?: number | string;
     blink?: boolean;
+    /** Off where the surface behind the face is already the mood's colour,
+        or is two of them. A split calendar cell draws its own halves and
+        the disc would cover them; the face is then the eyes and the mouth
+        alone, which is exactly what it is on Daylio's split days. */
+    disc?: boolean;
   } = $props();
 
   let face = $derived(MOOD_FACES[step]);
+  let length = $derived(typeof size === 'number' ? `${size}px` : size);
 </script>
 
 <svg
   class="mood-face"
   class:is-alive={blink}
   viewBox="0 0 24 24"
-  style={`--face-size: ${size}px; --face-mood: var(--mood-${step}); --blink-delay: ${(step - 1) * 0.6}s`}
+  style={`--face-size: ${length}; --face-mood: var(--mood-${step}); --blink-delay: ${(step - 1) * 0.6}s`}
   aria-hidden="true"
 >
-  <circle cx="12" cy="12" r="10" class="mood-face-disc" />
+  {#if disc}<circle cx="12" cy="12" r="10" class="mood-face-disc" />{/if}
   {#if face.lids}
     <path d={face.lids} class="mood-face-eye is-lids" />
   {:else}
