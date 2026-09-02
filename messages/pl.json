@@ -858,6 +858,7 @@
   "dlb_skip_anniversaries": "Roczne powtórzenia kamieni milowych",
   "dlb_skip_scales": "Skale, których nie da się odczytać",
   "dlb_skip_assets": "Załączniki, których nie ma w pliku",
+  "dlb_skip_unnamed": "Rekordy bez własnej nazwy",
   "dlb_version_note": "Ta kopia podaje wersję {version}, której ta aplikacja jeszcze nie widziała. Zostanie odczytana pole po polu, a wszystko nieznane zostaje pominięte.",
   "dlb_nothing_new": "Wszystko z tej kopii już tu jest.",
   "dlb_confirm": "Importuj to, co na liście",

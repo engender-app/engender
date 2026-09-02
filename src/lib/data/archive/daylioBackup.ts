@@ -54,15 +54,29 @@ import type {
   ArchiveTag,
   ArchiveTagGroup
 } from './payload';
-import { NotAZipError, openZip, type ZipArchive } from './zip';
+import { NotAZipError, centralDirectoryAt, openZip, type ZipArchive } from './zip';
+
+/** Why a backup could not be read, for a screen that words its own
+    message from it - the same split normalize.ts's UnsupportedImageError
+    keeps, where `kind` is what a caller branches on and the message is the
+    English diagnostic for the console.
+
+    `platform` earns a kind of its own because it is the one refusal that
+    is not a damaged file: an iOS backup is a different schema, and a
+    screen calling it unreadable sends somebody looking for a fix that
+    does not exist. */
+export type DaylioBackupErrorKind = 'unreadable' | 'platform' | 'record';
 
 /** A backup this app will not read, with the record or the reason named.
-    The structural half of the failure split: a caller shows the message,
+    The structural half of the failure split: a caller shows a message,
     and nothing has been written. */
 export class DaylioBackupError extends Error {
-  constructor(message: string) {
+  readonly kind: DaylioBackupErrorKind;
+
+  constructor(kind: DaylioBackupErrorKind, message: string) {
     super(`Daylio backup ${message}`);
     this.name = 'DaylioBackupError';
+    this.kind = kind;
   }
 }
 
@@ -76,6 +90,9 @@ export const REQUIRED_FIELDS = ['metadata', 'customMoods', 'dayEntries'] as cons
 const EXPECTED_VERSION = 15;
 
 const BACKUP_MEMBER = 'backup.daylio';
+/** `assets.type`: 1 is a photo, 2 is audio, and the number decides which
+    directory the file is under. */
+const AUDIO_ASSET = 2;
 /** Daylio writes these with a leading slash; openZip normalises it. */
 const PHOTO_DIRECTORY = 'assets/photos/';
 const AUDIO_DIRECTORY = 'assets/audio/';
@@ -92,12 +109,26 @@ export type DaylioSkipKind =
   | 'icons'
   | 'anniversaries'
   | 'scales'
-  | 'assets';
+  | 'assets'
+  | 'unnamed';
 
 export interface DaylioSkip {
   kind: DaylioSkipKind;
   count?: number;
 }
+
+/** The collections the ticket puts out of scope, and which of the file's
+    own keys each one counts. `statistics` covers both of Daylio's records
+    about goals: the weekly success table is derived by construction, and a
+    goal completion is a record of doing something this app did not import
+    the goal for, so neither has anywhere to land. */
+const OUT_OF_SCOPE: readonly (readonly [DaylioSkipKind, readonly string[]])[] = [
+  ['goals', ['goals']],
+  ['statistics', ['goalSuccessWeeks', 'goalEntries']],
+  ['achievements', ['achievements']],
+  ['preferences', ['prefs']],
+  ['reminders', ['reminders']]
+];
 
 /** One mood as the backup defines it: the person's own name where there
     is one, null for a built-in Daylio mood, whose name lives in Daylio's
@@ -170,7 +201,14 @@ const MEMBER_BYTES = new TextEncoder().encode(BACKUP_MEMBER);
 export function detectDaylioBackup(file: Uint8Array): boolean {
   if (file.length < 4 || file[0] !== 0x50 || file[1] !== 0x4b) return false;
 
-  outer: for (let at = 0; at <= file.length - MEMBER_BYTES.length; at++) {
+  /* Only the central directory is searched, not the file. Every entry name
+     in the archive is listed there, it is a few tens of kilobytes at the
+     tail of even an 84MB backup, and scanning the whole thing on every
+     pick is exactly what this contract says a sniff does not do. */
+  const from = centralDirectoryAt(file);
+  if (from === null) return false;
+
+  outer: for (let at = from; at <= file.length - MEMBER_BYTES.length; at++) {
     for (let i = 0; i < MEMBER_BYTES.length; i++) {
       if (file[at + i] !== MEMBER_BYTES[i]) continue outer;
     }
@@ -188,12 +226,12 @@ async function openBackup(file: Uint8Array): Promise<{ payload: Record_; zip: Zi
   try {
     zip = await openZip(file);
   } catch (cause) {
-    if (cause instanceof NotAZipError) throw new DaylioBackupError('is not a zip file');
+    if (cause instanceof NotAZipError) throw new DaylioBackupError('unreadable', 'is not a zip file');
     throw cause;
   }
 
   const member = await zip.read(BACKUP_MEMBER);
-  if (!member) throw new DaylioBackupError(`has no ${BACKUP_MEMBER} member, so it is not a Daylio backup`);
+  if (!member) throw new DaylioBackupError('unreadable', `has no ${BACKUP_MEMBER} member, so it is not a Daylio backup`);
 
   let json: string;
   try {
@@ -201,16 +239,16 @@ async function openBackup(file: Uint8Array): Promise<{ payload: Record_; zip: Zi
     const raw = atob(new TextDecoder().decode(member).replace(/\s+/g, ''));
     json = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(raw, (char) => char.charCodeAt(0)));
   } catch (cause) {
-    throw new DaylioBackupError(`holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`);
+    throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`);
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
   } catch (cause) {
-    throw new DaylioBackupError('holds a backup.daylio that is not valid JSON');
+    throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON');
   }
-  if (!isRecord(parsed)) throw new DaylioBackupError('holds a backup.daylio that is not a JSON object');
+  if (!isRecord(parsed)) throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not a JSON object');
 
   /* The security boundary, and it is here rather than further in for a
      reason: an iOS backup and a documented Android sample both carry the
@@ -356,6 +394,7 @@ export async function daylioBackupPreview(
        twenty-two, no writing templates, and tags with no group - so it is
        declined by name rather than read as far as it happens to go. */
     throw new DaylioBackupError(
+      'platform',
       `came from ${platform || 'an unnamed platform'}, and this app reads Android backups only`
     );
   }
@@ -378,7 +417,7 @@ export async function daylioBackupPreview(
   const plannedAssets = new Map<number, DaylioAsset>();
   const assetPaths = new Map<number, string>();
   for (const [id, asset] of assets) {
-    const directory = asset.type === 2 ? AUDIO_DIRECTORY : PHOTO_DIRECTORY;
+    const directory = asset.type === AUDIO_ASSET ? AUDIO_DIRECTORY : PHOTO_DIRECTORY;
     const path = [...zipNames].find((name) => name.startsWith(directory) && name.endsWith(`/${asset.checksum}`));
     if (!path) {
       missingAssets.add(id);
@@ -389,7 +428,7 @@ export async function daylioBackupPreview(
 
   const readAsset = async (id: number): Promise<Uint8Array> => {
     const bytes = await zip.read(assetPaths.get(id)!);
-    if (!bytes) throw new DaylioBackupError(`could not read the file for asset ${id}`);
+    if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };
 
@@ -427,11 +466,23 @@ export async function daylioBackupPreview(
 
   const groups = new Map<string, ArchiveTagGroup>();
   const tagIds = new Map<number, string>();
+  /* Rows the file holds that carry no name of their own. Nothing can be
+     imported from a tag or a milestone that is only an id, so they are
+     counted for the preview rather than dropped in silence - and the ids
+     are remembered, so an entry naming one is not accused of pointing at a
+     row that is not there. */
+  const nameless = new Set<number>();
+  let unnamed = 0;
   let matchedTagCount = 0;
   for (const tag of list(payload.tags)) {
     const id = int(tag.id);
     const label = str(tag.name);
-    if (id === null || !label) continue;
+    if (id === null) continue;
+    if (!label) {
+      nameless.add(id);
+      unnamed += 1;
+      continue;
+    }
 
     const matched = matches.get(foldText(label));
     if (matched) {
@@ -442,7 +493,7 @@ export async function daylioBackupPreview(
 
     const groupId = int(tag.id_tag_group);
     if (groupId !== null && groupId >= 0 && !groupNames.has(groupId)) {
-      throw new DaylioBackupError(`tag ${id} names tag group ${groupId}, which the backup has no group for`);
+      throw new DaylioBackupError('record', `tag ${id} names tag group ${groupId}, which the backup has no group for`);
     }
 
     const named = groupId === null || groupId < 0 ? null : groupNames.get(groupId)!;
@@ -507,15 +558,23 @@ export async function daylioBackupPreview(
     const named = id === null ? 'an entry with no id' : `entry ${id}`;
 
     const epochDay = epochDayOf(record, 0);
-    if (epochDay === null) throw new DaylioBackupError(`${named} has no readable date`);
+    if (epochDay === null) throw new DaylioBackupError('record', `${named} has no readable date`);
 
     const moodId = int(record.mood);
+    /* Whether the entry logged a mood at all, which is not the same
+       question as whose position could be read. An entry logged against a
+       mood this app cannot place is still an entry that carries something,
+       so it must not be mistaken below for an empty record: the unreadable
+       position is a semantic gap, it is listed in the preview, and it
+       blocks the commit until it is resolved. */
+    let logged = false;
     let mood: number | null = null;
     if (moodId !== null && moodId > 0) {
       const resolved = moodOf.get(moodId);
       if (!resolved) {
-        throw new DaylioBackupError(`${named} names mood ${moodId}, which the backup has no mood row for`);
+        throw new DaylioBackupError('record', `${named} names mood ${moodId}, which the backup has no mood row for`);
       }
+      logged = true;
       mood = resolved.mood;
     }
 
@@ -523,11 +582,14 @@ export async function daylioBackupPreview(
     const body = htmlToText(str(record.note));
     const note = [title, body].filter((part) => part.trim().length > 0).join('\n');
 
-    const tags = ints(record.tags).map((tagId) => {
+    const tags: string[] = [];
+    for (const tagId of ints(record.tags)) {
       const resolved = tagIds.get(tagId);
-      if (!resolved) throw new DaylioBackupError(`${named} names tag ${tagId}, which the backup has no tag row for`);
-      return resolved;
-    });
+      if (resolved) tags.push(resolved);
+      else if (!nameless.has(tagId)) {
+        throw new DaylioBackupError('record', `${named} names tag ${tagId}, which the backup has no tag row for`);
+      }
+    }
 
     const dims: Record<string, number> = {};
     for (const value of list(record.scaleValues)) {
@@ -553,7 +615,7 @@ export async function daylioBackupPreview(
     for (const assetId of ints(record.assets)) {
       const asset = assets.get(assetId);
       if (!asset) {
-        throw new DaylioBackupError(`${named} names asset ${assetId}, which the backup has no asset row for`);
+        throw new DaylioBackupError('record', `${named} names asset ${assetId}, which the backup has no asset row for`);
       }
       if (missingAssets.has(assetId)) {
         unimported.add(assetId);
@@ -570,8 +632,8 @@ export async function daylioBackupPreview(
       plannedAssets.set(assetId, planned.asset);
     }
 
-    if (mood === null && tags.length === 0 && note === '' && photos.length === 0 && recordings.length === 0) {
-      throw new DaylioBackupError(`${named} has no mood, tags, note or attachment`);
+    if (!logged && tags.length === 0 && note === '' && photos.length === 0 && recordings.length === 0) {
+      throw new DaylioBackupError('record', `${named} has no mood, tags, note or attachment`);
     }
 
     journal.entries.push({
@@ -601,10 +663,13 @@ export async function daylioBackupPreview(
     const id = int(record.id);
     const named = id === null ? 'a milestone with no id' : `milestone ${id}`;
     const name = str(record.name);
-    if (!name) continue;
+    if (!name) {
+      unnamed += 1;
+      continue;
+    }
 
     const epochDay = epochDayOf(record, 1);
-    if (epochDay === null) throw new DaylioBackupError(`${named} has no readable date`);
+    if (epochDay === null) throw new DaylioBackupError('record', `${named} has no readable date`);
     if (flag(record.isAnniversary)) anniversaries += 1;
 
     const uuid = await derivedUuid(['daylio-milestone', name, epochDay]);
@@ -615,7 +680,7 @@ export async function daylioBackupPreview(
     if (assetId !== null && assetId > 0) {
       const asset = assets.get(assetId);
       if (!asset) {
-        throw new DaylioBackupError(`${named} names asset ${assetId}, which the backup has no asset row for`);
+        throw new DaylioBackupError('record', `${named} names asset ${assetId}, which the backup has no asset row for`);
       }
       const planned = missingAssets.has(assetId) ? null : await planAsset(assetId, asset, readAsset, missingAssets);
       if (planned && planned.kind === 'photo') {
@@ -667,17 +732,12 @@ export async function daylioBackupPreview(
      including a `repeat_value` of 127 that is a seven-bit weekday mask
      rather than a count of anything - nothing here reads it, which is
      the only safe way to not misread it. */
-  const goals = list(payload.goals).length;
-  if (goals > 0) skipped.push({ kind: 'goals', count: goals });
-  const statistics = list(payload.goalSuccessWeeks).length;
-  if (statistics > 0) skipped.push({ kind: 'statistics', count: statistics });
-  const achievements = list(payload.achievements).length;
-  if (achievements > 0) skipped.push({ kind: 'achievements', count: achievements });
-  const preferences = list(payload.prefs).length;
-  if (preferences > 0) skipped.push({ kind: 'preferences', count: preferences });
-  const reminders = list(payload.reminders).length;
-  if (reminders > 0) skipped.push({ kind: 'reminders', count: reminders });
+  for (const [kind, fields] of OUT_OF_SCOPE) {
+    const count = fields.reduce((total, field) => total + list(payload[field]).length, 0);
+    if (count > 0) skipped.push({ kind, count });
+  }
   if (int(payload.moodIconsPackId) !== null) skipped.push({ kind: 'icons' });
+  if (unnamed > 0) skipped.push({ kind: 'unnamed', count: unnamed });
 
   if (unimported.size > 0) skipped.push({ kind: 'assets', count: unimported.size });
 
@@ -713,7 +773,7 @@ async function planAsset(
   const bytes = await readAsset(id);
   const uuid = await derivedUuid(['daylio-asset', asset.checksum]);
 
-  if (asset.type === 2) {
+  if (asset.type === AUDIO_ASSET) {
     const extension = audioExtension(bytes) ?? extensionOf(asset.sourceName);
     if (!extension) {
       missing.add(id);

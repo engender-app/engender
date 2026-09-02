@@ -26,7 +26,8 @@ import {
   daylioAssetFiles,
   daylioPayload,
   makeDaylioBackup,
-  makeDaylioBackupFrom
+  makeDaylioBackupFrom,
+  makeMalformedDaylioBackup
 } from './test-support/daylio-backup.ts';
 import { makeZip } from './test-support/zip.ts';
 
@@ -369,7 +370,8 @@ test('the preview names what it skipped', async () => {
     { kind: 'icons' },
     { kind: 'preferences', count: 1 },
     { kind: 'reminders', count: 1 },
-    { kind: 'statistics', count: 1 }
+    // Both of Daylio's records about goals: one success week, one goal entry.
+    { kind: 'statistics', count: 2 }
   ]);
 });
 
@@ -484,6 +486,77 @@ test('a member that decodes to something other than JSON is refused', async () =
 test('a payload that is not an object is refused', async () => {
   const backup = await makeDaylioBackupFrom(btoa('[1, 2, 3]'));
   await assert.rejects(() => daylioBackupPreview(backup, emptyArchiveJournal(), naming), DaylioBackupError);
+});
+
+test('the malformed fixture is refused, naming the record rather than the file', async () => {
+  const malformed = await makeMalformedDaylioBackup();
+  await assert.rejects(
+    () => daylioBackupPreview(malformed, emptyArchiveJournal(), naming),
+    (error: Error) => {
+      assert.ok(error instanceof DaylioBackupError);
+      assert.equal(error.kind, 'record');
+      assert.match(error.message, /entry 1 names mood 404/);
+      return true;
+    }
+  );
+});
+
+test('a refusal carries the kind a screen branches on, not just its wording', async () => {
+  const platform = { ...daylioPayload(), metadata: { platform: 'ios' } };
+  await assert.rejects(() => preview(platform), (error: Error) => {
+    assert.equal((error as DaylioBackupError).kind, 'platform');
+    return true;
+  });
+
+  await assert.rejects(
+    () => daylioBackupPreview(new TextEncoder().encode('nope'), emptyArchiveJournal(), naming),
+    (error: Error) => {
+      assert.equal((error as DaylioBackupError).kind, 'unreadable');
+      return true;
+    }
+  );
+});
+
+test('an entry whose only content is an unreadable mood reaches the preview rather than aborting it', async () => {
+  const moods = (daylioPayload().customMoods as Record<string, unknown>[]).map((mood) => ({
+    ...mood,
+    mood_group_id: 41
+  }));
+  // Entry 2 carries a mood and a tag; strip the tag and it is a mood-only
+  // entry whose mood cannot be placed, which is exactly the case the
+  // preview exists to hold open.
+  const entries = (daylioPayload().dayEntries as Record<string, unknown>[]).map((entry) =>
+    entry.id === 2 ? { ...entry, tags: [] } : entry
+  );
+
+  const result = await preview({ ...daylioPayload(), customMoods: moods, dayEntries: entries });
+  assert.equal(result.entryCount, 3);
+  assert.equal(result.unmappedMoodNames.length, 3);
+  assert.equal(entryOn(result, '2026-01-16').mood, null);
+});
+
+test('an entry carrying only a tag row that has no name of its own is refused, not mis-blamed', async () => {
+  // A nameless tag cannot be imported, so the preview names it - and an
+  // entry pointing at it must not be told the row is missing, because it
+  // is not.
+  const tags = (daylioPayload().tags as Record<string, unknown>[]).map((tag) =>
+    tag.id === 83 ? { ...tag, name: '' } : tag
+  );
+
+  const result = await preview(withCollection('tags', tags));
+  assert.deepEqual(result.skipped.find((skip) => skip.kind === 'unnamed'), { kind: 'unnamed', count: 1 });
+  // Entry 1 names tags 14 and 83; only the named one arrives.
+  assert.equal(entryOn(result, '2026-01-15').tags.length, 1);
+});
+
+test('a milestone with no name of its own is named as skipped rather than dropped in silence', async () => {
+  const milestones = (daylioPayload().milestones as Record<string, unknown>[]).map((milestone) =>
+    milestone.id === 2 ? { ...milestone, name: '' } : milestone
+  );
+
+  const result = await preview(withCollection('milestones', milestones));
+  assert.equal(result.milestoneCount, 1);
+  assert.deepEqual(result.skipped.find((skip) => skip.kind === 'unnamed'), { kind: 'unnamed', count: 1 });
 });
 
 test('an entry with no readable date is refused, naming the entry', async () => {

@@ -304,6 +304,21 @@ export function makeDaylioBackup(
   return makeDaylioBackupFrom(base64(new TextEncoder().encode(JSON.stringify(payload))), assets);
 }
 
+/** The malformed half of the fixture pair the spec asks every source for
+    (`daylio-malformed.csv` is the CSV's). One file that is a real zip with
+    a real base64 member and a real JSON object inside it - so it gets past
+    every container check - and is then wrong in the way that matters: an
+    entry pointing at a mood the file has no row for.
+
+    Kept as one named file rather than only as the per-case payloads the
+    tests bend inline, because "what does this source do with a broken
+    file" should have one answer somebody can run. */
+export function makeMalformedDaylioBackup(): Promise<Uint8Array> {
+  const payload = daylioPayload();
+  const entries = (payload.dayEntries as Record<string, unknown>[]).map((entry) => ({ ...entry, mood: 404 }));
+  return makeDaylioBackup({ ...payload, dayEntries: entries });
+}
+
 /** A backup whose `backup.daylio` member holds exactly `member`, for the
     tests about a container that is not readable at all. */
 export function makeDaylioBackupFrom(member: string, assets: readonly ZipSource[] = []): Promise<Uint8Array> {
