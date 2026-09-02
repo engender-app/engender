@@ -202,6 +202,10 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   // One mute, so the section is non-empty and a round trip has a row to
   // lose (phase 6 ticket 05).
   await journal.eraMutes.setEraMuted(beforeIKnew, true);
+  // Two lines, so the fixture pins an order beyond "the only one" (phase 6
+  // ticket 14).
+  await journal.comfortItems.addItem('text a friend');
+  await journal.comfortItems.addItem('walk by the river');
   await journal.effectCategories.setCategoryEnabled('sensory', true);
   const customEffect = await journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape');
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);

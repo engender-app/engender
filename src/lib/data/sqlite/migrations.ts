@@ -1688,7 +1688,34 @@ CREATE TABLE era_mute (
 );
 `;
 
-/* v52: entry templates become the person's own (phase 6 ticket 07, ADR-0002).
+/* v52: the comfort list (phase 6 ticket 14, ADR-0040, CONTEXT: "Comfort
+   list") - who to text, which walk, which playlist, in the person's own
+   words.
+
+   Four columns, the same shape checklist_item already has and for the same
+   reason: entirely the user's own content, nothing bundled behind it, so
+   `uuid` alone is the row's travelling identity and there is no `key`
+   column for a built-in that will never exist - the ticket itself forbids
+   a starter list, on purpose, so nothing here is ever seeded.
+   `position` orders it the same way `order_index` orders a tag or a
+   checklist item; named `position` rather than `order_index` because the
+   ticket that specified this table named it that.
+
+   Numbered v52 rather than v51: ticket-05's era_mute landed on main first
+   and took v51 (the merge hazard schema-version.ts's own header warns
+   about), so this was renumbered here rather than fought over during the
+   merge. */
+const SCHEMA_V52 = `
+CREATE TABLE comfort_item (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  text        TEXT NOT NULL,
+  position    INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+`;
+
+/* v53: entry templates become the person's own (phase 6 ticket 07, ADR-0002).
 
    `ENTRY_TEMPLATES` and `ENTRY_PROMPT_KEYS` were two overlapping concepts,
    hardcoded and unstorable - a prompt is now a template whose only content
@@ -1709,8 +1736,12 @@ CREATE TABLE era_mute (
    Tags and dimension values are child tables instead, mirroring `entry_tag`
    and `entry_dimension_value` exactly (down to the FK shape), because a
    template's tag list and dial readings are exactly that kind of link - a
-   set of rows a real tag or dimension is deleted out from under. */
-const SCHEMA_V52 = `
+   set of rows a real tag or dimension is deleted out from under.
+
+   Numbered v53 rather than v52: ticket-14's comfort_item landed on main
+   first and took v52, the same renumbering-at-merge hazard its own
+   comment above names. */
+const SCHEMA_V53 = `
 CREATE TABLE entry_template (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid            TEXT UNIQUE,
@@ -1788,5 +1819,6 @@ export const migrations: Migration[] = [
   { version: 49, sql: SCHEMA_V49 },
   { version: 50, sql: SCHEMA_V50 },
   { version: 51, sql: SCHEMA_V51 },
-  { version: 52, sql: SCHEMA_V52 }
+  { version: 52, sql: SCHEMA_V52 },
+  { version: 53, sql: SCHEMA_V53 }
 ];

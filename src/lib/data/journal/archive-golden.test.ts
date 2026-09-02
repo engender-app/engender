@@ -84,7 +84,8 @@ const SECTIONS = [
   'feltSenseEntries',
   'checklists',
   'wearSessions',
-  'voiceBenchmarks'
+  'voiceBenchmarks',
+  'comfortItems'
 ] as const satisfies readonly (keyof ArchiveJournal)[];
 
 /** Committed alongside the fixture, not derived from it: a section's count
