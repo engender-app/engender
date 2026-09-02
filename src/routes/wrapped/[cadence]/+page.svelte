@@ -491,7 +491,7 @@
         <SectionHeading text={m.eras_title()} />
         <ListCard>
           {#each erasQuery.rows as era (era.id)}
-            <ListRow key={`range-era-${era.id}`} title={era.name} onclick={() => chooseEra(era.id)}>
+            <ListRow key={`range-era-${era.id}`} title={era.name} chevron={false} onclick={() => chooseEra(era.id)}>
               {#snippet trailing()}
                 {#if picked.choice === 'era' && picked.eraId === era.id}
                   <Icon name="check" size={20} />
