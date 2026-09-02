@@ -257,12 +257,23 @@
         <span class="cal-half is-later" style="background:{fillAt(c.shape.last)}"></span>
       {/if}
     </span>
-    <!-- Over the halves rather than under them, and without its own disc,
-         so one face reads across a split day the way Daylio's does. It is
-         drawn for the day's average step: which of the two readings the day
-         "really" was is the question none of this answers. -->
+    <!-- Over the halves rather than under them, and without discs of their
+         own, so the colour underneath is what a face sits on.
+
+         A split day draws two faces and shows half of each, cut on the same
+         line the colour is (Alicja, 2026-09-02). Clipped rather than nested
+         inside the halves, because the later half is a pixel proud on three
+         sides and a face hung inside it would be a pixel off the one beside
+         it; both of these are the whole cell, cut. -->
     {#if isMood && c.step > 0}
-      <span class="cal-face"><MoodFace step={c.step} size="100%" disc={false} /></span>
+      {#if c.shape?.kind === 'split'}
+        <span class="cal-face is-earlier" data-hm-cell-face
+          ><MoodFace step={c.shape.first} size="100%" disc={false} /></span
+        >
+        <span class="cal-face is-later"><MoodFace step={c.shape.last} size="100%" disc={false} /></span>
+      {:else}
+        <span class="cal-face" data-hm-cell-face><MoodFace step={c.step} size="100%" disc={false} /></span>
+      {/if}
     {/if}
   </span>
 {/snippet}
@@ -393,13 +404,19 @@
     border: 1px solid var(--outline);
   }
 
-  /* Over the halves, and the reason the face carries no disc of its own. */
+  /* Over the halves, and the reason a face carries no disc of its own. */
   .cal-face {
     position: absolute;
     inset: 0;
     z-index: 1;
     pointer-events: none;
   }
+  /* Cut on the colour's own seam, which sits a pixel left of centre because
+     the later half is a pixel proud over the middle. Off by that pixel and
+     a mouth would step across the join twice, once for the colour and once
+     for the ink. */
+  .cal-face.is-earlier { clip-path: inset(0 calc(50% + 1px) 0 0); }
+  .cal-face.is-later { clip-path: inset(0 0 0 calc(50% - 1px)); }
   /* Today, marked by an outline rather than by a fill, because the fill is
      already saying something else. Above the deck, so a stacked today is
      still ringed once. */
