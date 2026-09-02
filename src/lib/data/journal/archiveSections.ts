@@ -828,6 +828,21 @@ const SECTIONS = [
     identity: 'uuid',
     orderBy: 'position, id',
     columns: { uuid: 'id', text: 'text', position: 'position' }
+  }),
+  /* The import log (phase 7 ticket 03, ADR-0027). Hand-written rather than
+     `flat()`: `counts` is a small map rather than a scalar column, which the
+     descriptor has no transform for. Never `whole` - a structure file is
+     something one person hands another (ADR-0049), and an import record is
+     a fact about this device's own history, not content worth passing on -
+     but it does travel with a backup, per this ticket's own reasoning: a
+     restore that brings your records back but not where they came from has
+     lost the thing the ticket added. */
+  section({
+    name: 'importLog',
+    discard: ['DELETE FROM import_log'],
+    travels: 'none',
+    read: ({ driver }) => read.readImportLog(driver),
+    apply: apply.applyImportLog
   })
 ] as const;
 

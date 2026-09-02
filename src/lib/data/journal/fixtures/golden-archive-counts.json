@@ -6,7 +6,7 @@
   "entryTemplates": 15,
   "affirmations": 15,
   "bodyRegions": 11,
-  "entries": 1,
+  "entries": 2,
   "milestones": 1,
   "labResults": 1,
   "measurementTypes": 5,
@@ -40,5 +40,6 @@
   "checklists": 1,
   "wearSessions": 1,
   "voiceBenchmarks": 1,
-  "comfortItems": 2
+  "comfortItems": 2,
+  "importLog": 1
 }

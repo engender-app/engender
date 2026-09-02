@@ -181,7 +181,11 @@ export const TABLE_NAMES = [
      a tag or a measurement type is. An entry created from one carries no
      link back to it - applying a template only ever seeds the draft
      (types.ts) - so no read here depends on 'entry'. */
-  'entryTemplate'
+  'entryTemplate',
+  /* The import log (phase 7 ticket 03): its own name so the settings
+     screen's `importLog` read does not re-run on every other write - only
+     an import itself touches this table. */
+  'importLog'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -738,7 +742,13 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // And a snapshot reads all of it, for the same reason: every section of
     // the archive is one area's rows (archiveSections.ts). The Daylio
     // preview resolves against a snapshot, so it reads the same set.
-    reads: { snapshot: [...TABLE_NAMES], previewDaylioImport: [...TABLE_NAMES] }
+    reads: {
+      snapshot: [...TABLE_NAMES],
+      previewDaylioImport: [...TABLE_NAMES],
+      // Its own table only, unlike snapshot/previewDaylioImport above: the
+      // settings screen showing this should not re-run on an entry edit.
+      importLog: ['importLog']
+    }
   })
 };
 
