@@ -14,7 +14,6 @@
    message fails the typecheck rather than showing a raw key to someone. */
 
 import type {
-  EntryTemplate,
   GenderDimension,
   GenderPreset,
   Lean,
@@ -448,19 +447,6 @@ export function regimenTemplateRows(): RegimenTemplate[] {
     ester: null,
     route: '',
     lean: REGIMEN_TEMPLATE_LEAN[key]
-  }));
-}
-
-export function entryTemplateRows(): EntryTemplate[] {
-  return ENTRY_TEMPLATES.map((t) => ({
-    id: t.key,
-    name: '',
-    tags: [...t.tags],
-    dims: { ...t.dims },
-    noteScaffold: '',
-    presentationId: null,
-    builtIn: true,
-    hidden: false
   }));
 }
 

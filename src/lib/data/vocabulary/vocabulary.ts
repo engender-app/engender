@@ -331,12 +331,15 @@ export const vocabulary = {
     return reference.visibleEntryTemplates.map(localizeEntryTemplate);
   },
   /** One rotating reflection cue for the entry-creation banner (phase 4
-      features ticket 17), picked from among the folded-in guided prompts -
-      templates whose only content is a note scaffold (phase 6 ticket 07):
-      no tags, no dims, no presentation. Null once every one has been
-      hidden, which the banner reads as nothing to show rather than an
-      error - the same resting state hiding every built-in already gives
-      any other picker. */
+      features ticket 17). Picked from every visible template whose only
+      content is a note scaffold - no tags, no dims, no presentation - which
+      is a structural test, not a `builtIn` check: the eight folded-in
+      guided prompts (phase 6 ticket 07) always have this shape, but so does
+      any authored template a person builds the same way, and there is no
+      reason to keep the banner from offering theirs too once it exists.
+      Null once every one has been hidden, which the banner reads as
+      nothing to show rather than an error - the same resting state hiding
+      every built-in already gives any other picker. */
   randomPrompt(): EntryTemplate | null {
     const pool = this.visibleEntryTemplates.filter(
       (t) => t.tags.length === 0 && Object.keys(t.dims).length === 0 && t.noteScaffold !== '' && t.presentationId === null

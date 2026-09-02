@@ -14,7 +14,6 @@ import {
   MILESTONE_TEMPLATE_LEAN,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
-  entryTemplateRows,
   milestoneTemplateRows,
   regimenTemplateRows,
   withBuiltInDimensions,
@@ -215,26 +214,6 @@ test('every entry template names tags and dimensions that exist', () => {
 
   expect(danglingTags).toEqual([]);
   expect(danglingDims).toEqual([]);
-});
-
-test('entry templates seed with no display text, because names are resolved by key', () => {
-  const rows = entryTemplateRows();
-
-  expect(rows).toHaveLength(ENTRY_TEMPLATES.length);
-  expect(
-    rows.every(
-      (t) => t.name === '' && t.builtIn && !t.hidden && t.noteScaffold === '' && t.presentationId === null
-    )
-  ).toBe(true);
-});
-
-test('entryTemplateRows copies its tags and dims, so mutating one row cannot leak into the built-in list', () => {
-  const rows = entryTemplateRows();
-  rows[0].tags.push('should-not-appear');
-  rows[0].dims.should_not_appear = 1;
-
-  expect(entryTemplateRows()[0].tags).not.toContain('should-not-appear');
-  expect(entryTemplateRows()[0].dims).not.toHaveProperty('should_not_appear');
 });
 
 test('a custom group survives seeding', () => {
