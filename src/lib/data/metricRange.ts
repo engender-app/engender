@@ -52,3 +52,30 @@ export function heatLevel(value: number | null, range: MetricRange): number {
   if (value == null) return 0;
   return Math.min(HEAT_LEVELS, Math.max(1, Math.ceil(normalize(value, range) * HEAT_LEVELS)));
 }
+
+/** The band edges, in days, that split "how long ago" into the ramp's four
+    swatches: today or yesterday, within the week, within the month, longer
+    ago than that.
+
+    Calendar granularities on purpose. An injection cadence is weekly for
+    some people and fortnightly for others, and bands drawn from a cadence
+    would be the app implying a site was used too soon (phase 6 ticket 13).
+    Three edges for four swatches - HEAT_LEVELS above is the other half of
+    this pair. */
+export const RECENCY_DAY_BANDS = [1, 7, 30];
+
+/** Which swatch a "days since last used" reading gets. The most recent use
+    is the strongest fill and it fades from there, so the ramp describes
+    where the recent ones went rather than pointing at where the next one
+    should go.
+
+    `null` - a site with no dose ever recorded against it - is level 0, the
+    empty swatch, because neither a large number nor zero reads as "never".
+
+    A reading below zero, which a dose dated later today can produce, shades
+    as the most recent rather than falling off the end. */
+export function recencyHeatLevel(daysAgo: number | null): number {
+  if (daysAgo === null) return 0;
+  const band = RECENCY_DAY_BANDS.findIndex((edge) => daysAgo <= edge);
+  return band === -1 ? 1 : HEAT_LEVELS - band;
+}
