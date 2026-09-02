@@ -111,7 +111,6 @@
   let episodes = $derived(episodesQuery.rows);
   let doses = $derived(dosesQuery.rows);
   let scheduleView = $derived(comparisonQuery.value ?? null);
-  let siteRecencyByKey = $derived(siteRecency(allInjectionDosesQuery.rows, today));
   let loading = $derived(episodesQuery.loading || dosesQuery.loading);
 
   /* Newest first, each row carrying the episode it was attributed to. Derived
@@ -363,6 +362,38 @@
   );
 
   let editorIsInjection = $derived(editor !== null && isInjectionDose(editor));
+
+  /** The map's two history marks, both read at the moment of the dose being
+      logged rather than one from then and one from today (ticket 13). The
+      recency shades every dot and the last injection rings one of them, so
+      a dose being edited a fortnight back would otherwise carry a fill
+      measured from today under a ring measured from then. For a new dose,
+      which is nearly every dose, the moment is now and this is the read it
+      always was.
+
+      Both leave out the dose being edited, the way lastInjectionBefore
+      already does on its own: a dose is never its own predecessor. */
+  let editorMoment = $derived(editor ? timestampOf(editor.day, editor.time) : null);
+  let dosesBeforeEditor = $derived.by(() => {
+    const moment = editorMoment;
+    if (moment === null) return allInjectionDosesQuery.rows;
+    const editing = editor?.id;
+    return allInjectionDosesQuery.rows.filter((d) => d.timestamp < moment && d.id !== editing);
+  });
+  let siteRecencyByKey = $derived(
+    siteRecency(
+      dosesBeforeEditor,
+      editorMoment === null ? today : epochDayFromTimestamp(editorMoment)
+    )
+  );
+  /** Read off the whole log rather than the 90-day window the list shows: a
+      rotation site's last use routinely predates that window, which is why
+      allInjectionDosesQuery exists. */
+  let lastUsedSite = $derived(
+    editorMoment === null
+      ? null
+      : (lastInjectionBefore(dosesBeforeEditor, editorMoment)?.injectionSite ?? null)
+  );
   let editorIsTopical = $derived(editor !== null && isTopicalDose(editor));
   /* An injection with no site picked yet cannot be saved: a rotation map
      nobody tapped would store an empty site and quietly break the rotation
@@ -962,7 +993,7 @@
               <p class="muted small">{m.dose_injection_site_hint()}</p>
               <InjectionSiteMap
                 value={editor!.injectionSite}
-                lastUsed={lastInjectionBefore(doses, timestampOf(editor!.day, editor!.time), editor!.id)?.injectionSite ?? null}
+                lastUsed={lastUsedSite}
                 recency={siteRecencyByKey}
                 onChange={(site) => editor && (editor.injectionSite = site)}
               />
