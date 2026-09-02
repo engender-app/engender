@@ -521,6 +521,7 @@
   "tpl_entry_presentation_feeling": "Poczucie wyglądu",
   "tpl_entry_name_pronouns_feeling": "Imię i zaimki",
   "tpl_entry_proud_moment": "Moment dumy",
+  "tpl_entry_appointment_debrief": "Podsumowanie wizyty",
   "entry_templates_title": "Szablony",
   "entry_templates_row_sub": "Gotowe tagi, skale i notatki do wpisów, które piszesz często.",
   "entry_templates_intro": "Uzupełnij własne, żeby ominąć pustą stronę. Wbudowane też można edytować albo ukryć.",
@@ -550,6 +551,7 @@
   "prompt_presentation_feeling": "Jak czujesz się dzisiaj ze swoim wyglądem?",
   "prompt_name_pronouns_feeling": "Jak było dziś słyszeć swoje imię i zaimki?",
   "prompt_proud_moment": "Co dzisiaj napawa cię dumą?",
+  "prompt_appointment_debrief": "Jak było?",
   "region_face_jaw": "twarz i szczęka",
   "region_voice_throat": "głos i gardło",
   "region_chest": "klatka piersiowa",
@@ -824,6 +826,43 @@
     }
   ],
   "daylio_imported_toast": "Zaimportowano wpisy: {entries}, nowe tagi: {tags}.",
+  "dlb_row_title": "Import z Daylio (kopia)",
+  "dlb_row_sub": "też kamienie milowe, zdjęcia i notatki głosowe, zawsze jako dołączenie",
+  "dlb_sheet_title": "Import kopii z Daylio",
+  "dlb_file_label": "Kopia z Daylio",
+  "dlb_file_placeholder": "Wybierz plik .daylio…",
+  "dlb_unreadable": "Nie udało się odczytać tego pliku jako kopii z Daylio. Nic nie zostało zaimportowane.",
+  "dlb_not_android": "Ta kopia pochodzi z Daylio na iPhone, gdzie dane leżą inaczej. Da się odczytać tylko kopie z Androida. Nic nie zostało zaimportowane.",
+  "dlb_is_csv": "To eksport CSV z Daylio, nie kopia. Użyj importu CSV.",
+  "dlb_failed": "Nie udało się dokończyć importu z Daylio. Dziennik jest dokładnie taki jak był.",
+  "dlb_unmapped": "Te nastroje nie mają miejsca na skali: {names}. Nic nie zostało zaimportowane.",
+  "dlb_arriving": "Do dodania",
+  "dlb_entries": "Wpisy",
+  "dlb_milestones": "Kamienie milowe",
+  "dlb_tags": "Tagi",
+  "dlb_tag_counts": "{matched} dopasowanych · {new} nowych",
+  "dlb_scales": "Skale",
+  "dlb_templates": "Szablony",
+  "dlb_attachments": "Zdjęcia i notatki głosowe",
+  "dlb_moods": "Nastroje",
+  "dlb_mood_unmapped": "brak miejsca na skali",
+  "dlb_no_moods": "W tej kopii nie ma nastrojów.",
+  "dlb_left_behind": "Zostaje w Daylio",
+  "dlb_left_behind_note": "To zostaje w Daylio. Tam nic się nie zmienia.",
+  "dlb_skip_goals": "Cele",
+  "dlb_skip_statistics": "Statystyki Daylio",
+  "dlb_skip_achievements": "Osiągnięcia",
+  "dlb_skip_preferences": "Ustawienia Daylio",
+  "dlb_skip_reminders": "Przypomnienia Daylio",
+  "dlb_skip_icons": "Ikony nastrojów i tagów",
+  "dlb_skip_anniversaries": "Roczne powtórzenia kamieni milowych",
+  "dlb_skip_scales": "Skale, których nie da się odczytać",
+  "dlb_skip_assets": "Załączniki, których nie ma w pliku",
+  "dlb_skip_unnamed": "Rekordy bez własnej nazwy",
+  "dlb_version_note": "Ta kopia podaje wersję {version}, której ta aplikacja jeszcze nie widziała. Zostanie odczytana pole po polu, a wszystko nieznane zostaje pominięte.",
+  "dlb_nothing_new": "Wszystko z tej kopii już tu jest.",
+  "dlb_confirm": "Importuj to, co na liście",
+  "dlb_imported_toast": "Zaimportowano. Wpisy: {entries}, kamienie milowe: {milestones}, zdjęcia i notatki głosowe: {attachments}.",
   "palette_trans": "Transpłciowa",
   "palette_nonbinary": "Niebinarna",
   "palette_genderfluid": "Genderfluid",
@@ -1886,6 +1925,8 @@
   "notice_stock_snooze_btn": "Przypomnij za 24 godziny",
   "notice_stock_dont_show_btn": "Nie pokazuj ponownie",
   "notice_stock_snoozed_toast": "Przypomnienie pojawi się ponownie za 24 godz.",
+  "debrief_offer_title": "Jak poszła wizyta?",
+  "debrief_offer_write": "Napisz o tym",
   "tile_active_tryout_title": "Testowanie tożsamości",
   "tile_active_tryout_sub": "Przypomina o zapisaniu odczuć przy aktywnym testowaniu imienia lub zaimków.",
   "tile_tryout_action": "Zapisz odczucia",
@@ -2496,6 +2537,7 @@
   "appointment_prep_delete": "Usuń",
   "appointment_prep_context_heading": "Na tę wizytę",
   "appointment_prep_last_appointment_label": "Ostatnia wizyta",
+  "appointment_debrief_row": "Twoje podsumowanie",
   "appointment_prep_last_appointment_unset": "Nie ustawiono",
   "appointment_prep_last_appointment_aria": "Data ostatniej wizyty",
   "appointment_prep_labs_heading": "Badania od tamtej wizyty",
@@ -2806,6 +2848,7 @@
   "imp_log_section": "Historia importów",
   "imp_log_source_daylio": "Daylio",
   "imp_log_row_sub": "{counts} · {when}",
+  "imp_log_nothing": "nic nowego",
   "imp_log_n_entries": [
     {
       "declarations": [
@@ -2837,6 +2880,41 @@
         "nPlural=few": "{n} tagi",
         "nPlural=many": "{n} tagów",
         "nPlural=other": "{n} tagów"
+      }
+    }
+  ],
+  "imp_log_source_daylio_backup": "Kopia z Daylio",
+  "imp_log_n_milestones": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} kamień milowy",
+        "nPlural=few": "{n} kamienie milowe",
+        "nPlural=many": "{n} kamieni milowych",
+        "nPlural=other": "{n} kamieni milowych"
+      }
+    }
+  ],
+  "imp_log_n_attachments": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} zdjęcie lub notatka głosowa",
+        "nPlural=few": "{n} zdjęcia i notatki głosowe",
+        "nPlural=many": "{n} zdjęć i notatek głosowych",
+        "nPlural=other": "{n} zdjęć i notatek głosowych"
       }
     }
   ]
