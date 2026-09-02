@@ -2529,8 +2529,17 @@ try {
   await page.waitForSelector('button[data-site="thigh-left"]');
   await page.locator('button[data-site="thigh-left"]').scrollIntoViewIfNeeded();
 
-  /* injectionSiteMap.ts's MAP_TOUCH_GAP: Android asks for 8dp of clear
-     space between two touch targets, on top of the targets themselves. */
+  /* The clear space Android asks for between two touch targets, on top of
+     the targets themselves. Read out of the module that spaces the dots by
+     it rather than written here as well, so raising it cannot leave this
+     check asserting the old number. */
+  const layout = await readFile(
+    new URL('../src/lib/components/injectionSiteMap.ts', import.meta.url),
+    'utf8'
+  );
+  const gap = Number(/MAP_TOUCH_GAP = (\d+)/.exec(layout)?.[1]);
+  if (!Number.isFinite(gap)) throw new Error('injectionSiteMap.ts declares no MAP_TOUCH_GAP');
+
   const map = await page.evaluate((gap) => {
     const target = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--touch-target')
@@ -2563,9 +2572,10 @@ try {
       sites: dots.map((d) => d.key),
       never: dots.filter((d) => d.never).map((d) => d.key),
       unshaded: dots.filter((d) => !d.never && transparent(d.fill)).map((d) => d.key),
+      shadedNever: dots.filter((d) => d.never && !transparent(d.fill)).map((d) => d.key),
       clearance: target + gap
     };
-  }, 8);
+  }, gap);
 
   /* Whether a tap aimed at a dot lands on that dot, which is the half of
      the crowding question a rect cannot answer: two 48px targets 33.7px
@@ -2608,6 +2618,12 @@ try {
   }
   if (map.unshaded.length) {
     throw new Error(`used sites with no recency swatch: ${map.unshaded.join(', ')}`);
+  }
+  /* The other half of that, which is the criterion a colour ramp cannot
+     meet on its own: a site never used is drawn empty rather than at the
+     pale end of the ramp, so it is not merely the faintest fill. */
+  if (map.shadedNever.length) {
+    throw new Error(`sites never used but drawn with a fill: ${map.shadedNever.join(', ')}`);
   }
 
   ok('every dot on the injection map is separately tappable at 320px, and the sites the demo never used are drawn apart from the ones it did');

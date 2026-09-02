@@ -1195,7 +1195,7 @@
   "dose_route_label": "Route",
   "dose_status_label": "Status",
   "dose_injection_site_label": "Injection site",
-  "dose_injection_site_hint": "Tap where it went. Each site is shaded by how long ago it was used, and a dashed ring marks the last one.",
+  "dose_injection_site_hint": "Tap where it went. The shading says how long ago each site was used, and an empty dot is one with nothing logged yet. The dashed ring is where the last one went.",
   "dose_vehicle_label": "Vehicle",
   "dose_app_site_label": "Application site",
   "dose_scheduled_legend": "What was scheduled",

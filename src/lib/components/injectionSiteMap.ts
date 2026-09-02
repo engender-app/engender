@@ -54,7 +54,7 @@ export function sitePosition(site: InjectionSite): { top: number; left: number }
 
 /** The same point in CSS px at the width the map actually renders at, which
     is the only unit a touch target's size can be compared against. */
-export function siteCentre(site: InjectionSite, mapWidth = MAP_WIDTH): { x: number; y: number } {
+export function siteCentre(site: InjectionSite): { x: number; y: number } {
   const { top, left } = sitePosition(site);
-  return { x: (left / 100) * mapWidth, y: (top / 100) * mapWidth * 2 };
+  return { x: (left / 100) * MAP_WIDTH, y: (top / 100) * MAP_WIDTH * 2 };
 }
