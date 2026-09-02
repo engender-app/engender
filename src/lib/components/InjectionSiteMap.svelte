@@ -22,6 +22,8 @@
   import { injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
   import { sitePosition } from './injectionSiteMap';
 
+  const listHeadId = $props.id();
+
   let {
     value,
     lastUsed = null,
@@ -70,20 +72,22 @@
 <div class="site-map" role="radiogroup" aria-label={m.dose_site_map_aria()}>
   <!-- Decorative: every site's name is on its button, so the silhouette
        carries no information a screen reader needs. -->
-  <svg class="site-map-body" viewBox="0 0 100 200" aria-hidden="true" focusable="false">
-    <circle cx="50" cy="16" r="11" />
-    <rect x="33" y="29" width="34" height="59" rx="12" />
-    <rect x="19" y="34" width="12" height="52" rx="6" />
-    <rect x="69" y="34" width="12" height="52" rx="6" />
+  <svg class="site-map-body" viewBox="0 0 100 150" aria-hidden="true" focusable="false">
+    <circle cx="50" cy="10" r="8.5" />
+    <!-- Torso, then the arms beside it: the deltoid dot is a shoulder, so
+         the arms start high enough to have one. -->
+    <rect x="33" y="20" width="34" height="50" rx="12" />
+    <rect x="19" y="24" width="12" height="46" rx="6" />
+    <rect x="69" y="24" width="12" height="46" rx="6" />
     <!-- The pelvis: the hip and buttock dots need something to sit on, and
          without it they floated beside the figure. -->
-    <rect x="32" y="82" width="36" height="16" rx="8" />
-    <!-- The upper legs run flush with the pelvis: the buttock dot sits at
-         the top of one, and at 14 units wide it hung off the side. -->
-    <rect x="32" y="94" width="16" height="52" rx="8" />
-    <rect x="52" y="94" width="16" height="52" rx="8" />
-    <rect x="35" y="144" width="12" height="44" rx="6" />
-    <rect x="53" y="144" width="12" height="44" rx="6" />
+    <rect x="32" y="66" width="36" height="22" rx="10" />
+    <!-- Thighs to the foot of the box, and no shins. Every one of the six
+         regions is above the knee, so the lower legs were 130px of picture
+         that carried no site and pushed the map past the height the sheet
+         can show at once. -->
+    <rect x="32" y="84" width="16" height="66" rx="8" />
+    <rect x="52" y="84" width="16" height="66" rx="8" />
   </svg>
 
   {#each INJECTION_SITES as site (site.key)}
@@ -109,12 +113,43 @@
   <p class="muted small site-map-caption">{injectionSiteLabel(value)}</p>
 {/if}
 
+<!-- The ramp's key, on the pattern of the calendar heat-map's (ADR-0012):
+     the ends carry the reading's own endpoints rather than worst and best,
+     and the empty swatch gets its own item because "never" is not a step of
+     the ramp. It sits under the figure rather than in the hint above it: at
+     four lines of prose the hint pushed the map itself off a 390px screen,
+     and a ramp is quicker to show than to describe.
+
+     Hidden from a screen reader, which the silhouette above it is too. Every
+     row of the list below says its own state in words, which is the
+     equivalent this ticket owes; hearing the ramp described as well would be
+     the same information twice. -->
+{#if recency}
+  <div class="site-legend" aria-hidden="true">
+    <span class="site-legend-scale">
+      <span class="site-legend-end">{m.dose_site_legend_oldest()}</span>
+      {#each [1, 2, 3, 4] as level (level)}
+        <span class="site-legend-swatch" style={swatchStyle(level)}></span>
+      {/each}
+      <span class="site-legend-end">{m.dose_site_legend_newest()}</span>
+    </span>
+    <span class="site-legend-never">
+      <span class="site-legend-swatch is-never"></span>
+      {m.dose_site_never_used()}
+    </span>
+  </div>
+{/if}
+
 <!-- Ticket 10's list, kept: a colour ramp is not readable by a screen
      reader, so this is the recency in words rather than a duplicate to be
      tidied away now the map carries it. Each row shows its own dot's
      swatch, which makes the list the map's key as well as its equivalent. -->
 {#if recency}
-  <ul class="site-recency-list" aria-label={m.dose_site_recency_aria()}>
+  <!-- The heading is what the list's accessible name has always said, now
+       said on screen as well: the list is 500px below the figure on a phone,
+       so it arrives on its own with nothing to say what the numbers are. -->
+  <p class="muted small site-recency-head" id={listHeadId}>{m.dose_site_recency_aria()}</p>
+  <ul class="site-recency-list" aria-labelledby={listHeadId}>
     {#each INJECTION_SITES as site (site.key)}
       {@const days = recency[site.key]}
       <li
@@ -137,10 +172,11 @@
   .site-map {
     position: relative;
     width: 100%;
-    /* injectionSiteMap.ts spaces the dots against this number in px, and
-       its test holds the two apart by a touch target. */
+    /* injectionSiteMap.ts spaces the dots against these two numbers in px,
+       and its test holds the closest pair a touch target and a gap apart.
+       The height is what the sheet can show at once; see MAP_HEIGHT. */
     max-width: 280px;
-    aspect-ratio: 1 / 2;
+    aspect-ratio: 2 / 3;
     margin: 0 auto var(--space-2);
   }
   .site-map-body {
@@ -245,6 +281,38 @@
   .site-map-caption {
     text-align: center;
     margin-bottom: var(--space-3);
+  }
+  /* The key, on the calendar legend's measurements (HeatMap.svelte). */
+  .site-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    margin-bottom: var(--space-3);
+  }
+  .site-legend-scale,
+  .site-legend-never {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .site-legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1.5px solid var(--outline-strong);
+    background: var(--dot-fill, var(--surface));
+  }
+  .site-legend-swatch.is-never {
+    background: none;
+    border-width: 2px;
+  }
+  .site-recency-head {
+    margin: 0 0 var(--space-1);
   }
   .site-recency-list {
     list-style: none;

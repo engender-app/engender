@@ -285,6 +285,22 @@ for (const palette of PALETTES) {
     await page.locator('.site-map').screenshot({ path: `${outDir}/dose-recency-map-${palette}-${theme}.png` });
     process.stdout.write(`  dose-recency-map-${palette}-${theme}\n`);
 
+    /* The sheet as a screen, at the two places a person stops scrolling:
+       the whole figure with its key, and the list. Asked for by Alicja on
+       2026-09-02 - "no screen with a list visible" - and it is the shot
+       that shows what the figure's height costs, which is why the figure is
+       420px and not the 560px it was. */
+    if (palette === 'trans') {
+      for (const [name, handle] of [
+        ['map', '.site-map'],
+        ['list', '.site-recency-list']
+      ]) {
+        await page.locator(handle).scrollIntoViewIfNeeded();
+        await page.waitForTimeout(SETTLED);
+        await shoot(page, `dose-recency-frame-${name}-${theme}`);
+      }
+    }
+
     /* The three channels at once, on the palette the app opens on: a fill
        per site's recency, the dashed ring where the last injection went,
        and the ring around the site tapped for this dose. Then the keyboard,

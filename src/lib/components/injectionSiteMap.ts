@@ -8,10 +8,17 @@
 
 import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
 
-/** The figure's width in CSS px, which is `max-width` on `.site-map` and
-    what the map renders at on a 320px phone. The box is twice as tall as
-    it is wide, matching the SVG's viewBox. */
+/** The figure's box in CSS px: `max-width` on `.site-map` and the height
+    its aspect ratio gives that width, matching the SVG's viewBox.
+
+    The height is the binding constraint, not the width. The sheet this map
+    lives in scrolls its own content in a 500px window on an 844px phone, so
+    a figure taller than that can never be seen whole - at 560px the deltoid
+    dots and the thigh dots were never on screen at once, which is a
+    rotation map that cannot answer the question it exists for. 420px leaves
+    the figure and its caption inside that window. */
 export const MAP_WIDTH = 280;
+export const MAP_HEIGHT = 420;
 
 /** `--touch-target` in base.css, which this layout is spaced against and
     cannot read. The test next door holds the two in step. */
@@ -26,23 +33,28 @@ export const MAP_TOUCH_GAP = 8;
     The left/right pair mirrors around the midline, so one entry per region
     places both.
 
-    Read against the SVG in the component, whose viewBox is twice as tall as
-    it is wide: the torso runs from 15% to 44% of the height, the pelvis to
-    49%, and the legs from there down.
+    Read against the SVG in the component, whose viewBox is half again as
+    tall as it is wide: the torso runs from 13% to 47% of the height, the
+    pelvis to 59%, and the thighs from there to the foot of the box.
 
     Spaced so that no two of the twelve targets come within 8px of each
-    other - see the test. The binding constraint is the widest pair, because
-    a region's two sides sit `100 - 2 * inset` apart: at 280px, an inset of
+    other - see the test - and so that every dot sits inside the shape it
+    names rather than over the gap beside it, which is what the flank and
+    buttock insets are for: a hollow dot straddling the edge of the arm
+    reads as a mistake. The widest pair sets the insets, because a
+    region's two sides sit `100 - 2 * inset` apart: at 280px, an inset of
     40% is as far out as the abdomen can go and still leave its own two dots
-    a target and a gap apart. The stack then has 274px of height for six
-    rows, which is why the vertical steps are as even as they are. */
+    a target and a gap apart. The height then has to carry five vertical
+    steps of at least as much again, which is what 420px is spent on and why
+    the figure stops at the thigh: every site is above the knee, and drawing
+    shins bought nothing but the scroll that hid half the map. */
 const PLACEMENT: Record<InjectionSiteRegion, { top: number; inset: number }> = {
-  deltoid: { top: 18, inset: 25 },
-  abdomen: { top: 28, inset: 40 },
-  loveHandle: { top: 37.5, inset: 33 },
-  ventrogluteal: { top: 47.5, inset: 36 },
-  dorsogluteal: { top: 57.5, inset: 33 },
-  thigh: { top: 67, inset: 40 }
+  deltoid: { top: 17, inset: 25 },
+  abdomen: { top: 27, inset: 40 },
+  loveHandle: { top: 41, inset: 39 },
+  ventrogluteal: { top: 55, inset: 38 },
+  dorsogluteal: { top: 69, inset: 36 },
+  thigh: { top: 83, inset: 40 }
 };
 
 /** A site's dot as percentages of the box, for the component's inline
@@ -52,9 +64,9 @@ export function sitePosition(site: InjectionSite): { top: number; left: number }
   return { top: place.top, left: site.side === 'left' ? place.inset : 100 - place.inset };
 }
 
-/** The same point in CSS px at the width the map actually renders at, which
-    is the only unit a touch target's size can be compared against. */
+/** The same point in CSS px at the size the map actually renders at, which
+    is the only unit a touch target can be compared against. */
 export function siteCentre(site: InjectionSite): { x: number; y: number } {
   const { top, left } = sitePosition(site);
-  return { x: (left / 100) * MAP_WIDTH, y: (top / 100) * MAP_WIDTH * 2 };
+  return { x: (left / 100) * MAP_WIDTH, y: (top / 100) * MAP_HEIGHT };
 }

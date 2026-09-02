@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { INJECTION_SITES } from '../data/doseSchedule';
-import { MAP_TOUCH_GAP, MAP_TOUCH_TARGET, MAP_WIDTH, siteCentre } from './injectionSiteMap';
+import { MAP_HEIGHT, MAP_TOUCH_GAP, MAP_TOUCH_TARGET, MAP_WIDTH, siteCentre } from './injectionSiteMap';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -14,7 +14,11 @@ const root = fileURLToPath(new URL('../../..', import.meta.url));
    sat 33.7px apart at 320px, so a fifth of each of six targets belonged to
    a neighbour. Ticket 10 read that crowding as a reason to put recency in a
    text list instead of on the dots, so this is the seam that let the ramp
-   onto the map. */
+   onto the map.
+
+   The box got shorter after that. At 280 by 560 the figure was taller than
+   the 500px window the sheet scrolls its content in, so no phone showed the
+   whole map, let alone the map and the list under it. */
 describe('injection site map layout', () => {
   it('keeps every pair of sites a touch target and a gap apart', () => {
     const centres = INJECTION_SITES.map((site) => ({ key: site.key, ...siteCentre(site) }));
@@ -54,7 +58,7 @@ describe('injection site map layout', () => {
       expect(x, site.key).toBeGreaterThanOrEqual(half);
       expect(x, site.key).toBeLessThanOrEqual(MAP_WIDTH - half);
       expect(y, site.key).toBeGreaterThanOrEqual(half);
-      expect(y, site.key).toBeLessThanOrEqual(MAP_WIDTH * 2 - half);
+      expect(y, site.key).toBeLessThanOrEqual(MAP_HEIGHT - half);
     }
   });
 
