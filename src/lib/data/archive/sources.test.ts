@@ -45,7 +45,7 @@ test('every source is registered, each carrying its own required fields', () => 
 test('the two Daylio sources, and Day One, do not claim each other\'s files', async () => {
   const csv = await fixtureBytes('daylio-edge-cases.csv');
   const backup = await makeDaylioBackup();
-  const dayOneZip = makeDayOneExport();
+  const dayOneZip = await makeDayOneExport();
 
   assert.equal(recognizeSource(csv), daylioEntry);
   assert.equal(recognizeSource(backup), backupEntry);
