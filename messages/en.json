@@ -794,6 +794,43 @@
     }
   ],
   "daylio_imported_toast": "{entries} entries and {tags} new tags imported.",
+  "dlb_row_title": "Import from Daylio (backup)",
+  "dlb_row_sub": "milestones, photos and voice notes as well, always a merge",
+  "dlb_sheet_title": "Import a Daylio backup",
+  "dlb_file_label": "Daylio backup",
+  "dlb_file_placeholder": "Choose a .daylio file…",
+  "dlb_unreadable": "This file couldn’t be read as a Daylio backup. Nothing has been imported.",
+  "dlb_not_android": "This backup came from Daylio on iPhone, which stores things differently. Only Android backups can be read. Nothing has been imported.",
+  "dlb_is_csv": "This is a Daylio CSV export, not a backup. Use the CSV import instead.",
+  "dlb_failed": "The Daylio import couldn’t be finished. Your journal is exactly as it was.",
+  "dlb_unmapped": "These moods have no position on the scale: {names}. Nothing has been imported.",
+  "dlb_arriving": "Arriving",
+  "dlb_entries": "Entries",
+  "dlb_milestones": "Milestones",
+  "dlb_tags": "Tags",
+  "dlb_tag_counts": "{matched} matched · {new} new",
+  "dlb_scales": "Scales",
+  "dlb_templates": "Templates",
+  "dlb_attachments": "Photos and voice notes",
+  "dlb_moods": "Moods",
+  "dlb_mood_unmapped": "no position",
+  "dlb_no_moods": "This backup has no moods.",
+  "dlb_left_behind": "Left behind",
+  "dlb_left_behind_note": "These stay in Daylio. Nothing there changes.",
+  "dlb_skip_goals": "Goals",
+  "dlb_skip_statistics": "Daylio’s own statistics",
+  "dlb_skip_achievements": "Achievements",
+  "dlb_skip_preferences": "Daylio’s settings",
+  "dlb_skip_reminders": "Daylio’s reminders",
+  "dlb_skip_icons": "Mood and tag icons",
+  "dlb_skip_anniversaries": "Yearly repeats on milestones",
+  "dlb_skip_scales": "Scales this app can’t read",
+  "dlb_skip_assets": "Attachments missing from the file",
+  "dlb_skip_unnamed": "Records with no name of their own",
+  "dlb_version_note": "This backup says it is version {version}, which this app hasn’t seen before. It gets read field by field anyway, and anything unfamiliar is left behind.",
+  "dlb_nothing_new": "Everything in this backup is already here.",
+  "dlb_confirm": "Import what’s listed",
+  "dlb_imported_toast": "Imported. {entries} entries, {milestones} milestones, {attachments} photos and voice notes.",
   "palette_trans": "Transgender",
   "palette_nonbinary": "Nonbinary",
   "palette_genderfluid": "Genderfluid",
@@ -2765,6 +2802,7 @@
   "imp_log_section": "Import history",
   "imp_log_source_daylio": "Daylio",
   "imp_log_row_sub": "{counts} · {when}",
+  "imp_log_nothing": "nothing new",
   "imp_log_n_entries": [
     {
       "declarations": [
@@ -2792,6 +2830,37 @@
       "match": {
         "nPlural=one": "{n} tag",
         "nPlural=other": "{n} tags"
+      }
+    }
+  ],
+  "imp_log_source_daylio_backup": "Daylio backup",
+  "imp_log_n_milestones": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} milestone",
+        "nPlural=other": "{n} milestones"
+      }
+    }
+  ],
+  "imp_log_n_attachments": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} photo or voice note",
+        "nPlural=other": "{n} photos and voice notes"
       }
     }
   ]
