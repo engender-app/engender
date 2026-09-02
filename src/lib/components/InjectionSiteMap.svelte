@@ -163,10 +163,32 @@
     cursor: pointer;
     border-radius: 50%;
   }
-  /* The visible dot, drawn inside the touch target so neighbouring sites
-     look separate while staying tappable. Its fill is the recency swatch;
-     the hairline edge is what keeps the palest swatch and the empty one
-     visible against the silhouette's own surface. */
+  /* The swatch, in both places it appears: the visible dot on the figure
+     and the chip on its row in the list. Stated once so the map and its own
+     key cannot drift apart.
+
+     --outline-strong, not --border: this is palettes.css's line for a
+     control that has to hold its own edge against a fill, and the dot has
+     to hold it against the silhouette's own surface as well - --border over
+     --surface-2 is close to invisible in both themes. */
+  .site-dot::after,
+  .site-recency-swatch {
+    border-radius: 50%;
+    border: 1.5px solid var(--outline-strong);
+    background: var(--dot-fill, var(--surface));
+  }
+  /* Never used: no fill and a firmer edge, at the same size as the rest.
+     Hollow against filled is the whole difference, and it has to hold
+     against the faintest step of the ramp rather than against nothing - a
+     dot a size down would also read as a site the map thinks less of, and
+     a site nobody has used yet is a site to consider. */
+  .site-dot.is-never::after,
+  .site-recency-row.is-never .site-recency-swatch {
+    background: none;
+    border-width: 2px;
+  }
+  /* The dot is drawn inside the touch target so neighbouring sites look
+     separate while staying tappable. */
   .site-dot::after {
     content: '';
     position: absolute;
@@ -174,25 +196,9 @@
     transform: translate(-50%, -50%);
     width: 22px;
     height: 22px;
-    border-radius: 50%;
-    /* --outline-strong, not --border: this is palettes.css's line for a
-       control that has to hold its own edge against a fill, and the dot has
-       to hold it against the silhouette's own surface as well - --border
-       over --surface-2 is close to invisible in both themes. */
-    border: 1.5px solid var(--outline-strong);
-    background: var(--dot-fill, var(--surface));
     transition:
       background var(--dur-fast) var(--ease-out),
       border-color var(--dur-fast) var(--ease-out);
-  }
-  /* Never used: no fill and a firmer edge, at the same size as the rest.
-     Hollow against filled is the whole difference, and it has to hold
-     against the faintest step of the ramp rather than against nothing - a
-     dot a size down would also read as a site the map thinks less of, and
-     a site nobody has used yet is a site to consider. */
-  .site-dot.is-never::after {
-    background: none;
-    border-width: 2px;
   }
   .site-dot:hover::after {
     border-color: var(--accent);
@@ -259,13 +265,6 @@
   .site-recency-swatch {
     width: 12px;
     height: 12px;
-    border-radius: 50%;
-    border: 1.5px solid var(--outline-strong);
-    background: var(--dot-fill, var(--surface));
-  }
-  .site-recency-row.is-never .site-recency-swatch {
-    background: none;
-    border-width: 2px;
   }
   .site-recency-row span:last-child {
     white-space: nowrap;

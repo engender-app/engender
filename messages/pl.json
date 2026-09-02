@@ -1229,7 +1229,7 @@
   "dose_route_label": "Sposób podania",
   "dose_status_label": "Status",
   "dose_injection_site_label": "Miejsce wstrzyknięcia",
-  "dose_injection_site_hint": "Dotknij miejsca, w które poszła. Kolor pokazuje, jak dawno było używane każde miejsce, a przerywany pierścień oznacza poprzednie.",
+  "dose_injection_site_hint": "Dotknij miejsca, w które poszła. Kolor pokazuje, jak dawno było używane każde miejsce, a puste kółko znaczy, że nic tam jeszcze nie zapisano. Przerywany pierścień jest tam, gdzie poszła poprzednia.",
   "dose_vehicle_label": "Nośnik",
   "dose_app_site_label": "Miejsce aplikacji",
   "dose_scheduled_legend": "Co było w planie",

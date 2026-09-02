@@ -41,6 +41,7 @@ describe('injection site map layout', () => {
     // trusted.
     const base = readFileSync(root + '/src/lib/theme/base.css', 'utf8');
     const token = /--touch-target:\s*(\d+)px/.exec(base)?.[1];
+    expect(token, '--touch-target is not declared in base.css as a whole number of px').toBeDefined();
     expect(Number(token)).toBe(MAP_TOUCH_TARGET);
   });
 
