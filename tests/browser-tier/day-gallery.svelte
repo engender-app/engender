@@ -119,7 +119,7 @@
   const maximal: DayRecords = {
     entries: typical.entries,
     milestones: [
-      { id: 'ms1', name: 'One year on HRT', epochDay: DAY, templateKey: null, photo: { id: 'p0', fileName: null, starred: false } }
+      { id: 'ms1', name: 'One year on HRT', epochDay: DAY, description: '', templateKey: null, photo: { id: 'p0', fileName: null, starred: false } }
     ],
     doses: [
       typical.doses[0],

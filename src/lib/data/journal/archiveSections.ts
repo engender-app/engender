@@ -286,10 +286,12 @@ const SECTIONS = [
     // The other half of the photo table, per entries' own note above.
     discard: ['DELETE FROM photo WHERE milestone_id IS NOT NULL', 'DELETE FROM milestone'],
     // Ticket 04's own worked case: a milestone set travels as names, not as
-    // dates. Everything else here is either a date (epochDay) or a link
-    // into this device's own records (roadmapGoalKey, procedureId, tryoutId,
-    // photo), so `name` is the whole of what is structure rather than
-    // record.
+    // dates. Everything else here is either a date (epochDay), a link into
+    // this device's own records (roadmapGoalKey, procedureId, tryoutId,
+    // photo), or the person's own record of what happened (description,
+    // ticket 15 - "cried in the car after" fails the shareable-structure
+    // test far more often than it passes it), so `name` is the whole of
+    // what is structure rather than record.
     travels: { fields: ['name'] },
     read: read.readMilestones,
     apply: apply.applyMilestones

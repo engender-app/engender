@@ -9,6 +9,7 @@ const milestone = (id: string, epochDay: number): Milestone => ({
   id,
   name: id,
   epochDay,
+  description: '',
   templateKey: null,
   photo: null
 });

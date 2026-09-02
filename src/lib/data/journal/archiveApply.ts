@@ -546,11 +546,14 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
 
   await insertRows(
     driver,
-    'INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at)',
+    'INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at)',
     inserting.map((milestone) => [
       milestone.id,
       milestone.name,
       milestone.epochDay,
+      // An archive written before ticket 15 has no description key, so
+      // JSON.parse leaves it undefined rather than null.
+      milestone.description ?? '',
       milestone.templateKey,
       milestone.roadmapGoalKey ?? null,
       milestone.procedureId ?? null,

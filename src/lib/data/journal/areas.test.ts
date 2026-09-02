@@ -75,6 +75,7 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       id,
       name: 'HRT start',
       epochDay: 20000,
+      description: '',
       templateKey: 'hrt_start',
       roadmapGoalKey: null,
       procedureId: null,
@@ -92,6 +93,7 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       id,
       name: 'HRT day one',
       epochDay: 20001,
+      description: '',
       templateKey: null,
       roadmapGoalKey: null,
       procedureId: null,
@@ -104,6 +106,27 @@ test('a milestone round-trips without a kind column and updates by id', async ()
   ]);
 
   await assert.rejects(journal.milestones.upsertMilestone({ id: 'nope', name: 'x', epochDay: 1 }), /unknown milestone/);
+});
+
+test('a milestone description survives a resync that omits it, and only an explicit edit changes it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.milestones.upsertMilestone({
+    epochDay: 20000,
+    name: 'HRT start',
+    description: 'the pharmacist barely looked up'
+  });
+
+  // A resync that names roadmapGoalKey/procedureId/tryoutId already leaves
+  // links it doesn't know about alone (procedures.ts); the description
+  // follows the same rule, so a plain rename must not clear it.
+  await journal.milestones.upsertMilestone({ id, name: 'HRT start (renamed)', epochDay: 20000 });
+  assert.equal(
+    (await journal.milestones.getMilestones())[0].description,
+    'the pharmacist barely looked up'
+  );
+
+  await journal.milestones.upsertMilestone({ id, name: 'HRT start (renamed)', epochDay: 20000, description: '' });
+  assert.equal((await journal.milestones.getMilestones())[0].description, '');
 });
 
 test('deleting a milestone takes its photo rows and files; twice is success', async () => {
