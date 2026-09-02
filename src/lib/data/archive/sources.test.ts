@@ -2,16 +2,18 @@
    rather than a name lookup, and that a file nothing recognises is declined
    without any source's `preview` ever being reached.
 
-   What Daylio or TransTracks themselves do with a recognised file is not
-   re-tested here - that is daylio.test.ts's and transtracks.test.ts's own,
-   which this file leaves unchanged. */
+   What each source itself does with a recognised file is not re-tested
+   here - that is daylio.test.ts's, transtracks.test.ts's and
+   daylioBackup.test.ts's own. */
 
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'vitest';
 import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { daylioPreview, detectDaylio } from './daylio.ts';
+import { daylioBackupPreview } from './daylioBackup.ts';
 import { transTracksPreview } from './transtracks.ts';
+import { makeDaylioBackup } from './test-support/daylio-backup.ts';
 import { ARCHIVE_SOURCES, UnrecognizedArchiveSourceError, recognizeSource, requireSource, type ArchiveSource } from './sources.ts';
 
 const fixtureText = (name: string) => readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
@@ -19,21 +21,39 @@ const fixtureBytes = async (name: string) => new TextEncoder().encode(await fixt
 
 const stub = (name: string, detect: (bytes: Uint8Array) => boolean): ArchiveSource => ({
   name: name as ArchiveSource['name'],
-  requiredColumns: [],
+  requiredFields: [],
   detect,
   async preview() {
     throw new Error(`${name} stub preview should never be called`);
   }
 });
 
-const daylioEntry = ARCHIVE_SOURCES.find((source) => source.name === 'daylio')!;
+const entryFor = (name: ArchiveSource['name']) => ARCHIVE_SOURCES.find((source) => source.name === name)!;
+const daylioEntry = entryFor('daylio');
+const backupEntry = entryFor('daylio-backup');
 
-test('daylio and transtracks are both registered, daylio carrying its own required columns', () => {
+test('every source is registered, each carrying its own required fields', () => {
   assert.deepEqual(
     ARCHIVE_SOURCES.map((source) => source.name),
-    ['daylio', 'transtracks']
+    ['daylio', 'daylio-backup', 'transtracks']
   );
-  assert.deepEqual(daylioEntry.requiredColumns, ['full_date', 'time', 'mood', 'activities', 'note_title', 'note']);
+  assert.deepEqual(daylioEntry.requiredFields, ['full_date', 'time', 'mood', 'activities', 'note_title', 'note']);
+  assert.deepEqual(backupEntry.requiredFields, ['metadata', 'customMoods', 'dayEntries']);
+});
+
+test('the two Daylio sources do not claim each other\'s files', async () => {
+  const csv = await fixtureBytes('daylio-edge-cases.csv');
+  const backup = await makeDaylioBackup();
+
+  assert.equal(recognizeSource(csv), daylioEntry);
+  assert.equal(recognizeSource(backup), backupEntry);
+});
+
+test('the CSV entry reads a bounded head, so a header is found however long the journal is', async () => {
+  const csv = await fixtureBytes('daylio-edge-cases.csv');
+  const padded = new Uint8Array(csv.length + 200_000);
+  padded.set(csv, 0);
+  assert.ok(daylioEntry.detect(padded));
 });
 
 test('recognizeSource runs each candidate\'s real detect, not a name filter', async () => {
@@ -85,6 +105,18 @@ test('the registry entry maps to the same journal daylioPreview itself resolves'
   const throughRegistry = await daylioEntry.preview(new TextEncoder().encode(csv), existing, naming);
 
   assert.deepEqual(byLabel(throughRegistry), byLabel(direct.journal));
+});
+
+test('the backup entry maps to the same journal daylioBackupPreview itself resolves', async () => {
+  const backup = await makeDaylioBackup();
+  const naming = { tagLabels: () => [] };
+
+  const direct = await daylioBackupPreview(backup, emptyArchiveJournal(), naming);
+  const throughRegistry = await backupEntry.preview(backup, emptyArchiveJournal(), naming);
+
+  // Identities are derived from content here rather than minted, so the
+  // two runs are comparable whole.
+  assert.deepEqual(throughRegistry, direct.journal);
 });
 
 test('the transtracks entry recognises a real backup and maps to the same journal transTracksPreview itself resolves', async () => {

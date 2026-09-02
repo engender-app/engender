@@ -2501,6 +2501,71 @@ try {
   fail('fill every feature', e);
 }
 
+/* Importing a Daylio backup (phase 7 ticket 09). The one flow in this
+   suite that hands the app a file: `chooseFiles` creates an input and
+   clicks it (data/fileDialog.ts), so Chromium's own file chooser is what
+   the picker resolves through here too.
+
+   The `.daylio` is built at run time from the same test-support builder the
+   node tier uses, rather than committed as a binary - the format was
+   learned from a real personal journal that has been deleted, and a zip
+   nobody can read is a worse fixture than a JSON literal a reviewer can.
+   Imported dynamically so a Node without type stripping fails this flow
+   rather than the suite.
+
+   Nothing here asserts on wording. The assertions are handles and counts:
+   that a preview resolved, that the sheet closed on commit, that the
+   import wrote a history row, and that picking the same file again offers
+   no confirm button, which is the whole of "re-importing adds nothing". */
+try {
+  const { makeDaylioBackup } = await import('../src/lib/data/archive/test-support/daylio-backup.ts');
+  const { writeFile, mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+
+  const directory = await mkdtemp(join(tmpdir(), 'walkthrough-daylio-'));
+  const file = join(directory, 'walkthrough.daylio');
+  await writeFile(file, await makeDaylioBackup());
+
+  await fresh('/settings/export');
+  await page.locator('[data-daylio-backup]').click();
+  await page.waitForSelector('[data-pick-backup]');
+
+  const pick = async () => {
+    const chooser = page.waitForEvent('filechooser');
+    await page.locator('[data-pick-backup]').click();
+    await (await chooser).setFiles(file);
+  };
+
+  await pick();
+  await page.waitForSelector('[data-confirm-backup]', { timeout: 15000 });
+
+  await page.locator('[data-confirm-backup]').click();
+  /* The scrim rather than the sheet: both go on close, but the scrim is
+     what covers the row this flow clicks next, and a click landing on it
+     opens nothing while looking like it worked. */
+  await page.waitForSelector('[data-sheet-scrim]', { state: 'detached', timeout: 60000 });
+
+  if (!(await page.locator('[data-import-log-row]').count())) {
+    throw new Error('a committed import wrote no history row');
+  }
+
+  await page.locator('[data-daylio-backup]').click();
+  await page.waitForSelector('[data-pick-backup]');
+  await pick();
+  /* The preview has to have resolved before the absence below means
+     anything, and the moods block is what says it did - it is listed for a
+     backup whose every record is already here, where the arriving rows are
+     not. */
+  await page.waitForSelector('[data-sheet] [data-import-nothing-new]', { timeout: 15000 });
+  if (await page.locator('[data-confirm-backup]').count()) {
+    throw new Error('a backup whose every record is already here still offered an import button');
+  }
+
+  ok('a Daylio backup previews, imports, writes a history row, and adds nothing the second time');
+} catch (e) { fail('daylio backup import', e); }
+
+
 /* The rotation map's dots at the narrowest phone the app supports (phase 6
    ticket 13). Ticket 10 read the crowding on that figure as a reason to put
    recency in a text list instead of on the dots, and the crowding was real:
