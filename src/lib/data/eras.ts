@@ -130,3 +130,24 @@ export function eraRange(era: EraSpan, bounds: JournalBounds): { startEpochDay: 
   if (startEpochDay > endEpochDay) return null;
   return { startEpochDay, endEpochDay };
 }
+
+/** The same range, for a caller whose journal bounds might not be known yet
+    - `getJournalBounds()` read as a liveQuery is null both while it loads
+    and on a journal with no entries at all, and every adopting surface
+    (`/compare`, Wrapped) hits that same moment on first paint.
+
+    A fully-dated era needs no edge to clamp to, so it still resolves with
+    no bounds in hand; an open one does, and answers null without them - the
+    same "nothing to resolve" `eraRange` already gives an era that outruns
+    the journal, one call earlier. */
+export function eraRangeOrNull(
+  era: EraSpan,
+  bounds: JournalBounds | null
+): { startEpochDay: number; endEpochDay: number } | null {
+  const resolved =
+    bounds ??
+    (era.startEpochDay !== null && era.endEpochDay !== null
+      ? { firstEpochDay: era.startEpochDay, lastEpochDay: era.endEpochDay }
+      : null);
+  return resolved ? eraRange(era, resolved) : null;
+}
