@@ -26,11 +26,13 @@ const custom = (id: string, overrides: Partial<EntryTemplate> = {}): EntryTempla
   builtIn: false
 });
 
-test('seeding from empty adds every built-in', () => {
+test('seeding from empty adds every built-in, with no display text - names are resolved by key', () => {
   const seeded = withBuiltInEntryTemplates([]);
 
   expect(seeded.length).toBeGreaterThan(0);
-  expect(seeded.every((t) => t.builtIn)).toBe(true);
+  expect(
+    seeded.every((t) => t.builtIn && !t.hidden && t.name === '' && t.noteScaffold === '' && t.presentationId === null)
+  ).toBe(true);
 });
 
 test('seeding twice changes nothing', () => {
@@ -97,12 +99,20 @@ test('a note scaffold seeds an empty note but never overwrites what is already w
 test('a template with no presentation applies without one, and that is not an error', () => {
   const template = builtIn('t1');
 
+  const merged = applyEntryTemplateToDraft({ tags: [], dims: {}, note: '', presentationId: null }, template);
+
+  expect(merged.presentationId).toBeNull();
+});
+
+test('a template with no presentation leaves whatever the draft already had, rather than clearing it', () => {
+  const template = builtIn('t1');
+
   const merged = applyEntryTemplateToDraft({ tags: [], dims: {}, note: '', presentationId: 'p1' }, template);
 
   expect(merged.presentationId).toBe('p1');
 });
 
-test('a template carrying a presentation sets it', () => {
+test('a template carrying a presentation replaces the draft\'s', () => {
   const template = custom('mine', { presentationId: 'p2' });
 
   const merged = applyEntryTemplateToDraft({ tags: [], dims: {}, note: '', presentationId: null }, template);
