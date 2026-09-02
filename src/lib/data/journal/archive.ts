@@ -162,6 +162,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       const after = await area.snapshot();
       return {
         milestonesAdded: after.journal.milestones.length - before.journal.milestones.length,
+        // Every TransTracks photo becomes exactly one synthetic entry
+        // (transtracks.ts), so diffing entries is diffing photos here.
         photosAdded: after.journal.entries.length - before.journal.entries.length
       };
     },

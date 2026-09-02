@@ -8,7 +8,6 @@
 
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { strToU8, zipSync } from 'fflate';
 import { test } from 'vitest';
 import { emptyArchiveJournal } from '../journal/archiveSections.ts';
 import { daylioPreview, detectDaylio } from './daylio.ts';
@@ -90,15 +89,7 @@ test('the registry entry maps to the same journal daylioPreview itself resolves'
 
 test('the transtracks entry recognises a real backup and maps to the same journal transTracksPreview itself resolves', async () => {
   const transtracksEntry = ARCHIVE_SOURCES.find((source) => source.name === 'transtracks')!;
-  const bytes = zipSync({
-    'data.json': strToU8(
-      JSON.stringify({
-        settings: {},
-        photos: [],
-        milestones: [{ id: 'm-1', epochDay: 20_000, title: 'Started HRT', description: '' }]
-      })
-    )
-  });
+  const bytes = await readFile(new URL('fixtures/transtracks-edge-cases.ttbackup', import.meta.url));
   const existing = emptyArchiveJournal();
 
   assert.ok(transtracksEntry.detect(bytes));
