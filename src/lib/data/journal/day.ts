@@ -374,7 +374,13 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // A letter is written to be met on its unlock day (letterStatus.ts). A day
   // view listing the day it was written is a second place to meet it, out of
   // the order the seal exists to keep.
-  letters: 'sealed until its unlock day'
+  letters: 'sealed until its unlock day',
+
+  // Phase 7 ticket 03: this device's own bookkeeping about where an import
+  // came from, dated by when the import ran rather than by anything the
+  // person did that day - the settings screen it reads into is where it
+  // belongs, the same reasoning `medicationStock` gives.
+  importLog: 'device bookkeeping, dated by when the import ran, not a diary record'
 };
 
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;

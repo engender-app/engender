@@ -497,7 +497,12 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // (phase 6) built this list to be reached behind Safe Space's own single
   // tap and nowhere else. An ordinary search result is exactly the kind of
   // unasked-for door the ticket rules out.
-  comfortItems: 'a Safe Space artefact, kept behind its own single-tap door'
+  comfortItems: 'a Safe Space artefact, kept behind its own single-tap door',
+
+  // The source is a fixed registry key, not a word someone typed - the
+  // settings screen that lists these is where "where did this come from"
+  // is answered, not an ordinary search result (phase 7 ticket 03).
+  importLog: 'no text of its own: a source key, a date and counts by kind'
 };
 
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;

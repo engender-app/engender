@@ -2802,5 +2802,42 @@
   "constellation_scrub": "Pozycja na ścieżce",
   "constellation_needs_scales": "Zaznacz dwie skale, żeby zestawić je ze sobą.",
   "constellation_aria": "Twoje wpisy na dwóch skalach: {x}, {y}.",
-  "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}."
+  "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}.",
+  "imp_log_section": "Historia importów",
+  "imp_log_source_daylio": "Daylio",
+  "imp_log_row_sub": "{counts} · {when}",
+  "imp_log_n_entries": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} wpis",
+        "nPlural=few": "{n} wpisy",
+        "nPlural=many": "{n} wpisów",
+        "nPlural=other": "{n} wpisów"
+      }
+    }
+  ],
+  "imp_log_n_tags": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} tag",
+        "nPlural=few": "{n} tagi",
+        "nPlural=many": "{n} tagów",
+        "nPlural=other": "{n} tagów"
+      }
+    }
+  ]
 }

@@ -1779,6 +1779,24 @@ const SCHEMA_V54 = `
 ALTER TABLE milestone ADD COLUMN description TEXT NOT NULL DEFAULT '';
 `;
 
+/* Phase 7 ticket 03: one row per completed import, so "where did this come
+   from" has an answer six months later. `counts` is a JSON-encoded map
+   rather than a column per kind - a future source (Day One, TransTracks)
+   adds a kind this table never needs to migrate for. `uuid` is minted at
+   write time like any user-owned row's, which is what lets the record
+   round-trip through a backup by the same insert-if-absent rule every other
+   section follows. */
+const SCHEMA_V55 = `
+CREATE TABLE import_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT UNIQUE NOT NULL,
+  source      TEXT NOT NULL,
+  counts      TEXT NOT NULL,
+  imported_at INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1833,5 +1851,6 @@ export const migrations: Migration[] = [
   { version: 51, sql: SCHEMA_V51 },
   { version: 52, sql: SCHEMA_V52 },
   { version: 53, sql: SCHEMA_V53 },
-  { version: 54, sql: SCHEMA_V54 }
+  { version: 54, sql: SCHEMA_V54 },
+  { version: 55, sql: SCHEMA_V55 }
 ];
