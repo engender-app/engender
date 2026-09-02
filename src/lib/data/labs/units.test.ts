@@ -14,7 +14,6 @@ describe('labs preferred-unit catalogue', () => {
   test('defines allowed units for each supported analyte', () => {
     expect(ALLOWED_PREFERRED_UNITS.estradiol).toEqual(['pg/mL', 'pmol/L']);
     expect(ALLOWED_PREFERRED_UNITS.testosterone).toEqual(['ng/dL', 'nmol/L']);
-    expect(ALLOWED_PREFERRED_UNITS.prolactin).toEqual(['ng/mL', 'mIU/L']);
   });
 
   test('normalizes stored preferred-unit selections to allowed canonical values', () => {
@@ -27,11 +26,21 @@ describe('labs preferred-unit catalogue', () => {
     const sanitized = sanitizePreferredLabUnits({
       estradiol: 'PMOL/L',
       testosterone: 'ng/dL',
-      prolactin: 'invalid',
       shbg: 'nmol/L'
     } as unknown as PreferredLabUnits);
 
     expect(sanitized).toEqual({ estradiol: 'pmol/L', testosterone: 'ng/dL' });
+  });
+
+  test('drops a stored prolactin preference silently, dropped hormone or not', () => {
+    // Someone set this before prolactin stopped converting (ticket 14). The
+    // key is just unknown now, same as any other stray key would be.
+    const sanitized = sanitizePreferredLabUnits({
+      estradiol: 'pg/mL',
+      prolactin: 'mIU/L'
+    } as unknown as PreferredLabUnits);
+
+    expect(sanitized).toEqual({ estradiol: 'pg/mL' });
   });
 
   test('returns no preferred unit for unsupported analytes', () => {
@@ -72,6 +81,15 @@ describe('labs unit conversion', () => {
     expect(converted.unit).toBe('pg/mL');
     expect(raw.value).toBeCloseTo(converted.value, 4);
   });
+
+  test('prolactin is off the allowlist, so canonicalizing never relabels its unit (ticket 14)', () => {
+    // The trap this guards: with the factor gone but the analyte still
+    // allowlisted, canonicalize would find a canonical unit, fail to
+    // convert, and fall through to stamping the base unit on an
+    // unconverted value - 212 mIU/L relabelled as 212 ng/mL.
+    const canonical = canonicalizeLabMeasurement('prolactin', 212, 'mIU/L');
+    expect(canonical).toEqual({ value: 212, unit: 'mIU/L' });
+  });
 });
 describe('the secondary value beside a native one (ADR-0026)', () => {
   test('an estradiol result logged in pg/mL offers its pmol/L reading', () => {
@@ -97,8 +115,11 @@ describe('the secondary value beside a native one (ADR-0026)', () => {
     expect(secondaryLabValue('shbg', 100, 'nmol/L')).toBeNull();
   });
 
-  test('the other two allowlisted analytes work the same way', () => {
+  test('the other allowlisted analyte works the same way', () => {
     expect(secondaryLabValue('testosterone', 100, 'ng/dL')?.unit).toBe('nmol/L');
-    expect(secondaryLabValue('prolactin', 10, 'ng/mL')?.unit).toBe('mIU/L');
+  });
+
+  test('prolactin gets no secondary value: a calibration-standard factor is not a physical constant (ticket 14)', () => {
+    expect(secondaryLabValue('prolactin', 10, 'ng/mL')).toBeNull();
   });
 });

@@ -6,19 +6,18 @@ export function normalizeUnit(unit: string): string {
   return unit.trim();
 }
 
-export type PreferredUnitAnalyte = 'estradiol' | 'testosterone' | 'prolactin';
+export type PreferredUnitAnalyte = 'estradiol' | 'testosterone';
 export type PreferredLabUnits = Partial<Record<PreferredUnitAnalyte, string>>;
 
-export const PREFERRED_UNIT_ANALYTES: readonly PreferredUnitAnalyte[] = [
-  'estradiol',
-  'testosterone',
-  'prolactin'
-];
+export const PREFERRED_UNIT_ANALYTES: readonly PreferredUnitAnalyte[] = ['estradiol', 'testosterone'];
 
+/** Steroids only. Estradiol and testosterone convert by molar mass, a physical
+    constant. Prolactin, LH and FSH convert against an assay-specific
+    calibration standard instead, so they get no fixed factor here - see
+    ticket 14 (portability) and ADR-0026. */
 export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly string[]> = {
   estradiol: ['pg/mL', 'pmol/L'],
-  testosterone: ['ng/dL', 'nmol/L'],
-  prolactin: ['ng/mL', 'mIU/L']
+  testosterone: ['ng/dL', 'nmol/L']
 };
 
 /** The unit an analyte's allowlist is written around: the first of its allowed
@@ -38,10 +37,6 @@ const FACTORS: Record<PreferredUnitAnalyte, Record<string, number>> = {
   testosterone: {
     'ng/dl': 1,
     'nmol/l': 28.842
-  },
-  prolactin: {
-    'ng/ml': 1,
-    'miu/l': 1 / 21.2
   }
 };
 
