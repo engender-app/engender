@@ -18,6 +18,7 @@ import { makeDayOneExport } from './test-support/dayone.ts';
 import { dayonePreview } from './dayone.ts';
 import { transTracksPreview } from './transtracks.ts';
 import { trackAndGraphPreview } from './trackAndGraph.ts';
+import { pixelsPreview } from './pixels.ts';
 import { ARCHIVE_SOURCES, UnrecognizedArchiveSourceError, recognizeSource, requireSource, type ArchiveSource } from './sources.ts';
 
 const fixtureText = (name: string) => readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
@@ -40,12 +41,13 @@ const dayoneEntry = entryFor('dayone');
 test('every source is registered, each carrying its own required fields', () => {
   assert.deepEqual(
     ARCHIVE_SOURCES.map((source) => source.name),
-    ['daylio', 'daylio-backup', 'dayone', 'transtracks', 'trackAndGraph']
+    ['daylio', 'daylio-backup', 'dayone', 'transtracks', 'trackAndGraph', 'pixels']
   );
   assert.deepEqual(daylioEntry.requiredFields, ['full_date', 'time', 'mood', 'activities', 'note_title', 'note']);
   assert.deepEqual(backupEntry.requiredFields, ['metadata', 'customMoods', 'dayEntries']);
   assert.deepEqual(dayoneEntry.requiredFields, ['metadata', 'entries']);
   assert.deepEqual(entryFor('trackAndGraph').requiredFields, ['FeatureName', 'Timestamp', 'Value']);
+  assert.deepEqual(entryFor('pixels').requiredFields, []);
 });
 
 test('the two Daylio sources, and Day One, do not claim each other\'s files', async () => {
@@ -193,4 +195,20 @@ test('the trackAndGraph entry recognises a CSV export and maps to the same journ
   const throughRegistry = await trackAndGraphEntry.preview(bytes, existing, undefined);
 
   assert.deepEqual(byTypeName(throughRegistry), byTypeName(direct.journal));
+});
+
+test('the pixels entry recognises a bare JSON array and maps to the same journal pixelsPreview itself resolves', async () => {
+  const pixelsEntry = ARCHIVE_SOURCES.find((source) => source.name === 'pixels')!;
+  const bytes = new TextEncoder().encode(
+    JSON.stringify([{ date: '2026-01-01', type: 'MOOD', scores: [3], notes: '', tags: [] }])
+  );
+  const existing = emptyArchiveJournal();
+
+  assert.ok(pixelsEntry.detect(bytes));
+  assert.ok(!pixelsEntry.detect(await fixtureBytes('daylio-edge-cases.csv')));
+
+  const direct = await pixelsPreview(bytes, existing);
+  const throughRegistry = await pixelsEntry.preview(bytes, existing, undefined);
+
+  assert.deepEqual(throughRegistry, direct.journal);
 });
