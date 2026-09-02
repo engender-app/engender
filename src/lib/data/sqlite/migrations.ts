@@ -1715,6 +1715,58 @@ CREATE TABLE comfort_item (
 );
 `;
 
+/* v53: entry templates become the person's own (phase 6 ticket 07, ADR-0002).
+
+   `ENTRY_TEMPLATES` and `ENTRY_PROMPT_KEYS` were two overlapping concepts,
+   hardcoded and unstorable - a prompt is now a template whose only content
+   is a note scaffold, and both fold into this one table. Built-ins carry
+   their `key` and never a uuid; authored ones the reverse, the same dual
+   identity `tag` and `gender_preset` already carry (ADR-0002) - built-ins
+   reconcile by key, authored rows are the person's own content, and neither
+   column is ever NOT NULL because either can be the row's only identity.
+
+   `note_scaffold` and `presentation_id` sit on the row itself rather than in
+   a child table: each template carries at most one of either, the same
+   reason `entry` keeps its own `presentation_id` as a plain column rather
+   than a link table. `presentation_id` is free text, not a column a rowid
+   ever resolves against here - the same reason `entry.presentation_id` is
+   (ADR-0048) - so a presentation deleted later leaves the template pointing
+   at nothing rather than at a dangling row a join would need to guard.
+
+   Tags and dimension values are child tables instead, mirroring `entry_tag`
+   and `entry_dimension_value` exactly (down to the FK shape), because a
+   template's tag list and dial readings are exactly that kind of link - a
+   set of rows a real tag or dimension is deleted out from under.
+
+   Numbered v53 rather than v52: ticket-14's comfort_item landed on main
+   first and took v52, the same renumbering-at-merge hazard its own
+   comment above names. */
+const SCHEMA_V53 = `
+CREATE TABLE entry_template (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT UNIQUE,
+  key             TEXT UNIQUE,
+  name            TEXT NOT NULL,
+  note_scaffold   TEXT NOT NULL DEFAULT '',
+  presentation_id TEXT,
+  hidden          INTEGER NOT NULL DEFAULT 0,
+  updated_at      INTEGER NOT NULL
+);
+
+CREATE TABLE entry_template_tag (
+  template_id INTEGER NOT NULL REFERENCES entry_template(id) ON DELETE CASCADE,
+  tag_id      INTEGER NOT NULL REFERENCES tag(id) ON DELETE CASCADE,
+  PRIMARY KEY (template_id, tag_id)
+);
+
+CREATE TABLE entry_template_dimension_value (
+  template_id  INTEGER NOT NULL REFERENCES entry_template(id) ON DELETE CASCADE,
+  dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id) ON DELETE CASCADE,
+  value        INTEGER NOT NULL,
+  PRIMARY KEY (template_id, dimension_id)
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1767,5 +1819,6 @@ export const migrations: Migration[] = [
   { version: 49, sql: SCHEMA_V49 },
   { version: 50, sql: SCHEMA_V50 },
   { version: 51, sql: SCHEMA_V51 },
-  { version: 52, sql: SCHEMA_V52 }
+  { version: 52, sql: SCHEMA_V52 },
+  { version: 53, sql: SCHEMA_V53 }
 ];

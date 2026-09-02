@@ -9,14 +9,11 @@ import {
   BUILT_IN_DIMENSIONS,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_PROMPT_KEYS,
   ENTRY_TEMPLATES,
   MILESTONE_TEMPLATE_KEYS,
   MILESTONE_TEMPLATE_LEAN,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
-  entryPromptRows,
-  entryTemplateRows,
   milestoneTemplateRows,
   regimenTemplateRows,
   withBuiltInDimensions,
@@ -32,7 +29,6 @@ const allKeys = [
   ...MILESTONE_TEMPLATE_KEYS,
   ...REGIMEN_TEMPLATE_KEYS,
   ...ENTRY_TEMPLATES.map((t) => t.key),
-  ...ENTRY_PROMPT_KEYS,
   ...BUILT_IN_BODY_REGIONS
 ];
 
@@ -218,29 +214,6 @@ test('every entry template names tags and dimensions that exist', () => {
 
   expect(danglingTags).toEqual([]);
   expect(danglingDims).toEqual([]);
-});
-
-test('entry templates seed with no display text, because names are resolved by key', () => {
-  const rows = entryTemplateRows();
-
-  expect(rows).toHaveLength(ENTRY_TEMPLATES.length);
-  expect(rows.every((t) => t.name === '')).toBe(true);
-});
-
-test('entryTemplateRows copies its tags and dims, so mutating one row cannot leak into the built-in list', () => {
-  const rows = entryTemplateRows();
-  rows[0].tags.push('should-not-appear');
-  rows[0].dims.should_not_appear = 1;
-
-  expect(entryTemplateRows()[0].tags).not.toContain('should-not-appear');
-  expect(entryTemplateRows()[0].dims).not.toHaveProperty('should_not_appear');
-});
-
-test('entry prompts seed with no display text either', () => {
-  const rows = entryPromptRows();
-
-  expect(rows).toHaveLength(ENTRY_PROMPT_KEYS.length);
-  expect(rows.every((p) => p.text === '')).toBe(true);
 });
 
 test('a custom group survives seeding', () => {
