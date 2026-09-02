@@ -581,6 +581,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getChecklistByOwner: ['checklist'],
       getStandaloneChecklist: ['checklist'],
       getAppointmentDate: ['checklist'],
+      getDebriefState: ['checklist'],
       getDebriefDismissedEpochDay: ['checklist'],
       getDebriefEntryId: ['checklist']
     }

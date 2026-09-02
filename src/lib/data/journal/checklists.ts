@@ -41,6 +41,18 @@ export interface ChecklistsArea {
       appointment of its own) - these two are the only way the column is
       read or written, so an owned checklist can never carry a value here. */
   getAppointmentDate(): Promise<number | null>;
+  /** The standalone checklist's whole debrief-relevant state in one read
+      (phase 6 ticket 08): the appointment date, how many prep items are on
+      the list, and the two device-local columns below - the exact shape
+      `debriefOfferVisible` (vocabulary/entryTemplates.ts) takes, so a
+      caller folding the predicate over a live read needs one query rather
+      than composing several. */
+  getDebriefState(): Promise<{
+    appointmentEpochDay: number | null;
+    itemCount: number;
+    dismissedEpochDay: number | null;
+    debriefEntryId: number | null;
+  }>;
   /** Creates the standalone checklist on first use, the same as
       `addToStandaloneChecklist` - setting a date before adding a single
       question is a real order of operations, not an error. `null` clears
@@ -82,9 +94,9 @@ export interface ChecklistsArea {
 }
 
 type ChecklistRow = { id: number; uuid: string; owner_kind: string | null; owner_uuid: string | null };
-type StandaloneAppointmentRow = { id: number; appointment_epoch_day: number | null };
 type StandaloneDebriefRow = {
   id: number;
+  uuid: string;
   appointment_epoch_day: number | null;
   debrief_entry_id: number | null;
   debrief_dismissed_epoch_day: number | null;
@@ -118,6 +130,18 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
       'SELECT id, uuid, owner_kind, owner_uuid FROM checklist WHERE owner_kind IS NULL LIMIT 1'
     );
     return rows[0] ? toChecklist(rows[0]) : undefined;
+  };
+
+  /* The one raw read every appointment/debrief accessor below shares,
+     rather than each repeating the same `WHERE owner_kind IS NULL LIMIT 1`
+     query with its own column list (phase 6 ticket 08). Undefined when no
+     standalone checklist exists yet, the same resting state
+     `standaloneChecklist` above gives. */
+  const standaloneDebriefRow = async (): Promise<StandaloneDebriefRow | undefined> => {
+    const rows = await driver.query<StandaloneDebriefRow>(
+      'SELECT id, uuid, appointment_epoch_day, debrief_entry_id, debrief_dismissed_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+    );
+    return rows[0];
   };
 
   /* The one create-on-first-item rule, for both entry points: an owner pair
@@ -179,35 +203,35 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     addToOwnedChecklist: (owner, content) => addToLazyChecklist(owner, content),
 
     async getAppointmentDate() {
-      const rows = await driver.query<StandaloneAppointmentRow>(
-        'SELECT id, appointment_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
-      );
-      return rows[0]?.appointment_epoch_day ?? null;
+      const row = await standaloneDebriefRow();
+      return row?.appointment_epoch_day ?? null;
     },
 
     async setAppointmentDate(epochDay) {
-      const existing = await standaloneChecklist();
-      if (!existing) {
-        await area.createChecklist();
-      }
-      const rows = await driver.query<StandaloneAppointmentRow>(
-        'SELECT id, appointment_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
-      );
-      const row = rows[0]!;
-      const changed = row.appointment_epoch_day !== epochDay;
+      const existing = await standaloneDebriefRow();
+      const checklistId = existing ? existing.uuid : (await area.createChecklist()).id;
+      const changed = (existing?.appointment_epoch_day ?? null) !== epochDay;
       await driver.run(
         `UPDATE checklist SET appointment_epoch_day = ?, updated_at = ?
          ${changed ? ', debrief_entry_id = NULL, debrief_dismissed_epoch_day = NULL' : ''}
-         WHERE id = ?`,
-        [epochDay, now(), row.id]
+         WHERE uuid = ?`,
+        [epochDay, now(), checklistId]
       );
     },
 
+    async getDebriefState() {
+      const [row, checklist] = await Promise.all([standaloneDebriefRow(), standaloneChecklist()]);
+      return {
+        appointmentEpochDay: row?.appointment_epoch_day ?? null,
+        itemCount: checklist?.items.length ?? 0,
+        dismissedEpochDay: row?.debrief_dismissed_epoch_day ?? null,
+        debriefEntryId: row?.debrief_entry_id ?? null
+      };
+    },
+
     async getDebriefDismissedEpochDay() {
-      const rows = await driver.query<StandaloneDebriefRow>(
-        'SELECT id, appointment_epoch_day, debrief_entry_id, debrief_dismissed_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
-      );
-      return rows[0]?.debrief_dismissed_epoch_day ?? null;
+      const row = await standaloneDebriefRow();
+      return row?.debrief_dismissed_epoch_day ?? null;
     },
 
     async setDebriefDismissed(epochDay) {
@@ -221,10 +245,8 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     },
 
     async getDebriefEntryId() {
-      const rows = await driver.query<StandaloneDebriefRow>(
-        'SELECT id, appointment_epoch_day, debrief_entry_id, debrief_dismissed_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
-      );
-      return rows[0]?.debrief_entry_id ?? null;
+      const row = await standaloneDebriefRow();
+      return row?.debrief_entry_id ?? null;
     },
 
     async recordDebriefEntry(entryId, epochDay) {
