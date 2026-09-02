@@ -6,7 +6,8 @@
    out and asserting it absent, which would only restate `filter`. */
 
 import { test, expect } from 'vitest';
-import { withBuiltInEntryTemplates, applyEntryTemplateToDraft } from './entryTemplates.ts';
+import { withBuiltInEntryTemplates, applyEntryTemplateToDraft, debriefOfferVisible } from './entryTemplates.ts';
+import type { DebriefOfferState } from './entryTemplates.ts';
 import type { EntryTemplate } from '../types.ts';
 
 const builtIn = (id: string, overrides: Partial<EntryTemplate> = {}): EntryTemplate => ({
@@ -31,8 +32,15 @@ test('seeding from empty adds every built-in, with no display text - names are r
 
   expect(seeded.length).toBeGreaterThan(0);
   expect(
-    seeded.every((t) => t.builtIn && !t.hidden && t.name === '' && t.noteScaffold === '' && t.presentationId === null)
+    seeded.every((t) => t.builtIn && t.name === '' && t.noteScaffold === '' && t.presentationId === null)
   ).toBe(true);
+});
+
+test('the appointment debrief is the one built-in that seeds hidden (phase 6 ticket 08)', () => {
+  const seeded = withBuiltInEntryTemplates([]);
+
+  const hidden = seeded.filter((t) => t.hidden);
+  expect(hidden.map((t) => t.id)).toEqual(['appointment_debrief']);
 });
 
 test('seeding twice changes nothing', () => {
@@ -118,4 +126,46 @@ test('a template carrying a presentation replaces the draft\'s', () => {
   const merged = applyEntryTemplateToDraft({ tags: [], dims: {}, note: '', presentationId: null }, template);
 
   expect(merged.presentationId).toBe('p2');
+});
+
+/* The debrief offer predicate (phase 6 ticket 08). A ready-to-offer state,
+   mutated one field at a time per test, is the shape a registry test needs
+   to actually be able to fail - the same discipline the reconcile tests
+   above follow. */
+const ready = (overrides: Partial<DebriefOfferState> = {}): DebriefOfferState => ({
+  appointmentEpochDay: 100,
+  itemCount: 1,
+  todayEpochDay: 105,
+  dismissedEpochDay: null,
+  debriefEntryId: null,
+  ...overrides
+});
+
+test('offers the debrief once a date is on record, has passed, and there was something to prepare for', () => {
+  expect(debriefOfferVisible(ready())).toBe(true);
+});
+
+test('no appointment date on record makes no offer', () => {
+  expect(debriefOfferVisible(ready({ appointmentEpochDay: null }))).toBe(false);
+});
+
+test('an appointment with no prep item produces no offer', () => {
+  expect(debriefOfferVisible(ready({ itemCount: 0 }))).toBe(false);
+});
+
+test('an appointment later today, or still ahead, produces no offer', () => {
+  expect(debriefOfferVisible(ready({ appointmentEpochDay: 105, todayEpochDay: 105 }))).toBe(false);
+  expect(debriefOfferVisible(ready({ appointmentEpochDay: 110, todayEpochDay: 105 }))).toBe(false);
+});
+
+test('dismissing this appointment stops the offer for good', () => {
+  expect(debriefOfferVisible(ready({ dismissedEpochDay: 100 }))).toBe(false);
+});
+
+test('a dismissal recorded for a since-superseded appointment does not suppress the current one', () => {
+  expect(debriefOfferVisible(ready({ dismissedEpochDay: 40 }))).toBe(true);
+});
+
+test('an entry already recorded as the debrief stops the offer for good', () => {
+  expect(debriefOfferVisible(ready({ debriefEntryId: 7 }))).toBe(false);
 });

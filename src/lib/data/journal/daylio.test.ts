@@ -94,12 +94,23 @@ test('preview counts equal the merge, and importing the same Daylio CSV twice is
   assert.equal(importedGroup.name, '');
   assert.deepEqual(importedGroup.tags.map((tag) => tag.label).toSorted(), ['Gaming', 'Voice practice']);
 
-  const beforeRepeat = (await journal.archive.snapshot()).journal;
+  const afterFirstImport = (await journal.archive.snapshot()).journal;
+  assert.equal(afterFirstImport.importLog.length, 1, 'a committed import writes one import_log record');
+  assert.equal(afterFirstImport.importLog[0].source, 'daylio');
+  assert.deepEqual(afterFirstImport.importLog[0].counts, { entries: 3, tags: 2 });
+
   const repeatPreview = await journal.archive.previewDaylioImport(csv, naming);
   assert.equal(repeatPreview.entryCount, 0);
   assert.equal(repeatPreview.newTagCount, 0);
   assert.deepEqual(await journal.archive.commitDaylioImport(repeatPreview), { entriesAdded: 0, tagsAdded: 0 });
-  assert.deepEqual((await journal.archive.snapshot()).journal, beforeRepeat);
+
+  const afterRepeat = (await journal.archive.snapshot()).journal;
+  // A no-op re-import still commits - it is still authorship, just of
+  // nothing new - so it still gets its own record (ticket 03), even though
+  // every other section is unchanged.
+  assert.deepEqual({ ...afterRepeat, importLog: [] }, { ...afterFirstImport, importLog: [] });
+  assert.equal(afterRepeat.importLog.length, 2);
+  assert.deepEqual(afterRepeat.importLog[1].counts, { entries: 0, tags: 0 });
 });
 
 test('an unmapped mood blocks commit and explains which label needs attention', async () => {

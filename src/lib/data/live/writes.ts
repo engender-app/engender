@@ -181,7 +181,11 @@ export const TABLE_NAMES = [
      a tag or a measurement type is. An entry created from one carries no
      link back to it - applying a template only ever seeds the draft
      (types.ts) - so no read here depends on 'entry'. */
-  'entryTemplate'
+  'entryTemplate',
+  /* The import log (phase 7 ticket 03): its own name so the settings
+     screen's `importLog` read does not re-run on every other write - only
+     an import itself touches this table. */
+  'importLog'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -572,13 +576,18 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
       reorder: ['checklist'],
-      setAppointmentDate: ['checklist']
+      setAppointmentDate: ['checklist'],
+      setDebriefDismissed: ['checklist'],
+      recordDebriefEntry: ['checklist']
     },
     reads: {
       getChecklist: ['checklist'],
       getChecklistByOwner: ['checklist'],
       getStandaloneChecklist: ['checklist'],
-      getAppointmentDate: ['checklist']
+      getAppointmentDate: ['checklist'],
+      getDebriefState: ['checklist'],
+      getDebriefDismissedEpochDay: ['checklist'],
+      getDebriefEntryId: ['checklist']
     }
   }),
   tally: classify<Journal['tally']>()({
@@ -746,7 +755,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       snapshot: [...TABLE_NAMES],
       previewDaylioImport: [...TABLE_NAMES],
-      previewDaylioBackupImport: [...TABLE_NAMES]
+      previewDaylioBackupImport: [...TABLE_NAMES],
+      // Its own table only, unlike the three above: the settings screen
+      // showing this should not re-run on an entry edit.
+      importLog: ['importLog']
     }
   })
 };
