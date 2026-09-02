@@ -14,6 +14,7 @@ import { daylioPreview, detectDaylio } from './daylio.ts';
 import { daylioBackupPreview } from './daylioBackup.ts';
 import { transTracksPreview } from './transtracks.ts';
 import { makeDaylioBackup } from './test-support/daylio-backup.ts';
+import { trackAndGraphPreview } from './trackAndGraph.ts';
 import { ARCHIVE_SOURCES, UnrecognizedArchiveSourceError, recognizeSource, requireSource, type ArchiveSource } from './sources.ts';
 
 const fixtureText = (name: string) => readFile(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
@@ -35,10 +36,11 @@ const backupEntry = entryFor('daylio-backup');
 test('every source is registered, each carrying its own required fields', () => {
   assert.deepEqual(
     ARCHIVE_SOURCES.map((source) => source.name),
-    ['daylio', 'daylio-backup', 'transtracks']
+    ['daylio', 'daylio-backup', 'transtracks', 'trackAndGraph']
   );
   assert.deepEqual(daylioEntry.requiredFields, ['full_date', 'time', 'mood', 'activities', 'note_title', 'note']);
   assert.deepEqual(backupEntry.requiredFields, ['metadata', 'customMoods', 'dayEntries']);
+  assert.deepEqual(entryFor('trackAndGraph').requiredFields, ['FeatureName', 'Timestamp', 'Value']);
 });
 
 test('the two Daylio sources do not claim each other\'s files', async () => {
@@ -131,4 +133,32 @@ test('the transtracks entry recognises a real backup and maps to the same journa
   const throughRegistry = await transtracksEntry.preview(bytes, existing, undefined);
 
   assert.deepEqual(throughRegistry, direct.journal);
+});
+
+// A new custom measurement type's key is minted at random (mintUuid), so
+// two independent preview calls resolve the same feature under different
+// keys - comparing by name is what proves the registry entry wires up
+// trackAndGraphPreview rather than reimplementing it, the same reasoning
+// `byLabel` above gives Daylio's randomly-minted tag ids.
+function byTypeName(journal: Awaited<ReturnType<typeof trackAndGraphPreview>>['journal']) {
+  const nameByKey = new Map(journal.measurementTypes.map((type) => [type.key, type.name]));
+  return {
+    types: journal.measurementTypes.map((type) => type.name).toSorted(),
+    measurements: journal.measurements.map((measurement) => ({ ...measurement, type: nameByKey.get(measurement.type) }))
+  };
+}
+
+test('the trackAndGraph entry recognises a CSV export and maps to the same journal trackAndGraphPreview itself resolves', async () => {
+  const trackAndGraphEntry = ARCHIVE_SOURCES.find((source) => source.name === 'trackAndGraph')!;
+  const csv = await fixtureText('track-and-graph-edge-cases.csv');
+  const bytes = new TextEncoder().encode(csv);
+  const existing = emptyArchiveJournal();
+
+  assert.ok(trackAndGraphEntry.detect(bytes));
+  assert.ok(!trackAndGraphEntry.detect(await fixtureBytes('daylio-edge-cases.csv')));
+
+  const direct = await trackAndGraphPreview(csv, existing);
+  const throughRegistry = await trackAndGraphEntry.preview(bytes, existing, undefined);
+
+  assert.deepEqual(byTypeName(throughRegistry), byTypeName(direct.journal));
 });

@@ -13,7 +13,7 @@ import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEp
 import { entryIsEmpty } from '../entryContent';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
-import { mintUuid } from '../journal/support';
+import { contentUuid, mintUuid } from '../journal/support';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
 
 export interface DaylioNaming {
@@ -206,16 +206,8 @@ function activitiesOf(row: DaylioRow): string[] {
   return [...byFold.values()];
 }
 
-async function entryUuid(date: string, time: string, mood: string, note: string): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify([date, time, mood, note]));
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)).slice(0, 16);
-  // A name-derived UUID: version 5 and RFC 4122 variant bits, with SHA-256
-  // supplying the deterministic bytes rather than SHA-1.
-  digest[6] = (digest[6] & 0x0f) | 0x50;
-  digest[8] = (digest[8] & 0x3f) | 0x80;
-  const hex = [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
+const entryUuid = (date: string, time: string, mood: string, note: string): Promise<string> =>
+  contentUuid([date, time, mood, note]);
 
 function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
   const matches = new Map<string, string>();
