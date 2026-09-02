@@ -68,6 +68,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
   import WrappedYear from '$lib/components/WrappedYear.svelte';
 
@@ -85,6 +86,13 @@
   );
   let isRange = $derived(view === 'range');
 
+  /* Phase 6 ticket 03: the eras an `era` choice can name, and the journal's
+     own edges to clamp an open one against - both read once here rather
+     than by `wrappedRange.ts`, which stays pure over what it is handed
+     (ADR-0010). */
+  let erasQuery = liveList((j) => j.eras.getEras());
+  let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
+
   /* The picked range lives in the URL rather than in component state, the
      same way a cadence does, so it survives a reload, a back gesture and a
      shared link. */
@@ -93,7 +101,8 @@
       page.url.searchParams.get('named'),
       page.url.searchParams.get('from'),
       page.url.searchParams.get('to'),
-      today
+      today,
+      { eraId: page.url.searchParams.get('era'), eras: erasQuery.rows, bounds: boundsQuery.value ?? null }
     )
   );
 
@@ -114,7 +123,10 @@
     { key: 'range', label: () => m.wrapped_cadence_range() }
   ];
 
-  const RANGE_LABEL: Record<WrappedRangeChoice, () => string> = {
+  /* `era` names itself - the person's own words for the stretch, not a
+     fixed label this record could hold - so `rangeName` below branches on
+     it before this is ever indexed. */
+  const RANGE_LABEL: Record<Exclude<WrappedRangeChoice, 'era'>, () => string> = {
     prevMonth: () => m.recap_period_previous_month(),
     prevYear: () => m.recap_period_previous_year(),
     d7: () => m.recap_period_7d(),
@@ -123,6 +135,10 @@
     ytd: () => m.recap_period_ytd(),
     custom: () => m.recap_period_custom()
   };
+
+  /* Only rows for the fixed choices: an era is offered from the eras the
+     person actually has, in its own section of the sheet below. */
+  const RANGE_PICKER_CHOICES = WRAPPED_RANGE_CHOICES.filter((choice) => choice !== 'era');
 
   /* What a date field shows when it holds a date. The row paints it; the
      input over the row is the press target and opens the platform picker. */
@@ -183,6 +199,14 @@
     }
     rangePicker = false;
     goto(`/wrapped/range${wrappedRangeQuery(choice)}`, { replaceState: true });
+  }
+
+  /* An era is picked whole, the way every other choice but `custom` is:
+     there is nothing half-finished about it, so the sheet closes on the
+     first tap. */
+  function chooseEra(eraId: string) {
+    rangePicker = false;
+    goto(`/wrapped/range${wrappedRangeQuery('era', undefined, eraId)}`, { replaceState: true });
   }
 
   /* The preference is read inside every query rather than around them, so
@@ -256,14 +280,18 @@
      one sentence with the period injected: Polish inflects the month name,
      and the week is named by its two dates instead of by a noun at all
      (docs/ui-copy.md). */
-  let rangeName = $derived(
-    picked.choice === 'custom' && picked.range
-      ? `${fmtDay(picked.range.start, { day: 'numeric', month: 'short' })} - ${fmtDay(picked.range.end, {
-          day: 'numeric',
-          month: 'short'
-        })}`
-      : RANGE_LABEL[picked.choice]()
-  );
+  let rangeName = $derived.by(() => {
+    // An era names itself: the person's own word for the stretch, read off
+    // the row it was picked from rather than off any fixed label.
+    if (picked.choice === 'era') return erasQuery.rows.find((e) => e.id === picked.eraId)?.name ?? '';
+    if (picked.choice === 'custom' && picked.range) {
+      return `${fmtDay(picked.range.start, { day: 'numeric', month: 'short' })} - ${fmtDay(picked.range.end, {
+        day: 'numeric',
+        month: 'short'
+      })}`;
+    }
+    return RANGE_LABEL[picked.choice]();
+  });
 
   let title = $derived.by(() => {
     /* The range names itself, and once: the row above the wrapped is the
@@ -279,9 +307,16 @@
     return m.wrapped_year_title({ year: String(period.year) });
   });
 
+  /* What a picked range says about itself while it has no range - a custom
+     range with a boundary still missing, or an era the journal has nothing
+     to resolve it against (an open bound with no entries at all). Different
+     reasons, so different words: "pick two dates" is not what is wrong with
+     an era someone already picked. */
+  let noRangeReason = $derived(picked.choice === 'era' ? m.recap_era_no_entries() : m.recap_custom_range_required());
+
   let subtitle = $derived.by(() => {
     // The row above already carries the two dates.
-    if (isRange) return range ? m.recap_open_range() : m.recap_custom_range_required();
+    if (isRange) return range ? m.recap_open_range() : noRangeReason;
     if (!period) return '';
     if (period.cadence === 'week') {
       return m.wrapped_week_range({
@@ -368,7 +403,7 @@
                 from: fmtDay(picked.range.start, { day: 'numeric', month: 'short' }),
                 to: fmtDay(picked.range.end, { day: 'numeric', month: 'short' })
               })
-            : m.recap_custom_range_required()}
+            : noRangeReason}
           subtitle={m.cd_range_label()}
           onclick={() => (rangePicker = true)}
         />
@@ -378,7 +413,7 @@
     {#if isRange && !picked.range}
       <!-- A half-finished custom range: the picker is the screen until it
            has both boundaries. -->
-      <Notice icon="info" key="wrapped-range-incomplete" title={m.recap_custom_range_required()} />
+      <Notice icon="info" key="wrapped-range-incomplete" title={noRangeReason} />
       <!-- Held whole rather than filled in as the queries land: every figure
            below is a number, and a 0 that becomes 31 a moment later reads as
            a wrong answer rather than a pending one. -->
@@ -428,7 +463,7 @@
   <Sheet open={rangePicker} title={m.wrapped_cadence_group()} onClose={() => (rangePicker = false)}>
     <div class="stack-3">
       <ListCard>
-        {#each WRAPPED_RANGE_CHOICES as choice (choice)}
+        {#each RANGE_PICKER_CHOICES as choice (choice)}
           {@const goesToCadence = wrappedRangeCadence(choice) !== null}
           <!-- Two of the seven go to a screen of their own rather than
                setting this one's range, so they carry a chevron and never a
@@ -448,6 +483,24 @@
           </ListRow>
         {/each}
       </ListCard>
+
+      {#if erasQuery.rows.length}
+        <!-- The person's own eras, offered the same way `/compare`'s era
+             sheet does (phase 6 ticket 03): a stretch they already named,
+             picked whole rather than as two dates. -->
+        <SectionHeading text={m.eras_title()} />
+        <ListCard>
+          {#each erasQuery.rows as era (era.id)}
+            <ListRow key={`range-era-${era.id}`} title={era.name} chevron={false} onclick={() => chooseEra(era.id)}>
+              {#snippet trailing()}
+                {#if picked.choice === 'era' && picked.eraId === era.id}
+                  <Icon name="check" size={20} />
+                {/if}
+              {/snippet}
+            </ListRow>
+          {/each}
+        </ListCard>
+      {/if}
 
       {#if picked.choice === 'custom'}
         <!-- The same date rows the compare screen draws: a date is picked,

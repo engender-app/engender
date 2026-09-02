@@ -350,6 +350,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const journalingPauses = makeJournalingPausesArea(driver);
+  const eras = makeErasArea(driver);
 
   return {
     entries,
@@ -376,14 +377,15 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     sideEffects,
     cycleEvents,
     journalingPauses,
-    eras: makeErasArea(driver),
+    eras,
     chartAnnotations: makeChartAnnotationsArea({
       milestones,
       regimen,
       doses,
       journalingPauses,
       tryouts,
-      procedures
+      procedures,
+      eras
     }),
     wearSessions,
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
