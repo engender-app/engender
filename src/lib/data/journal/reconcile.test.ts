@@ -90,7 +90,10 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   body_region: 'bodyRegion',
   measurement_type: 'measurementType',
   effect_category: 'effectCategory',
-  personal_effect_type: 'personalEffectType'
+  personal_effect_type: 'personalEffectType',
+  entry_template: 'entryTemplate',
+  entry_template_tag: 'entryTemplate',
+  entry_template_dimension_value: 'entryTemplate'
 };
 
 test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {

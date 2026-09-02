@@ -48,6 +48,7 @@ const SECTIONS = [
   'presets',
   'tagGroups',
   'presentations',
+  'entryTemplates',
   'affirmations',
   'bodyRegions',
   'entries',

@@ -42,6 +42,7 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   presets: (r) => r.id,
   tagGroups: (r) => r.key,
   presentations: (r) => r.id,
+  entryTemplates: (r) => r.id,
   affirmations: (r) => r.id,
   bodyRegions: (r) => r.id,
   entries: (r) => r.uuid,

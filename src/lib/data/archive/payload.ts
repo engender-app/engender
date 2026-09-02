@@ -669,6 +669,7 @@ export interface ArchiveJournal {
   wearSessions: ArchiveWearSession[];
   voiceBenchmarks: ArchiveVoiceBenchmark[];
   presentations: ArchivePresentation[];
+  entryTemplates: ArchiveEntryTemplate[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,
@@ -705,6 +706,27 @@ export interface ArchivePresentation {
   id: string;
   name: string;
   roleIndex: number;
+  hidden: boolean;
+}
+
+/** An entry template (phase 6 ticket 07, ADR-0002): the six original
+    built-ins and the eight folded-in guided prompts alike, plus anything
+    the person authored. `tags` and `dims` are domain ids and dimension
+    keys the same way `ArchivePreset.dims` is - resolved against the
+    archive's own vocabulary sections on the way back in, never a rowid.
+    `presentationId` is free text, not resolved against `ArchivePresentation`
+    - the same reason `ArchiveEntry.presentationId` is - so a template
+    naming a presentation the far side trimmed in a merge is a template
+    with no presentation there, the same resting state an unset one already
+    has. */
+export interface ArchiveEntryTemplate {
+  id: string;
+  name: string;
+  tags: string[];
+  dims: Record<string, number>;
+  noteScaffold: string;
+  presentationId: string | null;
+  builtIn: boolean;
   hidden: boolean;
 }
 

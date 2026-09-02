@@ -31,6 +31,7 @@ import type {
   Affirmation,
   BodyRegion,
   EffectCategory,
+  EntryTemplate,
   GenderDimension,
   MeasurementType,
   Milestone,
@@ -53,6 +54,7 @@ const mirror = $state<{
   effectCategories: EffectCategory[];
   personalEffectTypes: PersonalEffectCatalogEntry[];
   presentations: Presentation[];
+  entryTemplates: EntryTemplate[];
 }>({
   dimensions: [],
   tagGroups: [],
@@ -62,7 +64,8 @@ const mirror = $state<{
   measurementTypes: [],
   effectCategories: [],
   personalEffectTypes: [],
-  presentations: []
+  presentations: [],
+  entryTemplates: []
 });
 
 type MirrorSlice =
@@ -74,7 +77,8 @@ type MirrorSlice =
   | 'measurementTypes'
   | 'effectCategories'
   | 'personalEffectTypes'
-  | 'presentations';
+  | 'presentations'
+  | 'entryTemplates';
 
 /** Which slices a written table invalidates. Photos are in here because a
     milestone carries its photo on the mirrored row, so attaching one changes
@@ -93,7 +97,8 @@ const AFFECTED: Partial<Record<TableName, MirrorSlice[]>> = {
   effectCategory: ['effectCategories'],
   personalEffectType: ['personalEffectTypes'],
   presentation: ['presentations'],
-  entry: ['presentations']
+  entry: ['presentations'],
+  entryTemplate: ['entryTemplates']
 };
 
 let registered = false;
@@ -111,7 +116,8 @@ export async function hydrateReference(journal: Journal): Promise<void> {
     measurementTypes,
     effectCategories,
     personalEffectTypes,
-    presentations
+    presentations,
+    entryTemplates
   ] = await Promise.all([
     journal.dimensions.getDimensions(),
     journal.tags.getTagGroups(),
@@ -121,7 +127,8 @@ export async function hydrateReference(journal: Journal): Promise<void> {
     journal.measurements.getMeasurementTypes(),
     journal.effectCategories.getEffectCategories(),
     journal.personalEffects.getEffectTypes(),
-    journal.presentations.getPresentations()
+    journal.presentations.getPresentations(),
+    journal.entryTemplates.getEntryTemplates()
   ]);
   mirror.dimensions = dimensions;
   mirror.tagGroups = tagGroups;
@@ -132,6 +139,7 @@ export async function hydrateReference(journal: Journal): Promise<void> {
   mirror.effectCategories = effectCategories;
   mirror.personalEffectTypes = personalEffectTypes;
   mirror.presentations = presentations;
+  mirror.entryTemplates = entryTemplates;
 
   if (registered) return;
   registered = true;
@@ -153,6 +161,7 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
     if (slices.has('personalEffectTypes')) mirror.personalEffectTypes = await journal.personalEffects.getEffectTypes();
     if (slices.has('presentations')) mirror.presentations = await journal.presentations.getPresentations();
+    if (slices.has('entryTemplates')) mirror.entryTemplates = await journal.entryTemplates.getEntryTemplates();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -317,5 +326,18 @@ export const reference = {
       same "not hidden" filter `visibleTagGroups` already applies to tags. */
   get visiblePresentations(): Presentation[] {
     return mirror.presentations.filter((p) => !p.hidden);
+  },
+
+  /** Every entry template, hidden ones included (phase 6 ticket 07,
+      CONTEXT: "Hidden") - what the editing screen manages. */
+  get entryTemplates(): EntryTemplate[] {
+    return mirror.entryTemplates;
+  },
+
+  /** What the entry editor's "use template" sheet offers: hidden templates
+      removed, the same "not hidden" filter `visibleTagGroups` already
+      applies to tags. */
+  get visibleEntryTemplates(): EntryTemplate[] {
+    return mirror.entryTemplates.filter((t) => !t.hidden);
   }
 };

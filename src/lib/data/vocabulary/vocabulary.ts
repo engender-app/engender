@@ -15,12 +15,11 @@ import { prefs } from '../prefs/store.svelte';
 import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { rankByLean, scaleLean } from '../lean';
-import { entryPromptRows, entryTemplateRows, milestoneTemplateRows, regimenTemplateRows } from './builtins';
+import { milestoneTemplateRows, regimenTemplateRows } from './builtins';
 import type {
   Affirmation,
   BodyRegion,
   EffectCategory,
-  EntryPrompt,
   EntryTemplate,
   GenderDimension,
   MeasurementType,
@@ -40,8 +39,8 @@ import {
   dimensionName,
   dimensionNote as builtInDimensionNote,
   effectCategoryName,
-  entryPromptText,
   entryTemplateName,
+  entryTemplateNoteScaffold,
   measurementTypeName,
   milestoneTemplateName,
   moodName,
@@ -102,12 +101,13 @@ function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
   };
 }
 
+/** A built-in's wording is resolved by key, the same "data lives in the
+    mirror, wording lives in labels.ts" split every other built-in area
+    uses; an authored template's name and note scaffold are the person's
+    own words and pass through untouched (phase 6 ticket 07). */
 function localizeEntryTemplate(t: EntryTemplate): EntryTemplate {
-  return { ...t, name: entryTemplateName(t.key) };
-}
-
-function localizeEntryPrompt(p: EntryPrompt): EntryPrompt {
-  return { ...p, text: entryPromptText(p.key) };
+  if (!t.builtIn) return t;
+  return { ...t, name: entryTemplateName(t.id), noteScaffold: entryTemplateNoteScaffold(t.id) ?? '' };
 }
 
 /** Keys only; the names come from the message catalogue below. Not stored
@@ -117,14 +117,6 @@ const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
 /** Same shape as `milestoneTemplates` above, for regimen episodes (phase 5
     ticket 42, CONTEXT: "Regimen template"). */
 const regimenTemplates: RegimenTemplate[] = regimenTemplateRows();
-
-/** Same shape as `milestoneTemplates` above, for entries rather than
-    milestones (phase 4 features ticket 17). */
-const entryTemplates: EntryTemplate[] = entryTemplateRows();
-
-/** The built-in rotating reflection prompts (phase 4 features ticket 17),
-    keyed the same way. */
-const entryPrompts: EntryPrompt[] = entryPromptRows();
 
 export const vocabulary = {
   get dimensions(): GenderDimension[] {
@@ -326,15 +318,30 @@ export const vocabulary = {
     }
     return rankByLean(picked.map(localizeTemplate), this.activeLean);
   },
-  /** The built-in templates the entry-creation flow can offer (phase 4
-      features ticket 17), in the wording the current language gives them. */
+  /** Every entry template, built-in and authored, hidden ones included, in
+      the wording the current language gives a built-in (phase 6 ticket 07)
+      - what the editing screen manages. */
   get entryTemplates(): EntryTemplate[] {
-    return entryTemplates.map(localizeEntryTemplate);
+    return reference.entryTemplates.map(localizeEntryTemplate);
   },
-  /** One rotating reflection prompt, picked at random so the cue differs
-      between visits (phase 4 features ticket 17) - the same reasoning
-      `randomTemplates` above gives the milestone shuffle button. */
-  randomPrompt(): EntryPrompt {
-    return localizeEntryPrompt(entryPrompts[Math.floor(Math.random() * entryPrompts.length)]);
+  /** What the entry editor's "use template" sheet offers: hidden templates
+      removed, the same "not hidden" filter `visibleTagGroups` already
+      applies to tags. */
+  get visibleEntryTemplates(): EntryTemplate[] {
+    return reference.visibleEntryTemplates.map(localizeEntryTemplate);
+  },
+  /** One rotating reflection cue for the entry-creation banner (phase 4
+      features ticket 17), picked from among the folded-in guided prompts -
+      templates whose only content is a note scaffold (phase 6 ticket 07):
+      no tags, no dims, no presentation. Null once every one has been
+      hidden, which the banner reads as nothing to show rather than an
+      error - the same resting state hiding every built-in already gives
+      any other picker. */
+  randomPrompt(): EntryTemplate | null {
+    const pool = this.visibleEntryTemplates.filter(
+      (t) => t.tags.length === 0 && Object.keys(t.dims).length === 0 && t.noteScaffold !== '' && t.presentationId === null
+    );
+    if (pool.length === 0) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 };
