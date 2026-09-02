@@ -147,11 +147,13 @@ describe('the heat map', () => {
        2026-09-02: Daylio's split cell. The rule between split, stack and
        whole is statsCharts.ts's and has its own test; what is checked here
        is that this file asks for it and draws both halves from the day's
-       own two steps rather than from the average twice. */
+       own two steps rather than from the average twice - in the day's own
+       order, earliest on the left, which is the half a size-ordered draw
+       would silently get wrong. */
     expect(heatMap).toContain('j.stats.daySpread(');
     expect(heatMap).toContain('dayShape(');
-    expect(heatMap).toMatch(/cal-half[\s\S]*?fillAt\(c\.shape\.low\)/);
-    expect(heatMap).toMatch(/is-high[\s\S]*?fillAt\(c\.shape\.high\)/);
+    expect(heatMap).toMatch(/cal-half[\s\S]*?fillAt\(c\.shape\.first\)/);
+    expect(heatMap).toMatch(/is-later[\s\S]*?fillAt\(c\.shape\.last\)/);
     expect(markupOf(heatMap)).toContain('data-hm-cell-split');
     expect(markupOf(heatMap)).toContain('data-hm-cell-stack');
   });

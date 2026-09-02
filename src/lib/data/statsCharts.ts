@@ -106,14 +106,18 @@ export const MAX_STACK_CARDS = 4;
 /** What a day's cell is drawn as, once the day's own entries are known
     (phase 6 unprompted ticket 11, CONTEXT: Spread).
 
-    `split` carries two heat steps rather than two values: a step is what a
-    fill is, and two entries inside one step have no edge to draw between
-    them. Low first, and that is the whole of the order - which entry came
-    first, and which one the day "really" was, are questions this
-    deliberately cannot answer. */
+    `split` carries two steps rather than two values: a step is what a fill
+    is, and two entries inside one step have no edge to draw between them.
+
+    `first` and `last` are the day's own order, earliest half on the left
+    (Alicja, 2026-09-02: chronological). That is a claim the app used not to
+    make - CONTEXT.md's entry for Spread said a day never says which reading
+    came first - and it is now hers to make, so the entry says so. Nothing
+    else changed with it: the words beside the cell are still the day's
+    lowest and highest, which have no order at all. */
 export type DayShape =
   | { kind: 'one' }
-  | { kind: 'split'; low: number; high: number }
+  | { kind: 'split'; first: number; last: number }
   | { kind: 'stack'; cards: number };
 
 /** How a day that carried the metric is drawn, or null for a day that
@@ -121,7 +125,7 @@ export type DayShape =
 
     Three shapes, and the rule between them is the one a person can state:
     a day of two readings that landed on different steps is **split** down
-    the middle, one half per reading; a day whose readings all landed on the
+    the middle, one half per reading, earliest on the left; a day whose readings all landed on the
     same step has no edge to draw, so it **stacks** instead; and a day of
     three or more readings always stacks, because four bands at 36px is a
     texture rather than four readings.
@@ -141,9 +145,13 @@ export function dayShape(
 ): DayShape | null {
   if (!spread) return null;
   if (spread.count <= 1) return { kind: 'one' };
-  const low = stepOf(spread.low);
-  const high = stepOf(spread.high);
-  if (spread.count === 2 && low !== high) return { kind: 'split', low, high };
+  /* Whether to split is a question about size and which side is a question
+     about time, so the two ends are read twice from two pairs. At two
+     readings they are the same pair either way round, which is why the
+     condition below can be written on the chronological one. */
+  const first = stepOf(spread.first);
+  const last = stepOf(spread.last);
+  if (spread.count === 2 && first !== last) return { kind: 'split', first, last };
   return { kind: 'stack', cards: Math.min(spread.count, MAX_STACK_CARDS) };
 }
 

@@ -28,7 +28,8 @@
      overwriting a day that held a hard morning and a good evening, and the
      day that most needed to be legible is the one it flattened. So a day of
      two readings on different steps is split down the middle, a half per
-     reading, and a day whose readings landed on one step stacks instead -
+     reading and the earlier one on the left, and a day whose readings
+     landed on one step stacks instead -
      there is no edge to draw between two halves of one colour. Three
      readings and up always stack: four bands at this size is a texture
      rather than four readings. The rule is ../data/statsCharts.ts's, and
@@ -252,8 +253,8 @@
     {/if}
     <span class="cal-swatch" style="background:{fillAt(c.step)}">
       {#if c.shape?.kind === 'split'}
-        <span class="cal-half" data-hm-cell-split style="background:{fillAt(c.shape.low)}"></span>
-        <span class="cal-half is-high" style="background:{fillAt(c.shape.high)}"></span>
+        <span class="cal-half" data-hm-cell-split style="background:{fillAt(c.shape.first)}"></span>
+        <span class="cal-half is-later" style="background:{fillAt(c.shape.last)}"></span>
       {/if}
     </span>
     <!-- Over the halves rather than under them, and without its own disc,
@@ -370,8 +371,8 @@
      side in front of it. Butted, the two colours meet on a line and the cell
      looks like one shape someone recoloured half of.
 
-     The lower half wears the swatch's own border, since the swatch is
-     underneath it and drawn to the same shape. The upper half is outside
+     The earlier half wears the swatch's own border, since the swatch is
+     underneath it and drawn to the same shape. The later half is outside
      that border on three sides, so it carries its own - without one it was
      the one piece of the cell with no edge at all (Alicja, same round). */
   .cal-half {
@@ -382,7 +383,7 @@
     width: 50%;
     border-radius: var(--half-low);
   }
-  .cal-half.is-high {
+  .cal-half.is-later {
     left: auto;
     right: -1px;
     top: -1px;
