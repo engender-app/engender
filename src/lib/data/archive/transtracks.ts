@@ -1,0 +1,223 @@
+/* TransTracks becomes an archive-shaped merge, the same division of labour
+   daylio.ts already set: parsing and resolving happen here, writing stays
+   in the journal's archive area, and this module never touches disk (PRD
+   F28's preview-first rule, extended from CSV to a zip).
+
+   TransTracks carries real identity - Photo and Milestone are both keyed by
+   a stable `UUID.randomUUID()` that round-trips through the app's own
+   export/import - so unlike Daylio there is no content-derived uuid to
+   mint. Reusing the source file's own id is what makes a repeated import a
+   no-op (ADR-0002), the same guarantee a derived hash gives Daylio for
+   different reasons.
+
+   The container is a real zip: `data.json` at the root, JPEGs under
+   `photos/`, deflate-compressed by Android's ZipOutputStream default. This
+   app's WebView floor is 87 (capacitor.config.ts); native
+   DecompressionStream only gained the 'deflate-raw' format in Chrome 103,
+   so unzipping goes through fflate rather than the platform decoder. */
+
+import { unzipSync, strFromU8 } from 'fflate';
+import { startOfDayTimestamp } from '../epochDay';
+import { emptyArchiveJournal } from '../journal/archiveSections';
+import { photoFileName } from '../photos/names';
+import type { ArchiveEntry, ArchiveJournal, ArchiveMilestone, ArchivePhoto } from './payload';
+
+const KNOWN_TOP_LEVEL_KEYS = ['settings', 'photos', 'milestones'] as const;
+
+export class TransTracksBackupError extends Error {
+  constructor(message: string) {
+    super(`TransTracks backup ${message}`);
+    this.name = 'TransTracksBackupError';
+  }
+}
+
+export interface TransTracksPreview {
+  /** Net additions, not raw file totals - what commit reports. */
+  milestoneCount: number;
+  photoCount: number;
+  /** Files under `photos/` that no photo record in `data.json` names -
+      TransTracks' own exporter copies the whole directory wholesale, so a
+      deleted-but-not-purged image rides along. Ignored, and named here so
+      the preview says so rather than importing them as loose photos. */
+  orphanedPhotoCount: number;
+  /** Fields this build read and dropped, named for the preview rather than
+      silently discarded. TransTracks' own face/body flag has no home in
+      ArchivePhoto - the only field this source ever drops. */
+  ignoredFields: string[];
+  /** Any key in `data.json` beside settings/photos/milestones - skipped
+      rather than fatal, mirroring TransTracks' own forward-tolerant reader
+      (`skipValue()` on the unknown top-level key). */
+  unknownTopLevelKeys: string[];
+  /** The resolved merge payload. A preview is the exact work committed,
+      never an instruction to re-read a file that may have changed by then. */
+  journal: ArchiveJournal;
+  /** Every newly added photo's original JPEG bytes, keyed by the
+      `ArchivePhoto.fileName` used inside `journal`. Not normalized:
+      normalize() needs a canvas and stays a caller's job, the same
+      division photoPicking.ts already draws for every other photo-writing
+      area (photos.ts's attach, hairProgress.ts, tryouts.ts, ...). */
+  rawPhotos: Map<string, Uint8Array>;
+}
+
+interface RawPhoto {
+  id: unknown;
+  epochDay: unknown;
+  timestamp: unknown;
+  fileName: unknown;
+  type: unknown;
+}
+
+interface RawMilestone {
+  id: unknown;
+  epochDay: unknown;
+  timestamp: unknown;
+  title: unknown;
+  description: unknown;
+}
+
+interface RawPayload {
+  settings?: unknown;
+  photos?: unknown;
+  milestones?: unknown;
+}
+
+/** A non-throwing sniff (sources.ts's own contract): a real zip, holding a
+    `data.json` whose parsed shape has both arrays a TransTracks export
+    always carries. Never the full structural validation - that stays in
+    `transTracksPreview`, which throws by naming the record. */
+export function detectTransTracks(bytes: Uint8Array): boolean {
+  try {
+    const entries = unzipSync(bytes, { filter: (file) => file.name === 'data.json' });
+    const raw = entries['data.json'];
+    if (!raw) return false;
+    const parsed = JSON.parse(strFromU8(raw)) as RawPayload;
+    return Array.isArray(parsed.photos) && Array.isArray(parsed.milestones);
+  } catch {
+    return false;
+  }
+}
+
+function readDataJson(zip: Record<string, Uint8Array>): RawPayload {
+  const raw = zip['data.json'];
+  if (!raw) throw new TransTracksBackupError('does not contain a data.json');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(strFromU8(raw));
+  } catch {
+    throw new TransTracksBackupError('data.json is not valid JSON');
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new TransTracksBackupError('data.json is not an object');
+  }
+  return parsed as RawPayload;
+}
+
+function requireString(value: unknown, field: string, index: number, kind: string): string {
+  if (typeof value !== 'string' || value === '') {
+    throw new TransTracksBackupError(`${kind} ${index} is missing its ${field}`);
+  }
+  return value;
+}
+
+function requireEpochDay(value: unknown, index: number, kind: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    throw new TransTracksBackupError(`${kind} ${index} has an invalid epochDay`);
+  }
+  return value;
+}
+
+export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJournal): Promise<TransTracksPreview> {
+  const zip = unzipSync(bytes);
+  const payload = readDataJson(zip);
+
+  const unknownTopLevelKeys = Object.keys(payload).filter(
+    (key) => !(KNOWN_TOP_LEVEL_KEYS as readonly string[]).includes(key)
+  );
+
+  const rawMilestones = Array.isArray(payload.milestones) ? (payload.milestones as RawMilestone[]) : [];
+  const rawPhotos = Array.isArray(payload.photos) ? (payload.photos as RawPhoto[]) : [];
+
+  const existingMilestones = new Set(existing.milestones.map((milestone) => milestone.id));
+  const existingEntries = new Set(existing.entries.map((entry) => entry.uuid));
+
+  const milestones: ArchiveMilestone[] = [];
+  rawMilestones.forEach((raw, index) => {
+    const id = requireString(raw.id, 'id', index, 'milestone');
+    const epochDay = requireEpochDay(raw.epochDay, index, 'milestone');
+    const title = requireString(raw.title, 'title', index, 'milestone');
+    const description = typeof raw.description === 'string' ? raw.description : '';
+    if (existingMilestones.has(id)) return;
+
+    milestones.push({
+      id,
+      name: title,
+      epochDay,
+      description,
+      templateKey: null,
+      roadmapGoalKey: null,
+      procedureId: null,
+      tryoutId: null,
+      photo: null
+    });
+  });
+
+  // TransTracks photos are a standalone dated array with a face/body flag;
+  // ArchiveMilestone.photo holds at most one photo nested under a
+  // milestone, so a photo becomes its own dated entry instead (spec's
+  // "likely answer"). The entry's uuid is the photo's own uuid - one
+  // TransTracks photo, one synthetic entry, one identity - which is what
+  // makes a repeated import skip it in both tables at once.
+  const entries: ArchiveEntry[] = [];
+  const newRawPhotos = new Map<string, Uint8Array>();
+  let referencedFileNames = 0;
+
+  rawPhotos.forEach((raw, index) => {
+    const id = requireString(raw.id, 'id', index, 'photo');
+    const epochDay = requireEpochDay(raw.epochDay, index, 'photo');
+    const sourceFileName = requireString(raw.fileName, 'fileName', index, 'photo');
+    referencedFileNames += 1;
+
+    const zipBytes = zip[`photos/${sourceFileName}`];
+    if (!zipBytes || zipBytes.length === 0) {
+      throw new TransTracksBackupError(`photo ${index} names ${sourceFileName}, which is missing from the zip`);
+    }
+    if (existingEntries.has(id)) return;
+
+    const fileName = photoFileName(id);
+    const photo: ArchivePhoto = { id, fileName, starred: false };
+    entries.push({
+      uuid: id,
+      epochDay,
+      timestamp: startOfDayTimestamp(epochDay),
+      mood: null,
+      note: '',
+      dims: {},
+      tags: [],
+      photos: [photo],
+      recordings: [],
+      videos: [],
+      bodyRegions: {},
+      starred: false,
+      presentationId: null
+    });
+    newRawPhotos.set(fileName, zipBytes);
+  });
+
+  const orphanedPhotoCount = Object.keys(zip).filter((name) => {
+    if (!name.startsWith('photos/') || name.endsWith('/')) return false;
+    const fileName = name.slice('photos/'.length);
+    return !rawPhotos.some((raw) => raw.fileName === fileName);
+  }).length;
+
+  const journal: ArchiveJournal = { ...emptyArchiveJournal(), milestones, entries };
+
+  return {
+    milestoneCount: milestones.length,
+    photoCount: entries.length,
+    orphanedPhotoCount,
+    ignoredFields: referencedFileNames > 0 ? ['type (face or body)'] : [],
+    unknownTopLevelKeys,
+    journal,
+    rawPhotos: newRawPhotos
+  };
+}

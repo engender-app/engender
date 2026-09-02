@@ -4,9 +4,9 @@
    source file this format was learned from was a real personal journal and
    has been deleted, so the fixture is the only written record of the shape
    besides the ticket. A JSON literal a reviewer can read and edit is worth
-   more than an opaque 4KB zip, and it still produces a real zip - a real
-   base64 member, real deflate on one entry, real leading-slash asset
-   paths.
+   more than an opaque 4KB zip, and it still produces a real zip, written
+   by the same library that reads one (fflate) - a real base64 member, real
+   deflate on one entry, real leading-slash asset paths.
 
    Nothing here came from the real file. Every name, note and checksum is
    invented, in the shapes the ticket documents:
@@ -21,7 +21,19 @@
      - `android_metadata` as JSON inside JSON
      - a `pin` at the top level, which the parser has to strip */
 
-import { makeZip, type ZipSource } from './zip.ts';
+import { zipSync } from 'fflate';
+
+/** One member of the fixture zip. `deflate` picks the compression per
+    entry, because stored and deflated members are not the same path
+    through the reader and a fixture that only exercised one would leave
+    the other untested. */
+export interface ZipSource {
+  /** Written verbatim, so a test can give the leading-slash form Daylio
+      itself uses. */
+  name: string;
+  bytes: Uint8Array;
+  deflate?: boolean;
+}
 
 export const PHOTO_CHECKSUM = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1';
 export const AUDIO_CHECKSUM = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2';
@@ -296,12 +308,24 @@ export function daylioAssetFiles(): ZipSource[] {
 
 /** The payload wrapped the way a real backup wraps it: base64 of the
     UTF-8 JSON, newline-wrapped as the observed file was, as
-    `backup.daylio` inside a zip. */
-export function makeDaylioBackup(
+    `backup.daylio` inside a zip.
+
+    Async only because every caller awaits it and the builder it replaced
+    had to be - keeping the signature saves rewriting every test for a
+    difference that is not theirs. */
+export async function makeDaylioBackup(
   payload: unknown = daylioPayload(),
   assets: readonly ZipSource[] = daylioAssetFiles()
 ): Promise<Uint8Array> {
   return makeDaylioBackupFrom(base64(new TextEncoder().encode(JSON.stringify(payload))), assets);
+}
+
+/** The members as one zip. Exported so a test can build an archive that
+    is a zip and nothing else - one with no `backup.daylio` in it. */
+export function makeZip(sources: readonly ZipSource[]): Uint8Array {
+  const members: Record<string, [Uint8Array, { level: 0 | 6 }]> = {};
+  for (const source of sources) members[source.name] = [source.bytes, { level: source.deflate ? 6 : 0 }];
+  return zipSync(members);
 }
 
 /** The malformed half of the fixture pair the spec asks every source for
@@ -313,7 +337,7 @@ export function makeDaylioBackup(
     Kept as one named file rather than only as the per-case payloads the
     tests bend inline, because "what does this source do with a broken
     file" should have one answer somebody can run. */
-export function makeMalformedDaylioBackup(): Promise<Uint8Array> {
+export async function makeMalformedDaylioBackup(): Promise<Uint8Array> {
   const payload = daylioPayload();
   const entries = (payload.dayEntries as Record<string, unknown>[]).map((entry) => ({ ...entry, mood: 404 }));
   return makeDaylioBackup({ ...payload, dayEntries: entries });
@@ -321,11 +345,8 @@ export function makeMalformedDaylioBackup(): Promise<Uint8Array> {
 
 /** A backup whose `backup.daylio` member holds exactly `member`, for the
     tests about a container that is not readable at all. */
-export function makeDaylioBackupFrom(member: string, assets: readonly ZipSource[] = []): Promise<Uint8Array> {
-  return makeZip([
-    { name: 'backup.daylio', bytes: new TextEncoder().encode(member), deflate: true },
-    ...assets
-  ]);
+export async function makeDaylioBackupFrom(member: string, assets: readonly ZipSource[] = []): Promise<Uint8Array> {
+  return makeZip([{ name: 'backup.daylio', bytes: new TextEncoder().encode(member), deflate: true }, ...assets]);
 }
 
 /** Base64 in 76-character lines: the observed file's own wrapping, which

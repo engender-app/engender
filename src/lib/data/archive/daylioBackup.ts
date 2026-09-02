@@ -32,6 +32,13 @@
    and confirmed with the person looking at it, and the preview is the
    exact work a commit performs.
 
+   Unzipping goes through fflate rather than the platform's own
+   DecompressionStream, for the reason transtracks.ts found first: this
+   app's WebView floor is Chrome 87 (capacitor.config.ts) and the
+   'deflate-raw' format only arrived in Chrome 103, so the platform
+   decoder would fail on the devices this app supports. One zip reader in
+   the repo, and it is that one.
+
    Identity is derived from content (ADR-0002), because Daylio's ids are
    per-collection integers unique only inside one backup. One limit worth
    stating: these uuids are not the CSV path's. A journal that imported
@@ -54,7 +61,7 @@ import type {
   ArchiveTag,
   ArchiveTagGroup
 } from './payload';
-import { NotAZipError, centralDirectoryAt, openZip, type ZipArchive } from './zip';
+import { unzipSync } from 'fflate';
 
 /** Why a backup could not be read, for a screen that words its own
     message from it - the same split normalize.ts's UnsupportedImageError
@@ -93,7 +100,7 @@ const BACKUP_MEMBER = 'backup.daylio';
 /** `assets.type`: 1 is a photo, 2 is audio, and the number decides which
     directory the file is under. */
 const AUDIO_ASSET = 2;
-/** Daylio writes these with a leading slash; openZip normalises it. */
+/** Daylio writes these with a leading slash; `zipName` normalises it. */
 const PHOTO_DIRECTORY = 'assets/photos/';
 const AUDIO_DIRECTORY = 'assets/audio/';
 
@@ -190,47 +197,63 @@ const flag = (value: unknown): boolean => value === true;
 
 /* ---- detection ------------------------------------------------------- */
 
-const MEMBER_BYTES = new TextEncoder().encode(BACKUP_MEMBER);
+/** Daylio writes its entry names with a leading slash
+    (`/assets/photos/...`). Some readers normalise that away and fflate
+    does not, so one entry would otherwise be reachable under two names or
+    under neither, depending on which form the caller happened to hold. */
+const zipName = (name: string): string => name.replace(/^\/+/, '');
+
+/** Every entry name in the archive, decompressing none of them: the
+    filter is called once per entry and always says no, which walks the
+    central directory and stops there. */
+function zipNames(file: Uint8Array): string[] {
+  const names: string[] = [];
+  unzipSync(file, {
+    filter: (entry) => {
+      names.push(zipName(entry.name));
+      return false;
+    }
+  });
+  return names;
+}
+
+/** One entry's bytes, or null when the archive has no such entry. Named
+    after normalisation, so the caller passes the form `zipNames` returned.
+    Decompresses that member alone, which is what keeps a preview off the
+    500 photos it is not reading. */
+function zipRead(file: Uint8Array, name: string): Uint8Array | null {
+  const found = unzipSync(file, { filter: (entry) => zipName(entry.name) === name });
+  return Object.values(found)[0] ?? null;
+}
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:
     whether the member decodes and what it says is `daylioBackupPreview`'s
     business, which throws by naming what was wrong.
 
-    Reads the bytes rather than opening the archive because the registry's
-    detection is synchronous and must not throw for any input. */
+    Non-throwing for any input, per the registry's own contract, and it
+    decompresses nothing - only the directory of names is read. */
 export function detectDaylioBackup(file: Uint8Array): boolean {
-  if (file.length < 4 || file[0] !== 0x50 || file[1] !== 0x4b) return false;
-
-  /* Only the central directory is searched, not the file. Every entry name
-     in the archive is listed there, it is a few tens of kilobytes at the
-     tail of even an 84MB backup, and scanning the whole thing on every
-     pick is exactly what this contract says a sniff does not do. */
-  const from = centralDirectoryAt(file);
-  if (from === null) return false;
-
-  outer: for (let at = from; at <= file.length - MEMBER_BYTES.length; at++) {
-    for (let i = 0; i < MEMBER_BYTES.length; i++) {
-      if (file[at + i] !== MEMBER_BYTES[i]) continue outer;
-    }
-    return true;
+  try {
+    return zipNames(file).includes(BACKUP_MEMBER);
+  } catch {
+    return false;
   }
-  return false;
 }
 
 /* ---- the container --------------------------------------------------- */
 
 /** The decoded payload, with the app-lock PIN removed before anything
     else in this file can see it. */
-async function openBackup(file: Uint8Array): Promise<{ payload: Record_; zip: ZipArchive }> {
-  let zip: ZipArchive;
+function openBackup(file: Uint8Array): { payload: Record_; names: Set<string> } {
+  let names: Set<string>;
+  let member: Uint8Array | null;
   try {
-    zip = await openZip(file);
+    names = new Set(zipNames(file));
+    member = names.has(BACKUP_MEMBER) ? zipRead(file, BACKUP_MEMBER) : null;
   } catch (cause) {
-    if (cause instanceof NotAZipError) throw new DaylioBackupError('unreadable', 'is not a zip file');
-    throw cause;
+    throw new DaylioBackupError('unreadable', 'is not a zip file');
   }
 
-  const member = await zip.read(BACKUP_MEMBER);
   if (!member) throw new DaylioBackupError('unreadable', `has no ${BACKUP_MEMBER} member, so it is not a Daylio backup`);
 
   let json: string;
@@ -259,7 +282,7 @@ async function openBackup(file: Uint8Array): Promise<{ payload: Record_; zip: Zi
   delete parsed.pin;
   delete parsed.pinMode;
 
-  return { payload: parsed, zip };
+  return { payload: parsed, names };
 }
 
 /* ---- identity -------------------------------------------------------- */
@@ -385,7 +408,7 @@ export async function daylioBackupPreview(
   existing: ArchiveJournal,
   naming: DaylioNaming
 ): Promise<DaylioBackupPreview> {
-  const { payload, zip } = await openBackup(file);
+  const { payload, names: zipEntries } = openBackup(file);
 
   const platform = str((isRecord(payload.metadata) ? payload.metadata : {}).platform);
   if (platform !== 'android') {
@@ -400,7 +423,6 @@ export async function daylioBackupPreview(
   }
 
   const version = int(payload.version);
-  const zipNames = new Set(zip.names());
   const assets = assetRows(payload);
   const skipped: DaylioSkip[] = [];
   const journal = emptyArchiveJournal();
@@ -418,7 +440,7 @@ export async function daylioBackupPreview(
   const assetPaths = new Map<number, string>();
   for (const [id, asset] of assets) {
     const directory = asset.type === AUDIO_ASSET ? AUDIO_DIRECTORY : PHOTO_DIRECTORY;
-    const path = [...zipNames].find((name) => name.startsWith(directory) && name.endsWith(`/${asset.checksum}`));
+    const path = [...zipEntries].find((name) => name.startsWith(directory) && name.endsWith(`/${asset.checksum}`));
     if (!path) {
       missingAssets.add(id);
       continue;
@@ -427,7 +449,7 @@ export async function daylioBackupPreview(
   }
 
   const readAsset = async (id: number): Promise<Uint8Array> => {
-    const bytes = await zip.read(assetPaths.get(id)!);
+    const bytes = zipRead(file, assetPaths.get(id)!);
     if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };
