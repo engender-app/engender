@@ -1,0 +1,6 @@
+FeatureName,DeviceId,Timestamp,Value,Label,Note
+Weight,phone-1,2022-09-14T21:30:41.432+01:00,72.5,,
+Run duration,phone-1,2021-02-09T11:07:28Z,1:02:03,,workout notes
+Weight,phone-1,2022-09-20T08:00:00Z,71.9:legacy label,,
+Mood score,phone-1,2022-09-21T09:15:00.500Z,4,explicit label,
+
