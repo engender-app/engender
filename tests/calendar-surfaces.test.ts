@@ -167,8 +167,24 @@ describe('the heat map', () => {
     expect(heatMap).toContain("import MoodFace from '$lib/components/MoodFace.svelte'");
     expect(heatMap).toMatch(/isMood\s*=\s*\$derived\(vocabulary\.activeMetric === 'mood'\)/);
     expect(heatMap).toContain('`var(--mood-${step})`');
-    // The face sits over the halves, so it brings no disc of its own.
+    // A face sits over the halves, so it brings no disc of its own.
     expect(markupOf(heatMap)).toMatch(/<MoodFace[^>]*disc=\{false\}/);
+  });
+
+  it('gives a split mood day two half-faces rather than one whole one', () => {
+    /* Alicja, 2026-09-02: the face is divided like the cell is. So the two
+       readings each draw their own, and each is clipped to its own side -
+       one whole face over a split cell would say the day was one thing
+       after all, which is the flattening this ticket exists to undo. */
+    const markup = markupOf(heatMap);
+    expect(markup).toMatch(/is-earlier[\s\S]*?<MoodFace step=\{c\.shape\.first\}/);
+    expect(markup).toMatch(/is-later[\s\S]*?<MoodFace step=\{c\.shape\.last\}/);
+    /* Clipped rather than nested inside the halves: the later half is a
+       pixel proud on three sides, so a face hung inside it would sit a
+       pixel off the one beside it. Both are the whole cell, cut on the
+       colour's own seam. */
+    expect(heatMap).toMatch(/\.cal-face\.is-earlier \{ clip-path: inset\(0 calc\(50% \+ 1px\) 0 0\); \}/);
+    expect(heatMap).toMatch(/\.cal-face\.is-later \{ clip-path: inset\(0 0 0 calc\(50% - 1px\)\); \}/);
   });
 
   it('gives a gender dimension no face, which is a rule and not an omission', () => {
