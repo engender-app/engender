@@ -662,6 +662,20 @@ const SECTIONS = [
       snr_db: 'snrDb',
       note: 'note'
     }
+  }),
+  /* The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
+     list"). Flat: one table, no children, no built-ins - nothing ships
+     seeded, so every row is the person's own and `uuid` alone tells two
+     devices' rows apart, the same reasoning `eras` above gives. `position`
+     travels as an ordinary column rather than being derived from array
+     order, so a merge that interleaves two devices' lists is at least
+     stable rather than silently reshuffled on every read. */
+  flat({
+    name: 'comfortItems',
+    table: 'comfort_item',
+    identity: 'uuid',
+    orderBy: 'position, id',
+    columns: { uuid: 'id', text: 'text', position: 'position' }
   })
 ] as const;
 

@@ -709,6 +709,7 @@ const CARRIED: Record<string, string[]> = {
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
   wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
+  comfort_item: ['uuid', 'text', 'position'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
   pref: ['key', 'value']
 };
