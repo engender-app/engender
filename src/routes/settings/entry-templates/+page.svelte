@@ -171,7 +171,7 @@
           (editor.tags = editor.tags.includes(id) ? editor.tags.filter((x) => x !== id) : [...editor.tags, id])}
       />
 
-      <Field label={m.entry_template_note_scaffold_label()} id="entry-template-note-scaffold">
+      <Field label={m.note_label()} id="entry-template-note-scaffold">
         {#snippet children(id)}
           <textarea
             class="input"
