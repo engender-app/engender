@@ -7,39 +7,68 @@
 
    Follows archiveSections.ts's own pattern: a closed set of names
    (`ArchiveSourceName`), one array declaring an entry for each, and a
-   compile-time check that nothing in the set is left out of the array. */
+   compile-time check that nothing in the set is left out of the array.
+
+   A source is handed bytes rather than text (phase 7 ticket 09). Daylio's
+   own `.daylio` backup is a zip, so a registry that could only offer a
+   string could not hold it, and a text source decodes for itself - which
+   is cheaper than it looks, because detection reads a header rather than
+   a whole file. */
 
 import { daylioPreview, REQUIRED_COLUMNS as DAYLIO_REQUIRED_COLUMNS, detectDaylio, type DaylioNaming } from './daylio';
+import { REQUIRED_FIELDS as DAYLIO_BACKUP_REQUIRED_FIELDS, daylioBackupPreview, detectDaylioBackup } from './daylioBackup';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio';
+export type ArchiveSourceName = 'daylio' | 'daylio-backup';
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
   /** The fields or columns this source's file must carry, for a caller that
       wants to name what a near-miss file is missing. */
-  requiredColumns: readonly string[];
+  requiredFields: readonly string[];
   /** A non-throwing sniff: does this file look like this source's own kind
       at all? Never the full structural validation - that stays in
-      `preview`, which throws by naming the row or column (the failure
-      contract every source shares, spec's own "3"). */
-  detect(text: string): boolean;
+      `preview`, which throws by naming the row, field or record (the
+      failure contract every source shares, spec's own "3").
+
+      Synchronous, so a caller can pick a source without awaiting one: a
+      sniff reads a header or a signature, never a whole file. */
+  detect(file: Uint8Array): boolean;
   /** Resolves the file into the exact work a commit would do - a preview is
       never an instruction to re-parse a file that may have changed by then
       (ADR-0002's own reasoning for Daylio, which every source now shares).
       `naming` is source-specific context (Daylio's own tag-label lookup);
       erased to `unknown` here because the registry holds every source at
-      once. */
-  preview(text: string, existing: ArchiveJournal, naming: unknown): Promise<ArchiveJournal>;
+      once.
+
+      The journal is the part every source has in common. A source with
+      more to report - which moods it resolved, what it could not bring
+      across - offers its own richer preview to the screen that imports it,
+      the way `daylioBackupPreview` does. */
+  preview(file: Uint8Array, existing: ArchiveJournal, naming: unknown): Promise<ArchiveJournal>;
 }
+
+/** Enough of a text file to sniff a header from, so detection does not
+    decode a whole journal to read its first line. */
+const HEAD_BYTES = 4096;
+
+const text = (file: Uint8Array) => new TextDecoder().decode(file);
 
 const SOURCES = [
   {
     name: 'daylio',
-    requiredColumns: DAYLIO_REQUIRED_COLUMNS,
-    detect: detectDaylio,
-    async preview(text, existing, naming) {
-      return (await daylioPreview(text, existing, naming as DaylioNaming)).journal;
+    requiredFields: DAYLIO_REQUIRED_COLUMNS,
+    detect: (file) => detectDaylio(text(file.subarray(0, HEAD_BYTES))),
+    async preview(file, existing, naming) {
+      return (await daylioPreview(text(file), existing, naming as DaylioNaming)).journal;
+    }
+  },
+  {
+    name: 'daylio-backup',
+    requiredFields: DAYLIO_BACKUP_REQUIRED_FIELDS,
+    detect: detectDaylioBackup,
+    async preview(file, existing, naming) {
+      return (await daylioBackupPreview(file, existing, naming as DaylioNaming)).journal;
     }
   }
 ] as const satisfies readonly ArchiveSource[];
@@ -66,17 +95,17 @@ export class UnrecognizedArchiveSourceError extends Error {
     `orderedSections` does, so a test can run real detection over a
     shortened list rather than restating `filter`. */
 export function recognizeSource(
-  text: string,
+  file: Uint8Array,
   sources: readonly ArchiveSource[] = ARCHIVE_SOURCES
 ): ArchiveSource | null {
-  return sources.find((candidate) => candidate.detect(text)) ?? null;
+  return sources.find((candidate) => candidate.detect(file)) ?? null;
 }
 
 /** `recognizeSource`, declined by name rather than by returning null - no
     source's `preview` is ever reached for a file nothing detects ("no
     fallback to guessing"). */
-export function requireSource(text: string, sources: readonly ArchiveSource[] = ARCHIVE_SOURCES): ArchiveSource {
-  const found = recognizeSource(text, sources);
+export function requireSource(file: Uint8Array, sources: readonly ArchiveSource[] = ARCHIVE_SOURCES): ArchiveSource {
+  const found = recognizeSource(file, sources);
   if (!found) throw new UnrecognizedArchiveSourceError();
   return found;
 }
