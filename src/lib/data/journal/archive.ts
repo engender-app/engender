@@ -38,6 +38,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from './journal';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
+import { IMPORT_LOG_COLUMNS, importLogRow } from './archiveApply';
 import { mintUuid, now } from './support';
 
 export interface ArchiveSnapshot {
@@ -80,13 +81,10 @@ export interface ArchiveArea {
     the way any other user-owned row is (ticket 03). */
 async function recordImport(driver: SqliteDriver, source: string, counts: Record<string, number>): Promise<void> {
   const ts = now();
-  await driver.run('INSERT INTO import_log (uuid, source, counts, imported_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
-    mintUuid(),
-    source,
-    JSON.stringify(counts),
-    ts,
-    ts
-  ]);
+  await driver.run(
+    `INSERT INTO import_log (${IMPORT_LOG_COLUMNS}) VALUES (?, ?, ?, ?, ?)`,
+    importLogRow({ id: mintUuid(), source, counts, importedAt: ts }, ts)
+  );
 }
 
 export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): ArchiveArea {
