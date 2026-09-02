@@ -191,7 +191,7 @@ const AREAS = [
     from: 'milestone',
     uuid: 'uuid',
     date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['name']
+    columns: ['name', 'description']
   }),
   /* The name first and the notes second: a journey searched for by name
      should show its name, and the notes are where a paragraph lives. Dated

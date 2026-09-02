@@ -31,6 +31,7 @@ export interface MilestoneInput {
   id?: string;
   name: string;
   epochDay: number;
+  description?: string;
   templateKey?: string | null;
   roadmapGoalKey?: string | null;
   procedureId?: string | null;
@@ -58,6 +59,7 @@ type MilestoneRow = {
   uuid: string;
   name: string;
   epoch_day: number;
+  description: string;
   template_key: string | null;
   roadmap_goal_key: string | null;
   procedure_id: string | null;
@@ -75,7 +77,7 @@ type MilestoneRow = {
    title isn't joined - it's a compiled string, resolved by key in code
    instead, so roadmap_goal only ever matches a custom one. */
 const MILESTONE_SELECT = `
-  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id,
+  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id,
          p.name AS procedure_name, t.label AS tryout_label, rg.text AS custom_goal_text
     FROM milestone ms
     LEFT JOIN procedure p ON p.uuid = ms.procedure_id
@@ -98,6 +100,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       id: r.uuid,
       name: r.name,
       epochDay: r.epoch_day,
+      description: r.description,
       templateKey: r.template_key,
       roadmapGoalKey: r.roadmap_goal_key,
       procedureId: r.procedure_id ?? null,
@@ -138,23 +141,27 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           : [];
       const staged = photoChange.action === 'replace' ? await stagePhoto(files, photoChange.photo) : null;
 
-      // roadmapGoalKey, procedureId and tryoutId are each set by a different
-      // caller (roadmap sync, the procedure hub, tryout adoption) and each
-      // must survive an edit made by a caller that doesn't know about it - a
-      // plain rename from the milestones screen passes none of them and
-      // must not clear any link.
+      // roadmapGoalKey, procedureId, tryoutId and description are each set
+      // by a different caller (roadmap sync, the procedure hub, tryout
+      // adoption, the milestones editor) and each must survive an edit made
+      // by a caller that doesn't know about it - a procedure resync passes
+      // none of them and must not clear a link or a person's own written
+      // description.
       const hasRoadmap = input.roadmapGoalKey !== undefined;
       const hasProc = input.procedureId !== undefined;
       const hasTryout = input.tryoutId !== undefined;
+      const hasDescription = input.description !== undefined;
       const extraColumns = [
         ...(hasRoadmap ? ['roadmap_goal_key'] : []),
         ...(hasProc ? ['procedure_id'] : []),
-        ...(hasTryout ? ['tryout_id'] : [])
+        ...(hasTryout ? ['tryout_id'] : []),
+        ...(hasDescription ? ['description'] : [])
       ];
       const extraValues = [
         ...(hasRoadmap ? [input.roadmapGoalKey ?? null] : []),
         ...(hasProc ? [input.procedureId ?? null] : []),
-        ...(hasTryout ? [input.tryoutId ?? null] : [])
+        ...(hasTryout ? [input.tryoutId ?? null] : []),
+        ...(hasDescription ? [input.description] : [])
       ];
       const updateSql = `UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?${extraColumns.map((c) => `, ${c} = ?`).join('')}, updated_at = ? WHERE uuid = ?`;
       const updateParams = [input.name, input.epochDay, input.templateKey ?? null, ...extraValues, now(), input.id];
@@ -177,11 +184,12 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         return input.id;
       }
       const uuid = mintUuid();
-      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       const insertParams = [
         uuid,
         input.name,
         input.epochDay,
+        input.description ?? '',
         input.templateKey ?? null,
         input.roadmapGoalKey ?? null,
         input.procedureId ?? null,

@@ -1715,6 +1715,14 @@ CREATE TABLE comfort_item (
 );
 `;
 
+/* Ticket 15: a milestone is a name and a date with nowhere to record what
+   happened. Empty string default rather than nullable, matching how
+   ArchiveMilestone's siblings treat absent text and avoiding a null check
+   at every read. Existing milestones get '' - correct, not a backfill. */
+const SCHEMA_V53 = `
+ALTER TABLE milestone ADD COLUMN description TEXT NOT NULL DEFAULT '';
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1767,5 +1775,6 @@ export const migrations: Migration[] = [
   { version: 49, sql: SCHEMA_V49 },
   { version: 50, sql: SCHEMA_V50 },
   { version: 51, sql: SCHEMA_V51 },
-  { version: 52, sql: SCHEMA_V52 }
+  { version: 52, sql: SCHEMA_V52 },
+  { version: 53, sql: SCHEMA_V53 }
 ];

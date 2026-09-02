@@ -340,18 +340,20 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     uuid: string;
     name: string;
     epoch_day: number;
+    description: string;
     template_key: string | null;
     roadmap_goal_key: string | null;
     procedure_id: string | null;
     tryout_id: string | null;
   }>(
-    'SELECT id, uuid, name, epoch_day, template_key, roadmap_goal_key, procedure_id, tryout_id FROM milestone ORDER BY epoch_day, id'
+    'SELECT id, uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id FROM milestone ORDER BY epoch_day, id'
   );
   const byMilestone = groupBy(photos.filter((p) => p.milestone_id !== null), (p) => p.milestone_id!, toArchivePhoto);
   return rows.map((r) => ({
     id: r.uuid,
     name: r.name,
     epochDay: r.epoch_day,
+    description: r.description,
     templateKey: r.template_key,
     roadmapGoalKey: r.roadmap_goal_key,
     procedureId: r.procedure_id,

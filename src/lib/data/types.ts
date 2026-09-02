@@ -200,6 +200,10 @@ export interface Milestone {
   id: string;
   name: string;
   epochDay: number;
+  /** What happened, in the person's own words (ticket 15). Empty rather
+      than null - every read treats an unwritten description the same as
+      the milestones that predate this field. */
+  description: string;
   templateKey: string | null;
   roadmapGoalKey?: string | null;
   /** Linked surgical procedure uuid (phase 5 ticket 12, ADR-0045). */
