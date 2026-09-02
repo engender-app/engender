@@ -24,6 +24,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { PALETTES } from './palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/dose-shots'));
@@ -102,6 +103,36 @@ async function openSheet(page) {
   await goto(page, '/doses');
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
+  await page.waitForTimeout(SETTLED);
+}
+
+/** "Fill every feature", which is the only seed with a real rotation behind
+    it: 500 days of weekly injections around six of the twelve sites, so the
+    map has every swatch of the recency ramp and six sites never used
+    (ticket 13). It resets the preferences too, so the look is set after
+    this rather than before. */
+async function fillEveryFeature(page) {
+  await goto(page, '/settings/measurements');
+  await page.locator('[data-fill-every-feature]').click();
+  await page.waitForURL('**/more');
+  await page.waitForSelector('[data-app-root][data-boot="ready"]');
+}
+
+/** The sheet on the injectable episode. The full fixture runs two regimens
+    at once, so which one this dose is has to be answered before the sheet
+    knows it is asking about an injection site at all. */
+async function openInjectionSheet(page) {
+  await openSheet(page);
+  // The sheet opens the what-group itself where more than one regimen is
+  // running, which is exactly this seed, so the chips are already up.
+  await page.locator('[data-dose-drug="Estradiol valerate"]').click();
+  await page.waitForTimeout(SETTLED);
+  const what = page.locator('[data-dose-what]');
+  if ((await what.getAttribute('aria-expanded')) === 'true') {
+    await what.click();
+    await page.waitForTimeout(SETTLED);
+  }
+  await page.locator('button[data-site="thigh-left"]').scrollIntoViewIfNeeded();
   await page.waitForTimeout(SETTLED);
 }
 
@@ -235,6 +266,46 @@ for (const theme of THEMES) {
   await openSheet(page);
   await shoot(page, `dose-alternating-schedule-trans-${theme}`);
   await page.close();
+}
+
+/* ---------- the recency ramp on the dots (ticket 13) ----------
+   All eight palettes and both themes, unlike the scenarios above: what the
+   map spends is the accent's own heat ramp, so this is the one part of the
+   sheet where every palette is a different picture. The map is shot on its
+   own as well as in the sheet, because the two states the ramp has to keep
+   apart - the palest step and a site never used - are a judgment about
+   22px dots. */
+for (const palette of PALETTES) {
+  for (const theme of THEMES) {
+    const page = await freshPage();
+    await fillEveryFeature(page);
+    await setLook(page, palette, theme);
+    await openInjectionSheet(page);
+    await shoot(page, `dose-recency-${palette}-${theme}`);
+    await page.locator('.site-map').screenshot({ path: `${outDir}/dose-recency-map-${palette}-${theme}.png` });
+    process.stdout.write(`  dose-recency-map-${palette}-${theme}\n`);
+
+    /* The three channels at once, on the palette the app opens on: a fill
+       per site's recency, the dashed ring where the last injection went,
+       and the ring around the site tapped for this dose. Then the keyboard,
+       because a dot is a 48px button with no fill of its own and the focus
+       ring is the only thing that says which one is in hand. */
+    if (palette === 'trans') {
+      await page.locator('button[data-site="loveHandle-right"]').click();
+      await page.waitForTimeout(SETTLED);
+      await shoot(page, `dose-recency-picked-${theme}`);
+      await page.locator('.site-map').screenshot({ path: `${outDir}/dose-recency-picked-map-${theme}.png` });
+
+      /* Shift+Tab off the dot just tapped, rather than focus() on
+         another: :focus-visible answers to how the focus arrived, so a
+         programmatic focus draws no ring and would picture nothing. */
+      await page.keyboard.press('Shift+Tab');
+      await page.waitForTimeout(SETTLED);
+      await page.locator('.site-map').screenshot({ path: `${outDir}/dose-recency-focus-map-${theme}.png` });
+      process.stdout.write(`  dose-recency-focus-map-${theme}\n`);
+    }
+    await page.close();
+  }
 }
 
 await browser.close();
