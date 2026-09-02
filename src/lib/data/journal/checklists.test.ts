@@ -188,3 +188,62 @@ test('an owned checklist never carries the appointment date', async () => {
   assert.equal(owned?.owner?.id, 'p-1');
   assert.equal(await journal.checklists.getAppointmentDate(), 19800);
 });
+
+test('the debrief dismissal and entry link are both null until set', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(), null);
+});
+
+test('setDebriefDismissed records which date the offer was dismissed for', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.setDebriefDismissed(19800);
+
+  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), 19800);
+});
+
+test('recordDebriefEntry links an entry to the appointment currently on record', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.recordDebriefEntry(entryId, 19800);
+
+  assert.equal(await journal.checklists.getDebriefEntryId(), entryId);
+});
+
+test('recordDebriefEntry is a no-op once the appointment has moved on', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.setAppointmentDate(19830);
+  await journal.checklists.recordDebriefEntry(entryId, 19800);
+
+  assert.equal(await journal.checklists.getDebriefEntryId(), null);
+});
+
+test('changing the appointment date clears a stale dismissal and entry link', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.setDebriefDismissed(19800);
+  await journal.checklists.recordDebriefEntry(entryId, 19800);
+
+  await journal.checklists.setAppointmentDate(19830);
+
+  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(), null);
+});
+
+test('setting the same appointment date again leaves the dismissal and entry link alone', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.setAppointmentDate(19800);
+  await journal.checklists.setDebriefDismissed(19800);
+  await journal.checklists.recordDebriefEntry(entryId, 19800);
+
+  await journal.checklists.setAppointmentDate(19800);
+
+  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), 19800);
+  assert.equal(await journal.checklists.getDebriefEntryId(), entryId);
+});
