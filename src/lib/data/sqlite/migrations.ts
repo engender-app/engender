@@ -1767,6 +1767,18 @@ CREATE TABLE entry_template_dimension_value (
 );
 `;
 
+/* Ticket 15: a milestone is a name and a date with nowhere to record what
+   happened. Empty string default rather than nullable, matching how
+   ArchiveMilestone's siblings treat absent text and avoiding a null check
+   at every read. Existing milestones get '' - correct, not a backfill.
+
+   Numbered v54 rather than v53: ticket-07's entry_template landed on main
+   first and took v53, the same renumbering-at-merge hazard its own
+   comment above names. */
+const SCHEMA_V54 = `
+ALTER TABLE milestone ADD COLUMN description TEXT NOT NULL DEFAULT '';
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1820,5 +1832,6 @@ export const migrations: Migration[] = [
   { version: 50, sql: SCHEMA_V50 },
   { version: 51, sql: SCHEMA_V51 },
   { version: 52, sql: SCHEMA_V52 },
-  { version: 53, sql: SCHEMA_V53 }
+  { version: 53, sql: SCHEMA_V53 },
+  { version: 54, sql: SCHEMA_V54 }
 ];

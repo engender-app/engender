@@ -76,6 +76,7 @@ async function populated() {
   const milestone = await journal.milestones.upsertMilestone({
     name: 'HRT start',
     epochDay: 19000,
+    description: 'the pharmacist barely looked up',
     templateKey: 'hrt_start'
   });
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
@@ -251,7 +252,9 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.deepEqual(await target.files.read(`${source.recording}.webm`), bytes('a voice note'));
   assert.deepEqual(restored[0].bodyRegions, { chest: { dysphoria: 45, euphoria: null } });
   assert.equal(restored[0].note, 'a good day, zażółć');
-  assert.equal((await target.journal.milestones.getMilestones()).length, 1);
+  const restoredMilestones = await target.journal.milestones.getMilestones();
+  assert.equal(restoredMilestones.length, 1);
+  assert.equal(restoredMilestones[0].description, 'the pharmacist barely looked up');
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
   assert.equal((await target.journal.measurements.getMeasurements('waist')).length, 1);
   assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1);
@@ -726,6 +729,25 @@ test('a lab result from an archive written before the dosing context existed sti
   assert.equal(restored.provider, '');
   assert.equal(restored.drawTime, null);
   assert.equal(restored.timing, null);
+});
+
+/* A milestone row written before ticket 15 has no description column. The
+   payload type says otherwise, but it is a cast over JSON.parse output, so
+   the importer has to survive the field being absent rather than binding
+   undefined at the driver. */
+test('a milestone from an archive written before descriptions existed still imports', async () => {
+  const source = await populated();
+  const contents = await exported(source.journal);
+  const older = contents.journal.milestones.map((milestone) => {
+    const { description, ...rest } = milestone;
+    return rest as typeof milestone;
+  });
+
+  const target = await device();
+  await target.journal.archive.merge({ ...contents, journal: { ...contents.journal, milestones: older } });
+
+  const [restored] = await target.journal.milestones.getMilestones();
+  assert.equal(restored.description, '');
 });
 
 /* An archive packed before ticket 16 (ADR-0037) still names a `doubtEntries`

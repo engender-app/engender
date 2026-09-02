@@ -19,6 +19,7 @@ const milestone = (overrides: Partial<Milestone> = {}): Milestone => ({
   id: 'm-1',
   name: 'A milestone',
   epochDay: 20000,
+  description: '',
   templateKey: null,
   roadmapGoalKey: null,
   procedureId: null,

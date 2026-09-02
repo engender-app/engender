@@ -39,7 +39,12 @@ async function populated() {
   const videoNote = (await journal.entries.getEntry(entry))!.videos[0].id;
   const second = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
 
-  const milestone = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 19000, templateKey: 'hrt_start' });
+  const milestone = await journal.milestones.upsertMilestone({
+    name: 'HRT start',
+    epochDay: 19000,
+    description: 'the pharmacist barely looked up',
+    templateKey: 'hrt_start'
+  });
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
@@ -289,6 +294,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       id: milestone,
       name: 'HRT start',
       epochDay: 19000,
+      description: 'the pharmacist barely looked up',
       templateKey: 'hrt_start',
       roadmapGoalKey: null,
       procedureId: null,
@@ -567,7 +573,7 @@ const CARRIED: Record<string, string[]> = {
   entry_template_tag: ['template_id', 'tag_id'],
   entry_template_dimension_value: ['template_id', 'dimension_id', 'value'],
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred'],
-  milestone: ['uuid', 'name', 'epoch_day', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id'],
+  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id'],
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
   gender_preset: ['uuid', 'key', 'name', 'is_built_in'],
   preset_dimension: ['preset_id', 'dimension_id', 'order_index'],

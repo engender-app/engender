@@ -911,6 +911,8 @@
   "ms_name_placeholder": "np. pierwszy zabieg laserem",
   "ms_date_label": "Data",
   "ms_date_hint": "(przeszła albo przyszła)",
+  "ms_description_label": "Co się wydarzyło (opcjonalnie)",
+  "ms_description_placeholder": "Jak było",
   "ms_photo_label": "Zdjęcie (opcjonalnie)",
   "ms_photo_delete_sheet": "Usuń zdjęcie",
   "ms_photo_delete_q": "Usunąć to zdjęcie?",
