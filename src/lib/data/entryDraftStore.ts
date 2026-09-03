@@ -2,8 +2,11 @@
    the same read/write/clear shape as the boot cache and the PIN-attempt
    store (ADR-0009's mirror-outside-SQLite pattern): the journal stays the
    source of truth for saved entries, this is a throwaway mirror the editor
-   keeps in step with itself and clears the moment it unmounts, so only a
-   process death mid-edit ever leaves it behind to be found.
+   keeps in step with itself and clears the moment its own write lands or it
+   unmounts (ticket 16, phase 8 deepening - clearing only on unmount left a
+   killed process between a successful save and the clear holding a mirror
+   whose removals the save had already actioned), so only a process death
+   mid-edit ever leaves it behind to be found.
 
    What is left behind is ciphertext (sec-audit 02, finding G-01). The
    snapshot is journal content - the note, the mood, the tags, the region

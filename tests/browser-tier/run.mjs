@@ -1453,6 +1453,55 @@ await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () =>
   else fail('a take pushed into the rails is caught while it is happening', `peak ${r.loudPeak}, ${JSON.stringify(r.loudFailed)}`);
 });
 
+// --- Ticket 16 (phase 8 deepening): the draft mirror's stale-removal repro,
+//     and that clearing it on save (EntryEditor.svelte's fix) closes it.
+await block('ticket 16 browser tier', 10, async () => {
+  const r = await load('/draft-mirror.html', 'draft-mirror-probe');
+  if (r.error) throw new Error(r.error);
+  const { before, after } = r;
+
+  // --- before the fix: an unmount skipped after a successful save makes
+  //     the next save throw. ---
+  if (before.photoGoneAfterFirstSave) ok('the first save really removes the photo from the journal');
+  else fail('the first save really removes the photo from the journal', JSON.stringify(before));
+
+  if (!before.mirrorClearedBySave) ok('a successful save does not clear the draft mirror by itself, before the fix');
+  else fail('a successful save does not clear the draft mirror by itself, before the fix', JSON.stringify(before));
+
+  if (before.mirrorMatchedTheResumedRoute) ok('draftMatchesRoute re-associates the surviving mirror on resume');
+  else fail('draftMatchesRoute re-associates the surviving mirror on resume', JSON.stringify(before));
+
+  if (before.staleRemovalReapplied)
+    ok('applyPersistedDraft reapplies the already-actioned removal onto the resumed draft');
+  else
+    fail(
+      'applyPersistedDraft reapplies the already-actioned removal onto the resumed draft',
+      JSON.stringify(before)
+    );
+
+  if (before.resaveThrewUnknownPhoto)
+    ok(`the sequence reproduces: the re-save throws (${before.resaveError})`);
+  else fail('the sequence reproduces: the re-save throws', JSON.stringify(before));
+
+  // --- after the fix: the mirror exists only for work that has not been
+  //     saved, and a re-save after a killed process does not throw. ---
+  if (after.photoGoneAfterFirstSave) ok('the first save still really removes the photo, after the fix');
+  else fail('the first save still really removes the photo, after the fix', JSON.stringify(after));
+
+  if (after.mirrorClearedBySave) ok('the fix clears the mirror the moment the save that made it stale lands');
+  else fail('the fix clears the mirror the moment the save that made it stale lands', JSON.stringify(after));
+
+  if (!after.mirrorMatchedTheResumedRoute)
+    ok('with no mirror left to find, resume has nothing to reapply');
+  else fail('with no mirror left to find, resume has nothing to reapply', JSON.stringify(after));
+
+  if (!after.staleRemovalReapplied) ok('the resumed draft carries no stale removal id');
+  else fail('the resumed draft carries no stale removal id', JSON.stringify(after));
+
+  if (after.resaveError === null) ok('the re-save no longer throws');
+  else fail('the re-save no longer throws', after.resaveError);
+});
+
 await browser.close();
 await server.close();
 
