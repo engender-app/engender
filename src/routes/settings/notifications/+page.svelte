@@ -1,26 +1,23 @@
 <script lang="ts">
-  /* The notifications view: the second of two screens over the unprompted
-     registry (phase 6 ticket 04). This one answers "stop buzzing my phone";
-     /settings/live-tiles answers "stop putting things on my home screen".
-     Two views, one list - not two registries and not a third screen, because
-     the two questions are asked by different people in different moments.
+  /* The one screen over the unprompted registry (phase 6 tickets 02 and 04,
+     merged from two screens onto one by deepening ticket 09). "Stop putting
+     things on my home screen" and "stop buzzing my phone" are two questions
+     about the same list, so this is one `{#each}` with two toggle columns
+     rather than two screens each running their own - ADR-0039's amendment
+     argues for exactly this consolidation. `/settings/live-tiles` used to be
+     the first question's own screen; it now redirects here.
 
-     Six producers reach this list. Four of them used to decide for
-     themselves: reminders and the daily check-in through AlarmManager, a
-     wear session's elapsed prompt as a reminder row nobody had a switch for,
-     and the auto-export failure notice with no settings home at all. The
-     other two, wrapped and on-this-day, are grandfathered behind the toggles
-     they already had - see the admission rule in registry.ts, which is the
-     thing a seventh producer has to argue with.
+     The rows are not written here: $lib/unprompted/registry.ts is what a
+     later ticket extends, and RegistryRow draws one, so this page is the
+     {#each} and nothing else.
 
-     Three cards, and the order is the answer getting wider: what may fire,
-     then when it may not, then what it may say. Quiet hours and the disguise
-     are the registry's two cross-class rules, so they sit under the list
-     they both apply to rather than beside it.
-
-     Absent on web rather than shown and inert (user story 18): a browser
-     cannot fire a scheduled notification while the app is closed, so a
-     switch here would be a promise the platform does not keep. */
+     Absent on web rather than shown and inert, for the notify column only
+     (user story 18): a browser cannot fire a scheduled notification while
+     the app is closed, so a switch there would be a promise the platform
+     does not keep. The Home column carries no such limit - a live tile is
+     in-app UI, not an OS notification - so it stays live on web the way its
+     own screen always was, and only the notify slot on each row, the permission
+     notice and the two notification-only cards below the list drop out. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -36,14 +33,12 @@
     type AndroidRetrospectiveNotificationStatus
   } from '$lib/retrospective/android-bridge';
   import { disclose } from '$lib/motion/reveal';
-  import { NOTIFICATION_ROWS, type NotificationRow } from '$lib/unprompted/registry';
+  import { UNPROMPTED_ROWS, type UnpromptedRow } from '$lib/unprompted/registry';
 
   let isWeb = $derived(!isAndroid());
 
   /* Every producer here posts through the same POST_NOTIFICATIONS
-     permission, so one status/request pair covers the whole list - it moved
-     here with the two retrospective rows that used to be the only ones
-     reading it. */
+     permission, so one status/request pair covers the whole list. */
   let notifyStatus = $state<AndroidRetrospectiveNotificationStatus>({ notifications: 'not-required' });
 
   async function refreshStatus() {
@@ -68,41 +63,64 @@
     void refreshStatus();
   });
 
-  /* Turning a notification on for a kind that also surfaces turns the kind
-     itself on, which is the other direction of the cascade the surfaces view
-     already had. Both directions keep one invariant - nothing fires for a
-     kind that is off - and without this one the switch would go on while
-     `wrappedEnabled` was off, which is a promise the scheduler does not
-     keep. Turning it off is final rather than a snooze: nothing anywhere
-     writes these keys back. */
-  function setNotify(row: NotificationRow, v: boolean) {
+  /* Both cascades from the two screens this merged, unchanged: turning a
+     kind off also turns its notification off (phase 4 features ticket 04),
+     and turning a notification on turns the kind itself on (ticket 04). One
+     invariant either direction keeps - nothing fires for a kind that is off
+     - whichever switch the person just touched. */
+  function setKind(row: UnpromptedRow, v: boolean) {
+    if (!row.surface) return;
+    prefs[row.surface.prefKey] = v;
+    if (!v && row.notify) prefs[row.notify.prefKey] = false;
+  }
+
+  function setNotify(row: UnpromptedRow, v: boolean) {
+    if (!row.notify) return;
     prefs[row.notify.prefKey] = v;
     if (v && row.surface) prefs[row.surface.prefKey] = true;
   }
 
-  let anyOn = $derived(NOTIFICATION_ROWS.some((row) => prefs[row.notify.prefKey]));
+  let anyNotifyOn = $derived(UNPROMPTED_ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
 </script>
 
 <div class="screen" data-screen>
   <ScreenHeader title={m.notif_title()} back="/settings" subtitle={m.notif_sub()} />
 
+  {#if !isWeb}
+    <div class="registry-heads" aria-hidden="true">
+      <span class="registry-head">{m.notif_col_home()}</span>
+      <span class="registry-head">{m.notif_col_notify()}</span>
+    </div>
+  {/if}
+
+  <ListCard>
+    {#each UNPROMPTED_ROWS as row (row.key)}
+      <RegistryRow
+        key={row.key}
+        title={row.title()}
+        subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
+        surface={row.surface
+          ? {
+              label: m.notif_home_toggle_aria({ name: row.title() }),
+              checked: prefs[row.surface.prefKey],
+              onChange: (v) => setKind(row, v)
+            }
+          : undefined}
+        notify={!isWeb && row.notify
+          ? {
+              label: m.notif_notify_toggle_aria({ name: row.title() }),
+              checked: prefs[row.notify.prefKey],
+              onChange: (v) => setNotify(row, v)
+            }
+          : undefined}
+      />
+    {/each}
+  </ListCard>
+
   {#if isWeb}
     <Notice icon="info" key="notifications-web" title={m.notif_web_title()} text={m.notif_web_body()} />
   {:else}
-    <ListCard>
-      {#each NOTIFICATION_ROWS as row (row.key)}
-        <RegistryRow
-          handle="notification"
-          key={row.key}
-          title={row.title()}
-          subtitle={row.notify.subtitle()}
-          checked={prefs[row.notify.prefKey]}
-          onChange={(v) => setNotify(row, v)}
-        />
-      {/each}
-    </ListCard>
-
-    {#if notifyStatus.notifications === 'denied' && anyOn}
+    {#if notifyStatus.notifications === 'denied' && anyNotifyOn}
       <Notice
         icon="alert"
         key="notify-denied"
@@ -172,6 +190,25 @@
 </div>
 
 <style>
+  /* Right-aligned to match .kit-row-trail's own two fixed-width slots
+     (RegistryRow.svelte), with no left padding of its own so the gap and the
+     slot width are the only things that have to agree between the two
+     files. +1px accounts for the list card's own border, which the row's
+     padding is measured from the inside of. */
+  .registry-heads {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: 0 calc(var(--space-4) + 1px) var(--space-2) 0;
+  }
+
+  .registry-head {
+    flex: 0 0 var(--touch-target);
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+
   /* The window is not a row, so it takes the row's own horizontal padding
      rather than sitting flush against the card's edge (kit.css). */
   .quiet-body {
