@@ -15,7 +15,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { MedicationStock, Reminder } from '../types';
-import { assertChanged, bool, mintUuid, now } from './support';
+import { bool, mintUuid, now } from './support';
 import type { DosesArea } from './doses';
 import type { RegimenArea } from './regimen';
 import type { RemindersArea } from './reminders';
@@ -46,8 +46,7 @@ export interface StockArea {
       the row's id. */
   upsertEntry(input: StockEntryInput): Promise<string>;
   /** Also drops this drug's auto-managed run-out reminder, if any -
-      nothing is left to project once the count is gone. Deleting an
-      unknown id throws. */
+      nothing is left to project once the count is gone. */
   deleteEntry(id: string): Promise<void>;
   /** Every drug's projection as of `asOfEpochDay` - a read-only aggregate
       over the dose log (ADR-0046): nothing here is stored. */
@@ -164,8 +163,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
 
     async deleteEntry(id) {
       const rows = await driver.query<{ drug: string }>('SELECT drug FROM medication_stock WHERE uuid = ?', [id]);
-      const result = await driver.run('DELETE FROM medication_stock WHERE uuid = ?', [id]);
-      assertChanged(result, `medication stock: ${id}`);
+      await driver.run('DELETE FROM medication_stock WHERE uuid = ?', [id]);
 
       if (rows.length === 0) return;
       const auto = findAutoReminder(await reminders.getReminders(), rows[0].drug);
