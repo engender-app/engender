@@ -132,6 +132,27 @@ async function run() {
   return { before, after };
 }
 
+/* run.mjs drives this page headlessly and reads `publish`'s result global.
+   Opened by hand on a phone instead - `adb reverse` plus Vanadium, this
+   ticket's Notes on a real device and FLAG_SECURE blocking a screenshot of
+   the app itself - there is no Playwright to read anything back, so the
+   page has to say its own result out loud for `adb exec-out screencap` to
+   read, the same way the frame-timing probe does. */
+function renderSummary(result: unknown) {
+  const pre = document.createElement('pre');
+  pre.style.font = '14px monospace';
+  pre.style.whiteSpace = 'pre-wrap';
+  pre.textContent = JSON.stringify(result, null, 2);
+  document.body.appendChild(pre);
+}
+
 run()
-  .then((result) => publish(NAME, result))
-  .catch((error) => publish(NAME, { error: String((error as Error)?.message ?? error) }));
+  .then((result) => {
+    publish(NAME, result);
+    renderSummary(result);
+  })
+  .catch((error) => {
+    const result = { error: String((error as Error)?.message ?? error) };
+    publish(NAME, result);
+    renderSummary(result);
+  });
