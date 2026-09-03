@@ -28,13 +28,15 @@ const KEY_BYTES = 15;
 
 /** 24 symbols carrying the key, plus one check symbol, shown as five
     groups of five. The grouping is for whoever is copying this off a
-    screen by hand, which is the only way it ever gets used. */
+    screen by hand, which is the only way it ever gets used.
+
+    24 x 5 is 120 bits, less about a fifth of one for the redraw below, and
+    that figure is stated in ADR-0054 rather than exported from here: no
+    interface copy quotes it - the screens say "25 characters", which is
+    what a person is being asked to write down - so a constant for it would
+    have had one reader, its own test. */
 const DATA_SYMBOLS = 24;
 const GROUP_SIZE = 5;
-
-/** What the copy is allowed to claim. Stated as a constant so the number
-    in the interface and the number in the generator cannot drift. */
-export const RECOVERY_KEY_ENTROPY_BITS = DATA_SYMBOLS * 5;
 
 /** The canonical length: the data symbols and the check symbol, with no
     separators. This is the form the KDF sees. */
@@ -152,10 +154,4 @@ export function canonicalRecoveryKey(typed: string): string {
   }
 
   return canonical;
-}
-
-/** The display form of a key already known to be well formed, for showing
-    a canonical string back with its groups. */
-export function displayRecoveryKey(canonical: string): string {
-  return group(canonical);
 }

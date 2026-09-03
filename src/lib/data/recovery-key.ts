@@ -107,9 +107,12 @@ export async function recoveryKeyExists(ports: RecoveryKeyPorts = filePorts): Pr
 /** Removes the recovery key. Tolerates its absence, because the caller's
     goal is that it is gone.
 
-    Takes effect on the next boot rather than immediately, and the copy says
-    so: a session that is already open holds the data key in memory and does
-    not consult this file again. */
+    Immediate, and this comment used to say the opposite. The file is what
+    the key opens; once it is gone the written characters open nothing, on
+    the next boot and on this one. What is unaffected is the session already
+    running, which holds the data key in memory and consults neither file
+    again - which is a different sentence, and not the one somebody deciding
+    whether to revoke is asking. */
 export async function revokeRecoveryKey(ports: RecoveryKeyPorts = filePorts): Promise<void> {
   await ports.remove();
 }
@@ -118,12 +121,12 @@ export async function revokeRecoveryKey(ports: RecoveryKeyPorts = filePorts): Pr
     exist. Exported from the module it belongs to rather than a test-support
     file, because it is four lines and its shape has to track the ports
     interface directly above it. */
-export function inMemoryRecoveryKeyPorts(initial: RecoveryWrap | null = null): RecoveryKeyPorts {
+export function inMemoryRecoveryKeyPorts(): RecoveryKeyPorts {
   /* Held as the serialized text rather than the object, so that a test
      exercising mint-then-open goes through the same encode and decode a
      real boot does. A wrap that round-trips in memory but not through the
      file would otherwise pass every test here. */
-  let stored = initial === null ? null : serializeRecoveryWrap(initial);
+  let stored: string | null = null;
   return {
     read: async () => (stored === null ? null : parseRecoveryWrap(stored)),
     write: async (wrap) => {

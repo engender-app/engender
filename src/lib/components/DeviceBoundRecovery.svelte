@@ -3,7 +3,7 @@
   import { resetApp } from '$lib/stores/boot.svelte';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
-  import { recoveryKeyExists } from '$lib/data/recovery-key';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -16,12 +16,9 @@
      first: where a recovery key exists this points at it, and where none
      does it says what would have helped, so the next journal is not lost
      the same way. Read on mount, before either sentence is drawn. */
-  let hasRecoveryKey = $state(false);
-  recoveryKeyExists().then((found) => {
-    hasRecoveryKey = found;
-  });
+  refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
-  let body = $derived(hasRecoveryKey ? m.dbr_body_recoverable() : m.dbr_body());
+  let body = $derived(recoveryKeyPresence.exists ? m.dbr_body_recoverable() : m.dbr_body());
 
   async function confirmReset() {
     resetting = true;
@@ -45,8 +42,14 @@
        reopens it is the exact thing docs/ui-copy.md forbids on a risk
        screen - and a render is what caught it, because both sentences read
        fine on their own. -->
+  <!-- Nothing about the recovery key, including which body this is, until
+       the answer is in: at first paint this screen used to say "this copy
+       cannot be reopened" over a journal that had a key, and correct itself
+       a frame later. A title with no body for one frame is the honest
+       version (docs/ui-copy.md, the screens that carry risk). -->
+  {#if recoveryKeyPresence.known}
   <p class={gateBodyClass(body)} data-device-bound-recovery>{body}</p>
-  {#if hasRecoveryKey}
+  {#if recoveryKeyPresence.exists}
     <div class="gate-actions">
       <button class="btn btn-primary" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
         <span>{m.rke_open()}</span>
@@ -60,6 +63,7 @@
     <p class={gateBodyClass(m.dbr_recovery_none(), 'is-small')} data-device-recovery-none>
       {m.dbr_recovery_none()}
     </p>
+  {/if}
   {/if}
   <div class="gate-actions">
     <button class="btn btn-danger" data-open-device-reset onclick={() => (resetOpen = true)}>
@@ -77,7 +81,7 @@
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
-      <span class="notice-title">{hasRecoveryKey ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
+      <span class="notice-title">{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
       {body}
     </div>
   </div>
