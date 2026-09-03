@@ -355,3 +355,16 @@
     onCancel={() => (deleteTarget = null)}
   />
 </div>
+
+<style>
+  /* Voice benchmark delta (ticket 16). Same dt/dd-row shape as
+     record/+page.svelte's own .vb-figures, which is scoped to that
+     component and out of reach here - two screens wanting the same small
+     layout is not yet a third one worth lifting into a shared class. */
+  .vc-delta h3 { margin: 0 0 var(--space-3); font-size: var(--text-base); }
+  .vc-delta-figures { display: grid; gap: var(--space-3); margin: 0; }
+  .vc-delta-figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+  .vc-delta-figures dt { color: var(--muted); font-size: var(--text-sm); }
+  .vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); text-align: right; }
+  .vc-aside { color: var(--muted); font-weight: 400; }
+</style>

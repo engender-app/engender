@@ -178,3 +178,14 @@
     {#each alsoRows as row (row.key)}{@render listRow(row)}{/each}
   </ListCard>
 </Sheet>
+
+<style>
+  /* How many the row stands for, at the trailing edge before the chevron.
+     Tabular figures so a run of counts lines up, and the role's own ink
+     rather than grey - it is a number this area owns, not a disabled one. */
+  .day-count {
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    color: var(--role-ink);
+  }
+</style>
