@@ -23,7 +23,12 @@
     hint?: string | null;
     confirmLabel: string;
     cancelLabel: string;
-    onConfirm: () => void;
+    /** Returning a promise is the point: the delete behind it can reject,
+        and a `() => void` handler structurally forbade even attaching a
+        `.catch()` (ADR-0053 - a contract nobody could observe is how six
+        deletes drifted from it). Nothing here reports a failure yet; the
+        type is what makes one representable. */
+    onConfirm: () => void | Promise<void>;
     onCancel: () => void;
     /** e.g. `{ 'data-confirm-delete-side-effect': '' }` - the walkthrough
         handle a screen's danger button carried before this component
