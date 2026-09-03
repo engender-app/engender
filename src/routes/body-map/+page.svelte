@@ -17,14 +17,8 @@
   import { m } from '$lib/paraglide/messages';
   import { FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { completedInjectionIntervals } from '$lib/data/intervalMoodPattern';
-  import {
-    CALENDAR_AXIS,
-    availableAxes,
-    keyingFor,
-    plotDaySeriesGroup,
-    type DayAxis
-  } from '$lib/charts/dayAxis';
+  import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
+  import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import {
     dayAxisEnds,
     dayAxisLabel,
@@ -85,35 +79,10 @@
 
   /* Which axis the two charts are read on (ticket 16). Both take the same
      one: they are one region's two readings and a person switches axis to
-     ask a question of the region, not of one of its halves. */
-  let axis = $state<DayAxis>(CALENDAR_AXIS);
-
-  /* All history, whatever the dose log holds, because what is on offer is
-     "has this journal ever completed an injection interval" and a 30-day
-     window rarely contains one. Procedures are read whole for the same
-     reason: a surgery two years back still anchors an axis. */
-  let dosesQuery = liveList((j) => j.doses.getDoses(FIRST_EPOCH_DAY, today));
-  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
-
-  let intervals = $derived(completedInjectionIntervals(dosesQuery.rows));
-  let anchors = $derived(
-    proceduresQuery.rows
-      .filter((procedure) => procedure.surgeryEpochDay !== null)
-      .map((procedure) => ({
-        id: procedure.id,
-        name: procedure.name,
-        surgeryEpochDay: procedure.surgeryEpochDay as number
-      }))
-  );
-  let axes = $derived(availableAxes(intervals, anchors));
-  // A procedure deleted or a dose log emptied mid-session takes its axis
-  // with it, the same fallback the mode filter above makes: back to the
-  // reading this screen started with rather than to an axis nothing can
-  // any longer select or clear.
-  $effect(() => {
-    if (!axes.includes(axis)) axis = CALENDAR_AXIS;
-  });
-  let keying = $derived(keyingFor(axis, intervals, anchors, today));
+     ask a question of the region, not of one of its halves. The queries,
+     the fallback and the keying are the kit's (dayAxis.svelte.ts) - the
+     wear trend offers the same axis and had the same twenty-five lines. */
+  const readAxis = dayAxisState(() => today);
 
   /* A re-keyed axis reads the whole journal and says so, which is the same
      call the two interval cards on /stats make: the question needs every
@@ -121,7 +90,7 @@
      range picker above would otherwise hand it a slice near today that
      answers nothing. So the range control is swapped out rather than left
      to sit there doing nothing. */
-  let from = $derived(keying ? FIRST_EPOCH_DAY : today - range + 1);
+  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : today - range + 1);
 
   let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today, modeFilter));
   let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today, modeFilter));
@@ -131,14 +100,14 @@
      calendar days collapse onto one position under the repeating rule, so
      a mark drawn there would claim a coincidence the data does not carry. */
   let annotationsQuery = liveList((j) =>
-    keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, today, today)
+    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, today, today)
   );
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
   /* One call for both series, so they fold onto one width and the two
      cards' axes cannot disagree ($lib/charts/dayAxis). */
-  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], keying, range));
+  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, range));
   let plottedDysphoria = $derived(plotted[0]);
   let plottedEuphoria = $derived(plotted[1]);
 
@@ -148,9 +117,9 @@
      not the one every chart starts on: ", read by Date" on the calendar
      axis would be a phrase appended to every chart on the screen to say
      nothing had changed. */
-  let axisName = $derived(dayAxisLabel(axis, anchors));
+  let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
   const withAxis = (reading: string) =>
-    keying ? m.chart_axis_reading_aria({ reading, axis: axisName }) : reading;
+    readAxis.keying ? m.chart_axis_reading_aria({ reading, axis: axisName }) : reading;
 
   const HOTSPOTS: { region: string; top: number; left: number }[] = [
     { region: 'hairline', top: 7, left: 50 },
@@ -222,16 +191,16 @@
          procedure with a date - which is the same data gating the mode
          filter below makes. -->
     <div class="kit-reading-controls">
-      {#if axes.length > 1}
+      {#if readAxis.axes.length > 1}
         <div class="kit-filter">
           <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
           <ChartPicker
             key="body-map-axis"
             id="body-map-axis"
             labelledBy="body-map-axis"
-            value={axis}
-            options={dayAxisOptions(axes, anchors)}
-            onPick={(value) => (axis = value as DayAxis)}
+            value={readAxis.axis}
+            options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
+            onPick={(value) => (readAxis.axis = value as DayAxis)}
           />
         </div>
       {/if}
@@ -244,7 +213,7 @@
          control that is leaving fades off its own footprint instead of
          popping (motion/reveal). -->
       <div class="kit-reading-slot" use:resize>
-        {#if keying}
+        {#if readAxis.keying}
           <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
         {:else}
           <div out:crossfade>

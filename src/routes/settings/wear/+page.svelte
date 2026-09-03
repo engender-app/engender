@@ -40,14 +40,8 @@
     FIRST_EPOCH_DAY
   } from '$lib/data/epochDay';
   import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
-  import { completedInjectionIntervals } from '$lib/data/intervalMoodPattern';
-  import {
-    CALENDAR_AXIS,
-    availableAxes,
-    keyingFor,
-    plotDaySeriesGroup,
-    type DayAxis
-  } from '$lib/charts/dayAxis';
+  import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
+  import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -259,38 +253,16 @@
   /* Which axis the trend is read on (ticket 16). Both its series take the
      same one, which is not a choice so much as the only coherent reading:
      they already share one x axis, and the whole point of the pair is
-     whether the hours and the feeling move together. */
-  let axis = $state<DayAxis>(CALENDAR_AXIS);
-
-  /* Read whole, both of them, because what is on offer is "has this journal
-     ever completed an injection interval" and "is there a procedure with a
-     date" - neither is a question about the visible window. */
-  let dosesQuery = liveList((j) => j.doses.getDoses(FIRST_EPOCH_DAY, today));
-  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
-
-  let intervals = $derived(completedInjectionIntervals(dosesQuery.rows));
-  let anchors = $derived(
-    proceduresQuery.rows
-      .filter((procedure) => procedure.surgeryEpochDay !== null)
-      .map((procedure) => ({
-        id: procedure.id,
-        name: procedure.name,
-        surgeryEpochDay: procedure.surgeryEpochDay as number
-      }))
-  );
-  let axes = $derived(availableAxes(intervals, anchors));
-  // A procedure deleted or a dose log emptied mid-session takes its axis
-  // with it, the same fallback the region picker above makes.
-  $effect(() => {
-    if (!axes.includes(axis)) axis = CALENDAR_AXIS;
-  });
-  let keying = $derived(keyingFor(axis, intervals, anchors, today));
+     whether the hours and the feeling move together. The queries, the
+     fallback and the keying are the kit's (dayAxis.svelte.ts), shared with
+     the body map. */
+  const readAxis = dayAxisState(() => today);
 
   /* A re-keyed axis reads all history and says so. The question needs every
      interval, or every day either side of a surgery, available; the range
      picker would hand it a slice near today that answers nothing, so it is
      swapped out rather than left sitting there inert. */
-  let trendFrom = $derived(keying ? FIRST_EPOCH_DAY : today - range + 1);
+  let trendFrom = $derived(readAxis.keying ? FIRST_EPOCH_DAY : today - range + 1);
 
   let wearTrendQuery = liveList((j) => j.stats.wearTimeTrend(trendFrom, today));
   /* Dysphoria specifically, which is the axis this chart has always drawn -
@@ -304,7 +276,7 @@
      axis, which is the one reading this chart exists to support
      ($lib/charts/dayAxis). */
   let plotted = $derived(
-    plotDaySeriesGroup([wearTrendQuery.rows, regionTrendQuery.rows], keying, range)
+    plotDaySeriesGroup([wearTrendQuery.rows, regionTrendQuery.rows], readAxis.keying, range)
   );
   /* WearTrendChart places by a numeric x and knows nothing about what it
      counts, so a position goes in where an epoch day used to with no change
@@ -313,7 +285,7 @@
   let regionTrend = $derived(plotted[1].points.map((point) => ({ day: point.x, value: point.y })));
   let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));
   let trendRegionLabel = $derived(trendRegionOptions.find((r) => r.value === trendRegion)?.label ?? '');
-  let axisName = $derived(dayAxisLabel(axis, anchors));
+  let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
 </script>
 
 <div class="screen">
@@ -386,16 +358,16 @@
       <!-- The axis first, because it decides whether there is a range to
            pick, and absent for a journal that can answer only the calendar. -->
       <div class="kit-reading-controls">
-        {#if axes.length > 1}
+        {#if readAxis.axes.length > 1}
           <div class="kit-filter">
             <label class="kit-filter-label" for="wear-axis">{m.chart_axis_label()}</label>
             <ChartPicker
               key="wear-axis"
               id="wear-axis"
               labelledBy="wear-axis"
-              value={axis}
-              options={dayAxisOptions(axes, anchors)}
-              onPick={(value) => (axis = value as DayAxis)}
+              value={readAxis.axis}
+              options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
+              onPick={(value) => (readAxis.axis = value as DayAxis)}
             />
           </div>
         {/if}
@@ -404,7 +376,7 @@
            replaces it, travelling between the two rather than snapping
            (kit.css's .kit-reading-slot). -->
         <div class="kit-reading-slot" use:resize>
-          {#if keying}
+          {#if readAxis.keying}
             <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
           {:else}
             <div out:crossfade>
@@ -446,7 +418,7 @@
             {wearMax}
             regionMin={BODY_REGION_INTENSITY_MIN}
             regionMax={BODY_REGION_INTENSITY_MAX}
-            ariaLabel={keying
+            ariaLabel={readAxis.keying
               ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
               : m.wear_session_trend_title()}
           />
