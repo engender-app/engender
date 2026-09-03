@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { epochDayFromDateInputValue, weekdayOfEpochDay } from '../data/epochDay';
-import { MAX_POSITIONS, alignSeries, atGrain, bucketByGrain, bucketStart, chooseGrain, foldPositions } from './grain';
+import { MAX_POSITIONS, alignSeries, atGrain, bucketByGrain, bucketStart, chooseGrain, foldPositionGroup, foldPositions } from './grain';
 
 const day = (value: string) => epochDayFromDateInputValue(value) as number;
 
@@ -226,5 +226,44 @@ describe('foldPositions', () => {
     const points = Array.from({ length: MAX_POSITIONS * 2 }, (_, i) => pos(i, 2));
 
     expect(foldPositions(points).width).toBe(2);
+  });
+});
+
+describe('foldPositionGroup', () => {
+  const pos = (position: number, value: number, count = 1) => ({ position, value, count });
+
+  it('folds every series at one width, not at the narrowest each could take', () => {
+    // Alone, the short series would fit at width 1 and the long one would
+    // not. Two lines on one plot have to be spaced the same way, so both
+    // fold at the long one's width.
+    const short = [pos(0, 1), pos(1, 2), pos(2, 3)];
+    const long = Array.from({ length: 12 }, (_, i) => pos(i, 4));
+
+    const folded = foldPositionGroup([short, long], 4);
+
+    expect(folded.width).toBe(3);
+    expect(folded.group[0].map((p) => p.position)).toEqual([0]);
+    expect(folded.group[1].map((p) => p.position)).toEqual([0, 3, 6, 9]);
+  });
+
+  it('leaves a group that already fits alone', () => {
+    const a = [pos(1, 1)];
+    const b = [pos(2, 2)];
+
+    expect(foldPositionGroup([a, b], 60)).toEqual({ width: 1, group: [a, b] });
+  });
+
+  it('has nothing to fold when every series is empty', () => {
+    expect(foldPositionGroup([[], []], 60)).toEqual({ width: 1, group: [[], []] });
+  });
+
+  it('keeps an empty series empty beside a folded one', () => {
+    const long = Array.from({ length: 12 }, (_, i) => pos(i, 4));
+
+    const folded = foldPositionGroup([[], long], 4);
+
+    expect(folded.width).toBe(3);
+    expect(folded.group[0]).toEqual([]);
+    expect(folded.group[1]).toHaveLength(4);
   });
 });

@@ -201,27 +201,16 @@ function choosePositionWidth(points: readonly PatternPoint[], maxPositions: numb
   return width;
 }
 
-/** `points` folded until they fit the card, and the width they were folded
-    at, in one call - so no caller can label at one width and bucket at
-    another.
+/** `points` folded into buckets of exactly `width`, lowest position first.
 
-    A bucket is weighted by the calendar days behind each position rather
-    than averaging the positions evenly, because on a repeating axis one
-    position can carry five days and its neighbour three. Its `count` is
-    those days summed, so the reading stays "how many days said this" all
-    the way through the fold.
+    Weighted by the calendar days behind each position rather than averaging
+    the positions evenly, because on a repeating axis one position can carry
+    five days and its neighbour three. `count` is those days summed, so the
+    reading stays "how many days said this" all the way through the fold.
 
     Empty buckets are absent rather than zero, the same rule
     `bucketByGrain` holds: "said nothing" is not "said none". */
-export function foldPositions(
-  points: readonly PatternPoint[],
-  maxPositions: number = MAX_POSITIONS
-): FoldedPositions {
-  if (points.length === 0) return { width: 1, points: [] };
-
-  const width = choosePositionWidth(points, maxPositions);
-  if (width === 1) return { width, points: [...points] };
-
+function bucketByPositionWidth(points: readonly PatternPoint[], width: number): PatternPoint[] {
   const buckets = new Map<number, { total: number; days: number }>();
   for (const point of points) {
     const start = positionBucket(point.position, width);
@@ -230,11 +219,41 @@ export function foldPositions(
     bucket.days += point.count;
     buckets.set(start, bucket);
   }
+  return [...buckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([position, bucket]) => ({ position, value: bucket.total / bucket.days, count: bucket.days }));
+}
 
-  return {
-    width,
-    points: [...buckets.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([position, bucket]) => ({ position, value: bucket.total / bucket.days, count: bucket.days }))
-  };
+/** Several re-keyed series folded onto **one** width, and the width they
+    were folded at.
+
+    One width across the group rather than the narrowest each series could
+    take on its own. Two series folded independently would land on different
+    widths whenever their spans differ, and then two lines on one plot -
+    wear hours against region intensity - would space their marks
+    differently while looking like one axis, and two cards read as a pair -
+    a region's dysphoria beside its euphoria - would carry x axes that
+    disagree without saying so. */
+export function foldPositionGroup(
+  group: readonly (readonly PatternPoint[])[],
+  maxPositions: number = MAX_POSITIONS
+): { width: number; group: PatternPoint[][] } {
+  const everyPoint = group.flat();
+  if (everyPoint.length === 0) return { width: 1, group: group.map((series) => [...series]) };
+
+  const width = choosePositionWidth(everyPoint, maxPositions);
+  if (width === 1) return { width, group: group.map((series) => [...series]) };
+
+  return { width, group: group.map((series) => bucketByPositionWidth(series, width)) };
+}
+
+/** One series folded until it fits the card, and the width it was folded
+    at, in one call - so no caller can label at one width and bucket at
+    another. */
+export function foldPositions(
+  points: readonly PatternPoint[],
+  maxPositions: number = MAX_POSITIONS
+): FoldedPositions {
+  const folded = foldPositionGroup([points], maxPositions);
+  return { width: folded.width, points: folded.group[0] };
 }
