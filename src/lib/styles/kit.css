@@ -1619,6 +1619,23 @@ a.kit-entry:active {
 
 /* The reading under the finger, in the corner rather than beside the line:
    a label that follows the touch is a label under the thumb holding it. */
+/* A plate laid over the plot, not a tag.
+
+   It was a pill, which is right for the one-line case it was drawn for and
+   wrong for every other. A 999px radius on a block three or four rows tall
+   is a stadium: the corner arc runs the full height of the box, so the first
+   and last rows lose their horizontal padding to the curve and sit against
+   the edge, however much padding is declared (Alicja, 2026-09-01: "the text
+   almost overlaps with the edges"). --radius-md is the corner the app's
+   buttons and rows take, it holds its padding at any height, and on a
+   single-line readout 14px still reads as a chip.
+
+   What it does not get is a shadow. It sits over the marks, and lifting it
+   off them with one is the obvious move and the wrong one: DIRECTION.md's
+   decision 2 gives this app two surfaces rather than a stack of planes, and
+   the single shadow in it belongs to the shell's floating nav. The plate is
+   an opaque --surface-2 inside a line, which is how everything else here
+   separates from what is behind it. */
 .kit-area-readout {
   position: absolute;
   top: 0;
@@ -1629,8 +1646,9 @@ a.kit-entry:active {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  padding: 3px var(--space-2);
-  border-radius: var(--radius-pill);
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   border: 1px solid var(--outline);
   font-size: var(--text-xs);
@@ -1654,24 +1672,29 @@ a.kit-entry:active {
 /* The two readings, one per line, in two columns: number then name. A column
    each rather than a row each, because the numbers are the thing being
    compared and ragged numbers are not comparable - "4.0" and "69" have to
-   start at the same place for the pair to be read as a pair, and the names
-   they carry are different lengths. */
+   end at the same place for the pair to be read as a pair, and the names
+   they carry are different lengths.
+
+   The position goes in the grid too, under the names rather than under the
+   numbers and never hard against the plate's right edge. It is the one thing
+   the two readings share, so it belongs to the column that names them; hung
+   off the right it read as a third value with no label. */
 .kit-area-readout-pair {
   display: grid;
   grid-template-columns: auto auto;
   align-items: baseline;
-  gap: 0 var(--space-2);
+  gap: 1px var(--space-2);
 }
 
 .kit-area-readout-pair b {
   text-align: right;
 }
 
-/* Where the finger is, under the two readings rather than beside one of
-   them: with two metrics up the position is the one thing they share, and
-   hanging it off either number would make it look like that number's date. */
 .kit-area-readout-at {
-  margin-top: 1px;
+  grid-column: 2;
+  /* A step away from the pair above, so the plate reads as two readings and
+     when they were taken rather than as three rows of the same weight. */
+  margin-top: 2px;
 }
 
 /* Which line is which (phase 6 ticket 12). The app's second legend, and the
