@@ -206,7 +206,9 @@ function portableWith(marker: string) {
     streakGoalTargetDays: values.streakGoalTargetDays,
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
     hairAnchorEpochDay: values.hairAnchorEpochDay,
-    cycleTrackingEnabled: values.cycleTrackingEnabled
+    cycleTrackingEnabled: values.cycleTrackingEnabled,
+    voiceComfortLowHz: values.voiceComfortLowHz,
+    voiceComfortHighHz: values.voiceComfortHighHz
   };
 }
 

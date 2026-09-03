@@ -674,12 +674,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_voice_benchmark_title(),
         value: m.tile_voice_benchmark_action(),
         note: m.tile_voice_benchmark_days_ago({ days: String(qualifying.daysElapsed) }),
-        href: '/settings/voice',
+        href: '/settings/voice?tab=compare',
         action: {
           icon: 'mic',
           text: m.tile_voice_benchmark_action(),
           label: m.tile_voice_benchmark_action(),
-          href: '/settings/voice/record'
+          href: '/settings/voice?tab=record'
         },
         dismiss: dismissSnooze('voice-benchmark-nudge')
       };
