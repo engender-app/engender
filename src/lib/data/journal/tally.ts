@@ -37,7 +37,10 @@ export function makeTallyArea(driver: SqliteDriver): TallyArea {
   });
 
   return {
-    log: events.upsert,
+    // Spread field by field rather than handing the input straight to
+    // `upsert`: a tap is logged and never edited, and naming the two fields
+    // is what makes that true at runtime and not only in the input type.
+    log: ({ epochDay, kind }) => events.upsert({ epochDay, kind }),
 
     getEvents: (kind) => events.read('WHERE kind = ? ORDER BY epoch_day, id', [kind]),
 
