@@ -92,7 +92,7 @@
   let lastWrite = $derived(lastWritesQuery.value ? groupLastWrite(group, lastWritesQuery.value) : null);
 
   let sheetOpen = $state(false);
-  let dateInput = $state(dateInputValueFromEpochDay(todayEpochDay()));
+  let dateInput = $state(dateInputValueFromEpochDay(today));
   /* Whether the open sheet is answering the offer or is the person's own
      gesture. The write is the same call either way; what differs is that one
      of the two is an offer being answered and has to go through
@@ -156,19 +156,24 @@
     />
   {/if}
 
+  <!-- The standing row steps aside while the offer is up: the offer's own
+       action opens the same sheet, and two ways to say the same thing one
+       above the other reads as a duplicate rather than as a choice. -->
   {#key finishedOn === null}
     <div in:crossfade>
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#if finishedOn === null}
-          <ListRow
-            key="area-finish"
-            data-area-finish
-            icon="flag"
-            title={m.area_finish_row_title()}
-            subtitle={m.area_finish_row_sub()}
-            chevron={false}
-            onclick={openFinish}
-          />
+          {#if !offering}
+            <ListRow
+              key="area-finish"
+              data-area-finish
+              icon="flag"
+              title={m.area_finish_row_title()}
+              subtitle={m.area_finish_row_sub()}
+              chevron={false}
+              onclick={openFinish}
+            />
+          {/if}
         {:else}
           <ListRow
             key="area-finished"
@@ -194,6 +199,7 @@
 </div>
 
 <Sheet bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
+  <h3>{m.area_finish_sheet_title({ area: areaGroupName(group) })}</h3>
   <p class="muted small area-finish-body">{m.area_finish_sheet_body()}</p>
   <Field label={m.area_finish_date_label()} id="area-finish-date">
     {#snippet children(id)}
