@@ -150,7 +150,8 @@
         f1Hz: 620,
         f2Hz: 1810,
         snrDb: 24.5,
-        note: null
+        note: null,
+      pitchTrack: null
       }
     ],
     labResults: [

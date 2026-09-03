@@ -230,3 +230,45 @@ test('the boot sweep leaves a benchmark its audio', async () => {
 
   assert.deepEqual((await files.list()).sort(), before);
 });
+
+/* The stored pitch track (phase 8 features ticket 09). Two cases, and the
+   second is the one the screen has to survive: every benchmark taken before
+   schema v58 has no track at all, because the frames it would have come
+   from were never kept. */
+
+test('a benchmark keeps the pitch track it was handed', async () => {
+  const { journal } = await journalWithFiles();
+
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20301,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null,
+    pitchTrack: '180.4,,176.2,181.0'
+  });
+
+  const [saved] = await journal.voiceBenchmarks.getBenchmarks();
+  assert.equal(saved.pitchTrack, '180.4,,176.2,181.0');
+});
+
+test('a benchmark saved without a track reads back with none', async () => {
+  const { journal } = await journalWithFiles();
+
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20302,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+
+  const [saved] = await journal.voiceBenchmarks.getBenchmarks();
+  assert.equal(saved.pitchTrack, null);
+});
