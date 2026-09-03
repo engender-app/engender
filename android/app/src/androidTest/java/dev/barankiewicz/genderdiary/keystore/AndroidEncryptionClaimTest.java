@@ -49,6 +49,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>Two things are deliberately skipped by the walk, and both are named
  * below with the reason. Everything else is scanned byte for byte, including
  * files nothing in this repository wrote.
+ *
+ * <p><b>What this proves and what it does not, since ADR-0054.</b> The
+ * assertions here are unchanged and stay correct: no sentinel appears in the
+ * clear, whatever else is in the directory. What has changed is a claim
+ * people read off this test rather than one it makes. A copy of the app's
+ * files used to yield nothing that could open the journal at all, because the
+ * only wrap in there was one Keystore refuses to help with. A journal whose
+ * owner minted a recovery key also has recovery-key.json, which is a wrap
+ * this test scans, finds no plaintext in, and passes - and which 120 bits
+ * written on a piece of paper would open. That is not a weakening of the
+ * at-rest claim and is why nothing here needed changing: the file holds no
+ * journal content and no usable key, exactly like keystore.json beside it.
+ * It does mean "a copied directory opens nothing" is now "a copied directory
+ * opens nothing without the paper", and whoever quotes this test should quote
+ * that instead.
  */
 @RunWith(AndroidJUnit4.class)
 public class AndroidEncryptionClaimTest {

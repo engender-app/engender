@@ -34,6 +34,9 @@
   import { bootStates, bootTransitions } from '$lib/stores/boot-state';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
+  import RecoveryKeyEntry from '$lib/components/RecoveryKeyEntry.svelte';
+  import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
+  import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
   import AccessModeSetup from '$lib/components/AccessModeSetup.svelte';
@@ -62,8 +65,28 @@
     'android-key-no-lock',
     'android-key-invalidated',
     'device-recovery',
-    'schema-too-new'
+    'schema-too-new',
+    /* The recovery-key screens (ADR-0054, ticket sec-02). Four of the five
+       need a recovery wrap to exist in this origin's OPFS, because the
+       components read the file rather than a prop - so the fixture writes a
+       real one for them and takes it away again for the others, which is
+       what `RECOVERY_SCENES` below is for. Nothing is faked: the wrap is
+       minted through data/recovery-key.ts over a throwaway data key. */
+    'recovery-entry',
+    'post-recovery',
+    'unlock-pin-with-key',
+    'device-recovery-with-key',
+    'android-key-invalidated-with-key'
   ];
+
+  /** The scenes that need a recovery key on disk before they mount. */
+  const RECOVERY_SCENES = new Set([
+    'recovery-entry',
+    'post-recovery',
+    'unlock-pin-with-key',
+    'device-recovery-with-key',
+    'android-key-invalidated-with-key'
+  ]);
 
   let scene = $state('access-choice');
   let palette = $state('trans');
@@ -101,6 +124,22 @@
         : undefined;
     platform = next;
   }
+
+  /* Whether the wrap is on disk for the scene being shown. Held as its own
+     state and included in the stage's guard below, because the components
+     read the file when they mount: mounting first and writing after would
+     draw the without-a-key half of every one of these screens. */
+  let stageScene = $state<string | null>(null);
+
+  $effect(() => {
+    const wanted = scene;
+    stageScene = null;
+    void (async () => {
+      if (RECOVERY_SCENES.has(wanted)) await mintRecoveryKey(new Uint8Array(32));
+      else await revokeRecoveryKey();
+      stageScene = wanted;
+    })();
+  });
 
   /* Rebuilt from `booting` on every change rather than mutated in place:
      the transitions refuse an illegal move, which is what keeps this page
@@ -140,11 +179,19 @@
           authentication: { outcome: 'unenrolled', unlocksJournal: false, wayForward: 'setDeviceLock' }
         })
       );
-    } else if (scene === 'android-key-invalidated') {
+    } else if (scene === 'android-key-invalidated' || scene === 'android-key-invalidated-with-key') {
       const gate = bootTransitions.toNeedsAuthentication(from);
       Object.assign(bootState, bootTransitions.toNeedsAuthentication(gate, { kind: 'invalidated' }));
-    } else if (scene === 'device-recovery') {
+    } else if (scene === 'unlock-pin-with-key') {
+      Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'pin')));
+    } else if (scene === 'device-recovery' || scene === 'device-recovery-with-key') {
       Object.assign(bootState, bootTransitions.toNeedsDeviceRecovery(from));
+    } else if (scene === 'post-recovery') {
+      /* The one scene with an open journal behind it: this screen is not a
+         gate, and rendering it over a `booting` state would draw it against
+         the wrong access mode. A ready state needs a journal handle, and the
+         module only reads the mode off it. */
+      Object.assign(bootState, bootTransitions.setAccessMode(from, 'pin'));
     } else if (scene === 'schema-too-new') {
       Object.assign(bootState, bootTransitions.toSchemaTooNew(from));
     } else {
@@ -200,8 +247,21 @@
 <div class="app-viewport">
   <div class="app is-chromeless" data-app-root>
     <main class="app-main" data-gallery-stage>
-      {#key `${platform}:${scene}`}
-        {#if scene === 'access-change'}
+      {#key `${platform}:${stageScene}`}
+        <!-- Nothing until the recovery wrap is where this scene needs it. -->
+        {#if stageScene !== scene}
+          <!-- deliberately empty -->
+        {:else if scene === 'recovery-entry'}
+          <RecoveryKeyEntry onBack={() => {}} />
+        {:else if scene === 'post-recovery'}
+          <PostRecoveryAccessMode />
+        {:else if scene === 'unlock-pin-with-key'}
+          <JournalGate />
+        {:else if scene === 'device-recovery-with-key'}
+          <DeviceBoundRecovery />
+        {:else if scene === 'android-key-invalidated-with-key'}
+          <AndroidKeyGate />
+        {:else if scene === 'access-change'}
           <!-- Settings' framing rather than a gate's: the same module, on a
                screen that has a journal open behind it. -->
           <div class="screen">

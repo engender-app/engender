@@ -15,6 +15,19 @@
      fallback away from, and a screen that silently revoked would leave them
      with one door again - the new one - and no way to know the old had gone.
 
+     One consequence to know about, because it is visible and not obvious.
+     The module leaves out the mode the journal is already on, so a journal
+     recovered out of PIN mode is offered a passphrase, a biometric or
+     device-bound, and not another PIN. That is not an oversight here: PIN to
+     PIN goes through `addJournalPin`, which refuses that direction on
+     purpose - minting replaces the binding key before the new keystore is
+     written, and from PIN mode the key being replaced is the only one that
+     opens the keystore still on disk. A recovery key would in fact survive
+     that interruption, which makes the refusal arguably too strict on this
+     one path, but relaxing a guard that protects against an unopenable
+     journal is not this ticket's to do. Anybody who wants a PIN again can
+     set one from Settings once they are on another mode.
+
      No skip, and no reset either: a reset is offered at every gate that can
      be met without a journal, and this one is met with an open journal, where
      "delete everything" is not the sentence somebody needs. Reloading is the
