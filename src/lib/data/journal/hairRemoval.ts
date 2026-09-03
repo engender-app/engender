@@ -21,7 +21,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '../hairRemovalAreas';
 import type { HairRemovalMethod, HairRemovalSession } from '../types';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photoFileStore';
 import { assertChanged, mintUuid, now } from './support';
 
 export const MIN_PAIN_RATING = 1;

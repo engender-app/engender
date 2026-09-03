@@ -32,7 +32,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure, ProcedureConsult } from '../types';
 import type { ChecklistsArea } from './checklists';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photoFileStore';
 import type { MilestonesArea } from './milestones';
 import { photosByMilestone, removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now } from './support';

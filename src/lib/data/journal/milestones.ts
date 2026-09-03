@@ -11,7 +11,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photoFileStore';
 import {
   insertStagedPhoto,
   photosByMilestone,
