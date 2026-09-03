@@ -11,8 +11,8 @@
    test-support's node:sqlite driver. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { PhotoFileStore } from '../photos/photoFileStore';
-export type { PhotoFileStore } from '../photos/photoFileStore';
+import type { PhotoFileStore } from '../photos/photo-file-store';
+export type { PhotoFileStore } from '../photos/photo-file-store';
 import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import { makeArchiveArea, type ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';

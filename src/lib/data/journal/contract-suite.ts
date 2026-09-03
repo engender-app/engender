@@ -27,7 +27,7 @@ import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { thumbFileName } from '../photos/names.ts';
 import type { Journal } from './journal.ts';
 import { openJournal } from './journal.ts';
-import type { PhotoFileStore } from '../photos/photoFileStore.ts';
+import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 
 export interface ContractCheck {

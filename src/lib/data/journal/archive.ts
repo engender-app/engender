@@ -40,7 +40,7 @@ import { trackAndGraphPreview, type TrackAndGraphPreview } from '../archive/trac
 import { pixelsPreview, type PixelsPreview } from '../archive/pixels';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { PhotoFileStore } from '../photos/photoFileStore';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { NormalizedPhoto } from './photos';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
