@@ -21,6 +21,7 @@ import {
 } from '../src/lib/data/letterStatus.ts';
 import type { Letter } from '../src/lib/data/types.ts';
 import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
+import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -119,30 +120,38 @@ describe('Ready letter status logic (ticket 01)', () => {
 });
 
 describe('Home ready-letter live tile rendering and behavior', () => {
+  /* The tile itself moved into the grid module (phase 8 deepening ticket
+     07), so its content, its route and its dismiss are asserted through
+     `composeHomeTiles` in liveTiles.grid.test.ts. What stays here is the
+     half that is still Home's: the sheet the dismiss opens, which is a
+     surface on the route rather than a control on the tile. */
   it('gating derives on preference, unread letters query, and snooze state', () => {
-    expect(home).toContain('let showLetterTile = $derived(prefs.readyLetterEnabled && !!readyLetter && !isLetterSnoozedState);');
-    expect(home).toContain('j.letters.getLetters(100)');
-    expect(home).toContain('unreadUnlockedLetters(lettersQuery.rows, today)');
+    const tiles = read('src/lib/data/liveTiles.svelte.ts');
+    expect(tiles).toContain('j.letters.getLetters(100)');
+    // The letter keeps its own storage key rather than liveTilesSnooze's.
+    expect(tiles).toContain('isLetterSnoozed(nowMs)');
+    expect(read('src/lib/data/liveTiles.ts')).toContain('unreadUnlockedLetters(reads.letters, today)');
+    expect(home).not.toContain('getLetters(');
   });
 
   it('renders ready-letter tile inside TileGrid with tileSlide transition', () => {
-    expect(homeMarkup).toContain('data-live-tile="ready-letter"');
-    expect(homeMarkup).toContain('data-letter-tile');
-    expect(homeMarkup).toContain('key="ready-letter"');
-    expect(homeMarkup).toContain('data-letter-dismiss');
-    expect(home).toContain('transition:tileSlide');
+    expect(LIVE_TILE_ORDER as readonly string[]).toContain('ready-letter');
+    expect(homeMarkup).toContain('<TileGrid');
+    expect(homeMarkup).toContain('transition:tileSlide');
   });
 
   it('provides dismiss sheet with 24h snooze and permanent disable actions', () => {
     expect(homeMarkup).toContain('data-letter-dismiss-sheet');
     expect(homeMarkup).toContain('data-letter-snooze');
     expect(homeMarkup).toContain('data-letter-dont-show');
-    expect(home).toContain('snoozeLetterTile()');
+    // The snooze goes through the module, which is what makes the tile
+    // disappear the moment the sheet closes rather than a tick later.
+    expect(home).toContain("liveTiles.snooze('ready-letter')");
     expect(home).toContain('prefs.readyLetterEnabled = false');
   });
 
   it('links tile to the letter reading route', () => {
-    expect(home).toContain('href={`/settings/letters?read=${readyLetter.id}`}');
+    expect(read('src/lib/data/liveTiles.ts')).toContain('/settings/letters?read=${letter.id}');
   });
 });
 

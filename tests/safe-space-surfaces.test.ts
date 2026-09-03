@@ -6,6 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles.ts';
+import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -119,16 +121,20 @@ describe('More hub row for Safe Space', () => {
 });
 
 describe('Home live tile for Safe Space nudge (ticket 50)', () => {
-  const home = read('src/routes/+page.svelte');
-  const homeMarkup = home.replace(/<script[\s\S]*?<\/script>/g, '');
+  /* The tile left the route with the rest of the grid (phase 8 deepening
+     ticket 07). What it says, where it goes and what its dismiss does are
+     `liveTiles.grid.test.ts`'s now, through `composeHomeTiles`; what is
+     still a grep is which module holds the read, and that Home does not
+     hold it twice. */
+  it('reads the bad-moment entry from the module that owns the grid', () => {
+    expect(read('src/lib/data/liveTiles.svelte.ts')).toContain('j.entries.latestBadMomentEntry');
+    expect(read('src/routes/+page.svelte')).not.toContain('latestBadMomentEntry');
+    expect(read('src/lib/data/liveTiles.ts')).toContain('shouldShowSafeSpaceNudge');
+  });
 
-  it('wires the Safe Space live tile with latestBadMomentEntry query and dismissal handling', () => {
-    expect(home).toContain("from '$lib/data/safeSpaceNudge'");
-    expect(home).toContain('j.entries.latestBadMomentEntry');
-    expect(home).toContain('shouldShowSafeSpaceNudge');
-    expect(homeMarkup).toContain('data-live-tile="safe-space-nudge"');
-    expect(homeMarkup).toContain('data-safe-space-nudge-tile');
-    expect(homeMarkup).toContain('data-safe-space-nudge-dismiss');
-    expect(homeMarkup).toContain('href="/doubt"');
+  it('keeps the nudge in the registry both settings views read', () => {
+    const row = UNPROMPTED_ROWS.find((r) => r.key === 'safe-space-nudge');
+    expect(row?.surface?.prefKey).toBe('safeSpaceNudgeEnabled');
+    expect(LIVE_TILE_ORDER as readonly string[]).toContain('safe-space-nudge');
   });
 });
