@@ -126,16 +126,16 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   comfortItems: 'a standing list with no dates in it at all',
   importLog: 'this device’s bookkeeping about where an import came from',
   areaStates: 'the record of which areas are finished, which cannot itself be one of them',
-  dimensions: 'reference data, not a series (CONTEXT.md:20)',
-  presets: 'reference data, not a series (CONTEXT.md:20)',
-  tagGroups: 'reference data, not a series (CONTEXT.md:20)',
-  affirmations: 'reference data, not a series (CONTEXT.md:20)',
-  bodyRegions: 'reference data, not a series (CONTEXT.md:20)',
-  presentations: 'reference data, not a series (CONTEXT.md:20)',
-  entryTemplates: 'reference data, not a series (CONTEXT.md:20)',
-  measurementTypes: 'reference data, not a series (CONTEXT.md:20)',
-  effectCategories: 'reference data, not a series (CONTEXT.md:20)',
-  personalEffectTypes: 'reference data, not a series (CONTEXT.md:20)'
+  dimensions: 'reference data, not a series (CONTEXT: "Reference data")',
+  presets: 'reference data, not a series (CONTEXT: "Reference data")',
+  tagGroups: 'reference data, not a series (CONTEXT: "Reference data")',
+  affirmations: 'reference data, not a series (CONTEXT: "Reference data")',
+  bodyRegions: 'reference data, not a series (CONTEXT: "Reference data")',
+  presentations: 'reference data, not a series (CONTEXT: "Reference data")',
+  entryTemplates: 'reference data, not a series (CONTEXT: "Reference data")',
+  measurementTypes: 'reference data, not a series (CONTEXT: "Reference data")',
+  effectCategories: 'reference data, not a series (CONTEXT: "Reference data")',
+  personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")'
 };
 
 /** Every area a person can hide, which is every area but one.
