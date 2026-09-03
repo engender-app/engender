@@ -1182,20 +1182,6 @@
     border-color: var(--accent);
   }
 
-  /* A presentation's own colour rather than the app's accent, since the
-     whole point of the chip is telling several of them apart at a glance
-     (ADR-0048) - the tokens [data-kit-role] derives from roleAttrs() on
-     this button. Unselected, only the ring shows; selected, the tint fills
-     in behind the name. */
-  .presentation-chip[data-kit-role] {
-    border: var(--role-hairline);
-  }
-  .presentation-chip.is-active[data-kit-role] {
-    background: var(--role-tint);
-    border-color: var(--role-draw);
-    color: var(--role-ink);
-  }
-
   /* The dose chip earns two lines when a stock entry adds what it leaves,
      so it drops the pill radius for a rounded rect (--radius-md, the same
      one a list row or a button uses) - a true pill's fully-rounded ends

@@ -2730,6 +2730,7 @@
   "presentation_colour_swatch_aria": "Kolor {index}",
   "presentation_hide_aria": "Ukryj {name}",
   "presentation_show_aria": "Pokaż {name}",
+  "presentation_highlight_label": "Wyróżnianie trybu",
   "eras_title": "Ery",
   "eras_intro": "Nazwa dla odcinka twojej osi czasu. Może sięgać przed dziennik albo wciąż trwać.",
   "eras_empty_title": "Nie ma jeszcze żadnej ery.",

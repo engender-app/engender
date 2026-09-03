@@ -13,6 +13,7 @@
 
   import { scaleLinear } from 'd3-scale';
   import { line as d3line } from 'd3-shape';
+  import type { Role } from '$lib/theme/roles';
 
   interface Point {
     day: number;
@@ -27,7 +28,8 @@
     regionMax = 100,
     height = 150,
     width = 320,
-    ariaLabel
+    ariaLabel,
+    highlight
   }: {
     wearPoints: Point[];
     regionPoints: Point[];
@@ -40,6 +42,15 @@
     height?: number;
     width?: number;
     ariaLabel: string;
+    /** Which positions on the shared x axis carry the chosen presentation
+        (phase 8 features ticket 17, ADR-0048), in the same units `day`
+        already is here - the caller places, this chart only draws, the
+        same division of labour `wearMax` keeps. Its own row of marks along
+        the baseline rather than a mark on either line: a highlighted day
+        may carry wear data, region data, both or neither, since the two
+        series and a presentation are three independent reads of the same
+        days. */
+    highlight?: { positions: number[]; role: Role };
   } = $props();
 
   const P = 8;
@@ -62,7 +73,13 @@
       wear: wearPoints.length >= 2 ? (wearLine(wearPoints) ?? '') : null,
       region: regionPoints.length >= 2 ? (regionLine(regionPoints) ?? '') : null,
       wearTicks: yWear.ticks(3),
-      wearTickY: (v: number) => yWear(v)
+      wearTickY: (v: number) => yWear(v),
+      // Off the plot's own domain rather than the wear/region days: a
+      // highlighted day past either series' last reading is still on the
+      // axis and still worth marking.
+      highlighted: (highlight?.positions ?? [])
+        .filter((p) => p >= x0 && p <= x1)
+        .map((p) => x(p))
     };
   });
 </script>
@@ -79,6 +96,11 @@
     {/if}
     {#if chart.wear}
       <path d={chart.wear} class="wear-trend-wear" />
+    {/if}
+    {#if highlight}
+      {#each chart.highlighted as hx (hx)}
+        <circle class="wear-trend-highlight" cx={hx} cy={height - P} r="3" style:fill={highlight.role.mark} />
+      {/each}
     {/if}
   </svg>
 {:else}
@@ -116,5 +138,17 @@
   .wear-axis-label {
     fill: var(--text-2);
     font-size: 10px;
+  }
+
+  /* The presentation chip's mark (ticket 17, ADR-0048): a dot on the
+     baseline both lines already share, at less than full strength so it
+     reads as a mark on the axis rather than as a third series - a
+     highlighted day may carry no reading on either line at all. The
+     surface-coloured ring is the same separation the area chart's own
+     scrub dot draws against the card underneath it. */
+  .wear-trend-highlight {
+    fill-opacity: 0.55;
+    stroke: var(--surface);
+    stroke-width: 1;
   }
 </style>
