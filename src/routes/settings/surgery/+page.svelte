@@ -362,7 +362,7 @@
       {#snippet compareBlock()}
         {#if compareLink.state.status !== 'hidden'}
           {@const compareNotice = compareStretchNoticeProps(compareLink.state, recoveryOpenEnded, SURGERY_COMPARE_COPY)}
-          <div style="margin-bottom:var(--space-4)">
+          <div style="margin-top:var(--space-4);margin-bottom:var(--space-4)">
             <Notice
               icon="shuffle"
               key="surgery-compare"
