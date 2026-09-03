@@ -15,6 +15,8 @@
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { areaQuiet } from '$lib/data/areaState';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
@@ -320,7 +322,30 @@
 
   let effectTypesQuery = liveQuery((j) => j.personalEffects.getEffectTypes());
   let isHrtActive = $derived(activeEpisodes.length > 0);
-  let cycleTrackingActive = $derived(prefs.cycleTrackingEnabled);
+
+  /* ADR-0043's gate, asked rather than re-derived (phase 8 features ticket
+     04). This screen read `prefs.cycleTrackingEnabled` directly, which is the
+     one surface of three that did - so somebody on a testosterone regimen who
+     never flipped the switch got the More row and the side-effects section
+     and not this, which is the reader the automatic half of the rule exists
+     for.
+
+     `Date.now()` and not this entry's own day, which is what the other two
+     surfaces pass: the question is whether cycle tracking is surfaced for
+     this person, not whether it was surfaced on a day they are backdating
+     to. A regimen that has since ended does not take the chips off an entry
+     written last spring. */
+  let cycleTrackingActive = $derived(
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled)
+  );
+
+  /* The cascade (phase 8 features ticket 04, ADR-0052). The effects chip is
+     the one prompt on this screen that belongs to a finishable area, so it is
+     the one that goes quiet when that area does. Read against today rather
+     than against `day`: an area somebody is done with is done with now, and a
+     backdated entry is not a way back into a prompt they switched off. */
+  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, todayEpochDay()));
 
   let tryoutReflection = $state('');
   let procRecoveryNote = $state('');
@@ -832,7 +857,7 @@
     </div>
   {/if}
 
-  {#if prefs.entryHrtEffectsEnabled && isHrtActive}
+  {#if prefs.entryHrtEffectsEnabled && isHrtActive && !effectsQuiet}
     <div class="contextual-row" data-contextual="hrt-effects">
       {#if entryDraft.effectMarker}
         <div class="contextual-chip effect-chip is-active">
