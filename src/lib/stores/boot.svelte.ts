@@ -131,10 +131,12 @@ const dataKeyOpened = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
   announceDataKey = resolve;
 });
 
-/** The key the open journal is encrypted under, for the one thing outside
-    this module that has to encrypt something itself: the entry-draft mirror
+/** The key the open journal is encrypted under, for the two things outside
+    this module that need it themselves: the entry-draft mirror
     (data/entryDraftStore.ts), which is journal content living in
-    localStorage rather than in the database.
+    localStorage rather than in the database, and minting a recovery key
+    (data/recovery-key.ts), which seals this same key under a written one
+    (ADR-0054).
 
     Awaited rather than read, the way data/live/journal.svelte.ts queues on
     its own `opened`: a screen renders during boot - the entry editor is one
