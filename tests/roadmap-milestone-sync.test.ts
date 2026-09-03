@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from '../src/lib/data/journal/test-support.ts';
 import { PREFERENCE_DEFAULTS, DEVICE_LOCAL_KEYS } from '../src/lib/data/prefs/catalogue.ts';
+import { OFFERS, answerOffer, milestoneMintedByGoal } from '../src/lib/data/offers.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -77,12 +78,51 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
   });
 
   it('wires roadmap page to RoadmapMilestonePromptSheet with confirmation flow', () => {
+    /* The write moved into the offer registry (phase 8 features ticket 22)
+       and the screen reaches it through `answerOffer`, which is the only
+       path there is. What a confirmation actually writes is asserted below
+       against the entry itself, which is where it now lives. */
     const roadmapSrc = read('src/routes/settings/roadmap/+page.svelte');
     expect(roadmapSrc).toContain("import RoadmapMilestonePromptSheet from '$lib/components/RoadmapMilestonePromptSheet.svelte'");
     expect(roadmapSrc).toContain('prefs.roadmapMilestoneSyncEnabled');
     expect(roadmapSrc).toContain('<RoadmapMilestonePromptSheet');
-    expect(roadmapSrc).toContain('journal.milestones.upsertMilestone');
-    expect(roadmapSrc).toContain('roadmapGoalKey: data.goalKey');
+    expect(roadmapSrc).toContain("OFFERS['roadmap-goal-milestone']");
+    expect(roadmapSrc).toContain('answerOffer(');
+    expect(roadmapSrc).toContain('milestoneMintedByGoal(');
+    expect(roadmapSrc).not.toContain('journal.milestones.upsertMilestone');
+  });
+
+  it('the offer this screen makes writes the goal key onto the milestone', async () => {
+    const { journal } = await journalWithBuiltIns();
+    await answerOffer(
+      OFFERS['roadmap-goal-milestone'],
+      { title: 'Court fee paid', epochDay: 20100, photo: null, goalKey: 'pl-legal-court-fee' },
+      'confirm',
+      journal
+    );
+
+    const milestones = await journal.milestones.getMilestones();
+    expect(milestones.map((milestone) => [milestone.name, milestone.roadmapGoalKey])).toEqual([
+      ['Court fee paid', 'pl-legal-court-fee']
+    ]);
+  });
+
+  it('a goal that already minted its milestone is not offered again (ADR-0045)', async () => {
+    /* Unchecking a goal and checking it again re-offered, and confirming a
+       second time inserted a duplicate milestone against the same key. The
+       screen asks `milestoneMintedByGoal` before it opens the sheet, so the
+       second tick offers nothing. */
+    const { journal } = await journalWithBuiltIns();
+    await answerOffer(
+      OFFERS['roadmap-goal-milestone'],
+      { title: 'Court fee paid', epochDay: 20100, photo: null, goalKey: 'pl-legal-court-fee' },
+      'confirm',
+      journal
+    );
+
+    const milestones = await journal.milestones.getMilestones();
+    expect(milestoneMintedByGoal(milestones, 'pl-legal-court-fee')?.name).toBe('Court fee paid');
+    expect(milestoneMintedByGoal(milestones, 'pl-legal-birth-certificate')).toBe(null);
   });
 
   it('has confirmation and dismissal actions on RoadmapMilestonePromptSheet', () => {
