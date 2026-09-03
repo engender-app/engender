@@ -3,12 +3,12 @@
    regimen-episode reference - it has to work whether or not a regimen
    episode exists, the same reasoning sideEffects.ts gives.
 
-   Flat, so its three writes come from flat-area.ts and only the two reads
+   Flat, so its three writes come from flatArea.ts and only the two reads
    are its own. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { CycleEvent } from '../types';
-import { flatArea, type FlatInput } from './flat-area';
+import { flatArea, type FlatInput } from './flatArea';
 
 export type CycleEventInput = FlatInput<CycleEvent>;
 

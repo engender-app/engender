@@ -1,4 +1,4 @@
-/* The flat-area factory itself: that one field-to-column declaration is
+/* The flatArea factory itself: that one field-to-column declaration is
    enough to read the rows out, insert, update and delete them.
 
    Driven against a throwaway table no area owns, for the reason
@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
-import { flatArea, type FlatArea } from './flat-area.ts';
+import { flatArea, type FlatArea } from './flatArea.ts';
 
 type MoonPhase = { id: string; epochDay: number; phase: string };
 

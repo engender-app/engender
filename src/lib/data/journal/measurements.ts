@@ -16,12 +16,12 @@
    trips exactly as logged.
 
    The measurements themselves are flat, so their three writes come from
-   flat-area.ts. The type table below is not: its rows are reference data
+   flatArea.ts. The type table below is not: its rows are reference data
    keyed by `key`, hidden rather than deleted, and it keeps its own SQL. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Measurement, MeasurementType } from '../types';
-import { flatArea, type FlatInput } from './flat-area';
+import { flatArea, type FlatInput } from './flatArea';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 export type MeasurementInput = FlatInput<Measurement>;
