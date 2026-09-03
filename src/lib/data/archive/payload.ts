@@ -648,6 +648,17 @@ export interface ArchiveImportLogRecord {
   counts: Record<string, number>;
 }
 
+/** One area's hidden/finished state (ADR-0052, CONTEXT: "Finished"). Named
+    by its area key rather than a uuid, the way ArchiveRoadmapCheck is named
+    by its pack and its goal: an area key is an archive section name, so the
+    same string means the same area on every device (ADR-0002). Why it
+    travels at all is the section's own declaration (archiveSections.ts). */
+export interface ArchiveAreaState {
+  area: string;
+  hidden: boolean;
+  finishedEpochDay: number | null;
+}
+
 /** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
@@ -693,6 +704,7 @@ export interface ArchiveJournal {
   entryTemplates: ArchiveEntryTemplate[];
   comfortItems: ArchiveComfortItem[];
   importLog: ArchiveImportLogRecord[];
+  areaStates: ArchiveAreaState[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

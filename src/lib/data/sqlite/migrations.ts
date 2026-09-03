@@ -1826,6 +1826,36 @@ ALTER TABLE checklist ADD COLUMN debrief_entry_id INTEGER REFERENCES entry(id) O
 ALTER TABLE checklist ADD COLUMN debrief_dismissed_epoch_day INTEGER;
 `;
 
+/* v57: which areas a person has hidden, and which they have said are
+   finished (phase 8 deepening ticket 13, ADR-0052, CONTEXT: "Finished").
+   The rule the rows are read by, and the reasoning behind the two columns
+   and the key space, are `areaState.ts`'s; what belongs here is what the
+   schema had to decide.
+
+   `area` is the primary key and is an `ArchiveSectionName`, so it is a wire
+   key already - the natural-key identity `personal_effect.effect` and
+   `medication_stock.drug` travel by.
+
+   `hidden` and not `visible`, because a positive flag defaulting to shown is
+   what would reverse ADR-0043, and because hidden is already the column name
+   on tag, gender_dimension and measurement_type.
+
+   `finished_epoch_day` is nullable and dated rather than a flag (ADR-0010:
+   the day is the person's own assertion and is not derivable). Sparse: there
+   is no row for an area that has said nothing, so no DEFAULT here stands for
+   a resting state and none is needed.
+
+   No CHECK tying the two columns together. They are independent on purpose,
+   and every combination of them is a state a person can be in. */
+const SCHEMA_V57 = `
+CREATE TABLE area_state (
+  area               TEXT PRIMARY KEY,
+  hidden             INTEGER NOT NULL DEFAULT 0,
+  finished_epoch_day INTEGER,
+  updated_at         INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1882,5 +1912,6 @@ export const migrations: Migration[] = [
   { version: 53, sql: SCHEMA_V53 },
   { version: 54, sql: SCHEMA_V54 },
   { version: 55, sql: SCHEMA_V55 },
-  { version: 56, sql: SCHEMA_V56 }
+  { version: 56, sql: SCHEMA_V56 },
+  { version: 57, sql: SCHEMA_V57 }
 ];

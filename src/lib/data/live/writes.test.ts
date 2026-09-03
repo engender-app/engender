@@ -26,6 +26,22 @@ test('a write announces exactly the tables it touched, and hands its result back
   assert.deepEqual(announced, [['entry', 'photo', 'voiceRecording', 'videoNote']]);
 });
 
+test('hiding or finishing an area announces it, and a read of the states announces nothing', async () => {
+  const { journal, announced } = await observed();
+
+  /* The features spec reads these states on the hub and on Home, so a hide
+     that announced nothing would leave the row it hid on screen until the
+     next unrelated write - the class of staleness this whole module exists
+     for (phase 8 deepening ticket 13). */
+  await journal.areaStates.setAreasHidden(['measurements'], true);
+  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19900);
+  assert.deepEqual(announced, [['areaState'], ['areaState']]);
+
+  announced.length = 0;
+  await journal.areaStates.getAreaStates();
+  assert.deepEqual(announced, []);
+});
+
 test('a photo write announces its owners, not just the photo table', async () => {
   const { journal, announced } = await observed();
   const entryId = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });

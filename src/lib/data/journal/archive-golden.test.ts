@@ -86,6 +86,7 @@ const SECTIONS = [
   'wearSessions',
   'voiceBenchmarks',
   'comfortItems',
+  'areaStates',
   'importLog'
 ] as const satisfies readonly (keyof ArchiveJournal)[];
 

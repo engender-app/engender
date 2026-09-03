@@ -186,7 +186,13 @@ export const TABLE_NAMES = [
   /* The import log (phase 7 ticket 03): its own name so the settings
      screen's `importLog` read does not re-run on every other write - only
      an import itself touches this table. */
-  'importLog'
+  'importLog',
+  /* Which areas are hidden and which are finished (phase 8 deepening ticket
+     13, ADR-0052). Its own name rather than folded into any of the areas it
+     speaks about: a hub row reading every area's state at once would have to
+     re-run on a write to any of nineteen tables, and hiding an area has not
+     touched a single record in it. */
+  'areaState'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -513,6 +519,13 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteSnapshot: ['doubtJournal']
     },
     reads: { getSnapshots: ['doubtJournal'] }
+  }),
+  areaStates: classify<Journal['areaStates']>()({
+    writes: {
+      setAreasHidden: ['areaState'],
+      setAreasFinished: ['areaState']
+    },
+    reads: { getAreaStates: ['areaState'] }
   }),
   comfortItems: classify<Journal['comfortItems']>()({
     writes: {

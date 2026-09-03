@@ -837,6 +837,29 @@ const SECTIONS = [
      but it does travel with a backup, per this ticket's own reasoning: a
      restore that brings your records back but not where they came from has
      lost the thing the ticket added. */
+  /* Hidden and finished, per area (phase 8 deepening ticket 13, ADR-0052).
+     Identified by `area` - a natural key like `personal_effect.effect`, and
+     already a wire key because it is a section name from this very list.
+     `updated_at` stays behind like every other table's.
+
+     Travels, because ADR-0027 is what makes an area exist and a state that
+     did not survive a device move would make finishing an area a lie after a
+     restore. Not into a structure file, though: what a person hands to
+     someone else is the shape of their journal, and which streams they are
+     done with is a statement about their own practice rather than structure
+     anybody else can use. */
+  flat({
+    name: 'areaStates',
+    travels: 'none',
+    table: 'area_state',
+    identity: 'area',
+    orderBy: 'area',
+    columns: {
+      area: 'area',
+      hidden: { field: 'hidden', bool: true },
+      finished_epoch_day: 'finishedEpochDay'
+    }
+  }),
   section({
     name: 'importLog',
     discard: ['DELETE FROM import_log'],

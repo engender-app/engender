@@ -558,6 +558,37 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
   assert.equal(snapshot.journal.entries.flatMap((e) => e.photos).filter((p) => p.id === photo).length, 1);
 });
 
+/* ADR-0027 is what makes an area travel, and an area's finished state has to
+   travel for the same reason ADR-0043 made its own preference portable: a
+   stream that reads as unfinished again on the new phone makes having
+   finished it a lie. The date is the part worth pinning by hand - a flag
+   would survive a boolean round trip that silently dropped the day. */
+test('an area\'s hidden and finished state travels, and a restore keeps the day it names', async () => {
+  const { journal } = await populated();
+  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
+  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(snapshot.journal.areaStates, [
+    { area: 'hairPhotos', hidden: false, finishedEpochDay: 19300 },
+    { area: 'hairStages', hidden: false, finishedEpochDay: 19300 },
+    { area: 'sizeRecords', hidden: true, finishedEpochDay: null }
+  ]);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  // No files: this area has none, and a snapshot's `files` is the manifest
+  // (names and lengths) rather than the bytes a restore writes.
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  assert.deepEqual(await target.areaStates.getAreaStates(), {
+    hairPhotos: { hidden: false, finishedEpochDay: 19300 },
+    hairStages: { hidden: false, finishedEpochDay: 19300 },
+    sizeRecords: { hidden: true, finishedEpochDay: null }
+  });
+});
+
 /* Every column of every table, checked against what the snapshot claims to
    carry. The point is drift: an archive that quietly stops carrying a
    column added later is a backup that silently loses data, and nothing
@@ -719,6 +750,9 @@ const CARRIED: Record<string, string[]> = {
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
   wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
   comfort_item: ['uuid', 'text', 'position'],
+  // Named by its area rather than a uuid, the way roadmap_check is named by
+  // its pack and its goal (phase 8 deepening ticket 13).
+  area_state: ['area', 'hidden', 'finished_epoch_day'],
   // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column.
   import_log: ['uuid', 'source', 'counts', 'imported_at'],
   // Filtered by the portable allowlist rather than carried whole (ADR-0003).
