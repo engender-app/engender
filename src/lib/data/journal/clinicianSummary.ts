@@ -151,7 +151,11 @@ export async function readLabResultsInRange(labs: LabsArea, fromEpochDay: number
    the photo days from procedures.getPhotos(). Nothing here computes a figure
    one of them does not already produce - the day counter a screen shows is
    derived at the point of display (recoveryDay.ts), off the surgery date
-   printed here. */
+   printed here.
+
+   Decision (ticket 19): "since last appointment" is a range like any
+   other, picked the same way any other pair of dates is - it does not
+   filter this section either, for the reason above, not a new one. */
 async function readProcedures({ procedures }: ClinicianSummaryReading): Promise<ClinicianSummaryProcedure[]> {
   const records = await procedures.getProcedures();
   return Promise.all(
@@ -166,7 +170,12 @@ async function readProcedures({ procedures }: ClinicianSummaryReading): Promise<
 /* The appointment prep list has no date to filter by - it prints whatever it
    currently holds, the same way its own screen shows it, rather than a slice
    of some range (ticket 11). Declared last so it prints as the summary's
-   final page. */
+   final page.
+
+   Decision (ticket 19): "since last appointment" does not filter this
+   section either - the list has no date under any range, and the range
+   this ticket adds is a shortcut for picking two dates, not a new kind of
+   range with its own rules. */
 async function readAppointmentPrepItems({ checklists }: ClinicianSummaryReading) {
   const checklist = await checklists.getStandaloneChecklist();
   return checklist?.items ?? [];

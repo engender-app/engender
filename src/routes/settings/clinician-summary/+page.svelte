@@ -48,6 +48,28 @@
   let dobInput = $state('');
   let inclusion = $state<ClinicianDossierInclusion>({ ...DEFAULT_CLINICIAN_DOSSIER_INCLUSION });
 
+  /* "Since last appointment" (ticket 19): the standalone checklist's own
+     appointment date, the same field appointment-prep's own screen reads
+     (checklists.ts). Absent rather than defaulted when none is on record -
+     the button below does not render, instead of falling back to some
+     other window (ticket 19's own line). */
+  let appointmentDateQuery = liveQuery((j) => j.checklists.getAppointmentDate());
+  let appointmentDate = $derived(appointmentDateQuery.value ?? null);
+
+  /* A shortcut for the two fields below, nothing else: it fills the same
+     start/end inputs any other pair of dates fills, so it changes no read
+     downstream. Two of clinicianSummary.ts's sections (procedures,
+     appointmentPrepItems) are already unfiltered by design (ADR-0031) -
+     this range does not change that, and does not special-case it either,
+     which is the "written decision" ticket 19 asks for: applying it
+     uniformly would change what those two sections mean, exactly what
+     ADR-0031's own comment there already rules out. */
+  function useSinceLastAppointment() {
+    if (appointmentDate === null) return;
+    startInput = dateInputValueFromEpochDay(appointmentDate);
+    endInput = todayInput;
+  }
+
   let range = $derived(
     customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput))
   );
@@ -101,6 +123,13 @@
       {/snippet}
     </Field>
   </div>
+  {#if appointmentDate !== null}
+    <div class="no-print cd-since-appointment">
+      <button class="btn btn-soft" data-since-last-appointment onclick={useSinceLastAppointment}>
+        <span>{m.clinician_summary_since_appointment()}</span>
+      </button>
+    </div>
+  {/if}
   {#if range === null}
     <p class="muted small no-print">{m.clinician_summary_range_required()}</p>
   {/if}
@@ -160,6 +189,10 @@
 </div>
 
 <style>
+  .cd-since-appointment {
+    margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+  }
+
   .inclusion-container {
     padding: var(--space-2) var(--space-3);
   }
