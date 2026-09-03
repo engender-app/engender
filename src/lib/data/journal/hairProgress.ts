@@ -57,6 +57,11 @@ export interface HairProgressArea {
   upsertStage(input: HairStageInput): Promise<string>;
   /** Idempotent, like the journal's other deletes. */
   deleteStage(id: string): Promise<void>;
+  /** The day of the most recent staging at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). Its
+      own table and its own read - `hairPhotos` below is a separate
+      registered area. */
+  lastStageWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Every hair photo, oldest first. */
   getPhotos(): Promise<HairPhoto[]>;
   /** The hair photos taken on one day (phase 5 deepening ticket 21). */
@@ -67,6 +72,9 @@ export interface HairProgressArea {
   addPhoto(epochDay: number, photo: NormalizedPhoto): Promise<string>;
   /** Idempotent. */
   deletePhoto(id: string): Promise<void>;
+  /** The day of the most recent hair photo at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  lastPhotoWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
 type HairStageRow = { uuid: string; epoch_day: number; scale: string; stage: string; description: string };
@@ -139,6 +147,14 @@ export function makeHairProgressArea(driver: SqliteDriver, files: PhotoFileStore
       await driver.run('DELETE FROM hair_stage WHERE uuid = ?', [id]);
     },
 
+    async lastStageWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM hair_stage WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
+    },
+
     async getPhotos() {
       const rows = await driver.query<HairPhotoRow>(
         'SELECT uuid, epoch_day, file_path FROM hair_photo ORDER BY epoch_day, id'
@@ -171,6 +187,14 @@ export function makeHairProgressArea(driver: SqliteDriver, files: PhotoFileStore
       const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM hair_photo WHERE uuid = ?', [id]);
       await driver.run('DELETE FROM hair_photo WHERE uuid = ?', [id]);
       await removeFilesOf(files, rows);
+    },
+
+    async lastPhotoWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM hair_photo WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     }
   };
 }

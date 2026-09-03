@@ -52,6 +52,10 @@ export interface MilestonesArea {
   upsertMilestone(input: MilestoneInput): Promise<string>;
   /** Idempotent. Takes the milestone's photo rows and files with it. */
   deleteMilestone(id: string): Promise<void>;
+  /** The day of the most recent milestone at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). One
+      bounded `MAX`, not a fetched list reduced in JS. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
 type MilestoneRow = {
@@ -225,6 +229,14 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       // After the commit, like deleteEntry: rows never come back because a
       // file removal failed; the boot sweep reclaims orphaned files.
       await removeFilesOf(files, photos);
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM milestone WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     }
   };
 }
