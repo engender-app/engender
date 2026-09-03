@@ -26,6 +26,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { HOME_AREA_ROLE } from '../src/lib/theme/roles';
+import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles';
+import { UNPROMPTED_KINDS } from '../src/lib/unprompted/registry';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -120,19 +122,53 @@ describe('what spec 08 took off Home', () => {
     expect(read('src/lib/components/QuickAdd.svelte')).toContain('isHrtOnsetWindowCurrent');
   });
 
-  it('gates the live tiles on their preferences and data conditions', () => {
-    expect(home).toContain('let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);');
-    expect(home).toContain('let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);');
-    expect(home).toContain('let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);');
-    expect(home).toContain('let showSafeSpaceTile = $derived(');
-    expect(home).toContain('let showLetterTile = $derived(');
-    expect(markup).toContain('data-live-tile="wear-timer"');
-    expect(markup).toContain('data-live-tile="dose-panel"');
-    expect(markup).toContain('data-live-tile="surgery-countdown"');
-    expect(markup).toContain('data-surgery-tile');
-    expect(markup).toContain('data-live-tile="safe-space-nudge"');
-    expect(markup).toContain('data-live-tile="ready-letter"');
-    expect(markup).toContain('data-letter-tile');
+  it('asks one module for the live tiles rather than holding thirteen reads', () => {
+    /* Phase 8 deepening ticket 07. This used to match the source of five
+       `$derived` lines and eleven `data-live-tile` literals, which is a rule
+       stated where it cannot fail honestly: it passes on a broken screen
+       that keeps the strings, and fails on a correct move that does not.
+       What the gating actually does is liveTiles.grid.test.ts's, through
+       `composeHomeTiles`. What is left here is the wiring - that Home asks,
+       and does not also answer. */
+    expect(home).toContain("from '$lib/data/liveTiles.svelte'");
+    expect(home).toContain('homeTiles(today, {');
+    for (const read of [
+      'j.wearSessions.getRunningSession',
+      'j.regimen.getEpisodes',
+      'j.procedures.getProcedures',
+      'j.letters.getLetters',
+      'j.entries.latestBadMomentEntry',
+      'j.tryouts.getTryouts',
+      'j.doses.getSchedules',
+      'j.voiceBenchmarks.getBenchmarks',
+      'j.journalingPauses.getPauses',
+      'j.hairRemoval.getSessions',
+      'j.measurements.getMeasurementsInRange'
+    ]) {
+      expect(home, `${read} belongs to liveTiles.svelte.ts now`).not.toContain(read);
+    }
+    // Eleven ternaries counting the tiles are `tiles.length`.
+    expect(home).not.toContain('liveTilesCount');
+  });
+
+  it('stamps every tile with the registry key the walkthrough grips', () => {
+    /* ADR-0029: the handle is the kind's own key, so an added tile cannot
+       arrive without one and none of them can be renamed by a copy edit. */
+    expect(markup).toContain('data-live-tile={tile.key}');
+    expect(markup).toMatch(/\{#each liveTiles\.tiles as tile \(tile\.key\)\}/);
+    for (const kind of LIVE_TILE_ORDER) expect(UNPROMPTED_KINDS).toContain(kind);
+  });
+
+  it('gives all eleven tiles one slide-in rule', () => {
+    /* The bug this ticket fixes: seven tiles asked `liveTilesCount > 1` and
+       four asked a hand-written disjunction of only the original five, so a
+       journal showing the wear and measurements tiles slid one in and let
+       the other appear. */
+    const grid = markup.match(/\{#each liveTiles\.tiles[\s\S]*?\{\/each\}/)?.[0];
+    expect(grid, 'the grid is one each block').toBeDefined();
+    expect(grid).toContain('transition:tileSlide={{ enabled: liveTiles.tiles.length > 1 }}');
+    expect((markup.match(/transition:tileSlide/g) ?? []).length, 'one slide rule, not eleven').toBe(1);
+    expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
   });
 
   it('gives the live tiles grid its own role', () => {
