@@ -91,4 +91,13 @@ describe('classProblems', () => {
     ]);
     expect(classProblems(counts, new Set())).toHaveLength(2);
   });
+
+  it('skips a class in the sheet\'s own SHARED set, zero consumers or one', () => {
+    const counts = new Map([
+      ['icon', []],
+      ['kit-tile-act', ['owner.svelte']]
+    ]);
+    const shared = new Set(['icon', 'kit-tile-act']);
+    expect(classProblems(counts, new Set(), shared)).toEqual([]);
+  });
 });
