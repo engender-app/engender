@@ -57,7 +57,7 @@ import { CorruptArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photoFileStore';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
 import { now } from './support';

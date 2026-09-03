@@ -25,8 +25,9 @@ import type { SqliteDriver } from '../sqlite/driver.ts';
 import { openPreferences } from '../prefs/preferences.ts';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { thumbFileName } from '../photos/names.ts';
-import type { Journal, PhotoFileStore } from './journal.ts';
+import type { Journal } from './journal.ts';
 import { openJournal } from './journal.ts';
+import type { PhotoFileStore } from '../photos/photoFileStore.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 
 export interface ContractCheck {

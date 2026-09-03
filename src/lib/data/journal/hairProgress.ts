@@ -23,7 +23,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import { isGradedScale, isHairStaging } from '../hairStageScales';
 import type { HairStage } from '../types';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photoFileStore';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface HairStageInput {
