@@ -23,6 +23,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { AreaStates, FinishableArea, HideableArea } from '../areaState';
+import type { ArchiveSectionName } from './archiveSections';
 import { now } from './support';
 
 export interface AreaStatesArea {
@@ -78,7 +79,7 @@ export function makeAreaStatesArea(driver: SqliteDriver): AreaStatesArea {
         /* A key this build has never heard of can only come from an archive
            written by a newer one; it travelled here and it travels on, and
            nothing above reads an area it cannot name. */
-        states[row.area as HideableArea] = {
+        states[row.area as ArchiveSectionName] = {
           hidden: row.hidden === 1,
           finishedEpochDay: row.finished_epoch_day
         };
