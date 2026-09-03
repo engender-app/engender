@@ -42,6 +42,8 @@
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
+  import { recoveryKeyExists } from '$lib/data/recovery-key';
   import AccessModeSetup, { accessModeSetupErrorMessage, accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
@@ -56,6 +58,16 @@
      rather than leaving "How should your journal open?" over a screen where
      that has already been answered. */
   let chosenMode = $state<AccessSetupMode | null>(null);
+  /* Whether this journal has a recovery key, read once when the gate mounts
+     (ADR-0054, ticket sec-02). Asked before anything is typed, because the
+     entry must not be offered where there is none - a door onto nothing
+     would send somebody looking for paper they never had. False until the
+     read answers, so the way out appears rather than disappearing. */
+  let hasRecoveryKey = $state(false);
+  recoveryKeyExists().then((found) => {
+    hasRecoveryKey = found;
+  });
+  let usingRecoveryKey = $state(false);
 
   let mode = $derived(passphraseMode(bootState));
   let screen = $derived(passphraseScreen(bootState));
@@ -233,7 +245,12 @@
   }
 </script>
 
-{#if screen === 'conversion-refused'}
+{#if usingRecoveryKey}
+  <!-- Instead of the gate, not over it: the same rule the layout follows for
+       the gates themselves, so there is one screen at a time and no field
+       behind this one holding a half-typed secret. -->
+  <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
+{:else if screen === 'conversion-refused'}
   <GateScreen icon="alert" tone="alert" title={m.pp_convert_refused_title()}>
     <p class={gateBodyClass(refusalBody)} data-conversion-refusal>{refusalBody}</p>
   </GateScreen>
@@ -312,6 +329,14 @@
 
       {#if mode === 'unlock'}
         <div class="gate-foot">
+          <!-- Not the primary action and not styled like one: this is the
+               door somebody looks for after the first one failed, so it sits
+               with the way out rather than competing with the field above. -->
+          {#if hasRecoveryKey}
+            <button class="btn btn-ghost" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
+              <span>{m.rke_open()}</span>
+            </button>
+          {/if}
           <button class="btn btn-ghost" data-forgot-passphrase onclick={() => (resetOpen = true)}>
             <span>{wayOut}</span>
           </button>
@@ -326,7 +351,12 @@
   <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
     <Icon name="alert" size={20} />
     <div class="notice-body">
-      <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
+      <!-- "There is no way to recover it" is false on a journal that has a
+           recovery key, and this sheet is the one place it was being said in
+           front of a reset (ADR-0054). Where one exists the notice points at
+           it instead, because the alternative is telling somebody to delete
+           a journal they could still open. -->
+      <span class="notice-title">{hasRecoveryKey ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
       {unlockingBiometric ? m.bm_forgot_key_note() : m.pp_forgot_key_note()}
     </div>
   </div>
