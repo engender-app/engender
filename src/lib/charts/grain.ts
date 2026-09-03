@@ -157,14 +157,6 @@ export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
     positions - but an anchored axis over several years around a surgery is
     upwards of a thousand, and `MAX_POSITIONS` is what a card can draw
     without the marks reading as one smear. */
-export interface FoldedPositions {
-  /** How many positions each bucket covers. 1 when the span already fit,
-      in which case the points come back untouched. */
-  width: number;
-  /** The buckets, lowest position first, each read back at the position it
-      starts on. */
-  points: PatternPoint[];
-}
 
 /** The first position of the bucket `position` falls in, at `width`.
 
@@ -245,15 +237,4 @@ export function foldPositionGroup(
   if (width === 1) return { width, group: group.map((series) => [...series]) };
 
   return { width, group: group.map((series) => bucketByPositionWidth(series, width)) };
-}
-
-/** One series folded until it fits the card, and the width it was folded
-    at, in one call - so no caller can label at one width and bucket at
-    another. */
-export function foldPositions(
-  points: readonly PatternPoint[],
-  maxPositions: number = MAX_POSITIONS
-): FoldedPositions {
-  const folded = foldPositionGroup([points], maxPositions);
-  return { width: folded.width, points: folded.group[0] };
 }

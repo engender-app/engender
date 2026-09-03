@@ -37,6 +37,22 @@ export type DayAxis = 'calendar' | 'interval' | `since:${string}`;
 
 export const CALENDAR_AXIS: DayAxis = 'calendar';
 
+/* The prefix an anchored axis carries its procedure's id behind. Written
+   and read only through the two helpers below, so the literal lives in one
+   place: it is a `<select>` value, a grip handle and a lookup key at once,
+   and three files spelling it themselves is how one of them ends up
+   spelling it differently. */
+const SINCE_PREFIX = 'since:';
+
+/** The anchored axis for `anchorId`. */
+export const sinceAxis = (anchorId: string): DayAxis => `${SINCE_PREFIX}${anchorId}`;
+
+/** Which anchor `axis` is keyed to, or `null` if it is not an anchored
+    axis at all. */
+export function anchorIdOf(axis: DayAxis): string | null {
+  return axis.startsWith(SINCE_PREFIX) ? axis.slice(SINCE_PREFIX.length) : null;
+}
+
 /** The axes a journal holding `intervals` and `anchors` can offer, calendar
     first and the anchored ones in the order they were given.
 
@@ -50,7 +66,7 @@ export function availableAxes(
   return [
     CALENDAR_AXIS,
     ...(intervals.length > 0 ? (['interval'] as const) : []),
-    ...anchors.map((anchor): DayAxis => `since:${anchor.id}`)
+    ...anchors.map((anchor) => sinceAxis(anchor.id))
   ];
 }
 
@@ -67,12 +83,11 @@ export function keyingFor(
 ): Keying | null {
   if (axis === 'interval') return intervals.length > 0 ? { type: 'repeating', intervals } : null;
 
-  if (axis.startsWith('since:')) {
-    const anchor = anchors.find((candidate) => candidate.id === axis.slice('since:'.length));
-    return anchor ? { type: 'anchored', anchorEpochDay: anchor.surgeryEpochDay, todayEpochDay } : null;
-  }
+  const anchorId = anchorIdOf(axis);
+  if (anchorId === null) return null;
 
-  return null;
+  const anchor = anchors.find((candidate) => candidate.id === anchorId);
+  return anchor ? { type: 'anchored', anchorEpochDay: anchor.surgeryEpochDay, todayEpochDay } : null;
 }
 
 /** A day series ready to draw, whichever axis it landed on.

@@ -16,7 +16,7 @@
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
 import type { AxisPlot } from '$lib/charts/dayAxis';
-import { CALENDAR_AXIS, type DayAxis } from '$lib/charts/dayAxis';
+import { CALENDAR_AXIS, anchorIdOf, type DayAxis } from '$lib/charts/dayAxis';
 import type { Grain } from '$lib/charts/grain';
 
 /** A procedure that can anchor an axis, as the picker needs it: the
@@ -32,7 +32,7 @@ export interface AnchorOption {
 export function dayAxisLabel(axis: DayAxis, anchors: readonly AnchorOption[]): string {
   if (axis === CALENDAR_AXIS) return m.chart_axis_calendar();
   if (axis === 'interval') return m.chart_axis_interval();
-  const anchor = anchors.find((candidate) => `since:${candidate.id}` === axis);
+  const anchor = anchors.find((candidate) => candidate.id === anchorIdOf(axis));
   return m.chart_axis_since({ name: anchor?.name ?? '' });
 }
 
