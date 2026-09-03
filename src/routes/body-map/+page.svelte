@@ -242,9 +242,9 @@
          different heights, so the slot animates its own resize, and the
          control that is leaving fades off its own footprint instead of
          popping (motion/reveal). -->
-    <div class="kit-axis-slot" use:resize>
+    <div class="kit-reading-slot" use:resize>
       {#if keying}
-        <p class="muted small kit-axis-note" out:crossfade>{m.chart_axis_all_history()}</p>
+        <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
       {:else}
         <div out:crossfade>
           <Segmented

@@ -400,10 +400,10 @@
 
       <!-- One slot for the range control and the whole-journal note that
            replaces it, travelling between the two rather than snapping
-           (kit.css's .kit-axis-slot). -->
-      <div class="kit-axis-slot" use:resize>
+           (kit.css's .kit-reading-slot). -->
+      <div class="kit-reading-slot" use:resize>
         {#if keying}
-          <p class="muted small kit-axis-note" out:crossfade>{m.chart_axis_all_history()}</p>
+          <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
         {:else}
           <div out:crossfade>
             <Segmented

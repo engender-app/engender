@@ -438,14 +438,14 @@
    position, which resolves against the nearest positioned ancestor. Left
    to find one on its own it reaches `.screen` and the fading pills land at
    the top of the page. */
-.kit-axis-slot {
+.kit-reading-slot {
   position: relative;
 }
 
 /* Standing in for the pill row, so it takes the same vertical rhythm the
    3px-padded pills do rather than collapsing the space above the chart the
    moment somebody switches axis. */
-.kit-axis-note {
+.kit-reading-note {
   margin: 0;
   padding: var(--space-2) 0;
 }
