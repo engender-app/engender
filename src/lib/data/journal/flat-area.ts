@@ -1,9 +1,9 @@
 /* The three writes a flat area has, derived once from the one thing that
    differs between them: which column each field is stored in.
 
-   A **flat area** (CONTEXT: "Area") is one whose row is its domain object -
-   a travelling uuid, a handful of scalar columns, `updated_at`, no join, no
-   projection and no cascade. Six of the journal's areas are that shape, and
+   A **flat area** is one whose row is its domain object - a travelling
+   uuid, a handful of scalar columns, `updated_at`, no join, no projection
+   and no cascade. Six of the journal's areas are that shape, and
    each had written the same three statements by hand: a SELECT naming its
    columns, an UPDATE-or-INSERT naming them twice more, and a DELETE. Forty-
    eight id-addressed writes copied that way is how the delete contract came
