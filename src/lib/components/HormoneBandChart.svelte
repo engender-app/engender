@@ -12,6 +12,8 @@
 
   import { scaleLinear } from 'd3-scale';
   import { area as d3area, line as d3line } from 'd3-shape';
+  import type { AnnotationMark, ChartAnnotation } from '$lib/charts/annotations';
+  import CurveMarkers from './CurveMarkers.svelte';
 
   interface BandPoint {
     day: number;
@@ -35,7 +37,11 @@
     ariaLabel,
     selected = null,
     onSelect,
-    pointLabel
+    pointLabel,
+    markers = [],
+    selectedMarker = null,
+    onSelectMarker,
+    markLabel
   }: {
     band: BandPoint[];
     /** The user's own results. Drawn over the band and never part of it. */
@@ -58,9 +64,21 @@
     /** The accessible name for the result at `index`. Required alongside
         onSelect: a tappable mark with no name cannot be announced. */
     pointLabel?: (index: number) => string;
+    /** What else was logged on the days this window covers (phase 8 features
+        ticket 15). Empty by default: markers are something a screen opts
+        into, and this component still knows nothing about what they are. */
+    markers?: readonly ChartAnnotation[];
+    /** The key of the gathered marker that is open in the readout. */
+    selectedMarker?: string | null;
+    /** Omitted, like onSelect, means the markers are not drawn at all: a
+        marker's whole purpose is going to the record it stands for, so one
+        nothing can answer is a tick with nowhere to go. */
+    onSelectMarker?: (mark: AnnotationMark) => void;
+    markLabel?: (mark: AnnotationMark) => string;
   } = $props();
 
   let interactive = $derived(onSelect !== undefined && pointLabel !== undefined);
+  let marked = $derived(onSelectMarker !== undefined && markLabel !== undefined && markers.length > 0);
 
   const P = 8;
   /* Room on the left for the axis labels, which sit inside the viewBox so
@@ -89,6 +107,8 @@
     const ticks = y.ticks(4).filter((value) => value >= 0 && value <= max);
 
     return {
+      fromDay: x0,
+      toDay: Math.max(x0 + 1, x1),
       band: bandGen(band) ?? '',
       upperEdge: edge((p) => y(p.upper)),
       lowerEdge: edge((p) => y(p.lower)),
@@ -112,6 +132,23 @@
       <line x1={AXIS} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />
       <text x={AXIS - 5} y={tick.y + 3.5} class="band-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
     {/each}
+
+    <!-- Under the band and its results, over the gridlines: what else was
+         logged is context for the readings and never a reading itself. -->
+    {#if marked}
+      <CurveMarkers
+        markers={markers}
+        fromDay={chart.fromDay}
+        toDay={chart.toDay}
+        left={AXIS}
+        right={width - P}
+        bottom={height - P}
+        plotHeight={height - P * 2}
+        selected={selectedMarker}
+        onSelect={(mark) => onSelectMarker?.(mark)}
+        markLabel={(mark) => markLabel?.(mark) ?? ''}
+      />
+    {/if}
 
     <path d={chart.band} class="band-fill" />
     <path d={chart.upperEdge} class="band-edge" />
