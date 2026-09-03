@@ -268,15 +268,6 @@
       >
         {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
       </ListRow>
-      <ListRow
-        key="journey-anchor"
-        icon="flag"
-        title={m.journey_anchor_title()}
-        subtitle={vocabulary.journeyAnchor
-          ? m.journey_anchor_row_sub_set({ name: vocabulary.journeyAnchor.name })
-          : m.journey_anchor_row_sub_unset()}
-        href="/settings/journey-anchor"
-      />
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
       <ListRow key="streak-goal" icon="sparkle" title={m.streak_goal_title()} subtitle={m.streak_goal_row_sub()} href="/settings/streak-goal" />

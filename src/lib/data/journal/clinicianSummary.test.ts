@@ -6,7 +6,12 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
-import { CLINICIAN_SUMMARY_SECTIONS, makeClinicianSummaryArea, type ClinicianSummarySection } from './clinicianSummary.ts';
+import {
+  CLINICIAN_SUMMARY_SECTIONS,
+  CLINICIAN_SUMMARY_TABLES,
+  makeClinicianSummaryArea,
+  type ClinicianSummarySection
+} from './clinicianSummary.ts';
 import type { Journal } from './journal.ts';
 
 /* The areas openJournal hands the summary, taken off an open journal so a
@@ -132,12 +137,25 @@ test('a section is registered for each part of the summary, in the order it prin
   );
 });
 
+/* The live layer's dependency list for getSummary, pinned rather than
+   restated: asserting that every section's tables are in their own union
+   only re-runs the `new Set` above it. What this catches is a section's
+   tables changing what a summary re-runs on, which is the thing the
+   derivation moved out of writes.ts - and it held the derivation to the six
+   tables that file used to name by hand, in the order it named them. */
+test('getSummary depends on the tables the registered sections read, and no others', () => {
+  assert.deepEqual(CLINICIAN_SUMMARY_TABLES, ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist']);
+});
+
 test('registering a section is enough for it to reach a generated summary, with no change to the assembly', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
 
   const throwaway: ClinicianSummarySection = {
     key: 'throwaway',
+    // No table, because it reads no row: the section hands its own two
+    // arguments back.
+    tables: [],
     read: async ({ fromEpochDay, toEpochDay }) => [fromEpochDay, toEpochDay]
   };
   const withThrowaway = makeClinicianSummaryArea(areasOf(journal), [...CLINICIAN_SUMMARY_SECTIONS, throwaway]);

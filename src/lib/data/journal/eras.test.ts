@@ -69,6 +69,7 @@ test('an era is deleted outright, and nothing references it to block that', asyn
   const { journal } = await journalWithBuiltIns();
   const id = await journal.eras.upsertEra({ name: 'first year', startEpochDay: 19001, endEpochDay: 19365 });
   await journal.eras.deleteEra(id);
+  await journal.eras.deleteEra(id); // idempotent
   assert.deepEqual(await journal.eras.getEras(), []);
 });
 
