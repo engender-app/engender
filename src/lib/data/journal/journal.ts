@@ -40,6 +40,7 @@ import { makeErasArea, type ErasArea } from './eras';
 import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
 import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
 import { makeLabsArea, type LabsArea } from './labs';
+import { makeLastWriteArea, type LastWriteArea } from './lastWrite';
 import { makeLettersArea, type LettersArea } from './letters';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
@@ -200,6 +201,13 @@ export interface Journal {
       deliberately not showing, is day.ts's registry rather than a list of
       imports on the screen. Reads only: opening a day writes nothing. */
   day: DayArea;
+  /** The day of the most recent write in every registered area (phase 8
+      features ticket 03, ADR-0027, ADR-0010) - one bounded read per area
+      rather than a fetched list reduced in JS, assembled the way `day`
+      above is. Which areas answer, and which are written down as
+      deliberately having no last write, is lastWrite.ts's registry rather
+      than a list of imports here. Reads only. */
+  lastWrite: LastWriteArea;
   /** Every area that holds text, matched against one query (phase 5
       deepening ticket 24, ADR-0005). A view over rows eighteen areas own, like
       `day` above and for the same reason - which areas are searchable, and
@@ -406,6 +414,25 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     wearSessions,
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
     day: makeDayArea({
+      entries,
+      milestones,
+      doses,
+      labs,
+      voiceBenchmarks,
+      measurements,
+      sizeRecords,
+      sideEffects,
+      personalEffects,
+      cycleEvents,
+      tally,
+      wearSessions,
+      feltSense,
+      hairProgress,
+      hairRemoval,
+      procedures,
+      tryouts
+    }),
+    lastWrite: makeLastWriteArea({
       entries,
       milestones,
       doses,

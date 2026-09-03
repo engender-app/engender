@@ -36,6 +36,7 @@
   import { pickerLocale } from '$lib/components/flatpickrLocale';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
+  import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
@@ -46,6 +47,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt, type Role } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -69,6 +71,19 @@
     });
     return out;
   });
+
+  /* The presentation chip (ticket 17, ADR-0048): highlights, never
+     filters, so the metric shading above stays exactly what it draws
+     today. HeatMap resolves the day set itself, bounded to whichever
+     month is on screen; this only resolves the role, the same division of
+     labour the metric's own `role` prop keeps. */
+  let selectedPresentation = $state<string | null>(null);
+  let highlightRole = $derived(presentationRole(selectedPresentation));
+  let highlight = $derived(
+    selectedPresentation && highlightRole
+      ? { presentationId: selectedPresentation, role: highlightRole }
+      : undefined
+  );
 
   /* Mood plus whichever scales this install shows, which is the same list
      Home offers - the vocabulary decides what a metric can be, in one place.
@@ -260,7 +275,9 @@
     />
   </div>
 
-  <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} />
+  <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+
+  <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} {highlight} />
 
   <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
 </div>

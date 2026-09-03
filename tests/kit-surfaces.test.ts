@@ -240,12 +240,19 @@ describe('the charts', () => {
        second colour without anything here noticing, which is the opposite of
        what a named exception is for. */
     const secondSeries = /^(--role-2|--role-2-draw|--accent-2)$/;
+    /* The presentation chip's ring (phase 8 features ticket 17, ADR-0048) is
+       a third hue, and the same reasoning applies: it names a presentation's
+       own role rather than the chart's, resolved through roleAt() by the
+       screen the same way the second series is, and it is the one place
+       .kit-area-highlight itself is allowed to use it. */
+    const isHighlightRule = /\.kit-area-highlight/;
     for (const rule of markCss.split('}')) {
       const prelude = rule.split('{')[0] ?? '';
       const isAreaChart = /\.kit-area/.test(prelude);
       for (const [, token] of rule.matchAll(/var\((--[a-z0-9-]+)/g)) {
         if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
         if (isAreaChart && secondSeries.test(token)) continue;
+        if (isHighlightRule.test(prelude) && token === '--highlight') continue;
         expect(token, `${token} in the chart rules`).toMatch(allowed);
       }
     }

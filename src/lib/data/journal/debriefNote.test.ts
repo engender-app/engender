@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+import { debriefListItems } from './debriefNote';
+import type { LabResult, SideEffect } from '../types';
+
+function lab(epochDay: number, analyte: string, value: number, unit: string): LabResult {
+  return {
+    id: `lab-${epochDay}-${analyte}`,
+    epochDay,
+    analyte,
+    value,
+    unit,
+    note: '',
+    drawTime: null,
+    provider: '',
+    timing: null
+  };
+}
+
+function effect(epochDay: number, name: string, severity: number): SideEffect {
+  return { id: `se-${epochDay}-${name}`, epochDay, name, severity };
+}
+
+describe('debriefListItems', () => {
+  it('is empty for two empty ranges', () => {
+    expect(debriefListItems([], [])).toEqual([]);
+  });
+
+  it('formats a lab as analyte, value and unit', () => {
+    expect(debriefListItems([lab(100, 'Estradiol', 45, 'pg/mL')], [])).toEqual([
+      { epochDay: 100, text: 'Estradiol 45 pg/mL' }
+    ]);
+  });
+
+  it('formats a side effect as name and severity out of 5, no word for the number', () => {
+    expect(debriefListItems([], [effect(100, 'Headache', 3)])).toEqual([
+      { epochDay: 100, text: 'Headache (3/5)' }
+    ]);
+  });
+
+  it('merges both kinds sorted by epoch day, earliest first', () => {
+    const items = debriefListItems(
+      [lab(120, 'Testosterone', 0.9, 'nmol/L'), lab(100, 'Estradiol', 45, 'pg/mL')],
+      [effect(110, 'Nausea', 2)]
+    );
+    expect(items.map((i) => i.epochDay)).toEqual([100, 110, 120]);
+  });
+
+  it('keeps input order for two items on the same day', () => {
+    const items = debriefListItems([lab(100, 'Estradiol', 45, 'pg/mL')], [effect(100, 'Headache', 3)]);
+    expect(items.map((i) => i.text)).toEqual(['Estradiol 45 pg/mL', 'Headache (3/5)']);
+  });
+});
