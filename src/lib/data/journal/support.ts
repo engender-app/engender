@@ -73,8 +73,20 @@ export function domainIdOf(row: { key: string | null; uuid: string | null }, wha
   return id;
 }
 
-/** Fails loudly when a write addressed a row that is not there: a typo'd
-    key and a successful write must not look alike to the caller. */
+/** Fails loudly when an **update** addressed a row that is not there: a
+    typo'd key and a successful write must not look alike to the caller.
+
+    Updates only (ADR-0053). A delete on an unknown id succeeds and changes
+    nothing, so no delete calls this - `delete-contract.test.ts` holds that.
+    The reason is invalidation rather than taste: `live/writes.ts` bumps a
+    table version only after a mutation resolves, so a delete that threw
+    would leave the row it did not delete on screen until something else
+    happened to invalidate the table.
+
+    A bare `Error` rather than one of the data tier's typed classes, and
+    deliberately: nothing branches on this one, and its untypedness records
+    that an update on an unknown id is a bug to fix rather than a condition
+    to handle. */
 export function assertChanged(result: { changes: number }, what: string): void {
   if (result.changes === 0) throw new Error(`unknown ${what}`);
 }

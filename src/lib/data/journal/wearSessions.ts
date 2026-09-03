@@ -189,8 +189,7 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
     },
 
     async deleteSession(id) {
-      const result = await driver.run('DELETE FROM wear_session WHERE uuid = ?', [id]);
-      assertChanged(result, `wear session: ${id}`);
+      await driver.run('DELETE FROM wear_session WHERE uuid = ?', [id]);
 
       const existing = findAutoReminder(await reminders.getReminders(), id);
       if (existing) await reminders.deleteReminder(existing.id);
