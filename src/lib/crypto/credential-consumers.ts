@@ -1,6 +1,6 @@
 import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
-export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf';
+export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf' | 'recovery-key';
 
 export type CredentialConsumer =
   | 'journal-passphrase-setup'
@@ -15,7 +15,9 @@ export type CredentialConsumer =
   | 'journal-pin-change'
   | 'journal-biometric-setup'
   | 'journal-biometric-add'
-  | 'journal-biometric-unlock';
+  | 'journal-biometric-unlock'
+  | 'journal-recovery-add'
+  | 'journal-recovery-unlock';
 
 type SelectionRule = 'current' | 'persisted';
 
@@ -58,6 +60,27 @@ export const CREDENTIAL_PROFILES = {
      so that a future reason to separate them has somewhere to land. */
   'biometric-prf': {
     purpose: 'Wraps the Journal data key under a secret only a platform authenticator releases.',
+    params: JOURNAL_ARGON2_PARAMS
+  },
+  /* The written recovery key (ADR-0054, ticket sec-01), sharing the
+     passphrase's numbers for one of biometric mode's reasons and one of
+     its own.
+
+     Shared for the same reason: 120 bits of alphabet is not a space
+     anybody enumerates, so there is no small input for Argon2id cost to
+     defend here, and no number this profile could carry would change
+     that.
+
+     Its own reason: this derivation is not on the cold-start path. A
+     recovery key is derived when one is minted and on the rare boot that
+     uses it, so the half-second budget that shapes the passphrase profile
+     is not the constraint it is there - this one could afford to be
+     heavier. It is not, because heavier would buy nothing against 120
+     bits, and a profile that costs more without protecting more is just a
+     slower screen. Named apart so that a real reason to diverge has
+     somewhere to land. */
+  'recovery-key': {
+    purpose: 'Wraps the Journal data key under a written key kept off the device.',
     params: JOURNAL_ARGON2_PARAMS
   }
 } as const satisfies Record<CredentialProfile, CredentialProfileRegistration>;
@@ -140,6 +163,25 @@ export const CREDENTIAL_CONSUMERS = [
     profile: 'biometric-prf',
     selectionRule: 'persisted',
     purpose: 'Unlock a biometric keystore with the parameter set it was written under.'
+  },
+  /* Two rows rather than the four the access modes each have, because a
+     recovery key does two things and not the other two. There is no
+     `setup`: a recovery key never mints a journal, it always wraps a data
+     key that some access mode already opened. And there is no `change`:
+     replacing a recovery key is minting a new one over the old, which is
+     `add` again, and the thing being replaced is not a secret somebody
+     remembers changing. */
+  {
+    consumer: 'journal-recovery-add',
+    profile: 'recovery-key',
+    selectionRule: 'current',
+    purpose: 'Wrap an existing Journal data key under a written recovery key.'
+  },
+  {
+    consumer: 'journal-recovery-unlock',
+    profile: 'recovery-key',
+    selectionRule: 'persisted',
+    purpose: 'Open a recovery wrap with the parameter set it was written under.'
   }
 ] as const satisfies readonly CredentialConsumerRegistration[];
 
