@@ -339,6 +339,16 @@ export function liveTilePrefKeys(rows: readonly SurfaceRow[]): Record<LiveTileKi
 
 export const LIVE_TILE_PREF_KEY = liveTilePrefKeys(SURFACE_ROWS);
 
+/** A handle a tile stamps on itself, valued the way the markup that used to
+    write it rendered it: `true`, which is what a bare `data-letter-tile`
+    means. A control's own handles below are `''` instead, because the route
+    wrote those with an explicit empty value and Svelte renders the two
+    differently (`=""` against `="true"`) - this ticket's acceptance is that
+    the grid's markup does not change. `Tile.svelte`'s `TileAction.attrs` is
+    a `Record<string, string>` and would refuse `true` anyway, so the split
+    is the component's rather than a choice made here. */
+export type TileHandles = Record<string, true>;
+
 /** An in-place control on a tile (ADR-0039). Structurally what
     `Tile.svelte` takes; declared here rather than imported from it because
     a `.svelte` file is unreachable from the Node tier. The two staying in
@@ -370,11 +380,8 @@ export interface HomeTile {
       tiles were written; they are kept as they are because this ticket's
       acceptance is that nothing about the rendered result changes. */
   tileKey: string;
-  /** This tile's own walkthrough handle, which predates `data-live-tile`.
-      `true` rather than `''` because that is what a valueless attribute in
-      markup means, and it is what the eleven tiles rendered before they
-      moved here. */
-  attrs: Record<string, true>;
+  /** This tile's own walkthrough handle, which predates `data-live-tile`. */
+  attrs: TileHandles;
   title: string;
   value?: string;
   note?: string;

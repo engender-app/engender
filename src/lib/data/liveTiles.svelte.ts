@@ -30,15 +30,9 @@ import {
   type LiveTileKind
 } from './liveTiles';
 
-export interface HomeTiles {
+export interface HomeTileGrid {
   /** Ordered, preference-gated, snooze-checked, uncapped. */
   readonly tiles: readonly HomeTile[];
-  /** True until every read behind the grid has answered once. Home draws no
-      loading state for the grid - a tile with no data does not qualify, so
-      an unanswered read and a quiet one look the same on screen - and the
-      field is here because the interface the spec settled declares it for
-      the cap that follows. */
-  readonly loading: boolean;
   /** Whether journaling is paused today, which is the pause tile's own
       trigger seen from outside: Home's streak line is hidden by it whether
       or not the tile is switched on, and reading it here saves a second
@@ -50,12 +44,19 @@ export interface HomeTiles {
   snooze(kind: LiveTileKind): void;
 }
 
-/** The letter tile keeps its own storage key, from before liveTilesSnooze.ts
-    generalised the mechanism (letterStatus.ts). Nothing writes the other
-    three unsnoozeable tiles' keys, so asking is always false for them and
-    the gate can stay uniform. */
-const snoozedAt = (kind: LiveTileKind, nowMs: number): boolean =>
-  kind === 'ready-letter' ? isLetterSnoozed(nowMs) : isTileSnoozed(kind, nowMs);
+/** Where a kind's snooze is kept, asked and written through one handle.
+
+    The ready letter predates liveTilesSnooze.ts and kept a storage key of
+    its own (letterStatus.ts), so it is the one kind read and written
+    somewhere else - named once here rather than branched on at both the
+    asking site and the writing site, which would be two places to fix if
+    the letter ever adopted the general key. Nothing writes the four
+    unsnoozeable tiles' keys, so asking is always false for them and the
+    gate can stay uniform across all eleven. */
+const snoozeStoreOf = (kind: LiveTileKind) =>
+  kind === 'ready-letter'
+    ? { snoozed: (nowMs: number) => isLetterSnoozed(nowMs), snooze: () => snoozeLetterTile() }
+    : { snoozed: (nowMs: number) => isTileSnoozed(kind, nowMs), snooze: () => snoozeTile(kind) };
 
 export function homeTiles(
   todayEpochDay: number,
@@ -64,7 +65,7 @@ export function homeTiles(
         off for the ready-letter tile. */
     onLetterDismiss: () => void;
   }
-): HomeTiles {
+): HomeTileGrid {
   /* One clock for the grid. The wear timer needs a second hand, and every
      snooze comparison and the dose panel's "active now" ride the same tick
      rather than opening clocks of their own - which is also what makes a
@@ -115,26 +116,8 @@ export function homeTiles(
     return { count: all.length, latestDay };
   });
 
-  const reads = [
-    runningWear,
-    episodes,
-    procedures,
-    letters,
-    latestBadEntry,
-    tryouts,
-    tryoutFeltSense,
-    schedules,
-    dosePauses,
-    todayDoses,
-    voiceBenchmarks,
-    journalingPauses,
-    hairRemoval,
-    measurements
-  ];
-
   function snooze(kind: LiveTileKind): void {
-    if (kind === 'ready-letter') snoozeLetterTile();
-    else snoozeTile(kind);
+    snoozeStoreOf(kind).snooze();
     nowTick = Date.now();
   }
 
@@ -155,7 +138,7 @@ export function homeTiles(
     const snoozed = {} as Record<LiveTileKind, boolean>;
     for (const kind of LIVE_TILE_ORDER) {
       enabled[kind] = prefs[LIVE_TILE_PREF_KEY[kind]];
-      snoozed[kind] = snoozedAt(kind, nowTick);
+      snoozed[kind] = snoozeStoreOf(kind).snoozed(nowTick);
     }
     return { enabled, snoozed };
   });
@@ -209,14 +192,10 @@ export function homeTiles(
   );
 
   const pausedToday = $derived(isPausedOn(journalingPauses.rows, todayEpochDay));
-  const loading = $derived(reads.some((read) => read.loading));
 
   return {
     get tiles() {
       return tiles;
-    },
-    get loading() {
-      return loading;
     },
     get pausedToday() {
       return pausedToday;
