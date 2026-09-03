@@ -35,6 +35,7 @@
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import { compareStretchLink } from '$lib/components/kit/compareStretchLink.svelte';
+  import { compareStretchNoticeProps } from '$lib/data/compareStretch';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
@@ -171,6 +172,13 @@
     detail.record ? { start: detail.record.startEpochDay, end: detail.record.endEpochDay ?? todayEpochDay() } : null
   );
   const compareLink = compareStretchLink(() => stretch);
+  const TRYOUT_COMPARE_COPY = {
+    title: m.tryout_compare_title,
+    openHint: m.tryout_compare_open_hint,
+    tooShort: m.tryout_compare_too_short,
+    noPrecedingData: m.tryout_compare_no_data,
+    action: m.tryout_compare_action
+  };
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
@@ -413,21 +421,15 @@
     </ReadGate>
 
     {#if compareLink.state.status !== 'hidden'}
-      {@const compareState = compareLink.state}
+      {@const compareNotice = compareStretchNoticeProps(compareLink.state, openEnded, TRYOUT_COMPARE_COPY)}
       <div class="screen-part">
         <Notice
           icon="shuffle"
           key="tryout-compare"
           role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
-          title={m.tryout_compare_title()}
-          text={compareState.status === 'ready'
-            ? (openEnded ? m.tryout_compare_open_hint() : undefined)
-            : compareState.status === 'tooShort'
-              ? m.tryout_compare_too_short()
-              : m.tryout_compare_no_data()}
-          action={compareState.status === 'ready'
-            ? { label: m.tryout_compare_action(), href: compareState.href }
-            : undefined}
+          title={compareNotice.title}
+          text={compareNotice.text}
+          action={compareNotice.action}
         />
       </div>
     {/if}
