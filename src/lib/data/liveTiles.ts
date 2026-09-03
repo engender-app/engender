@@ -24,13 +24,13 @@ import type {
   DosePause,
   DoseSchedule,
   HairRemovalSession,
+  JournalingPause,
   Letter,
   Procedure,
   RegimenEpisode,
   Tryout,
   WearSession
 } from './types';
-import type { JournalingPauseRange } from './journalingPause';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
 import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePauseOn } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
@@ -181,12 +181,12 @@ export function shouldShowVoiceBenchmarkNudge(params: {
 }
 
 export interface PauseActiveBannerResult {
-  pause: JournalingPauseRange;
+  pause: JournalingPause;
   resumeEpochDay: number | null;
 }
 
 export function shouldShowPauseActiveBanner(params: {
-  pauses: readonly JournalingPauseRange[];
+  pauses: readonly JournalingPause[];
   todayEpochDay: number;
   enabled: boolean;
   snoozed: boolean;
@@ -406,7 +406,7 @@ export interface HomeTileReads {
   dosePauses: readonly DosePause[];
   todayDoses: readonly DoseEvent[];
   voiceBenchmarks: readonly { epochDay: number }[];
-  journalingPauses: readonly JournalingPauseRange[];
+  journalingPauses: readonly JournalingPause[];
   hairRemovalSessions: readonly HairRemovalSession[];
   measurements: { count: number; latestDay: number | null };
 }
@@ -709,7 +709,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           icon: 'play',
           text: m.journaling_pause_resume(),
           label: m.journaling_pause_resume(),
-          onclick: () => actions.resumePause(pause.id ?? '', pause.startEpochDay)
+          onclick: () => actions.resumePause(pause.id, pause.startEpochDay)
         },
         dismiss: dismissSnooze('pause-active-banner')
       };
