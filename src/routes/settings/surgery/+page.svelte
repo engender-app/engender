@@ -10,7 +10,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import type { ChecklistItem, Procedure, ProcedureConsult } from '$lib/data/types';
@@ -34,6 +34,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import { compareStretchLink } from '$lib/components/kit/compareStretchLink.svelte';
 
   /* The procedures, and the record kept against whichever one is open. */
   const SECTION_ROLE = { procedures: 0, recovery: 1 };
@@ -55,6 +56,21 @@
   let selectedRecDay = $derived(
     selected ? recoveryDay(selected.surgeryEpochDay, today) : null
   );
+
+  /* Ticket 18: the recovery window as one side of `/compare` - only once
+     recovery has actually started (planning and pre-op have no days yet,
+     and surgery day alone is too short a stretch to be worth comparing).
+     Its end clamps to today while recovery is still active and holds at
+     the 90-day cutoff once archived, so an old procedure's stretch stops
+     growing (ADR-0010's "clamp at read time", the same rule an open-ended
+     tryout or era follows). */
+  let recoveryWindow = $derived(
+    selected && selected.surgeryEpochDay !== null && (selectedPhase === 'recovery' || selectedPhase === 'archived')
+      ? { start: selected.surgeryEpochDay, end: Math.min(today, selected.surgeryEpochDay + SURGERY_RECOVERY_CUTOFF_DAYS) }
+      : null
+  );
+  let recoveryOpenEnded = $derived(selectedPhase === 'recovery');
+  const compareLink = compareStretchLink(() => recoveryWindow);
 
   let photosQuery = liveList((j) =>
     selectedId ? j.procedures.getPhotos(selectedId) : Promise.resolve([])
@@ -329,6 +345,31 @@
         {/if}
       {/snippet}
 
+      <!-- Ticket 18: the recovery window as one side of `/compare`, offered
+           only once there is one (recovery or archived - planning, pre-op
+           and surgery day have no stretch yet). -->
+      {#snippet compareBlock()}
+        {#if compareLink.state.status !== 'hidden'}
+          {@const compareState = compareLink.state}
+          <div style="margin-bottom:var(--space-4)">
+            <Notice
+              icon="shuffle"
+              key="surgery-compare"
+              role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
+              title={m.surgery_compare_title()}
+              text={compareState.status === 'ready'
+                ? (recoveryOpenEnded ? m.surgery_compare_open_hint() : undefined)
+                : compareState.status === 'tooShort'
+                  ? m.surgery_compare_too_short()
+                  : m.surgery_compare_no_data()}
+              action={compareState.status === 'ready'
+                ? { label: m.surgery_compare_action(), href: compareState.href }
+                : undefined}
+            />
+          </div>
+        {/if}
+      {/snippet}
+
       <!-- Phase 1: Planning Phase (no date set) -->
       {#if selectedPhase === 'planning'}
         <SectionHeading text={m.surgery_phase_planning()} />
@@ -430,6 +471,8 @@
           data-add-as-milestone-notice
         />
 
+        {@render compareBlock()}
+
         {@render notesBlock(m.surgery_feelings_title(), m.surgery_feelings_placeholder())}
 
         <SectionHeading text={m.surgery_wound_album_title()} />
@@ -477,6 +520,8 @@
           text={selectedRecDay?.type === 'since' ? m.surgery_archived_summary({ days: String(selectedRecDay.days) }) : ''}
           data-add-as-milestone-notice
         />
+
+        {@render compareBlock()}
 
         <SectionHeading text={m.surgery_wound_album_title()} />
         <PhotoSection
