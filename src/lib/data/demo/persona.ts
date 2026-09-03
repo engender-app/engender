@@ -16,6 +16,7 @@ import type { PreferenceValues } from '../prefs/catalogue';
 import type { LabResultInput } from '../journal/labs';
 import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
+import type { BodyRegionFeeling } from '../types';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
 import {
@@ -102,6 +103,48 @@ function buildEntries(): PersonaEntry[] {
   const r = rng(20240331);
   const today = todayEpochDay();
   const entries: PersonaEntry[] = [];
+  /* Body-region intensities on most entries (phase 8 features ticket 16).
+
+     /body-map's two charts and the wear trend's second line all read these
+     and all drew an empty plot on the demo, so neither screen could be
+     reviewed at all - PRODUCT.md's own line is that demo data renders every
+     screen. Four regions: the two /body-map opens on and the two the wear
+     trend offers.
+
+     Derived from the day rather than from a further draw on `r()`, the same
+     rule the presentation below follows: a new call into the generator
+     would shift every entry after it, so not one existing mood, note or tag
+     moves.
+
+     One arc across the whole journal, dysphoria easing as euphoria rises,
+     with a deterministic wobble so a line has texture and a gap every third
+     day so it has holes - a region logged on every single entry is not what
+     anybody's journal looks like. Nothing here is a claim about how a
+     transition goes; it is texture for a screenshot. */
+  const REGION_ARC_DAYS = 700;
+  const REGION_OFFSETS: Record<string, number> = {
+    face_jaw: 0,
+    chest: 1,
+    hips_waist: 2,
+    genitals: 3
+  };
+  const clampIntensity = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const wobble = (day: number, spread: number) => ((day * 37) % (spread * 2 + 1)) - spread;
+  const regionArc = (day: number) =>
+    Math.max(0, Math.min(1, (day - (today - REGION_ARC_DAYS)) / REGION_ARC_DAYS));
+  const bodyRegionsOn = (day: number): Record<string, BodyRegionFeeling> => {
+    const progress = regionArc(day);
+    const logged: Record<string, BodyRegionFeeling> = {};
+    for (const [region, offset] of Object.entries(REGION_OFFSETS)) {
+      if ((day + offset) % 3 === 0) continue;
+      logged[region] = {
+        dysphoria: clampIntensity(86 - progress * 50 + wobble(day + offset, 9)),
+        euphoria: clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9))
+      };
+    }
+    return logged;
+  };
+
   for (let back = 150; back >= 0; back--) {
     const day = today - back;
     const isStreak = back <= 22;
@@ -141,6 +184,7 @@ function buildEntries(): PersonaEntry[] {
         note,
         dims: { euphoria_dysphoria: eu, femininity: fem },
         tags: [...new Set(tags)],
+        bodyRegions: bodyRegionsOn(day),
         photoCount: r() < 0.1 ? 1 : 0,
         ...(presentationName ? { presentationName } : {})
       });
@@ -183,6 +227,7 @@ function buildEntries(): PersonaEntry[] {
       note: NOTES[Math.floor(r() * NOTES.length)],
       dims: { euphoria_dysphoria: eu, femininity: Math.max(10, Math.min(98, Math.round(34 + (r() - 0.5) * 30))) },
       tags: [...new Set(tags)],
+      bodyRegions: bodyRegionsOn(day),
       photoCount: 0
     });
   }
