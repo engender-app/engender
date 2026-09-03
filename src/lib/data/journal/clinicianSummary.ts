@@ -30,6 +30,7 @@
 
 import type { TableName } from '../live/writes';
 import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
+import { spanOverlapsRange } from '../span';
 import type { ChecklistsArea } from './checklists';
 import type { DosesArea } from './doses';
 import type { ExposureArea, ExposureCounters } from './exposure';
@@ -116,9 +117,7 @@ function section<Key extends ClinicianSummarySectionKey>(declared: {
    tests, kept here as a filter rather than a count. */
 async function readRegimenEpisodes({ regimen, fromEpochDay, toEpochDay }: ClinicianSummaryReading) {
   const episodes = await regimen.getEpisodes();
-  return episodes.filter(
-    (episode) => episode.startEpochDay <= toEpochDay && (episode.endEpochDay === null || episode.endEpochDay >= fromEpochDay)
-  );
+  return episodes.filter((episode) => spanOverlapsRange(episode, fromEpochDay, toEpochDay));
 }
 
 /* labs.ts has no cross-analyte range read (unlike doses and side effects),
