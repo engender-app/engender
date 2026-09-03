@@ -21,6 +21,7 @@
     hasRecoveryKey = found;
   });
   let usingRecoveryKey = $state(false);
+  let body = $derived(hasRecoveryKey ? m.dbr_body_recoverable() : m.dbr_body());
 
   async function confirmReset() {
     resetting = true;
@@ -39,9 +40,13 @@
   <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
 {:else}
 <GateScreen icon="alert" tone="alert" title={m.dbr_title()}>
-  <p class={gateBodyClass(m.dbr_body())} data-device-bound-recovery>{m.dbr_body()}</p>
+  <!-- One body per state rather than one body plus a caveat. The original
+       ends "so this copy cannot be reopened", which above a button that
+       reopens it is the exact thing docs/ui-copy.md forbids on a risk
+       screen - and a render is what caught it, because both sentences read
+       fine on their own. -->
+  <p class={gateBodyClass(body)} data-device-bound-recovery>{body}</p>
   {#if hasRecoveryKey}
-    <p class="gate-body is-small" data-device-recovery-offer>{m.dbr_recovery_offer()}</p>
     <div class="gate-actions">
       <button class="btn btn-primary" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
         <span>{m.rke_open()}</span>
@@ -73,7 +78,7 @@
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{hasRecoveryKey ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
-      {m.dbr_body()}
+      {body}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>

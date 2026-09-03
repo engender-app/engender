@@ -66,5 +66,5 @@
 
 <GateScreen icon="shield" title={m.rkr_title()} data-post-recovery-setup>
   <p class={gateBodyClass(m.rkr_body())} data-post-recovery-body>{m.rkr_body()}</p>
-  <AccessModeSetup purpose="change" current={bootState.accessMode} {busy} {error} onChoose={choose} bind:chosen />
+  <AccessModeSetup purpose="recovered" current={bootState.accessMode} {busy} {error} onChoose={choose} bind:chosen />
 </GateScreen>
