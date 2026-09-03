@@ -14,6 +14,8 @@
   import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { atGrain, type Grain } from '$lib/charts/grain';
+  import { highlightedPositions } from '$lib/charts/presentationHighlight';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -21,6 +23,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   let range = $state(30);
@@ -46,6 +49,31 @@
 
   let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), range));
   let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), range));
+
+  /* The presentation chip (ticket 17, ADR-0048): highlights, never
+     filters, so both charts above keep drawing exactly what they draw
+     today. One day-set query and one role shared by both, since they read
+     one chip and one range; each chart maps that set onto its own points
+     because the two counters do not necessarily share which days have a
+     reading. */
+  let selectedPresentation = $state<string | null>(null);
+  let presentationDaysQuery = liveList((j) =>
+    selectedPresentation ? j.stats.presentationDays(selectedPresentation, from, today) : Promise.resolve([])
+  );
+  let highlightRole = $derived.by(() => {
+    if (!selectedPresentation) return undefined;
+    const presentation = vocabulary.presentation(selectedPresentation);
+    return presentation ? roleAt(activeFlag.roles, presentation.roleIndex) : undefined;
+  });
+  // Both charts share one grain (chooseGrain reads only `range`), so the
+  // day set maps to chart positions once and each series reads its own hits.
+  let highlightedAt = $derived(highlightedPositions(presentationDaysQuery.rows, null, plottedMis.grain));
+  let highlightMis = $derived(
+    highlightRole ? { at: plottedMis.points.map((p) => highlightedAt.has(p.x)), role: highlightRole } : undefined
+  );
+  let highlightCorrect = $derived(
+    highlightRole ? { at: plottedCorrect.points.map((p) => highlightedAt.has(p.x)), role: highlightRole } : undefined
+  );
 
   /* The chart fits the card, so what changes with the range is the grain
      ($lib/charts/grain): 30 days day by day, a year week by week. */
@@ -77,6 +105,8 @@
     key="tally-range"
   />
 
+  <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+
   {#if misgenderedQuery.loading || correctlyGenderedQuery.loading}
     <Skeleton variant="block" count={2} />
   {:else}
@@ -90,6 +120,7 @@
         to={rangeEnds.to}
         formatValue={whole}
         annotations={annotationsQuery.rows}
+        highlight={highlightMis}
         ariaLabel={m.tally_misgendered()}
       />
     </ChartCard>
@@ -108,6 +139,7 @@
         to={rangeEnds.to}
         formatValue={whole}
         annotations={annotationsQuery.rows}
+        highlight={highlightCorrect}
         ariaLabel={m.tally_correctly_gendered()}
       />
     </ChartCard>

@@ -27,8 +27,10 @@
      would break the exact contract this picker needs. */
   import { m } from '$lib/paraglide/messages';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
+  import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
   import {
@@ -42,6 +44,7 @@
   import { paddedSeries } from '$lib/charts/geometry';
   import type { VoiceBenchmark } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
@@ -113,6 +116,27 @@
       benchmarksQuery.rows.map((b) => ({ x: b.epochDay, y: b.f0MedianHz })),
       5
     )
+  );
+
+  /* The presentation chip (ticket 17, ADR-0048): highlights which
+     benchmarks were taken under the chosen mode. A benchmark carries no
+     presentation of its own - only an entry does - so this reads whichever
+     days in the trend's own span an entry logged it, exact day for day
+     since the trend is not bucketed the way a calendar chart is. */
+  let selectedPresentation = $state<string | null>(null);
+  let presentationDaysQuery = liveList((j) =>
+    selectedPresentation ? j.stats.presentationDays(selectedPresentation, span.from, span.to) : Promise.resolve([])
+  );
+  let highlightRole = $derived.by(() => {
+    if (!selectedPresentation) return undefined;
+    const presentation = vocabulary.presentation(selectedPresentation);
+    return presentation ? roleAt(activeFlag.roles, presentation.roleIndex) : undefined;
+  });
+  let highlightedDays = $derived(highlightedPositions(presentationDaysQuery.rows, null, 'day'));
+  let trendHighlight = $derived(
+    highlightRole && trend
+      ? { at: trend.points.map((p) => highlightedDays.has(p.x)), role: highlightRole }
+      : undefined
   );
 
   function toggle(id: string) {
@@ -225,6 +249,9 @@
       {#snippet rows()}
         {#if kind === 'benchmarks'}
           <div class="screen-part">
+            <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+          </div>
+          <div class="screen-part">
             <ChartCard heading={m.vc_trend_heading()} kind="voice-benchmark-trend" role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}>
               {#if trend}
                 {@const ends = fmtRangeEnds(trend.from, trend.to)}
@@ -237,6 +264,7 @@
                   formatValue={(v) => m.vb_hz({ value: String(Math.round(v)) })}
                   scrubLabel={(_point, index) => fmtDay(benchmarksQuery.rows[index].epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
                   annotations={narrowAnnotations(annotationsQuery.rows, trend.from, trend.to)}
+                  highlight={trendHighlight}
                   ariaLabel={m.vc_trend_heading()}
                 />
               {:else}
