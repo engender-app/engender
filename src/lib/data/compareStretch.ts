@@ -49,3 +49,60 @@ export function compareStretchQuery(stretch: EpochRange, preceding: EpochRange):
   });
   return `/compare?${params}`;
 }
+
+/** What a "compare this stretch" link offers, once there is a stretch to
+    ask about at all - `hidden` (no stretch yet, or the journal's own first
+    day has not answered) is the caller's own concern, since it is the one
+    case with nothing to render. */
+export type CompareStretchState =
+  | { status: 'hidden' }
+  | { status: 'tooShort' }
+  | { status: 'noPrecedingData' }
+  | { status: 'ready'; href: string };
+
+export type CompareStretchOfferedState = Exclude<CompareStretchState, { status: 'hidden' }>;
+
+/** The words a screen supplies - its own message-key prefix, already bound
+    to `m`, so this file stays free of paraglide and testable under the
+    Node tier (ADR-0016 draws that same line at dates.ts). */
+export interface CompareStretchNoticeCopy {
+  title: () => string;
+  openHint: () => string;
+  tooShort: () => string;
+  noPrecedingData: () => string;
+  action: () => string;
+}
+
+export interface CompareStretchNoticeProps {
+  title: string;
+  text: string | undefined;
+  action: { label: string; href: string } | undefined;
+}
+
+/** The one title/text/action a Notice needs for any of the three offered
+    states, so the tryout screen and the procedure screen resolve it the
+    same way instead of each carrying its own copy of the ternary
+    (`compareStretchLink.svelte.ts`'s factory closes the read side of that
+    duplication; this closes the view side). The hint only ever shows on a
+    ready, still-open stretch - a too-short or no-data notice already says
+    why there is nothing to open, and does not also need to say the
+    open-ended stretch counts through today. */
+export function compareStretchNoticeProps(
+  state: CompareStretchOfferedState,
+  openEnded: boolean,
+  copy: CompareStretchNoticeCopy
+): CompareStretchNoticeProps {
+  const title = copy.title();
+  if (state.status === 'ready') {
+    return {
+      title,
+      text: openEnded ? copy.openHint() : undefined,
+      action: { label: copy.action(), href: state.href }
+    };
+  }
+  return {
+    title,
+    text: state.status === 'tooShort' ? copy.tooShort() : copy.noPrecedingData(),
+    action: undefined
+  };
+}

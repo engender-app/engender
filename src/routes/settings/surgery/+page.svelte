@@ -35,6 +35,7 @@
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { compareStretchLink } from '$lib/components/kit/compareStretchLink.svelte';
+  import { compareStretchNoticeProps } from '$lib/data/compareStretch';
 
   /* The procedures, and the record kept against whichever one is open. */
   const SECTION_ROLE = { procedures: 0, recovery: 1 };
@@ -58,19 +59,29 @@
   );
 
   /* Ticket 18: the recovery window as one side of `/compare` - only once
-     recovery has actually started (planning and pre-op have no days yet,
-     and surgery day alone is too short a stretch to be worth comparing).
-     Its end clamps to today while recovery is still active and holds at
-     the 90-day cutoff once archived, so an old procedure's stretch stops
-     growing (ADR-0010's "clamp at read time", the same rule an open-ended
-     tryout or era follows). */
+     there is a surgery date to measure from (planning and pre-op have no
+     days yet). A one-day stretch on surgery day itself is still a real
+     window, not a reason to hide the link - `compareStretchLink`'s own
+     too-short/no-data states are exactly what a marginal window like that
+     is for. Its end clamps to today while recovery is still active
+     (surgery day and recovery) and holds at the 90-day cutoff once
+     archived, so an old procedure's stretch stops growing (ADR-0010's
+     "clamp at read time", the same rule an open-ended tryout or era
+     follows). */
   let recoveryWindow = $derived(
-    selected && selected.surgeryEpochDay !== null && (selectedPhase === 'recovery' || selectedPhase === 'archived')
+    selected && selected.surgeryEpochDay !== null && selectedPhase !== 'planning' && selectedPhase !== 'pre_op'
       ? { start: selected.surgeryEpochDay, end: Math.min(today, selected.surgeryEpochDay + SURGERY_RECOVERY_CUTOFF_DAYS) }
       : null
   );
-  let recoveryOpenEnded = $derived(selectedPhase === 'recovery');
+  let recoveryOpenEnded = $derived(selectedPhase === 'surgery_day' || selectedPhase === 'recovery');
   const compareLink = compareStretchLink(() => recoveryWindow);
+  const SURGERY_COMPARE_COPY = {
+    title: m.surgery_compare_title,
+    openHint: m.surgery_compare_open_hint,
+    tooShort: m.surgery_compare_too_short,
+    noPrecedingData: m.surgery_compare_no_data,
+    action: m.surgery_compare_action
+  };
 
   let photosQuery = liveList((j) =>
     selectedId ? j.procedures.getPhotos(selectedId) : Promise.resolve([])
@@ -346,25 +357,19 @@
       {/snippet}
 
       <!-- Ticket 18: the recovery window as one side of `/compare`, offered
-           only once there is one (recovery or archived - planning, pre-op
-           and surgery day have no stretch yet). -->
+           only once there is one (surgery day onward - planning and pre-op
+           have no stretch yet). -->
       {#snippet compareBlock()}
         {#if compareLink.state.status !== 'hidden'}
-          {@const compareState = compareLink.state}
+          {@const compareNotice = compareStretchNoticeProps(compareLink.state, recoveryOpenEnded, SURGERY_COMPARE_COPY)}
           <div style="margin-bottom:var(--space-4)">
             <Notice
               icon="shuffle"
               key="surgery-compare"
               role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-              title={m.surgery_compare_title()}
-              text={compareState.status === 'ready'
-                ? (recoveryOpenEnded ? m.surgery_compare_open_hint() : undefined)
-                : compareState.status === 'tooShort'
-                  ? m.surgery_compare_too_short()
-                  : m.surgery_compare_no_data()}
-              action={compareState.status === 'ready'
-                ? { label: m.surgery_compare_action(), href: compareState.href }
-                : undefined}
+              title={compareNotice.title}
+              text={compareNotice.text}
+              action={compareNotice.action}
             />
           </div>
         {/if}
@@ -427,6 +432,8 @@
           text={dayLabel(today)}
           data-add-as-milestone-notice
         />
+
+        {@render compareBlock()}
 
         {#if linkedMilestone}
           <div style="margin-bottom:var(--space-4)">
