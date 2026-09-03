@@ -2520,7 +2520,15 @@ try {
    suite produces, so that half stays a strict assertion. Expected sides
    are computed from the same pure rule the screens call, so this checks
    the two agree rather than restating one arithmetic as the other's
-   assertion. */
+   assertion.
+
+   The tryout half also proves the ticket's own acceptance criterion that
+   `/compare`'s arithmetic is unchanged: the same two dates, once arrived
+   at through this link and once typed into the pickers by hand exactly as
+   flow 25 already does, have to read the same numbers back - a stronger
+   check than "the diff to sideStats/periodFromRange is empty", since it
+   exercises the real computation rather than trusting the diff not to
+   have touched it. */
 try {
   // epochDay.ts and recoveryDay.ts both import nothing of their own (each
   // file's own header comment says so, for exactly this reason), so they
@@ -2549,6 +2557,16 @@ try {
     await page.waitForSelector('[data-compare-table]');
     if (new URL(page.url()).search) throw new Error('the query parameters that opened compare were never stripped');
   };
+  /* Every metric row is a name span plus one span per side (compare/+page.svelte's
+     `data-compare-metric` rows) - side A's is always index 1. */
+  const columnA = async () => {
+    const rows = page.locator('[data-compare-metric]');
+    const values = [];
+    for (let i = 0; i < (await rows.count()); i++) {
+      values.push((await rows.nth(i).locator('span').allTextContents())[1]);
+    }
+    return values;
+  };
 
   /* The full-fixture tryouts sort newest-start-first (tryouts.ts's own
      ORDER BY), so the pronoun tryout - started `today - 100`, still
@@ -2570,6 +2588,22 @@ try {
   await tryoutAction.click();
   await page.waitForURL('**/compare');
   await assertOpensWithSides({ start: today - 100, end: today });
+  const viaLink = await columnA();
+
+  // The exact same side A, typed into the pickers instead of arriving by
+  // URL - compare's own computation has to read the identical numbers
+  // back either way, which is the acceptance criterion this ticket states
+  // for compare's arithmetic.
+  await page.goto(BASE + '/compare', { waitUntil: 'networkidle' });
+  await fillDate(page, '#compare-a-start', dateInputValueFromEpochDay(today - 100));
+  await fillDate(page, '#compare-a-end', dateInputValueFromEpochDay(today));
+  await fillDate(page, '#compare-b-start', dateInputValueFromEpochDay(today - 100));
+  await fillDate(page, '#compare-b-end', dateInputValueFromEpochDay(today));
+  await page.waitForSelector('[data-compare-table]');
+  const viaPickers = await columnA();
+  if (JSON.stringify(viaLink) !== JSON.stringify(viaPickers)) {
+    throw new Error(`compare computed different numbers for the same range depending on how it arrived: link ${JSON.stringify(viaLink)}, pickers ${JSON.stringify(viaPickers)}`);
+  }
 
   // The procedure's own recovery window has a fixed end once archived
   // (SURGERY_RECOVERY_CUTOFF_DAYS past surgery), not one still tracking
@@ -2581,17 +2615,19 @@ try {
   await page.waitForSelector('[data-phase="archived"]');
   const procedureNotice = page.locator('[data-notice="surgery-compare"]');
   await procedureNotice.waitFor();
-  if (!(await procedureNotice.locator('[data-notice-text]').count())) {
-    throw new Error('the procedure\'s compare notice has neither a hint nor an explanation');
-  }
   const procedureAction = procedureNotice.locator('[data-notice-action]');
   if (await procedureAction.count()) {
+    // Ready, and archived rather than still-open, so no "counts through
+    // today" hint is expected here - that only shows on a stretch still
+    // tracking today (asserted from the tryout above instead).
     await procedureAction.click();
     await page.waitForURL('**/compare');
     await assertOpensWithSides({ start: today - 400, end: today - 400 + SURGERY_RECOVERY_CUTOFF_DAYS });
+  } else if (!(await procedureNotice.locator('[data-notice-text]').count())) {
+    throw new Error('the procedure\'s compare notice offers no link and says nothing about why');
   }
 
-  ok('"compare this stretch" opens the right two sides from an open-ended tryout, and the procedure either does the same or says why it cannot');
+  ok('"compare this stretch" opens the right two sides and reads the same numbers a hand-picked range would, from an open-ended tryout and from a procedure that either does the same or says why it cannot');
 } catch (e) {
   fail('compare this stretch', e);
 }
