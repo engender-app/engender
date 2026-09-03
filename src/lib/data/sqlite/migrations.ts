@@ -1730,8 +1730,13 @@ CREATE TABLE comfort_item (
    reason `entry` keeps its own `presentation_id` as a plain column rather
    than a link table. `presentation_id` is free text, not a column a rowid
    ever resolves against here - the same reason `entry.presentation_id` is
-   (ADR-0048) - so a presentation deleted later leaves the template pointing
-   at nothing rather than at a dangling row a join would need to guard.
+   (ADR-0048) - and unlike `entry.presentation_id` it carries no `REFERENCES`
+   clause at all. Not because a presentation might be deleted: it hides, and
+   no delete exists (ADR-0057). Because the two travel in separate archive
+   sections (ADR-0027) and restore independently, so a replace restore
+   rewrites `presentation` wholesale and an archive whose templates outlive
+   its modes still has to apply. Applying a template resolves the id against
+   what this install currently shows and drops it when it does not resolve.
 
    Tags and dimension values are child tables instead, mirroring `entry_tag`
    and `entry_dimension_value` exactly (down to the FK shape), because a
