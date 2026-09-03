@@ -94,7 +94,15 @@ import { spanOverlapsRange } from '../data/span';
     `tallyMisgendered`, `tallyCorrectlyGendered`, `bodyRegionDysphoria` and
     `bodyRegionEuphoria` are the days that stood out against the person's own
     recent spread and not every day with a count or a reading on it: the
-    threshold, and the reason for it, are in data/ownSpread.ts. */
+    threshold, and the reason for it, are in data/ownSpread.ts.
+
+    `finishedArea` is phase 8 features ticket 04's, and it is a point on the
+    day somebody said a stream of theirs ended (ADR-0052). It belongs in
+    `getAnnotations` rather than beside the six above, because that day is
+    exactly what a flat stretch on any chart covering it needs explaining
+    with: without it the reader cannot tell a practice that ended from a
+    month nobody logged. Its `name` is the area's own key, resolved by
+    kit/chartAnnotation.ts. */
 export type ChartAnnotationKind =
   | 'milestone'
   | 'surgery'
@@ -109,7 +117,8 @@ export type ChartAnnotationKind =
   | 'tallyMisgendered'
   | 'tallyCorrectlyGendered'
   | 'bodyRegionDysphoria'
-  | 'bodyRegionEuphoria';
+  | 'bodyRegionEuphoria'
+  | 'finishedArea';
 
 /** Whether a kind is a moment or a stretch. Here rather than on each record,
     so no caller can hand in a milestone that claims to be a period.
@@ -132,7 +141,8 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   tallyMisgendered: 'point',
   tallyCorrectlyGendered: 'point',
   bodyRegionDysphoria: 'point',
-  bodyRegionEuphoria: 'point'
+  bodyRegionEuphoria: 'point',
+  finishedArea: 'point'
 };
 
 /** One dated thing, as the query hands it over: stored days, untouched.

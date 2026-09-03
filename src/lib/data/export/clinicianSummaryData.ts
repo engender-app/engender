@@ -22,7 +22,7 @@ import type {
   SideEffect
 } from '../types';
 import type { ExposureCounters } from '../journal/exposure';
-import type { ClinicianSummaryProcedure } from '../journal/clinicianSummary';
+import type { ClinicianSummaryFinishedArea, ClinicianSummaryProcedure } from '../journal/clinicianSummary';
 import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
 import { spanCoversDay } from '../span';
@@ -42,6 +42,10 @@ export interface ClinicianDossierInclusion {
   cycleEvents: boolean;
   appointmentPrep: boolean;
   procedures: boolean;
+  /** Which streams have ended (phase 8 features ticket 04). Its own switch
+      like every other part: whether a doctor is told that somebody stopped
+      dilating is the person's to decide before the page is printed. */
+  finishedAreas: boolean;
 }
 
 export type ClinicianDossierInclusionKey = keyof ClinicianDossierInclusion;
@@ -54,7 +58,8 @@ export const CLINICIAN_DOSSIER_INCLUSION_KEYS: readonly ClinicianDossierInclusio
   'sideEffects',
   'cycleEvents',
   'appointmentPrep',
-  'procedures'
+  'procedures',
+  'finishedAreas'
 ] as const;
 
 export const DEFAULT_CLINICIAN_DOSSIER_INCLUSION: ClinicianDossierInclusion = {
@@ -65,7 +70,8 @@ export const DEFAULT_CLINICIAN_DOSSIER_INCLUSION: ClinicianDossierInclusion = {
   sideEffects: true,
   cycleEvents: true,
   appointmentPrep: true,
-  procedures: true
+  procedures: true,
+  finishedAreas: true
 };
 
 export interface ClinicianDossierRegimenData {
@@ -86,6 +92,7 @@ export interface ClinicianDossier {
   cycleEvents: CycleEvent[] | null;
   appointmentPrep: ChecklistItem[] | null;
   procedures: ClinicianSummaryProcedure[] | null;
+  finishedAreas: ClinicianSummaryFinishedArea[] | null;
   inclusion: ClinicianDossierInclusion;
 }
 
@@ -163,6 +170,11 @@ export async function assembleClinicianDossier(
     ? summary.procedures
     : null;
 
+  // Streams the person has finished, and when
+  const finishedAreas: ClinicianSummaryFinishedArea[] | null = inclusion.finishedAreas
+    ? summary.finishedAreas
+    : null;
+
   return {
     fromEpochDay,
     toEpochDay,
@@ -175,6 +187,7 @@ export async function assembleClinicianDossier(
     cycleEvents,
     appointmentPrep,
     procedures,
+    finishedAreas,
     inclusion
   };
 }

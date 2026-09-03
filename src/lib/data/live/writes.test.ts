@@ -377,7 +377,8 @@ const COMPOSING_READS: readonly ComposingRead[] = [
       ['journalingPauses', 'getPauses'],
       ['tryouts', 'getTryouts'],
       ['procedures', 'getProcedures'],
-      ['eras', 'getEras']
+      ['eras', 'getEras'],
+      ['areaStates', 'getAreaStates']
     ],
     narrows: {
       photo: 'an annotation is a name and a day: the milestone read it comes through carries photos it never draws'
@@ -412,6 +413,7 @@ const COMPOSING_READS: readonly ComposingRead[] = [
       ['procedures', 'getProcedures'],
       ['procedures', 'getChecklist'],
       ['procedures', 'getPhotos'],
+      ['areaStates', 'getAreaStates'],
       ['checklists', 'getStandaloneChecklist']
     ]
   },
