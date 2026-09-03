@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from '../src/lib/data/journal/test-support.ts';
 import { PREFERENCE_DEFAULTS, DEVICE_LOCAL_KEYS } from '../src/lib/data/prefs/catalogue.ts';
-import { OFFERS, answerOffer, openOffer } from '../src/lib/data/offers.ts';
+import { OFFERS, answerOffer, milestoneMintedByGoal } from '../src/lib/data/offers.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -88,6 +88,7 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
     expect(roadmapSrc).toContain('<RoadmapMilestonePromptSheet');
     expect(roadmapSrc).toContain("OFFERS['roadmap-goal-milestone']");
     expect(roadmapSrc).toContain('answerOffer(');
+    expect(roadmapSrc).toContain('milestoneMintedByGoal(');
     expect(roadmapSrc).not.toContain('journal.milestones.upsertMilestone');
   });
 
@@ -106,14 +107,22 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
     ]);
   });
 
-  it('a goal that already minted its milestone is not offered again (ADR-0045)', () => {
+  it('a goal that already minted its milestone is not offered again (ADR-0045)', async () => {
     /* Unchecking a goal and checking it again re-offered, and confirming a
-       second time inserted a duplicate milestone against the same key.
-       `openOffer` is what the screen now assigns its offer state through. */
-    const subject = { key: 'pl-legal-court-fee', title: 'Court fee paid' };
+       second time inserted a duplicate milestone against the same key. The
+       screen asks `milestoneMintedByGoal` before it opens the sheet, so the
+       second tick offers nothing. */
+    const { journal } = await journalWithBuiltIns();
+    await answerOffer(
+      OFFERS['roadmap-goal-milestone'],
+      { title: 'Court fee paid', epochDay: 20100, photo: null, goalKey: 'pl-legal-court-fee' },
+      'confirm',
+      journal
+    );
 
-    expect(openOffer(subject, null)).toEqual(subject);
-    expect(openOffer(subject, 'existing-milestone-id')).toBe(null);
+    const milestones = await journal.milestones.getMilestones();
+    expect(milestoneMintedByGoal(milestones, 'pl-legal-court-fee')?.name).toBe('Court fee paid');
+    expect(milestoneMintedByGoal(milestones, 'pl-legal-birth-certificate')).toBe(null);
   });
 
   it('has confirmation and dismissal actions on RoadmapMilestonePromptSheet', () => {

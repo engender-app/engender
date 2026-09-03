@@ -181,8 +181,9 @@
       feelingOfferId && input
         ? { owner: { milestoneId: feelingOfferId }, epochDay: todayEpochDay(), ...input }
         : null;
-    await answerOffer(FEELING_OFFER, subject, given, journal);
+    /* Closed before the write, so a second tap finds no open offer. */
     feelingOfferId = null;
+    await answerOffer(FEELING_OFFER, subject, given, journal);
   }
 
   /* The editor's own draft carries no origin - it's a name, a date, a

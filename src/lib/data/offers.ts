@@ -66,12 +66,20 @@
    rather than with `'decline'` - it is not a refusal of the gesture, only
    of the record. `adoptTryout` is one transaction either way (ADR-0044).
 
-   **The anniversary offer is made every year, on purpose.** The
-   offer-once rule below is about a source that already holds the record it
-   mints - a goal with its milestone, a procedure with its milestone. A
-   felt-sense entry is not that: it is how the person feels about a
-   milestone today, and last year's does not answer this year's. So the
-   anniversary trigger passes no recorded id, and it recurs.
+   **Not offering twice is each source's own check, not a rule here.**
+   ADR-0045's second half is about a source that already holds the record
+   it mints, and what that means is different in each of the three places
+   it applies: a goal reads `roadmapGoalKey` off the milestones
+   (`milestoneMintedByGoal` below), a procedure reads its own linked
+   milestone, and a tryout has no minted record at all - it cannot be
+   adopted twice because it has an end day. Writing one function over
+   those three would take an argument each caller computes differently and
+   enforce nothing, so each asks its own question and this file holds only
+   the one rule that genuinely is shared.
+
+   The anniversary offer asks no such question, on purpose: a felt-sense
+   entry is how the person feels about a milestone today, and last year's
+   does not answer this year's, so it recurs.
 
    Relative imports rather than `$lib`, and no runtime import that is not
    pure: offers.test.ts reads this file on the Node tier, where no alias
@@ -136,14 +144,6 @@ export interface OfferRow<Subject> {
   write(journal: OfferJournal, subject: Subject): Promise<void>;
 }
 
-/** Keeps the declaration site honest: the key has to be a real offer, and
-    `write` has to return nothing - an offer whose write handed a value back
-    would invite a caller to use it, and what a confirmed offer produces is
-    a record in the journal rather than a value on a screen. */
-function offer<Key extends OfferKey, Subject>(declared: OfferRow<Subject> & { key: Key }) {
-  return declared;
-}
-
 /** What ticking a roadmap goal offers: a milestone named after the goal, on
     a day the person can change, with an optional photo. `roadmapGoalKey` is
     what links it back, and what stops the goal offering twice. */
@@ -178,12 +178,18 @@ const FELT_SENSE_COPY: Pick<OfferCopy, 'confirm' | 'decline'> = {
   decline: () => m.skip()
 };
 
+/** Both felt-sense offers write the same row through the same method; only
+    the moment they are made at, and so the sentence they say, differ. */
+const writeFeltSense = async ({ feltSense }: OfferJournal, subject: OfferedFeltSense) => {
+  await feltSense.add(subject.owner, { epochDay: subject.epochDay, mood: subject.mood, note: subject.note });
+};
+
 /** Every offer, keyed by itself. A `Record` over `OfferKey` rather than an
     array, so an offer added to the union with no entry here is a
     missing-property error at this line - and so a screen names the offer it
     is making rather than searching a list for it. */
 export const OFFERS = {
-  'roadmap-goal-milestone': offer({
+  'roadmap-goal-milestone': {
     key: 'roadmap-goal-milestone',
     trigger: 'a transition roadmap goal goes from unchecked to checked, while roadmapMilestoneSyncEnabled is on',
     offers: 'milestones',
@@ -200,9 +206,9 @@ export const OFFERS = {
         photo: subject.photo ? { action: 'replace', photo: subject.photo } : { action: 'preserve' }
       });
     }
-  }),
+  },
 
-  'surgery-day-milestone': offer({
+  'surgery-day-milestone': {
     key: 'surgery-day-milestone',
     trigger: 'a procedure reaches its surgery day, or the recovery phase after it, with no milestone linked yet',
     offers: 'milestones',
@@ -217,9 +223,9 @@ export const OFFERS = {
     write: async ({ procedures }: OfferJournal, subject: { procedureId: string }) => {
       await procedures.recordSurgeryMilestone(subject.procedureId);
     }
-  }),
+  },
 
-  'tryout-adoption-milestone': offer({
+  'tryout-adoption-milestone': {
     key: 'tryout-adoption-milestone',
     trigger: 'a name or pronoun tryout that has not ended is adopted permanently',
     offers: 'milestones',
@@ -236,61 +242,56 @@ export const OFFERS = {
         milestoneEpochDay: subject.milestoneEpochDay
       });
     }
-  }),
+  },
 
-  'new-milestone-felt-sense': offer({
+  'new-milestone-felt-sense': {
     key: 'new-milestone-felt-sense',
     trigger: 'a milestone is created - never when an existing one is edited',
     offers: 'feltSenseEntries',
     copy: { title: () => m.ms_feeling_new_title(), ...FELT_SENSE_COPY },
-    write: async ({ feltSense }: OfferJournal, subject: OfferedFeltSense) => {
-      await feltSense.add(subject.owner, { epochDay: subject.epochDay, mood: subject.mood, note: subject.note });
-    }
-  }),
+    write: writeFeltSense
+  },
 
-  'milestone-anniversary-felt-sense': offer({
+  'milestone-anniversary-felt-sense': {
     key: 'milestone-anniversary-felt-sense',
     trigger: 'a milestone shown on an anniversary of its own day',
     offers: 'feltSenseEntries',
     copy: { title: () => m.ms_feeling_anniv_title(), ...FELT_SENSE_COPY },
-    write: async ({ feltSense }: OfferJournal, subject: OfferedFeltSense) => {
-      await feltSense.add(subject.owner, { epochDay: subject.epochDay, mood: subject.mood, note: subject.note });
-    }
-  })
-} satisfies Record<OfferKey, OfferRow<never>>;
+    write: writeFeltSense
+  }
+} satisfies { [K in OfferKey]: OfferRow<never> & { key: K } };
 
-/** `OfferKey` as a value, read off `OFFERS` rather than typed out again -
-    the hand-kept second copy is exactly what the completeness check exists
-    to stop needing. Safe to derive here, unlike the `Record` above: this
-    only has to name what today's registry holds for `unregisteredOffers` to
-    check a *shortened copy* against, not stand as its own source of truth,
-    which is `OfferKey`'s job. */
+/** `OfferKey` as a value, read off `OFFERS` rather than typed out again, so
+    a caller wanting all five walks the registry instead of a second list.
+
+    No runtime completeness check sits beside it, unlike
+    `unprompted/registry.ts`'s `unregisteredKinds`, and the difference is
+    the shape of the two registries rather than an omission here. That one
+    is an array, so an `Exclude` is all that stands between it and a kind
+    nobody listed, and a runtime mirror of that check earns its place. This
+    one is a total `Record` over `OfferKey`: a missing entry is a missing
+    property, refused at the `satisfies` line above. A runtime function
+    derived from `OFFERS` could only ever fail on a copy of `OFFERS` that a
+    test shortened by hand, which is a check of `filter` wearing this
+    registry's name. */
 export const OFFER_KEYS = Object.keys(OFFERS) as readonly OfferKey[];
 
-/** The runtime half of the completeness check: which offers a given list is
-    missing, measured against the whole `OfferKey` domain rather than
-    against the list's own contents - so offers.test.ts can show the rule
-    failing on a named, shortened registry instead of only asserting that it
-    never does. */
-export function unregisteredOffers(rows: readonly { key: OfferKey }[]): OfferKey[] {
-  const present = new Set(rows.map((row) => row.key));
-  return OFFER_KEYS.filter((key) => !present.has(key));
-}
+/** The milestone a roadmap goal has already minted, if it has one.
 
-/** Whether a trigger may ask at all, and with what.
+    ADR-0045's second half - "each confirmed link is recorded ... so the
+    same source doesn't offer to mint twice" - needs somebody to look that
+    link up, and `roadmapGoalKey` is where it is recorded (types.ts). Here
+    rather than inline on the roadmap screen so it can be tested with no
+    driver.
 
-    ADR-0045's second half: "each confirmed link is recorded ... so the same
-    source doesn't offer to mint twice". `recordedId` is the record this
-    source already minted, if it has one - a milestone linked to the goal, a
-    milestone linked to the procedure - and an offer with one is not made.
-    Null is the open case and the subject comes back unchanged, so a screen
-    assigns its offer state *through* this rather than beside it and cannot
-    forget the check.
-
-    A recurring offer passes null every time by design; the header says
-    which one does and why. */
-export function openOffer<Subject>(subject: Subject, recordedId: string | null): Subject | null {
-  return recordedId === null ? subject : null;
+    Only the roadmap needs it. The surgery hub reads its own link through
+    `procedures.getMilestone`, and a tryout has no minted record to look
+    for - what stops it being adopted twice is its own end day. */
+export function milestoneMintedByGoal<M extends { id: string; roadmapGoalKey?: string | null }>(
+  milestones: readonly M[],
+  goalKey: string
+): M | null {
+  return milestones.find((milestone) => milestone.roadmapGoalKey === goalKey) ?? null;
 }
 
 /** The only path from an open offer to a write (ADR-0045).

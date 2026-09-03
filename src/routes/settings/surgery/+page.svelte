@@ -17,7 +17,7 @@
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { OFFERS, answerOffer, openOffer, type OfferAnswer } from '$lib/data/offers';
+  import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -171,21 +171,27 @@
   /* One entry in the offer registry (phase 8 features ticket 22,
      ADR-0045). The ADR names this trigger by hand - "reaching surgery day
      or the recovery phase in the procedure hub" - and the phase-8 spec's
-     count of four offers missed it; offers.ts's header says so. Behaviour
-     is unchanged: `openOffer` refuses once the procedure has its milestone,
-     which is the check `linkedMilestone` already made. */
+     count of four offers missed it; offers.ts's header says so.
+
+     Nothing here re-checks `linkedMilestone`: both places that call
+     `promptMilestoneConfirmation` are already inside a branch that only
+     draws while the procedure has no milestone, and a second copy of that
+     condition would be a guard for a state no control can reach. */
   const MILESTONE_OFFER = OFFERS['surgery-day-milestone'];
   let milestoneOffer = $state<{ procedureId: string } | null>(null);
 
   function promptMilestoneConfirmation() {
     if (!selectedId) return;
-    milestoneOffer = openOffer({ procedureId: selectedId }, linkedMilestone?.id ?? null);
+    milestoneOffer = { procedureId: selectedId };
   }
 
+  /* Closed before the write, the order this screen already kept: the sheet
+     is gone by the time the insert runs, so a second tap cannot re-enter
+     with a live subject and toast twice. */
   async function answerMilestoneOffer(given: OfferAnswer) {
-    const recorded = await answerOffer(MILESTONE_OFFER, milestoneOffer, given, journal);
+    const subject = milestoneOffer;
     milestoneOffer = null;
-    if (recorded) toast(m.surgery_milestone_added());
+    if (await answerOffer(MILESTONE_OFFER, subject, given, journal)) toast(m.surgery_milestone_added());
   }
 
   function openConsultSheet() {

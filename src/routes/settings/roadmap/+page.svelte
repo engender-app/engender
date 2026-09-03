@@ -36,7 +36,7 @@
   import {
     OFFERS,
     answerOffer,
-    openOffer,
+    milestoneMintedByGoal,
     type OfferAnswer,
     type RoadmapGoalMilestone
   } from '$lib/data/offers';
@@ -100,13 +100,12 @@
      Unchecking a goal and checking it again re-offered, and confirming a
      second time wrote a *second* milestone against the same
      `roadmapGoalKey`, because `upsertMilestone` inserts whenever it is
-     handed no id. `openOffer` refuses once the goal has its milestone,
-     which is the check the surgery hub already made through
-     `linkedMilestone`. */
+     handed no id. `milestoneMintedByGoal` is that lookup, which the surgery
+     hub has always made in its own way through `linkedMilestone`. */
   const offerMilestone = (key: string, title: string) => {
     if (!prefs.roadmapMilestoneSyncEnabled) return;
-    const already = vocabulary.milestones.find((milestone) => milestone.roadmapGoalKey === key);
-    promptGoal = openOffer({ key, title }, already?.id ?? null);
+    if (milestoneMintedByGoal(vocabulary.milestones, key)) return;
+    promptGoal = { key, title };
   };
 
   const toggleBuiltIn = (goalKey: RoadmapGoalKey) => {
@@ -123,9 +122,12 @@
     if (current === 'unchecked' && next === 'checked') offerMilestone(goal.id, goal.text);
   };
 
+  /* Closed before the write, not after: the sheet is gone by the time the
+     insert runs, so a second tap finds no open offer to confirm. */
   async function answerMilestoneOffer(given: OfferAnswer, data: RoadmapGoalMilestone | null) {
-    await answerOffer(MILESTONE_OFFER, promptGoal && data ? data : null, given, journal);
+    const subject = promptGoal === null ? null : data;
     promptGoal = null;
+    await answerOffer(MILESTONE_OFFER, subject, given, journal);
   }
 
   function stateLabel(status: RoadmapGoalStatus): string {

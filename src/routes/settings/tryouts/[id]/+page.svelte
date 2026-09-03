@@ -251,14 +251,14 @@
           }
         : null;
 
-    const adopted = await answerOffer(ADOPT_OFFER, subject, given, journal);
-    if (adopted && options) {
-      if (options.updateProfileName && draft.kind === 'name') {
+    /* Closed before the write, so a second tap finds no open offer. */
+    adoptOpen = false;
+    if (await answerOffer(ADOPT_OFFER, subject, given, journal)) {
+      if (options?.updateProfileName && draft.kind === 'name') {
         prefs.name = options.milestoneTitle || draft.label;
       }
       draft.end = dateInputValueFromEpochDay(todayEpochDay());
     }
-    adoptOpen = false;
   }
 </script>
 

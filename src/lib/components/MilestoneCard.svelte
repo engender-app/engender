@@ -46,9 +46,12 @@
   const OFFER = OFFERS['milestone-anniversary-felt-sense'];
   let offering = $state(false);
 
+  /* Closed before the write: the sheet is gone by the time the insert
+     runs, so a second tap has no open offer to confirm. */
   async function answer(given: OfferAnswer, subject: OfferedFeltSense | null) {
-    await answerOffer(OFFER, offering ? subject : null, given, journal);
+    const open = offering;
     offering = false;
+    await answerOffer(OFFER, open ? subject : null, given, journal);
   }
 
   const saveOffer = (input: { mood: number; note: string | null }) =>

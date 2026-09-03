@@ -9,18 +9,21 @@
    with a fake write for all five would have restated the function and
    passed for an entry that writes on decline.
 
-   And the completeness check is shown failing on a shortened registry
-   rather than asserted to hold, the same discipline registry.test.ts keeps:
-   a check parameterised over a widened list looks identical to one that
-   works. */
+   And there is no completeness test here on purpose. `OFFERS` is a total
+   `Record` over `OfferKey`, so an unregistered offer is a missing property
+   refused at the `satisfies` line - shown to fail by deleting the surgery
+   entry and watching svelte-check refuse it. A runtime mirror derived from
+   `OFFERS` could only fail on a copy a test shortened by hand, which is a
+   check of `filter` wearing the registry's name; offers.ts's own header
+   sets that against `unprompted/registry.ts`, where the array shape makes
+   the runtime half worth having. */
 
 import { describe, expect, it } from 'vitest';
 import {
   OFFERS,
   OFFER_KEYS,
   answerOffer,
-  openOffer,
-  unregisteredOffers,
+  milestoneMintedByGoal,
   type OfferJournal,
   type OfferKey
 } from './offers.ts';
@@ -108,9 +111,14 @@ describe('the in-flow offer registry', () => {
     }
   });
 
-  it('the completeness check can fail: a shortened registry names exactly the offer it is missing', () => {
-    const shortened = OFFER_KEYS.filter((key) => key !== 'surgery-day-milestone').map((key) => OFFERS[key]);
-    expect(unregisteredOffers(shortened)).toEqual(['surgery-day-milestone']);
+  it('names itself the same way twice, so a screen cannot address the wrong entry', () => {
+    /* The completeness check itself is the `satisfies` line in offers.ts,
+       which is compile-time and shown to fail by deleting an entry - there
+       is no runtime half to test here, and the module header says why a
+       derived one would only ever be a test of `filter`. What a runtime
+       test can still add is that no entry's `key` disagrees with the
+       property it is filed under. */
+    for (const key of OFFER_KEYS) expect(OFFERS[key].key, key).toBe(key);
   });
 });
 
@@ -146,14 +154,16 @@ describe('the confirmation rule (ADR-0045)', () => {
     expect(calls).toEqual([]);
   });
 
-  it('does not open a second time once the source holds the record it mints', () => {
+  it('finds the milestone a roadmap goal already minted, so it is not offered twice', () => {
     /* ADR-0045's own consequence: "each confirmed link is recorded ... so
        the same source doesn't offer to mint twice". Checking and unchecking
        a roadmap goal is the trigger the ADR names, and before this it
        re-offered and minted a duplicate every time. */
-    const subject = { key: 'pl-legal-name-usc', title: 'Legal name change' };
+    const minted = { id: 'ms-1', roadmapGoalKey: 'pl-legal-name-usc' };
+    const unrelated = { id: 'ms-2', roadmapGoalKey: null };
 
-    expect(openOffer(subject, null)).toEqual(subject);
-    expect(openOffer(subject, 'ms-1')).toBe(null);
+    expect(milestoneMintedByGoal([unrelated, minted], 'pl-legal-name-usc')).toBe(minted);
+    expect(milestoneMintedByGoal([unrelated], 'pl-legal-name-usc')).toBe(null);
+    expect(milestoneMintedByGoal([], 'pl-legal-name-usc')).toBe(null);
   });
 });
