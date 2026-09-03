@@ -26,6 +26,10 @@ export interface TallyArea {
       deepening ticket 21). Both kinds together because the day view asks
       what happened, not how one counter moved. */
   getEventsOnDay(epochDay: number): Promise<TallyEvent[]>;
+  /** The day of the most recent event of either kind at or before
+      `todayEpochDay`, or null if there is none (phase 8 features ticket 03,
+      lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Idempotent. */
   deleteEvent(id: string): Promise<void>;
 }
@@ -45,6 +49,11 @@ export function makeTallyArea(driver: SqliteDriver): TallyArea {
     getEvents: (kind) => events.read('WHERE kind = ? ORDER BY epoch_day, id', [kind]),
 
     getEventsOnDay: (epochDay) => events.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const [latest] = await events.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [todayEpochDay]);
+      return latest?.epochDay ?? null;
+    },
 
     deleteEvent: events.delete
   };

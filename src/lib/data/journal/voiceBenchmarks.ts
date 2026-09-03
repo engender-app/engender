@@ -70,6 +70,10 @@ export interface VoiceBenchmarksArea {
       Idempotent, like the journal's other deletes: a row already gone
       leaves nothing to remove. */
   deleteBenchmark(id: string): Promise<void>;
+  /** The day of the most recent benchmark at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). One
+      bounded `MAX`, not a fetched list reduced in JS. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
 type BenchmarkRow = {
@@ -175,6 +179,14 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
         files,
         filePaths.map((file_path) => ({ file_path }))
       );
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM voice_benchmark WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     }
   };
 }

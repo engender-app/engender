@@ -79,6 +79,12 @@ export interface LabsArea {
       last one saved off one slip is the one a person was most recently
       looking at. */
   getLatestResult(): Promise<LabResult | null>;
+  /** The draw day of the most recent result at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). Its
+      own bounded `MAX` rather than `getLatestResult` above: that one is
+      never asked to exclude a clock-skewed future draw, and returns the
+      whole row rather than the one field the registry wants. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** The analyte's results split into one series per unit, oldest series
       first. A result logged in ng/dL and one logged in nmol/L differ by a
       factor of about 29, so drawing them as one line invents a change that
@@ -208,6 +214,14 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
         `SELECT ${LAB_COLUMNS} FROM lab_result ORDER BY epoch_day DESC, updated_at DESC, id DESC LIMIT 1`
       );
       return rows[0] ? toLabResult(rows[0]) : null;
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM lab_result WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     },
 
     /* Grouped in the app rather than by SQL, because the key is the app's

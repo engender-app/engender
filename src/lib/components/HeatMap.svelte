@@ -85,7 +85,8 @@
     year,
     month,
     role,
-    eras = []
+    eras = [],
+    highlight
   }: {
     year: number;
     month: number /* 0-based */;
@@ -100,6 +101,15 @@
         from - the caller hands over nothing rather than this component
         reaching for `activeFlag` itself. */
     eras?: { era: Era; role: Role }[];
+    /** The chosen presentation (phase 8 features ticket 17, ADR-0048) and
+        its resolved role - which days it covers is this component's own
+        read, bounded to the month on screen the same way the three reads
+        above are. A mark beside the swatch rather than a border on it - the
+        swatch's border already carries the era's own colour (`eraMark`
+        below), and the metric's fill is never touched - so a day can be
+        shaded, ringed as today, bordered for its era and marked for its
+        mode all at once without any of the four reusing another's channel. */
+    highlight?: { presentationId: string; role: Role };
   } = $props();
 
   const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -138,6 +148,15 @@
   let averages = liveList((j) => j.stats.dayAverages(vocabulary.activeMetric, bounds.first, bounds.last));
   let counts = liveList((j) => j.stats.entryCountsByDay(bounds.first, bounds.last));
   let spreads = liveList((j) => j.stats.daySpread(vocabulary.activeMetric, bounds.first, bounds.last));
+  /* The presentation chip (ticket 17, ADR-0048), bounded to the same month
+     as the three reads above rather than resolved by the caller the way
+     `eras` is: an era is a handful of rows for the whole journal, and a
+     presentation's days are exactly the kind of per-month read this
+     component already owns. */
+  let presentationDays = liveList((j) =>
+    highlight ? j.stats.presentationDays(highlight.presentationId, bounds.first, bounds.last) : Promise.resolve([])
+  );
+  let highlightedDays = $derived(new Set(presentationDays.rows));
 
   /* The three reads are one worker round trip, and the grid draws at its full
      size the whole time - a month is 30 cells of known shape, so there is
@@ -189,6 +208,9 @@
           still answers for itself. */
       eraName: string | null;
       eraMark: string | null;
+      /** The chosen presentation's own colour, or none for a day it was not
+          logged under - absence, not a category (ticket 17, ADR-0048). */
+      highlightMark: string | null;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;
@@ -226,7 +248,8 @@
             ? `${m.heat_cell_entries({ date, count })}${ends ? `, ${ends}` : ''}`
             : m.heat_cell_none({ date }),
         eraName: covering?.era.name ?? null,
-        eraMark: covering?.role.mark ?? null
+        eraMark: covering?.role.mark ?? null,
+        highlightMark: highlight && highlightedDays.has(epochDay) ? highlight.role.mark : null
       });
     }
     return { startDow, days: out };
@@ -307,6 +330,14 @@
       {:else}
         <span class="cal-face" data-hm-cell-face><MoodFace step={c.step} size="100%" disc={false} /></span>
       {/if}
+    {/if}
+    <!-- The presentation chip's mark (ticket 17, ADR-0048): a small dot of
+         its own rather than a border or an outline, because the swatch's
+         border already carries the era's colour and the outline already
+         carries today's - a fourth channel needed a corner of its own
+         rather than fighting either for the same edge. -->
+    {#if c.highlightMark}
+      <span class="cal-highlight" data-hm-cell-highlight style="background:{c.highlightMark}"></span>
     {/if}
   </span>
 {/snippet}
@@ -469,6 +500,23 @@
      already saying something else. Above the deck, so a stacked today is
      still ringed once. */
   .cal-day.is-today .cal-swatch { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* The presentation chip's mark (ticket 17, ADR-0048). A corner dot,
+     never a border or an outline: this cell may already be wearing an
+     era's border-colour and today's outline, and a fifth day carrying all
+     three at once still has to show each of them. Positioned on
+     `.cal-stack` rather than on the swatch, so it clears the swatch's own
+     border instead of sitting on top of it. */
+  .cal-highlight {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--surface);
+    z-index: 1;
+  }
 
   /* The date sits under the swatch rather than on it: a split cell has two
      fills and one number, and no ink clears the floor on both (see the note

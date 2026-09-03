@@ -38,7 +38,7 @@ import {
   type ApplicationSiteKey,
   type InjectionSiteKey
 } from '../doseSchedule';
-import { startOfDayTimestamp } from '../epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { activeEpisodesAt, attributeDose } from '../regimenEpisode';
 import type { RegimenArea } from './regimen';
 import { assertChanged, mintUuid, now } from './support';
@@ -152,6 +152,13 @@ export interface DosesArea {
       every-N-days rhythm belongs to the episode rather than shifting with
       the range. */
   getComparison(params: { fromEpochDay: number; toEpochDay: number }): Promise<DoseScheduleComparison>;
+  /** The day of the most recent dose at or before `todayEpochDay`, or null
+      if there is none (phase 8 features ticket 03, lastWrite.ts). The table
+      stores a `timestamp`, not an `epoch_day`, so the bound is the start of
+      the day after `todayEpochDay` and the result converts back with
+      `epochDayFromTimestamp`. One bounded `MAX`, not a fetched list reduced
+      in JS. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
 type DoseRow = {
@@ -325,6 +332,15 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
 
     async deleteDose(id) {
       await driver.run('DELETE FROM dose_event WHERE uuid = ?', [id]);
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ ts: number | null }>(
+        'SELECT MAX(timestamp) AS ts FROM dose_event WHERE timestamp < ?',
+        [startOfDayTimestamp(todayEpochDay + 1)]
+      );
+      const ts = rows[0]?.ts;
+      return ts == null ? null : epochDayFromTimestamp(ts);
     },
 
     async getSchedules() {

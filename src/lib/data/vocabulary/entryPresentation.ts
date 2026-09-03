@@ -9,7 +9,7 @@
 import type { Entry } from '../types';
 import { vocabulary } from './vocabulary';
 import { activeFlag } from '$lib/theme/activeFlag.svelte';
-import { roleAt } from '$lib/theme/roles';
+import { roleAt, type Role } from '$lib/theme/roles';
 
 export interface EntryPresentationLabel {
   name: string;
@@ -29,4 +29,16 @@ export function entryPresentation(entry: Entry): EntryPresentationLabel | undefi
   const role = roleAt(activeFlag.roles, presentation.roleIndex);
   if (!role) return undefined;
   return { name: presentation.name, color: role.ink };
+}
+
+/** A presentation's whole role rather than one colour already picked off it
+    - what the presentation chip's chart-side highlight needs (phase 8
+    features ticket 17), since a ring or a corner dot draws in `.mark`
+    while the chip itself draws in `.ink`/`.draw`. `null` reads the same as
+    an id naming nothing: undefined, not a role to fall back to. */
+export function presentationRole(presentationId: string | null): Role | undefined {
+  if (!presentationId) return undefined;
+  const presentation = vocabulary.presentation(presentationId);
+  if (!presentation) return undefined;
+  return roleAt(activeFlag.roles, presentation.roleIndex);
 }

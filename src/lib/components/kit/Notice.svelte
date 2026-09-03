@@ -136,7 +136,7 @@
        live. -->
   <div class="kit-notice-body" use:resize>
     {#if title}<strong class="kit-notice-title" data-notice-title>{title}</strong>{/if}
-    {#if text}<p class="kit-notice-text">{text}</p>{/if}
+    {#if text}<p class="kit-notice-text" data-notice-text>{text}</p>{/if}
   </div>
   {#if dismiss}
     <button

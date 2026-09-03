@@ -28,6 +28,7 @@ import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
 import { CLINICIAN_SUMMARY_TABLES } from '../journal/clinicianSummary';
 import { DAY_TABLES } from '../journal/day';
+import { LAST_WRITE_TABLES } from '../journal/lastWrite';
 import { SEARCH_TABLES } from '../journal/textSearch';
 import { RECONCILE_TABLES } from '../journal/reconcile';
 
@@ -268,7 +269,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // A count, so no hydration: the search clause itself joins the tag
       // tables, and nothing else is read back.
       countSearchMatches: ['entry', 'tag'],
-      trashedEntries: HYDRATED_ENTRY
+      trashedEntries: HYDRATED_ENTRY,
+      // A bare `MAX(epoch_day)`, not the hydrated shape: nothing here reads
+      // a tag, a photo, a recording or a video note.
+      lastWriteEpochDay: ['entry']
     }
   }),
   tags: classify<Journal['tags']>()({
@@ -338,7 +342,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     },
     // A milestone is read back with its photos on it, the same way an entry
     // is.
-    reads: { getMilestones: ['milestone', 'photo'], getMilestonesOnDay: ['milestone', 'photo'] }
+    reads: {
+      getMilestones: ['milestone', 'photo'],
+      getMilestonesOnDay: ['milestone', 'photo'],
+      // No photo join: the registry wants the date, not the photo indicator.
+      lastWriteEpochDay: ['milestone']
+    }
   }),
   photos: classify<Journal['photos']>()({
     /* An entry and a milestone both carry their photos on the shape they are
@@ -368,7 +377,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   // through the entry editor, so the save announces its own table.
   voiceBenchmarks: classify<Journal['voiceBenchmarks']>()({
     writes: { saveBenchmark: ['voiceBenchmark'], deleteBenchmark: ['voiceBenchmark'] },
-    reads: { getBenchmarks: ['voiceBenchmark'], getBenchmarksOnDay: ['voiceBenchmark'] }
+    reads: {
+      getBenchmarks: ['voiceBenchmark'],
+      getBenchmarksOnDay: ['voiceBenchmark'],
+      lastWriteEpochDay: ['voiceBenchmark']
+    }
   }),
   // Read-only for the same reason `voice` is: a video note's row is owned by
   // upsertEntry/deleteEntry, which already announce 'videoNote'.
@@ -389,7 +402,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getLatestResult: ['lab'],
       getResults: ['lab'],
       getResultsOnDay: ['lab'],
-      getSeries: ['lab']
+      getSeries: ['lab'],
+      lastWriteEpochDay: ['lab']
     }
   }),
   measurements: classify<Journal['measurements']>()({
@@ -403,16 +417,22 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getMeasurements: ['measurement'],
       getSeries: ['measurement'],
       getMeasurementsInRange: ['measurement'],
-      getMeasurementTypes: ['measurementType']
+      getMeasurementTypes: ['measurementType'],
+      lastWriteEpochDay: ['measurement']
     }
   }),
   sizeRecords: classify<Journal['sizeRecords']>()({
     writes: { upsertRecord: ['sizeRecord'], deleteRecord: ['sizeRecord'] },
-    reads: { getRecords: ['sizeRecord'], getRecordsByCategory: ['sizeRecord'], getRecordsOnDay: ['sizeRecord'] }
+    reads: {
+      getRecords: ['sizeRecord'],
+      getRecordsByCategory: ['sizeRecord'],
+      getRecordsOnDay: ['sizeRecord'],
+      lastWriteEpochDay: ['sizeRecord']
+    }
   }),
   sideEffects: classify<Journal['sideEffects']>()({
     writes: { upsertSideEffect: ['sideEffect'], deleteSideEffect: ['sideEffect'] },
-    reads: { getSideEffects: ['sideEffect'], getSideEffectsInRange: ['sideEffect'] }
+    reads: { getSideEffects: ['sideEffect'], getSideEffectsInRange: ['sideEffect'], lastWriteEpochDay: ['sideEffect'] }
   }),
   personalEffects: classify<Journal['personalEffects']>()({
     writes: {
@@ -424,7 +444,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getMarkers: ['personalEffect'],
       getMarkersFirstNoticedOn: ['personalEffect'],
-      getEffectTypes: ['personalEffectType']
+      getEffectTypes: ['personalEffectType'],
+      lastWriteEpochDay: ['personalEffect']
     }
   }),
   effectCategories: classify<Journal['effectCategories']>()({
@@ -433,7 +454,11 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   cycleEvents: classify<Journal['cycleEvents']>()({
     writes: { upsertCycleEvent: ['cycleEvent'], deleteCycleEvent: ['cycleEvent'] },
-    reads: { getCycleEvents: ['cycleEvent'], getCycleEventsInRange: ['cycleEvent'] }
+    reads: {
+      getCycleEvents: ['cycleEvent'],
+      getCycleEventsInRange: ['cycleEvent'],
+      lastWriteEpochDay: ['cycleEvent']
+    }
   }),
   journalingPauses: classify<Journal['journalingPauses']>()({
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
@@ -458,7 +483,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       upsertSession: ['wearSession', 'reminder'],
       deleteSession: ['wearSession', 'reminder']
     },
-    reads: { getSessions: ['wearSession'], getRunningSession: ['wearSession'] }
+    reads: { getSessions: ['wearSession'], getRunningSession: ['wearSession'], lastWriteEpochDay: ['wearSession'] }
   }),
   hairProgress: classify<Journal['hairProgress']>()({
     writes: {
@@ -471,7 +496,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getStages: ['hairProgress'],
       getStagesOnDay: ['hairProgress'],
       getPhotos: ['hairProgress'],
-      getPhotosOnDay: ['hairProgress']
+      getPhotosOnDay: ['hairProgress'],
+      lastStageWriteEpochDay: ['hairProgress'],
+      lastPhotoWriteEpochDay: ['hairProgress']
     }
   }),
   hairRemoval: classify<Journal['hairRemoval']>()({
@@ -481,7 +508,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addPhoto: ['hairRemoval'],
       deletePhoto: ['hairRemoval']
     },
-    reads: { getSessions: ['hairRemoval'], getSessionsOnDay: ['hairRemoval'], getPhotos: ['hairRemoval'] }
+    reads: {
+      getSessions: ['hairRemoval'],
+      getSessionsOnDay: ['hairRemoval'],
+      getPhotos: ['hairRemoval'],
+      lastWriteEpochDay: ['hairRemoval']
+    }
   }),
   /* deleteProcedure and addChecklistItem write 'checklist' as well as
      'procedure': the recovery checklist is an ordinary checklist row, so a
@@ -506,7 +538,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getPhotos: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
-      getMilestone: ['milestone']
+      getMilestone: ['milestone'],
+      lastWriteEpochDay: ['procedure']
     }
   }),
   reminders: classify<Journal['reminders']>()({
@@ -547,7 +580,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deletePhoto: ['tryout'],
       adoptTryout: ['tryout', 'milestone', 'feltSense']
     },
-    reads: { getTryouts: ['tryout'], getPhotos: ['tryout'], getPhotosOnDay: ['tryout'] }
+    reads: {
+      getTryouts: ['tryout'],
+      getPhotos: ['tryout'],
+      getPhotosOnDay: ['tryout'],
+      lastWriteEpochDay: ['tryout']
+    }
   }),
   feltSense: classify<Journal['feltSense']>()({
     /* Which owner a felt-sense write belongs to is a property of the call,
@@ -563,7 +601,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       forTryout: ['feltSense', 'tryout'],
       forMilestone: ['feltSense', 'milestone'],
       // Both owners' names travel on a day's rows, so both tables are read.
-      onDay: ['feltSense', 'tryout', 'milestone']
+      onDay: ['feltSense', 'tryout', 'milestone'],
+      // No owner join: the registry wants the date across both owners.
+      lastWriteEpochDay: ['feltSense']
     }
   }),
   letters: classify<Journal['letters']>()({
@@ -606,7 +646,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   tally: classify<Journal['tally']>()({
     writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: { getEvents: ['tally'], getEventsOnDay: ['tally'] }
+    reads: { getEvents: ['tally'], getEventsOnDay: ['tally'], lastWriteEpochDay: ['tally'] }
   }),
   regimen: classify<Journal['regimen']>()({
     writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
@@ -628,7 +668,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getPauses: ['dose', 'regimen'],
       // The comparison reads the episode history as well: which episode is in
       // effect, and which of them each dose is attributed to (doses.ts).
-      getComparison: ['dose', 'regimen']
+      getComparison: ['dose', 'regimen'],
+      lastWriteEpochDay: ['dose']
     }
   }),
   stock: classify<Journal['stock']>()({
@@ -693,6 +734,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {},
     reads: { getDay: DAY_TABLES }
   }),
+  /* Read-only, and its table list is its own registry's for the reason
+     day's is (lastWrite.ts's LAST_WRITE_TABLES): an area registered there
+     brings its tables with it, so a last write cannot go stale on a write to
+     an area registered after this line was written. */
+  lastWrite: classify<Journal['lastWrite']>()({
+    writes: {},
+    reads: { getLastWrites: LAST_WRITE_TABLES }
+  }),
   /* Read-only, and its table list is its own registry's for the reason day's
      is (textSearch.ts's SEARCH_TABLES): an area registered there brings its
      tables with it, so a search result cannot go stale on a write to an area
@@ -732,6 +781,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       tallyTrend: ['tally'],
       bodyRegionReadings: ['entry'],
       entryCountsByDay: ['entry'],
+      // Filters entry.presentation_id directly, the same reason
+      // bodyRegionTrend above depends on 'entry' alone: which days match
+      // never changes when a presentation is renamed, recoloured or hidden.
+      presentationDays: ['entry'],
       tagInsights: ['entry', 'dimension', 'tag'],
       // A pause bridges a gap without extending the count (phase 5 ticket
       // 21), which is the second table the streak-goal screen forgot.
