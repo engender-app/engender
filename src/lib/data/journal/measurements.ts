@@ -13,19 +13,18 @@
    treatment `entry_body_region.region` and `lab_result.analyte` already
    get - so a measurement logged under a type since hidden, or one an
    older build minted before a newer one renamed nothing, still round-
-   trips exactly as logged. */
+   trips exactly as logged.
+
+   The measurements themselves are flat, so their three writes come from
+   flat-area.ts. The type table below is not: its rows are reference data
+   keyed by `key`, hidden rather than deleted, and it keeps its own SQL. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Measurement, MeasurementType } from '../types';
+import { flatArea, type FlatInput } from './flat-area';
 import { assertChanged, bool, mintUuid, now } from './support';
 
-export interface MeasurementInput {
-  id?: string;
-  type: string;
-  epochDay: number;
-  value: number;
-  unit: string;
-}
+export type MeasurementInput = FlatInput<Measurement>;
 
 /** One chart line: the measurements of one type that share a unit, oldest
     first. A value logged in cm and one logged in inches differ by a
@@ -62,14 +61,6 @@ export interface MeasurementsArea {
   setMeasurementTypeHidden(key: string, hidden: boolean): Promise<void>;
 }
 
-type MeasurementRow = {
-  uuid: string;
-  epoch_day: number;
-  type: string;
-  value: number;
-  unit: string;
-};
-
 type MeasurementTypeRow = {
   uuid: string | null;
   key: string;
@@ -85,22 +76,14 @@ const toMeasurementType = (row: MeasurementTypeRow): MeasurementType => ({
   hidden: bool(row.hidden)
 });
 
-const toMeasurement = (row: MeasurementRow): Measurement => ({
-  id: row.uuid,
-  type: row.type,
-  epochDay: row.epoch_day,
-  value: row.value,
-  unit: row.unit
-});
-
 export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
-  const measurementsFor = async (type: string): Promise<Measurement[]> => {
-    const rows = await driver.query<MeasurementRow>(
-      'SELECT uuid, epoch_day, type, value, unit FROM measurement WHERE type = ? ORDER BY epoch_day, id',
-      [type]
-    );
-    return rows.map(toMeasurement);
-  };
+  const measurements = flatArea<Measurement>(driver, {
+    table: 'measurement',
+    columns: { type: 'type', epochDay: 'epoch_day', value: 'value', unit: 'unit' }
+  });
+
+  const measurementsFor = (type: string): Promise<Measurement[]> =>
+    measurements.read('WHERE type = ? ORDER BY epoch_day, id', [type]);
 
   return {
     getMeasurements: measurementsFor,
@@ -118,34 +101,12 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
       return [...series.values()];
     },
 
-    async getMeasurementsInRange(fromEpochDay, toEpochDay) {
-      const rows = await driver.query<MeasurementRow>(
-        'SELECT uuid, epoch_day, type, value, unit FROM measurement WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id',
-        [fromEpochDay, toEpochDay]
-      );
-      return rows.map(toMeasurement);
-    },
+    getMeasurementsInRange: (fromEpochDay, toEpochDay) =>
+      measurements.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
 
-    async upsertMeasurement(input) {
-      if (input.id) {
-        const result = await driver.run(
-          'UPDATE measurement SET epoch_day = ?, type = ?, value = ?, unit = ?, updated_at = ? WHERE uuid = ?',
-          [input.epochDay, input.type, input.value, input.unit, now(), input.id]
-        );
-        assertChanged(result, `measurement: ${input.id}`);
-        return input.id;
-      }
-      const uuid = mintUuid();
-      await driver.run(
-        'INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [uuid, input.epochDay, input.type, input.value, input.unit, now()]
-      );
-      return uuid;
-    },
+    upsertMeasurement: measurements.upsert,
 
-    async deleteMeasurement(id) {
-      await driver.run('DELETE FROM measurement WHERE uuid = ?', [id]);
-    },
+    deleteMeasurement: measurements.delete,
 
     async getMeasurementTypes() {
       const rows = await driver.query<MeasurementTypeRow>(
