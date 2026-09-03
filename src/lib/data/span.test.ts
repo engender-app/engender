@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { spanCoversDay, spanOverlapsRange, type Span } from './span';
+import { spanCoversDay, spanOverlapsRange } from './span';
 
-const span = (startEpochDay: number | null, endEpochDay: number | null): Span => ({
+const span = (startEpochDay: number | null, endEpochDay: number | null) => ({
   startEpochDay,
   endEpochDay
 });
