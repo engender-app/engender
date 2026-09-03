@@ -1,13 +1,13 @@
-/* Screenshots of the two views over the unprompted registry (phase 6 ticket
-   04): the notifications view and the surfaces view it was split out of.
+/* Screenshots of the one screen over the unprompted registry (phase 6
+   ticket 04, merged from two screens onto one by deepening ticket 09).
 
-   The notifications view is Android-only by design - its entries are absent
-   on web rather than shown and inert - so a plain web build shows only the
-   notice that says so. To photograph the rows themselves this script pins
-   the screen's own `isWeb` to false, builds, takes the pictures, and puts
-   the file back. The alternative would be a query parameter or a preference
-   that forces the Android branch, which is a backdoor shipped to production
-   for the sake of a screenshot.
+   The notify column is Android-only by design - its switches are absent on
+   web rather than shown and inert - so a plain web build shows the Home
+   column working and a notice standing in for the rest. To photograph the
+   notify column too this script pins the screen's own `isWeb` to false,
+   builds, takes the pictures, and puts the file back. The alternative would
+   be a query parameter or a preference that forces the Android branch,
+   which is a backdoor shipped to production for the sake of a screenshot.
 
    Only that one `$derived` is patched, not `isAndroid()` itself: forcing the
    whole platform sends boot at the Android SQLite driver and the app never
@@ -155,16 +155,10 @@ try {
       }
       await page.locator('[data-quiet-hours]').getByRole('switch').click();
 
-      await settle('/settings/live-tiles');
-      await page.waitForSelector('[data-live-tile="wrapped"]');
-      await shoot(`surfaces-${palette}-${theme}`);
-      await scrollTo('foot');
-      await shoot(`surfaces-foot-${palette}-${theme}`);
-
       await settle('/settings');
       await page.locator('[data-list-row="notifications"]').scrollIntoViewIfNeeded();
       await page.waitForTimeout(300);
-      await shoot(`settings-two-rows-${palette}-${theme}`);
+      await shoot(`settings-one-row-${palette}-${theme}`);
     }
   }
 
