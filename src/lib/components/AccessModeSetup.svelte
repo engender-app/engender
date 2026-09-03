@@ -94,7 +94,15 @@
     onChoose,
     chosen = $bindable(null)
   }: {
-    purpose?: 'setup' | 'change';
+    /** `recovered` is a change with two differences that both showed up in
+        a render (ADR-0054, ticket sec-02). The screen holding it already
+        carries its own paragraph saying what happened, so a second one
+        about rewrapping is a wall of explanation nobody reads; and the mode
+        it names as current is the one that just failed, which above a list
+        of alternatives reads as a reassurance that it still works. So this
+        purpose draws neither. It is otherwise a change in every way that
+        matters, including which modes are offered. */
+    purpose?: 'setup' | 'change' | 'recovered';
     current?: Mode | null;
     busy?: boolean;
     error?: string;
@@ -139,7 +147,7 @@
     (['device-bound', 'biometric', 'pin', 'passphrase'] as Mode[]).filter((mode) => {
       if (mode === current) return false;
       if (mode === 'biometric' && !biometricOffered) return false;
-      return !(mode === 'device-bound' && purpose === 'change' && android);
+      return !(mode === 'device-bound' && purpose !== 'setup' && android);
     })
   );
 
@@ -231,11 +239,13 @@
 </script>
 
 {#if chosen === null}
-  <div class="am-intro">
-    <p class="gate-body is-long" data-access-intro>
-      {purpose === 'change' ? m.am_change_body() : m.am_setup_body()}
-    </p>
-  </div>
+  {#if purpose !== 'recovered'}
+    <div class="am-intro">
+      <p class="gate-body is-long" data-access-intro>
+        {purpose === 'change' ? m.am_change_body() : m.am_setup_body()}
+      </p>
+    </div>
+  {/if}
 
   <div class="am-modes" data-access-modes>
     <ListCard>
@@ -251,7 +261,7 @@
     </ListCard>
   </div>
 
-  {#if current !== null}
+  {#if current !== null && purpose !== 'recovered'}
     <p class="gate-note" data-access-current>{m.am_current({ mode: title(current) })}</p>
   {/if}
 {:else}

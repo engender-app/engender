@@ -95,14 +95,49 @@ const CONSUMERS = {
   }
 } as const satisfies Record<JournalSecretSource, Record<string, string>>;
 
-export interface KeystoreMetadata {
-  version: typeof KEYSTORE_VERSION;
+/** The wrap on its own: a data key sealed under a secret, plus the public
+    values needed to open it again. Nothing here says where the secret came
+    from or where the bytes are kept, which is what makes it the shape two
+    different files can share - the access mode's keystore below, and the
+    recovery wrap that ADR-0054 keeps in its own file. Extracted so there
+    is one derive-and-seal in the app rather than a second one that drifts
+    from it. */
+export interface DataKeyWrap {
   kdf: 'argon2id';
-  secretSource: JournalSecretSource;
   params: Argon2Params;
   salt: Uint8Array<ArrayBuffer>;
   nonce: Uint8Array<ArrayBuffer>;
   wrappedKey: Uint8Array<ArrayBuffer>;
+}
+
+/** Seals a data key under a secret at the given cost. The caller picks the
+    cost from the credential registry, because which profile applies is a
+    property of what the secret is for rather than of the sealing. */
+export async function wrapDataKey(
+  dataKey: Uint8Array<ArrayBuffer>,
+  secret: string,
+  params: Argon2Params
+): Promise<DataKeyWrap> {
+  const salt = randomSalt();
+  const wrappingKey = await deriveKey(secret, salt, params);
+  const { nonce, ciphertext } = await encrypt(wrappingKey, dataKey);
+  return { kdf: 'argon2id', params, salt, nonce, wrappedKey: ciphertext };
+}
+
+/** Recovers the data key, or throws DecryptionFailedError. Derives under
+    the parameters the wrap was written with rather than the current
+    constants (ADR-0013's evolvability), which is why they travel in it. */
+export async function unwrapDataKey(
+  wrap: DataKeyWrap,
+  secret: string
+): Promise<Uint8Array<ArrayBuffer>> {
+  const wrappingKey = await deriveKey(secret, wrap.salt, wrap.params);
+  return decrypt(wrappingKey, wrap.nonce, wrap.wrappedKey);
+}
+
+export interface KeystoreMetadata extends DataKeyWrap {
+  version: typeof KEYSTORE_VERSION;
+  secretSource: JournalSecretSource;
   /** Present exactly when `secretSource` is `'biometric'`, enforced on the
       way in and on the way out: a biometric keystore without it is a journal
       nothing can open, and that has to fail by name rather than as a wrong
@@ -146,12 +181,13 @@ export async function unlockKeystore(
   metadata: KeystoreMetadata,
   secret: string
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const wrappingKey = await deriveKey(
-    secret,
-    metadata.salt,
-    resolveCredentialProfile(CONSUMERS[metadata.secretSource].unlock, { persistedParams: metadata.params })
-  );
-  return decrypt(wrappingKey, metadata.nonce, metadata.wrappedKey);
+  /* Resolved and then thrown away: both unlock rows select persisted
+     parameters, so this changes no bytes. What it does is keep the registry
+     honest about who derives what - the row has to exist and has to name
+     this source's profile, or the call throws here rather than deriving
+     under whatever the metadata happened to carry. */
+  resolveCredentialProfile(CONSUMERS[metadata.secretSource].unlock, { persistedParams: metadata.params });
+  return unwrapDataKey(metadata, secret);
 }
 
 /** Changes the secret by rewrapping the same data key: fresh salt, fresh
@@ -179,10 +215,7 @@ async function wrap(
   params: Argon2Params,
   secretSource: JournalSecretSource
 ): Promise<KeystoreMetadata> {
-  const salt = randomSalt();
-  const wrappingKey = await deriveKey(secret, salt, params);
-  const { nonce, ciphertext } = await encrypt(wrappingKey, dataKey);
-  return { version: KEYSTORE_VERSION, kdf: 'argon2id', secretSource, params, salt, nonce, wrappedKey: ciphertext };
+  return { version: KEYSTORE_VERSION, secretSource, ...(await wrapDataKey(dataKey, secret, params)) };
 }
 
 /* --- the persisted form: JSON with base64 byte fields ------------------- */

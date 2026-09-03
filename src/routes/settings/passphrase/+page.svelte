@@ -16,12 +16,22 @@
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
 
   let current = $state('');
   let next = $state('');
   let confirmation = $state('');
   let error = $state('');
   let busy = $state(false);
+  /* Whether a recovery key already covers this journal (ADR-0054, ticket
+     sec-02). A changed passphrase rewraps the same data key, so an existing
+     recovery key keeps working untouched - there is nothing to regenerate
+     here and nothing to say about it. What is worth one line is the case
+     where there is none, offered once, at the moment somebody is already
+     thinking about the secret. */
+  refreshRecoveryKeyPresence();
+  let offering = $state(false);
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -41,6 +51,10 @@
     try {
       await changeJournalPassphrase(current, next);
       toast(m.pp_changed_toast());
+      if (!recoveryKeyPresence.exists) {
+        offering = true;
+        return;
+      }
       goto('/settings/security');
     } catch {
       error = m.pp_change_wrong_current();
@@ -53,6 +67,9 @@
 <div class="screen">
   <ScreenHeader title={m.pp_change_title()} back="/settings/access-mode" />
 
+  {#if offering}
+    <RecoveryKeyOffer variant="secret-changed" onDismiss={() => goto('/settings/security')} />
+  {:else}
   <div class="card">
     <p class="ob-text">{m.pp_change_body()}</p>
     <form class="stack-3" onsubmit={submit}>
@@ -101,4 +118,5 @@
       </button>
     </form>
   </div>
+{/if}
 </div>
