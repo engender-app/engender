@@ -14,6 +14,8 @@
      grid built for two photographs; two date fields squeezed into half of a
      390px screen is not the same thing, and the two screens have nothing
      else in common. */
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import {
@@ -95,6 +97,27 @@
       bMode = 'range';
       bEraId = '';
     }
+  });
+
+  /* A tryout or a procedure's "compare this stretch" link hands both sides
+     over as query parameters, the same way `/settings/eras`'s "start an
+     era here" hands a day over (settings/eras/+page.svelte). Consumed once
+     on arrival and then stripped from the URL, so navigating back into this
+     screen later - the tab bar, a bookmark - does not reopen the same two
+     sides every time. */
+  $effect(() => {
+    const aStartParam = page.url.searchParams.get('aStart');
+    const aEndParam = page.url.searchParams.get('aEnd');
+    const bStartParam = page.url.searchParams.get('bStart');
+    const bEndParam = page.url.searchParams.get('bEnd');
+    if (!aStartParam || !aEndParam || !bStartParam || !bEndParam) return;
+    aMode = 'range';
+    aStart = aStartParam;
+    aEnd = aEndParam;
+    bMode = 'range';
+    bStart = bStartParam;
+    bEnd = bEndParam;
+    void goto('/compare', { replaceState: true, noScroll: true, keepFocus: true });
   });
 
   function periodFromRange(start: string, end: string): Period | null {
