@@ -43,6 +43,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): roles run a
      flag's colours before its shades, so index 0 is the only one
@@ -291,6 +292,9 @@
       </div>
     {/snippet}
   </RecordSheet>
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="measurements" />
 
   <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>

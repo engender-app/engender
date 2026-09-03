@@ -309,6 +309,22 @@ export interface PreferenceValues {
   /** Whether ticking a roadmap goal prompts to record it as a milestone
       on the timeline (phase 5 deepening ticket 10, ADR-0045). */
   roadmapMilestoneSyncEnabled: boolean;
+  /** The areas whose finish offer has been answered no (phase 8 features
+      ticket 04, ADR-0045). `areaGroups.ts`'s keys, one per group.
+
+      An offer that keeps coming back is a nag, and the rule this ticket
+      holds itself to is that it asks once per area for the life of the
+      journal. That needs the no kept somewhere, and it cannot be a column:
+      `area_state` is deepening ticket 13's and holds what the person said
+      about an area, while this holds what the app has already asked. A list
+      of keys rather than a boolean per area, so a group added later needs no
+      migration and no entry here.
+
+      Portable, like `cycleTrackingEnabled` and for the same reason: it says
+      something about this person and their journal rather than about this
+      installation, and a restore that started asking again about eight areas
+      would be the app forgetting an answer somebody gave. */
+  areaFinishOfferDeclined: string[];
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -382,7 +398,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lastBackupAt: null,
   backupNoticeDismissed: false,
   lastVerifiedAt: null,
-  roadmapMilestoneSyncEnabled: true
+  roadmapMilestoneSyncEnabled: true,
+  areaFinishOfferDeclined: []
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -404,7 +421,8 @@ export const PORTABLE_KEYS = [
   'streakGoalTargetDays',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
-  'cycleTrackingEnabled'
+  'cycleTrackingEnabled',
+  'areaFinishOfferDeclined'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */

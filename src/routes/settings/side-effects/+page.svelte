@@ -33,6 +33,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   const SEVERITIES = [1, 2, 3, 4, 5];
 
@@ -155,6 +156,9 @@
       </ListCard>
     </div>
   {/if}
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="side-effects" />
 
   <RecordSheet
     {record}

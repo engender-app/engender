@@ -74,6 +74,7 @@
   const SECTION_ROLE = { chart: 0, sessions: 1 };
   import Switch from '$lib/components/Switch.svelte';
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   const WINDOW_DAYS = 90;
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -459,6 +460,9 @@
       </ChartCard>
     </div>
   {/if}
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="wear" />
 
   <RecordSheet
     {record}
