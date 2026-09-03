@@ -47,6 +47,12 @@
     hasRecoveryKey = found;
   });
   let usingRecoveryKey = $state(false);
+  /* "There is no way to bring it back" is true of the Keystore alias and
+     false about the journal once a recovery key exists, and this screen is
+     the one that says it hardest. One body per state. */
+  let invalidatedBody = $derived(
+    hasRecoveryKey ? m.ak_invalidated_body_recoverable() : m.ak_invalidated_body()
+  );
   let consentOpen = $state(false);
 
   let refusal = $derived(bootState.androidKey?.kind === 'refused' ? bootState.androidKey.authentication : null);
@@ -125,9 +131,8 @@
        where one exists the way back goes first and the reset stops being the
        only thing on offer. -->
   <GateScreen icon="alert" tone="alert" title={m.ak_invalidated_title()}>
-    <p class={gateBodyClass(m.ak_invalidated_body())} data-key-invalidated>{m.ak_invalidated_body()}</p>
+    <p class={gateBodyClass(invalidatedBody)} data-key-invalidated>{invalidatedBody}</p>
     {#if hasRecoveryKey}
-      <p class="gate-body is-small" data-key-invalidated-recovery>{m.dbr_recovery_offer()}</p>
       <div class="gate-actions">
         <button class="btn btn-primary" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
           <span>{m.rke_open()}</span>
