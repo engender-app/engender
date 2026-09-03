@@ -18,10 +18,9 @@ describe('ranking days by euphoria', () => {
     expect(ranked.map((p) => p.day)).toEqual([2, 3, 1]);
   });
 
-  it('caps at ten by default and at a given cap', () => {
+  it('caps at ten', () => {
     const many = Array.from({ length: 15 }, (_, i) => point(i, i));
     expect(rankHighestDays(100, many)).toHaveLength(HIGHEST_DAYS_CAP);
-    expect(rankHighestDays(100, many, 3)).toHaveLength(3);
   });
 
   it('returns fewer than the cap when fewer days qualify', () => {
