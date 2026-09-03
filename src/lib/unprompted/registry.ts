@@ -57,6 +57,7 @@
    tier, where no $lib alias exists - the one svelte-kit-ism the tests can't
    follow (see vitest.config.ts). */
 import { m } from '../paraglide/messages';
+import { areaQuiet, type AreaStates, type HideableArea } from '../data/areaState';
 import type { PreferenceKey, PreferenceValues } from '../data/prefs/catalogue';
 
 /** A preference that is a plain on/off, so a view's switch wiring can index
@@ -107,6 +108,24 @@ export interface UnpromptedRow {
       on the other are the same kind, and calling it two things would be the
       "two registries" this file exists not to be. */
   title: () => string;
+  /** Which area this kind talks about, or null where it talks about none
+      (phase 8 features ticket 04, ADR-0052).
+
+      An area that is hidden or finished goes quiet, and this is the field
+      that says what "for that area" means - one declaration per kind, on the
+      list that already holds every kind, rather than a second list of tiles
+      and notifications kept somewhere else and silently missing the next one.
+      `unpromptedQuiet` below is what reads it.
+
+      Required, and nullable rather than optional, so a kind added here has to
+      decide. Null is a real answer for most of them: a letter unlocking, a
+      journaling pause, an export that failed and the two retrospectives are
+      about the journal as a whole, and `entries` is not finishable.
+
+      A row's `prefKey` is untouched by any of this. Whether a kind of prompt
+      talks is a different question from whether an area is on, and this is a
+      switch above the preferences rather than a replacement for them. */
+  area: HideableArea | null;
   /** Present when this kind has a row on the surfaces view
       (`/settings/live-tiles`), carrying the preference that switch writes
       and the subtitle saying what it puts in front of you. Absent is "shows
@@ -138,66 +157,88 @@ export interface UnpromptedRow {
 const ROWS = [
   {
     key: 'wear-timer',
+    area: 'wearSessions',
     title: () => m.tile_wear_title(),
     surface: { subtitle: () => m.tile_wear_sub(), prefKey: 'wearTimerEnabled' }
   },
   {
     key: 'dose-panel',
+    // a dose is an event inside a regimen episode, and an episode carries its own end day.
+    area: null,
     title: () => m.tile_dose_title(),
     surface: { subtitle: () => m.tile_dose_sub(), prefKey: 'dosePanelEnabled' }
   },
   {
     key: 'ready-letter',
+    // a letter is sealed and then unlocked, which is its whole lifecycle.
+    area: null,
     title: () => m.tile_letter_title(),
     surface: { subtitle: () => m.tile_letter_sub(), prefKey: 'readyLetterEnabled' }
   },
   {
     key: 'surgery-countdown',
+    // a procedure has its own date and its own recovery window.
+    area: null,
     title: () => m.tile_surgery_title(),
     surface: { subtitle: () => m.tile_surgery_sub(), prefKey: 'surgeryCountdownEnabled' }
   },
   {
     key: 'safe-space-nudge',
+    // a crisis surface, and being done needing it is not a thing to record.
+    area: null,
     title: () => m.tile_safe_space_title(),
     surface: { subtitle: () => m.tile_safe_space_sub(), prefKey: 'safeSpaceNudgeEnabled' }
   },
   {
     key: 'stock-notice',
+    // a running count of what is in the drawer, not a series to stop adding to.
+    area: null,
     title: () => m.tile_stock_title(),
     surface: { subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' }
   },
   {
     key: 'active-tryout-tile',
+    // a tryout carries its own end day.
+    area: null,
     title: () => m.tile_active_tryout_title(),
     surface: { subtitle: () => m.tile_active_tryout_sub(), prefKey: 'activeTryoutTileEnabled' }
   },
   {
     key: 'patch-schedule-tile',
+    // the dose log again, for the same reason as the dose panel.
+    area: null,
     title: () => m.tile_patch_schedule_title(),
     surface: { subtitle: () => m.tile_patch_schedule_sub(), prefKey: 'patchScheduleTileEnabled' }
   },
   {
     key: 'voice-benchmark-nudge',
+    area: 'voiceBenchmarks',
     title: () => m.tile_voice_benchmark_title(),
     surface: { subtitle: () => m.tile_voice_benchmark_sub(), prefKey: 'voiceBenchmarkNudgeEnabled' }
   },
   {
     key: 'pause-active-banner',
+    // a journaling pause already carries the day it started and the day it ended.
+    area: null,
     title: () => m.tile_pause_active_title(),
     surface: { subtitle: () => m.tile_pause_active_sub(), prefKey: 'pauseActiveBannerEnabled' }
   },
   {
     key: 'hair-removal-recovery',
+    area: 'hairRemovalSessions',
     title: () => m.tile_hair_removal_title(),
     surface: { subtitle: () => m.tile_hair_removal_sub(), prefKey: 'hairRemovalRecoveryEnabled' }
   },
   {
     key: 'measurements-nudge',
+    area: 'measurements',
     title: () => m.tile_measurements_title(),
     surface: { subtitle: () => m.tile_measurements_sub(), prefKey: 'measurementsNudgeEnabled' }
   },
   {
     key: 'wrapped',
+    // the journal as a whole, and `entries` is not finishable.
+    area: null,
     title: () => m.wrapped(),
     surface: { subtitle: () => m.wrapped_settings_sub(), prefKey: 'wrappedEnabled' },
     notify: {
@@ -209,6 +250,8 @@ const ROWS = [
   },
   {
     key: 'on-this-day',
+    // the journal as a whole, for the same reason.
+    area: null,
     title: () => m.on_this_day(),
     surface: { subtitle: () => m.on_this_day_settings_sub(), prefKey: 'onThisDayEnabled' },
     notify: {
@@ -220,6 +263,8 @@ const ROWS = [
   },
   {
     key: 'reminders',
+    // an intention for a future day, switched off one reminder at a time.
+    area: null,
     title: () => m.reminders(),
     notify: {
       subtitle: () => m.notif_reminders_sub(),
@@ -230,6 +275,8 @@ const ROWS = [
   },
   {
     key: 'check-in',
+    // the journal as a whole, for the same reason wrapped is.
+    area: null,
     title: () => m.checkin_title(),
     notify: {
       subtitle: () => m.notif_check_in_sub(),
@@ -240,6 +287,7 @@ const ROWS = [
   },
   {
     key: 'wear-elapsed',
+    area: 'wearSessions',
     title: () => m.notif_wear_elapsed_title(),
     notify: {
       subtitle: () => m.notif_wear_elapsed_sub(),
@@ -250,6 +298,8 @@ const ROWS = [
   },
   {
     key: 'export-failure',
+    // a failure of this device's own bookkeeping, about no area at all.
+    area: null,
     title: () => m.notif_export_failure_title(),
     notify: {
       subtitle: () => m.notif_export_failure_sub(),
@@ -278,6 +328,29 @@ export type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
    to `UnpromptedRow` and this line refuses it. Demonstrated by deleting
    `channel: 'reminders'` from the `reminders` row. */
 export const UNPROMPTED_ROWS: readonly UnpromptedRow[] = ROWS;
+
+/** Every kind, addressable by key - what the cascade below and the two views
+    read a row through when they hold a kind rather than a list. */
+const ROW_OF = Object.fromEntries(UNPROMPTED_ROWS.map((row) => [row.key, row])) as Record<
+  UnpromptedKind,
+  UnpromptedRow
+>;
+
+/** Whether a kind should stay silent because the area it talks about is
+    hidden or finished (phase 8 features ticket 04, ADR-0052).
+
+    The cascade, in one line and read from the registry itself. A tile, a
+    notification and anything else that grows a row here all pass through this
+    rather than each asking `areaQuiet` about an area it named for itself -
+    which is what would leave the next kind out of the cascade silently.
+
+    Above the preferences, not instead of them: a caller still asks its own
+    `prefKey`, and this only takes away the areas that are off. A kind about
+    no area is never quiet here. */
+export function unpromptedQuiet(kind: UnpromptedKind, states: AreaStates, todayEpochDay: number): boolean {
+  const area = ROW_OF[kind].area;
+  return area !== null && areaQuiet(area, states, todayEpochDay);
+}
 
 /** A row as the view drawing it sees one: the half that view owns is no
     longer optional. Without these two, both screens read `row.surface!` and

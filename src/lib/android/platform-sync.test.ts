@@ -30,6 +30,10 @@ const TEXTS = {
 const ALL_ON = {
   remindersEnabled: true,
   wearElapsedEnabled: true,
+  /* No area is hidden or finished (phase 8 features ticket 04) - the tests
+     that are about the cascade say so themselves. */
+  areaStates: {},
+  todayEpochDay: 20309,
   quietHours: { enabled: false, start: '22:00', end: '07:00' }
 };
 
@@ -153,10 +157,13 @@ describe('assembleReminderSyncPayload', () => {
 describe('schedulableReminders (phase 6 ticket 04)', () => {
   const WEAR = { ...REMINDER, id: 'r-2', title: 'Binder', autoSource: 'wear:session-1' };
   const STOCK = { ...REMINDER, id: 'r-3', title: 'Estradiol', autoSource: 'stock:estradiol' };
+  /** No area hidden or finished, which is what every case below but the last
+      two is about. */
+  const GATES = { areaStates: {}, todayEpochDay: 20309 };
 
   test('schedules everything while both switches are on', () => {
     expect(
-      schedulableReminders([REMINDER, WEAR, STOCK], { remindersEnabled: true, wearElapsedEnabled: true })
+      schedulableReminders([REMINDER, WEAR, STOCK], { ...GATES, remindersEnabled: true, wearElapsedEnabled: true })
     ).toEqual([REMINDER, WEAR, STOCK]);
   });
 
@@ -164,13 +171,13 @@ describe('schedulableReminders (phase 6 ticket 04)', () => {
     /* Off is final rather than a snooze, and it is the whole kind: a wear
        prompt is a reminder row, so nothing survives the outer switch. */
     expect(
-      schedulableReminders([REMINDER, WEAR, STOCK], { remindersEnabled: false, wearElapsedEnabled: true })
+      schedulableReminders([REMINDER, WEAR, STOCK], { ...GATES, remindersEnabled: false, wearElapsedEnabled: true })
     ).toEqual([]);
   });
 
   test('drops only the wear prompts when the wear switch alone is off', () => {
     expect(
-      schedulableReminders([REMINDER, WEAR, STOCK], { remindersEnabled: true, wearElapsedEnabled: false })
+      schedulableReminders([REMINDER, WEAR, STOCK], { ...GATES, remindersEnabled: true, wearElapsedEnabled: false })
     ).toEqual([REMINDER, STOCK]);
   });
 
@@ -179,8 +186,32 @@ describe('schedulableReminders (phase 6 ticket 04)', () => {
        silences reminders for a month keeps every rule exactly as they wrote
        it. */
     const rows = [REMINDER, WEAR];
-    schedulableReminders(rows, { remindersEnabled: false, wearElapsedEnabled: false });
+    schedulableReminders(rows, { ...GATES, remindersEnabled: false, wearElapsedEnabled: false });
     expect(rows).toEqual([REMINDER, WEAR]);
+  });
+
+  /* Phase 8 features ticket 04: finishing the wear log silences its prompts
+     the same way the switch does, and takes nothing else with it. */
+  test('drops the wear prompts once the wear log is finished, switch on or not', () => {
+    const finished = {
+      areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20000 } },
+      todayEpochDay: 20309,
+      remindersEnabled: true,
+      wearElapsedEnabled: true
+    };
+
+    expect(schedulableReminders([REMINDER, WEAR, STOCK], finished)).toEqual([REMINDER, STOCK]);
+  });
+
+  test('keeps them while the finish day is still ahead', () => {
+    const notYet = {
+      areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20400 } },
+      todayEpochDay: 20309,
+      remindersEnabled: true,
+      wearElapsedEnabled: true
+    };
+
+    expect(schedulableReminders([REMINDER, WEAR, STOCK], notYet)).toEqual([REMINDER, WEAR, STOCK]);
   });
 });
 
@@ -293,7 +324,8 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       reminders: { getReminders: vi.fn().mockResolvedValue([REMINDER]) },
       entries: { recentDays: vi.fn().mockResolvedValue([{ epochDay: 20309 }]) },
       stock: { reconcileRunOutReminders: vi.fn().mockResolvedValue(undefined) },
-      journalingPauses: { getPauses: vi.fn().mockResolvedValue([]) }
+      journalingPauses: { getPauses: vi.fn().mockResolvedValue([]) },
+      areaStates: { getAreaStates: vi.fn().mockResolvedValue({}) }
     },
     onTablesWritten: vi.fn(),
     androidReminders: {

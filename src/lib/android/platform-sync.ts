@@ -36,6 +36,8 @@ import type { Reminder } from '$lib/data/types';
    mocked out. */
 import { isPausedOn } from '../data/journalingPause';
 import { isWearAutoSource } from '../data/autoSource';
+import type { AreaStates } from '../data/areaState';
+import { unpromptedQuiet } from '../unprompted/registry';
 import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
@@ -70,6 +72,11 @@ export interface PlatformSyncDeps {
         the check-in prompt goes quiet the same way a streak surface does,
         without touching the `checkInEnabled` preference itself. */
     journalingPauses: { getPauses(): Promise<Array<{ startEpochDay: number; endEpochDay: number | null }>> };
+    /** Which areas are hidden or finished (phase 8 features ticket 04):
+        finishing the wear log stops its elapsed prompts the same way the
+        preference does, and for the same reason the pause above is read
+        here rather than written into a preference. */
+    areaStates: { getAreaStates(): Promise<AreaStates> };
   };
   onTablesWritten: (listener: (tables: string[]) => void) => void;
   androidReminders: {
@@ -126,13 +133,26 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
 
     A wear session's elapsed prompt is an ordinary Reminder row on a `wear:`
     marker (CONTEXT.md), which is why `wearElapsedEnabled` is a filter over
-    the same list rather than a producer of its own. */
+    the same list rather than a producer of its own.
+
+    Finishing the wear log takes those prompts with it (phase 8 features
+    ticket 04). Applied here rather than at the call site for the reason
+    above: this is where "off" is made to mean off for the native side too,
+    and an area that has gone quiet is off. Which area the prompt belongs to
+    is the unprompted registry's answer, not this file's. */
 export function schedulableReminders(
   reminders: Reminder[],
-  gates: { remindersEnabled: boolean; wearElapsedEnabled: boolean }
+  gates: {
+    remindersEnabled: boolean;
+    wearElapsedEnabled: boolean;
+    areaStates: AreaStates;
+    todayEpochDay: number;
+  }
 ): Reminder[] {
   if (!gates.remindersEnabled) return [];
-  if (gates.wearElapsedEnabled) return reminders;
+  const wearElapsed =
+    gates.wearElapsedEnabled && !unpromptedQuiet('wear-elapsed', gates.areaStates, gates.todayEpochDay);
+  if (wearElapsed) return reminders;
   return reminders.filter((reminder) => !isWearAutoSource(reminder.autoSource));
 }
 
@@ -156,6 +176,10 @@ export function assembleReminderSyncPayload(input: {
   hideNotificationTitles: boolean;
   remindersEnabled: boolean;
   wearElapsedEnabled: boolean;
+  /** Which areas are hidden or finished, and the day to read a finish
+      against (phase 8 features ticket 04). */
+  areaStates: AreaStates;
+  todayEpochDay: number;
   quietHours: QuietHours;
   /** Whether a journaling pause covers today (phase 5 ticket 21). Gated
       here, not by clearing the `checkInEnabled` preference, so the prompt
@@ -186,10 +210,11 @@ const syncReminderSchedules = coalescing(
   async () => {
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
-    const [reminders, recentEntries, pauses] = await Promise.all([
+    const [reminders, recentEntries, pauses, areaStates] = await Promise.all([
       deps.journal.reminders.getReminders(),
       deps.journal.entries.recentDays(1),
-      deps.journal.journalingPauses.getPauses()
+      deps.journal.journalingPauses.getPauses(),
+      deps.journal.areaStates.getAreaStates()
     ]);
     await deps.androidReminders.sync(
       assembleReminderSyncPayload({
@@ -202,6 +227,8 @@ const syncReminderSchedules = coalescing(
         hideNotificationTitles: deps.prefs.hideNotificationTitles,
         remindersEnabled: deps.prefs.remindersEnabled,
         wearElapsedEnabled: deps.prefs.wearElapsedEnabled,
+        areaStates,
+        todayEpochDay: deps.todayEpochDay(),
         quietHours: quietHoursOf(deps.prefs),
         pausedToday: isPausedOn(pauses, deps.todayEpochDay()),
         texts: deps.reminderTexts()
