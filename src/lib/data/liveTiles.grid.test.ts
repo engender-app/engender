@@ -271,7 +271,7 @@ describe('what each tile says', () => {
   it('the wear timer counts the running session and offers to stop it', () => {
     const tile = tileNamed('wear-timer')!;
     expect(tile.tileKey).toBe('wear-timer');
-    expect(tile.attrs).toEqual({ 'data-wear-running-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-wear-running-tile': true });
     expect(tile.href).toBe('/settings/wear');
     // 1h 2m 3s, off the one clock the whole grid reads.
     expect(tile.value).toBe(m.wear_session_duration_hms({ hours: '1', minutes: '2', seconds: '3' }));
@@ -283,7 +283,7 @@ describe('what each tile says', () => {
   it('the dose panel names the active episode and links the log sheet', () => {
     const tile = tileNamed('dose-panel')!;
     expect(tile.tileKey).toBe('dose-panel');
-    expect(tile.attrs).toEqual({ 'data-dose-panel-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-dose-panel-tile': true });
     expect(tile.value).toBe('Estradiol patch');
     expect(tile.note).toBeUndefined();
     expect(tile.href).toBe('/doses');
@@ -293,7 +293,7 @@ describe('what each tile says', () => {
   it('the surgery countdown reads the nearest procedure and carries no control', () => {
     const tile = tileNamed('surgery-countdown')!;
     expect(tile.tileKey).toBe('surgery-countdown');
-    expect(tile.attrs).toEqual({ 'data-surgery-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-surgery-tile': true });
     expect(tile.value).toBe(m.surgery_day_upcoming({ days: m.n_days({ n: 10 }) }));
     expect(tile.note).toBe('Vaginoplasty');
     expect(tile.href).toBe('/settings/surgery');
@@ -305,7 +305,7 @@ describe('what each tile says', () => {
     const actions = { dismissSafeSpace: vi.fn() };
     const tile = tileNamed('safe-space-nudge', { actions })!;
     expect(tile.tileKey).toBe('safe-space-nudge');
-    expect(tile.attrs).toEqual({ 'data-safe-space-nudge-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-safe-space-nudge-tile': true });
     expect(tile.href).toBe('/doubt');
     tile.action!.onclick!(CLICK);
     expect(actions.dismissSafeSpace).toHaveBeenCalledWith(42);
@@ -319,7 +319,7 @@ describe('what each tile says', () => {
     const actions = { openLetterDismiss: vi.fn() };
     const tile = tileNamed('ready-letter', { actions })!;
     expect(tile.tileKey).toBe('ready-letter');
-    expect(tile.attrs).toEqual({ 'data-letter-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-letter-tile': true });
     expect(tile.href).toBe('/settings/letters?read=letter-1');
     expect(tile.value).toBe(`full:${TODAY - 40}`);
     // Two unread, so the note counts the other one.
@@ -333,7 +333,7 @@ describe('what each tile says', () => {
   it('the active tryout offers a felt-sense entry against the tryout it names', () => {
     const tile = tileNamed('active-tryout-tile')!;
     expect(tile.tileKey).toBe('active-tryout');
-    expect(tile.attrs).toEqual({ 'data-active-tryout-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-active-tryout-tile': true });
     expect(tile.value).toBe('Alicja');
     expect(tile.note).toBe(m.tile_active_tryout_note({ days: '10' }));
     expect(tile.href).toBe('/settings/tryouts/tryout-1');
@@ -343,7 +343,7 @@ describe('what each tile says', () => {
   it('the patch schedule names the dose that is due', () => {
     const tile = tileNamed('patch-schedule-tile')!;
     expect(tile.tileKey).toBe('patch-schedule');
-    expect(tile.attrs).toEqual({ 'data-patch-schedule-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-patch-schedule-tile': true });
     expect(tile.value).toBe('Estradiol patch');
     expect(tile.note).toBe('100 mcg · patch');
     expect(tile.action?.href).toBe('/doses?add=1');
@@ -352,7 +352,7 @@ describe('what each tile says', () => {
   it('the voice benchmark nudge counts the days and links the recorder', () => {
     const tile = tileNamed('voice-benchmark-nudge')!;
     expect(tile.tileKey).toBe('voice-benchmark');
-    expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': true });
     expect(tile.note).toBe(m.tile_voice_benchmark_days_ago({ days: '20' }));
     expect(tile.href).toBe('/settings/voice');
     expect(tile.action?.href).toBe('/settings/voice/record');
@@ -362,7 +362,7 @@ describe('what each tile says', () => {
     const actions = { resumePause: vi.fn() };
     const tile = tileNamed('pause-active-banner', { actions })!;
     expect(tile.tileKey).toBe('pause-active');
-    expect(tile.attrs).toEqual({ 'data-pause-active-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-pause-active-tile': true });
     expect(tile.note).toBe(m.tile_pause_until_date({ date: `short:${TODAY + 2}` }));
     expect(tile.href).toBe('/settings/journaling-pause');
     tile.action!.onclick!(CLICK);
@@ -379,7 +379,7 @@ describe('what each tile says', () => {
   it('the hair removal tile names the area and carries no action', () => {
     const tile = tileNamed('hair-removal-recovery')!;
     expect(tile.tileKey).toBe('hair-removal-recovery');
-    expect(tile.attrs).toEqual({ 'data-hair-removal-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-hair-removal-tile': true });
     expect(tile.value).toBe('area:upper_lip');
     expect(tile.href).toBe('/settings/hair-removal');
     expect(tile.action).toBeUndefined();
@@ -389,7 +389,7 @@ describe('what each tile says', () => {
   it('the measurements nudge counts the days since the last one', () => {
     const tile = tileNamed('measurements-nudge')!;
     expect(tile.tileKey).toBe('measurements-nudge');
-    expect(tile.attrs).toEqual({ 'data-measurements-tile': '' });
+    expect(tile.attrs).toEqual({ 'data-measurements-tile': true });
     expect(tile.note).toBe(m.tile_measurements_note({ days: '40' }));
     expect(tile.href).toBe('/settings/measurements');
     expect(tile.action?.href).toBe('/settings/measurements');

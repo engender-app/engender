@@ -367,8 +367,11 @@ export interface HomeTile {
       tiles were written; they are kept as they are because this ticket's
       acceptance is that nothing about the rendered result changes. */
   tileKey: string;
-  /** This tile's own walkthrough handle, which predates `data-live-tile`. */
-  attrs: Record<string, string>;
+  /** This tile's own walkthrough handle, which predates `data-live-tile`.
+      `true` rather than `''` because that is what a valueless attribute in
+      markup means, and it is what the eleven tiles rendered before they
+      moved here. */
+  attrs: Record<string, true>;
   title: string;
   value?: string;
   note?: string;
@@ -464,7 +467,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'wear-timer',
         tileKey: 'wear-timer',
-        attrs: { 'data-wear-running-tile': '' },
+        attrs: { 'data-wear-running-tile': true },
         title: m.tile_wear_title(),
         value: m.wear_session_duration_hms({
           hours: String(elapsed.hours),
@@ -494,7 +497,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'dose-panel',
         tileKey: 'dose-panel',
-        attrs: { 'data-dose-panel-tile': '' },
+        attrs: { 'data-dose-panel-tile': true },
         title: m.tile_dose_title(),
         value: active[0].drug,
         href: '/doses',
@@ -524,7 +527,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'surgery-countdown',
         tileKey: 'surgery-countdown',
-        attrs: { 'data-surgery-tile': '' },
+        attrs: { 'data-surgery-tile': true },
         title: m.tile_surgery_title(),
         value,
         note: procedure.name,
@@ -544,7 +547,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           return {
             key: 'safe-space-nudge',
             tileKey: 'safe-space-nudge',
-            attrs: { 'data-safe-space-nudge-tile': '' },
+            attrs: { 'data-safe-space-nudge-tile': true },
             title: m.safe_space_title(),
             note: m.tile_safe_space_nudge_sub(),
             href: '/doubt',
@@ -573,7 +576,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'ready-letter',
         tileKey: 'ready-letter',
-        attrs: { 'data-letter-tile': '' },
+        attrs: { 'data-letter-tile': true },
         title: m.tile_letter_title(),
         value: format.fullDay(letter.epochDay),
         note: others > 0 ? m.tile_letter_more({ count: String(others) }) : m.tile_letter_single_note(),
@@ -603,7 +606,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'active-tryout-tile',
         tileKey: 'active-tryout',
-        attrs: { 'data-active-tryout-tile': '' },
+        attrs: { 'data-active-tryout-tile': true },
         title: m.tile_active_tryout_title(),
         value: qualifying.tryout.label,
         note: m.tile_active_tryout_note({ days: String(qualifying.daysElapsed) }),
@@ -632,7 +635,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'patch-schedule-tile',
         tileKey: 'patch-schedule',
-        attrs: { 'data-patch-schedule-tile': '' },
+        attrs: { 'data-patch-schedule-tile': true },
         title: m.tile_patch_schedule_title(),
         value: qualifying.episode.drug,
         note: `${qualifying.doseAmount} · ${qualifying.route}`,
@@ -658,7 +661,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'voice-benchmark-nudge',
         tileKey: 'voice-benchmark',
-        attrs: { 'data-voice-benchmark-tile': '' },
+        attrs: { 'data-voice-benchmark-tile': true },
         title: m.tile_voice_benchmark_title(),
         value: m.tile_voice_benchmark_action(),
         note: m.tile_voice_benchmark_days_ago({ days: String(qualifying.daysElapsed) }),
@@ -685,7 +688,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'pause-active-banner',
         tileKey: 'pause-active',
-        attrs: { 'data-pause-active-tile': '' },
+        attrs: { 'data-pause-active-tile': true },
         title: m.tile_pause_active_title(),
         value: m.streak_protected(),
         note:
@@ -714,7 +717,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'hair-removal-recovery',
         tileKey: 'hair-removal-recovery',
-        attrs: { 'data-hair-removal-tile': '' },
+        attrs: { 'data-hair-removal-tile': true },
         title: m.tile_hair_removal_title(),
         value: format.hairRemovalArea(qualifying.session.area),
         note: m.tile_hair_removal_guidance(),
@@ -735,7 +738,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       return {
         key: 'measurements-nudge',
         tileKey: 'measurements-nudge',
-        attrs: { 'data-measurements-tile': '' },
+        attrs: { 'data-measurements-tile': true },
         title: m.tile_measurements_title(),
         value: m.tile_measurements_prompt(),
         note: m.tile_measurements_note({ days: String(qualifying.daysSince) }),
