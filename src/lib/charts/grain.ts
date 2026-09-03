@@ -18,6 +18,7 @@
    arithmetic and takes today's clock from nobody: a day arrives as an epoch
    day and a bucket comes back as one. */
 
+import type { PatternPoint } from '../data/dayKeying';
 import { localDateFromEpochDay, epochDayFromLocalDate, weekdayOfEpochDay } from '../data/epochDay';
 
 export type Grain = 'day' | 'week' | 'month';
@@ -141,4 +142,99 @@ export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
   return [...new Set([...first.keys(), ...second.keys()])]
     .sort((p, q) => p - q)
     .map((x) => ({ x, a: first.get(x) ?? null, b: second.get(x) ?? null }));
+}
+
+/** How coarse a **re-keyed** axis draws (phase 8 features ticket 16).
+
+    `chooseGrain` and `bucketByGrain` above answer this for a calendar axis
+    and cannot answer it here: a seven-day calendar bucket spans seven
+    different positions on a re-keyed axis, so folding by week would mix
+    day 3 of one interval with day 3 of the next but also with days 4
+    through 9. A re-keyed axis has to fold by position instead.
+
+    It needs folding for the same reason the calendar axis does. A repeating
+    axis is usually safe on its own - an injection interval is 14 to 28
+    positions - but an anchored axis over several years around a surgery is
+    upwards of a thousand, and `MAX_POSITIONS` is what a card can draw
+    without the marks reading as one smear. */
+export interface FoldedPositions {
+  /** How many positions each bucket covers. 1 when the span already fit,
+      in which case the points come back untouched. */
+  width: number;
+  /** The buckets, lowest position first, each read back at the position it
+      starts on. */
+  points: PatternPoint[];
+}
+
+/** The first position of the bucket `position` falls in, at `width`.
+
+    Laid off zero rather than off the lowest position in the series, which
+    matters on an anchored axis and nowhere else: zero is the day the
+    surgery happened, and a bucket that straddled it would average a day
+    before the operation together with a day after it and draw the result
+    as one mark. Laying the buckets off zero makes that impossible by
+    construction rather than by a caller remembering to check. */
+const positionBucket = (position: number, width: number) => Math.floor(position / width) * width;
+
+/** The narrowest `width` at which `points` draw as at most `maxPositions`
+    buckets.
+
+    Read off the span rather than off how many positions carried a value,
+    the same rule `chooseGrain` follows: a gap in the middle of a recovery
+    is a gap, and closing it up would space the days either side of it as
+    though they were consecutive.
+
+    Starts from the width the span alone implies and widens from there,
+    because laying the buckets off zero can cost one bucket more than the
+    span predicts - a series running 2 to 7 spans 6 positions but crosses
+    three zero-laid buckets of 3. Two iterations at the most in practice,
+    and it keeps `MAX_POSITIONS` an exact ceiling rather than an
+    approximate one. */
+function choosePositionWidth(points: readonly PatternPoint[], maxPositions: number): number {
+  const positions = points.map((p) => p.position);
+  const lowest = Math.min(...positions);
+  const highest = Math.max(...positions);
+  let width = Math.max(1, Math.ceil((highest - lowest + 1) / maxPositions));
+  while (positionBucket(highest, width) / width - positionBucket(lowest, width) / width + 1 > maxPositions) {
+    width += 1;
+  }
+  return width;
+}
+
+/** `points` folded until they fit the card, and the width they were folded
+    at, in one call - so no caller can label at one width and bucket at
+    another.
+
+    A bucket is weighted by the calendar days behind each position rather
+    than averaging the positions evenly, because on a repeating axis one
+    position can carry five days and its neighbour three. Its `count` is
+    those days summed, so the reading stays "how many days said this" all
+    the way through the fold.
+
+    Empty buckets are absent rather than zero, the same rule
+    `bucketByGrain` holds: "said nothing" is not "said none". */
+export function foldPositions(
+  points: readonly PatternPoint[],
+  maxPositions: number = MAX_POSITIONS
+): FoldedPositions {
+  if (points.length === 0) return { width: 1, points: [] };
+
+  const width = choosePositionWidth(points, maxPositions);
+  if (width === 1) return { width, points: [...points] };
+
+  const buckets = new Map<number, { total: number; days: number }>();
+  for (const point of points) {
+    const start = positionBucket(point.position, width);
+    const bucket = buckets.get(start) ?? { total: 0, days: 0 };
+    bucket.total += point.value * point.count;
+    bucket.days += point.count;
+    buckets.set(start, bucket);
+  }
+
+  return {
+    width,
+    points: [...buckets.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([position, bucket]) => ({ position, value: bucket.total / bucket.days, count: bucket.days }))
+  };
 }
