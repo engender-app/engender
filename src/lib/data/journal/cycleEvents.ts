@@ -1,17 +1,16 @@
 /* The cycle event area (phase 5 ticket 03, CONTEXT: "Cycle event"). A cycle
    event is not an Entry: no mood, dimension values, tags or note, and no
    regimen-episode reference - it has to work whether or not a regimen
-   episode exists, the same reasoning sideEffects.ts gives. */
+   episode exists, the same reasoning sideEffects.ts gives.
+
+   Flat, so its three writes come from flat-area.ts and only the two reads
+   are its own. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { CycleEvent, CycleEventKind } from '../types';
-import { assertChanged, mintUuid, now } from './support';
+import type { CycleEvent } from '../types';
+import { flatArea, type FlatInput } from './flat-area';
 
-export interface CycleEventInput {
-  id?: string;
-  kind: CycleEventKind;
-  epochDay: number;
-}
+export type CycleEventInput = FlatInput<CycleEvent>;
 
 export interface CycleEventsArea {
   getCycleEvents(): Promise<CycleEvent[]>;
@@ -22,54 +21,19 @@ export interface CycleEventsArea {
   deleteCycleEvent(id: string): Promise<void>;
 }
 
-type CycleEventRow = { uuid: string; kind: CycleEventKind; epoch_day: number };
-
-const toCycleEvent = (row: CycleEventRow): CycleEvent => ({
-  id: row.uuid,
-  kind: row.kind,
-  epochDay: row.epoch_day
-});
-
 export function makeCycleEventsArea(driver: SqliteDriver): CycleEventsArea {
+  const events = flatArea<CycleEvent>(driver, {
+    table: 'cycle_event',
+    columns: { kind: 'kind', epochDay: 'epoch_day' }
+  });
+
   return {
-    async getCycleEvents() {
-      const rows = await driver.query<CycleEventRow>(
-        'SELECT uuid, kind, epoch_day FROM cycle_event ORDER BY epoch_day, id'
-      );
-      return rows.map(toCycleEvent);
-    },
+    getCycleEvents: () => events.read('ORDER BY epoch_day, id'),
 
-    async getCycleEventsInRange(fromEpochDay, toEpochDay) {
-      const rows = await driver.query<CycleEventRow>(
-        'SELECT uuid, kind, epoch_day FROM cycle_event WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id',
-        [fromEpochDay, toEpochDay]
-      );
-      return rows.map(toCycleEvent);
-    },
+    getCycleEventsInRange: (fromEpochDay, toEpochDay) =>
+      events.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
 
-    async upsertCycleEvent(input) {
-      if (input.id) {
-        const result = await driver.run('UPDATE cycle_event SET kind = ?, epoch_day = ?, updated_at = ? WHERE uuid = ?', [
-          input.kind,
-          input.epochDay,
-          now(),
-          input.id
-        ]);
-        assertChanged(result, `cycle event: ${input.id}`);
-        return input.id;
-      }
-      const uuid = mintUuid();
-      await driver.run('INSERT INTO cycle_event (uuid, kind, epoch_day, updated_at) VALUES (?, ?, ?, ?)', [
-        uuid,
-        input.kind,
-        input.epochDay,
-        now()
-      ]);
-      return uuid;
-    },
-
-    async deleteCycleEvent(id) {
-      await driver.run('DELETE FROM cycle_event WHERE uuid = ?', [id]);
-    }
+    upsertCycleEvent: events.upsert,
+    deleteCycleEvent: events.delete
   };
 }

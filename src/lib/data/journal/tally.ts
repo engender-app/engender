@@ -5,16 +5,17 @@
    ticket 21 removed its only entry point. `tally_event.context` still
    exists in the schema - a column with no reader or writer left, not
    dropped, since nothing forward-only migrations do can un-write it from
-   whatever journals already hold. */
+   whatever journals already hold.
+
+   Flat, so its writes come from flat-area.ts. It exposes only the insert
+   half: a tap is not edited, so `log` takes an input with no id and the
+   factory's update branch is unreachable from here. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TallyEvent, TallyKind } from '../types';
-import { mintUuid, now } from './support';
+import { flatArea } from './flat-area';
 
-export interface TallyEventInput {
-  kind: TallyKind;
-  epochDay: number;
-}
+export type TallyEventInput = Omit<TallyEvent, 'id'>;
 
 export interface TallyArea {
   /** Returns the event's id. */
@@ -30,36 +31,18 @@ export interface TallyArea {
 }
 
 export function makeTallyArea(driver: SqliteDriver): TallyArea {
+  const events = flatArea<TallyEvent>(driver, {
+    table: 'tally_event',
+    columns: { epochDay: 'epoch_day', kind: 'kind' }
+  });
+
   return {
-    async log(input) {
-      const uuid = mintUuid();
-      await driver.run('INSERT INTO tally_event (uuid, epoch_day, kind, updated_at) VALUES (?, ?, ?, ?)', [
-        uuid,
-        input.epochDay,
-        input.kind,
-        now()
-      ]);
-      return uuid;
-    },
+    log: events.upsert,
 
-    async getEvents(kind) {
-      const rows = await driver.query<{ uuid: string; epoch_day: number; kind: TallyKind }>(
-        'SELECT uuid, epoch_day, kind FROM tally_event WHERE kind = ? ORDER BY epoch_day, id',
-        [kind]
-      );
-      return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind }));
-    },
+    getEvents: (kind) => events.read('WHERE kind = ? ORDER BY epoch_day, id', [kind]),
 
-    async getEventsOnDay(epochDay) {
-      const rows = await driver.query<{ uuid: string; epoch_day: number; kind: TallyKind }>(
-        'SELECT uuid, epoch_day, kind FROM tally_event WHERE epoch_day = ? ORDER BY id',
-        [epochDay]
-      );
-      return rows.map((r) => ({ id: r.uuid, epochDay: r.epoch_day, kind: r.kind }));
-    },
+    getEventsOnDay: (epochDay) => events.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
 
-    async deleteEvent(id) {
-      await driver.run('DELETE FROM tally_event WHERE uuid = ?', [id]);
-    }
+    deleteEvent: events.delete
   };
 }
