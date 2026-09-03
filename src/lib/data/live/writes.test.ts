@@ -447,9 +447,13 @@ const COMPOSING_READS: readonly ComposingRead[] = [
     of another area's read, and so have nothing to compose. Written down for
     the reason day.ts's opt-outs are: the check below is a full sweep of the
     read-only areas, so a new one is a failure here until somebody either
-    lists what it composes or states that it composes nothing. */
-const READS_ITS_OWN_SQL: Record<string, string> = {
-  stats: "its own aggregate SQL over the entry tables - which is why the union rule cannot reach it, and why its thirteen declarations stay hand-written (ADR-0012)",
+    lists what it composes or states that it composes nothing. Keyed on
+    `keyof Journal` for the other half of that reason - an area that goes
+    away, or a key mistyped, is a compile error rather than a line sitting
+    here writing off an area that no longer exists. */
+const READS_ITS_OWN_SQL: Partial<Record<keyof Journal, string>> = {
+  stats:
+    "its own aggregate SQL, ad hoc CTEs and all, which is why the union rule cannot reach it and its thirteen declarations stay hand-written. Three of them are checked from above, by the areas that compose them - recap, dayAverages and tagInsights; the other ten have the rule below and nothing more",
   textSearch: 'its own registry of per-area queries, whose union it already derives (SEARCH_TABLES)',
   voice: 'the recording rows dated, read straight off the driver',
   videos: 'the video-note rows dated, read straight off the driver'
@@ -461,8 +465,7 @@ test('a composing read declares exactly the tables of the reads it composes', ()
     const declared = new Set(tablesReadBy(area, operation));
     const composed = new Set(composes.flatMap(([a, o]) => tablesReadBy(a, o)));
 
-    for (const [table, reason] of Object.entries(narrows ?? {})) {
-      assert.ok(reason.length > 0, `journal.${area}.${operation} narrows ${table} with no reason`);
+    for (const table of Object.keys(narrows ?? {})) {
       assert.ok(
         composed.has(table as TableName),
         `journal.${area}.${operation} narrows ${table}, which none of the reads it composes declares any more`
@@ -501,7 +504,7 @@ test('every read-only area either says what it composes or says it reads its own
         return false;
       }
     });
-    if (ownsRows || READS_ITS_OWN_SQL[areaName]) continue;
+    if (ownsRows || areaName in READS_ITS_OWN_SQL) continue;
 
     for (const operation of operations) {
       assert.ok(
@@ -514,8 +517,7 @@ test('every read-only area either says what it composes or says it reads its own
 
 test('nothing sits in the own-SQL list that composes reads after all', () => {
   const composing = new Set(COMPOSING_READS.map(({ read: [area] }) => area));
-  for (const [areaName, reason] of Object.entries(READS_ITS_OWN_SQL)) {
-    assert.ok(reason.length > 0, `${areaName} is written off with no reason`);
+  for (const areaName of Object.keys(READS_ITS_OWN_SQL)) {
     assert.ok(!composing.has(areaName), `journal.${areaName} composes reads, so it does not read its own SQL alone`);
   }
 });

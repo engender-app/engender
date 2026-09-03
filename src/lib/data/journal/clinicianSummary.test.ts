@@ -137,20 +137,14 @@ test('a section is registered for each part of the summary, in the order it prin
   );
 });
 
-test("the live layer's dependency list is every registered section's tables", () => {
-  for (const s of CLINICIAN_SUMMARY_SECTIONS) {
-    for (const table of s.tables) {
-      assert.ok(
-        CLINICIAN_SUMMARY_TABLES.includes(table),
-        `${s.key} reads ${table}, which getSummary does not depend on`
-      );
-    }
-  }
-  assert.equal(
-    CLINICIAN_SUMMARY_TABLES.length,
-    new Set(CLINICIAN_SUMMARY_TABLES).size,
-    'CLINICIAN_SUMMARY_TABLES repeats a table'
-  );
+/* The live layer's dependency list for getSummary, pinned rather than
+   restated: asserting that every section's tables are in their own union
+   only re-runs the `new Set` above it. What this catches is a section's
+   tables changing what a summary re-runs on, which is the thing the
+   derivation moved out of writes.ts - and it held the derivation to the six
+   tables that file used to name by hand, in the order it named them. */
+test('getSummary depends on the tables the registered sections read, and no others', () => {
+  assert.deepEqual(CLINICIAN_SUMMARY_TABLES, ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist']);
 });
 
 test('registering a section is enough for it to reach a generated summary, with no change to the assembly', async () => {
