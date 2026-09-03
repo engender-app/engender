@@ -162,6 +162,10 @@
   onClose={() => (confirming = null)}
 >
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
+  <!-- On both confirms rather than only on the card behind them: this is
+       the sentence somebody needs at the moment they decide, and "removed"
+       without "from the next start" would read as instant. -->
+  <p class="ob-text">{m.rk_next_start()}</p>
   {#if confirming === 'revoke'}
     <button class="btn btn-primary" type="button" data-confirm-revoke disabled={busy} onclick={revoke}>
       {m.rk_revoke_confirm()}

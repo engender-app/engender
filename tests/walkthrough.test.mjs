@@ -3317,6 +3317,75 @@ try {
   ok('one screen over one registry: notify column absent on web, Home column still whole');
 } catch (e) { fail('the unprompted registry view', e); }
 
+/* The recovery key, made and removed from Settings (ADR-0054, ticket
+   sec-01).
+
+   Before the access-mode flow rather than after it, for that flow's own
+   reason: it leaves the journal in PIN mode with no way back, so anything
+   after it meets a gate instead of the app.
+
+   What only a real browser can check here is the pair of facts the node
+   tier cannot see: that minting reaches the live session's data key through
+   journalDataKey() rather than finding nothing on a screen that was reached
+   by a goto, and that the characters are on screen exactly once - leaving
+   the shown state has to lose them, because nothing stores them. */
+try {
+  await fresh('/settings');
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('[data-security-list]');
+
+  const row = page.locator('[data-list-row="recovery-key"]');
+  if (!(await row.count())) throw new Error('Security offers no recovery-key row');
+
+  await page.locator('a[href="/settings/recovery-key"]').click();
+  await page.waitForSelector('[data-make-recovery-key]');
+  await page.locator('[data-make-recovery-key]').click();
+
+  /* The key itself, gripped by its handle rather than by its copy
+     (ADR-0029). Its shape is the assertion: five groups of five from the
+     Crockford alphabet, which is what recoveryKey.ts guarantees and what
+     somebody has to be able to read off the screen. */
+  const shown = (await page.locator('[data-recovery-key]').innerText()).trim();
+  if (!/^[0-9A-Z]{5}(-[0-9A-Z]{5}){4}$/.test(shown)) {
+    throw new Error('the key on screen is not five groups of five: ' + shown);
+  }
+  if (!(await page.locator('[data-print-recovery-key]').count())) {
+    throw new Error('the shown key offers no way to print it');
+  }
+
+  await page.locator('[data-recovery-key-done]').click();
+  await page.waitForSelector('[data-list-row="remove-recovery-key"]');
+
+  /* Shown once, and this is the half of that claim a browser can prove:
+     acknowledging it leaves a screen with no key on it, and coming back to
+     the screen fresh does not bring the characters back - the file holds a
+     wrap and nothing else. */
+  if (await page.locator('[data-recovery-key]').count()) {
+    throw new Error('the key is still on screen after being acknowledged');
+  }
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('[data-security-list]');
+  await page.locator('a[href="/settings/recovery-key"]').click();
+  await page.waitForSelector('[data-list-row="remove-recovery-key"]');
+  if (await page.locator('[data-recovery-key]').count()) {
+    throw new Error('reopening the screen showed the key again');
+  }
+
+  /* Removing it, through the confirm the copy promises. The row going is
+     the assertion, and the handle it asserts on is live until the click -
+     the absence is checked against a screen that has redrawn, not against a
+     handle that was deleted with the thing it named. */
+  await page.locator('[data-list-row="remove-recovery-key"]').click();
+  await page.waitForSelector('[data-confirm-revoke]');
+  await page.locator('[data-confirm-revoke]').click();
+  await page.waitForSelector('[data-make-recovery-key]');
+  if (await page.locator('[data-list-row="remove-recovery-key"]').count()) {
+    throw new Error('the removed key still offers a remove row');
+  }
+
+  ok('a recovery key is made once, shown once, and removed from Settings');
+} catch (e) { fail('the recovery key', e); }
+
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
 
