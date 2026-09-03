@@ -41,12 +41,14 @@
   } from '$lib/data/epochDay';
   import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
   import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
+  import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearSession } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -286,6 +288,30 @@
   let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));
   let trendRegionLabel = $derived(trendRegionOptions.find((r) => r.value === trendRegion)?.label ?? '');
   let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
+
+  /* The presentation chip (ticket 17, ADR-0048): highlights, never
+     filters, so both lines above keep drawing exactly what they draw
+     today. Read over the same `trendFrom`/`today` window the two series
+     themselves read, then carried through whichever axis is in force -
+     the calendar's own bucket on the calendar axis, or the same
+     day-to-position rule dayKeying.ts folds the series by on a re-keyed
+     one, at the one width `plotted` already settled the group on
+     ($lib/charts/presentationHighlight.ts). */
+  let selectedPresentation = $state<string | null>(null);
+  let presentationDaysQuery = liveList((j) =>
+    selectedPresentation ? j.stats.presentationDays(selectedPresentation, trendFrom, today) : Promise.resolve([])
+  );
+  let highlightRole = $derived.by(() => {
+    if (!selectedPresentation) return undefined;
+    const presentation = vocabulary.presentation(selectedPresentation);
+    return presentation ? roleAt(activeFlag.roles, presentation.roleIndex) : undefined;
+  });
+  let highlightedAt = $derived(
+    highlightedPositions(presentationDaysQuery.rows, readAxis.keying, plotted[0].grain ?? 'day', plotted[0].width)
+  );
+  let trendHighlight = $derived(
+    highlightRole ? { positions: [...highlightedAt], role: highlightRole } : undefined
+  );
 </script>
 
 <div class="screen">
@@ -392,6 +418,9 @@
           {/if}
         </div>
       </div>
+      <div class="screen-part">
+        <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+      </div>
       <ChartCard
         heading={m.wear_session_trend_title()}
         kind="wear-trend"
@@ -418,6 +447,7 @@
             {wearMax}
             regionMin={BODY_REGION_INTENSITY_MIN}
             regionMax={BODY_REGION_INTENSITY_MAX}
+            highlight={trendHighlight}
             ariaLabel={readAxis.keying
               ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
               : m.wear_session_trend_title()}

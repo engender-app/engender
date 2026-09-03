@@ -71,7 +71,8 @@
     scrubLabel,
     annotations = [],
     name,
-    overlay
+    overlay,
+    highlight
   }: {
     /** Already bucketed to the grain the caller chose. */
     points: SeriesPoint[];
