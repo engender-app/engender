@@ -54,6 +54,13 @@ export interface NewVoiceBenchmark {
       median - that follows from `f0MedianHz` and is derived at display time
       (ADR-0010, audio/pitch.ts's noteName). */
   note?: string | null;
+  /** The passage's pitch over time, already downsampled and encoded
+      (audio/track.ts, ticket 09). Null when the take held no voiced frame
+      to draw, which is a take the gate has already failed. Stored rather
+      than derived, unlike the note name: the samples it comes from are not
+      kept, so nothing downstream could recompute it (ADR-0010's own
+      exception, ADR-0059). */
+  pitchTrack?: string | null;
 }
 
 export interface VoiceBenchmarksArea {
@@ -92,6 +99,7 @@ type BenchmarkRow = {
   f2_hz: number | null;
   snr_db: number | null;
   note: string | null;
+  pitch_track: string | null;
 };
 
 const toBenchmark = (row: BenchmarkRow): VoiceBenchmark => ({
@@ -109,11 +117,13 @@ const toBenchmark = (row: BenchmarkRow): VoiceBenchmark => ({
   f1Hz: row.f1_hz,
   f2Hz: row.f2_hz,
   snrDb: row.snr_db,
-  note: row.note
+  note: row.note,
+  pitchTrack: row.pitch_track
 });
 
 const BENCHMARK_COLUMNS = `uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
-   f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute, f1_hz, f2_hz, snr_db, note`;
+   f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute, f1_hz, f2_hz, snr_db, note,
+   pitch_track`;
 
 export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileStore): VoiceBenchmarksArea {
   return {
@@ -143,7 +153,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
       const timestamp = now();
       await driver.run(
         `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.epochDay,
@@ -160,6 +170,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
           input.f2Hz,
           input.snrDb,
           input.note ?? null,
+          input.pitchTrack ?? null,
           timestamp
         ]
       );

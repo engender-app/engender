@@ -1861,6 +1861,22 @@ CREATE TABLE area_state (
 );
 `;
 
+/* The downsampled pitch track of a benchmark's passage (phase 8 features
+   ticket 09, ADR-0059). Nullable, and null on every benchmark taken before
+   this version: the raw track was thrown away then and cannot be
+   reconstructed, so the screen draws those without a take rather than
+   drawing an empty chart.
+
+   TEXT rather than a BLOB of floats: the encoding is human-readable, one
+   comma-separated Hz value per point with an empty slot for an unvoiced
+   one, which is what audio/track.ts writes and reads. A thirty-second
+   passage at four hertz is about 120 points and under a kilobyte, so the
+   compactness a BLOB would buy is not worth a format nothing can read at
+   the sqlite prompt. */
+const SCHEMA_V58 = `
+ALTER TABLE voice_benchmark ADD COLUMN pitch_track TEXT;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1918,5 +1934,6 @@ export const migrations: Migration[] = [
   { version: 54, sql: SCHEMA_V54 },
   { version: 55, sql: SCHEMA_V55 },
   { version: 56, sql: SCHEMA_V56 },
-  { version: 57, sql: SCHEMA_V57 }
+  { version: 57, sql: SCHEMA_V57 },
+  { version: 58, sql: SCHEMA_V58 }
 ];
