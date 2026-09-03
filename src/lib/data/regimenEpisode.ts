@@ -15,12 +15,15 @@
    answer with resolveEpisodeAt alone. */
 
 import { epochDayFromTimestamp } from './epochDay';
+import { spanCoversDay } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** Whether `episode` is in effect on `day`: started on or before it, and
-    either still open (`endEpochDay` null) or ends on or after it. */
+    either still open (`endEpochDay` null) or ends on or after it. Delegates
+    to span.ts's spanCoversDay (phase 8 deepening ticket 11); the arithmetic
+    lives once. */
 function isActiveOn(episode: RegimenEpisode, day: number): boolean {
-  return episode.startEpochDay <= day && (episode.endEpochDay === null || episode.endEpochDay >= day);
+  return spanCoversDay(episode, day);
 }
 
 /** Every episode in effect at `timestamp` - zero, one, or several when more

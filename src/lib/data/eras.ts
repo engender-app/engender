@@ -11,7 +11,13 @@
    The invariants are enforced here rather than as a schema constraint, the
    way assertValidRule guards a reminder rule: neither of them is expressible
    as a CHECK over one row, and a constraint violation surfacing from the
-   driver names a table rather than the era it collided with. */
+   driver names a table rather than the era it collided with.
+
+   eraCoversDay delegates to span.ts's spanCoversDay (phase 8 deepening
+   ticket 11) - a domain name reads better than spanCoversDay(era, day) at
+   this file's call sites, but the arithmetic lives once. */
+
+import { spanCoversDay } from './span';
 
 /** An era, or the draft of one. `id` is absent while it is being created,
     which is also what tells `eraConflict` there is nothing to exclude. */
@@ -28,9 +34,7 @@ export interface EraSpan {
 /** Whether `day` falls inside the era. Both bounds are inclusive, and an
     absent one is unbounded in that direction. */
 export function eraCoversDay(era: EraSpan, day: number): boolean {
-  if (era.startEpochDay !== null && day < era.startEpochDay) return false;
-  if (era.endEpochDay !== null && day > era.endEpochDay) return false;
-  return true;
+  return spanCoversDay(era, day);
 }
 
 /** Which era a day falls in, or none. A day in no era is a resting state
