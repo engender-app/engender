@@ -243,7 +243,7 @@
                     role="checkbox"
                     aria-checked={item.checked}
                     aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
+                    onclick={async () => await journal.checklists.setItemChecked(item.id, !item.checked)}
                   >
                     <span class="sj-box" class:sj-ticked={item.checked}>
                       {#if item.checked}<Icon name="check" size={20} />{/if}
@@ -259,7 +259,7 @@
                       data-carry-forward={item.id}
                       aria-pressed={item.carriedForward}
                       aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                      onclick={() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
+                      onclick={async () => await journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
                     >
                       <Icon name="flag" size={18} />
                     </button>
@@ -317,7 +317,7 @@
                   action={{
                     icon: 'trash',
                     label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: () => journal.procedures.deleteConsult(consult.id),
+                    onclick: async () => await journal.procedures.deleteConsult(consult.id),
                     attrs: { 'data-delete-consult': consult.id }
                   }}
                 />
