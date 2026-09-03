@@ -2666,6 +2666,7 @@
   "presentation_colour_swatch_aria": "Colour {index}",
   "presentation_hide_aria": "Hide {name}",
   "presentation_show_aria": "Show {name}",
+  "presentation_highlight_label": "Highlight mode",
   "eras_title": "Eras",
   "eras_intro": "A name for a stretch of your own timeline. It can reach back before the journal, or still be running.",
   "eras_empty_title": "No eras yet.",
