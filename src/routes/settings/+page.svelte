@@ -248,26 +248,17 @@
       >
         {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
       </ListRow>
-      <!-- The two views over the unprompted registry (phase 6 tickets 02 and
-           04). Two rows rather than one, because "stop putting things on my
-           home screen" and "stop buzzing my phone" are different requests -
-           the list behind them is the same one either way. -->
-      <ListRow key="live-tiles" icon="grid" title={m.live_tiles_title()} subtitle={m.live_tiles_sub()} href="/settings/live-tiles" />
-      <!-- `zap` rather than a second bell: the row above is already the bell,
-           and two identical icons on adjacent rows read as one row drawn
-           twice. On web this row says what the reminders row above it says,
-           and in the same shape - the screen behind it is a notice, not a
-           list of switches. -->
-      <ListRow
-        key="notifications"
-        icon="zap"
-        title={m.notif_title()}
-        subtitle={isWeb ? m.notif_web_row_sub() : m.notif_sub()}
-        href="/settings/notifications"
-        chevron={false}
-      >
-        {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
-      </ListRow>
+      <!-- One screen over the unprompted registry (phase 6 tickets 02 and
+           04, merged onto one screen and one row by deepening ticket 09):
+           "stop putting things on my home screen" and "stop buzzing my
+           phone" are two questions about the same list, so they get two
+           toggle columns rather than two rows here. `zap` rather than a
+           second bell: the row above is already the bell, and two identical
+           icons on adjacent rows read as one row drawn twice. Live tiles
+           work on web the same as always, so this row is an ordinary
+           chevron row on both platforms - only the notify column is
+           Android-only, inside the screen it opens. -->
+      <ListRow key="notifications" icon="zap" title={m.notif_title()} subtitle={m.notif_sub()} href="/settings/notifications" />
       <ListRow
         key="journey-anchor"
         icon="flag"
