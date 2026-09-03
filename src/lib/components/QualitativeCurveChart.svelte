@@ -23,6 +23,8 @@
 
   import { scaleLinear } from 'd3-scale';
   import { line as d3line } from 'd3-shape';
+  import type { AnnotationMark, ChartAnnotation } from '$lib/charts/annotations';
+  import CurveMarkers from './CurveMarkers.svelte';
 
   interface CurvePoint {
     day: number;
@@ -36,7 +38,11 @@
     width = 320,
     formatValue,
     unitLabel,
-    ariaLabel
+    ariaLabel,
+    markers = [],
+    selectedMarker = null,
+    onSelectMarker,
+    markLabel
   }: {
     points: CurvePoint[];
     max?: number;
@@ -47,10 +53,21 @@
         file header. */
     unitLabel: string | null;
     ariaLabel: string;
+    /** What else was logged on the days this window covers (phase 8 features
+        ticket 15). A date has a position on this axis whether or not the
+        heights under it mean anything yet, which is why markers are drawn
+        here and lab results still are not: a result is a value laid over an
+        invented amplitude, and a marker is a day laid over a calendar. */
+    markers?: readonly ChartAnnotation[];
+    selectedMarker?: string | null;
+    onSelectMarker?: (mark: AnnotationMark) => void;
+    markLabel?: (mark: AnnotationMark) => string;
   } = $props();
 
   const P = 8;
   const AXIS = 34;
+
+  let marked = $derived(onSelectMarker !== undefined && markLabel !== undefined && markers.length > 0);
 
   let chart = $derived.by(() => {
     if (points.length < 2) return null;
@@ -67,6 +84,8 @@
     return {
       line,
       left,
+      fromDay: x0,
+      toDay: Math.max(x0 + 1, x1),
       ticks: ticks.map((value) => ({ value, y: y(value) }))
     };
   });
@@ -86,6 +105,21 @@
         <line x1={chart.left} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />
         <text x={chart.left - 5} y={tick.y + 3.5} class="qual-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
       {/each}
+    {/if}
+
+    {#if marked}
+      <CurveMarkers
+        markers={markers}
+        fromDay={chart.fromDay}
+        toDay={chart.toDay}
+        left={chart.left}
+        right={width - P}
+        bottom={height - P}
+        plotHeight={height - P * 2}
+        selected={selectedMarker}
+        onSelect={(mark) => onSelectMarker?.(mark)}
+        markLabel={(mark) => markLabel?.(mark) ?? ''}
+      />
     {/if}
 
     <path d={chart.line} class="qual-line" />

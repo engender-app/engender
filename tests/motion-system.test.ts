@@ -245,6 +245,11 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: "the pill crossing the set is already the response; scaling the label too answers the same touch twice"
   },
   {
+    file: 'src/lib/components/CurveMarkers.svelte',
+    count: 1,
+    reason: 'fill: transparent - an invisible hit target has nothing visible to press; the mark it stands over answers instead'
+  },
+  {
     file: 'src/lib/components/HormoneBandChart.svelte',
     count: 1,
     reason: 'fill: transparent - an invisible hit target has nothing visible to press'
