@@ -160,21 +160,9 @@
        action opens the same sheet, and two ways to say the same thing one
        above the other reads as a duplicate rather than as a choice. -->
   {#key finishedOn === null}
-    <div in:crossfade>
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#if finishedOn === null}
-          {#if !offering}
-            <ListRow
-              key="area-finish"
-              data-area-finish
-              icon="flag"
-              title={m.area_finish_row_title()}
-              subtitle={m.area_finish_row_sub()}
-              chevron={false}
-              onclick={openFinish}
-            />
-          {/if}
-        {:else}
+    {#if finishedOn !== null}
+      <div in:crossfade>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
           <ListRow
             key="area-finished"
             data-area-finished
@@ -192,9 +180,25 @@
             chevron={false}
             onclick={pickBackUp}
           />
-        {/if}
-      </ListCard>
-    </div>
+        </ListCard>
+      </div>
+    {:else if !offering}
+      <!-- The card itself and not only its row, or an area with the offer up
+           leaves an empty outline sitting under it. -->
+      <div in:crossfade>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          <ListRow
+            key="area-finish"
+            data-area-finish
+            icon="flag"
+            title={m.area_finish_row_title()}
+            subtitle={m.area_finish_row_sub()}
+            chevron={false}
+            onclick={openFinish}
+          />
+        </ListCard>
+      </div>
+    {/if}
   {/key}
 </div>
 
