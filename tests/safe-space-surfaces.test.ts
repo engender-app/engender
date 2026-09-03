@@ -113,8 +113,8 @@ describe('the support directory panel', () => {
 });
 
 describe('More hub row for Safe Space', () => {
-  it('points to /doubt with safe_space_title and safe_space_hub_sub', () => {
-    expect(more).toContain("key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), subtitle: () => m.safe_space_hub_sub(), href: '/doubt'");
+  it('points to /doubt with safe_space_title', () => {
+    expect(more).toContain("key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), href: '/doubt'");
   });
 });
 
