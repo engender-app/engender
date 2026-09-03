@@ -1657,11 +1657,19 @@ a.kit-entry:active {
    still shows through - the chip highlights, it never redraws what was
    there. `--highlight` is set once, on the plot's own wrapper, by whichever
    presentation is chosen; unset it draws nothing, which is "choosing none"
-   reading exactly as it did before this existed. */
+   reading exactly as it did before this existed.
+
+   Dashed rather than solid: a presentation's role and the chart's own
+   section role are both resolved through roleAt() and can land on the same
+   stripe - the first presentation anyone creates defaults to role 0, the
+   same role most single-value charts take - and a solid ring in the same
+   colour as the mark it rings would vanish into it. The dash is what still
+   reads once colour cannot be relied on to. */
 .kit-area-highlight {
   fill: none;
   stroke: var(--highlight);
   stroke-width: 2;
+  stroke-dasharray: 2 2;
 }
 
 /* The scrub: what the scroll used to be for. Dotted and in the text colour

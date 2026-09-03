@@ -483,13 +483,20 @@
             {/each}
           {/if}
           {#if highlight && !overlaid}
-            <!-- A ring around the existing dot, drawn whatever the point
-                 count - ticket 17's own warning that this has to still read
-                 when most of the range is highlighted is what keeps this
-                 out of the <=60 gate above. -->
+            <!-- An outer ring around the existing mark, drawn whatever the
+                 point count - ticket 17's own warning that this has to
+                 still read when most of the range is highlighted is what
+                 keeps this out of the <=60 gate above. Wider than both the
+                 plain dot (r=2.5) and the latest-reading ring (r=5) it can
+                 land on, so a highlighted last reading draws two visibly
+                 concentric rings rather than one ring on top of another the
+                 same size - and dashed, so the highlight still reads when a
+                 presentation's role happens to be the chart's own role
+                 (ticket 17's note: colour is not the only thing telling two
+                 marks apart, the same reason the second series is dashed). -->
             {#each path.dots as dot, i (i)}
               {#if dot && highlight.at[i]}
-                <circle class="kit-area-highlight" cx={dot.x} cy={dot.y} r="5" />
+                <circle class="kit-area-highlight" cx={dot.x} cy={dot.y} r="7.5" />
               {/if}
             {/each}
           {/if}
