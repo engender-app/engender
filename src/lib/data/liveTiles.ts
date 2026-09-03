@@ -340,8 +340,11 @@ export function liveTilePrefKeys(rows: readonly SurfaceRow[]): Record<LiveTileKi
 export const LIVE_TILE_PREF_KEY = liveTilePrefKeys(SURFACE_ROWS);
 
 /** An in-place control on a tile (ADR-0039). Structurally what
-    `Tile.svelte` takes; declared here because a `.svelte` file cannot be
-    imported from the Node tier. */
+    `Tile.svelte` takes; declared here rather than imported from it because
+    a `.svelte` file is unreachable from the Node tier. The two staying in
+    step is not a convention - Home passes `action={tile.action}` straight
+    into the component, so a field that drifts is a `svelte-check` error at
+    that line. */
 export interface HomeTileAction {
   icon?: string;
   text?: string;
