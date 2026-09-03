@@ -161,13 +161,22 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
       return uuid;
     },
 
+    /* The reminder goes first and the row second, with no transaction
+       around the pair. A process death between two writes has to leave a
+       state something can still fix, and only this order does:
+       reconcileRunOutReminders iterates the medication_stock rows that
+       exist, so a row that survived with its reminder already gone is
+       visited (and reads as the person's own handoff, stockReminder.ts)
+       and the delete retries cleanly. The reverse leaves a reminder for a
+       drug that has no row, which that loop can never reach and nothing
+       else clears - it just keeps firing. */
     async deleteEntry(id) {
       const rows = await driver.query<{ drug: string }>('SELECT drug FROM medication_stock WHERE uuid = ?', [id]);
-      await driver.run('DELETE FROM medication_stock WHERE uuid = ?', [id]);
-
       if (rows.length === 0) return;
+
       const auto = findAutoReminder(await reminders.getReminders(), rows[0].drug);
       if (auto) await reminders.deleteReminder(auto.id);
+      await driver.run('DELETE FROM medication_stock WHERE uuid = ?', [id]);
     },
 
     async reconcileRunOutReminders(asOfEpochDay) {
