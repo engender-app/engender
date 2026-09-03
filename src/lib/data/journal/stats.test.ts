@@ -965,3 +965,38 @@ test('a constellation axis naming no scale plots nothing', async () => {
 
   assert.deepEqual(await journal.stats.constellationReadings('femininity', 'nope', 100, 100), []);
 });
+
+test('presentationDays names the distinct days a presentation was logged under, and only those (ticket 17, ADR-0048)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+  const boy = await journal.presentations.addPresentation('Boy mode', 1);
+
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, presentationId: girl.id });
+  // A second entry on a day already counted does not repeat the day.
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 2, mood: 3, presentationId: girl.id });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, presentationId: boy.id });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3 });
+
+  assert.deepEqual(await journal.stats.presentationDays(girl.id, 100, 102), [100]);
+  assert.deepEqual(await journal.stats.presentationDays(boy.id, 100, 102), [101]);
+});
+
+test('presentationDays holds the range and drops a trashed entry', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+
+  await journal.entries.upsertEntry({ epochDay: 99, mood: 3, presentationId: girl.id });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, presentationId: girl.id });
+  const gone = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, presentationId: girl.id });
+  await journal.entries.deleteEntry(gone);
+
+  assert.deepEqual(await journal.stats.presentationDays(girl.id, 100, 101), [100]);
+});
+
+test('a presentation with no days in the range answers with none, not an error', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const girl = await journal.presentations.addPresentation('Girl mode', 0);
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3 });
+
+  assert.deepEqual(await journal.stats.presentationDays(girl.id, 100, 100), []);
+});
