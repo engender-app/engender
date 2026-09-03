@@ -256,6 +256,14 @@ export interface StatsArea {
       chart (bodyRegions.ts). Unfiltered by presentation: a hormone curve is
       not a per-presentation surface (ADR-0048). */
   bodyRegionReadings(axis: BodyRegionAxis, fromEpochDay: number, toEpochDay: number): Promise<RegionReading[]>;
+  /** Every distinct day in the range on which at least one untrashed entry
+      carried `presentationId` (ADR-0048), oldest first. The presentation
+      chip on tally, wear, voice and calendar reads this to highlight a
+      day; it never removes one - the chart it is passed to draws exactly
+      what it drew before, and this only says which of those days to mark
+      (ticket 17). A day nothing was logged under this presentation on is
+      simply absent, not a day of the chart it filters out. */
+  presentationDays(presentationId: string, fromEpochDay: number, toEpochDay: number): Promise<number[]>;
 }
 
 /** One body-region reading, as the day that stood out is judged and drawn.
@@ -534,6 +542,16 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         [fromEpochDay, toEpochDay]
       );
       return rows.map((r) => ({ region: r.region, entryId: r.entry_id, epochDay: r.epoch_day, value: r.value }));
+    },
+
+    async presentationDays(presentationId, fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ day: number }>(
+        `SELECT DISTINCT epoch_day AS day FROM entry
+         WHERE presentation_id = ? AND epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
+         ORDER BY epoch_day`,
+        [presentationId, fromEpochDay, toEpochDay]
+      );
+      return rows.map((r) => r.day);
     },
 
     async entryCountsByDay(fromEpochDay, toEpochDay) {

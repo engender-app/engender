@@ -166,7 +166,7 @@ export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
     before the operation together with a day after it and draw the result
     as one mark. Laying the buckets off zero makes that impossible by
     construction rather than by a caller remembering to check. */
-const positionBucket = (position: number, width: number) => Math.floor(position / width) * width;
+export const positionBucket = (position: number, width: number) => Math.floor(position / width) * width;
 
 /** The narrowest `width` at which `points` draw as at most `maxPositions`
     buckets.
