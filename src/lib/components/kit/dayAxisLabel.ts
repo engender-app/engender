@@ -57,16 +57,27 @@ function calendarLabel(grain: Grain, day: number): string {
 
 /** What one position is called.
 
-    Four forms rather than one signed number, because "Day -12" is arithmetic
-    and "12 days before" is what a person waiting on an operation would say.
-    The case analysis is closed - a bucket can be entirely before the anchor
-    or entirely from it onward and never both, because foldPositionGroup lays
-    its buckets off zero for exactly this reason. */
+    Four forms rather than one signed number, because "Day -12" is
+    arithmetic and "Day 12 before" is what somebody waiting on an operation
+    would say. All four lead with the same word so the two ends written
+    under a plot stay parallel - "Day 209 before" against "Days 396 to 406",
+    not "209 days before" against "Days 396 to 406" - and leading with
+    Day/Days is also what carries the number's agreement, which is why
+    neither before-form needs a plural of its own.
+
+    The case analysis is closed: a bucket is entirely before the anchor or
+    entirely from it onward and never both, because foldPositionGroup lays
+    its buckets off zero for exactly this reason.
+
+    A folded bucket is named by its own span rather than by the days inside
+    it actually carrying a reading, which is the convention the calendar
+    axis already follows - a week bucket reads "3 Sep - 9 Sep" whether one
+    day in it was logged or all seven. */
 function positionLabel(width: number, position: number): string {
   const last = position + width - 1;
   if (position < 0) {
     return width === 1
-      ? m.chart_axis_day_before({ days: -position })
+      ? m.chart_axis_day_before({ days: String(-position) })
       : m.chart_axis_days_before({ from: String(-position), to: String(-last) });
   }
   return width === 1

@@ -87,3 +87,21 @@ test('byCustomInterval folds mood history by a chosen interval length, with no i
   // fold to position 8 but that is only two days - below the floor.
   assert.deepEqual(pattern, [{ position: 1, value: 5, count: 3 }]);
 });
+
+test('all history as MIN_SAFE_INTEGER still reaches the dose log, which is dated by timestamp', async () => {
+  const { journal } = await journalWithBuiltIns();
+  for (const start of [DAY_0, DAY_0 + 14, DAY_0 + 28, DAY_0 + 42]) {
+    await injection(journal, start);
+    await journal.entries.upsertEntry({ epochDay: start, mood: 4 });
+  }
+
+  /* The bound `/stats` actually passes. `dayAverages` compares an
+     epoch_day column and takes a sentinel; `getDoses` turns the bound into
+     a timestamp, and `startOfDayTimestamp(MIN_SAFE_INTEGER)` is NaN, so
+     before the clamp this returned no doses, no intervals and no
+     positions - the card drew its not-enough-data copy over a journal with
+     four injections in it. */
+  const pattern = await journal.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, DAY_0 + 50);
+
+  assert.deepEqual(pattern, [{ position: 1, value: 4, count: 3 }]);
+});

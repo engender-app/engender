@@ -438,6 +438,28 @@
    position, which resolves against the nearest positioned ancestor. Left
    to find one on its own it reaches `.screen` and the fading pills land at
    the top of the page. */
+/* The axis picker and the range control are one decision, so they are one
+   block.
+
+   `.screen > *` gives 24px between blocks, deliberately, for blocks that
+   are meant to read as separate (app.css, register finding 32.14). These
+   two are not separate: picking an axis is what decides whether there is a
+   range left to pick. Stacked as two screen blocks they sat 40px apart
+   - each `.kit-filter`'s own bottom padding plus that margin - and the
+   three control rows on a body map read as three unrelated things floating
+   above the charts. Tight inside the group, the block spacing outside it. */
+.kit-reading-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The label row's bottom padding is the group's gap now, so it does not pay
+   twice. */
+.kit-reading-controls > .kit-filter {
+  padding-bottom: 0;
+}
+
 .kit-reading-slot {
   position: relative;
 }
