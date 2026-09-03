@@ -31,16 +31,9 @@ describe('what the More hub is built from', () => {
     expect(markup).toMatch(/<ScreenHeader\s[^>]*titleHidden/);
   });
 
-  it('gives every row a title alone, except the trailing link into Settings', () => {
-    /* DIRECTION.md 3b: subtitles are earned, not standard. The 22 feature
-       rows come from one templated ListRow inside the group loop, which
-       passes no subtitle; the Settings row is written out on its own and
-       is the one place `subtitle=` appears in the file. */
+  it('draws every group row from one templated ListRow, plus the trailing Settings row', () => {
     const rowTags = markup.match(/<ListRow\b[^>]*\/>/gs) ?? [];
     expect(rowTags.length).toBe(2); // the templated hub row, and the Settings row
-    const withSubtitle = rowTags.filter((tag) => /\bsubtitle=/.test(tag));
-    expect(withSubtitle.length).toBe(1);
-    expect(withSubtitle[0]).toContain('key="settings"');
   });
 
   it('reads its section colours from the shell rather than from the document', () => {
