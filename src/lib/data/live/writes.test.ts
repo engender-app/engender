@@ -384,6 +384,19 @@ const COMPOSING_READS: readonly ComposingRead[] = [
     }
   },
   {
+    // The hormone curve's own markers (phase 8 features ticket 15). Two of
+    // the four are records with a day on them and two are days that stood
+    // out against the person's own recent spread, which is why the tally and
+    // entry reads are here at all.
+    read: ['chartAnnotations', 'getCurveMarkers'],
+    composes: [
+      ['sideEffects', 'getSideEffectsInRange'],
+      ['doses', 'getDoses'],
+      ['stats', 'tallyTrend'],
+      ['stats', 'bodyRegionReadings']
+    ]
+  },
+  {
     // Its declaration is the section registry's own union
     // (clinicianSummary.ts's CLINICIAN_SUMMARY_TABLES), so this entry checks
     // the registry's per-section tables rather than a copy in writes.ts.
