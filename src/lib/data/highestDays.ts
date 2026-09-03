@@ -23,8 +23,9 @@
 import type { DayAverage } from './journal/stats';
 import type { DayArea, DayRecords } from './journal/day';
 
-/** How many days the ranking names. Not configurable behind a preference -
-    the ticket that asked for this asked for ten and no bottom ten. */
+/** How many days the ranking names. Not configurable behind a preference,
+    or any other way - the ticket that asked for this asked for ten and no
+    bottom ten. */
 export const HIGHEST_DAYS_CAP = 10;
 
 export interface HighestDay {
@@ -33,28 +34,22 @@ export interface HighestDay {
   records: DayRecords;
 }
 
-/** The top `cap` days by euphoria_dysphoria, highest first. */
-export function rankHighestDays(
-  todayEpochDay: number,
-  byDay: DayAverage[],
-  cap: number = HIGHEST_DAYS_CAP
-): DayAverage[] {
+/** The top `HIGHEST_DAYS_CAP` days by euphoria_dysphoria, highest first. */
+export function rankHighestDays(todayEpochDay: number, byDay: DayAverage[]): DayAverage[] {
   return byDay
     .filter((point) => point.day <= todayEpochDay)
-    .slice()
     .sort((a, b) => b.value - a.value || b.day - a.day)
-    .slice(0, cap);
+    .slice(0, HIGHEST_DAYS_CAP);
 }
 
-/** The top `cap` days by euphoria_dysphoria, each with what the day
-    assembler holds for it. */
+/** The top `HIGHEST_DAYS_CAP` days by euphoria_dysphoria, each with what the
+    day assembler holds for it. */
 export async function highestDays(
   todayEpochDay: number,
   byDay: DayAverage[],
-  dayArea: Pick<DayArea, 'getDay'>,
-  cap: number = HIGHEST_DAYS_CAP
+  dayArea: Pick<DayArea, 'getDay'>
 ): Promise<HighestDay[]> {
-  const ranked = rankHighestDays(todayEpochDay, byDay, cap);
+  const ranked = rankHighestDays(todayEpochDay, byDay);
   return Promise.all(
     ranked.map(async (point) => ({
       epochDay: point.day,
