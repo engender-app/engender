@@ -122,7 +122,7 @@
   }
 
   // svelte-ignore state_referenced_locally
-  void restoreIfPersisted(entryDraft);
+  const persistedRestore = restoreIfPersisted(entryDraft);
 
   onFirstResult(loaded, async (entry) => {
     if (!entry) return;
@@ -235,6 +235,11 @@
      line), read as "does not clobber" too. Nothing is appended when the
      range is empty; a blank line under a one-line prompt is not a list. */
   async function fillDebriefList(appointmentEpochDay: number) {
+    // Awaited first, deterministically: a restored process-death draft is
+    // the person's own unsaved work and always wins the race against this
+    // function's own two reads, rather than whichever happens to resolve
+    // last.
+    await persistedRestore;
     const [labs, sideEffects] = await Promise.all([
       readLabResultsInRange(journal.labs, appointmentEpochDay, todayEpochDay()),
       journal.sideEffects.getSideEffectsInRange(appointmentEpochDay, todayEpochDay())
