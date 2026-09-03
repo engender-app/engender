@@ -24,7 +24,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoiceBenchmark } from '../types';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import { removeRecordingFilesAfterCommit, stageRecording } from './voiceRecordings';
 import { mintUuid, now } from './support';
 

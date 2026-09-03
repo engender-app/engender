@@ -14,7 +14,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoiceRecording } from '../types';
 import { voiceFileName } from '../voiceRecordings/names';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import { mintUuid, now } from './support';
 
 type RecordingRow = { uuid: string; file_path: string };
