@@ -51,12 +51,21 @@ import javax.crypto.spec.PSource;
  * weaker of the two is the one the platform offers there.
  *
  * <p><b>The cliff, stated once.</b> A Keystore key bound to the lock screen
- * is destroyed by the platform when that lock screen is removed. There is no
- * recovery: the wrapped blob outlives the key that opens it. That is the
- * Android shape of ADR-0018's "forgotten credentials have no data-preserving
- * recovery", it is reported as its own state rather than as a failed finger
- * (BiometricOutcomes.KEY_INVALIDATED), and the copy that tells people to keep
- * a screen lock and export Archives is the mitigation.
+ * is destroyed by the platform when that lock screen is removed. The wrapped
+ * blob outlives the key that opens it, so this file has nothing left to give:
+ * that is the Android shape of ADR-0018's "forgotten credentials have no
+ * data-preserving recovery", it is reported as its own state rather than as a
+ * failed finger (BiometricOutcomes.KEY_INVALIDATED), and the copy that tells
+ * people to keep a screen lock and export Archives is the mitigation.
+ *
+ * <p>Since ADR-0054 the journal itself can survive that, which is a claim
+ * about a different file rather than about this one. A recovery key seals the
+ * same 32 bytes under 120 bits somebody wrote down, in recovery-key.json,
+ * which no Keystore alias is involved in - so a destroyed alias is no longer
+ * the end of the journal for anyone who made one. Nothing here changes: this
+ * class still holds a blob it cannot open, and it is not what opens it. The
+ * entry path that offers the written key at the gate is ticket sec-02's, so
+ * until that lands a minted key is a file waiting for a door.
  */
 public final class JournalKeystore {
 

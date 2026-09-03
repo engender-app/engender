@@ -117,6 +117,30 @@ test('a recovery key still opens the journal after the access mode changes', asy
   expect(await openWithRecoveryKey(written, ports)).toEqual(dataKey);
 });
 
+/* Every access mode, because the ticket asks for every access mode and the
+   reason it holds is worth pinning: the recovery wrap seals the data key
+   and never touches the keystore, so what opened the journal first cannot
+   matter. Three of the four are keystore sources and are built here for
+   real; device-bound mode has no keystore at all - its key is minted by the
+   platform and wrapped elsewhere (data/device-bound-journal.ts) - so it is
+   represented by the thing it hands back, which is 32 random bytes and
+   nothing else. */
+test('a minted key opens the journal whichever access mode the journal is on', async () => {
+  const fromKeystore = await Promise.all(
+    (['passphrase', 'pin', 'biometric'] as const).map(async (source) => {
+      const { dataKey } = await createKeystore('a secret for this mode', undefined, source);
+      return dataKey;
+    })
+  );
+  const deviceBound = aDataKey();
+
+  for (const dataKey of [...fromKeystore, deviceBound]) {
+    const ports = inMemoryRecoveryKeyPorts();
+    const written = await mintRecoveryKey(dataKey, ports);
+    expect(await openWithRecoveryKey(written, ports)).toEqual(dataKey);
+  }
+});
+
 test('the stored wrap holds no usable key: it survives disclosure without the written key', async () => {
   const dataKey = aDataKey();
   const written = generateRecoveryKey();
