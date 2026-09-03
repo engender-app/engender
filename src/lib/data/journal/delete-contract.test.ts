@@ -35,8 +35,10 @@ interface Method {
 
 /** Every method in the data tier whose name `matches`, with the body it
     opened. A method's body runs to the first line that closes it at its own
-    indentation, which is how this file's prettier config writes every area:
-    one `async name(args) {` line, and a `}` under the `a`. */
+    indentation, which is how the data tier is written throughout: the
+    signature on one line ending in `{`, and its closing brace under the
+    first character of the name. A signature wrapped across lines is not
+    read, which is what the count assertion below is for. */
 function methods(matches: RegExp): Method[] {
   const found: Method[] = [];
 
