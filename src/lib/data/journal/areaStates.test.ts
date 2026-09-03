@@ -8,6 +8,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { areaHidden, areaQuiet } from '../areaState.ts';
 
+const sources = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`;
+    return entry.isDirectory() ? sources(path) : [path];
+  });
+
 const rowCount = async (db: { query: (sql: string) => Promise<{ n: number }[]> }): Promise<number> =>
   (await db.query('SELECT COUNT(*) AS n FROM area_state'))[0].n;
 
@@ -82,6 +88,24 @@ test('the two flags are independent in both directions, and un-finishing leaves 
   });
 });
 
+test('a cycle row an archive carried in is not readable back out (ADR-0043)', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+
+  /* No setter in this build can write this - `cycleEvents` is not a key of
+     the record - but an area_state row travels, so an archive written
+     somewhere else is a way in. ADR-0043's rule is one-directional, and an
+     imported row must not be what reverses it. */
+  await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['cycleEvents', 1_700_000_000_000]);
+  await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['measurements', 1_700_000_000_000]);
+
+  const states = await journal.areaStates.getAreaStates();
+  assert.deepEqual(Object.keys(states), ['measurements']);
+
+  // The row is still there: nothing was deleted, it is only unreadable
+  // through the gate, so it travels on the way it travelled in.
+  assert.equal(await rowCount(db), 2);
+});
+
 test('an area that goes back to saying nothing keeps no row saying so', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
@@ -124,22 +148,18 @@ test('setting no areas at all writes nothing', async () => {
    search - hangs off that seam, and a route reaching past it into SQL gets
    none of them. */
 test('no screen reads the table itself', () => {
-  const routes = fileURLToPath(new URL('../../../routes', import.meta.url));
-
-  const sources = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-      const path = `${dir}/${entry.name}`;
-      return entry.isDirectory() ? sources(path) : [path];
-    });
-
-  const files = sources(routes);
+  const files = sources(fileURLToPath(new URL('../../../routes', import.meta.url)));
   assert.ok(files.length > 60, `the scan found ${files.length} route files, so it is not reading the tree`);
 
   const reaching = files.filter((file) => readFileSync(file, 'utf8').includes('area_state'));
   assert.deepEqual(reaching, [], 'a route naming the table instead of asking the journal');
 
-  // The reader works: the table every screen does reach through is named in
-  // plenty of them, so an empty answer above means what it says.
-  const asking = files.filter((file) => readFileSync(file, 'utf8').includes('journal.'));
-  assert.ok(asking.length > 0, 'the reader found no screen calling the journal at all');
+  /* The same predicate over the tree that does name the table, so an empty
+     answer above means the routes are clean rather than that the search
+     stopped working. `delete-contract.test.ts` runs its reader over the
+     updates for the same reason. */
+  const naming = sources(fileURLToPath(new URL('..', import.meta.url))).filter((file) =>
+    readFileSync(file, 'utf8').includes('area_state')
+  );
+  assert.ok(naming.length > 0, 'the predicate found the table nowhere at all, so it cannot find it in a route');
 });

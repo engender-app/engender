@@ -1,19 +1,17 @@
 /* Reading and writing which areas are hidden and which are finished (phase 8
-   deepening ticket 13, ADR-0052, CONTEXT: "Finished").
+   deepening ticket 13, ADR-0052). The rule these rows are read by is
+   `areaState.ts`, above the journal seam and driver-free, the way
+   `cycleTracking.ts` sits above `cycleEvents.ts`. This half is only storage.
 
-   The rule these rows are read by is `areaState.ts`, above the journal seam
-   and driver-free, the way `cycleTracking.ts` sits above `cycleEvents.ts`.
-   This half is only storage, and it holds one invariant of its own: the table
-   is sparse. A row exists because something was said about that area, so a
-   state that has gone back to saying nothing - not hidden, no finish day -
-   takes its row with it, and an absent row reads as the resting state rather
-   than as unfinished setup.
+   It holds one invariant of its own: the table is sparse. A row exists
+   because something was said about that area, so a state that has gone back
+   to saying nothing takes its row with it.
 
    Two plural setters rather than two singular ones, because a hub row can
-   front more than one section: hair progress is `hairStages` and `hairPhotos`
-   together, and a row half-finished by two separate calls is a state no
-   screen has a way to show. One call, one transaction, so it cannot happen.
-   Which sections a row fronts is presentation and lives with the hub.
+   front more than one section - hair progress is `hairStages` and
+   `hairPhotos` together - and a row half-finished by two separate calls is a
+   state no screen has a way to show. One call, one transaction, so it cannot
+   happen. Which sections a row fronts is presentation and lives with the hub.
 
    No delete method and no unknown-id case (ADR-0053): every area key is a
    section name this build already has, so there is no id here to name a row
@@ -48,7 +46,11 @@ export function makeAreaStatesArea(driver: SqliteDriver): AreaStatesArea {
       column so the other flag survives a write it was not part of - the two
       are independent, and an INSERT carrying both would make every hide
       clear a finish day. */
-  async function set(areas: readonly string[], column: 'hidden' | 'finished_epoch_day', value: number | null) {
+  async function set(
+    areas: readonly ArchiveSectionName[],
+    column: 'hidden' | 'finished_epoch_day',
+    value: number | null
+  ) {
     if (areas.length === 0) return;
 
     await driver.transaction(async () => {
@@ -76,10 +78,17 @@ export function makeAreaStatesArea(driver: SqliteDriver): AreaStatesArea {
       );
       const states: AreaStates = {};
       for (const row of rows) {
-        /* A key this build has never heard of can only come from an archive
-           written by a newer one; it travelled here and it travels on, and
-           nothing above reads an area it cannot name. */
-        states[row.area as ArchiveSectionName] = {
+        /* Cycle tracking is not answerable here, and a row saying otherwise
+           is dropped rather than trusted: no writer in this build can make
+           one, but an `area_state` row travels, so a foreign archive is a
+           way in. ADR-0043's rule is one-directional and an archive must not
+           be what reverses it. `cycleTrackingVisible` stays cycle's gate.
+
+           Any other key this build has never heard of can only come from an
+           archive written by a newer one. It travelled here and it travels
+           on; nothing above reads an area it cannot name. */
+        if (row.area === 'cycleEvents') continue;
+        states[row.area as HideableArea] = {
           hidden: row.hidden === 1,
           finishedEpochDay: row.finished_epoch_day
         };

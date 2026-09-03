@@ -648,21 +648,18 @@ export interface ArchiveImportLogRecord {
   counts: Record<string, number>;
 }
 
-/** Everything the journal holds (CONTEXT: "Journal"). */
-/** One area's hidden/finished state (phase 8 deepening ticket 13,
-    ADR-0052). Named by its area key rather than a uuid, like
-    ArchiveRoadmapCheck: the key is an archive section name, so the same
-    string means the same area on every device (ADR-0002).
-
-    Travels because the state has to survive a device move - an area that
-    reads as unfinished again after a restore makes finishing it a lie, which
-    is the same reason ADR-0043 made its own preference portable. */
+/** One area's hidden/finished state (ADR-0052, CONTEXT: "Finished"). Named
+    by its area key rather than a uuid, the way ArchiveRoadmapCheck is named
+    by its pack and its goal: an area key is an archive section name, so the
+    same string means the same area on every device (ADR-0002). Why it
+    travels at all is the section's own declaration (archiveSections.ts). */
 export interface ArchiveAreaState {
   area: string;
   hidden: boolean;
   finishedEpochDay: number | null;
 }
 
+/** Everything the journal holds (CONTEXT: "Journal"). */
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
   presets: ArchivePreset[];
