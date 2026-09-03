@@ -231,6 +231,104 @@
 
   {#if selected && selectedPhase}
     <div class="recovery" data-recovery-log={selected.id} data-phase={selectedPhase}>
+      {#snippet checklistBlock(title: string, readonly = false)}
+        <SectionHeading text={title} />
+        {#if checklistItems.length}
+          <div style="margin-bottom:var(--space-3)">
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
+              {#each checklistItems as item (item.id)}
+                <div class="kit-row is-split" data-procedure-item={item.id}>
+                  <button
+                    class="kit-row-main"
+                    role="checkbox"
+                    aria-checked={item.checked}
+                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
+                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
+                  >
+                    <span class="sj-box" class:sj-ticked={item.checked}>
+                      {#if item.checked}<Icon name="check" size={20} />{/if}
+                    </span>
+                    <span class="kit-row-text">
+                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
+                    </span>
+                  </button>
+                  {#if !readonly}
+                    <button
+                      class="kit-row-act press"
+                      class:sj-flagged={item.carriedForward}
+                      data-carry-forward={item.id}
+                      aria-pressed={item.carriedForward}
+                      aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
+                      onclick={() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
+                    >
+                      <Icon name="flag" size={18} />
+                    </button>
+                    <button
+                      class="kit-row-act press"
+                      data-delete-procedure-item={item.id}
+                      aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
+                      onclick={() => itemRecord.askToDelete(item)}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  {/if}
+                </div>
+              {/each}
+            </ListCard>
+          </div>
+        {:else if !readonly}
+          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
+        {/if}
+        {#if !readonly}
+          <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet} style="margin-bottom:var(--space-4)">
+            <span>{m.surgery_checklist_add()}</span>
+          </button>
+        {/if}
+      {/snippet}
+
+      {#snippet notesBlock(title: string, placeholder: string)}
+        <SectionHeading text={title} />
+        <Field label={title} id="surgery-notes" hidden>
+          {#snippet children(id)}
+            <textarea
+              class="input"
+              {id}
+              name="surgery-notes"
+              rows="4"
+              {placeholder}
+              bind:value={notesDraft}
+            ></textarea>
+          {/snippet}
+        </Field>
+        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
+          <span>{m.surgery_notes_save()}</span>
+        </button>
+      {/snippet}
+
+      {#snippet consultsBlock()}
+        {#if selected!.consults.length}
+          <div style="margin-bottom:var(--space-3)">
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
+              {#each selected!.consults as consult (consult.id)}
+                <ListRow
+                  static
+                  data-consult={consult.id}
+                  title={dayLabel(consult.epochDay)}
+                  action={{
+                    icon: 'trash',
+                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
+                    onclick: () => journal.procedures.deleteConsult(consult.id),
+                    attrs: { 'data-delete-consult': consult.id }
+                  }}
+                />
+              {/each}
+            </ListCard>
+          </div>
+        {:else}
+          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
+        {/if}
+      {/snippet}
+
       <!-- Phase 1: Planning Phase (no date set) -->
       {#if selectedPhase === 'planning'}
         <SectionHeading text={m.surgery_phase_planning()} />
@@ -245,96 +343,14 @@
         />
 
         <SectionHeading text={m.surgery_consults_title()} />
-        {#if selected.consults.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each selected.consults as consult (consult.id)}
-                <ListRow
-                  static
-                  data-consult={consult.id}
-                  title={dayLabel(consult.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: () => journal.procedures.deleteConsult(consult.id),
-                    attrs: { 'data-delete-consult': consult.id }
-                  }}
-                />
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
-        {/if}
+        {@render consultsBlock()}
         <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
           <span>{m.surgery_consult_add()}</span>
         </button>
 
-        <SectionHeading text={m.surgery_consult_questions_title()} />
-        <Field label={m.surgery_consult_questions_title()} id="surgery-notes" hidden>
-          {#snippet children(id)}
-            <textarea
-              class="input"
-              {id}
-              name="surgery-notes"
-              rows="4"
-              placeholder={m.surgery_notes_placeholder()}
-              bind:value={notesDraft}
-            ></textarea>
-          {/snippet}
-        </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
-          <span>{m.surgery_notes_save()}</span>
-        </button>
+        {@render notesBlock(m.surgery_consult_questions_title(), m.surgery_notes_placeholder())}
 
-        <SectionHeading text={m.surgery_prep_checklist_title()} />
-        {#if checklistItems.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
-                  <button
-                    class="kit-row-main"
-                    role="checkbox"
-                    aria-checked={item.checked}
-                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
-                  >
-                    <span class="sj-box" class:sj-ticked={item.checked}>
-                      {#if item.checked}<Icon name="check" size={20} />{/if}
-                    </span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
-                    </span>
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    class:sj-flagged={item.carriedForward}
-                    data-carry-forward={item.id}
-                    aria-pressed={item.carriedForward}
-                    aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
-                  >
-                    <Icon name="flag" size={18} />
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    data-delete-procedure-item={item.id}
-                    aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
-                    onclick={() => itemRecord.askToDelete(item)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
-        {/if}
-        <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet}>
-          <span>{m.surgery_checklist_add()}</span>
-        </button>
+        {@render checklistBlock(m.surgery_prep_checklist_title())}
 
       <!-- Phase 2: Pre-Op Phase (date set in future) -->
       {:else if selectedPhase === 'pre_op'}
@@ -349,97 +365,15 @@
           data-add-as-milestone-notice
         />
 
-        <SectionHeading text={m.surgery_clearance_checklist_title()} />
-        {#if checklistItems.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
-                  <button
-                    class="kit-row-main"
-                    role="checkbox"
-                    aria-checked={item.checked}
-                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
-                  >
-                    <span class="sj-box" class:sj-ticked={item.checked}>
-                      {#if item.checked}<Icon name="check" size={20} />{/if}
-                    </span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
-                    </span>
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    class:sj-flagged={item.carriedForward}
-                    data-carry-forward={item.id}
-                    aria-pressed={item.carriedForward}
-                    aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
-                  >
-                    <Icon name="flag" size={18} />
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    data-delete-procedure-item={item.id}
-                    aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
-                    onclick={() => itemRecord.askToDelete(item)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
-        {/if}
-        <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet} style="margin-bottom:var(--space-4)">
-          <span>{m.surgery_checklist_add()}</span>
-        </button>
+        {@render checklistBlock(m.surgery_clearance_checklist_title())}
 
         <SectionHeading text={m.surgery_consults_title()} />
-        {#if selected.consults.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each selected.consults as consult (consult.id)}
-                <ListRow
-                  static
-                  data-consult={consult.id}
-                  title={dayLabel(consult.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: () => journal.procedures.deleteConsult(consult.id),
-                    attrs: { 'data-delete-consult': consult.id }
-                  }}
-                />
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
-        {/if}
+        {@render consultsBlock()}
         <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
           <span>{m.surgery_consult_add()}</span>
         </button>
 
-        <SectionHeading text={m.surgery_notes_title()} />
-        <Field label={m.surgery_notes_title()} id="surgery-notes" hidden>
-          {#snippet children(id)}
-            <textarea
-              class="input"
-              {id}
-              name="surgery-notes"
-              rows="4"
-              placeholder={m.surgery_notes_placeholder()}
-              bind:value={notesDraft}
-            ></textarea>
-          {/snippet}
-        </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
-          <span>{m.surgery_notes_save()}</span>
-        </button>
+        {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
 
       <!-- Phase 3: Surgery Day Phase (surgery date is today) -->
       {:else if selectedPhase === 'surgery_day'}
@@ -477,71 +411,9 @@
           </div>
         {/if}
 
-        <SectionHeading text={m.surgery_checklist_title()} />
-        {#if checklistItems.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
-                  <button
-                    class="kit-row-main"
-                    role="checkbox"
-                    aria-checked={item.checked}
-                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
-                  >
-                    <span class="sj-box" class:sj-ticked={item.checked}>
-                      {#if item.checked}<Icon name="check" size={20} />{/if}
-                    </span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
-                    </span>
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    class:sj-flagged={item.carriedForward}
-                    data-carry-forward={item.id}
-                    aria-pressed={item.carriedForward}
-                    aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
-                  >
-                    <Icon name="flag" size={18} />
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    data-delete-procedure-item={item.id}
-                    aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
-                    onclick={() => itemRecord.askToDelete(item)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
-        {/if}
-        <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet} style="margin-bottom:var(--space-4)">
-          <span>{m.surgery_checklist_add()}</span>
-        </button>
+        {@render checklistBlock(m.surgery_checklist_title())}
 
-        <SectionHeading text={m.surgery_notes_title()} />
-        <Field label={m.surgery_notes_title()} id="surgery-notes" hidden>
-          {#snippet children(id)}
-            <textarea
-              class="input"
-              {id}
-              name="surgery-notes"
-              rows="4"
-              placeholder={m.surgery_notes_placeholder()}
-              bind:value={notesDraft}
-            ></textarea>
-          {/snippet}
-        </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
-          <span>{m.surgery_notes_save()}</span>
-        </button>
+        {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
 
       <!-- Phase 4: Recovery Phase (1..90 days post-op) -->
       {:else if selectedPhase === 'recovery'}
@@ -558,22 +430,7 @@
           data-add-as-milestone-notice
         />
 
-        <SectionHeading text={m.surgery_feelings_title()} />
-        <Field label={m.surgery_feelings_title()} id="surgery-notes" hidden>
-          {#snippet children(id)}
-            <textarea
-              class="input"
-              {id}
-              name="surgery-notes"
-              rows="4"
-              placeholder={m.surgery_feelings_placeholder()}
-              bind:value={notesDraft}
-            ></textarea>
-          {/snippet}
-        </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
-          <span>{m.surgery_notes_save()}</span>
-        </button>
+        {@render notesBlock(m.surgery_feelings_title(), m.surgery_feelings_placeholder())}
 
         <SectionHeading text={m.surgery_wound_album_title()} />
         <PhotoSection
@@ -601,77 +458,10 @@
           {/snippet}
         </PhotoSection>
 
-        <SectionHeading text={m.surgery_recovery_checklist_title()} />
-        {#if checklistItems.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
-                  <button
-                    class="kit-row-main"
-                    role="checkbox"
-                    aria-checked={item.checked}
-                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
-                  >
-                    <span class="sj-box" class:sj-ticked={item.checked}>
-                      {#if item.checked}<Icon name="check" size={20} />{/if}
-                    </span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
-                    </span>
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    class:sj-flagged={item.carriedForward}
-                    data-carry-forward={item.id}
-                    aria-pressed={item.carriedForward}
-                    aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
-                  >
-                    <Icon name="flag" size={18} />
-                  </button>
-                  <button
-                    class="kit-row-act press"
-                    data-delete-procedure-item={item.id}
-                    aria-label={m.surgery_checklist_delete_aria({ content: item.content })}
-                    onclick={() => itemRecord.askToDelete(item)}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_checklist_empty()}</p>
-        {/if}
-        <button class="btn btn-soft press" data-add-procedure-item aria-label={m.surgery_checklist_add_aria()} onclick={openItemSheet} style="margin-bottom:var(--space-4)">
-          <span>{m.surgery_checklist_add()}</span>
-        </button>
+        {@render checklistBlock(m.surgery_recovery_checklist_title())}
 
         <SectionHeading text={m.surgery_consults_title()} />
-        {#if selected.consults.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each selected.consults as consult (consult.id)}
-                <ListRow
-                  static
-                  data-consult={consult.id}
-                  title={dayLabel(consult.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: () => journal.procedures.deleteConsult(consult.id),
-                    attrs: { 'data-delete-consult': consult.id }
-                  }}
-                />
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
-        {/if}
+        {@render consultsBlock()}
         <button class="btn btn-soft press" data-add-consult style="margin-bottom:var(--space-4)" onclick={openConsultSheet}>
           <span>{m.surgery_consult_add()}</span>
         </button>
@@ -714,71 +504,12 @@
           {/snippet}
         </PhotoSection>
 
-        <SectionHeading text={m.surgery_notes_title()} />
-        <Field label={m.surgery_notes_title()} id="surgery-notes" hidden>
-          {#snippet children(id)}
-            <textarea
-              class="input"
-              {id}
-              name="surgery-notes"
-              rows="4"
-              placeholder={m.surgery_notes_placeholder()}
-              bind:value={notesDraft}
-            ></textarea>
-          {/snippet}
-        </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
-          <span>{m.surgery_notes_save()}</span>
-        </button>
+        {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
 
         <SectionHeading text={m.surgery_consults_title()} />
-        {#if selected.consults.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each selected.consults as consult (consult.id)}
-                <ListRow
-                  static
-                  data-consult={consult.id}
-                  title={dayLabel(consult.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: () => journal.procedures.deleteConsult(consult.id),
-                    attrs: { 'data-delete-consult': consult.id }
-                  }}
-                />
-              {/each}
-            </ListCard>
-          </div>
-        {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
-        {/if}
+        {@render consultsBlock()}
 
-        <SectionHeading text={m.surgery_checklist_title()} />
-        {#if checklistItems.length}
-          <div style="margin-bottom:var(--space-3)">
-            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
-              {#each checklistItems as item (item.id)}
-                <div class="kit-row is-split" data-procedure-item={item.id}>
-                  <button
-                    class="kit-row-main"
-                    role="checkbox"
-                    aria-checked={item.checked}
-                    aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={() => journal.checklists.setItemChecked(item.id, !item.checked)}
-                  >
-                    <span class="sj-box" class:sj-ticked={item.checked}>
-                      {#if item.checked}<Icon name="check" size={20} />{/if}
-                    </span>
-                    <span class="kit-row-text">
-                      <span class="kit-row-title" class:sj-done={item.checked}>{item.content}</span>
-                    </span>
-                  </button>
-                </div>
-              {/each}
-            </ListCard>
-          </div>
-        {/if}
+        {@render checklistBlock(m.surgery_checklist_title(), true)}
       {/if}
     </div>
   {/if}
