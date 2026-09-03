@@ -29,6 +29,8 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bioGateDecision } from '$lib/lock/bio-consent';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
+  import { recoveryKeyExists } from '$lib/data/recovery-key';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -36,6 +38,15 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* Read once on mount, like the web gate's (ADR-0054, ticket sec-02). It
+     matters more here: the invalidated screen below is the state
+     JournalKeystore.java calls the cliff, and a recovery key is the one
+     thing that gets a journal back off it. */
+  let hasRecoveryKey = $state(false);
+  recoveryKeyExists().then((found) => {
+    hasRecoveryKey = found;
+  });
+  let usingRecoveryKey = $state(false);
   let consentOpen = $state(false);
 
   let refusal = $derived(bootState.androidKey?.kind === 'refused' ? bootState.androidKey.authentication : null);
@@ -103,12 +114,26 @@
   }
 </script>
 
-{#if invalidated}
-  <!-- The one state with no way back into this journal (JournalKeystore's
-       header says why the platform does this). A risk screen: the whole
-       consequence, then the single action there is. -->
+{#if usingRecoveryKey}
+  <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
+{:else if invalidated}
+  <!-- The state JournalKeystore.java calls the cliff: the platform destroyed
+       the key when the screen lock came off, and this file has nothing left
+       to give. Until ADR-0054 that made it the one state with no way back
+       into the journal, and the screen offered a reset and nothing else.
+       A recovery key is a different file that no alias is involved in, so
+       where one exists the way back goes first and the reset stops being the
+       only thing on offer. -->
   <GateScreen icon="alert" tone="alert" title={m.ak_invalidated_title()}>
     <p class={gateBodyClass(m.ak_invalidated_body())} data-key-invalidated>{m.ak_invalidated_body()}</p>
+    {#if hasRecoveryKey}
+      <p class="gate-body is-small" data-key-invalidated-recovery>{m.dbr_recovery_offer()}</p>
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
+          <span>{m.rke_open()}</span>
+        </button>
+      </div>
+    {/if}
     <div class="gate-actions">
       <button class="btn btn-danger" data-open-reset onclick={() => (resetOpen = true)}>
         <span>{m.reset_confirm()}</span>
@@ -162,6 +187,11 @@
     </div>
 
     <div class="gate-foot">
+      {#if hasRecoveryKey}
+        <button class="btn btn-ghost" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
+          <span>{m.rke_open()}</span>
+        </button>
+      {/if}
       <button class="btn btn-ghost" data-forgot-key onclick={() => (resetOpen = true)}>
         <span>{m.ak_forgot()}</span>
       </button>

@@ -56,6 +56,7 @@ import {
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
 import { removeKeystoreFile } from '../data/keystore-file';
+import { openWithRecoveryKey } from '../data/recovery-key';
 import type { JournalAccessMode } from '../data/journal-access-mode';
 import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
 import { setPhotoFiles } from './photoFiles';
@@ -297,6 +298,39 @@ export async function submitBiometricUnlock(): Promise<void> {
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
 }
 
+/** Whether a recovery unlock happened this page-load, and therefore whether
+    the app owes the person a new access mode before it shows them anything
+    (ADR-0054, ticket sec-02).
+
+    Deliberately not in `BootState`. The machine holds what a boot found and
+    what it decided, and this is neither: it is one page-load's worth of UI
+    consequence, the way the data key itself is kept out of that state for
+    its own reasons. A reload while it is set is not a hole either - the
+    keystore still names the mode the person could not open, so a reload
+    lands back at the gate and the written key still works. */
+export const recoveryUnlock = $state({ used: false });
+
+/** The recovery-key gate's submit (ADR-0054, ticket sec-02). Opens the same
+    data key the access mode would have opened, so nothing about the journal
+    changes and nothing is re-encrypted.
+
+    The mode dispatched is the one the keystore still names, because that is
+    what is true: a recovery key is not an access mode and using it does not
+    make the journal into one. What it does set is `recoveryUnlock`, which is
+    what puts the access-mode module in front of the app until a secret the
+    person actually has is chosen - without that, the forgotten secret would
+    still be the journal's only door and the written key would quietly become
+    the daily credential.
+
+    Throws RecoveryKeyMistypedError, RecoveryKeyAbsentError and
+    DecryptionFailedError separately, because the gate says three different
+    things (data/recovery-key.ts). */
+export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
+  const dataKey = await openWithRecoveryKey(typed);
+  recoveryUnlock.used = true;
+  dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
+}
+
 /** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the
     platform would mint the key is the screen's answer to render, not a boot
     transition - a refusal leaves the module exactly where it was.
@@ -382,6 +416,7 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
        leaves the old mode working and the screen able to say so. */
     await removeKeystoreFile();
     dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
+    recoveryUnlock.used = false;
     await removeEveryPinBinding().catch((error) => {
       console.warn('could not remove the PIN binding key after moving to device-bound mode', error);
     });
@@ -392,6 +427,11 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
   else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
   else await addJournalPassphrase(sessionDataKey, secret);
   dispatch({ type: 'access-mode-changed', accessMode: target });
+  /* Cleared after the wrap landed rather than before it: the module is in
+     front of the app precisely until there is a secret the person has, and
+     clearing this on the way in would drop them into the journal on a
+     rewrap that then failed. */
+  recoveryUnlock.used = false;
 
   /* PIN mode keeps its own binding key, so only a move *away* from it clears
      one. Everything else here is the previous mode's leftovers. */
