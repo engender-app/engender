@@ -13,13 +13,11 @@
    bound is unbounded in that direction - reaching back before the journal
    for a start, or still running for an end. */
 
-export interface Span {
-  startEpochDay: number | null;
-  endEpochDay: number | null;
-}
-
-/** Whether `day` falls inside `span`. Both bounds are inclusive. */
-export function spanCoversDay(span: Span, day: number): boolean {
+/** Whether `day` falls inside `span`. Both bounds are inclusive. No named
+    `Span` type: a shared record was ruled out for this ticket, and an
+    anonymous structural type keeps that from creeping back in as a type
+    other modules might reach for. */
+export function spanCoversDay(span: { startEpochDay: number | null; endEpochDay: number | null }, day: number): boolean {
   if (span.startEpochDay !== null && day < span.startEpochDay) return false;
   if (span.endEpochDay !== null && day > span.endEpochDay) return false;
   return true;
@@ -28,7 +26,11 @@ export function spanCoversDay(span: Span, day: number): boolean {
 /** Whether `span` overlaps `[fromEpochDay, toEpochDay]` at all - a stretch
     that starts on or before the window ends and ends on or after the window
     starts. */
-export function spanOverlapsRange(span: Span, fromEpochDay: number, toEpochDay: number): boolean {
+export function spanOverlapsRange(
+  span: { startEpochDay: number | null; endEpochDay: number | null },
+  fromEpochDay: number,
+  toEpochDay: number
+): boolean {
   if (span.startEpochDay !== null && span.startEpochDay > toEpochDay) return false;
   if (span.endEpochDay !== null && span.endEpochDay < fromEpochDay) return false;
   return true;
