@@ -46,7 +46,6 @@
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
-  import { isPausedOn } from '$lib/data/journalingPause';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
   import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
@@ -65,7 +64,6 @@
   }
 
   import FlagSun from '$lib/components/FlagSun.svelte';
-  import Icon from '$lib/components/Icon.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
   import WeekStrip from '$lib/components/WeekStrip.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -83,11 +81,6 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
-  import { hoursMinutesSecondsOf } from '$lib/data/journal/wearSessions';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
-  import { activeSurgeryProcedure, recoveryDay } from '$lib/data/recoveryDay';
-  import { shouldShowSafeSpaceNudge } from '$lib/data/safeSpaceNudge';
-  import { isLetterSnoozed, snoozeLetterTile, unreadUnlockedLetters } from '$lib/data/letterStatus';
   import {
     depletingStocks,
     isStockNoticeSnoozed,
@@ -96,207 +89,23 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { isTileSnoozed, snoozeTile } from '$lib/data/liveTilesSnooze';
-  import {
-    shouldShowActiveTryoutTile,
-    shouldShowPatchScheduleTile,
-    shouldShowVoiceBenchmarkNudge,
-    shouldShowPauseActiveBanner,
-    shouldShowHairRemovalRecovery,
-    shouldShowMeasurementsNudge
-  } from '$lib/data/liveTiles';
-  import { spanCoversDay } from '$lib/data/span';
-  import { hairRemovalAreaName } from '$lib/data/vocabulary/labels';
+  import { homeTiles } from '$lib/data/liveTiles.svelte';
 
   const today = todayEpochDay();
-  const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  /* Live tiles data & condition (phase 5 tickets 45, 47, 50, deepening 01, 03). */
-  let runningWearQuery = liveQuery((j) => j.wearSessions.getRunningSession());
-  let runningWear = $derived(runningWearQuery.value ?? null);
-  let nowTick = $state(Date.now());
-  $effect(() => {
-    const id = setInterval(() => (nowTick = Date.now()), 1000);
-    return () => clearInterval(id);
-  });
-  let runningWearElapsed = $derived(runningWear ? hoursMinutesSecondsOf(nowTick - runningWear.startTimestamp) : null);
-  let showWearTile = $derived(prefs.wearTimerEnabled && !!runningWear);
-
-  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
-  let activeEpisodes = $derived(activeEpisodesAt(episodesQuery.rows, Date.now()));
-  let showDoseTile = $derived(prefs.dosePanelEnabled && activeEpisodes.length > 0);
-
-  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
-  let activeSurgery = $derived(activeSurgeryProcedure(proceduresQuery.rows, today));
-  let showSurgeryTile = $derived(prefs.surgeryCountdownEnabled && !!activeSurgery);
-
-  let lettersQuery = liveList((j) => j.letters.getLetters(100));
-  let isLetterSnoozedState = $state(false);
-  $effect(() => {
-    isLetterSnoozedState = isLetterSnoozed();
-  });
-  let unreadLetters = $derived(unreadUnlockedLetters(lettersQuery.rows, today));
-  let readyLetter = $derived(unreadLetters[0] ?? null);
-  let otherReadyLettersCount = $derived(Math.max(0, unreadLetters.length - 1));
-  let showLetterTile = $derived(prefs.readyLetterEnabled && !!readyLetter && !isLetterSnoozedState);
+  /* The live tiles, as one read (deepening ticket 07). Home used to hold
+     thirteen queries, eleven predicates and an eleven-ternary count for
+     this grid, none of which drew anything by itself; what is left here is
+     the `{#each}` and the one sheet a tile opens rather than handles in
+     place. */
   let letterDismissSheetOpen = $state(false);
-
-  function procedureRecoveryText(procedure: { surgeryEpochDay: number | null }): string {
-    const day = recoveryDay(procedure.surgeryEpochDay, today);
-    if (day.type === 'unscheduled') return m.surgery_day_unscheduled();
-    if (day.type === 'upcoming') return m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) });
-    if (day.type === 'surgeryDay') return m.surgery_day_of();
-    return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
-  }
-
-  let latestBadEntryQuery = liveQuery((j) => j.entries.latestBadMomentEntry());
-  let latestBadEntry = $derived(latestBadEntryQuery.value ?? null);
-  let showSafeSpaceTile = $derived(
-    shouldShowSafeSpaceNudge({
-      latestBadEntryId: latestBadEntry?.id,
-      dismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
-      enabled: prefs.safeSpaceNudgeEnabled
-    })
-  );
-
-  function dismissSafeSpaceNudge(e?: MouseEvent) {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-    if (latestBadEntry) {
-      prefs.safeSpaceNudgeDismissedEntryId = latestBadEntry.id;
-    }
-  }
-
-  /* 1. Active tryout tile */
-  let tryoutsQuery = liveList((j) => j.tryouts.getTryouts());
-  let tryoutFeltSenseQuery = liveQuery(async (j) => {
-    const tryouts = await j.tryouts.getTryouts();
-    const map = new Map<string, number | null>();
-    for (const t of tryouts) {
-      if (spanCoversDay(t, today)) {
-        const entries = await j.feltSense.forTryout(t.id);
-        map.set(t.id, entries.length > 0 ? entries[0].epochDay : null);
-      }
-    }
-    return map;
+  const liveTiles = homeTiles(today, {
+    onLetterDismiss: () => (letterDismissSheetOpen = true)
   });
-  let activeTryoutQualifying = $derived(
-    shouldShowActiveTryoutTile({
-      tryouts: tryoutsQuery.rows,
-      latestFeltSenseByTryoutId: tryoutFeltSenseQuery.value ?? new Map(),
-      todayEpochDay: today,
-      enabled: prefs.activeTryoutTileEnabled,
-      snoozed: isTileSnoozed('active-tryout-tile', nowTick)
-    })
-  );
-  let showTryoutTile = $derived(!!activeTryoutQualifying);
-
-  /* 2. Patch schedule tile */
-  let schedulesQuery = liveList((j) => j.doses.getSchedules());
-  let dosePausesQuery = liveList((j) => j.doses.getPauses());
-  let todayDosesQuery = liveList((j) => j.doses.getDoses(today, today));
-  let patchScheduleQualifying = $derived(
-    shouldShowPatchScheduleTile({
-      episodes: episodesQuery.rows,
-      schedules: schedulesQuery.rows,
-      doses: todayDosesQuery.rows,
-      pauses: dosePausesQuery.rows,
-      todayEpochDay: today,
-      enabled: prefs.patchScheduleTileEnabled,
-      snoozed: isTileSnoozed('patch-schedule-tile', nowTick)
-    })
-  );
-  let showPatchScheduleTile = $derived(!!patchScheduleQualifying);
-
-  /* 3. Voice benchmark nudge */
-  let voiceBenchmarksQuery = liveList((j) => j.voiceBenchmarks.getBenchmarks());
-  let voiceBenchmarkQualifying = $derived(
-    shouldShowVoiceBenchmarkNudge({
-      benchmarks: voiceBenchmarksQuery.rows,
-      todayEpochDay: today,
-      enabled: prefs.voiceBenchmarkNudgeEnabled,
-      snoozed: isTileSnoozed('voice-benchmark-nudge', nowTick)
-    })
-  );
-  let showVoiceBenchmarkTile = $derived(!!voiceBenchmarkQualifying);
-
-  /* 4. Journaling pause active banner / tile */
-  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
-  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
-  let pauseActiveQualifying = $derived(
-    shouldShowPauseActiveBanner({
-      pauses: pausesQuery.rows,
-      todayEpochDay: today,
-      enabled: prefs.pauseActiveBannerEnabled,
-      snoozed: isTileSnoozed('pause-active-banner', nowTick)
-    })
-  );
-  let showPauseBannerTile = $derived(!!pauseActiveQualifying);
-
-  async function resumePauseEarly(pauseId: string, startEpochDay: number) {
-    const endEpochDay = today - 1;
-    if (endEpochDay < startEpochDay) {
-      await journal.journalingPauses.deletePause(pauseId);
-      return;
-    }
-    await journal.journalingPauses.upsertPause({
-      id: pauseId,
-      startEpochDay,
-      endEpochDay
-    });
-  }
-
-  /* 5. Hair removal recovery tile */
-  let hairRemovalQuery = liveList((j) => j.hairRemoval.getSessions());
-  let hairRemovalQualifying = $derived(
-    shouldShowHairRemovalRecovery({
-      sessions: hairRemovalQuery.rows,
-      todayEpochDay: today,
-      enabled: prefs.hairRemovalRecoveryEnabled,
-      snoozed: isTileSnoozed('hair-removal-recovery', nowTick)
-    })
-  );
-  let showHairRemovalTile = $derived(!!hairRemovalQualifying);
-
-  /* 6. Measurements nudge tile */
-  let measurementsQuery = liveQuery(async (j) => {
-    const all = await j.measurements.getMeasurementsInRange(0, 999999);
-    const count = all.length;
-    let latestDay: number | null = null;
-    for (const m of all) {
-      if (latestDay == null || m.epochDay > latestDay) latestDay = m.epochDay;
-    }
-    return { count, latestDay };
-  });
-  let measurementsData = $derived(measurementsQuery.value ?? { count: 0, latestDay: null });
-  let measurementsNudgeQualifying = $derived(
-    shouldShowMeasurementsNudge({
-      measurementsCount: measurementsData.count,
-      latestMeasurementEpochDay: measurementsData.latestDay,
-      todayEpochDay: today,
-      enabled: prefs.measurementsNudgeEnabled,
-      snoozed: isTileSnoozed('measurements-nudge', nowTick)
-    })
-  );
-  let showMeasurementsTile = $derived(!!measurementsNudgeQualifying);
-
-  let liveTilesCount = $derived(
-    (showWearTile && runningWear && runningWearElapsed ? 1 : 0) +
-      (showDoseTile ? 1 : 0) +
-      (showSurgeryTile && activeSurgery ? 1 : 0) +
-      (showSafeSpaceTile ? 1 : 0) +
-      (showLetterTile && readyLetter ? 1 : 0) +
-      (showTryoutTile && activeTryoutQualifying ? 1 : 0) +
-      (showPatchScheduleTile && patchScheduleQualifying ? 1 : 0) +
-      (showVoiceBenchmarkTile && voiceBenchmarkQualifying ? 1 : 0) +
-      (showPauseBannerTile && pauseActiveQualifying ? 1 : 0) +
-      (showHairRemovalTile && hairRemovalQualifying ? 1 : 0) +
-      (showMeasurementsTile && measurementsNudgeQualifying ? 1 : 0)
-  );
-
-  let hasLiveTiles = $derived(liveTilesCount > 0);
+  /* The header borrows the pause tile's own line rather than deriving the
+     same sentence a second time: when a pause is running and its tile is
+     switched on, the streak line says what the tile says. */
+  let pauseTile = $derived(liveTiles.tiles.find((tile) => tile.key === 'pause-active-banner'));
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -364,7 +173,7 @@
      is not evidence of anything. Nine, because that is what fits across the
      line's width without reading as a shower. */
   const STREAK_CHEER_FLOOR = 7;
-  let cheering = $derived(streak > STREAK_CHEER_FLOOR && !pausedToday);
+  let cheering = $derived(streak > STREAK_CHEER_FLOOR && !liveTiles.pausedToday);
   /* `dx` is how far the piece drifts sideways, and it only means anything to
      the streak's burst: the nine fan outward from the middle of the line as
      they go up, which is what makes it read as thrown rather than dropped.
@@ -481,18 +290,14 @@
          display size - which is what "the streak is not a hero metric" is
          about; where the line sits is a composition decision and this is
          where it was asked for. -->
-    {#if streak > 1 && !pausedToday}
+    {#if streak > 1 && !liveTiles.pausedToday}
       <div class="home-streak-wrap">
         {#if cheering}{@render cheer(true)}{/if}
         <p class="home-streak" data-home-streak="line">{streak} {m.streak_row()}</p>
       </div>
-    {:else if pausedToday && showPauseBannerTile && pauseActiveQualifying}
+    {:else if liveTiles.pausedToday && pauseTile}
       <div class="home-streak-wrap">
-        <p class="home-streak" data-home-streak="paused">
-          {pauseActiveQualifying.pause.endEpochDay != null
-            ? m.tile_pause_until_date({ date: fmtDay(pauseActiveQualifying.pause.endEpochDay, { day: 'numeric', month: 'short' }) })
-            : m.tile_pause_ongoing()}
-        </p>
+        <p class="home-streak" data-home-streak="paused">{pauseTile.note}</p>
       </div>
     {/if}
   </header>
@@ -599,310 +404,33 @@
        the week strip and recent entries - carrying its own role-coloured
        stripe (HOME_AREA_ROLE.liveTiles). Disappears completely - no heading,
        no gap - when no live tile condition holds. -->
-  {#if hasLiveTiles}
+  {#if liveTiles.tiles.length > 0}
     <div transition:disclose>
       <TileGrid
         role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
         flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
         data-live-tile-grid
       >
-        {#if showWearTile && runningWear && runningWearElapsed}
-          <div transition:tileSlide={{ enabled: showDoseTile || showSurgeryTile || showSafeSpaceTile || showLetterTile }}>
+        <!-- One slide rule for all eleven. It used to be two: seven tiles
+             asked whether they had a sibling and four asked whether one of
+             the original five was showing, so a journal with only the wear
+             and measurements tiles slid one in and left the other to
+             appear (deepening ticket 07). -->
+        {#each liveTiles.tiles as tile (tile.key)}
+          <div transition:tileSlide={{ enabled: liveTiles.tiles.length > 1 }}>
             <Tile
-              key="wear-timer"
-              data-wear-running-tile
-              data-live-tile="wear-timer"
-              title={m.tile_wear_title()}
-              value={m.wear_session_duration_hms({
-                hours: String(runningWearElapsed.hours),
-                minutes: String(runningWearElapsed.minutes),
-                seconds: String(runningWearElapsed.seconds)
-              })}
-              note={m.wear_session_running_since({ time: fmtTime(runningWear.startTimestamp) })}
-              href="/settings/wear"
-              action={{
-                icon: 'stop',
-                text: m.wear_session_stop_action(),
-                label: m.wear_session_stop_action(),
-                attrs: { 'data-wear-stop': '' },
-                onclick: async (e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  await journal.wearSessions.upsertSession({
-                    id: runningWear.id,
-                    startTimestamp: runningWear.startTimestamp,
-                    durationMs: Date.now() - runningWear.startTimestamp,
-                    note: runningWear.note
-                  });
-                }
-              }}
+              key={tile.tileKey}
+              title={tile.title}
+              value={tile.value}
+              note={tile.note}
+              href={tile.href}
+              action={tile.action}
+              dismiss={tile.dismiss}
+              {...tile.attrs}
+              data-live-tile={tile.key}
             />
           </div>
-        {/if}
-
-        {#if showDoseTile}
-          <div
-            transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showSurgeryTile || showSafeSpaceTile || showLetterTile
-            }}
-          >
-            <Tile
-              key="dose-panel"
-              data-dose-panel-tile
-              data-live-tile="dose-panel"
-              title={m.tile_dose_title()}
-              value={activeEpisodes.length > 0 ? activeEpisodes[0].drug : undefined}
-              note={undefined}
-              href="/doses"
-              action={{
-                icon: 'plus',
-                text: m.doses_add_aria(),
-                label: m.doses_add_aria(),
-                href: '/doses?add=1',
-                attrs: { 'data-dose-add': '' }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showSurgeryTile && activeSurgery}
-          <div
-            transition:tileSlide={{
-              enabled: !!(showWearTile && runningWear && runningWearElapsed) || showDoseTile || showSafeSpaceTile || showLetterTile
-            }}
-          >
-            <Tile
-              key="surgery-countdown"
-              data-surgery-tile
-              data-live-tile="surgery-countdown"
-              title={m.tile_surgery_title()}
-              value={procedureRecoveryText(activeSurgery)}
-              note={activeSurgery.name}
-              href="/settings/surgery"
-            />
-          </div>
-        {/if}
-
-        {#if showSafeSpaceTile}
-          <div
-            transition:tileSlide={{
-              enabled: liveTilesCount > 1
-            }}
-          >
-            <Tile
-              key="safe-space-nudge"
-              data-safe-space-nudge-tile
-              data-live-tile="safe-space-nudge"
-              title={m.safe_space_title()}
-              note={m.tile_safe_space_nudge_sub()}
-              href="/doubt"
-              action={{
-                icon: 'x',
-                label: m.tile_safe_space_nudge_dismiss(),
-                attrs: { 'data-safe-space-nudge-dismiss': '' },
-                onclick: (e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  dismissSafeSpaceNudge(e);
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showLetterTile && readyLetter}
-          <div
-            transition:tileSlide={{
-              enabled:
-                !!(showWearTile && runningWear && runningWearElapsed) ||
-                showDoseTile ||
-                showSurgeryTile ||
-                showSafeSpaceTile
-            }}
-          >
-            <Tile
-              key="ready-letter"
-              data-letter-tile
-              data-live-tile="ready-letter"
-              title={m.tile_letter_title()}
-              value={dayLabel(readyLetter.epochDay)}
-              note={otherReadyLettersCount > 0
-                ? m.tile_letter_more({ count: String(otherReadyLettersCount) })
-                : m.tile_letter_single_note()}
-              href={`/settings/letters?read=${readyLetter.id}`}
-              action={{
-                icon: 'x',
-                label: m.tile_letter_dismiss_action(),
-                attrs: { 'data-letter-dismiss': '' },
-                onclick: (e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  letterDismissSheetOpen = true;
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showTryoutTile && activeTryoutQualifying}
-          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
-            <Tile
-              key="active-tryout"
-              data-active-tryout-tile
-              data-live-tile="active-tryout-tile"
-              title={m.tile_active_tryout_title()}
-              value={activeTryoutQualifying.tryout.label}
-              note={m.tile_active_tryout_note({ days: String(activeTryoutQualifying.daysElapsed) })}
-              href={`/settings/tryouts/${activeTryoutQualifying.tryout.id}`}
-              action={{
-                icon: 'plus',
-                text: m.tile_tryout_action(),
-                label: m.tile_tryout_action(),
-                href: `/settings/tryouts/${activeTryoutQualifying.tryout.id}?feltSense=1`
-              }}
-              dismiss={{
-                label: m.dismiss(),
-                onclick: () => {
-                  snoozeTile('active-tryout-tile');
-                  nowTick = Date.now();
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showPatchScheduleTile && patchScheduleQualifying}
-          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
-            <Tile
-              key="patch-schedule"
-              data-patch-schedule-tile
-              data-live-tile="patch-schedule-tile"
-              title={m.tile_patch_schedule_title()}
-              value={patchScheduleQualifying.episode.drug}
-              note={`${patchScheduleQualifying.doseAmount} · ${patchScheduleQualifying.route}`}
-              href="/doses"
-              action={{
-                icon: 'plus',
-                text: m.tile_dose_log_action(),
-                label: m.tile_dose_log_action(),
-                href: '/doses?add=1'
-              }}
-              dismiss={{
-                label: m.dismiss(),
-                onclick: () => {
-                  snoozeTile('patch-schedule-tile');
-                  nowTick = Date.now();
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showVoiceBenchmarkTile && voiceBenchmarkQualifying}
-          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
-            <Tile
-              key="voice-benchmark"
-              data-voice-benchmark-tile
-              data-live-tile="voice-benchmark-nudge"
-              title={m.tile_voice_benchmark_title()}
-              value={m.tile_voice_benchmark_action()}
-              note={m.tile_voice_benchmark_days_ago({
-                days: String(voiceBenchmarkQualifying.daysElapsed)
-              })}
-              href="/settings/voice"
-              action={{
-                icon: 'mic',
-                text: m.tile_voice_benchmark_action(),
-                label: m.tile_voice_benchmark_action(),
-                href: '/settings/voice/record'
-              }}
-              dismiss={{
-                label: m.dismiss(),
-                onclick: () => {
-                  snoozeTile('voice-benchmark-nudge');
-                  nowTick = Date.now();
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showPauseBannerTile && pauseActiveQualifying}
-          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
-            <Tile
-              key="pause-active"
-              data-pause-active-tile
-              data-live-tile="pause-active-banner"
-              title={m.tile_pause_active_title()}
-              value={m.streak_protected()}
-              note={pauseActiveQualifying.pause.endEpochDay != null
-                ? m.tile_pause_until_date({ date: fmtDay(pauseActiveQualifying.pause.endEpochDay, { day: 'numeric', month: 'short' }) })
-                : m.tile_pause_ongoing()}
-              href="/settings/journaling-pause"
-              action={{
-                icon: 'play',
-                text: m.journaling_pause_resume(),
-                label: m.journaling_pause_resume(),
-                onclick: () => resumePauseEarly(pauseActiveQualifying!.pause.id ?? '', pauseActiveQualifying!.pause.startEpochDay)
-              }}
-              dismiss={{
-                label: m.dismiss(),
-                onclick: () => {
-                  snoozeTile('pause-active-banner');
-                  nowTick = Date.now();
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showHairRemovalTile && hairRemovalQualifying}
-          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
-            <Tile
-              key="hair-removal-recovery"
-              data-hair-removal-tile
-              data-live-tile="hair-removal-recovery"
-              title={m.tile_hair_removal_title()}
-              value={hairRemovalAreaName(hairRemovalQualifying.session.area)}
-              note={m.tile_hair_removal_guidance()}
-              href="/settings/hair-removal"
-              dismiss={{
-                label: m.dismiss(),
-                onclick: () => {
-                  snoozeTile('hair-removal-recovery');
-                  nowTick = Date.now();
-                }
-              }}
-            />
-          </div>
-        {/if}
-
-        {#if showMeasurementsTile && measurementsNudgeQualifying}
-          <div transition:tileSlide={{ enabled: liveTilesCount > 1 }}>
-            <Tile
-              key="measurements-nudge"
-              data-measurements-tile
-              data-live-tile="measurements-nudge"
-              title={m.tile_measurements_title()}
-              value={m.tile_measurements_prompt()}
-              note={m.tile_measurements_note({ days: String(measurementsNudgeQualifying.daysSince) })}
-              href="/settings/measurements"
-              action={{
-                icon: 'plus',
-                text: m.tile_measurements_action(),
-                label: m.tile_measurements_action(),
-                href: '/settings/measurements'
-              }}
-              dismiss={{
-                label: m.dismiss(),
-                onclick: () => {
-                  snoozeTile('measurements-nudge');
-                  nowTick = Date.now();
-                }
-              }}
-            />
-          </div>
-        {/if}
+        {/each}
       </TileGrid>
     </div>
   {/if}
@@ -963,7 +491,7 @@
   </SectionHeading>
   <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
   <!-- The streak, as the caption on the week it describes. -->
-  {#if streak > 1 && !pausedToday}
+  {#if streak > 1 && !liveTiles.pausedToday}
     <p class="home-week-caption" data-home-streak="week">{streak} {m.streak_row()}</p>
   {/if}
 
@@ -1072,8 +600,7 @@
           class="btn btn-primary btn-block"
           data-letter-snooze
           onclick={() => {
-            snoozeLetterTile();
-            isLetterSnoozedState = true;
+            liveTiles.snooze('ready-letter');
             letterDismissSheetOpen = false;
             toast(m.tile_letter_snoozed_toast());
           }}

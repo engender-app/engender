@@ -4,10 +4,10 @@ import type {
   DosePause,
   DoseSchedule,
   HairRemovalSession,
+  JournalingPause,
   RegimenEpisode,
   Tryout
 } from './types';
-import type { JournalingPauseRange } from './journalingPause';
 import {
   shouldShowActiveTryoutTile,
   shouldShowHairRemovalRecovery,
@@ -292,7 +292,8 @@ describe('liveTiles trigger predicates', () => {
 
   describe('shouldShowPauseActiveBanner', () => {
     it('triggers when today is covered by active journaling pause', () => {
-      const pause: JournalingPauseRange = {
+      const pause: JournalingPause = {
+        id: 'pause-1',
         startEpochDay: today - 2,
         endEpochDay: today + 3
       };
@@ -307,7 +308,8 @@ describe('liveTiles trigger predicates', () => {
     });
 
     it('suppresses when no pause covers today', () => {
-      const pastPause: JournalingPauseRange = {
+      const pastPause: JournalingPause = {
+        id: 'pause-2',
         startEpochDay: today - 10,
         endEpochDay: today - 1
       };
