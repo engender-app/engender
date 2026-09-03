@@ -58,6 +58,9 @@ export interface HairRemovalArea {
   upsertSession(input: HairRemovalSessionInput): Promise<string>;
   /** Idempotent. Its photos go with it (ON DELETE CASCADE). */
   deleteSession(id: string): Promise<void>;
+  /** The day of the most recent session at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** A session's photos, oldest first. */
   getPhotos(sessionId: string): Promise<HairRemovalPhoto[]>;
   /** Normalizes nothing itself - `photo` must already be through
@@ -149,6 +152,14 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
 
     async deleteSession(id) {
       await driver.run('DELETE FROM hair_removal_session WHERE uuid = ?', [id]);
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM hair_removal_session WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     },
 
     async getPhotos(sessionId) {

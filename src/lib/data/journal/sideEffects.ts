@@ -22,6 +22,9 @@ export type SideEffectInput = FlatInput<SideEffect>;
 export interface SideEffectsArea {
   getSideEffects(): Promise<SideEffect[]>;
   getSideEffectsInRange(fromEpochDay: number, toEpochDay: number): Promise<SideEffect[]>;
+  /** The day of the most recent side effect at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the side effect's id. Updating an unknown id throws; an
       out-of-range severity throws before anything is written. */
   upsertSideEffect(input: SideEffectInput): Promise<string>;
@@ -50,6 +53,11 @@ export function makeSideEffectsArea(driver: SqliteDriver): SideEffectsArea {
 
     getSideEffectsInRange: (fromEpochDay, toEpochDay) =>
       effects.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const [latest] = await effects.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [todayEpochDay]);
+      return latest?.epochDay ?? null;
+    },
 
     upsertSideEffect: effects.upsert,
     deleteSideEffect: effects.delete

@@ -37,6 +37,10 @@ export interface SizeRecordsArea {
   getRecordsByCategory(category: string): Promise<SizeRecord[]>;
   /** One day's records, across categories (phase 5 deepening ticket 21). */
   getRecordsOnDay(epochDay: number): Promise<SizeRecord[]>;
+  /** The day of the most recent record of any category at or before
+      `todayEpochDay`, or null if there is none (phase 8 features ticket 03,
+      lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the record's id. Updating an unknown id throws; a category
       outside the closed vocabulary throws before anything is written. */
   upsertRecord(input: SizeRecordInput): Promise<string>;
@@ -72,6 +76,11 @@ export function makeSizeRecordsArea(driver: SqliteDriver): SizeRecordsArea {
     getRecordsOnDay: (epochDay) => records.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
 
     getRecordsByCategory: (category) => records.read('WHERE category = ? ORDER BY epoch_day, id', [category]),
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const [latest] = await records.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [todayEpochDay]);
+      return latest?.epochDay ?? null;
+    },
 
     upsertRecord: (input) => records.upsert({ ...input, brand: input.brand ?? '', fitNote: input.fitNote ?? '' }),
 
