@@ -73,6 +73,8 @@
    line already on the chart) and consults (a date in a procedure's history
    that says nothing about the range a chart covers). */
 
+import { spanOverlapsRange } from '../data/span';
+
 /** The kinds of thing that get annotated, and nothing else: this draws dates
     the app already stores rather than introducing an event type of its own.
 
@@ -183,7 +185,7 @@ export function annotationsInRange(
     // A moment has no end of its own; a stretch that has not finished runs to
     // today, and never backwards past its own start.
     const end = shape === 'point' ? start : (source.endEpochDay ?? Math.max(range.today, start));
-    if (start > range.to || end < range.from) continue;
+    if (!spanOverlapsRange({ startEpochDay: start, endEpochDay: end }, range.from, range.to)) continue;
 
     found.push({
       id: source.id,

@@ -105,6 +105,7 @@
     shouldShowHairRemovalRecovery,
     shouldShowMeasurementsNudge
   } from '$lib/data/liveTiles';
+  import { spanCoversDay } from '$lib/data/span';
   import { hairRemovalAreaName } from '$lib/data/vocabulary/labels';
 
   const today = todayEpochDay();
@@ -174,7 +175,7 @@
     const tryouts = await j.tryouts.getTryouts();
     const map = new Map<string, number | null>();
     for (const t of tryouts) {
-      if (t.endEpochDay === null || t.endEpochDay >= today) {
+      if (spanCoversDay(t, today)) {
         const entries = await j.feltSense.forTryout(t.id);
         map.set(t.id, entries.length > 0 ? entries[0].epochDay : null);
       }

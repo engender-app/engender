@@ -17,6 +17,7 @@ import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
 import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePauseOn } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
+import { spanCoversDay } from './span';
 
 export interface ActiveTryoutTileResult {
   tryout: Tryout;
@@ -32,9 +33,7 @@ export function shouldShowActiveTryoutTile(params: {
 }): ActiveTryoutTileResult | null {
   if (!params.enabled || params.snoozed) return null;
 
-  const activeTryouts = params.tryouts.filter(
-    (t) => t.endEpochDay === null || t.endEpochDay >= params.todayEpochDay
-  );
+  const activeTryouts = params.tryouts.filter((t) => spanCoversDay(t, params.todayEpochDay));
 
   for (const tryout of activeTryouts) {
     const lastFeltDay = params.latestFeltSenseByTryoutId.get(tryout.id);
