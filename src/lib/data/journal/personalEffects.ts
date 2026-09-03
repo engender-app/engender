@@ -36,6 +36,10 @@ export interface PersonalEffectsArea {
       in place, so this reads as "what someone said they first noticed
       today", never as a log of sightings. */
   getMarkersFirstNoticedOn(epochDay: number): Promise<PersonalEffect[]>;
+  /** The most recent "first noticed" day across every marked effect, at or
+      before `todayEpochDay`, or null if nothing is marked yet (phase 8
+      features ticket 03, lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** One row per effect (migrations.ts v12): a second call for an effect
       already marked replaces its date rather than adding a row. Returns
       the row's id. */
@@ -136,6 +140,14 @@ export function makePersonalEffectsArea(driver: SqliteDriver): PersonalEffectsAr
         [uuid, input.effect, input.firstNoticedEpochDay, now()]
       );
       return uuid;
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(first_noticed_epoch_day) AS day FROM personal_effect WHERE first_noticed_epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     },
 
     async clearMarker(effect) {

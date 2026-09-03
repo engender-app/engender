@@ -21,7 +21,7 @@
    reminder over by hand, which is why that gap is accepted rather than
    built around. */
 
-import { epochDayFromLocalDate, startOfDayTimestamp } from '../epochDay';
+import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Reminder, WearSession } from '../types';
 import { assertChanged, mintUuid, now } from './support';
@@ -57,6 +57,11 @@ export interface WearSessionsArea {
       a second while one is running is the UI's own call, not something
       this area arbitrates. */
   getRunningSession(): Promise<WearSession | null>;
+  /** The day the most recent session started, at or before `todayEpochDay`,
+      or null if there is none (phase 8 features ticket 03, lastWrite.ts).
+      The table stores a `start_timestamp`, not an `epoch_day`, the same
+      timestamp-bound reasoning doses.ts's own version gives. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the session's id. Updating an unknown id throws. */
   upsertSession(input: WearSessionInput): Promise<string>;
   /** Idempotent. Also clears this session's auto-managed reminder, if any. */
@@ -163,6 +168,15 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
         'SELECT uuid, start_timestamp, duration_ms, note FROM wear_session WHERE duration_ms IS NULL ORDER BY start_timestamp DESC LIMIT 1'
       );
       return rows.length ? toWearSession(rows[0]) : null;
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ ts: number | null }>(
+        'SELECT MAX(start_timestamp) AS ts FROM wear_session WHERE start_timestamp < ?',
+        [startOfDayTimestamp(todayEpochDay + 1)]
+      );
+      const ts = rows[0]?.ts;
+      return ts == null ? null : epochDayFromTimestamp(ts);
     },
 
     async upsertSession(input) {

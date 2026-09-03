@@ -44,6 +44,11 @@ export interface MeasurementsArea {
   /** Every type at once within a day range, for the photo-compare combined
       view (ticket 08): the same date range the two anchor photos span. */
   getMeasurementsInRange(fromEpochDay: number, toEpochDay: number): Promise<Measurement[]>;
+  /** The day of the most recent measurement of any type at or before
+      `todayEpochDay`, or null if there is none (phase 8 features ticket 03,
+      lastWrite.ts). One bounded row, not `getMeasurementsInRange(0, 999999)`
+      reduced in JS the way `liveTiles.ts` used to. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the measurement's id. Updating an unknown id throws. */
   upsertMeasurement(input: MeasurementInput): Promise<string>;
   /** Idempotent. */
@@ -103,6 +108,13 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
 
     getMeasurementsInRange: (fromEpochDay, toEpochDay) =>
       measurements.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const [latest] = await measurements.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [
+        todayEpochDay
+      ]);
+      return latest?.epochDay ?? null;
+    },
 
     upsertMeasurement: measurements.upsert,
 
