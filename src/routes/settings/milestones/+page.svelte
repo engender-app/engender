@@ -18,6 +18,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -29,6 +30,7 @@
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -200,7 +202,11 @@
           data-milestone={mi.id}
           icon="flag"
           title={mi.name}
-          subtitle={[`${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`, origin?.text]}
+          subtitle={[
+            `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
+            origin?.text,
+            mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
+          ]}
           chevron={false}
           onclick={() => openEditor(mi, null)}
           action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
@@ -340,6 +346,29 @@
           </div>
         {/snippet}
       </Field>
+      {#if editor.id}
+        <!-- Written straight to the preference the moment the switch moves,
+             not part of Save (ticket 10, ADR-0049): the anchor is one
+             global choice this milestone points at, not a field the record
+             itself owns, and a brand-new milestone has no id for it to
+             point at yet. -->
+        <Field label={m.journey_anchor_field_label()} legend>
+          {#snippet children()}
+            <div class="kit-row is-static" data-milestone-anchor={editor.id}>
+              <span class="kit-row-text">
+                <span class="kit-row-sub">{m.journey_anchor_field_hint()}</span>
+              </span>
+              <span class="kit-row-trail">
+                <Switch
+                  checked={prefs.journeyAnchorMilestoneId === editor.id}
+                  label={m.journey_anchor_field_label()}
+                  onChange={(v) => (prefs.journeyAnchorMilestoneId = v ? (editor.id ?? null) : null)}
+                />
+              </span>
+            </div>
+          {/snippet}
+        </Field>
+      {/if}
     {/snippet}
   </RecordSheet>
 
