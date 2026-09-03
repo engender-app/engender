@@ -70,8 +70,8 @@ function requestedFeatures(): Set<string> {
       const helperName = arg.match(/^(\w+)\(\s*\)$/)?.[1];
       const constraintText = arg.startsWith('{') ? arg : resolveHelper(helperName ?? arg, files);
 
-      for (const [feature, key] of Object.entries(FEATURE_KEYS)) {
-        if (key.test(constraintText)) features.add(feature);
+      for (const [feature, pattern] of Object.entries(FEATURE_KEYS)) {
+        if (pattern.test(constraintText)) features.add(feature);
       }
     }
   }
