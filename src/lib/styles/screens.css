@@ -345,15 +345,6 @@
 .day-add { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
 .day-add .btn { width: 100%; }
 
-/* How many the row stands for, at the trailing edge before the chevron.
-   Tabular figures so a run of counts lines up, and the role's own ink rather
-   than grey - it is a number this area owns, not a disabled one. */
-.day-count {
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--role-ink);
-}
-
 /* ---------- Search ---------- */
 .search-box {
   display: flex; align-items: center; gap: var(--space-2);
@@ -823,18 +814,6 @@
    lands on height instead and collapses the player to 0px tall - the same
    reason .compare-side overrides .photo-thumb's sizing above. */
 .compare-side .voice-player { flex: none; width: 100%; }
-
-/* ---------- Voice benchmark delta (ticket 16) ---------- */
-/* Same dt/dd-row shape as record/+page.svelte's own .vb-figures, which is
-   scoped to that component and out of reach here - two screens wanting the
-   same small layout is not yet a third one worth lifting into a shared
-   class. */
-.vc-delta h3 { margin: 0 0 var(--space-3); font-size: var(--text-base); }
-.vc-delta-figures { display: grid; gap: var(--space-3); margin: 0; }
-.vc-delta-figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-.vc-delta-figures dt { color: var(--muted); font-size: var(--text-sm); }
-.vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); text-align: right; }
-.vc-aside { color: var(--muted); font-weight: 400; }
 
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
