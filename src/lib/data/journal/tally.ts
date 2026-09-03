@@ -7,13 +7,13 @@
    dropped, since nothing forward-only migrations do can un-write it from
    whatever journals already hold.
 
-   Flat, so its writes come from flat-area.ts. It exposes only the insert
+   Flat, so its writes come from flatArea.ts. It exposes only the insert
    half: a tap is not edited, so `log` takes an input with no id and the
    factory's update branch is unreachable from here. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TallyEvent, TallyKind } from '../types';
-import { flatArea } from './flat-area';
+import { flatArea } from './flatArea';
 
 export type TallyEventInput = Omit<TallyEvent, 'id'>;
 

@@ -23,11 +23,14 @@
     hint?: string | null;
     confirmLabel: string;
     cancelLabel: string;
-    /** Returning a promise is the point: the delete behind it can reject,
-        and a `() => void` handler structurally forbade even attaching a
-        `.catch()` (ADR-0053 - a contract nobody could observe is how six
-        deletes drifted from it). Nothing here reports a failure yet; the
-        type is what makes one representable. */
+    /** Returning a promise is the point. TypeScript let a screen pass an
+        async handler to the old `() => void` either way; what that type
+        forbade was this component seeing the promise at all, so a
+        rejection could only reach the window as a page error - which is
+        part of how six throwing deletes went unnoticed (ADR-0053). Nothing
+        here reports a failure to the person yet, and under that ADR no
+        delete rejects; the type is what makes one representable when
+        something does. */
     onConfirm: () => void | Promise<void>;
     onCancel: () => void;
     /** e.g. `{ 'data-confirm-delete-side-effect': '' }` - the walkthrough

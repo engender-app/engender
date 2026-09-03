@@ -7,12 +7,12 @@
    query logic of ticket 12's own, the same way stats.ts's fromEpochDay/
    toEpochDay reads do.
 
-   Flat, so its three writes come from flat-area.ts, with the severity check
+   Flat, so its three writes come from flatArea.ts, with the severity check
    passed in as that factory's pre-write guard. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { SideEffect } from '../types';
-import { flatArea, type FlatInput } from './flat-area';
+import { flatArea, type FlatInput } from './flatArea';
 
 export const MIN_SEVERITY = 1;
 export const MAX_SEVERITY = 5;

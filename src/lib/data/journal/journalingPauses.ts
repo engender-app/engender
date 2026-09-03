@@ -6,12 +6,12 @@
    (Streak's amended computation) and by the check-in/Home suppression
    checks - this module knows nothing about either.
 
-   Flat, so its three writes come from flat-area.ts and only the one read is
+   Flat, so its three writes come from flatArea.ts and only the one read is
    its own. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { JournalingPause } from '../types';
-import { flatArea, type FlatInput } from './flat-area';
+import { flatArea, type FlatInput } from './flatArea';
 
 export type JournalingPauseInput = FlatInput<JournalingPause>;
 

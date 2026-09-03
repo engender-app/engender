@@ -10,16 +10,16 @@
    conversion or normalization across brands or sizing systems (the
    ticket's own out-of-scope line).
 
-   Flat, so its three writes come from flat-area.ts, with the category check
+   Flat, so its three writes come from flatArea.ts, with the category check
    passed in as that factory's pre-write guard. The one thing upsertRecord
    still does itself is settle its two optional fields: a record with no
    brand and no fit note stores empty strings, and a default is the area's
-   own answer rather than something flat-area.ts should learn to describe. */
+   own answer rather than something flatArea.ts should learn to describe. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '../garmentCategories';
 import type { SizeRecord } from '../types';
-import { flatArea } from './flat-area';
+import { flatArea } from './flatArea';
 
 export interface SizeRecordInput {
   id?: string;

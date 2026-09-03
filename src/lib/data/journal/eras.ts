@@ -29,7 +29,7 @@ export interface ErasArea {
   upsertEra(input: EraInput): Promise<string>;
   /** Deleting an unknown id succeeds and changes nothing (ADR-0053). Stated
       here and asserted in this area's own tests rather than inherited from
-      `flat-area.ts`, because `upsertEra`'s guard is a whole-table invariant
+      `flatArea.ts`, because `upsertEra`'s guard is a whole-table invariant
       rather than a validator and keeps this area hand-written. */
   deleteEra(id: string): Promise<void>;
   /** The first and last day the journal holds an entry for, which is what an
