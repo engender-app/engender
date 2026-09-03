@@ -317,3 +317,78 @@ describe('the range a set of readings asks for', () => {
     expect(annotationSpan([], 100)).toEqual({ from: 100, to: 100 });
   });
 });
+
+/* Phase 8 features ticket 15: six kinds join the seven, all of them moments,
+   and each one stands for a record somebody can open. */
+describe('a marker that goes somewhere', () => {
+  const marker = (id: string, at: number, href?: string): ChartAnnotationSource => ({
+    id,
+    kind: 'sideEffect',
+    name: id,
+    startEpochDay: at,
+    endEpochDay: null,
+    href
+  });
+
+  it('carries the record\'s address through selection', () => {
+    const found = annotationsInRange([marker('headaches', 50, '/settings/side-effects')], {
+      from: 40,
+      to: 60,
+      today: 60
+    });
+    expect(found[0].href).toBe('/settings/side-effects');
+  });
+
+  it('leaves an annotation that stands for no one record without one', () => {
+    const found = annotationsInRange([milestone('first shot', 50)], { from: 40, to: 60, today: 60 });
+    expect(found[0].href).toBeUndefined();
+  });
+
+  it('keeps the address when a wider range is narrowed', () => {
+    const wide = annotationsInRange([marker('headaches', 50, '/settings/side-effects')], {
+      from: 10,
+      to: 90,
+      today: 90
+    });
+    expect(narrowAnnotations(wide, 40, 60)[0].href).toBe('/settings/side-effects');
+  });
+
+  /* All six are days, not stretches: a side effect logged on a day, an
+     injection given on one, a count or a reading that stood out on one. A
+     kind that came back as a span would be drawn as a band across the plot. */
+  it('draws every new kind as a moment', () => {
+    const kinds = [
+      'sideEffect',
+      'injection',
+      'tallyMisgendered',
+      'tallyCorrectlyGendered',
+      'bodyRegionDysphoria',
+      'bodyRegionEuphoria'
+    ] as const;
+
+    const found = annotationsInRange(
+      kinds.map((kind, i) => ({ id: kind, kind, name: null, startEpochDay: 50 + i, endEpochDay: null })),
+      { from: 40, to: 60, today: 60 }
+    );
+
+    expect(found).toHaveLength(kinds.length);
+    expect(found.every((a) => a.shape === 'point')).toBe(true);
+  });
+
+  /* Gathered like any other moment, so a fortnight of daily injections is
+     one mark that names them all rather than fourteen ticks in a smear. */
+  it('gathers markers that land together, keeping all of them', () => {
+    const placed = placeAnnotations(
+      annotationsInRange(
+        [marker('a', 50, '/doses'), marker('b', 51, '/doses'), marker('c', 80, '/doses')],
+        { from: 50, to: 90, today: 90 }
+      ),
+      daily(50, 41),
+      100
+    );
+
+    expect(placed.marks).toHaveLength(2);
+    expect(placed.marks[0].annotations.map((a) => a.id)).toEqual(['a', 'b']);
+    expect(MIN_MARK_GAP).toBeGreaterThan(0);
+  });
+});

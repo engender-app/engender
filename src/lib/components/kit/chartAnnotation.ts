@@ -29,7 +29,19 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   dosePause: m.chart_annotation_dose_pause,
   journalingPause: m.chart_annotation_journaling_pause,
   tryout: m.chart_annotation_tryout,
-  era: m.chart_annotation_era
+  era: m.chart_annotation_era,
+  /* Ticket 15's six. The four that stand for a day rather than for a record
+     say so in the word itself, because a mark that read "misgendering" would
+     claim there was misgendering that day and nothing else - which is true of
+     most days somebody keeps that counter. What the mark means is that the
+     count was above the person's own recent range, and the word is the only
+     place a reader is told so (data/ownSpread.ts holds the rule). */
+  sideEffect: m.chart_annotation_side_effect,
+  injection: m.chart_annotation_injection,
+  tallyMisgendered: m.chart_annotation_tally_misgendered,
+  tallyCorrectlyGendered: m.chart_annotation_tally_correctly_gendered,
+  bodyRegionDysphoria: m.chart_annotation_region_dysphoria,
+  bodyRegionEuphoria: m.chart_annotation_region_euphoria
 };
 
 function kindWord(kind: ChartAnnotationKind): string {
