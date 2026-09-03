@@ -423,21 +423,6 @@
   color: var(--text-2);
 }
 
-/* The slot a chart screen's range control and its whole-journal note share
-   (phase 8 features ticket 16).
-
-   A re-keyed axis reads all history, so the range picker has nothing left
-   to answer and is swapped out rather than left inert. The two are
-   different heights - a pill row against one line of text - so the slot
-   carries `use:resize` and travels between them instead of snapping, and
-   the control on its way out fades off its own footprint with
-   `out:crossfade`.
-
-   Positioned, and that is the whole reason this is a class rather than a
-   bare div: crossfade takes the leaving node out of flow at its static
-   position, which resolves against the nearest positioned ancestor. Left
-   to find one on its own it reaches `.screen` and the fading pills land at
-   the top of the page. */
 /* The axis picker and the range control are one decision, so they are one
    block.
 
@@ -460,6 +445,21 @@
   padding-bottom: 0;
 }
 
+/* The slot a chart screen's range control and its whole-journal note share
+   (phase 8 features ticket 16).
+
+   A re-keyed axis reads all history, so the range picker has nothing left
+   to answer and is swapped out rather than left inert. The two are
+   different heights - a pill row against one line of text - so the slot
+   carries `use:resize` and travels between them instead of snapping, and
+   the control on its way out fades off its own footprint with
+   `out:crossfade`.
+
+   Positioned, and that is the whole reason this is a class rather than a
+   bare div: crossfade takes the leaving node out of flow at its static
+   position, which resolves against the nearest positioned ancestor. Left
+   to find one on its own it reaches `.screen` and the fading pills land at
+   the top of the page. */
 .kit-reading-slot {
   position: relative;
 }
