@@ -72,6 +72,7 @@
    drug, and belongs under every chart on the screen. */
 
 import { annotationsInRange, type ChartAnnotation, type ChartAnnotationSource } from '../../charts/annotations';
+import { finishedGroups } from '../areaGroups';
 import { epochDayFromTimestamp } from '../epochDay';
 import { doseMilligrams } from '../hormoneCurveFit';
 import { resolveQualitativeKey } from '../hormoneCurveQualitative';
@@ -80,6 +81,7 @@ import { OWN_SPREAD_WINDOW_DAYS, aboveOwnSpread, type DayValue } from '../ownSpr
 import { attributeDose } from '../regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from '../types';
 import { SURGERY_RECOVERY_CUTOFF_DAYS } from '../recoveryDay';
+import type { AreaStatesArea } from './areaStates';
 import type { DosesArea } from './doses';
 import type { ErasArea } from './eras';
 import type { JournalingPausesArea } from './journalingPauses';
@@ -102,6 +104,7 @@ export interface ChartAnnotationsArea {
 }
 
 interface Areas {
+  areaStates: AreaStatesArea;
   milestones: MilestonesArea;
   regimen: RegimenArea;
   doses: DosesArea;
@@ -116,15 +119,17 @@ interface Areas {
 export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
   return {
     async getAnnotations(fromEpochDay, toEpochDay, todayEpochDay) {
-      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures, eras] = await Promise.all([
-        areas.milestones.getMilestones(),
-        areas.regimen.getEpisodes(),
-        areas.doses.getPauses(),
-        areas.journalingPauses.getPauses(),
-        areas.tryouts.getTryouts(),
-        areas.procedures.getProcedures(),
-        areas.eras.getEras()
-      ]);
+      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures, eras, areaStates] =
+        await Promise.all([
+          areas.milestones.getMilestones(),
+          areas.regimen.getEpisodes(),
+          areas.doses.getPauses(),
+          areas.journalingPauses.getPauses(),
+          areas.tryouts.getTryouts(),
+          areas.procedures.getProcedures(),
+          areas.eras.getEras(),
+          areas.areaStates.getAreaStates()
+        ]);
 
       const drugOf = new Map(episodes.map((episode) => [episode.id, episode.drug]));
       const sources: ChartAnnotationSource[] = [
@@ -171,7 +176,24 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
             name: era.name,
             startEpochDay: era.startEpochDay as number,
             endEpochDay: null
-          }))
+          })),
+        /* The day a stream ended (phase 8 features ticket 04). One mark per
+           hub row rather than one per archive section, because hair progress
+           is two sections finished in one gesture and two ticks on the same
+           day would be the query disagreeing with the record. `name` is the
+           group's key; the words are kit/chartAnnotation.ts's.
+
+           No `href`. Every screen this can draw on is already the screen of
+           some area, and a mark that navigated somewhere else would be a way
+           out of the chart it is annotating - the same call the milestone
+           mark makes. */
+        ...finishedGroups(areaStates).map((group) => ({
+          id: `finished-${group.key}`,
+          kind: 'finishedArea' as const,
+          name: group.key,
+          startEpochDay: group.epochDay,
+          endEpochDay: null
+        }))
       ];
 
       for (const procedure of procedures) {

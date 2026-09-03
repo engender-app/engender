@@ -455,3 +455,62 @@ test('each region is judged against itself', async () => {
     ['hands_feet']
   );
 });
+
+/* Phase 8 features ticket 04: the day a stream ended. */
+
+test('a finished area marks the day it ended, on any chart covering it', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasFinished(['measurements'], 20100);
+
+  const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  const finished = marks.filter((a) => a.kind === 'finishedArea');
+
+  assert.equal(finished.length, 1);
+  assert.equal(finished[0].shape, 'point');
+  assert.equal(finished[0].fromEpochDay, 20100);
+  // The group's key, not a section name: the words are the kit's
+  // (kit/chartAnnotation.ts), and one hub row can front two sections.
+  assert.equal(finished[0].name, 'measurements');
+  // Nowhere to tap through to. Every chart this can land on already belongs
+  // to some area, and a milestone's mark makes the same call.
+  assert.equal(finished[0].href, undefined);
+});
+
+test('a row fronting two areas marks once, and not at all until both are finished', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasFinished(['hairStages'], 20100);
+
+  const half = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  assert.equal(half.filter((a) => a.kind === 'finishedArea').length, 0);
+
+  await journal.areaStates.setAreasFinished(['hairPhotos'], 20100);
+  const whole = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  const finished = whole.filter((a) => a.kind === 'finishedArea');
+
+  assert.equal(finished.length, 1, 'one gesture, one mark');
+  assert.equal(finished[0].name, 'hair-progress');
+});
+
+test('a finish day outside the range is not drawn, like everything else', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasFinished(['wearSessions'], 19000);
+
+  const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  assert.equal(marks.filter((a) => a.kind === 'finishedArea').length, 0);
+});
+
+test('hiding an area draws nothing: only a finish day is a day', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
+
+  const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  assert.equal(marks.filter((a) => a.kind === 'finishedArea').length, 0);
+});
+
+test('the curve markers do not pick it up', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasFinished(['measurements'], 20100);
+
+  const markers = await journal.chartAnnotations.getCurveMarkers(20000, TODAY, TODAY);
+  assert.equal(markers.filter((a) => a.kind === 'finishedArea').length, 0);
+});

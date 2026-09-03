@@ -2836,5 +2836,25 @@
         "nPlural=other": "{n} photos and voice notes"
       }
     }
-  ]
+  ],
+  "chart_annotation_finished_area": "finished",
+  "area_finish_row_title": "Mark this as finished",
+  "area_finish_row_sub": "For when you have stopped adding to it. Nothing here goes away.",
+  "area_finish_done_title": "Finished on {date}",
+  "area_finish_done_sub": "Everything you logged is still here.",
+  "area_finish_undo": "Pick it back up",
+  "area_finish_sheet_title": "Mark {area} as finished",
+  "area_finish_sheet_body": "Everything you logged stays where it is. Charts keep it and search still finds it. What stops is the prompts and the tiles for it, and you can pick this back up whenever you want.",
+  "area_finish_date_label": "The day it ended",
+  "area_finish_confirm": "Mark it finished",
+  "area_finish_cancel": "Not yet",
+  "area_finish_offer_title": "Still keeping this?",
+  "area_finish_offer_body": "The last thing here is from {date}. If you have finished with it, you can say so. If not, close this. It only asks once.",
+  "area_finish_offer_action": "Mark it finished",
+  "area_finish_offer_dismiss": "Not finished",
+  "clinician_summary_section_finished_areas": "Tracking that ended",
+  "clinician_summary_finished_areas_empty": "Nothing is marked as finished.",
+  "clinician_summary_part_finished_areas": "Tracking that ended",
+  "area_finish_table_area": "What",
+  "area_finish_table_ended": "Ended"
 }
