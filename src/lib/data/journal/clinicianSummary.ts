@@ -7,11 +7,15 @@
    the only work done here; nothing is aggregated, interpreted or stored.
 
    Which parts the summary has is a registry rather than a hardcoded
-   assembly (phase 5 ticket 06, ADR-0031). One entry declares three things:
+   assembly (phase 5 ticket 06, ADR-0031). One entry declares four things:
 
      key    where the part lands in `ClinicianSummary`, and what the screen
             looks its title up by
      read   how the part is read, through its own area's existing read path
+     tables the tables that read touches, so the live layer's dependency
+            list for `getSummary` is derived from the registry rather than
+            maintained beside it (writes.ts, the same single-sourcing
+            DAY_TABLES gets)
      order  where it is declared, which is the order it prints in
 
    Wording is not here. Titles live in vocabulary/clinicianSummaryLabels.ts,
@@ -24,6 +28,7 @@
    registry decides which sections exist and in what order they print,
    never what any one of them means. */
 
+import type { TableName } from '../live/writes';
 import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
 import type { ChecklistsArea } from './checklists';
 import type { DosesArea } from './doses';
@@ -92,6 +97,7 @@ export interface ClinicianSummaryReading extends ClinicianSummaryAreas {
     test registers sections `ClinicianSummary` has never heard of. */
 export interface ClinicianSummarySection {
   key: string;
+  tables: readonly TableName[];
   read(reading: ClinicianSummaryReading): Promise<unknown>;
 }
 
@@ -99,6 +105,7 @@ export interface ClinicianSummarySection {
     `ClinicianSummary` says the section holds. */
 function section<Key extends ClinicianSummarySectionKey>(declared: {
   key: Key;
+  tables: readonly TableName[];
   read(reading: ClinicianSummaryReading): Promise<ClinicianSummary[Key]>;
 }) {
   return declared;
@@ -167,16 +174,34 @@ async function readAppointmentPrepItems({ checklists }: ClinicianSummaryReading)
 }
 
 const SECTIONS = [
-  section({ key: 'regimenEpisodes', read: readRegimenEpisodes }),
-  section({ key: 'doses', read: ({ doses, fromEpochDay, toEpochDay }) => doses.getDoses(fromEpochDay, toEpochDay) }),
-  section({ key: 'labResults', read: ({ labs, fromEpochDay, toEpochDay }) => readLabResultsInRange(labs, fromEpochDay, toEpochDay) }),
-  section({ key: 'exposure', read: ({ exposure, fromEpochDay, toEpochDay }) => exposure.getCounters(fromEpochDay, toEpochDay) }),
+  section({ key: 'regimenEpisodes', tables: ['regimen'], read: readRegimenEpisodes }),
+  section({ key: 'doses', tables: ['dose'], read: ({ doses, fromEpochDay, toEpochDay }) => doses.getDoses(fromEpochDay, toEpochDay) }),
+  section({
+    key: 'labResults',
+    tables: ['lab'],
+    read: ({ labs, fromEpochDay, toEpochDay }) => readLabResultsInRange(labs, fromEpochDay, toEpochDay)
+  }),
+  section({
+    key: 'exposure',
+    // Every counter is recomputed from the dose log and the episode history
+    // on each read (exposure.ts), so this section depends on both.
+    tables: ['dose', 'regimen'],
+    read: ({ exposure, fromEpochDay, toEpochDay }) => exposure.getCounters(fromEpochDay, toEpochDay)
+  }),
   section({
     key: 'sideEffects',
+    tables: ['sideEffect'],
     read: ({ sideEffects, fromEpochDay, toEpochDay }) => sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay)
   }),
-  section({ key: 'procedures', read: readProcedures }),
-  section({ key: 'appointmentPrepItems', read: readAppointmentPrepItems })
+  section({
+    key: 'procedures',
+    // The recovery checklist as well as the procedure: an item ticked off on
+    // it changes what this section prints, and that checklist is an ordinary
+    // `checklists` record owned by the procedure (procedures.ts).
+    tables: ['procedure', 'checklist'],
+    read: readProcedures
+  }),
+  section({ key: 'appointmentPrepItems', tables: ['checklist'], read: readAppointmentPrepItems })
 ] as const;
 
 /* A part of `ClinicianSummary` with no entry above would be missing from
@@ -191,6 +216,13 @@ export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SE
 /** Every section's key, in the order they print - what the screen walks to
     lay a summary out, so it never names a section itself. */
 export const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
+
+/** Every table any section reads, de-duplicated: what
+    `journal.clinicianSummary.getSummary` depends on, single-sourced here
+    because this is the module that knows. writes.ts imports it rather than
+    hand-maintaining a copy, so a section registered above cannot silently
+    miss its invalidation - the same reasoning DAY_TABLES gives. */
+export const CLINICIAN_SUMMARY_TABLES: TableName[] = [...new Set(SECTIONS.flatMap((s) => s.tables))];
 
 /** Every section read for one range, in the order they print. Concurrent
     because the sections are independent - none of them reads what another
