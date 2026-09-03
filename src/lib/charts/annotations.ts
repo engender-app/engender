@@ -80,7 +80,21 @@ import { spanOverlapsRange } from '../data/span';
 
     `surgery` and `recovery` both come from one Procedure - the day, and the
     stretch after it - because a chart wants to show the operation and the
-    weeks it was recovered through as two different marks. */
+    weeks it was recovered through as two different marks.
+
+    The last six are phase 8 features ticket 15's, and they are the hormone
+    curve's alone - `getCurveMarkers` rather than `getAnnotations`
+    (journal/chartAnnotations.ts), so no chart picks them up by having opted
+    into annotations. They split finer than the record types behind them for
+    one reason: a kind is the only thing a mark is worded from
+    (kit/chartAnnotation.ts's KIND_WORD), and a tally that stood out on the
+    misgendering counter means the opposite of one on the other. Same for a
+    region's dysphoria against its euphoria.
+
+    `tallyMisgendered`, `tallyCorrectlyGendered`, `bodyRegionDysphoria` and
+    `bodyRegionEuphoria` are the days that stood out against the person's own
+    recent spread and not every day with a count or a reading on it: the
+    threshold, and the reason for it, are in data/ownSpread.ts. */
 export type ChartAnnotationKind =
   | 'milestone'
   | 'surgery'
@@ -89,7 +103,13 @@ export type ChartAnnotationKind =
   | 'dosePause'
   | 'journalingPause'
   | 'tryout'
-  | 'era';
+  | 'era'
+  | 'sideEffect'
+  | 'injection'
+  | 'tallyMisgendered'
+  | 'tallyCorrectlyGendered'
+  | 'bodyRegionDysphoria'
+  | 'bodyRegionEuphoria';
 
 /** Whether a kind is a moment or a stretch. Here rather than on each record,
     so no caller can hand in a milestone that claims to be a period.
@@ -106,7 +126,13 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   dosePause: 'span',
   journalingPause: 'span',
   tryout: 'span',
-  era: 'point'
+  era: 'point',
+  sideEffect: 'point',
+  injection: 'point',
+  tallyMisgendered: 'point',
+  tallyCorrectlyGendered: 'point',
+  bodyRegionDysphoria: 'point',
+  bodyRegionEuphoria: 'point'
 };
 
 /** One dated thing, as the query hands it over: stored days, untouched.
@@ -123,6 +149,11 @@ export interface ChartAnnotationSource {
   name: string | null;
   startEpochDay: number;
   endEpochDay: number | null;
+  /** Where the record this stands for is read, for a mark somebody can tap
+      through (ticket 15). Absent on the seven kinds that had none: a
+      journaling pause is a stretch nothing owns a screen for, and a milestone
+      mark on a chart was never meant to be a way out of the chart. */
+  href?: string;
 }
 
 /** One annotation that falls inside the range asked for, clipped to it. */
@@ -141,6 +172,8 @@ export interface ChartAnnotation {
   /** The same for its end, and false for a stretch that has not ended: there
       is no day to draw an edge at. */
   endsInRange: boolean;
+  /** The source's, carried through unchanged. */
+  href?: string;
 }
 
 export interface AnnotationRange {
@@ -194,6 +227,7 @@ export function annotationsInRange(
       shape,
       fromEpochDay: Math.max(start, range.from),
       toEpochDay: Math.min(end, range.to),
+      href: source.href,
       startsInRange: start >= range.from,
       // A moment ends on the day it happened, and a moment outside the range
       // never got this far. A stretch that has not ended has no day to draw
