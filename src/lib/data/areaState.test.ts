@@ -7,6 +7,8 @@ import {
   NOT_FINISHABLE,
   type AreaStates
 } from './areaState.ts';
+import { cycleTrackingVisible } from './cycleTracking.ts';
+import type { RegimenEpisode } from './types.ts';
 
 const TODAY = 20000;
 
@@ -69,4 +71,38 @@ test('every area that is not finishable says why, and no area answers twice', ()
   for (const [area, reason] of Object.entries(NOT_FINISHABLE)) {
     assert.ok(reason.length > 20, `${area}'s reason is too short to be one: ${reason}`);
   }
+});
+
+/* ADR-0043's rule is one-directional on purpose: a testosterone regimen or
+   the explicit preference adds the cycle row back, and no preference is what
+   hides it, because read cold an unconditional cycle row is a dysphoria
+   trigger. A uniform bidirectional flag defaulting to shown would delete both
+   the asymmetry and the data-driven unhide, so cycle keeps its own gate and
+   this record does not reach it. The compile error is the load-bearing half;
+   the four answers below are what a future refactor would have to break. */
+test('cycle tracking keeps its own gate: no row here changes what it answers', () => {
+  assert.match(NOT_FINISHABLE.cycleEvents, /ADR-0043/);
+
+  const states: AreaStates = { cycleEvents: { hidden: true, finishedEpochDay: 19000 } };
+  // @ts-expect-error cycleEvents is not a hideable area (ADR-0043), which is
+  // what stops this record from reversing a one-directional rule.
+  void (() => areaHidden('cycleEvents', states));
+
+  const testosterone: RegimenEpisode = {
+    id: 'ep',
+    drug: 'Testosterone cypionate',
+    ester: 'cypionate',
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'weekly',
+    startEpochDay: 19000,
+    endEpochDay: null
+  };
+  const noon = 19500 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000;
+
+  assert.equal(cycleTrackingVisible([], noon, false), false);
+  assert.equal(cycleTrackingVisible([], noon, true), true);
+  assert.equal(cycleTrackingVisible([testosterone], noon, false), true);
+  assert.equal(cycleTrackingVisible([testosterone], noon, true), true);
 });

@@ -122,6 +122,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   /* Structural exclusions. */
   entries: 'the journal itself, not a stream inside it',
   feltSenseEntries: 'content belonging to a tryout or a milestone, not a series of its own',
+  eraMutes: 'presence naming a muted era, which is the era’s own state and not a series',
   comfortItems: 'a standing list with no dates in it at all',
   importLog: 'this device’s bookkeeping about where an import came from',
   areaStates: 'the record of which areas are finished, which cannot itself be one of them',

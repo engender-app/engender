@@ -41,5 +41,6 @@
   "wearSessions": 1,
   "voiceBenchmarks": 1,
   "comfortItems": 2,
+  "areaStates": 4,
   "importLog": 1
 }

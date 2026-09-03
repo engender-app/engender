@@ -380,7 +380,14 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // came from, dated by when the import ran rather than by anything the
   // person did that day - the settings screen it reads into is where it
   // belongs, the same reasoning `medicationStock` gives.
-  importLog: 'device bookkeeping, dated by when the import ran, not a diary record'
+  importLog: 'device bookkeeping, dated by when the import ran, not a diary record',
+
+  // Phase 8 deepening ticket 13: `finished_epoch_day` is a day, but it is
+  // the day a person stopped adding to a stream rather than something they
+  // did that day - a statement about their practice of tracking. Where the
+  // date belongs on a dated surface is a chart annotation beside the regimen
+  // changes and pauses (chartAnnotations.ts), not a record in a day's list.
+  areaStates: 'a statement about the practice of tracking, not a record of a day'
 };
 
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;

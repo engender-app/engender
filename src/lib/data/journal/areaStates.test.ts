@@ -4,6 +4,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { areaHidden, areaQuiet } from '../areaState.ts';
 
 const rowCount = async (db: { query: (sql: string) => Promise<{ n: number }[]> }): Promise<number> =>
@@ -110,4 +112,34 @@ test('setting no areas at all writes nothing', async () => {
   await journal.areaStates.setAreasHidden([], true);
 
   assert.equal(await rowCount(db), 0);
+});
+
+/* A negative, so it needs the same shape delete-contract.test.ts uses: a
+   grep, plus a second read over something that does match, so a scan that
+   stopped finding files fails loudly rather than passing vacuously.
+
+   The rule it holds: a screen asks the journal handle and the gate in
+   `areaState.ts`, never the table. Every registry in the data tier that
+   knows about this area - the invalidation map, the archive, the day view,
+   search - hangs off that seam, and a route reaching past it into SQL gets
+   none of them. */
+test('no screen reads the table itself', () => {
+  const routes = fileURLToPath(new URL('../../../routes', import.meta.url));
+
+  const sources = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = `${dir}/${entry.name}`;
+      return entry.isDirectory() ? sources(path) : [path];
+    });
+
+  const files = sources(routes);
+  assert.ok(files.length > 60, `the scan found ${files.length} route files, so it is not reading the tree`);
+
+  const reaching = files.filter((file) => readFileSync(file, 'utf8').includes('area_state'));
+  assert.deepEqual(reaching, [], 'a route naming the table instead of asking the journal');
+
+  // The reader works: the table every screen does reach through is named in
+  // plenty of them, so an empty answer above means what it says.
+  const asking = files.filter((file) => readFileSync(file, 'utf8').includes('journal.'));
+  assert.ok(asking.length > 0, 'the reader found no screen calling the journal at all');
 });
