@@ -12,23 +12,25 @@
   } from '$lib/data/epochDay';
   import { pickPhotos, capturePhoto } from '$lib/stores/photoPicking';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import type { OfferCopy, RoadmapGoalMilestone } from '$lib/data/offers';
+
+  /* What the sheet says arrives as one `copy` object (phase 8 features
+     ticket 22): this is one entry in the offer registry, and an offer's
+     words live beside what it writes rather than here. */
 
   let {
     open,
+    copy,
     goalKey = null,
     goalTitle = '',
     onConfirm,
     onDismiss
   }: {
     open: boolean;
+    copy: OfferCopy;
     goalKey: string | null;
     goalTitle: string;
-    onConfirm: (data: {
-      title: string;
-      epochDay: number;
-      photo: NormalizedPhoto | null;
-      goalKey: string | null;
-    }) => void | Promise<void>;
+    onConfirm: (data: RoadmapGoalMilestone) => void | Promise<void>;
     onDismiss: () => void;
   } = $props();
 
@@ -66,7 +68,7 @@
   }
 </script>
 
-<Sheet {open} title={m.roadmap_milestone_prompt_sheet_title()} onClose={onDismiss}>
+<Sheet {open} title={copy.title()} onClose={onDismiss}>
   <h3>{m.roadmap_milestone_prompt_title({ goal: goalTitle })}</h3>
   <Field label={m.ms_name_label()} id="roadmap-milestone-name">
     {#snippet children(id)}
@@ -123,7 +125,7 @@
       data-confirm-milestone
       onclick={handleConfirm}
     >
-      <span>{m.roadmap_milestone_prompt_add()}</span>
+      <span>{copy.confirm()}</span>
     </button>
     <button
       type="button"
@@ -131,7 +133,7 @@
       data-dismiss-milestone
       onclick={onDismiss}
     >
-      <span>{m.skip()}</span>
+      <span>{copy.decline()}</span>
     </button>
   </div>
 </Sheet>

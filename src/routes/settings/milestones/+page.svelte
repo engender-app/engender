@@ -28,6 +28,7 @@
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
+  import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -166,9 +167,21 @@
     }
   });
 
-  async function saveFeelingOffer(input: { mood: number; note: string | null }) {
-    if (!feelingOfferId) return;
-    await journal.feltSense.add({ milestoneId: feelingOfferId }, { epochDay: todayEpochDay(), ...input });
+  /* One entry in the offer registry (phase 8 features ticket 22,
+     ADR-0045). `feelingOfferId` is the open offer's subject, so a save that
+     arrives with no milestone behind it writes nothing without this screen
+     having to check for that itself. */
+  const FEELING_OFFER = OFFERS['new-milestone-felt-sense'];
+
+  async function answerFeelingOffer(
+    given: OfferAnswer,
+    input: { mood: number; note: string | null } | null
+  ) {
+    const subject =
+      feelingOfferId && input
+        ? { owner: { milestoneId: feelingOfferId }, epochDay: todayEpochDay(), ...input }
+        : null;
+    await answerOffer(FEELING_OFFER, subject, given, journal);
     feelingOfferId = null;
   }
 
@@ -394,9 +407,9 @@
 
   <FeltSenseOfferSheet
     open={feelingOfferId !== null}
-    title={m.ms_feeling_new_title()}
-    onSave={saveFeelingOffer}
-    onSkip={() => (feelingOfferId = null)}
+    copy={FEELING_OFFER.copy}
+    onSave={(input) => answerFeelingOffer('confirm', input)}
+    onSkip={() => void answerFeelingOffer('decline', null)}
   />
 </div>
 

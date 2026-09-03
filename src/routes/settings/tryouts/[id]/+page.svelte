@@ -44,6 +44,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
+  import { OFFERS, answerOffer, type OfferAnswer, type TryoutAdoption } from '$lib/data/offers';
 
   /* Three areas below the form: how it has felt, what it looked like, and
      what was written while it ran. */
@@ -211,6 +212,18 @@
     return m.tryout_label_placeholder_other();
   }
 
+  /* One entry in the offer registry (phase 8 features ticket 22,
+     ADR-0045). No `openOffer` guard here, unlike the roadmap and the
+     surgery hub: what stops this being offered twice is `canAdopt` below -
+     a tryout that has ended cannot be adopted again - and there is no
+     minted record to check for.
+
+     The middle answer, adopt without a milestone, is a decline of the
+     milestone that still writes the adoption, so it goes through
+     `answerOffer` as a confirmation carrying `createMilestone: false`
+     rather than as `'decline'`. offers.ts's header records the
+     difference. */
+  const ADOPT_OFFER = OFFERS['tryout-adoption-milestone'];
   let adoptOpen = $state(false);
   let canAdopt = $derived(
     !detail.isNew &&
@@ -218,23 +231,33 @@
     detail.record?.endEpochDay == null
   );
 
-  async function handleAdoptConfirm(options: {
-    createMilestone: boolean;
-    milestoneTitle: string;
-    milestoneEpochDay: number;
-    updateProfileName: boolean;
-  }) {
-    if (detail.isNew || !detail.record) return;
-    await journal.tryouts.adoptTryout(detail.id, {
-      endEpochDay: todayEpochDay(),
-      createMilestone: options.createMilestone,
-      milestoneTitle: options.milestoneTitle,
-      milestoneEpochDay: options.milestoneEpochDay
-    });
-    if (options.updateProfileName && draft.kind === 'name') {
-      prefs.name = options.milestoneTitle || draft.label;
+  async function answerAdoptOffer(
+    given: OfferAnswer,
+    options: {
+      createMilestone: boolean;
+      milestoneTitle: string;
+      milestoneEpochDay: number;
+      updateProfileName: boolean;
+    } | null
+  ) {
+    const subject: TryoutAdoption | null =
+      adoptOpen && !detail.isNew && detail.record && options
+        ? {
+            tryoutId: detail.id,
+            endEpochDay: todayEpochDay(),
+            createMilestone: options.createMilestone,
+            milestoneTitle: options.milestoneTitle,
+            milestoneEpochDay: options.milestoneEpochDay
+          }
+        : null;
+
+    const adopted = await answerOffer(ADOPT_OFFER, subject, given, journal);
+    if (adopted && options) {
+      if (options.updateProfileName && draft.kind === 'name') {
+        prefs.name = options.milestoneTitle || draft.label;
+      }
+      draft.end = dateInputValueFromEpochDay(todayEpochDay());
     }
-    draft.end = dateInputValueFromEpochDay(todayEpochDay());
     adoptOpen = false;
   }
 </script>
@@ -449,9 +472,10 @@
 
   <AdoptTryoutConfirmationSheet
     open={adoptOpen}
+    copy={ADOPT_OFFER.copy}
     tryout={detail.record ?? null}
     feltSense={feeling}
-    onConfirm={handleAdoptConfirm}
-    onDismiss={() => (adoptOpen = false)}
+    onConfirm={(options) => answerAdoptOffer('confirm', options)}
+    onDismiss={() => void answerAdoptOffer('decline', null)}
   />
 </div>
