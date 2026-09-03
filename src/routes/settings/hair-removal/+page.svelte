@@ -33,6 +33,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   /* Two areas: how long since each area was last worked on, and the
      sessions themselves. */
@@ -155,6 +156,9 @@
       </div>
     {/snippet}
   </ReadGate>
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="hair-removal" />
 
   <RecordSheet
     {record}

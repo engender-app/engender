@@ -32,6 +32,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -165,6 +166,9 @@
       </div>
     {/snippet}
   </ReadGate>
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="sizes" />
 
   <RecordSheet
     {record}
