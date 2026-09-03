@@ -23,7 +23,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import { watchJournalWrites } from '../journal-busy';
-import type { PhotoFileStore } from './journal';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 /** A photo that has been through normalize() (ADR-0008/0015): JPEG bytes,
