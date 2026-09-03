@@ -459,6 +459,14 @@
     saving = true;
     try {
       const id = await journal.entries.upsertEntry(entryDraft.toUpsert());
+      /* Ticket 16 (phase 8 deepening): the mirror's job is to survive an
+         *unsaved* draft. Once the write has landed there is nothing left to
+         restore, so clearing only on unmount (below) left a killed process
+         between here and there holding a mirror whose removedPhotoIds/
+         removedRecordingIds/removedVideoIds already named rows this save
+         just deleted - reapplied on resume, a re-save with no further edits
+         then threw `unknown photo: ${id}` (entries.ts, ADR-0053). */
+      draftStore.clear();
       if (entryId == null && debriefForAppointment != null) {
         await journal.checklists.recordDebriefEntry(id, debriefForAppointment);
       }
