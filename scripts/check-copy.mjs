@@ -1,6 +1,6 @@
-/* Three checks over the app's copy, run on every pull request (phase 2 ticket
+/* Four checks over the app's copy, run on every pull request (phase 2 ticket
    06, which wires up what ticket 19 then relies on; the third check added by
-   phase 5 ticket 05):
+   phase 5 ticket 05; the fourth by phase 8 deepening ticket 05):
 
    1. The two catalogues hold the same keys. A key present in English and
       missing in Polish is not an error anywhere else - paraglide falls back to
@@ -25,6 +25,24 @@
       ordinary feminine noun instead ("niepewna ... krzywa", "wersja ...
       gotowa"), so this check only flags a short, named list of forms already
       found addressing the reader rather than every feminine adjective ending.
+
+   4. No catalogue key sits with no caller. The other direction - a key the
+      source calls and no catalogue has - is already a type error, since
+      paraglide generates one function per key; `npm run check` catches that
+      one. A key the catalogue has and nothing calls is invisible to every
+      other check here and to the typechecker both, and it happens in
+      clusters: ticket 16's kit contract orphaned twelve `*_row_aria` keys at
+      once when `ListRow`/`RecordSheet` started deriving a row's accessible
+      name from `title` instead. There is no dynamic `m[...]` or
+      `messages[...]` access anywhere in `src/`, `tests/` or `scripts/`, so
+      reading `m.<key>`/`messages.<key>` as plain text out of every
+      `.svelte`/`.ts`/`.js` file under those three directories is a sound
+      scan - not an approximation of one - and needs no new parser: a
+      built-in's wording can be reached only through
+      `src/lib/data/vocabulary/vocabulary.ts` (ADR-0024) and still read as
+      `m.<key>` by name one layer down, in `labels.ts`, where the text scan
+      finds it same as anywhere else. DEAD_ALLOW exists for the rarer case a
+      plain-text scan genuinely cannot see - each entry carries its reason.
 
    Run `node scripts/check-copy.mjs` to see where it stands, and
    `node scripts/check-copy.mjs --update` after moving copy into the
@@ -61,6 +79,12 @@ const A_WORD = /\p{L}/u;
  * purpose - see the file header.
  */
 const GENDERED_READER_ADJECTIVES = new Set(['dumna', 'zauważona']);
+
+/**
+ * Catalogue keys the text scan below cannot see a caller for, kept anyway.
+ * Every entry needs a reason, the way the CSS ratchet's `SHARED` set does.
+ */
+const DEAD_ALLOW = new Map();
 
 /**
  * Keys one catalogue has and the other does not, in both directions.
@@ -103,6 +127,37 @@ export function genderedReaderProblems(pl) {
     }
   }
   return problems;
+}
+
+/**
+ * Every `m.<key>` / `messages.<key>` identifier called anywhere in the given
+ * files, read as plain text rather than parsed - see the file header for why
+ * that is sound here.
+ *
+ * @param {string[]} files
+ * @returns {Set<string>}
+ */
+export function collectReferencedKeys(files) {
+  const referenced = new Set();
+  const pattern = /\b(?:m|messages)\.([A-Za-z_$][A-Za-z0-9_$]*)/g;
+  for (const file of files) {
+    for (const match of readFileSync(file, 'utf8').matchAll(pattern)) referenced.add(match[1]);
+  }
+  return referenced;
+}
+
+/**
+ * Catalogue keys no file calls by name and DEAD_ALLOW does not explain.
+ *
+ * @param {Record<string, unknown>} catalogue
+ * @param {Set<string>} referenced
+ * @param {Map<string, string>} allowList
+ * @returns {string[]}
+ */
+export function deadKeyProblems(catalogue, referenced, allowList) {
+  return Object.keys(catalogue)
+    .filter((key) => !key.startsWith('$') && !referenced.has(key) && !allowList.has(key))
+    .map((key) => `${key} is in the catalogues but nothing calls m.${key} or messages.${key}`);
 }
 
 /**
@@ -219,6 +274,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     .split('\n')
     .filter((file) => file.endsWith('.svelte'));
 
+  const refFiles = execFileSync('git', ['ls-files', 'src', 'tests', 'scripts'], { encoding: 'utf8' })
+    .trim()
+    .split('\n')
+    .filter((file) => /\.(svelte|ts|js)$/.test(file));
+
   /** @type {Record<string, number>} */
   const counts = {};
   for (const file of files) {
@@ -232,11 +292,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
 
+  const enCatalogue = JSON.parse(readFileSync('messages/en.json', 'utf8'));
   const plCatalogue = JSON.parse(readFileSync('messages/pl.json', 'utf8'));
+  const referenced = collectReferencedKeys(refFiles);
   const problems = [
-    ...catalogueProblems(JSON.parse(readFileSync('messages/en.json', 'utf8')), plCatalogue),
+    ...catalogueProblems(enCatalogue, plCatalogue),
     ...ratchetProblems(counts, readBaseline()),
-    ...genderedReaderProblems(plCatalogue)
+    ...genderedReaderProblems(plCatalogue),
+    ...deadKeyProblems(enCatalogue, referenced, DEAD_ALLOW)
   ];
 
   for (const problem of problems) console.log('FAIL', problem);
@@ -248,4 +311,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log('PASS both catalogues hold the same keys');
   console.log(`PASS no new user-facing literals (${total} known, in ${Object.keys(counts).length} file(s))`);
   console.log('PASS no Polish string genders the reader');
+  console.log(`PASS no catalogue key sits with no caller (${referenced.size} referenced, ${DEAD_ALLOW.size} allow-listed)`);
 }
