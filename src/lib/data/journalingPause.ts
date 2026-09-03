@@ -4,7 +4,12 @@
    `Streak`'s amended computation (journal/stats.ts) and the check-in/Home
    suppression checks (platform-sync.ts, the Home screen) all read the same
    rule rather than three copies of "does this range cover this day" drifting
-   apart. */
+   apart.
+
+   pauseCoversDay delegates to span.ts's spanCoversDay (phase 8 deepening
+   ticket 11); the arithmetic lives once. */
+
+import { spanCoversDay } from './span';
 
 export interface JournalingPauseRange {
   id?: string;
@@ -16,8 +21,7 @@ export interface JournalingPauseRange {
     running - the same reasoning doseSchedule.ts's pauseCoversDay gives for
     DosePause. */
 export function pauseCoversDay(pause: JournalingPauseRange, day: number): boolean {
-  if (day < pause.startEpochDay) return false;
-  return pause.endEpochDay === null || day <= pause.endEpochDay;
+  return spanCoversDay(pause, day);
 }
 
 /** Whether any pause covers `day`. What Home and platform-sync ask to decide

@@ -113,6 +113,19 @@ describe('liveTiles trigger predicates', () => {
         })
       ).toBeNull();
     });
+
+    it('ignores a tryout that has not started yet, even against a stale felt-sense entry', () => {
+      const futureTryout: Tryout = { ...activeTryout, startEpochDay: today + 5 };
+      expect(
+        shouldShowActiveTryoutTile({
+          tryouts: [futureTryout],
+          latestFeltSenseByTryoutId: new Map([[futureTryout.id, today - 10]]),
+          todayEpochDay: today,
+          enabled: true,
+          snoozed: false
+        })
+      ).toBeNull();
+    });
   });
 
   describe('shouldShowPatchScheduleTile', () => {
