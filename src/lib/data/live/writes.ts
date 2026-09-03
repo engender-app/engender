@@ -658,7 +658,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
          are a separate read for the reason the header there gives. 'entry'
          is the body-region readings and 'tally' the counters, both judged
          against the person's own recent spread. */
-      getCurveMarkers: ['sideEffect', 'dose', 'tally', 'entry']
+      getCurveMarkers: ['sideEffect', 'dose', 'regimen', 'tally', 'entry']
     }
   }),
   // Read-only, like stats below: exposure counters never write (phase 4

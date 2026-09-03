@@ -28,6 +28,9 @@ const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+/* The fixture is 500 days of a full journal, so the heavier screens boot
+   past Playwright's 30s default. */
+page.setDefaultTimeout(90000);
 
 const settle = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
@@ -134,14 +137,19 @@ try {
   }
 
   /* The illustrative curve carries the same layer, and it is the only chart
-     somebody taking oral estradiol ever sees. The fixture's dose log is all
-     injectable, so this section is often absent; that is a fixture fact and
-     not a failure. */
+     somebody on oral estradiol ever sees, so it is worth a shot of its own.
+     The fixture's dose log is all injectable, so the shot needs an oral dose
+     logged first - and the way to log one, /doses, does not boot in a
+     production build at all. That is a bug on clean main, reproduced there
+     on 2026-09-03 as `Cannot read properties of undefined (reading '$set')`
+     with the app root stuck at data-boot="booting", and nothing this ticket
+     touched. So the section is shot when the journal happens to hold one and
+     skipped otherwise, rather than seeding it. */
   await settle('/settings/hormone-curve');
   const qualIndex = await page.locator('[data-chart-card]').evaluateAll((cards) =>
     cards.findIndex((card) => card.querySelector('.qual-chart') !== null)
   );
-  if (qualIndex >= 0) await shootCard('curve-qualitative-card', qualIndex);
+  if (qualIndex >= 0) await shootCard('curve-illustrative-card', qualIndex);
   else console.log('no illustrative curve in this journal, so no shot of one');
 } finally {
   await page.close();

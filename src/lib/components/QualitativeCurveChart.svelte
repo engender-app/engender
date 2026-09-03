@@ -23,8 +23,7 @@
 
   import { scaleLinear } from 'd3-scale';
   import { line as d3line } from 'd3-shape';
-  import type { AnnotationMark, ChartAnnotation } from '$lib/charts/annotations';
-  import CurveMarkers from './CurveMarkers.svelte';
+  import CurveMarkers, { drawsMarkers, type CurveMarkerProps } from './CurveMarkers.svelte';
 
   interface CurvePoint {
     day: number;
@@ -53,21 +52,17 @@
         file header. */
     unitLabel: string | null;
     ariaLabel: string;
-    /** What else was logged on the days this window covers (phase 8 features
-        ticket 15). A date has a position on this axis whether or not the
-        heights under it mean anything yet, which is why markers are drawn
-        here and lab results still are not: a result is a value laid over an
-        invented amplitude, and a marker is a day laid over a calendar. */
-    markers?: readonly ChartAnnotation[];
-    selectedMarker?: string | null;
-    onSelectMarker?: (mark: AnnotationMark) => void;
-    markLabel?: (mark: AnnotationMark) => string;
-  } = $props();
+    /* What else was logged on the days this window covers (phase 8 features
+       ticket 15). A date has a position on this axis whether or not the
+       heights under it mean anything yet, which is why markers are drawn
+       here and lab results still are not: a result is a value laid over an
+       invented amplitude, and a marker is a day laid over a calendar. */
+  } & CurveMarkerProps = $props();
 
   const P = 8;
   const AXIS = 34;
 
-  let marked = $derived(onSelectMarker !== undefined && markLabel !== undefined && markers.length > 0);
+  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker, markLabel }));
 
   let chart = $derived.by(() => {
     if (points.length < 2) return null;
@@ -107,9 +102,9 @@
       {/each}
     {/if}
 
-    {#if marked}
+    {#if showsMarkers}
       <CurveMarkers
-        markers={markers}
+        {markers}
         fromDay={chart.fromDay}
         toDay={chart.toDay}
         left={chart.left}
@@ -117,8 +112,8 @@
         bottom={height - P}
         plotHeight={height - P * 2}
         selected={selectedMarker}
-        onSelect={(mark) => onSelectMarker?.(mark)}
-        markLabel={(mark) => markLabel?.(mark) ?? ''}
+        onSelect={onSelectMarker!}
+        markLabel={markLabel!}
       />
     {/if}
 
