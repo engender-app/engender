@@ -121,8 +121,8 @@ export interface DosesArea {
   getDoses(fromEpochDay: number, toEpochDay: number): Promise<DoseEvent[]>;
   /** Returns the dose's id. Updating an unknown id throws. */
   upsertDose(input: DoseEventInput): Promise<string>;
-  /** Deleting an unknown id throws. A dose is a logged event like a lab
-      result, so it deletes; nothing else is attributed to one. */
+  /** A dose is a logged event like a lab result, so it deletes rather than
+      hides; nothing else is attributed to one. */
   deleteDose(id: string): Promise<void>;
   /** Every episode's schedule. Small enough to read whole - one row per
       episode, and the adherence view needs the episode's alongside it. */
@@ -134,6 +134,8 @@ export interface DosesArea {
   /** Every pause, oldest start first. Refuses an unknown episode on write. */
   getPauses(): Promise<DosePause[]>;
   upsertPause(input: DosePauseInput): Promise<string>;
+  /** A pause is a plain row: nothing is attributed to one, and adherence
+      reads it rather than storing anything derived from it (ADR-0032). */
   deletePause(id: string): Promise<void>;
   /** The dose log over `[fromEpochDay, toEpochDay]` against what the
       schedule expected of it, assembled here rather than at the caller: the
@@ -322,8 +324,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async deleteDose(id) {
-      const result = await driver.run('DELETE FROM dose_event WHERE uuid = ?', [id]);
-      assertChanged(result, `dose event: ${id}`);
+      await driver.run('DELETE FROM dose_event WHERE uuid = ?', [id]);
     },
 
     async getSchedules() {
@@ -458,8 +459,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async deletePause(id) {
-      const result = await driver.run('DELETE FROM dose_pause WHERE uuid = ?', [id]);
-      assertChanged(result, `dose pause: ${id}`);
+      await driver.run('DELETE FROM dose_pause WHERE uuid = ?', [id]);
     },
 
     async getComparison({ fromEpochDay, toEpochDay }) {

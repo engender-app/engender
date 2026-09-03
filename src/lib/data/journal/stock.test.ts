@@ -71,9 +71,13 @@ test('drug names are matched trimmed, the same as an analyte or a lab provider',
   assert.equal(entries[0].quantity, 5);
 });
 
-test('deleting an unknown id throws', async () => {
+test('deleting an unknown id changes nothing', async () => {
   const { journal } = await journalWithBuiltIns();
-  await assert.rejects(journal.stock.deleteEntry('nope'), /unknown/);
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: 19000 });
+
+  await journal.stock.deleteEntry('nope');
+
+  assert.equal((await journal.stock.getEntries()).length, 1);
 });
 
 test('getProjections derives remaining from the dose log, matched by drug', async () => {

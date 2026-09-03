@@ -57,8 +57,7 @@ export function makeJournalingPausesArea(driver: SqliteDriver): JournalingPauses
     },
 
     async deletePause(id) {
-      const result = await driver.run('DELETE FROM journaling_pause WHERE uuid = ?', [id]);
-      assertChanged(result, `journaling pause: ${id}`);
+      await driver.run('DELETE FROM journaling_pause WHERE uuid = ?', [id]);
     }
   };
 }

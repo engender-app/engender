@@ -27,8 +27,10 @@ export interface ErasArea {
       era would be a second open start, a second open end or an overlap
       (`eras.ts`'s assertEraFits). Updating an unknown id throws. */
   upsertEra(input: EraInput): Promise<string>;
-  /** Idempotent from the caller's side of an already-gone row: throws on an
-      unknown id, the way every other area's delete does. */
+  /** Deleting an unknown id succeeds and changes nothing (ADR-0053). Stated
+      here and asserted in this area's own tests rather than inherited from
+      `flat-area.ts`, because `upsertEra`'s guard is a whole-table invariant
+      rather than a validator and keeps this area hand-written. */
   deleteEra(id: string): Promise<void>;
   /** The first and last day the journal holds an entry for, which is what an
       open bound clamps to at read time (`eras.ts`'s eraRange). Null on a
@@ -84,8 +86,7 @@ export function makeErasArea(driver: SqliteDriver): ErasArea {
     },
 
     async deleteEra(id) {
-      const result = await driver.run('DELETE FROM era WHERE uuid = ?', [id]);
-      assertChanged(result, `era: ${id}`);
+      await driver.run('DELETE FROM era WHERE uuid = ?', [id]);
     },
 
     async getJournalBounds() {
