@@ -20,6 +20,7 @@ import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime } from './dates';
 import { hairRemovalAreaName } from './vocabulary/labels';
 import { isPausedOn } from './journalingPause';
+import { spanCoversDay } from './span';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
 import {
@@ -91,7 +92,7 @@ export function homeTiles(
     const rows = await j.tryouts.getTryouts();
     const latest = new Map<string, number | null>();
     for (const tryout of rows) {
-      if (tryout.endEpochDay === null || tryout.endEpochDay >= todayEpochDay) {
+      if (spanCoversDay(tryout, todayEpochDay)) {
         const entries = await j.feltSense.forTryout(tryout.id);
         latest.set(tryout.id, entries.length > 0 ? entries[0].epochDay : null);
       }

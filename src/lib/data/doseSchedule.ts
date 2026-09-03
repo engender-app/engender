@@ -9,6 +9,7 @@
    good/bad. The comparison is the feature (ticket 02, out of scope). */
 
 import { epochDayFromTimestamp, weekdayOfEpochDay } from './epochDay';
+import { spanCoversDay } from './span';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types';
 
 /** Which routes carry a rotated injection site and a vehicle, and which
@@ -217,10 +218,10 @@ export interface DoseSlot {
 }
 
 /** Whether `epochDay` falls inside `pause`. An open pause (no end day)
-    covers every day from its start onwards. */
+    covers every day from its start onwards. Delegates to span.ts's
+    spanCoversDay (phase 8 deepening ticket 11); the arithmetic lives once. */
 export function pauseCoversDay(pause: DosePause, epochDay: number): boolean {
-  if (epochDay < pause.startEpochDay) return false;
-  return pause.endEpochDay === null || epochDay <= pause.endEpochDay;
+  return spanCoversDay(pause, epochDay);
 }
 
 /** How many of `weekdays` fall in the half-open range [anchorEpochDay,

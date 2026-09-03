@@ -25,6 +25,7 @@ import type { ExposureCounters } from '../journal/exposure';
 import type { ClinicianSummaryProcedure } from '../journal/clinicianSummary';
 import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
+import { spanCoversDay } from '../span';
 
 export interface PatientDemographics {
   name: string;
@@ -128,11 +129,7 @@ export async function assembleClinicianDossier(
   let regimenData: ClinicianDossierRegimenData | null = null;
   if (inclusion.regimen) {
     const history = summary.regimenEpisodes;
-    const current = history.filter(
-      (episode) =>
-        episode.startEpochDay <= toEpochDay &&
-        (episode.endEpochDay === null || episode.endEpochDay >= toEpochDay)
-    );
+    const current = history.filter((episode) => spanCoversDay(episode, toEpochDay));
 
     regimenData = {
       current,

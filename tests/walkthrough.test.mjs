@@ -1771,13 +1771,14 @@ try {
 
   /* The toggle turns the feature off rather than hiding the card: Home stops
      offering it, and the screen itself says so instead of rendering a
-     wrapped nobody asked to keep computing. The toggle lives in the
-     consolidated live-tiles screen (ticket 51), one row down from Settings. */
+     wrapped nobody asked to keep computing. The toggle lives on the merged
+     unprompted-registry screen (ticket 51, one screen since deepening
+     ticket 09), one row down from Settings, in the Home column. */
   await fresh('/settings');
   if (await page.locator('[data-live-tile="wrapped"]').count()) {
     throw new Error('the wrapped toggle is still on the Tracking card');
   }
-  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
   await fresh('/');
@@ -1789,7 +1790,7 @@ try {
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
 
   await fresh('/settings');
-  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
   await fresh('/');
@@ -1940,9 +1941,10 @@ try {
 
   /* The toggle turns the feature off entirely, and leaves wrapped's own
      toggle and card untouched (CONTEXT/ticket scope: independent toggles).
-     It lives in the consolidated live-tiles screen (ticket 51). */
+     It lives on the merged unprompted-registry screen (ticket 51, one
+     screen since deepening ticket 09), in the Home column. */
   await fresh('/settings');
-  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="on-this-day"]');
   await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
   await fresh('/');
@@ -1957,7 +1959,7 @@ try {
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
 
   await fresh('/settings');
-  await page.locator('[data-list-row="live-tiles"]').click();
+  await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="on-this-day"]');
   await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
   await fresh('/');
@@ -3272,54 +3274,48 @@ try {
   });
 } catch (e) { fail('Home bleeds decoration only', e); }
 
-/* The two views over the unprompted registry (phase 6 ticket 04). The
-   notifications view is the interesting one here precisely because this is a
-   browser: its entries are absent rather than shown and inert, since a
-   browser cannot fire a scheduled notification while the app is closed, so
-   what the walkthrough can hold on web is that absence plus the screen still
-   saying why. The switches themselves are Android-only and are held by
+/* The one screen over the unprompted registry (phase 6 ticket 04, merged
+   from two screens onto one by deepening ticket 09). This is a browser, so
+   the notify column is the interesting half here: its switches are absent
+   rather than shown and inert, since a browser cannot fire a scheduled
+   notification while the app is closed - what the walkthrough can hold on
+   web is that absence plus the screen still saying why. The Home column is
+   not Android-only and keeps working, the same as when it was its own
+   screen; its switches themselves are Android-and-web and are held by
    registry.test.ts and each producer's own test. */
 try {
   await fresh('/settings');
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-screen]');
   if ((await page.getByRole('heading', { level: 1 }).count()) === 0) {
-    throw new Error('the notifications view rendered no heading');
+    throw new Error('the merged screen rendered no heading');
   }
   if (await page.locator('[data-notification]').count()) {
-    throw new Error('a notification row rendered on web, where it can never fire');
+    throw new Error('a notification toggle rendered on web, where it can never fire');
   }
   if (await page.locator('[data-quiet-hours]').count()) {
     throw new Error('quiet hours rendered on web, over notifications that cannot happen');
   }
   if (!(await page.locator('[data-notice-title]').count())) {
-    throw new Error('the empty screen explains nothing');
+    throw new Error('the missing notify column explains nothing');
   }
 
-  /* And the surfaces view beside it, which is not Android-only: its rows are
-     what Home may show. That the notification sub-toggles are gone from here
-     is a fact about the source, held by unprompted-views.test.ts - asserting
-     [data-live-tile-notify] absent in the browser would be unfalsifiable now
-     that no component owns that handle, which is the line
-     walkthrough-handles-exist.test.ts holds. */
-  await fresh('/settings');
-  await page.locator('[data-list-row="live-tiles"]').click();
-  await page.waitForSelector('[data-live-tile="wrapped"]');
-  /* Not a hand-counted total: the registry's own claim is that a later
-     ticket adds one array entry and no markup, and a number here would make
-     that a walkthrough edit. registry.test.ts owns the list; what this holds
-     is that the screen drew the registry rather than nothing, and that the
-     two rows whose toggles moved are still on it. */
+  /* The Home column beside it, on the same screen, in the same load: its
+     rows are what Home may show and are not Android-only. Not a
+     hand-counted total: the registry's own claim is that a later ticket
+     adds one array entry and no markup, and a number here would make that a
+     walkthrough edit. registry.test.ts owns the list; what this holds is
+     that the screen drew the registry rather than nothing. */
   const tiles = await page.locator('[data-live-tile]').count();
-  if (tiles < 3) throw new Error('the surfaces view drew ' + tiles + ' rows');
+  if (tiles < 3) throw new Error('the Home column drew ' + tiles + ' rows');
   for (const key of ['wrapped', 'on-this-day', 'stock-notice']) {
     if (!(await page.locator(`[data-live-tile="${key}"]`).count())) {
-      throw new Error(key + ' is missing from the surfaces view');
+      throw new Error(key + ' is missing from the Home column');
     }
   }
 
-  ok('two views over one registry: notifications absent on web, surfaces still whole');
-} catch (e) { fail('the unprompted registry views', e); }
+  ok('one screen over one registry: notify column absent on web, Home column still whole');
+} catch (e) { fail('the unprompted registry view', e); }
 
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
