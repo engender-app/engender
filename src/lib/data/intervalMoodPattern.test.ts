@@ -1,11 +1,14 @@
-/* Interval mood pattern (phase 5 ticket 09): the pure bucketing math, tested
-   without a driver. journal/intervalMoodPattern.test.ts covers the area
-   that wires this to the dose log and the day-average queries. */
+/* Interval mood pattern (phase 5 ticket 09): turning a journal into a
+   repeating keying, tested without a driver. The bucketing the two folds
+   below hand their intervals to moved to dayKeying.ts in phase 8 ticket 16
+   and its cases moved to dayKeying.test.ts with it.
+   journal/intervalMoodPattern.test.ts covers the area that wires this to
+   the dose log and the day-average queries. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from './epochDay';
-import { completedInjectionIntervals, dayOfIntervalPattern, foldByCustomInterval } from './intervalMoodPattern';
+import { completedInjectionIntervals, foldByCustomInterval } from './intervalMoodPattern';
 import type { DayAverage } from './journal/stats';
 import type { DoseEvent } from './types';
 
@@ -55,49 +58,6 @@ test('oral and sublingual doses carry no interval - only IM/SC depots have one',
   const intervals = completedInjectionIntervals([dose(DAY_0, { route: 'oral' }), dose(DAY_0 + 14, { route: 'oral' })]);
 
   assert.deepEqual(intervals, []);
-});
-
-test('dayOfIntervalPattern averages a position across every interval that reached it, entry-weighted', () => {
-  const intervals = [
-    { startEpochDay: DAY_0, length: 14 },
-    { startEpochDay: DAY_0 + 14, length: 14 },
-    { startEpochDay: DAY_0 + 28, length: 14 }
-  ];
-  // Day 1 of each interval logs mood 4; day 1 of the third also carries a
-  // second entry at 2, so the entry-weighted average is (4+4+4+2)/4 = 3.5,
-  // not the day-average-of-day-averages (4+4+3)/3.
-  const days = [
-    point(DAY_0, 4),
-    point(DAY_0 + 14, 4),
-    point(DAY_0 + 28, 3, 2)
-  ];
-
-  const pattern = dayOfIntervalPattern(days, intervals);
-
-  assert.deepEqual(pattern, [{ position: 1, value: 3.5, count: 3 }]);
-});
-
-test('dayOfIntervalPattern drops a position below the 3-interval floor', () => {
-  const intervals = [
-    { startEpochDay: DAY_0, length: 14 },
-    { startEpochDay: DAY_0 + 14, length: 14 }
-  ];
-  const days = [point(DAY_0, 4), point(DAY_0 + 14, 2)];
-
-  assert.deepEqual(dayOfIntervalPattern(days, intervals), []);
-});
-
-test('dayOfIntervalPattern leaves a day too short an interval never reached out of the bucket', () => {
-  const intervals = [
-    { startEpochDay: DAY_0, length: 10 },
-    { startEpochDay: DAY_0 + 10, length: 20 },
-    { startEpochDay: DAY_0 + 30, length: 20 }
-  ];
-  // Only the second interval is long enough to reach day 15 and has
-  // anything logged there - below the 3-interval floor on its own.
-  const pattern = dayOfIntervalPattern([point(DAY_0 + 10 + 14, 5)], intervals);
-
-  assert.deepEqual(pattern, []);
 });
 
 test('foldByCustomInterval folds every intervalLengthDays days starting from fromEpochDay, with no claim of a cycle', () => {

@@ -36,9 +36,13 @@
     epochDayFromTimestamp,
     startOfDayTimestamp,
     timestampAtLocalTime,
-    todayEpochDay
+    todayEpochDay,
+    FIRST_EPOCH_DAY
   } from '$lib/data/epochDay';
   import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
+  import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
+  import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
+  import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Reminder, WearSession } from '$lib/data/types';
@@ -56,7 +60,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -245,7 +249,20 @@
   });
 
   let range = $state(30);
-  let trendFrom = $derived(today - range + 1);
+
+  /* Which axis the trend is read on (ticket 16). Both its series take the
+     same one, which is not a choice so much as the only coherent reading:
+     they already share one x axis, and the whole point of the pair is
+     whether the hours and the feeling move together. The queries, the
+     fallback and the keying are the kit's (dayAxis.svelte.ts), shared with
+     the body map. */
+  const readAxis = dayAxisState(() => today);
+
+  /* A re-keyed axis reads all history and says so. The question needs every
+     interval, or every day either side of a surgery, available; the range
+     picker would hand it a slice near today that answers nothing, so it is
+     swapped out rather than left sitting there inert. */
+  let trendFrom = $derived(readAxis.keying ? FIRST_EPOCH_DAY : today - range + 1);
 
   let wearTrendQuery = liveList((j) => j.stats.wearTimeTrend(trendFrom, today));
   /* Dysphoria specifically, which is the axis this chart has always drawn -
@@ -254,10 +271,21 @@
   let regionTrendQuery = liveList((j) =>
     j.stats.bodyRegionTrend(trendRegion, 'dysphoria', trendFrom, today)
   );
-  let wearTrend = $derived(wearTrendQuery.rows);
-  let regionTrend = $derived(regionTrendQuery.rows);
+  /* One call for both, so the two lines fold at one width. Folded
+     separately they would space their marks differently while sharing an
+     axis, which is the one reading this chart exists to support
+     ($lib/charts/dayAxis). */
+  let plotted = $derived(
+    plotDaySeriesGroup([wearTrendQuery.rows, regionTrendQuery.rows], readAxis.keying, range)
+  );
+  /* WearTrendChart places by a numeric x and knows nothing about what it
+     counts, so a position goes in where an epoch day used to with no change
+     to the renderer - which is exactly the substitution re-keying is. */
+  let wearTrend = $derived(plotted[0].points.map((point) => ({ day: point.x, value: point.y })));
+  let regionTrend = $derived(plotted[1].points.map((point) => ({ day: point.x, value: point.y })));
   let wearMax = $derived(Math.max(4, 1, ...wearTrend.map((p) => Math.ceil(p.value))));
   let trendRegionLabel = $derived(trendRegionOptions.find((r) => r.value === trendRegion)?.label ?? '');
+  let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
 </script>
 
 <div class="screen">
@@ -327,14 +355,43 @@
            "Wear time and intensity" and so was this, one above the other -
            the same two-headers-stacked reading DIRECTION.md 3d names. The
            card names the area. -->
-      <Segmented
-        name={m.stats_range_group()}
-        options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-        value={String(range)}
-        onChange={(v) => (range = Number(v))}
-        compact
-        key="wear-range"
-      />
+      <!-- The axis first, because it decides whether there is a range to
+           pick, and absent for a journal that can answer only the calendar. -->
+      <div class="kit-reading-controls">
+        {#if readAxis.axes.length > 1}
+          <div class="kit-filter">
+            <label class="kit-filter-label" for="wear-axis">{m.chart_axis_label()}</label>
+            <ChartPicker
+              key="wear-axis"
+              id="wear-axis"
+              labelledBy="wear-axis"
+              value={readAxis.axis}
+              options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
+              onPick={(value) => (readAxis.axis = value as DayAxis)}
+            />
+          </div>
+        {/if}
+
+      <!-- One slot for the range control and the whole-journal note that
+           replaces it, travelling between the two rather than snapping
+           (kit.css's .kit-reading-slot). -->
+        <div class="kit-reading-slot" use:resize>
+          {#if readAxis.keying}
+            <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
+          {:else}
+            <div out:crossfade>
+              <Segmented
+                name={m.stats_range_group()}
+                options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+                value={String(range)}
+                onChange={(v) => (range = Number(v))}
+                compact
+                key="wear-range"
+              />
+            </div>
+          {/if}
+        </div>
+      </div>
       <ChartCard
         heading={m.wear_session_trend_title()}
         kind="wear-trend"
@@ -361,7 +418,9 @@
             {wearMax}
             regionMin={BODY_REGION_INTENSITY_MIN}
             regionMax={BODY_REGION_INTENSITY_MAX}
-            ariaLabel={m.wear_session_trend_title()}
+            ariaLabel={readAxis.keying
+              ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
+              : m.wear_session_trend_title()}
           />
           <p class="muted small wear-trend-legend">
             <span class="legend-dot legend-wear"></span>{m.wear_session_trend_wear_legend()}
