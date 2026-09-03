@@ -241,6 +241,14 @@ export interface StatsArea {
       chart (ticket 10). `value` and `count` are both the day's tap count:
       there is nothing to average, only how many times it happened. */
   tallyTrend(kind: TallyKind, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
+  /** Every distinct day in the range on which at least one untrashed entry
+      carried `presentationId` (ADR-0048), oldest first. The presentation
+      chip on tally, wear, voice and calendar reads this to highlight a
+      day; it never removes one - the chart it is passed to draws exactly
+      what it drew before, and this only says which of those days to mark
+      (ticket 17). A day nothing was logged under this presentation on is
+      simply absent, not a day of the chart it filters out. */
+  presentationDays(presentationId: string, fromEpochDay: number, toEpochDay: number): Promise<number[]>;
 }
 
 /** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
@@ -493,6 +501,16 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         [kind, fromEpochDay, toEpochDay]
       );
       return rows.map((r) => ({ day: r.day, value: r.n, count: r.n }));
+    },
+
+    async presentationDays(presentationId, fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ day: number }>(
+        `SELECT DISTINCT epoch_day AS day FROM entry
+         WHERE presentation_id = ? AND epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
+         ORDER BY epoch_day`,
+        [presentationId, fromEpochDay, toEpochDay]
+      );
+      return rows.map((r) => r.day);
     },
 
     async entryCountsByDay(fromEpochDay, toEpochDay) {

@@ -726,6 +726,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       wearTimeTrend: ['wearSession'],
       tallyTrend: ['tally'],
       entryCountsByDay: ['entry'],
+      // Filters entry.presentation_id directly, the same reason
+      // bodyRegionTrend above depends on 'entry' alone: which days match
+      // never changes when a presentation is renamed, recoloured or hidden.
+      presentationDays: ['entry'],
       tagInsights: ['entry', 'dimension', 'tag'],
       // A pause bridges a gap without extending the count (phase 5 ticket
       // 21), which is the second table the streak-goal screen forgot.
