@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { epochDayFromDateInputValue, weekdayOfEpochDay } from '../data/epochDay';
-import { MAX_POSITIONS, alignSeries, atGrain, bucketByGrain, bucketStart, chooseGrain } from './grain';
+import { MAX_POSITIONS, alignSeries, atGrain, bucketByGrain, bucketStart, chooseGrain, foldPositions } from './grain';
 
 const day = (value: string) => epochDayFromDateInputValue(value) as number;
 
@@ -160,5 +160,71 @@ describe('two series read onto one set of positions', () => {
   it('folds two buckets logged at the same position into one row', () => {
     const rows = alignSeries([at(mon, 1), at(tue, 2)], [at(mon, 20), at(tue, 40)]);
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe('foldPositions', () => {
+  const pos = (position: number, value: number, count = 1) => ({ position, value, count });
+
+  it('leaves a span the card can already hold alone', () => {
+    const points = [pos(1, 4), pos(2, 3), pos(14, 5)];
+
+    expect(foldPositions(points, 60)).toEqual({ width: 1, points });
+  });
+
+  it('has nothing to fold in an empty series', () => {
+    expect(foldPositions([], 60)).toEqual({ width: 1, points: [] });
+  });
+
+  it('widens a bucket until the span fits the card', () => {
+    // 0 to 179 is 180 positions; three to a bucket is the narrowest width
+    // that draws 60 of them.
+    const points = Array.from({ length: 180 }, (_, i) => pos(i, 2));
+
+    const folded = foldPositions(points, 60);
+
+    expect(folded.width).toBe(3);
+    expect(folded.points).toHaveLength(60);
+    expect(folded.points[0]).toEqual({ position: 0, value: 2, count: 3 });
+  });
+
+  it('weights a bucket by the days behind each position, not by position count', () => {
+    // Two positions into one bucket: one carries 3 days at 5, the other 1
+    // day at 1, so the bucket reads (5*3 + 1*1) / 4 = 4 rather than 3.
+    const points = [pos(0, 5, 3), pos(1, 1, 1), pos(2, 2), pos(3, 2)];
+
+    const folded = foldPositions(points, 2);
+
+    expect(folded.width).toBe(2);
+    expect(folded.points[0]).toEqual({ position: 0, value: 4, count: 4 });
+  });
+
+  it('never lets a bucket straddle the anchor - the pre-anchor side stays its own', () => {
+    // Buckets are laid off zero rather than off the lowest position, so no
+    // bucket ever averages a day before the surgery together with one
+    // after it.
+    const points = [pos(-3, 1), pos(-1, 1), pos(0, 5), pos(2, 5)];
+
+    const folded = foldPositions(points, 2);
+
+    expect(folded.width).toBe(3);
+    expect(folded.points).toEqual([
+      { position: -3, value: 1, count: 2 },
+      { position: 0, value: 5, count: 2 }
+    ]);
+  });
+
+  it('reads a bucket back at the position it starts on', () => {
+    const points = [pos(10, 1), pos(11, 3), pos(20, 5)];
+
+    const folded = foldPositions(points, 2);
+
+    expect(folded.points.map((p) => p.position)).toEqual([7, 14]);
+  });
+
+  it('defaults to the card the rest of this file measures', () => {
+    const points = Array.from({ length: MAX_POSITIONS * 2 }, (_, i) => pos(i, 2));
+
+    expect(foldPositions(points).width).toBe(2);
   });
 });
