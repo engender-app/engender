@@ -15,7 +15,7 @@
      Tapping any hotspot on the 2D anatomical map, tapping any region chip,
      or tapping the inspect button opens the multi-track somatic inspector sheet. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { completedInjectionIntervals } from '$lib/data/intervalMoodPattern';
   import {
@@ -92,7 +92,7 @@
      "has this journal ever completed an injection interval" and a 30-day
      window rarely contains one. Procedures are read whole for the same
      reason: a surgery two years back still anchors an axis. */
-  let dosesQuery = liveList((j) => j.doses.getDoses(Number.MIN_SAFE_INTEGER, today));
+  let dosesQuery = liveList((j) => j.doses.getDoses(FIRST_EPOCH_DAY, today));
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
 
   let intervals = $derived(completedInjectionIntervals(dosesQuery.rows));
@@ -121,7 +121,7 @@
      range picker above would otherwise hand it a slice near today that
      answers nothing. So the range control is swapped out rather than left
      to sit there doing nothing. */
-  let from = $derived(keying ? Number.MIN_SAFE_INTEGER : today - range + 1);
+  let from = $derived(keying ? FIRST_EPOCH_DAY : today - range + 1);
 
   let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today, modeFilter));
   let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today, modeFilter));
@@ -221,19 +221,20 @@
          calendar - no dose log with a completed interval in it and no
          procedure with a date - which is the same data gating the mode
          filter below makes. -->
-    {#if axes.length > 1}
-      <div class="kit-filter">
-        <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
-        <ChartPicker
-          key="body-map-axis"
-          id="body-map-axis"
-          labelledBy="body-map-axis"
-          value={axis}
-          options={dayAxisOptions(axes, anchors)}
-          onPick={(value) => (axis = value as DayAxis)}
-        />
-      </div>
-    {/if}
+    <div class="kit-reading-controls">
+      {#if axes.length > 1}
+        <div class="kit-filter">
+          <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
+          <ChartPicker
+            key="body-map-axis"
+            id="body-map-axis"
+            labelledBy="body-map-axis"
+            value={axis}
+            options={dayAxisOptions(axes, anchors)}
+            onPick={(value) => (axis = value as DayAxis)}
+          />
+        </div>
+      {/if}
 
     <!-- The range control and the whole-journal note share one slot. A
          re-keyed axis reads all history, so the range picker has nothing
@@ -242,21 +243,22 @@
          different heights, so the slot animates its own resize, and the
          control that is leaving fades off its own footprint instead of
          popping (motion/reveal). -->
-    <div class="kit-reading-slot" use:resize>
-      {#if keying}
-        <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-      {:else}
-        <div out:crossfade>
-          <Segmented
-            name={m.stats_range_group()}
-            options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-            value={String(range)}
-            onChange={(v) => (range = Number(v))}
-            compact
-            key="body-map-range"
-          />
-        </div>
-      {/if}
+      <div class="kit-reading-slot" use:resize>
+        {#if keying}
+          <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
+        {:else}
+          <div out:crossfade>
+            <Segmented
+              name={m.stats_range_group()}
+              options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+              value={String(range)}
+              onChange={(v) => (range = Number(v))}
+              compact
+              key="body-map-range"
+            />
+          </div>
+        {/if}
+      </div>
     </div>
 
     {#if vocabulary.visiblePresentations.length > 0}

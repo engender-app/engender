@@ -36,7 +36,8 @@
     epochDayFromTimestamp,
     startOfDayTimestamp,
     timestampAtLocalTime,
-    todayEpochDay
+    todayEpochDay,
+    FIRST_EPOCH_DAY
   } from '$lib/data/epochDay';
   import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
   import { completedInjectionIntervals } from '$lib/data/intervalMoodPattern';
@@ -264,7 +265,7 @@
   /* Read whole, both of them, because what is on offer is "has this journal
      ever completed an injection interval" and "is there a procedure with a
      date" - neither is a question about the visible window. */
-  let dosesQuery = liveList((j) => j.doses.getDoses(Number.MIN_SAFE_INTEGER, today));
+  let dosesQuery = liveList((j) => j.doses.getDoses(FIRST_EPOCH_DAY, today));
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
 
   let intervals = $derived(completedInjectionIntervals(dosesQuery.rows));
@@ -289,7 +290,7 @@
      interval, or every day either side of a surgery, available; the range
      picker would hand it a slice near today that answers nothing, so it is
      swapped out rather than left sitting there inert. */
-  let trendFrom = $derived(keying ? Number.MIN_SAFE_INTEGER : today - range + 1);
+  let trendFrom = $derived(keying ? FIRST_EPOCH_DAY : today - range + 1);
 
   let wearTrendQuery = liveList((j) => j.stats.wearTimeTrend(trendFrom, today));
   /* Dysphoria specifically, which is the axis this chart has always drawn -
@@ -384,38 +385,40 @@
            card names the area. -->
       <!-- The axis first, because it decides whether there is a range to
            pick, and absent for a journal that can answer only the calendar. -->
-      {#if axes.length > 1}
-        <div class="kit-filter">
-          <label class="kit-filter-label" for="wear-axis">{m.chart_axis_label()}</label>
-          <ChartPicker
-            key="wear-axis"
-            id="wear-axis"
-            labelledBy="wear-axis"
-            value={axis}
-            options={dayAxisOptions(axes, anchors)}
-            onPick={(value) => (axis = value as DayAxis)}
-          />
-        </div>
-      {/if}
+      <div class="kit-reading-controls">
+        {#if axes.length > 1}
+          <div class="kit-filter">
+            <label class="kit-filter-label" for="wear-axis">{m.chart_axis_label()}</label>
+            <ChartPicker
+              key="wear-axis"
+              id="wear-axis"
+              labelledBy="wear-axis"
+              value={axis}
+              options={dayAxisOptions(axes, anchors)}
+              onPick={(value) => (axis = value as DayAxis)}
+            />
+          </div>
+        {/if}
 
       <!-- One slot for the range control and the whole-journal note that
            replaces it, travelling between the two rather than snapping
            (kit.css's .kit-reading-slot). -->
-      <div class="kit-reading-slot" use:resize>
-        {#if keying}
-          <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-        {:else}
-          <div out:crossfade>
-            <Segmented
-              name={m.stats_range_group()}
-              options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-              value={String(range)}
-              onChange={(v) => (range = Number(v))}
-              compact
-              key="wear-range"
-            />
-          </div>
-        {/if}
+        <div class="kit-reading-slot" use:resize>
+          {#if keying}
+            <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
+          {:else}
+            <div out:crossfade>
+              <Segmented
+                name={m.stats_range_group()}
+                options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+                value={String(range)}
+                onChange={(v) => (range = Number(v))}
+                compact
+                key="wear-range"
+              />
+            </div>
+          {/if}
+        </div>
       </div>
       <ChartCard
         heading={m.wear_session_trend_title()}

@@ -256,22 +256,8 @@
   "chart_axis_all_history": "From your whole journal",
   "chart_axis_day": "Day {day}",
   "chart_axis_days": "Days {from} to {to}",
-  "chart_axis_day_before": [
-    {
-      "declarations": [
-        "input days",
-        "local daysPlural = days: plural"
-      ],
-      "selectors": [
-        "daysPlural"
-      ],
-      "match": {
-        "daysPlural=one": "{days} day before",
-        "daysPlural=other": "{days} days before"
-      }
-    }
-  ],
-  "chart_axis_days_before": "{from} to {to} days before",
+  "chart_axis_day_before": "Day {days} before",
+  "chart_axis_days_before": "Days {from} to {to} before",
   "chart_axis_reading_aria": "{reading}, read by {axis}.",
   "values_title": "{name}: values",
   "values_two_title": "{first} and {second}: values",

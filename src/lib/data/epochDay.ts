@@ -34,6 +34,23 @@ export function epochDayFromTimestamp(ts: number): number {
     `epochDay * DAY`: that's a UTC instant and drifts from local midnight
     by the zone's offset, and by an extra hour on either side of a DST
     transition. */
+/** The earliest day anything in this journal can be dated to, and what
+    "all history" means as a `from` bound.
+
+    `Number.MIN_SAFE_INTEGER` is the convention where a read compares an
+    `epoch_day` column, which is a plain integer comparison that a sentinel
+    survives (stats.ts's `bestStreakEver`). It is wrong for any read that
+    turns the bound back into an instant: `startOfDayTimestamp` builds a
+    `Date` from it, `new Date(1970, 0, 1 + MIN_SAFE_INTEGER)` is an Invalid
+    Date, and `timestamp >= NaN` matches every row out. `doses.getDoses` is
+    such a read, and a caller reaching for the sentinel there gets an empty
+    log rather than an error.
+
+    Zero is not a sentinel at all - it is the real floor, because an epoch
+    day is never negative (ADR-0001) - so it is exact for both kinds of read
+    and cannot go NaN in either. */
+export const FIRST_EPOCH_DAY = 0;
+
 export function startOfDayTimestamp(epochDay: number): number {
   return localDateFromEpochDay(epochDay).getTime();
 }

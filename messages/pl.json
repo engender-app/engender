@@ -278,24 +278,8 @@
   "chart_axis_all_history": "Z całego dziennika",
   "chart_axis_day": "Dzień {day}",
   "chart_axis_days": "Dni od {from} do {to}",
-  "chart_axis_day_before": [
-    {
-      "declarations": [
-        "input days",
-        "local daysPlural = days: plural"
-      ],
-      "selectors": [
-        "daysPlural"
-      ],
-      "match": {
-        "daysPlural=one": "{days} dzień przed",
-        "daysPlural=few": "{days} dni przed",
-        "daysPlural=many": "{days} dni przed",
-        "daysPlural=other": "{days} dni przed"
-      }
-    }
-  ],
-  "chart_axis_days_before": "{from} do {to} dni przed",
+  "chart_axis_day_before": "Dzień {days} przed",
+  "chart_axis_days_before": "Dni od {from} do {to} przed",
   "chart_axis_reading_aria": "{reading}, czytane według {axis}.",
   "values_title": "{name}: wartości",
   "values_two_title": "{first} i {second}: wartości",
