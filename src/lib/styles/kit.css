@@ -423,6 +423,33 @@
   color: var(--text-2);
 }
 
+/* The slot a chart screen's range control and its whole-journal note share
+   (phase 8 features ticket 16).
+
+   A re-keyed axis reads all history, so the range picker has nothing left
+   to answer and is swapped out rather than left inert. The two are
+   different heights - a pill row against one line of text - so the slot
+   carries `use:resize` and travels between them instead of snapping, and
+   the control on its way out fades off its own footprint with
+   `out:crossfade`.
+
+   Positioned, and that is the whole reason this is a class rather than a
+   bare div: crossfade takes the leaving node out of flow at its static
+   position, which resolves against the nearest positioned ancestor. Left
+   to find one on its own it reaches `.screen` and the fading pills land at
+   the top of the page. */
+.kit-axis-slot {
+  position: relative;
+}
+
+/* Standing in for the pill row, so it takes the same vertical rhythm the
+   3px-padded pills do rather than collapsing the space above the chart the
+   moment somebody switches axis. */
+.kit-axis-note {
+  margin: 0;
+  padding: var(--space-2) 0;
+}
+
 /* The gender-scales row names every scale that is ticked, so it is the one
    subtitle in the app whose length is set by how much the person has chosen.
    Past three it wrapped to a second line, the row grew by 17px, and the whole

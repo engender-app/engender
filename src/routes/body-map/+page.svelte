@@ -16,9 +16,22 @@
      or tapping the inspect button opens the multi-track somatic inspector sheet. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { atGrain, type Grain } from '$lib/charts/grain';
+  import { completedInjectionIntervals } from '$lib/data/intervalMoodPattern';
+  import {
+    CALENDAR_AXIS,
+    availableAxes,
+    keyingFor,
+    plotDaySeriesGroup,
+    type DayAxis
+  } from '$lib/charts/dayAxis';
+  import {
+    dayAxisEnds,
+    dayAxisLabel,
+    dayAxisOptions,
+    dayAxisScrubLabel
+  } from '$lib/components/kit/dayAxisLabel';
+  import { crossfade, resize } from '$lib/motion/reveal';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -69,33 +82,75 @@
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(todayEpochDay());
-  let from = $derived(today - range + 1);
+
+  /* Which axis the two charts are read on (ticket 16). Both take the same
+     one: they are one region's two readings and a person switches axis to
+     ask a question of the region, not of one of its halves. */
+  let axis = $state<DayAxis>(CALENDAR_AXIS);
+
+  /* All history, whatever the dose log holds, because what is on offer is
+     "has this journal ever completed an injection interval" and a 30-day
+     window rarely contains one. Procedures are read whole for the same
+     reason: a surgery two years back still anchors an axis. */
+  let dosesQuery = liveList((j) => j.doses.getDoses(Number.MIN_SAFE_INTEGER, today));
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+
+  let intervals = $derived(completedInjectionIntervals(dosesQuery.rows));
+  let anchors = $derived(
+    proceduresQuery.rows
+      .filter((procedure) => procedure.surgeryEpochDay !== null)
+      .map((procedure) => ({
+        id: procedure.id,
+        name: procedure.name,
+        surgeryEpochDay: procedure.surgeryEpochDay as number
+      }))
+  );
+  let axes = $derived(availableAxes(intervals, anchors));
+  // A procedure deleted or a dose log emptied mid-session takes its axis
+  // with it, the same fallback the mode filter above makes: back to the
+  // reading this screen started with rather than to an axis nothing can
+  // any longer select or clear.
+  $effect(() => {
+    if (!axes.includes(axis)) axis = CALENDAR_AXIS;
+  });
+  let keying = $derived(keyingFor(axis, intervals, anchors, today));
+
+  /* A re-keyed axis reads the whole journal and says so, which is the same
+     call the two interval cards on /stats make: the question needs every
+     interval and every day either side of a surgery available, and the
+     range picker above would otherwise hand it a slice near today that
+     answers nothing. So the range control is swapped out rather than left
+     to sit there doing nothing. */
+  let from = $derived(keying ? Number.MIN_SAFE_INTEGER : today - range + 1);
 
   let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, today, modeFilter));
   let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, today, modeFilter));
   /* Both axes of one region over one range, so both take the same
-     annotations (ticket 23). */
-  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
+     annotations (ticket 23) - and neither takes any on a re-keyed axis.
+     An annotation is a calendar date and a position is not one: several
+     calendar days collapse onto one position under the repeating rule, so
+     a mark drawn there would claim a coincidence the data does not carry. */
+  let annotationsQuery = liveList((j) =>
+    keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, today, today)
+  );
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
-  let plottedDysphoria = $derived(atGrain(dysphoria.map((p) => ({ x: p.day, y: p.value })), range));
-  let plottedEuphoria = $derived(atGrain(euphoria.map((p) => ({ x: p.day, y: p.value })), range));
+  /* One call for both series, so they fold onto one width and the two
+     cards' axes cannot disagree ($lib/charts/dayAxis). */
+  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], keying, range));
+  let plottedDysphoria = $derived(plotted[0]);
+  let plottedEuphoria = $derived(plotted[1]);
 
-  /* The chart fits the card, so what changes with the range is the grain
-     ($lib/charts/grain): 30 days day by day, a year week by week. */
-  const GRAIN_WEEK_SPAN = 6;
-  const grainLabel = (grain: Grain) => (point: { x: number }) => {
-    const short = { day: 'numeric', month: 'short' } as const;
-    if (grain === 'day') return fmtDay(point.x, { weekday: 'short', ...short });
-    if (grain === 'month') return fmtDay(point.x, { month: 'long', year: 'numeric' });
-    return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
-  };
+  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, today));
 
-  let rangeEnds = $derived({
-    from: fmtDay(from, { day: 'numeric', month: 'short' }),
-    to: fmtDay(today, { day: 'numeric', month: 'short' })
-  });
+  /* A screen reader is told which axis a reading is on, and only when it is
+     not the one every chart starts on: ", read by Date" on the calendar
+     axis would be a phrase appended to every chart on the screen to say
+     nothing had changed. */
+  let axisName = $derived(dayAxisLabel(axis, anchors));
+  const withAxis = (reading: string) =>
+    keying ? m.chart_axis_reading_aria({ reading, axis: axisName }) : reading;
 
   const HOTSPOTS: { region: string; top: number; left: number }[] = [
     { region: 'hairline', top: 7, left: 50 },
@@ -161,14 +216,48 @@
       </div>
     </div>
 
-    <Segmented
-      name={m.stats_range_group()}
-      options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-      value={String(range)}
-      onChange={(v) => (range = Number(v))}
-      compact
-      key="body-map-range"
-    />
+    <!-- The axis sits above the range, because it decides whether there is
+         a range to pick. Absent for a journal that can only answer the
+         calendar - no dose log with a completed interval in it and no
+         procedure with a date - which is the same data gating the mode
+         filter below makes. -->
+    {#if axes.length > 1}
+      <div class="kit-filter">
+        <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
+        <ChartPicker
+          key="body-map-axis"
+          id="body-map-axis"
+          labelledBy="body-map-axis"
+          value={axis}
+          options={dayAxisOptions(axes, anchors)}
+          onPick={(value) => (axis = value as DayAxis)}
+        />
+      </div>
+    {/if}
+
+    <!-- The range control and the whole-journal note share one slot. A
+         re-keyed axis reads all history, so the range picker has nothing
+         left to say and is swapped out rather than left sitting there
+         inert. The swap travels: a pill row and a one-line note are
+         different heights, so the slot animates its own resize, and the
+         control that is leaving fades off its own footprint instead of
+         popping (motion/reveal). -->
+    <div class="kit-axis-slot" use:resize>
+      {#if keying}
+        <p class="muted small kit-axis-note" out:crossfade>{m.chart_axis_all_history()}</p>
+      {:else}
+        <div out:crossfade>
+          <Segmented
+            name={m.stats_range_group()}
+            options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+            value={String(range)}
+            onChange={(v) => (range = Number(v))}
+            compact
+            key="body-map-range"
+          />
+        </div>
+      {/if}
+    </div>
 
     {#if vocabulary.visiblePresentations.length > 0}
       <div class="kit-filter">
@@ -217,35 +306,39 @@
           </div>
         {/snippet}
         <AreaChart
-          scrubLabel={grainLabel(plottedDysphoria.grain)}
+          scrubLabel={dayAxisScrubLabel(plottedDysphoria)}
           points={plottedDysphoria.points}
           min={BODY_REGION_INTENSITY_MIN}
           max={BODY_REGION_INTENSITY_MAX}
           from={rangeEnds.from}
           to={rangeEnds.to}
           annotations={annotationsQuery.rows}
-          ariaLabel={m.body_map_chart_aria({
-            region: regionName,
-            first: m.body_region_axis_dysphoria(),
-            second: m.body_region_axis_euphoria()
-          })}
+          ariaLabel={withAxis(
+            m.body_map_chart_aria({
+              region: regionName,
+              first: m.body_region_axis_dysphoria(),
+              second: m.body_region_axis_euphoria()
+            })
+          )}
         />
       </ChartCard>
 
       <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={roleAt(activeFlag.roles, 0)}>
         <AreaChart
-          scrubLabel={grainLabel(plottedEuphoria.grain)}
+          scrubLabel={dayAxisScrubLabel(plottedEuphoria)}
           points={plottedEuphoria.points}
           min={BODY_REGION_INTENSITY_MIN}
           max={BODY_REGION_INTENSITY_MAX}
           from={rangeEnds.from}
           to={rangeEnds.to}
           annotations={annotationsQuery.rows}
-          ariaLabel={m.body_map_chart_aria({
-            region: regionName,
-            first: m.body_region_axis_euphoria(),
-            second: m.body_region_axis_dysphoria()
-          })}
+          ariaLabel={withAxis(
+            m.body_map_chart_aria({
+              region: regionName,
+              first: m.body_region_axis_euphoria(),
+              second: m.body_region_axis_dysphoria()
+            })
+          )}
         />
       </ChartCard>
     {/if}
