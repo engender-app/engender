@@ -29,7 +29,8 @@ const WITHOUT = new Map([
   ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
   ['src/routes/entry/new/[day]/+page.svelte', 'renders EntryEditor, which carries the header'],
-  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow']
+  ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow'],
+  ['src/routes/settings/live-tiles/+page.svelte', 'redirects to /settings/notifications and renders nothing (deepening ticket 09)']
 ]);
 
 describe('every screen gets its header from one component', () => {

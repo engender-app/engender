@@ -67,16 +67,18 @@ describe('what Settings is built from', () => {
     /* A ListRow always renders as an <a> or a <button>; a row whose only
        job is to hold a Switch would make that switch's own button a nested
        control. Those stay plain .kit-row divs. The wrapped and on-this-day
-       rows moved to the live-tiles screen (ticket 51), which live-tiles
-       surfaces test holds to the same rule. */
+       rows moved to the unprompted registry's own screen (ticket 51, merged
+       to one screen by deepening ticket 09), which unprompted-view.test.ts
+       holds to the same rule. */
     for (const handle of ['data-entry-nudges', 'data-guided-prompts', 'data-roadmap-milestone-sync']) {
       const re = new RegExp(`<div class="kit-row" ${handle}>`);
       expect(withoutScript).toMatch(re);
     }
   });
 
-  it('sends the live tiles and their toggles to one consolidated screen (ticket 51)', () => {
-    expect(withoutScript).toContain('href="/settings/live-tiles"');
+  it('sends the live tiles and their toggles to one consolidated screen (deepening ticket 09)', () => {
+    expect(withoutScript).toContain('href="/settings/notifications"');
+    expect(withoutScript).not.toContain('href="/settings/live-tiles"');
     for (const gone of ['data-wrapped-toggle', 'data-wrapped-notify-toggle', 'data-on-this-day-toggle', 'data-on-this-day-notify-toggle']) {
       expect(settings).not.toContain(gone);
     }
