@@ -896,6 +896,24 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    on --surface-2 computed to 2.89-4.50:1, failing 16/16 palette/theme
    combinations. --text-2 alone already clears 4.5:1. */
 
+/* A presentation's own colour rather than the app's accent, since the
+   whole point of the chip is telling several of them apart at a glance
+   (ADR-0048) - the tokens [data-kit-role] derives from roleAttrs() on
+   this button. Unselected, only the ring shows; selected, the tint fills
+   in behind the name. Layered over a chip's base pill (.tag-chip here,
+   EntryEditor's own .contextual-chip elsewhere) rather than owning one of
+   its own - two chip pickers reaching for a presentation's colour is not
+   two chips, it is one modifier two pills opt into (phase 8 features
+   ticket 17). */
+.presentation-chip[data-kit-role] {
+  border: var(--role-hairline);
+}
+.presentation-chip.is-active[data-kit-role] {
+  background: var(--role-tint);
+  border-color: var(--role-draw);
+  color: var(--role-ink);
+}
+
 /* ---------- entry card ---------- */
 .entry-card {
   display: flex; gap: var(--space-3);

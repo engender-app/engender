@@ -47,6 +47,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt, type Role } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -77,11 +78,7 @@
      month is on screen; this only resolves the role, the same division of
      labour the metric's own `role` prop keeps. */
   let selectedPresentation = $state<string | null>(null);
-  let highlightRole = $derived.by(() => {
-    if (!selectedPresentation) return undefined;
-    const presentation = vocabulary.presentation(selectedPresentation);
-    return presentation ? roleAt(activeFlag.roles, presentation.roleIndex) : undefined;
-  });
+  let highlightRole = $derived(presentationRole(selectedPresentation));
   let highlight = $derived(
     selectedPresentation && highlightRole
       ? { presentationId: selectedPresentation, role: highlightRole }

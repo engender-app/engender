@@ -30,7 +30,7 @@
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveList, type LiveList } from '$lib/data/live/journal.svelte';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
   import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
   import { calendarDuration } from '$lib/data/epochDay';
   import {
@@ -127,11 +127,7 @@
   let presentationDaysQuery = liveList((j) =>
     selectedPresentation ? j.stats.presentationDays(selectedPresentation, span.from, span.to) : Promise.resolve([])
   );
-  let highlightRole = $derived.by(() => {
-    if (!selectedPresentation) return undefined;
-    const presentation = vocabulary.presentation(selectedPresentation);
-    return presentation ? roleAt(activeFlag.roles, presentation.roleIndex) : undefined;
-  });
+  let highlightRole = $derived(presentationRole(selectedPresentation));
   let highlightedDays = $derived(highlightedPositions(presentationDaysQuery.rows, null, 'day'));
   let trendHighlight = $derived(
     highlightRole && trend
