@@ -138,6 +138,24 @@
           card is the card. See Role.paired in $lib/theme/roles. */
       role?: Role;
     };
+    /** Which of `points` fall on a day logged under the chosen presentation
+        (phase 8 features ticket 17, ADR-0048), and what colour to ring
+        them in. `at` is aligned with `points` the same way `overlay.values`
+        is - the caller places, this chart only draws - because only the
+        caller knows what a position covers on a re-keyed axis
+        ($lib/charts/presentationHighlight.ts).
+
+        A ring around the existing dot, never a second mark: the chip
+        highlights, it never adds a reading nobody logged (ADR-0030's rank,
+        never gate, restated for a mark). Drawn regardless of how many
+        points are on the plot - unlike the plain dots below, which give way
+        to the line past sixty of them - because a chosen presentation
+        covering most of a long range is exactly the case ticket 17 asks to
+        still read clearly. */
+    highlight?: {
+      at: boolean[];
+      role: Role;
+    };
   } = $props();
 
   /* An overlay whose values do not line up with the positions they are
@@ -373,6 +391,7 @@
     role="img"
     aria-label={ariaLabel}
     style:--role-2={overlay?.role?.paired}
+    style:--highlight={highlight?.role.mark}
     in:wipe={{ authored: true }}
     onpointerdown={scrubTo}
     onpointermove={scrubIfHeld}
@@ -460,6 +479,17 @@
                  dash and the scrub carry it. -->
             {#each path.dots.slice(0, -1) as dot, i (i)}
               {#if dot}<circle class="kit-area-dot" cx={dot.x} cy={dot.y} r="2.5" />{/if}
+            {/each}
+          {/if}
+          {#if highlight && !overlaid}
+            <!-- A ring around the existing dot, drawn whatever the point
+                 count - ticket 17's own warning that this has to still read
+                 when most of the range is highlighted is what keeps this
+                 out of the <=60 gate above. -->
+            {#each path.dots as dot, i (i)}
+              {#if dot && highlight.at[i]}
+                <circle class="kit-area-highlight" cx={dot.x} cy={dot.y} r="5" />
+              {/if}
             {/each}
           {/if}
           {#if at}
