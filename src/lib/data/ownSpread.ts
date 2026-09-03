@@ -114,8 +114,12 @@ export function ownSpreadFence(readings: readonly DayValue[], today: number): nu
     a chart can be drawn over a range the window does not reach back to, and
     dropping those days would leave a stretch of it where nothing could ever
     be marked. They are judged against the same one fence, which is what
-    keeps the answer stable as the chart is resized. */
-export function aboveOwnSpread(readings: readonly DayValue[], today: number): DayValue[] {
+    keeps the answer stable as the chart is resized.
+
+    Generic over the reading, so a caller whose readings carry more than a
+    day and a number - the entry a body-region reading was logged on - gets
+    them back whole rather than having to match them up again by identity. */
+export function aboveOwnSpread<T extends DayValue>(readings: readonly T[], today: number): T[] {
   const fence = ownSpreadFence(readings, today);
   if (fence === null) return [];
 
