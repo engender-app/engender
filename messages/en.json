@@ -249,6 +249,30 @@
   "custom_interval_length_label": "Interval length (days)",
   "custom_interval_empty": "Not enough logged data yet to show a pattern.",
   "custom_interval_chart_aria": "Mood folded by a {days}-day interval, {count} points, day {from} to day {to}.",
+  "chart_axis_label": "Read by",
+  "chart_axis_calendar": "Date",
+  "chart_axis_interval": "Day of interval",
+  "chart_axis_since": "Day since {name}",
+  "chart_axis_all_history": "From your whole journal",
+  "chart_axis_day": "Day {day}",
+  "chart_axis_days": "Days {from} to {to}",
+  "chart_axis_day_before": [
+    {
+      "declarations": [
+        "input days",
+        "local daysPlural = days: plural"
+      ],
+      "selectors": [
+        "daysPlural"
+      ],
+      "match": {
+        "daysPlural=one": "{days} day before",
+        "daysPlural=other": "{days} days before"
+      }
+    }
+  ],
+  "chart_axis_days_before": "{from} to {to} days before",
+  "chart_axis_reading_aria": "{reading}, read by {axis}.",
   "values_title": "{name}: values",
   "values_two_title": "{first} and {second}: values",
   "values_second": "{name}: {value}",
