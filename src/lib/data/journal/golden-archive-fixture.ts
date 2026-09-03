@@ -207,6 +207,14 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   // ticket 14).
   await journal.comfortItems.addItem('text a friend');
   await journal.comfortItems.addItem('walk by the river');
+  /* Four rows covering the three shapes an area's state comes in (phase 8
+     deepening ticket 13): hidden without a finish day, finished without
+     being hidden, and one hub row's two sections finished on the same day.
+     An area with a row saying nothing is not among them because there is no
+     such row - a state that says nothing keeps no row. */
+  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
+  await journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250);
+  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
   await journal.effectCategories.setCategoryEnabled('sensory', true);
   const customEffect = await journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape');
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);
