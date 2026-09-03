@@ -50,6 +50,10 @@ export interface FeltSenseArea {
   add(owner: FeltSenseOwner, input: FeltSenseInput): Promise<string>;
   /** Idempotent. */
   remove(id: string): Promise<void>;
+  /** The day of the most recent felt-sense entry, either owner, at or before
+      `todayEpochDay`, or null if there is none (phase 8 features ticket 03,
+      lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
 type FeltSenseRow = { uuid: string; epoch_day: number; mood: number; note: string | null };
@@ -141,6 +145,14 @@ export function makeFeltSenseArea(driver: SqliteDriver): FeltSenseArea {
 
     async remove(id) {
       await driver.run('DELETE FROM felt_sense WHERE uuid = ?', [id]);
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM felt_sense WHERE epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     }
   };
 }

@@ -109,6 +109,13 @@ export interface ProceduresArea {
       view as the milestone it already mints (ADR-0045) rather than as a
       second row here. */
   getDayRecords(epochDay: number): Promise<ProcedureDayRecord[]>;
+  /** The day of the most recent consult or recovery photo, across every
+      procedure, at or before `todayEpochDay`, or null if there is none
+      (phase 8 features ticket 03, lastWrite.ts). Mirrors `getDayRecords`'
+      own exclusion: a procedure's `surgeryEpochDay` reaches the day view as
+      the milestone ADR-0045 mints, so it is not part of this area's own
+      last write either. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
       the new photo's id. Throws if the procedure is unknown. */
@@ -225,6 +232,18 @@ export function makeProceduresArea(
         id
       ]);
       assertChanged(result, `procedure: ${id}`);
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        `SELECT MAX(day) AS day FROM (
+           SELECT epoch_day AS day FROM procedure_consult
+           UNION ALL
+           SELECT epoch_day AS day FROM procedure_photo
+         ) WHERE day <= ?`,
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     },
 
     async addConsult(procedureId, epochDay) {

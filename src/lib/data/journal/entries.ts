@@ -199,6 +199,12 @@ export interface EntriesArea {
       body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
+  /** The day of the most recent untrashed entry at or before `todayEpochDay`,
+      or null if there is none (phase 8 features ticket 03, lastWrite.ts). One
+      bounded `MAX`, not a fetched list reduced in JS. A row dated after today
+      is excluded rather than trusted - the last-write registry never lets a
+      clock-skewed row stand in for the truth. */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
 
@@ -1158,6 +1164,14 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         id
       ]);
       assertChanged(result, `entry: ${id}`);
+    },
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const rows = await driver.query<{ day: number | null }>(
+        'SELECT MAX(epoch_day) AS day FROM entry WHERE trashed_at IS NULL AND epoch_day <= ?',
+        [todayEpochDay]
+      );
+      return rows[0]?.day ?? null;
     }
   };
 }

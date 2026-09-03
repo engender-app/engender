@@ -15,6 +15,9 @@ export type CycleEventInput = FlatInput<CycleEvent>;
 export interface CycleEventsArea {
   getCycleEvents(): Promise<CycleEvent[]>;
   getCycleEventsInRange(fromEpochDay: number, toEpochDay: number): Promise<CycleEvent[]>;
+  /** The day of the most recent cycle event at or before `todayEpochDay`, or
+      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the cycle event's id. Updating an unknown id throws. */
   upsertCycleEvent(input: CycleEventInput): Promise<string>;
   /** Idempotent. */
@@ -32,6 +35,11 @@ export function makeCycleEventsArea(driver: SqliteDriver): CycleEventsArea {
 
     getCycleEventsInRange: (fromEpochDay, toEpochDay) =>
       events.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
+
+    async lastWriteEpochDay(todayEpochDay) {
+      const [latest] = await events.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [todayEpochDay]);
+      return latest?.epochDay ?? null;
+    },
 
     upsertCycleEvent: events.upsert,
     deleteCycleEvent: events.delete
