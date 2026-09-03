@@ -26,6 +26,7 @@
 
 import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
+import { CLINICIAN_SUMMARY_TABLES } from '../journal/clinicianSummary';
 import { DAY_TABLES } from '../journal/day';
 import { SEARCH_TABLES } from '../journal/textSearch';
 import { RECONCILE_TABLES } from '../journal/reconcile';
@@ -655,14 +656,16 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {},
     reads: { getCurves: ['dose', 'regimen', 'lab'] }
   }),
-  // Read-only, the same reason exposure is: a clinician summary assembles
-  // rows other areas own and stores nothing of its own (phase 4 ticket 12).
+  /* Read-only, the same reason exposure is: a clinician summary assembles
+     rows other areas own and stores nothing of its own (phase 4 ticket 12).
+     Its table list is the section registry's own rather than a copy taken
+     from it (clinicianSummary.ts's CLINICIAN_SUMMARY_TABLES), for the reason
+     day's is: a section registered there brings its tables with it, so a
+     summary cannot go stale on a write to an area registered after this line
+     was written. */
   clinicianSummary: classify<Journal['clinicianSummary']>()({
     writes: {},
-    // One table per registered section (clinicianSummary.ts): episodes,
-    // doses, results, exposure's two, side effects, procedures and the
-    // appointment prep checklist.
-    reads: { getSummary: ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist'] }
+    reads: { getSummary: CLINICIAN_SUMMARY_TABLES }
   }),
   /* Read-only for the same reason, and its table list is the registry's own
      rather than a copy taken from it (day.ts's DAY_TABLES): a section added
