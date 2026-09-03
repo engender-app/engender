@@ -1828,28 +1828,25 @@ ALTER TABLE checklist ADD COLUMN debrief_dismissed_epoch_day INTEGER;
 
 /* v57: which areas a person has hidden, and which they have said are
    finished (phase 8 deepening ticket 13, ADR-0052, CONTEXT: "Finished").
+   The rule the rows are read by, and the reasoning behind the two columns
+   and the key space, are `areaState.ts`'s; what belongs here is what the
+   schema had to decide.
 
-   Keyed by `area`, which is an `ArchiveSectionName` and therefore a wire key
-   already - the same natural-key identity `personal_effect.effect` and
-   `medication_stock.drug` travel by, and deliberately not the More hub's row
-   ids: a hub row can be renamed or regrouped without warning, and a stored
-   key that changes meaning underneath the data is not a key.
+   `area` is the primary key and is an `ArchiveSectionName`, so it is a wire
+   key already - the natural-key identity `personal_effect.effect` and
+   `medication_stock.drug` travel by.
 
-   Sparse. An absent row is the resting state - not hidden, not finished -
-   rather than unfinished setup, so nothing writes a row to say nothing, and
-   `areaStates.ts` removes a row that has gone back to saying nothing.
+   `hidden` and not `visible`, because a positive flag defaulting to shown is
+   what would reverse ADR-0043, and because hidden is already the column name
+   on tag, gender_dimension and measurement_type.
 
-   `hidden` and not `visible`: hidden is already this project's word for this
-   (CONTEXT: "Hidden") and already this shape on tag, gender_dimension and
-   measurement_type. A positive flag defaulting to shown is also precisely
-   what would reverse ADR-0043, whose rule is one-directional on purpose.
+   `finished_epoch_day` is nullable and dated rather than a flag (ADR-0010:
+   the day is the person's own assertion and is not derivable). Sparse: there
+   is no row for an area that has said nothing, so no DEFAULT here stands for
+   a resting state and none is needed.
 
-   `finished_epoch_day` is a date and not a flag, one column more than the
-   flag version and paid back immediately: chartAnnotations.ts can draw it
-   beside regimen changes, pauses, tryouts and procedures with no new field,
-   and a clinician summary can say when a stream ended. Stored because it is
-   the person's own assertion and not derivable from the rows (ADR-0010);
-   what follows from it on a given day is read, never stored. */
+   No CHECK tying the two columns together. They are independent on purpose,
+   and every combination of them is a state a person can be in. */
 const SCHEMA_V57 = `
 CREATE TABLE area_state (
   area               TEXT PRIMARY KEY,

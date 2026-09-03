@@ -43,9 +43,27 @@ export interface AreaState {
   finishedEpochDay: number | null;
 }
 
+/** Every area a person can hide, which is every area but one.
+
+    `cycleEvents` is out, and structurally rather than by convention. Cycle
+    tracking's visibility is ADR-0043's own one-directional question: a
+    preference or a testosterone regimen can add the row back, and no
+    preference is what hides it, because read cold an unconditional cycle row
+    is a dysphoria trigger. A uniform flag defaulting to shown would delete
+    both the asymmetry and the data-driven unhide, so `cycleTrackingVisible`
+    stays cycle's gate and this record cannot be asked about it. */
+export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
+
 /** Every area that has said anything, sparse on purpose: a key with no entry
-    has said nothing, which is the resting state and not unfinished setup. */
-export type AreaStates = Partial<Record<ArchiveSectionName, AreaState>>;
+    has said nothing, which is the resting state and not unfinished setup.
+
+    Keyed by `HideableArea`, so the carve-out above holds for the record and
+    not only for the two questions below: `states.cycleEvents` does not
+    compile, and `areaStates.ts` drops such a row on the way out rather than
+    trusting that no writer produced one. An `area_state` row travels, so
+    without that a foreign archive carrying `area = 'cycleEvents'` would
+    reverse a one-directional rule through the back door. */
+export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 
 /** The areas a person can declare finished, approved area by area by Alicja
     on 2026-09-03 and resolved to section keys here.
@@ -138,17 +156,6 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")'
 };
 
-/** Every area a person can hide, which is every area but one.
-
-    `cycleEvents` is out, and structurally rather than by convention. Cycle
-    tracking's visibility is ADR-0043's own one-directional question - a
-    preference or a testosterone regimen can add the row back, and no
-    preference is what hides it, because read cold an unconditional cycle row
-    is a dysphoria trigger. A uniform flag defaulting to shown would delete
-    both the asymmetry and the data-driven unhide, so `cycleTrackingVisible`
-    stays cycle's gate and this one cannot be asked about it. */
-export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
-
 /** Whether an area is out of the navigation. Nothing here hides data: a
     hidden area keeps its records, its direct URL and its place in search,
     the same as ADR-0043's own hiding does.
@@ -163,6 +170,11 @@ export function areaHidden(area: HideableArea, states: AreaStates): boolean {
     today. The one question the prompt-and-tile cascade asks, so a hidden
     area and a finished one silence prompts and tiles the same way while the
     per-surface `*Enabled` preferences keep governing the areas that are on.
+
+    Nothing to do with quiet hours (`unprompted/quietHours.ts`), which is a
+    window in the day and applies to every area at once. The name is the one
+    the features spec asked for; the two never appear in the same read, and
+    an area that is quiet here is quiet at every hour.
 
     A finish day is compared against today rather than trusted as a flag for
     the reason ADR-0049 clamps an open bound at read time: the stored fact is

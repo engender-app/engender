@@ -83,10 +83,12 @@ test('every area that is not finishable says why, and no area answers twice', ()
 test('cycle tracking keeps its own gate: no row here changes what it answers', () => {
   assert.match(NOT_FINISHABLE.cycleEvents, /ADR-0043/);
 
+  // @ts-expect-error cycleEvents is not a key of this record at all (ADR-0043),
+  // so neither gate below can be asked about it and no state can be built that
+  // would answer. That is what stops the record reversing a one-directional
+  // rule; areaStates.test.ts covers the row a foreign archive could carry.
   const states: AreaStates = { cycleEvents: { hidden: true, finishedEpochDay: 19000 } };
-  // @ts-expect-error cycleEvents is not a hideable area (ADR-0043), which is
-  // what stops this record from reversing a one-directional rule.
-  void (() => areaHidden('cycleEvents', states));
+  void states;
 
   const testosterone: RegimenEpisode = {
     id: 'ep',
