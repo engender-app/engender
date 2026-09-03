@@ -97,7 +97,7 @@ for (const theme of THEMES) {
   {
     const page = await openPage('steady');
     await dress(page, 'trans', theme);
-    await settle(page, '/settings/voice/record');
+    await settle(page, '/settings/voice?tab=record');
     await shoot(page, `vb-1-passage-idle-trans-${theme}`);
 
     // 2. The passage editor.
@@ -136,7 +136,7 @@ for (const theme of THEMES) {
   ]) {
     const page = await openPage(kind);
     await dress(page, 'trans', theme);
-    await settle(page, '/settings/voice/record');
+    await settle(page, '/settings/voice?tab=record');
     // Past the passage on a steady signal is not available here - one page
     // has one microphone - so the passage is read on the same signal and
     // the vowel is what these are of. A loud passage is refused too, which
@@ -158,7 +158,7 @@ for (const theme of THEMES) {
   {
     const page = await openPage('steady', { denied: true });
     await dress(page, 'trans', theme);
-    await settle(page, '/settings/voice/record');
+    await settle(page, '/settings/voice?tab=record');
     await page.locator('[data-vb-record]').click();
     await page.waitForTimeout(600);
     await shoot(page, `vb-9-mic-denied-trans-${theme}`);
@@ -177,7 +177,7 @@ for (const palette of PALETTES) {
   for (const theme of THEMES) {
     const page = await openPage('steady');
     await dress(page, palette, theme);
-    await settle(page, '/settings/voice/record');
+    await settle(page, '/settings/voice?tab=record');
     await page.locator('[data-vb-record]').click();
     await page.waitForTimeout(2200);
     await shoot(page, `vb-flag-${palette}-${theme}`);

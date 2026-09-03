@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { concat, mix, noise, silence, vowel, wobblingSine } from './test-support/synth.ts';
+import { concat, mix, noise, silence, sine, vowel, wobblingSine } from './test-support/synth.ts';
 import { analysePassage, analyseVowel } from './benchmark.ts';
 
 /* Which questions get asked of which take (ticket 15, seam 3). */
@@ -54,4 +54,24 @@ test('a vowel that wandered in pitch is held to steadiness where a passage is no
   const wandering = mix(wobblingSine(190, 3, 3), noise(3, 16000, 0.004));
   assert.ok(analyseVowel(wandering.samples, 16000).quality.failed.includes('unsteady'));
   assert.ok(!analysePassage(wandering.samples, 16000, 99).quality.failed.includes('unsteady'));
+});
+
+test('a passage carries the track its picture is drawn from later', () => {
+  /* Phase 8 features ticket 09: the figures alone could not be redrawn, so
+     the passage take now also produces the downsampled track. Four seconds
+     at four hertz is sixteen points, less the frames at the end that YIN
+     needs the samples after to compute. */
+  const take = analysePassage(sine(190, 4).samples, 16000, 100);
+  assert.ok(take.pitchTrack, 'no track came back');
+  const points = take.pitchTrack.split(',');
+  assert.ok(points.length >= 14 && points.length <= 16, `${points.length} points`);
+  for (const point of points) {
+    assert.ok(Math.abs(Number(point) - 190) <= 1, `${point} Hz`);
+  }
+});
+
+test('a passage with no voice in it has no track to store', () => {
+  const take = analysePassage(silence(2).samples, 16000, 100);
+  assert.equal(take.pitchTrack, null);
+  assert.equal(take.figures, null);
 });

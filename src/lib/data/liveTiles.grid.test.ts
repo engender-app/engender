@@ -354,8 +354,8 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('voice-benchmark');
     expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': true });
     expect(tile.note).toBe(m.tile_voice_benchmark_days_ago({ days: '20' }));
-    expect(tile.href).toBe('/settings/voice');
-    expect(tile.action?.href).toBe('/settings/voice/record');
+    expect(tile.href).toBe('/settings/voice?tab=compare');
+    expect(tile.action?.href).toBe('/settings/voice?tab=record');
   });
 
   it('the pause banner says when the pause ends and offers to resume it', () => {

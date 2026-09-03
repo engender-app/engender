@@ -1,6 +1,13 @@
 <script lang="ts">
   /* Making a voice benchmark (phase 5 deepening ticket 15, CONTEXT: "Voice
-     benchmark").
+     benchmark"), as one tab of the voice screen (phase 8 features
+     ticket 09).
+
+     It was its own route until ticket 09 merged the two halves of this
+     feature into one screen with three tabs. Nothing about the flow itself
+     changed in that move: it is a component rather than a page, it reports
+     a finished benchmark to whoever embedded it instead of navigating, and
+     the screen's own header is the screen's.
 
      Two takes in one sitting: the passage read out, then one note held. They
      are separate steps because they fail separately - a vowel spoiled by a
@@ -16,10 +23,10 @@
      The analysis is pure and lives in $lib/audio; the microphone and the
      decode live in stores/voiceBenchmark.ts. What is here is the flow. */
   import { onDestroy } from 'svelte';
-  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
+  import { comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import { noteName } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
@@ -32,13 +39,15 @@
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
+  import VoiceTake from '$lib/components/VoiceTake.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+
+  let { onSaved }: { onSaved: () => void } = $props();
 
   /** What the gate wants of a held vowel, and what the run bar fills
       towards. The passage has no target of its own - it is done when the
@@ -71,7 +80,11 @@
   let frames = $state<readonly PitchFrame[]>([]);
   let failed = $state<QualityCheck[]>([]);
 
-  let passageTake = $state<{ bytes: Uint8Array; figures: ReturnType<typeof analysePassage>['figures'] } | null>(null);
+  let passageTake = $state<{
+    bytes: Uint8Array;
+    figures: ReturnType<typeof analysePassage>['figures'];
+    pitchTrack: string | null;
+  } | null>(null);
   let vowelTake = $state<{ bytes: Uint8Array; formants: Formants | null; snrDb: number } | null>(null);
   let note = $state('');
 
@@ -85,6 +98,10 @@
   let passageDraft = $state('');
 
   let role = $derived(roleAt(activeFlag.roles, 0));
+  /** The person's own band, if they have set one. Drawn on the live figure
+      as well as on the finished take: the point of it is to be visible
+      while somebody is speaking. */
+  let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
   let targetSeconds = $derived(step === 'vowel' ? VOWEL_SECONDS : PASSAGE_TARGET_SECONDS);
 
   /** The gate's own findings, in words, and only ever about the recording. */
@@ -174,7 +191,11 @@
         phase = 'retry';
         return;
       }
-      passageTake = { bytes: take.bytes, figures: analysed.figures };
+      passageTake = {
+        bytes: take.bytes,
+        figures: analysed.figures,
+        pitchTrack: analysed.pitchTrack
+      };
       step = 'vowel';
       phase = 'idle';
       return;
@@ -210,10 +231,11 @@
         f1Hz: vowelTake?.formants?.f1Hz ?? null,
         f2Hz: vowelTake?.formants?.f2Hz ?? null,
         snrDb: vowelTake?.snrDb ?? null,
-        note: note.trim() || null
+        note: note.trim() || null,
+        pitchTrack: passageTake.pitchTrack
       });
       toast(m.vb_saved());
-      await goto('/settings/voice');
+      onSaved();
     } finally {
       saving = false;
     }
@@ -248,15 +270,7 @@
   });
 </script>
 
-<div class="screen">
-  <!-- The lead says what a benchmark is, which is worth reading once and is
-       in the way of a take in progress. It goes when the flow starts. -->
-  <ScreenHeader
-    title={m.vb_title()}
-    subtitle={step === 'passage' && phase === 'idle' ? m.vb_lead() : undefined}
-    back="/settings/voice"
-  />
-
+<div class="vbf">
   {#if refusal}
     <div class="screen-part">
       <!-- The ask is a real button rather than a sentence about settings
@@ -313,6 +327,21 @@
           </dd></div>
       </dl>
 
+      <!-- The picture the numbers came from (ticket 09). It sits under the
+           figures rather than over them: the numbers are what a person came
+           to save, and the drawing is what makes them mean something. -->
+      <div class="vb-take">
+        <SectionHeading text={m.vb_take_heading()} />
+        <VoiceTake
+          data-vb-take
+          {comfort}
+          pitchTrack={passageTake.pitchTrack}
+          medianHz={figures.f0MedianHz}
+          p10Hz={figures.f0P10Hz}
+          p90Hz={figures.f0P90Hz}
+        />
+      </div>
+
       <label class="field vb-note">
         <span class="field-label">{m.vb_note_label()}</span>
         <textarea class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
@@ -329,6 +358,11 @@
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
 
       {#if step === 'passage'}
+        <!-- What a benchmark is, which is worth reading once and is in the
+             way of a take in progress. It goes when the flow starts. -->
+        {#if phase === 'idle'}
+          <p class="muted small vb-hint">{m.vb_lead()}</p>
+        {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
           <Icon name="pencil" size={18} />
@@ -345,6 +379,7 @@
         <VoiceGauge
           data-vb-gauge
           {role}
+          {comfort}
           {frames}
           report={reading}
           {targetSeconds}
@@ -369,6 +404,7 @@
           compact
           data-vb-gauge
           {role}
+          {comfort}
           {frames}
           report={reading}
           {targetSeconds}
@@ -481,6 +517,13 @@
   .vb-aside {
     color: var(--muted);
     font-weight: var(--weight-regular);
+  }
+
+  .vb-take {
+    margin-top: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .vb-note {

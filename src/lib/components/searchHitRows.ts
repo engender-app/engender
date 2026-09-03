@@ -109,7 +109,7 @@ const AREA_ROWS: Record<
   wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/settings/wear' },
   // The compare surface rather than the recorder: a hit is a take somebody
   // is looking for, not a new one (dayRows.ts sends a benchmark there too).
-  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/settings/voice' },
+  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/settings/voice?tab=compare' },
   hairStages: { icon: 'comb', label: () => m.hair_progress(), href: () => '/settings/hair-progress' },
   hairRemovalSessions: {
     icon: 'shuffle',

@@ -74,7 +74,7 @@ async function shoot(page, name) {
     vowel, then save. Lands back on /settings/voice, the flow's own
     destination. */
 async function recordOneBenchmark(page) {
-  await page.goto(`${base}/settings/voice/record`, { waitUntil: 'networkidle' });
+  await page.goto(`${base}/settings/voice?tab=record`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-vb-record]');
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(2600);

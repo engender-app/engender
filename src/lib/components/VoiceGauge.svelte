@@ -1,6 +1,12 @@
 <script lang="ts">
   /* The quality gate, drawn while the take is still happening (phase 5
-     deepening ticket 15).
+     deepening ticket 15), now on an absolute axis (phase 8 features
+     ticket 09, ADR-0059).
+
+     This is still the only live audio component in the tree, deliberately:
+     a second one drifts from the gate it is supposed to be showing, and the
+     screen would then be encouraging a take the save rejects. The practise
+     tab and both steps of a benchmark are three callers of this one figure.
 
      Four conditions hold at once for three seconds of held breath, and the
      obvious build is four indicator dots going on and off. That version
@@ -9,17 +15,18 @@
      is one object instead, and each condition is the same measurement the
      gate makes, drawn as itself:
 
-       the trace   the pitch of the last two seconds, frame by frame.
-                   Steadiness is a flat line and wandering is a wobbly one,
-                   which is what a coefficient of variation *is*; a break in
-                   the line is a frame that was not voiced.
-       the ground  the room, rising from the bottom. The gap between it and
-                   the trace is the signal-to-noise ratio, so a loud room is
-                   visibly crowding the voice rather than lighting a warning.
+       the trace   the pitch of the last two seconds, frame by frame, now
+                   against an absolute Hz axis with the reference bands
+                   behind it (PitchFigure.svelte). A break in the line is a
+                   frame that was not voiced.
+       the floor   the room, thickening up from the field's bottom edge. The
+                   gap between it and the trace is the signal-to-noise
+                   ratio, so a loud room is visibly crowding the voice
+                   rather than lighting a warning.
        the roof    the level. It thickens as the peak approaches full scale
-                   and goes solid when the take is clipping, and the figure
-                   presses down into it - the physical read of a level that
-                   has nowhere left to go.
+                   and goes solid when the take is clipping, and the whole
+                   field presses down into it - the physical read of a level
+                   that has nowhere left to go.
        the run     the continuous voiced stretch, against what the step
                    needs. It retreats when voicing breaks, because the
                    measurement itself does: the gate counts the longest
@@ -27,26 +34,38 @@
                    count again, and a bar that kept its ground would be
                    lying about what would be stored.
 
-     Nothing here is a verdict on a voice (PRODUCT.md:109). Every mark is
-     about the recording, and colour never carries the judgement: there is
-     one hue, the section's own flag stripe, and what changes when a check
-     fails is a shape and a weight. A red-to-green meter is exactly what
-     ADR-0012 forbids, and it would be a worse readout anyway - the
-     information is *which* condition and by how much, and hue cannot say
-     that while it is busy saying good or bad.
+     **What the absolute axis changed, and what it did not.** The trace used
+     to be plotted in semitones around the median of whatever was on screen,
+     which put a steady voice in the middle of the box wherever it actually
+     was. That is the half Alicja called confusing and it is gone. The
+     hundred-millisecond poll behind it has *not* changed: the trace's
+     smoothness comes from the tracker's 10 ms frames, all of which are
+     drawn, not from how often the screen asks for them, so an absolute axis
+     needs no more readings per second than a relative one did. The reason
+     the poll is slower than an animation frame is written down in
+     stores/voiceBenchmark.ts and still holds.
 
-     Motion: tier 3 (DIRECTION.md). Data moves, the container does not, and
-     only transform and opacity are animated, so under either reduced-motion
-     path the app's duration clamp turns every reading into an instant cut
-     rather than a tween. The trace is redrawn rather than transitioned, and
-     the advice underneath is words, so nothing here depends on movement to
-     be readable. */
+     Nothing here is a verdict on a voice. Every mark is about the recording,
+     and colour never carries the judgement: there is one hue, the section's
+     own flag stripe, and what changes when a check fails is a shape and a
+     weight. A red-to-green meter is exactly what ADR-0012 forbids, and it
+     would be a worse readout anyway - the information is *which* condition
+     and by how much, and hue cannot say that while it is busy saying good
+     or bad.
+
+     Motion: tier 3. Data moves, the container does not, and only transform
+     and opacity are animated, so under either reduced-motion path the app's
+     duration clamp turns every reading into an instant cut rather than a
+     tween. The advice underneath is words, so nothing here depends on
+     movement to be readable. */
   import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { median } from '$lib/audio/series';
+  import { pitchAxis } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
+  import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { bandLabel, caveatText, hzLabel, sourceText } from '$lib/components/pitchBandCopy';
 
   let {
     frames,
@@ -54,6 +73,7 @@
     targetSeconds,
     label,
     advice,
+    comfort = null,
     role,
     compact = false,
     ...rest
@@ -65,6 +85,8 @@
     label: string;
     /** What to do differently, already in words - the readout's own text. */
     advice: string[];
+    /** The person's own comfort band, when they have set one. */
+    comfort?: { lowHz: number; highHz: number } | null;
     role?: Role;
     /** The passage step's form: the same figure at a third the height,
         sitting on the action bar under a screenful of text somebody is busy
@@ -74,60 +96,18 @@
     [attribute: string]: unknown;
   } = $props();
 
-  /* The drawing box. A viewBox rather than pixels so the figure is the width
-     of whatever surface holds it, down to the 390px floor and up. */
-  const WIDTH = 300;
-  const ROOF_Y = 10;
-  const BASE_Y = 92;
-  /** Where the trace may travel: the band between roof and ground. */
-  const TRACE_TOP = 24;
-  const TRACE_BOTTOM = 78;
-  const TRACE_MID = (TRACE_TOP + TRACE_BOTTOM) / 2;
-  /** Half the trace band, in semitones. Six is wide enough that ordinary
-      speech does not slam into the edges and narrow enough that a wobble
-      the gate would fail is plainly visible. */
-  const SEMITONE_RANGE = 6;
+  /** The axis, widened only for a voice or a comfort band that would
+      otherwise be drawn off it. It does not follow the trace around: the
+      point of an absolute axis is that the bands behind it stay put. */
+  let axis = $derived(pitchAxis({ hz: frames.map((frame) => frame.hz), comfort }));
 
-  /** The reference the trace is drawn around: the median of what is on
-      screen, so the line sits in the middle of the band wherever a voice
-      happens to be. The figure never says which pitch is the right one. */
-  let reference = $derived.by(() => {
-    const voiced = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
-    return voiced.length === 0 ? null : median(voiced);
-  });
-
-  /** The trace, as one polyline per unbroken voiced run: a gap in the
-      voicing is a gap in the line, not a straight leap across it. */
-  let runs = $derived.by(() => {
-    if (!reference || frames.length === 0) return [];
-    const step = frames.length > 1 ? WIDTH / (frames.length - 1) : WIDTH;
-    const segments: string[] = [];
-    let current: string[] = [];
-
-    frames.forEach((frame, index) => {
-      if (frame.hz === null) {
-        if (current.length > 1) segments.push(current.join(' '));
-        current = [];
-        return;
-      }
-      const semitones = Math.max(
-        -SEMITONE_RANGE,
-        Math.min(SEMITONE_RANGE, 12 * Math.log2(frame.hz / reference))
-      );
-      const y = TRACE_MID - (semitones / SEMITONE_RANGE) * ((TRACE_BOTTOM - TRACE_TOP) / 2);
-      current.push(`${(index * step).toFixed(1)},${y.toFixed(1)}`);
-    });
-    if (current.length > 1) segments.push(current.join(' '));
-    return segments;
-  });
-
-  /** The room, as a share of the trace band. Full at 0 dB, gone by 24 dB:
-      the gate's floor is 15, so a take that is about to fail shows the
-      ground already well up into the voice's own space. */
+  /** The room, as a share of the field's own height. Full at 0 dB, gone by
+      24 dB: the gate's floor is 15, so a take that is about to fail shows
+      the frame already well up into the voice's own space. */
   let roomFraction = $derived(report ? Math.max(0, Math.min(1, 1 - report.snrDb / 24)) : 0);
 
   /** The roof's weight follows the peak: hairline while there is headroom,
-      four pixels and solid once the take is against the rails. */
+      four times that once the take is against the rails. */
   let roofWeight = $derived(
     report ? 1 + Math.max(0, (report.peak - 0.5) / (PEAK_CEILING - 0.5)) * 3 : 1
   );
@@ -139,7 +119,7 @@
 
   /** The held stretch in words, which is what carries this figure under
       either reduced-motion path: the marks stop moving, the sentence does
-      not (DIRECTION.md's reduced-motion contract). */
+      not. */
   let heldLabel = $derived(
     m.vb_gauge_run({ seconds: (report?.longestVoicedSeconds ?? 0).toFixed(1) })
   );
@@ -153,47 +133,28 @@
   );
 </script>
 
-<div
-  class="vg"
-  class:is-clipping={clipping}
-  class:is-compact={compact}
-  {...roleAttrs(role)}
-  {...rest}
->
+<!-- The role goes on once, here: kit.css derives what a stripe paints with
+     from the custom properties, and they inherit, so the figure and the run
+     bar inside read the same one rather than each taking their own (kit/
+     role.ts). -->
+<div class="vg" class:is-compact={compact} {...roleAttrs(role)} {...rest}>
   <div class="vg-top">
     <span class="vg-label">{label}</span>
     <span class="vg-held">{heldLabel}</span>
   </div>
 
-  <svg class="vg-figure" viewBox="0 0 {WIDTH} 100" preserveAspectRatio="none" aria-hidden="true">
-    <!-- The roof: always there, and heavier as the level climbs towards
-         full scale. -->
-    <line class="vg-roof" x1="0" y1={ROOF_Y} x2={WIDTH} y2={ROOF_Y} stroke-width={roofWeight} />
-
-    <!-- The take's own middle, so a flat line is visibly flat against
-         something rather than just low in an empty box. It is the median of
-         what is on screen and says nothing about which pitch is the right
-         one. -->
-    <line class="vg-mid" x1="0" y1={TRACE_MID} x2={WIDTH} y2={TRACE_MID} />
-
-    <!-- The room, rising from the base. Drawn at its full height and
-         scaled, rather than re-laid-out: the performance contract animates
-         transform and opacity and nothing else (DIRECTION.md). -->
-    <rect
-      class="vg-room"
-      x="0"
-      y={TRACE_TOP}
-      width={WIDTH}
-      height={BASE_Y - TRACE_TOP}
-      style="--vg-room: {roomFraction}"
-    />
-
-    {#each runs as points, index (index)}
-      <polyline class="vg-trace" {points} stroke-width={traceWeight} />
-    {/each}
-
-    <line class="vg-base" x1="0" y1={BASE_Y} x2={WIDTH} y2={BASE_Y} />
-  </svg>
+  <PitchFigure
+    {axis}
+    {compact}
+    {comfort}
+    trace={frames}
+    {traceWeight}
+    gate={{ roomFraction, roofWeight, clipping }}
+    {hzLabel}
+    {bandLabel}
+    sourceNote={sourceText()}
+    caveat={caveatText()}
+  />
 
   <div class="vg-run" aria-hidden="true">
     <span class="vg-run-fill" style="--vg-run: {runFraction}"></span>
@@ -207,19 +168,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    background: var(--surface);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-card);
-    padding: var(--space-4);
-  }
-
-  /* On the action bar the frame would be a second card floating over the
-     first, so the bar's version drops it and keeps the marks. */
-  .vg.is-compact {
-    background: none;
-    border: 0;
-    padding: 0;
-    gap: var(--space-1);
   }
 
   .vg-top {
@@ -238,62 +186,6 @@
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
     color: var(--role-ink);
-  }
-
-  .vg-mid {
-    stroke: var(--role-wash);
-    stroke-width: 1;
-  }
-
-  .vg-figure {
-    width: 100%;
-    height: 116px;
-    display: block;
-    /* Pressing into the ceiling: the whole figure sits 2px lower once the
-       take is clipping, which is the only movement in here that is not a
-       number changing. Transform, so the duration clamp can flatten it. */
-    transform: translateY(0);
-    transition: transform var(--dur-fast) var(--ease-out);
-  }
-
-  .vg.is-clipping .vg-figure {
-    transform: translateY(2px);
-  }
-
-  .vg.is-compact .vg-figure {
-    height: 40px;
-  }
-
-  .vg-roof,
-  .vg-base {
-    stroke: var(--outline);
-    stroke-linecap: round;
-  }
-
-  .vg-base {
-    stroke-width: 1;
-  }
-
-  .vg.is-clipping .vg-roof {
-    stroke: var(--role-draw);
-  }
-
-  .vg-room {
-    fill: var(--role-wash);
-    transform-box: fill-box;
-    transform-origin: bottom;
-    transform: scaleY(var(--vg-room, 0));
-    transition: transform var(--dur-fast) var(--ease-out);
-  }
-
-  .vg-trace {
-    fill: none;
-    /* --role-draw, the flag's own stripe: a drawn mark takes the band
-       undiluted, and the contrast-corrected version is for text and for a
-       glyph on a tint of itself (kit.css). */
-    stroke: var(--role-draw);
-    stroke-linecap: round;
-    stroke-linejoin: round;
   }
 
   .vg-run {

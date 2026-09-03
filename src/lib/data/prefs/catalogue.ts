@@ -139,6 +139,16 @@ export interface PreferenceValues {
       words as the last one, which is the only thing that makes two of them
       comparable. */
   voiceBenchmarkPassage: string;
+  /** The two ends of the person's own comfort band on the pitch figure, in
+      Hz, or null when they have not set one (phase 8 features ticket 09,
+      ADR-0059). Null is the shipped state and stays it: the reference bands
+      on that figure are a citation, and this one is a decision nobody but
+      the person can make, so there is no default and no table behind it.
+      Both are set and cleared together, the way streakGoal's pair is.
+      Portable, like every other preference that is about the person rather
+      than about this installation (ADR-0003). */
+  voiceComfortLowHz: number | null;
+  voiceComfortHighHz: number | null;
   /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
   pauseActiveBannerEnabled: boolean;
   /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
@@ -351,6 +361,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   patchScheduleTileEnabled: true,
   voiceBenchmarkNudgeEnabled: true,
   voiceBenchmarkPassage: '',
+  voiceComfortLowHz: null,
+  voiceComfortHighHz: null,
   pauseActiveBannerEnabled: true,
   hairRemovalRecoveryEnabled: true,
   measurementsNudgeEnabled: true,
@@ -404,7 +416,9 @@ export const PORTABLE_KEYS = [
   'streakGoalTargetDays',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
-  'cycleTrackingEnabled'
+  'cycleTrackingEnabled',
+  'voiceComfortLowHz',
+  'voiceComfortHighHz'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
