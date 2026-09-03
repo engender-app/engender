@@ -42,6 +42,7 @@
   import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
   import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
+  import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
   import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
@@ -301,11 +302,7 @@
   let presentationDaysQuery = liveList((j) =>
     selectedPresentation ? j.stats.presentationDays(selectedPresentation, trendFrom, today) : Promise.resolve([])
   );
-  let highlightRole = $derived.by(() => {
-    if (!selectedPresentation) return undefined;
-    const presentation = vocabulary.presentation(selectedPresentation);
-    return presentation ? roleAt(activeFlag.roles, presentation.roleIndex) : undefined;
-  });
+  let highlightRole = $derived(presentationRole(selectedPresentation));
   let highlightedAt = $derived(
     highlightedPositions(presentationDaysQuery.rows, readAxis.keying, plotted[0].grain ?? 'day', plotted[0].width)
   );
