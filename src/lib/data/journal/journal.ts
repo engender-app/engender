@@ -65,6 +65,14 @@ import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
 import { discardJournalRows } from './restore';
 
+/** Every write below that addresses a row by id answers the unknown-id
+    case the same way, in every area, and the answer differs by operation
+    rather than by area (ADR-0053, CONTEXT: "Unknown id"). An **update**
+    naming an id the journal does not hold throws: the caller acted on
+    something stale, and the write it intended cannot be performed at all.
+    A **delete** naming one succeeds and changes nothing: the state it asked
+    for already holds. There are no exceptions, so a caller deletes without
+    reading first, and a delete wrapped in an existence check is a smell. */
 export interface Journal {
   entries: EntriesArea;
   tags: TagsArea;
