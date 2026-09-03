@@ -18,7 +18,15 @@
      the KDF was ever asked.
 
      Not offered where no recovery key exists. The gates read that before
-     anything is typed, so this screen is never a door onto nothing. */
+     anything is typed, so this screen is never a door onto nothing.
+
+     No throttle, and no attempt count, which is a decision rather than an
+     omission. ADR-0041 settled what a growing delay is worth: it prices out
+     somebody typing at the device and buys nothing against an attack that
+     never loads the app's code. Against 120 bits neither of those attackers
+     arrives, so a delay here would be theatre - and it would land on the
+     person who is transcribing 25 characters off paper under stress, who is
+     the only human being who will ever type into this field. */
   import { m } from '$lib/paraglide/messages';
   import { submitRecoveryKeyUnlock } from '$lib/stores/boot.svelte';
   import { RecoveryKeyMistypedError } from '$lib/crypto/recoveryKey';
