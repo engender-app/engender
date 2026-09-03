@@ -340,6 +340,7 @@
   let customIntervalQuery = liveList((j) =>
     j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, safeCustomIntervalLength)
   );
+  let customIntervalPattern = $derived(customIntervalQuery.rows);
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
@@ -782,7 +783,9 @@
       {/snippet}
     </ReadGate>
   </ChartCard>
-  <p class="stats-note">{m.interval_mood_sub()}</p>
+  {#if intervalMoodPattern.length}
+    <p class="stats-note">{m.interval_mood_sub()}</p>
+  {/if}
 
   <!-- The interval length is this chart's one control, so it sits on the
        heading's line where the metric picker sits on the chart above rather
@@ -824,7 +827,9 @@
       {/snippet}
     </ReadGate>
   </ChartCard>
-  <p class="stats-note">{m.custom_interval_sub()}</p>
+  {#if customIntervalPattern.length}
+    <p class="stats-note">{m.custom_interval_sub()}</p>
+  {/if}
 
   <!-- The six deeper screens as one list rather than six cards. Four
        same-size icon-plus-heading-plus-text tiles were what the slop audit
