@@ -6,6 +6,8 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
+  import { readLabResultsInRange } from '$lib/data/journal/clinicianSummary';
+  import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { journalDataKey } from '$lib/stores/boot.svelte';
@@ -213,6 +215,37 @@
   if (entryId == null && debriefForAppointment != null) {
     const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
     if (debriefTemplate) applyTemplate(debriefTemplate);
+    void fillDebriefList(debriefForAppointment);
+  }
+
+  /* The descriptive list the debrief offer pre-fills below its "How did it
+     go?" scaffold (ticket 19, What to Build #2): the same range and the
+     same two reads the appointment prep screen's own "since last time"
+     cards already use (readLabResultsInRange, sideEffects's own
+     getSideEffectsInRange) - not a new read, the range this ticket adds
+     asked of the pair that already answers it. debriefListItems merges and
+     sorts them Node-tier, free of paraglide; the date on each line and the
+     join are here, the same split every other wording split in this app
+     follows (ADR-0016).
+
+     Appended only while the note still reads exactly as applyTemplate left
+     it: a restored process-death draft, or the person having already
+     started typing, both mean there is something here that is not this
+     function's to overwrite - the offer "does not write" (ticket 19's own
+     line), read as "does not clobber" too. Nothing is appended when the
+     range is empty; a blank line under a one-line prompt is not a list. */
+  async function fillDebriefList(appointmentEpochDay: number) {
+    const [labs, sideEffects] = await Promise.all([
+      readLabResultsInRange(journal.labs, appointmentEpochDay, todayEpochDay()),
+      journal.sideEffects.getSideEffectsInRange(appointmentEpochDay, todayEpochDay())
+    ]);
+    const items = debriefListItems(labs, sideEffects);
+    if (!items.length) return;
+    if (entryDraft.note !== m.prompt_appointment_debrief()) return;
+    const lines = items.map(
+      (item) => `${fmtDay(item.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}: ${item.text}`
+    );
+    entryDraft.setNote(`${entryDraft.note}\n\n${m.debrief_since_heading()}\n${lines.join('\n')}`);
   }
 
   /* The union of the ticked scales and the entry's own: an entry logged
