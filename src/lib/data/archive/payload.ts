@@ -649,6 +649,20 @@ export interface ArchiveImportLogRecord {
 }
 
 /** Everything the journal holds (CONTEXT: "Journal"). */
+/** One area's hidden/finished state (phase 8 deepening ticket 13,
+    ADR-0052). Named by its area key rather than a uuid, like
+    ArchiveRoadmapCheck: the key is an archive section name, so the same
+    string means the same area on every device (ADR-0002).
+
+    Travels because the state has to survive a device move - an area that
+    reads as unfinished again after a restore makes finishing it a lie, which
+    is the same reason ADR-0043 made its own preference portable. */
+export interface ArchiveAreaState {
+  area: string;
+  hidden: boolean;
+  finishedEpochDay: number | null;
+}
+
 export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
   presets: ArchivePreset[];
@@ -693,6 +707,7 @@ export interface ArchiveJournal {
   entryTemplates: ArchiveEntryTemplate[];
   comfortItems: ArchiveComfortItem[];
   importLog: ArchiveImportLogRecord[];
+  areaStates: ArchiveAreaState[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

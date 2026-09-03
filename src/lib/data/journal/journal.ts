@@ -19,6 +19,7 @@ import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import { makeChartAnnotationsArea, type ChartAnnotationsArea } from './chartAnnotations';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
 import { makeClinicianSummaryArea, type ClinicianSummaryArea } from './clinicianSummary';
+import { makeAreaStatesArea, type AreaStatesArea } from './areaStates';
 import { makeComfortItemsArea, type ComfortItemsArea } from './comfortItems';
 import { makeJournalBookArea, type JournalBookArea } from './journalBook';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
@@ -255,6 +256,9 @@ export interface Journal {
       nothing offers it, so this area is only ever read and written from
       the one screen. */
   comfortItems: ComfortItemsArea;
+  /** Which areas are hidden, and which the person has said are finished
+      (ADR-0052). The rule these rows are read by is `areaState.ts`. */
+  areaStates: AreaStatesArea;
   /** Name and pronoun tryouts (phase 4 ticket 16). Reads the entries in a
       tryout's date range through entries.searchEntries('', [], {
       startEpochDay, endEpochDay }) rather than owning a link of its own
@@ -358,6 +362,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
   const comfortItems = makeComfortItemsArea(driver);
+  const areaStates = makeAreaStatesArea(driver);
 
   return {
     entries,
@@ -426,6 +431,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     procedures,
     doubtJournal,
     comfortItems,
+    areaStates,
     feltSense,
     tryouts,
     letters: makeLettersArea(driver),

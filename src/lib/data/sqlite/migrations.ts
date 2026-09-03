@@ -1826,6 +1826,39 @@ ALTER TABLE checklist ADD COLUMN debrief_entry_id INTEGER REFERENCES entry(id) O
 ALTER TABLE checklist ADD COLUMN debrief_dismissed_epoch_day INTEGER;
 `;
 
+/* v57: which areas a person has hidden, and which they have said are
+   finished (phase 8 deepening ticket 13, ADR-0052, CONTEXT: "Finished").
+
+   Keyed by `area`, which is an `ArchiveSectionName` and therefore a wire key
+   already - the same natural-key identity `personal_effect.effect` and
+   `medication_stock.drug` travel by, and deliberately not the More hub's row
+   ids: a hub row can be renamed or regrouped without warning, and a stored
+   key that changes meaning underneath the data is not a key.
+
+   Sparse. An absent row is the resting state - not hidden, not finished -
+   rather than unfinished setup, so nothing writes a row to say nothing, and
+   `areaStates.ts` removes a row that has gone back to saying nothing.
+
+   `hidden` and not `visible`: hidden is already this project's word for this
+   (CONTEXT: "Hidden") and already this shape on tag, gender_dimension and
+   measurement_type. A positive flag defaulting to shown is also precisely
+   what would reverse ADR-0043, whose rule is one-directional on purpose.
+
+   `finished_epoch_day` is a date and not a flag, one column more than the
+   flag version and paid back immediately: chartAnnotations.ts can draw it
+   beside regimen changes, pauses, tryouts and procedures with no new field,
+   and a clinician summary can say when a stream ended. Stored because it is
+   the person's own assertion and not derivable from the rows (ADR-0010);
+   what follows from it on a given day is read, never stored. */
+const SCHEMA_V57 = `
+CREATE TABLE area_state (
+  area               TEXT PRIMARY KEY,
+  hidden             INTEGER NOT NULL DEFAULT 0,
+  finished_epoch_day INTEGER,
+  updated_at         INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1882,5 +1915,6 @@ export const migrations: Migration[] = [
   { version: 53, sql: SCHEMA_V53 },
   { version: 54, sql: SCHEMA_V54 },
   { version: 55, sql: SCHEMA_V55 },
-  { version: 56, sql: SCHEMA_V56 }
+  { version: 56, sql: SCHEMA_V56 },
+  { version: 57, sql: SCHEMA_V57 }
 ];
