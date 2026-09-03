@@ -26,7 +26,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
-import type { PhotoFileStore } from '../photos/photoFileStore';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { MilestonesArea } from './milestones';
 import type { FeltSenseArea } from './feltSense';
 import { todayEpochDay } from '../epochDay';

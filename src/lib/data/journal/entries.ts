@@ -29,7 +29,7 @@ import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegionFeeling, Entry, Photo, VideoNote, VoiceRecording } from '../types';
-import type { PhotoFileStore } from '../photos/photoFileStore';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import {
   insertStagedPhoto,
   photosByEntry,

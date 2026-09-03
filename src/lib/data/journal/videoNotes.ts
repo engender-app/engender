@@ -27,7 +27,7 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VideoNote } from '../types';
 import { videoFileName } from '../videoNotes/names';
-import type { PhotoFileStore } from '../photos/photoFileStore';
+import type { PhotoFileStore } from '../photos/photo-file-store';
 import { mintUuid, now } from './support';
 
 type VideoRow = { uuid: string; file_path: string };
