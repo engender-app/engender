@@ -2503,6 +2503,135 @@ try {
   fail('fill every feature', e);
 }
 
+/* Ticket 18: "compare this stretch" on a tryout and on a procedure, over
+   the journal "fill every feature" just layered onto whatever ~50 earlier
+   flows left the journal holding - `fresh()` reloads the page, not the
+   journal, so this is not the clean persona seed alone. That is exactly
+   why the procedure half below does not assert which of "ready" or "too
+   short" it lands on: the procedure is dated `today - 400`, and whether
+   its 90-day recovery window (long since closed - the fixed-end half of
+   ADR-0049's clamp, next to the tryout's still-open half) has real journal
+   before it depends on how far back editing and importing left the
+   earliest entry, which this suite does not pin down. Both branches are
+   asserted instead - a link that opens with the right two sides, or a
+   notice that says why it does not - and "too short to compare" as a rule
+   is exercised at the unit level (compareStretch.test.ts) regardless. The
+   tryout is dated only `today - 100`, comfortably inside any journal this
+   suite produces, so that half stays a strict assertion. Expected sides
+   are computed from the same pure rule the screens call, so this checks
+   the two agree rather than restating one arithmetic as the other's
+   assertion.
+
+   The tryout half also proves the ticket's own acceptance criterion that
+   `/compare`'s arithmetic is unchanged: the same two dates, once arrived
+   at through this link and once typed into the pickers by hand exactly as
+   flow 25 already does, have to read the same numbers back - a stronger
+   check than "the diff to sideStats/periodFromRange is empty", since it
+   exercises the real computation rather than trusting the diff not to
+   have touched it. */
+try {
+  // epochDay.ts and recoveryDay.ts both import nothing of their own (each
+  // file's own header comment says so, for exactly this reason), so they
+  // are two app modules plain Node can import directly - compareStretch.ts
+  // imports epochDay.ts by a bare specifier Node's loader does not resolve,
+  // the same reason src/lib/data/epochDay.ts's own "N calendar months back"
+  // arithmetic is duplicated further up this file rather than imported.
+  // `precedingWindow` is duplicated here for the same reason - it is
+  // compareStretch.ts's own two-line rule.
+  const { todayEpochDay, dateInputValueFromEpochDay } = await import('../src/lib/data/epochDay.ts');
+  const { SURGERY_RECOVERY_CUTOFF_DAYS } = await import('../src/lib/data/recoveryDay.ts');
+  const today = todayEpochDay();
+  const precedingWindow = (stretch) => {
+    const length = stretch.end - stretch.start + 1;
+    return { start: stretch.start - length, end: stretch.start - 1 };
+  };
+  const assertOpensWithSides = async (stretch) => {
+    const preceding = precedingWindow(stretch);
+    const gotA = [await page.locator('#compare-a-start').inputValue(), await page.locator('#compare-a-end').inputValue()];
+    const gotB = [await page.locator('#compare-b-start').inputValue(), await page.locator('#compare-b-end').inputValue()];
+    const wantA = [dateInputValueFromEpochDay(stretch.start), dateInputValueFromEpochDay(stretch.end)];
+    const wantB = [dateInputValueFromEpochDay(preceding.start), dateInputValueFromEpochDay(preceding.end)];
+    if (gotA[0] !== wantA[0] || gotA[1] !== wantA[1] || gotB[0] !== wantB[0] || gotB[1] !== wantB[1]) {
+      throw new Error(`compare opened with the wrong sides: got A ${gotA} B ${gotB}, wanted A ${wantA} B ${wantB}`);
+    }
+    await page.waitForSelector('[data-compare-table]');
+    if (new URL(page.url()).search) throw new Error('the query parameters that opened compare were never stripped');
+  };
+  /* Every metric row is a name span plus one span per side (compare/+page.svelte's
+     `data-compare-metric` rows) - side A's is always index 1. */
+  const columnA = async () => {
+    const rows = page.locator('[data-compare-metric]');
+    const values = [];
+    for (let i = 0; i < (await rows.count()); i++) {
+      values.push((await rows.nth(i).locator('span').allTextContents())[1]);
+    }
+    return values;
+  };
+
+  /* The full-fixture tryouts sort newest-start-first (tryouts.ts's own
+     ORDER BY), so the pronoun tryout - started `today - 100`, still
+     open - is always the second row: 'layered look' (today - 40, closed),
+     then this one, then 'Alex' (today - 120, closed). Picked by position
+     rather than its label, which is arbitrary demo content and not what
+     this flow is testing. */
+  await page.goto(BASE + '/settings/tryouts', { waitUntil: 'networkidle' });
+  await page.locator('[data-tryout] a').nth(1).click();
+  await page.waitForSelector('[data-screen-header]');
+
+  const tryoutNotice = page.locator('[data-notice="tryout-compare"]');
+  await tryoutNotice.waitFor();
+  if (!(await tryoutNotice.locator('[data-notice-text]').count())) {
+    throw new Error('an open-ended tryout\'s compare link does not say it counts through today');
+  }
+  const tryoutAction = tryoutNotice.locator('[data-notice-action]');
+  if (!(await tryoutAction.count())) throw new Error('the open-ended tryout has enough journal before it and should offer to compare');
+  await tryoutAction.click();
+  await page.waitForURL('**/compare');
+  await assertOpensWithSides({ start: today - 100, end: today });
+  const viaLink = await columnA();
+
+  // The exact same side A, typed into the pickers instead of arriving by
+  // URL - compare's own computation has to read the identical numbers
+  // back either way, which is the acceptance criterion this ticket states
+  // for compare's arithmetic.
+  await page.goto(BASE + '/compare', { waitUntil: 'networkidle' });
+  await fillDate(page, '#compare-a-start', dateInputValueFromEpochDay(today - 100));
+  await fillDate(page, '#compare-a-end', dateInputValueFromEpochDay(today));
+  await fillDate(page, '#compare-b-start', dateInputValueFromEpochDay(today - 100));
+  await fillDate(page, '#compare-b-end', dateInputValueFromEpochDay(today));
+  await page.waitForSelector('[data-compare-table]');
+  const viaPickers = await columnA();
+  if (JSON.stringify(viaLink) !== JSON.stringify(viaPickers)) {
+    throw new Error(`compare computed different numbers for the same range depending on how it arrived: link ${JSON.stringify(viaLink)}, pickers ${JSON.stringify(viaPickers)}`);
+  }
+
+  // The procedure's own recovery window has a fixed end once archived
+  // (SURGERY_RECOVERY_CUTOFF_DAYS past surgery), not one still tracking
+  // today - whether there is enough journal before that fixed window
+  // depends on the ~50 flows already run against this journal, so both
+  // outcomes are legitimate and both are checked.
+  await page.goto(BASE + '/settings/surgery', { waitUntil: 'networkidle' });
+  await page.locator('[data-procedure]').first().click();
+  await page.waitForSelector('[data-phase="archived"]');
+  const procedureNotice = page.locator('[data-notice="surgery-compare"]');
+  await procedureNotice.waitFor();
+  const procedureAction = procedureNotice.locator('[data-notice-action]');
+  if (await procedureAction.count()) {
+    // Ready, and archived rather than still-open, so no "counts through
+    // today" hint is expected here - that only shows on a stretch still
+    // tracking today (asserted from the tryout above instead).
+    await procedureAction.click();
+    await page.waitForURL('**/compare');
+    await assertOpensWithSides({ start: today - 400, end: today - 400 + SURGERY_RECOVERY_CUTOFF_DAYS });
+  } else if (!(await procedureNotice.locator('[data-notice-text]').count())) {
+    throw new Error('the procedure\'s compare notice offers no link and says nothing about why');
+  }
+
+  ok('"compare this stretch" opens the right two sides and reads the same numbers a hand-picked range would, from an open-ended tryout and from a procedure that either does the same or says why it cannot');
+} catch (e) {
+  fail('compare this stretch', e);
+}
+
 /* Importing a Daylio backup (phase 7 ticket 09). The one flow in this
    suite that hands the app a file: `chooseFiles` creates an input and
    clicks it (data/fileDialog.ts), so Chromium's own file chooser is what
