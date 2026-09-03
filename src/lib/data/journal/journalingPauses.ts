@@ -4,13 +4,16 @@
    and sideEffects.ts give. Rows only: whether a day falls inside a pause is
    `journalingPause.ts`'s pauseCoversDay, read from here by `journal/stats.ts`
    (Streak's amended computation) and by the check-in/Home suppression
-   checks - this module knows nothing about either. */
+   checks - this module knows nothing about either.
+
+   Flat, so its three writes come from flatArea.ts and only the one read is
+   its own. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { JournalingPause } from '../types';
-import { assertChanged, mintUuid, now } from './support';
+import { flatArea, type FlatInput } from './flatArea';
 
-export type JournalingPauseInput = Omit<JournalingPause, 'id'> & { id?: string };
+export type JournalingPauseInput = FlatInput<JournalingPause>;
 
 export interface JournalingPausesArea {
   /** Every pause, oldest start first. */
@@ -21,44 +24,15 @@ export interface JournalingPausesArea {
   deletePause(id: string): Promise<void>;
 }
 
-type JournalingPauseRow = { uuid: string; start_epoch_day: number; end_epoch_day: number | null };
-
-const toJournalingPause = (row: JournalingPauseRow): JournalingPause => ({
-  id: row.uuid,
-  startEpochDay: row.start_epoch_day,
-  endEpochDay: row.end_epoch_day
-});
-
 export function makeJournalingPausesArea(driver: SqliteDriver): JournalingPausesArea {
+  const pauses = flatArea<JournalingPause>(driver, {
+    table: 'journaling_pause',
+    columns: { startEpochDay: 'start_epoch_day', endEpochDay: 'end_epoch_day' }
+  });
+
   return {
-    async getPauses() {
-      const rows = await driver.query<JournalingPauseRow>(
-        'SELECT uuid, start_epoch_day, end_epoch_day FROM journaling_pause ORDER BY start_epoch_day, id'
-      );
-      return rows.map(toJournalingPause);
-    },
-
-    async upsertPause(input) {
-      if (input.id) {
-        const result = await driver.run(
-          'UPDATE journaling_pause SET start_epoch_day = ?, end_epoch_day = ?, updated_at = ? WHERE uuid = ?',
-          [input.startEpochDay, input.endEpochDay, now(), input.id]
-        );
-        assertChanged(result, `journaling pause: ${input.id}`);
-        return input.id;
-      }
-
-      const uuid = mintUuid();
-      await driver.run(
-        'INSERT INTO journaling_pause (uuid, start_epoch_day, end_epoch_day, updated_at) VALUES (?, ?, ?, ?)',
-        [uuid, input.startEpochDay, input.endEpochDay, now()]
-      );
-      return uuid;
-    },
-
-    async deletePause(id) {
-      const result = await driver.run('DELETE FROM journaling_pause WHERE uuid = ?', [id]);
-      assertChanged(result, `journaling pause: ${id}`);
-    }
+    getPauses: () => pauses.read('ORDER BY start_epoch_day, id'),
+    upsertPause: pauses.upsert,
+    deletePause: pauses.delete
   };
 }

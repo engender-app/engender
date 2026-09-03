@@ -363,23 +363,23 @@ test('a pause is a dated range on an episode with a planned or accidental reason
   ]);
 });
 
-test('a pause can be deleted, and deleting an unknown one throws', async () => {
+test('a pause can be deleted, and deleting it again changes nothing', async () => {
   const { journal } = await journalWithBuiltIns();
   const episodeId = await episode(journal, 100, 'estradiol');
   const id = await journal.doses.upsertPause({ episodeId, startEpochDay: 110, endEpochDay: 120, reason: 'planned' });
 
   await journal.doses.deletePause(id);
   assert.deepEqual(await journal.doses.getPauses(), []);
-  await assert.rejects(journal.doses.deletePause(id), /unknown dose pause/);
+  await journal.doses.deletePause(id); // idempotent
 });
 
-test('a dose can be deleted', async () => {
+test('a dose can be deleted, and deleting it again changes nothing', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.doses.upsertDose({ timestamp: at(100), route: 'oral', dose: 2, doseUnit: 'mg' });
 
   await journal.doses.deleteDose(id);
   assert.deepEqual(await journal.doses.getDoses(100, 100), []);
-  await assert.rejects(journal.doses.deleteDose(id), /unknown dose event/);
+  await journal.doses.deleteDose(id); // idempotent
 });
 
 /* The schedule comparison (phase 5 audit-deepening ticket 17). The six-step

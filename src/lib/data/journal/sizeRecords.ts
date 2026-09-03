@@ -8,12 +8,18 @@
    (measurements.ts, phase 4 ticket 08): a measurement is a body dimension
    in a unit; a size record is what was bought and what fit, with no
    conversion or normalization across brands or sizing systems (the
-   ticket's own out-of-scope line). */
+   ticket's own out-of-scope line).
+
+   Flat, so its three writes come from flatArea.ts, with the category check
+   passed in as that factory's pre-write guard. The one thing upsertRecord
+   still does itself is settle its two optional fields: a record with no
+   brand and no fit note stores empty strings, and a default is the area's
+   own answer rather than something flatArea.ts should learn to describe. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '../garmentCategories';
 import type { SizeRecord } from '../types';
-import { assertChanged, mintUuid, now } from './support';
+import { flatArea } from './flatArea';
 
 export interface SizeRecordInput {
   id?: string;
@@ -38,24 +44,6 @@ export interface SizeRecordsArea {
   deleteRecord(id: string): Promise<void>;
 }
 
-type SizeRecordRow = {
-  uuid: string;
-  epoch_day: number;
-  category: string;
-  size: string;
-  brand: string;
-  fit_note: string;
-};
-
-const toSizeRecord = (row: SizeRecordRow): SizeRecord => ({
-  id: row.uuid,
-  epochDay: row.epoch_day,
-  category: row.category,
-  size: row.size,
-  brand: row.brand,
-  fitNote: row.fit_note
-});
-
 /** The schema's CHECK is the backstop (like hair_removal_session's area);
     this is what turns a bad value into a message naming the vocabulary it
     broke instead of a raw SQLite constraint failure. */
@@ -66,57 +54,27 @@ function assertValidCategory(category: string): void {
 }
 
 export function makeSizeRecordsArea(driver: SqliteDriver): SizeRecordsArea {
+  const records = flatArea<SizeRecord>(driver, {
+    table: 'size_record',
+    columns: {
+      epochDay: 'epoch_day',
+      category: 'category',
+      size: 'size',
+      brand: 'brand',
+      fitNote: 'fit_note'
+    },
+    guard: (input) => assertValidCategory(input.category)
+  });
+
   return {
-    async getRecords() {
-      const rows = await driver.query<SizeRecordRow>(
-        'SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record ORDER BY epoch_day, id'
-      );
-      return rows.map(toSizeRecord);
-    },
+    getRecords: () => records.read('ORDER BY epoch_day, id'),
 
-    async getRecordsOnDay(epochDay) {
-      const rows = await driver.query<SizeRecordRow>(
-        'SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record WHERE epoch_day = ? ORDER BY id',
-        [epochDay]
-      );
-      return rows.map(toSizeRecord);
-    },
+    getRecordsOnDay: (epochDay) => records.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
 
-    async getRecordsByCategory(category) {
-      const rows = await driver.query<SizeRecordRow>(
-        'SELECT uuid, epoch_day, category, size, brand, fit_note FROM size_record WHERE category = ? ORDER BY epoch_day, id',
-        [category]
-      );
-      return rows.map(toSizeRecord);
-    },
+    getRecordsByCategory: (category) => records.read('WHERE category = ? ORDER BY epoch_day, id', [category]),
 
-    async upsertRecord(input) {
-      assertValidCategory(input.category);
-      const brand = input.brand ?? '';
-      const fitNote = input.fitNote ?? '';
+    upsertRecord: (input) => records.upsert({ ...input, brand: input.brand ?? '', fitNote: input.fitNote ?? '' }),
 
-      if (input.id) {
-        const result = await driver.run(
-          `UPDATE size_record
-           SET epoch_day = ?, category = ?, size = ?, brand = ?, fit_note = ?, updated_at = ?
-           WHERE uuid = ?`,
-          [input.epochDay, input.category, input.size, brand, fitNote, now(), input.id]
-        );
-        assertChanged(result, `size record: ${input.id}`);
-        return input.id;
-      }
-
-      const uuid = mintUuid();
-      await driver.run(
-        `INSERT INTO size_record (uuid, epoch_day, category, size, brand, fit_note, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, input.epochDay, input.category, input.size, brand, fitNote, now()]
-      );
-      return uuid;
-    },
-
-    async deleteRecord(id) {
-      await driver.run('DELETE FROM size_record WHERE uuid = ?', [id]);
-    }
+    deleteRecord: records.delete
   };
 }

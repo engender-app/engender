@@ -148,6 +148,7 @@ test('deleting a session clears its own reminder', async () => {
   assert.equal((await journal.reminders.getReminders()).length, 1);
 
   await journal.wearSessions.deleteSession(id);
+  await journal.wearSessions.deleteSession(id); // idempotent
   assert.equal((await journal.reminders.getReminders()).length, 0);
   assert.equal(await journal.wearSessions.getRunningSession(), null);
 });

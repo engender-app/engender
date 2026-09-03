@@ -5,21 +5,19 @@
 
    getSideEffectsInRange is ticket 12's read path: it pulls a range with no
    query logic of ticket 12's own, the same way stats.ts's fromEpochDay/
-   toEpochDay reads do. */
+   toEpochDay reads do.
+
+   Flat, so its three writes come from flatArea.ts, with the severity check
+   passed in as that factory's pre-write guard. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { SideEffect } from '../types';
-import { assertChanged, mintUuid, now } from './support';
+import { flatArea, type FlatInput } from './flatArea';
 
 export const MIN_SEVERITY = 1;
 export const MAX_SEVERITY = 5;
 
-export interface SideEffectInput {
-  id?: string;
-  name: string;
-  severity: number;
-  epochDay: number;
-}
+export type SideEffectInput = FlatInput<SideEffect>;
 
 export interface SideEffectsArea {
   getSideEffects(): Promise<SideEffect[]>;
@@ -31,15 +29,6 @@ export interface SideEffectsArea {
   deleteSideEffect(id: string): Promise<void>;
 }
 
-type SideEffectRow = { uuid: string; name: string; severity: number; epoch_day: number };
-
-const toSideEffect = (row: SideEffectRow): SideEffect => ({
-  id: row.uuid,
-  name: row.name,
-  severity: row.severity,
-  epochDay: row.epoch_day
-});
-
 /** The schema's CHECK is the backstop (like reminder's recurrence); this is
     what turns a bad value into a message naming the ticket's own scale
     instead of a raw SQLite constraint failure. */
@@ -50,47 +39,19 @@ function assertValidSeverity(severity: number): void {
 }
 
 export function makeSideEffectsArea(driver: SqliteDriver): SideEffectsArea {
-  const rowsInRange = (fromEpochDay: number, toEpochDay: number) =>
-    driver.query<SideEffectRow>(
-      'SELECT uuid, name, severity, epoch_day FROM side_effect WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id',
-      [fromEpochDay, toEpochDay]
-    );
+  const effects = flatArea<SideEffect>(driver, {
+    table: 'side_effect',
+    columns: { name: 'name', severity: 'severity', epochDay: 'epoch_day' },
+    guard: (input) => assertValidSeverity(input.severity)
+  });
 
   return {
-    async getSideEffects() {
-      const rows = await driver.query<SideEffectRow>(
-        'SELECT uuid, name, severity, epoch_day FROM side_effect ORDER BY epoch_day, id'
-      );
-      return rows.map(toSideEffect);
-    },
+    getSideEffects: () => effects.read('ORDER BY epoch_day, id'),
 
-    async getSideEffectsInRange(fromEpochDay, toEpochDay) {
-      return (await rowsInRange(fromEpochDay, toEpochDay)).map(toSideEffect);
-    },
+    getSideEffectsInRange: (fromEpochDay, toEpochDay) =>
+      effects.read('WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id', [fromEpochDay, toEpochDay]),
 
-    async upsertSideEffect(input) {
-      assertValidSeverity(input.severity);
-      if (input.id) {
-        const result = await driver.run(
-          'UPDATE side_effect SET name = ?, severity = ?, epoch_day = ?, updated_at = ? WHERE uuid = ?',
-          [input.name, input.severity, input.epochDay, now(), input.id]
-        );
-        assertChanged(result, `side effect: ${input.id}`);
-        return input.id;
-      }
-      const uuid = mintUuid();
-      await driver.run('INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES (?, ?, ?, ?, ?)', [
-        uuid,
-        input.name,
-        input.severity,
-        input.epochDay,
-        now()
-      ]);
-      return uuid;
-    },
-
-    async deleteSideEffect(id) {
-      await driver.run('DELETE FROM side_effect WHERE uuid = ?', [id]);
-    }
+    upsertSideEffect: effects.upsert,
+    deleteSideEffect: effects.delete
   };
 }

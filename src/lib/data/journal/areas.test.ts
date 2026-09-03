@@ -755,7 +755,7 @@ test('journaling pauses update by id, throw on unknown ids and delete idempotent
   );
 
   await journal.journalingPauses.deletePause(id);
-  await assert.rejects(journal.journalingPauses.deletePause(id), /unknown journaling pause/);
+  await journal.journalingPauses.deletePause(id); // idempotent
   assert.deepEqual(await journal.journalingPauses.getPauses(), []);
 });
 
