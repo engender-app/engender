@@ -17,6 +17,7 @@
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -140,7 +141,6 @@
   let notesDraft = $state('');
   let photoSheet = $state(false);
   let photoDate = $state('');
-  let milestoneConfirmSheet = $state(false);
 
   async function storePhoto(photo: NormalizedPhoto): Promise<void> {
     const epochDay = epochDayFromDateInputValue(photoDate);
@@ -168,15 +168,30 @@
     notesDraft = selectedId ? procedure.notes : '';
   }
 
+  /* One entry in the offer registry (phase 8 features ticket 22,
+     ADR-0045). The ADR names this trigger by hand - "reaching surgery day
+     or the recovery phase in the procedure hub" - and the phase-8 spec's
+     count of four offers missed it; offers.ts's header says so.
+
+     Nothing here re-checks `linkedMilestone`: both places that call
+     `promptMilestoneConfirmation` are already inside a branch that only
+     draws while the procedure has no milestone, and a second copy of that
+     condition would be a guard for a state no control can reach. */
+  const MILESTONE_OFFER = OFFERS['surgery-day-milestone'];
+  let milestoneOffer = $state<{ procedureId: string } | null>(null);
+
   function promptMilestoneConfirmation() {
-    milestoneConfirmSheet = true;
+    if (!selectedId) return;
+    milestoneOffer = { procedureId: selectedId };
   }
 
-  async function confirmRecordMilestone() {
-    if (!selectedId) return;
-    milestoneConfirmSheet = false;
-    await journal.procedures.recordSurgeryMilestone(selectedId);
-    toast(m.surgery_milestone_added());
+  /* Closed before the write, the order this screen already kept: the sheet
+     is gone by the time the insert runs, so a second tap cannot re-enter
+     with a live subject and toast twice. */
+  async function answerMilestoneOffer(given: OfferAnswer) {
+    const subject = milestoneOffer;
+    milestoneOffer = null;
+    if (await answerOffer(MILESTONE_OFFER, subject, given, journal)) toast(m.surgery_milestone_added());
   }
 
   function openConsultSheet() {
@@ -646,15 +661,23 @@
 
   <!-- Surgery Day Milestone Confirmation Sheet (ADR-0045 explicit confirmation) -->
   {#if selected}
-    <Sheet open={milestoneConfirmSheet} title={m.surgery_milestone_confirm_sheet()} onClose={() => (milestoneConfirmSheet = false)}>
+    <Sheet
+      open={milestoneOffer !== null}
+      title={MILESTONE_OFFER.copy.title()}
+      onClose={() => void answerMilestoneOffer('decline')}
+    >
       <h3>{m.surgery_milestone_confirm_q({ name: selected.name })}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.surgery_milestone_confirm_hint()}</p>
       <div class="stack-3">
-        <button class="btn btn-primary" data-confirm-record-milestone onclick={confirmRecordMilestone}>
-          <span>{m.surgery_milestone_prompt_action()}</span>
+        <button
+          class="btn btn-primary"
+          data-confirm-record-milestone
+          onclick={() => void answerMilestoneOffer('confirm')}
+        >
+          <span>{MILESTONE_OFFER.copy.confirm()}</span>
         </button>
-        <button class="btn btn-soft" onclick={() => (milestoneConfirmSheet = false)}>
-          <span>{m.keep_it()}</span>
+        <button class="btn btn-soft" onclick={() => void answerMilestoneOffer('decline')}>
+          <span>{MILESTONE_OFFER.copy.decline()}</span>
         </button>
       </div>
     </Sheet>
