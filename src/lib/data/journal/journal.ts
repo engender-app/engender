@@ -399,7 +399,9 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       journalingPauses,
       tryouts,
       procedures,
-      eras
+      eras,
+      sideEffects,
+      stats
     }),
     wearSessions,
     clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),

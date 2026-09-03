@@ -23,6 +23,7 @@
 
   import { scaleLinear } from 'd3-scale';
   import { line as d3line } from 'd3-shape';
+  import CurveMarkers, { drawsMarkers, type CurveMarkerProps } from './CurveMarkers.svelte';
 
   interface CurvePoint {
     day: number;
@@ -36,7 +37,11 @@
     width = 320,
     formatValue,
     unitLabel,
-    ariaLabel
+    ariaLabel,
+    markers = [],
+    selectedMarker = null,
+    onSelectMarker,
+    markLabel
   }: {
     points: CurvePoint[];
     max?: number;
@@ -47,10 +52,17 @@
         file header. */
     unitLabel: string | null;
     ariaLabel: string;
-  } = $props();
+    /* What else was logged on the days this window covers (phase 8 features
+       ticket 15). A date has a position on this axis whether or not the
+       heights under it mean anything yet, which is why markers are drawn
+       here and lab results still are not: a result is a value laid over an
+       invented amplitude, and a marker is a day laid over a calendar. */
+  } & CurveMarkerProps = $props();
 
   const P = 8;
   const AXIS = 34;
+
+  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker, markLabel }));
 
   let chart = $derived.by(() => {
     if (points.length < 2) return null;
@@ -67,6 +79,8 @@
     return {
       line,
       left,
+      fromDay: x0,
+      toDay: Math.max(x0 + 1, x1),
       ticks: ticks.map((value) => ({ value, y: y(value) }))
     };
   });
@@ -86,6 +100,21 @@
         <line x1={chart.left} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />
         <text x={chart.left - 5} y={tick.y + 3.5} class="qual-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
       {/each}
+    {/if}
+
+    {#if showsMarkers}
+      <CurveMarkers
+        {markers}
+        fromDay={chart.fromDay}
+        toDay={chart.toDay}
+        left={chart.left}
+        right={width - P}
+        bottom={height - P}
+        plotHeight={height - P * 2}
+        selected={selectedMarker}
+        onSelect={onSelectMarker!}
+        markLabel={markLabel!}
+      />
     {/if}
 
     <path d={chart.line} class="qual-line" />

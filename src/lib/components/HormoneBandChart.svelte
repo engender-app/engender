@@ -12,6 +12,7 @@
 
   import { scaleLinear } from 'd3-scale';
   import { area as d3area, line as d3line } from 'd3-shape';
+  import CurveMarkers, { drawsMarkers, type CurveMarkerProps } from './CurveMarkers.svelte';
 
   interface BandPoint {
     day: number;
@@ -35,7 +36,11 @@
     ariaLabel,
     selected = null,
     onSelect,
-    pointLabel
+    pointLabel,
+    markers = [],
+    selectedMarker = null,
+    onSelectMarker,
+    markLabel
   }: {
     band: BandPoint[];
     /** The user's own results. Drawn over the band and never part of it. */
@@ -58,9 +63,12 @@
     /** The accessible name for the result at `index`. Required alongside
         onSelect: a tappable mark with no name cannot be announced. */
     pointLabel?: (index: number) => string;
-  } = $props();
+    /* What else was logged on the days this window covers (phase 8 features
+       ticket 15), drawn under the band. */
+  } & CurveMarkerProps = $props();
 
   let interactive = $derived(onSelect !== undefined && pointLabel !== undefined);
+  let showsMarkers = $derived(drawsMarkers({ markers, onSelectMarker, markLabel }));
 
   const P = 8;
   /* Room on the left for the axis labels, which sit inside the viewBox so
@@ -89,6 +97,8 @@
     const ticks = y.ticks(4).filter((value) => value >= 0 && value <= max);
 
     return {
+      fromDay: x0,
+      toDay: Math.max(x0 + 1, x1),
       band: bandGen(band) ?? '',
       upperEdge: edge((p) => y(p.upper)),
       lowerEdge: edge((p) => y(p.lower)),
@@ -112,6 +122,23 @@
       <line x1={AXIS} x2={width - P} y1={tick.y} y2={tick.y} class="chart-gridline" />
       <text x={AXIS - 5} y={tick.y + 3.5} class="band-axis-label" text-anchor="end">{formatValue(tick.value)}</text>
     {/each}
+
+    <!-- Under the band and its results, over the gridlines: what else was
+         logged is context for the readings and never a reading itself. -->
+    {#if showsMarkers}
+      <CurveMarkers
+        {markers}
+        fromDay={chart.fromDay}
+        toDay={chart.toDay}
+        left={AXIS}
+        right={width - P}
+        bottom={height - P}
+        plotHeight={height - P * 2}
+        selected={selectedMarker}
+        onSelect={onSelectMarker!}
+        markLabel={markLabel!}
+      />
+    {/if}
 
     <path d={chart.band} class="band-fill" />
     <path d={chart.upperEdge} class="band-edge" />

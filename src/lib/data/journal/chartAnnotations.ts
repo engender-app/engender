@@ -41,9 +41,44 @@
      entries                every logged day would be an annotation, and the
                             line on the chart is already made of them.
      consults               a date in a procedure's history that says nothing
-                            about the range a chart covers. */
+                            about the range a chart covers.
+
+   ## The hormone curve's own markers (phase 8 features ticket 15)
+
+   getCurveMarkers is a second selection over four more areas, and it is
+   deliberately not part of getAnnotations. Every chart that opted into
+   annotations would otherwise start drawing these, and the ticket rules out
+   rendering any of it on /stats. So a screen asks for the markers by name,
+   and today exactly one does.
+
+   Two of the four kinds are records with a day on them - a side effect, an
+   injection - and are drawn wherever they fall. The other two are not
+   records at all but days that stood out: a tally count or a body-region
+   reading above that person's own recent spread, with the threshold and the
+   reason for it in data/ownSpread.ts. Nothing here compares anything to a
+   number from outside the journal.
+
+   Every marker carries the address of the record it stands for, following
+   searchHitRows.ts's rule - the record where there is a screen for one, the
+   screen that owns it otherwise. A body-region reading is the one with a
+   record of its own to reach, since it is logged on an Entry; the other
+   three go to the screen that owns them, which is the same call dayRows.ts
+   makes for a dose, a side effect and a tally.
+
+   An injection also carries a `series`, because the hormone curve screen
+   draws a chart per ester and a chart per illustrative shape and each is
+   built from only the doses that resolve to it. Everything else has none:
+   how often somebody was misgendered is about them rather than about one
+   drug, and belongs under every chart on the screen. */
 
 import { annotationsInRange, type ChartAnnotation, type ChartAnnotationSource } from '../../charts/annotations';
+import { epochDayFromTimestamp } from '../epochDay';
+import { doseMilligrams } from '../hormoneCurveFit';
+import { resolveQualitativeKey } from '../hormoneCurveQualitative';
+import { resolveInjectableEster } from '../hormoneEster';
+import { OWN_SPREAD_WINDOW_DAYS, aboveOwnSpread, type DayValue } from '../ownSpread';
+import { attributeDose } from '../regimenEpisode';
+import type { DoseEvent, RegimenEpisode } from '../types';
 import { SURGERY_RECOVERY_CUTOFF_DAYS } from '../recoveryDay';
 import type { DosesArea } from './doses';
 import type { ErasArea } from './eras';
@@ -51,6 +86,8 @@ import type { JournalingPausesArea } from './journalingPauses';
 import type { MilestonesArea } from './milestones';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
+import type { SideEffectsArea } from './sideEffects';
+import type { RegionReading, StatsArea } from './stats';
 import type { TryoutsArea } from './tryouts';
 
 export interface ChartAnnotationsArea {
@@ -58,6 +95,10 @@ export interface ChartAnnotationsArea {
       sits. `todayEpochDay` is the caller's, not a clock's: a stretch that has
       not ended reaches to today and the schema stores no end for one. */
   getAnnotations(fromEpochDay: number, toEpochDay: number, todayEpochDay: number): Promise<ChartAnnotation[]>;
+  /** The hormone curve's four extra kinds over the same range, in the same
+      shape, and never mixed into getAnnotations - see the header. A caller
+      concatenates the two where it wants both. */
+  getCurveMarkers(fromEpochDay: number, toEpochDay: number, todayEpochDay: number): Promise<ChartAnnotation[]>;
 }
 
 interface Areas {
@@ -68,6 +109,8 @@ interface Areas {
   tryouts: TryoutsArea;
   procedures: ProceduresArea;
   eras: ErasArea;
+  sideEffects: SideEffectsArea;
+  stats: StatsArea;
 }
 
 export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
@@ -154,6 +197,167 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
       }
 
       return annotationsInRange(sources, { from: fromEpochDay, to: toEpochDay, today: todayEpochDay });
+    },
+
+    async getCurveMarkers(fromEpochDay, toEpochDay, todayEpochDay) {
+      /* How far back everything is read from. The days that stood out are
+         judged against the person's own recent spread, and that window can
+         reach further back than the chart does, so one read covers both and
+         the fence is computed over the whole of it (ownSpread.ts). */
+      const readFrom = Math.min(fromEpochDay, todayEpochDay - OWN_SPREAD_WINDOW_DAYS + 1);
+      const readTo = Math.max(toEpochDay, todayEpochDay);
+
+      const [sideEffects, doses, episodes, misgendered, correctlyGendered, dysphoria, euphoria] = await Promise.all([
+        areas.sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay),
+        areas.doses.getDoses(fromEpochDay, toEpochDay),
+        areas.regimen.getEpisodes(),
+        areas.stats.tallyTrend('misgendered', readFrom, readTo),
+        areas.stats.tallyTrend('correctly_gendered', readFrom, readTo),
+        areas.stats.bodyRegionReadings('dysphoria', readFrom, readTo),
+        areas.stats.bodyRegionReadings('euphoria', readFrom, readTo)
+      ]);
+
+      const sources: ChartAnnotationSource[] = [
+        ...sideEffects.map((effect) => ({
+          id: effect.id,
+          kind: 'sideEffect' as const,
+          name: effect.name,
+          startEpochDay: effect.epochDay,
+          endEpochDay: null,
+          // No screen for one side effect, so the screen that owns them
+          // (searchHitRows.ts's rule, and dayRows.ts sends its row there too).
+          href: '/settings/side-effects'
+        })),
+        ...injectionSources(doses, episodes),
+        ...standoutTallies(misgendered, todayEpochDay, 'tallyMisgendered'),
+        ...standoutTallies(correctlyGendered, todayEpochDay, 'tallyCorrectlyGendered'),
+        ...standoutReadings(dysphoria, todayEpochDay, 'bodyRegionDysphoria'),
+        ...standoutReadings(euphoria, todayEpochDay, 'bodyRegionEuphoria')
+      ];
+
+      return annotationsInRange(sources, { from: fromEpochDay, to: toEpochDay, today: todayEpochDay });
     }
   };
+}
+
+/** Every injection that one of the screen's charts was actually built from,
+    each tagged with the chart it belongs under.
+
+    The resolution is the curves' own, called rather than restated:
+    attributeDose for the episode, then resolveInjectableEster for a band
+    chart and resolveQualitativeKey for an illustrative one
+    (data/hormoneCurve.ts, data/hormoneCurveQualitative.ts). A dose those
+    reject - no episode, an attribution ticket 38's concurrency left
+    ambiguous, an ester with no published posterior and no argued shape, an
+    amount that is not in milligrams - is drawn by no chart, so it gets no
+    mark. The screen already counts those doses and says so in its own words.
+
+    Skipped doses are left out here for the same reason both curve modules
+    leave them out: nothing was taken, so nothing reached the bloodstream the
+    chart is about.
+
+    An oral or topical dose is an injection to nobody, so only the injectable
+    routes take the `injection` kind - but the qualitative branch is where a
+    testosterone ester with no posterior lands, and that is an injection. */
+function injectionSources(
+  doses: readonly DoseEvent[],
+  episodes: readonly RegimenEpisode[]
+): ChartAnnotationSource[] {
+  const sources: ChartAnnotationSource[] = [];
+
+  for (const dose of doses) {
+    if (dose.route !== 'im' && dose.route !== 'sc') continue;
+    if (dose.status === 'skipped') continue;
+    if (doseMilligrams(dose.dose, dose.doseUnit) === null) continue;
+
+    const episode = attributeDose(episodes, dose).episode;
+    if (!episode) continue;
+
+    const series = resolveInjectableEster(episode) ?? resolveQualitativeKey(episode, dose.route);
+    if (!series) continue;
+
+    sources.push({
+      id: dose.id,
+      kind: 'injection',
+      /* The episode's drug, which is what the chart's own heading is a
+         reading of. Not the dose's optional `drug` (types.ts): that is null
+         on almost every dose and exists only to break an attribution tie,
+         so a mark named from it would be blank nearly always. */
+      name: episode.drug,
+      startEpochDay: epochDayFromTimestamp(dose.timestamp),
+      endEpochDay: null,
+      href: '/doses',
+      series
+    });
+  }
+
+  return sources;
+}
+
+/** The days a counter stood above the person's own recent spread.
+
+    A day with no taps is absent from the trend rather than present as a
+    zero, which is what the fence wants: the spread is over the counts on the
+    days somebody logged one, not over every day in the calendar. Counting
+    the silent days as zeroes would drag the quartiles to zero and mark every
+    day anything happened at all.
+
+    No `series`: how often somebody was misgendered is about them and not
+    about one ester, so the mark belongs under every chart on the screen. */
+function standoutTallies(
+  trend: readonly { day: number; value: number }[],
+  todayEpochDay: number,
+  kind: 'tallyMisgendered' | 'tallyCorrectlyGendered'
+): ChartAnnotationSource[] {
+  const readings: DayValue[] = trend.map((point) => ({ epochDay: point.day, value: point.value }));
+  return aboveOwnSpread(readings, todayEpochDay).map((reading) => ({
+    id: `${kind}-${reading.epochDay}`,
+    kind,
+    name: null,
+    startEpochDay: reading.epochDay,
+    endEpochDay: null,
+    href: '/tally'
+  }));
+}
+
+/** The readings that stood above the person's own recent spread, judged one
+    region at a time.
+
+    Per region and not over all of them together: the regions somebody logs
+    are not one scale. Chest readings that sit around 70 and hand readings
+    that sit around 10 pooled into one sample give a fence in the middle,
+    which marks every ordinary chest reading and no hand reading however far
+    it moved. */
+function standoutReadings(
+  readings: readonly RegionReading[],
+  todayEpochDay: number,
+  kind: 'bodyRegionDysphoria' | 'bodyRegionEuphoria'
+): ChartAnnotationSource[] {
+  const byRegion = new Map<string, RegionReading[]>();
+  for (const reading of readings) {
+    const found = byRegion.get(reading.region);
+    if (found) found.push(reading);
+    else byRegion.set(reading.region, [reading]);
+  }
+
+  const sources: ChartAnnotationSource[] = [];
+  for (const [region, ofRegion] of byRegion) {
+    // Two readings of one region on one day are two markers, each keeping
+    // its own entry, and the layer gathers them into one mark if they land
+    // on the same pixel.
+    for (const reading of aboveOwnSpread(ofRegion, todayEpochDay)) {
+      sources.push({
+        id: `${kind}-${region}-${reading.entryId}`,
+        kind,
+        // The region's domain id. Its words live in paraglide, which this
+        // tier does not import (ADR-0016, ADR-0024), so the screen resolves
+        // the name.
+        name: region,
+        startEpochDay: reading.epochDay,
+        endEpochDay: null,
+        href: `/entry/${reading.entryId}`
+      });
+    }
+  }
+  return sources;
 }

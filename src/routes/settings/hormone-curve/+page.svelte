@@ -47,6 +47,9 @@
   import type { InjectableEster } from '$lib/data/hormoneEster';
   import { latestQualitativeValue } from '$lib/data/hormoneCurveQualitative';
   import { curveDrugLabel, esterLabel, qualitativeCurveLabel } from '$lib/data/vocabulary/hormoneCurveLabels';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import type { AnnotationMark } from '$lib/charts/annotations';
+  import { annotationLabel, annotationLine } from '$lib/components/kit/chartAnnotation';
   import { secondaryLabValue } from '$lib/data/labs/units';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { fmtDay, intlLocale } from '$lib/data/dates';
@@ -97,6 +100,42 @@
      until its first result lands, and stays undefined if the query errors
      (live/journal.svelte.ts), and the skeleton below covers both. */
   let view = $derived(curveQuery.value ?? null);
+
+  /* What else was logged on the days the window covers (phase 8 features
+     ticket 15). Its own read rather than a field on the curve view: the
+     curve is arithmetic over the dose log and the lab results, and this is
+     five other areas, so folding them together would re-run the whole
+     pharmacokinetic fit every time somebody tapped a tally counter. */
+  let markerQuery = liveQuery((j) =>
+    j.chartAnnotations.getCurveMarkers(today - windowDays + 1, today, today)
+  );
+
+  /** A body-region marker travels with the region's id rather than its name,
+      because the query is node-tier and a built-in region's words live in
+      paraglide (ADR-0016, ADR-0024). This is where they are resolved, and a
+      region an import carries that this build has no row for keeps its id
+      rather than disappearing. */
+  let regionNames = $derived(new Map(vocabulary.bodyRegions.map((region) => [region.id, region.name])));
+
+  let markers = $derived(
+    (markerQuery.value ?? []).map((marker) =>
+      marker.name !== null && regionNames.has(marker.name)
+        ? { ...marker, name: regionNames.get(marker.name) as string }
+        : marker
+    )
+  );
+
+  /** The markers one chart draws: everything about the person, plus the
+      injections that this chart's own curve was built from.
+
+      Every chart here is built from a subset of the dose log - an ester's
+      band from the doses that resolve to that ester, an illustrative shape
+      from the doses that resolve to that shape - so a tick under a band that
+      did not count the dose is the card disagreeing with itself. The query
+      tags each injection with the chart it belongs to and this is where that
+      is spent. */
+  const markersFor = (series: string) =>
+    markers.filter((marker) => marker.series === undefined || marker.series === series);
 
   /** Localized, like every other number this app shows (labContextLabel.ts's
       fmtHours): a Polish reader expects "1 234", not "1,234". Bare
@@ -166,6 +205,36 @@
     picked = { ...picked, [ester]: picked[ester] === index ? null : index };
   }
 
+  /* Which marker is open, keyed by chart the same way `picked` is - and
+     separately from it, because a marker and a result are two different
+     things to have tapped and one card can only say one of them at a time.
+     Tapping the open marker again closes it. */
+  let pickedMarker = $state<Record<string, AnnotationMark | null>>({});
+
+  function pickMarker(chart: string, mark: AnnotationMark) {
+    const open = pickedMarker[chart] ?? null;
+    pickedMarker = { ...pickedMarker, [chart]: open?.key === mark.key ? null : mark };
+    /* A marker takes this card's readout over from a result, because one
+       readout cannot say both. Only this card's: two esters are two cards
+       with a readout each, and closing the other one would be this card
+       reaching across the screen. */
+    picked = { ...picked, [chart]: null };
+  }
+
+  /** What one mark is called when a screen reader lands on it. Every
+      annotation it gathered, not only the first: a doubled tick that
+      announced one of three would be a control lying about what it opens. */
+  const markLabel = (mark: AnnotationMark): string => mark.annotations.map(annotationLabel).join('; ');
+
+  /* A marker open in a readout is a mark on the plot, and the plot is
+     redrawn from a different set of days. Left alone the card would go on
+     naming a record with no tick under it, so the window takes the
+     selection with it. */
+  function changeWindow(days: (typeof WINDOWS)[number]) {
+    windowDays = days;
+    pickedMarker = {};
+  }
+
   function toggleFit(next: boolean) {
     prefs.hormoneCurveFitToOwnLabs = next;
   }
@@ -177,6 +246,43 @@
      so again would put the limit on them rather than on this screen. -->
 {#snippet doseLogAction()}
   <a class="btn btn-soft" href="/doses"><span>{m.curve_empty_action()}</span></a>
+{/snippet}
+
+<!-- What one mark stands for, and the way out to it (phase 8 features ticket
+     15). The link and not the tick is where the tap-through lives: a tick is
+     1.5px of ink on a plot that can hold two dozen of them, so a target big
+     enough to open a record would swallow its neighbours. The tick answers
+     the tap by saying which one it was, and the row below is what a thumb
+     actually presses.
+
+     Every annotation the mark gathered gets a row of its own, because a
+     doubled tick standing for an injection and a headache on the same day
+     leads to two different screens. -->
+<!-- The mark at legend size, on both kinds of chart. -->
+{#snippet markerLegend(shown: number)}
+  {#if shown > 0}
+    <span class="legend-item"><span class="legend-marker"></span>{m.curve_legend_markers()}</span>
+  {/if}
+{/snippet}
+
+{#snippet markerReadout(mark: AnnotationMark, close: () => void)}
+  <div class="spread">
+    <p class="readout-label">{m.curve_marker_heading()}</p>
+    <button class="icon-btn" aria-label={m.curve_marker_clear()} onclick={close}>
+      <Icon name="x" size={18} />
+    </button>
+  </div>
+  <ul class="marker-list">
+    {#each mark.annotations as annotation (annotation.id)}
+      <li>
+        {#if annotation.href}
+          <a class="marker-link" href={annotation.href}>{annotationLine(annotation)}</a>
+        {:else}
+          <span class="marker-link">{annotationLine(annotation)}</span>
+        {/if}
+      </li>
+    {/each}
+  </ul>
 {/snippet}
 
 <div class="screen">
@@ -226,7 +332,7 @@
       name={m.curve_window_label()}
       options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
       value={String(windowDays)}
-      onChange={(value) => (windowDays = Number(value) as (typeof WINDOWS)[number])}
+      onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
       compact
       key="curve-window"
     />
@@ -236,6 +342,7 @@
       {#each view.injectable.charts as curve (curve.ester)}
         {@const points = curve.labPoints}
         {@const selected = picked[curve.ester] ?? null}
+        {@const openMark = pickedMarker[curve.ester] ?? null}
         <ChartCard
           heading={esterLabel(curve.ester)}
           kind="curve-{curve.ester}"
@@ -265,18 +372,25 @@
                 unit: points[index].result.unit,
                 date: fmtDay(points[index].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
               })}
+            markers={markersFor(curve.ester)}
+            selectedMarker={openMark?.key ?? null}
+            onSelectMarker={(mark) => pickMarker(curve.ester, mark)}
+            {markLabel}
           />
 
           <div class="curve-legend">
             <span class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</span>
             <span class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</span>
+            {@render markerLegend(markersFor(curve.ester).length)}
           </div>
 
           <!-- The readout. aria-live because tapping a result changes text
                elsewhere on the screen, which a screen reader would otherwise
                not announce. -->
           <div class="curve-readout" aria-live="polite">
-            {#if selected !== null && points[selected]}
+            {#if openMark}
+              {@render markerReadout(openMark, () => pickMarker(curve.ester, openMark))}
+            {:else if selected !== null && points[selected]}
               {@const lines = resultLines(points[selected])}
               <div class="spread">
                 <p class="readout-label">
@@ -308,6 +422,10 @@
       <p class="muted small curve-note">{m.curve_band_note()}</p>
     {/if}
 
+    {#if markers.length > 0}
+      <p class="muted small curve-note" data-curve-markers-note>{m.curve_markers_note()}</p>
+    {/if}
+
     {#if view.qualitative.sections.length > 0}
       <SectionHeading text={m.curve_qual_heading()} />
       <!-- Keyed by hormone and route together: the same route on the two
@@ -315,6 +433,7 @@
       {#each view.qualitative.sections as section (section.drug)}
         {#each section.charts as curve (curve.key)}
           {@const lines = qualLines(section, curve)}
+          {@const openMark = pickedMarker[curve.key] ?? null}
           <ChartCard
             heading={qualitativeCurveLabel(curve.key)}
             kind="curve-qual-{curve.key}"
@@ -337,13 +456,26 @@
                 from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
                 to: fmtDay(today, { day: 'numeric', month: 'short' })
               })}
+              markers={markersFor(curve.key)}
+              selectedMarker={openMark?.key ?? null}
+              onSelectMarker={(mark) => pickMarker(curve.key, mark)}
+              {markLabel}
             />
 
             <div class="curve-legend">
               <span class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</span>
+              {@render markerLegend(markersFor(curve.key).length)}
             </div>
 
-            {#if lines}
+            <!-- The marker readout takes the card's own readout over while a
+                 mark is open, the same way it does on a fitted chart: this
+                 one's ordinary content is a single figure for today, and two
+                 answers stacked would read as one contradicting itself. -->
+            {#if openMark}
+              <div class="curve-readout" aria-live="polite">
+                {@render markerReadout(openMark, () => pickMarker(curve.key, openMark))}
+              </div>
+            {:else if lines}
               <div class="curve-readout">
                 <p class="readout-label">
                   {m.curve_qual_readout_at({ date: fmtDay(today, { day: 'numeric', month: 'long', year: 'numeric' }) })}
@@ -493,6 +625,44 @@
   .curve-readout {
     margin-top: var(--space-3);
     min-height: 3.5rem;
+  }
+
+  /* The mark itself at legend size, not a shape that stands for one: the
+     same ink and the same width CurveMarkers.svelte strokes it at. A border
+     rather than a background collapsed to a bare rule with no box, because
+     a zero-width flex item takes no space to draw the border on. */
+  .legend-marker {
+    width: 1.25px;
+    height: 11px;
+    border-radius: 1px;
+    background: color-mix(in oklab, var(--text) 30%, transparent);
+  }
+
+  /* No margin of its own: the rows are 44px tall and their own leading is
+     already the space under the heading, so a gap here put more air below
+     the label than above it. */
+  .marker-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Full width and a whole touch target tall, which is the whole reason the
+     tap-through is here rather than on the tick. The token and not a number:
+     it is 48px, Android's floor, and the app is held to it
+     (theme/base.css, tests/accessibility-audit.test.ts). */
+  .marker-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    text-decoration: none;
+  }
+
+  /* Only the anchor takes the accent. A marker with no record to open never
+     occurs today - all six kinds carry an address - but the type admits one,
+     and dropping the row would lose a mark the plot is drawing. */
+  a.marker-link {
+    color: var(--accent);
   }
 
   .readout-label {
