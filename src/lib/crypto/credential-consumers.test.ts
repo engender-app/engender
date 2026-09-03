@@ -88,6 +88,18 @@ test('the registry declares every supported credential consumer and its selectio
       profile: 'biometric-prf',
       selectionRule: 'persisted',
       purpose: 'Unlock a biometric keystore with the parameter set it was written under.'
+    },
+    {
+      consumer: 'journal-recovery-add',
+      profile: 'recovery-key',
+      selectionRule: 'current',
+      purpose: 'Wrap an existing Journal data key under a written recovery key.'
+    },
+    {
+      consumer: 'journal-recovery-unlock',
+      profile: 'recovery-key',
+      selectionRule: 'persisted',
+      purpose: 'Open a recovery wrap with the parameter set it was written under.'
     }
   ]);
 });
@@ -109,6 +121,10 @@ test('each profile keeps its current purpose and parameter set', () => {
     'biometric-prf': {
       purpose: 'Wraps the Journal data key under a secret only a platform authenticator releases.',
       params: JOURNAL_ARGON2_PARAMS
+    },
+    'recovery-key': {
+      purpose: 'Wraps the Journal data key under a written key kept off the device.',
+      params: JOURNAL_ARGON2_PARAMS
     }
   });
 });
@@ -119,6 +135,18 @@ test('each profile keeps its current purpose and parameter set', () => {
    cold-start budget a passphrase does. */
 test('biometric mode derives at the journal cold-start cost, the same budget a passphrase has', () => {
   expect(resolveCredentialProfile('journal-biometric-setup')).toBe(JOURNAL_ARGON2_PARAMS);
+});
+
+/* The same deliberate sharing, for a related reason and a different one.
+   Related: 120 bits has no small input space for KDF cost to defend, so
+   there is nothing here for a heavier profile to buy. Different: a
+   recovery key is derived once in a while rather than on every cold start,
+   so the budget is not what constrains it - it is named apart so that a
+   later reason to make it heavier has somewhere to land, and shares the
+   numbers until there is one. */
+test('a recovery key derives at the journal cold-start cost, named apart from it', () => {
+  expect(resolveCredentialProfile('journal-recovery-add')).toBe(JOURNAL_ARGON2_PARAMS);
+  expect(credentialConsumer('journal-recovery-add').profile).toBe('recovery-key');
 });
 
 test('current-profile consumers resolve the current params for their profile', () => {

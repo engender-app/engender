@@ -18,6 +18,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { isAndroid } from '$lib/platform';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -48,6 +49,13 @@
      unlocks through. Not disabled - Switch has no such prop, and the answer
      is still worth recording early - just named. */
   let bioApplies = $derived(bootState.accessMode === 'device-bound');
+
+  /* Read once on mount rather than derived from anything: whether a
+     recovery key exists is a file on disk, not app state, and this screen
+     is the only place that asks. Undefined until it answers, so the row
+     states neither thing while it does not know (ADR-0054, ticket
+     sec-01). */
+  refreshRecoveryKeyPresence();
 </script>
 
 <div class="screen">
@@ -65,6 +73,17 @@
         title={m.settings_access_mode_row()}
         subtitle={modeName}
         href="/settings/access-mode"
+      />
+      <ListRow
+        key="recovery-key"
+        icon="key"
+        title={m.rk_row_title()}
+        subtitle={!recoveryKeyPresence.known
+          ? undefined
+          : recoveryKeyPresence.exists
+            ? m.rk_row_sub_active()
+            : m.rk_row_sub_none()}
+        href="/settings/recovery-key"
       />
       <ListRow
         static

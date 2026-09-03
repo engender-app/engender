@@ -29,7 +29,7 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
-  import { bootState, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
+  import { bootState, recoveryUnlock, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
@@ -62,6 +62,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
+  import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
   import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
@@ -133,6 +134,14 @@
   let needsAuthentication = $derived(gate === 'authentication');
 
   let needsDeviceRecovery = $derived(gate === 'device-recovery');
+
+  /* A recovery unlock owes the person a new access mode before the app shows
+     them anything (ADR-0054, ticket sec-02). Not a gate - the journal is
+     open behind this - so it sits with the lock in the chain below rather
+     than with the gates above, and for the lock's own reason: instead of the
+     route, not over it, so no screen mounts and no query runs behind a
+     screen somebody has not finished. */
+  let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
   /* Older code against a newer Journal (ticket 04). Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
@@ -143,6 +152,7 @@
      depend on how boot went and are this file's own. */
   let chromeless = $derived(
     locked ||
+      needsAccessModeAfterRecovery ||
       needsPassphrase ||
       needsAuthentication ||
       needsDeviceRecovery ||
@@ -522,6 +532,11 @@
         <AndroidKeyGate />
       {:else if needsDeviceRecovery}
         <DeviceBoundRecovery />
+      {:else if needsAccessModeAfterRecovery}
+        <!-- Before the lock rather than after it: a session that has just
+             been recovered has nothing for a re-entry screen to ask, since
+             the secret it would ask for is the one that failed. -->
+        <PostRecoveryAccessMode />
       {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,
              so no screen mounts and no query runs while the app is locked. -->

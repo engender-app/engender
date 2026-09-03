@@ -26,6 +26,8 @@
   import PinEntry, { type PinAttempt } from '$lib/components/PinEntry.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
 
   type Mode = AccessSetupMode;
 
@@ -45,6 +47,23 @@
      failing. */
   let current = $derived(bootState.accessMode);
 
+  /* Whether this journal already has a recovery key (ADR-0054, ticket
+     sec-02). Two jobs: the line below, because the honest description of
+     what any mode protects against depends on it and this screen could not
+     see that fact before; and whether the offer after a change is worth
+     making at all.
+
+     Read once, on mount, and that is enough rather than a compromise: the
+     only way to make a key from here is the offer's own link, which leaves
+     this screen, and coming back to it mounts it again. Nothing else in the
+     app writes that file while this screen is open. */
+  refreshRecoveryKeyPresence();
+
+  /** Set after a change that is worth offering a recovery key on, which
+      replaces this screen's own navigation away. Null means nothing to
+      offer, which is the ordinary case. */
+  let offering = $state<'device-bound' | 'secret-changed' | null>(null);
+
   async function choose(mode: Mode, secret: string) {
     if (busy) return;
     busy = true;
@@ -52,6 +71,13 @@
     try {
       await changeAccessMode(mode, secret);
       toast(m.am_changed_toast());
+      /* Device-bound mode is the choice that creates the unrecoverable
+         state, so it is the one that gets the offer rather than the
+         navigation - and only where there is nothing already covering it. */
+      if (mode === 'device-bound' && !recoveryKeyPresence.exists) {
+        offering = 'device-bound';
+        return;
+      }
       await goto('/settings/security');
     } catch (e) {
       console.error('changing the access mode failed', e);
@@ -105,6 +131,14 @@
     try {
       await changeJournalPin(currentPin, entered);
       toast(m.pin_changed_toast());
+      /* A changed PIN rewraps the same data key, so an existing recovery key
+         still works and there is nothing to regenerate. What is worth one
+         line is the case where there is none. */
+      if (!recoveryKeyPresence.exists) {
+        changingPin = false;
+        offering = 'secret-changed';
+        return;
+      }
       await goto('/settings/security');
     } catch (e) {
       console.error('changing the PIN failed', e);
@@ -124,7 +158,9 @@
 <div class="screen">
   <ScreenHeader title={m.am_change_title()} back="/settings/security" />
 
-  {#if changingPin}
+  {#if offering !== null}
+    <RecoveryKeyOffer variant={offering} onDismiss={() => goto('/settings/security')} />
+  {:else if changingPin}
     <div class="card">
       <p class="ob-text">{pinPrompt}</p>
       {#if currentPin === ''}
@@ -150,6 +186,12 @@
   {:else}
     <div class="card">
       <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} />
+      {#if recoveryKeyPresence.exists}
+        <!-- The fact every mode's description depends on and this screen
+             could not see before ADR-0054: whatever is chosen here, the
+             written key opens the journal too. -->
+        <p class="ob-text" data-access-recovery-active>{m.am_recovery_active()}</p>
+      {/if}
     </div>
 
     <!-- Changing the secret without changing the mode. Two rows rather than

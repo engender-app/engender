@@ -3446,6 +3446,75 @@ try {
   ok('one screen over one registry: notify column absent on web, Home column still whole');
 } catch (e) { fail('the unprompted registry view', e); }
 
+/* The recovery key, made and removed from Settings (ADR-0054, ticket
+   sec-01).
+
+   Before the access-mode flow rather than after it, for that flow's own
+   reason: it leaves the journal in PIN mode with no way back, so anything
+   after it meets a gate instead of the app.
+
+   What only a real browser can check here is the pair of facts the node
+   tier cannot see: that minting reaches the live session's data key through
+   journalDataKey() rather than finding nothing on a screen that was reached
+   by a goto, and that the characters are on screen exactly once - leaving
+   the shown state has to lose them, because nothing stores them. */
+try {
+  await fresh('/settings');
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('[data-security-list]');
+
+  const row = page.locator('[data-list-row="recovery-key"]');
+  if (!(await row.count())) throw new Error('Security offers no recovery-key row');
+
+  await page.locator('a[href="/settings/recovery-key"]').click();
+  await page.waitForSelector('[data-make-recovery-key]');
+  await page.locator('[data-make-recovery-key]').click();
+
+  /* The key itself, gripped by its handle rather than by its copy
+     (ADR-0029). Its shape is the assertion: five groups of five from the
+     Crockford alphabet, which is what recoveryKey.ts guarantees and what
+     somebody has to be able to read off the screen. */
+  const shown = (await page.locator('[data-recovery-key]').innerText()).trim();
+  if (!/^[0-9A-Z]{5}(-[0-9A-Z]{5}){4}$/.test(shown)) {
+    throw new Error('the key on screen is not five groups of five: ' + shown);
+  }
+  if (!(await page.locator('[data-print-recovery-key]').count())) {
+    throw new Error('the shown key offers no way to print it');
+  }
+
+  await page.locator('[data-recovery-key-done]').click();
+  await page.waitForSelector('[data-list-row="remove-recovery-key"]');
+
+  /* Shown once, and this is the half of that claim a browser can prove:
+     acknowledging it leaves a screen with no key on it, and coming back to
+     the screen fresh does not bring the characters back - the file holds a
+     wrap and nothing else. */
+  if (await page.locator('[data-recovery-key]').count()) {
+    throw new Error('the key is still on screen after being acknowledged');
+  }
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('[data-security-list]');
+  await page.locator('a[href="/settings/recovery-key"]').click();
+  await page.waitForSelector('[data-list-row="remove-recovery-key"]');
+  if (await page.locator('[data-recovery-key]').count()) {
+    throw new Error('reopening the screen showed the key again');
+  }
+
+  /* Removing it, through the confirm the copy promises. The row going is
+     the assertion, and the handle it asserts on is live until the click -
+     the absence is checked against a screen that has redrawn, not against a
+     handle that was deleted with the thing it named. */
+  await page.locator('[data-list-row="remove-recovery-key"]').click();
+  await page.waitForSelector('[data-confirm-revoke]');
+  await page.locator('[data-confirm-revoke]').click();
+  await page.waitForSelector('[data-make-recovery-key]');
+  if (await page.locator('[data-list-row="remove-recovery-key"]').count()) {
+    throw new Error('the removed key still offers a remove row');
+  }
+
+  ok('a recovery key is made once, shown once, and removed from Settings');
+} catch (e) { fail('the recovery key', e); }
+
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
 
@@ -3595,6 +3664,124 @@ try {
 
   ok('the access mode changes, PIN gates a cold start, throttles wrong PINs and opens on the right one');
 } catch (e) { fail('access mode', e); }
+
+/* AFTER LAST. A recovery key used for what it is for (ADR-0054, ticket
+   sec-02), which can only be checked here and in this order.
+
+   Every part of this needs state the flow above leaves behind: the journal
+   is in PIN mode with a known PIN, which is what makes a reload land on a
+   gate instead of the app. `fresh()` only clears localStorage - it does not
+   reseed the journal or the keystore - so a mode change persists across
+   flows and this is the one place a gate is reachable at all.
+
+   The chain: mint a key while the journal is open, meet the PIN gate, get
+   in with the written key instead of the PIN, land on the forced
+   access-mode module, choose device-bound from it, then destroy the local
+   key device-bound mode depends on and come back through the dead-end
+   screen with the same key. That last state is the one the ticket exists
+   for - a browser that threw away its key - and it is the only screen in
+   the app that used to have nothing on it but a reset. */
+try {
+  /* No fresh() here, and that is the first thing this flow taught: fresh()
+     ends in booted(), and the journal this one inherits is in PIN mode, so a
+     load lands on the pad and booted() never resolves. The flow hung on its
+     own first line and reported it as an anonymous 30s timeout. Getting in
+     with the PIN is the prerequisite rather than the subject here - the
+     subject is getting in without it, twice, further down. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-pin-pad]');
+  await typePin('1234');
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+
+  await page.locator('[data-nav-item="settings"]').click();
+  await page.locator('a[href="/settings"]').click();
+  await page.locator('a[href="/settings/security"]').click();
+  await page.waitForSelector('[data-security-list]');
+  await page.locator('a[href="/settings/recovery-key"]').click();
+  await page.waitForSelector('[data-make-recovery-key]');
+  await page.locator('[data-make-recovery-key]').click();
+  const written = (await page.locator('[data-recovery-key]').innerText()).trim();
+  await page.locator('[data-recovery-key-done]').click();
+  await page.waitForSelector('[data-list-row="remove-recovery-key"]');
+
+  /* Back to Home before the reload, so the route waiting behind the gate is
+     Home rather than the screen the key was minted on - what this checks
+     after the recovery is that the app came back, and Home is the least
+     ambiguous evidence of that.
+
+     Clicked rather than goto'd, which is the second thing this flow taught:
+     a goto to a different path is a full document load, so it cold-boots
+     the app and lands on the gate. Two steps here were written with goto
+     and both waited 30 seconds for a screen that was sitting behind a PIN
+     pad. */
+  await page.locator('[data-nav-item="home"]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  /* The gate the flow above left the journal behind: PIN mode, so a cold
+     load asks for four digits. The written key is offered here because one
+     exists, and it was not offered before this flow minted one. */
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-pin-pad]');
+  if (!(await page.locator('[data-use-recovery-key]').count())) {
+    throw new Error('the PIN gate offered no way to use a recovery key');
+  }
+  await page.locator('[data-use-recovery-key]').click();
+  await page.waitForSelector('[data-recovery-key-input]');
+
+  /* A typo first, because the two failures are the point: this one has to
+     come back as "check what you typed" and leave the field usable, not as
+     a key that belongs to another journal. */
+  await page.fill('[data-recovery-key-input]', written.slice(0, -1) + (written.endsWith('0') ? '1' : '0'));
+  await page.locator('[data-submit-recovery-key]').click();
+  const mistyped = await page.locator('[data-recovery-key-error]').innerText();
+  if (mistyped.trim() === '') throw new Error('a mistyped recovery key said nothing');
+  if (!(await page.locator('[data-recovery-key-input]').count())) {
+    throw new Error('a mistyped key left no field to correct');
+  }
+
+  await page.fill('[data-recovery-key-input]', written);
+  await page.locator('[data-submit-recovery-key]').click();
+
+  /* Not Home. A recovery unlock owes a new access mode first, with no way
+     past - the PIN it just got in without is still the journal's only other
+     door. */
+  await page.waitForSelector('[data-post-recovery-setup]');
+  await booted();
+  if (await page.locator('[data-home-hello]').count()) {
+    throw new Error('a recovery unlock reached Home without choosing an access mode');
+  }
+
+  /* Device-bound from the forced module, which is the mode this browser can
+     move to. The offer to make a recovery key must NOT appear after it:
+     this journal has one, and offering a second would be the screen failing
+     to read the file it was written from. */
+  await page.locator('[data-access-modes] [data-list-row="device-bound"]').click();
+  await page.locator('[data-access-submit]').click();
+  await page.waitForSelector('[data-home-hello]');
+  if (await page.locator('[data-recovery-offer]').count()) {
+    throw new Error('the device-bound offer appeared on a journal that already has a recovery key');
+  }
+
+  /* The cliff itself - a browser that threw its local key away - is where
+     this flow stopped, and it stops on purpose rather than for want of
+     trying. Deleting the device-key slot and reloading does reach the
+     dead-end screen in a real build; in a demo build it does not, because a
+     keystore-less journal is what the demo boot path treats as a first run,
+     so it mints its own passphrase keystore and the reload lands on the
+     passphrase gate instead. Driving the app past that would mean teaching
+     the demo path about a state only this test wants.
+
+     What covers that screen instead: its two states are shot in the gates
+     gallery (`device-recovery-with-key` beside `device-recovery`), against a
+     real recovery wrap rather than a prop, and the condition behind them is
+     one read of `recoveryKeyExists`, which the node tier owns. What only a
+     real gate could prove - that a written key opens a journal whose secret
+     is gone, and that the app then refuses to go anywhere until a new one is
+     set - is what the steps above are. */
+
+  ok('a written key opens a journal whose PIN is gone, is refused when mistyped, and owes a new access mode before the app comes back');
+} catch (e) { fail('the recovery key at the gate', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 

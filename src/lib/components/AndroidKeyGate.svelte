@@ -29,6 +29,8 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bioGateDecision } from '$lib/lock/bio-consent';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
@@ -36,6 +38,18 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* Read once on mount, like the web gate's (ADR-0054, ticket sec-02). It
+     matters more here: the invalidated screen below is the state
+     JournalKeystore.java calls the cliff, and a recovery key is the one
+     thing that gets a journal back off it. */
+  refreshRecoveryKeyPresence();
+  let usingRecoveryKey = $state(false);
+  /* "There is no way to bring it back" is true of the Keystore alias and
+     false about the journal once a recovery key exists, and this screen is
+     the one that says it hardest. One body per state. */
+  let invalidatedBody = $derived(
+    recoveryKeyPresence.exists ? m.ak_invalidated_body_recoverable() : m.ak_invalidated_body()
+  );
   let consentOpen = $state(false);
 
   let refusal = $derived(bootState.androidKey?.kind === 'refused' ? bootState.androidKey.authentication : null);
@@ -103,12 +117,30 @@
   }
 </script>
 
-{#if invalidated}
-  <!-- The one state with no way back into this journal (JournalKeystore's
-       header says why the platform does this). A risk screen: the whole
-       consequence, then the single action there is. -->
+{#if usingRecoveryKey}
+  <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
+{:else if invalidated}
+  <!-- The state JournalKeystore.java calls the cliff: the platform destroyed
+       the key when the screen lock came off, and this file has nothing left
+       to give. Until ADR-0054 that made it the one state with no way back
+       into the journal, and the screen offered a reset and nothing else.
+       A recovery key is a different file that no alias is involved in, so
+       where one exists the way back goes first and the reset stops being the
+       only thing on offer. -->
   <GateScreen icon="alert" tone="alert" title={m.ak_invalidated_title()}>
-    <p class={gateBodyClass(m.ak_invalidated_body())} data-key-invalidated>{m.ak_invalidated_body()}</p>
+    <!-- Held back until the answer is in, for the reason
+         DeviceBoundRecovery states: this body is the harder of the two to
+         be wrong about, since it tells somebody their journal is gone. -->
+    {#if recoveryKeyPresence.known}
+      <p class={gateBodyClass(invalidatedBody)} data-key-invalidated>{invalidatedBody}</p>
+    {/if}
+    {#if recoveryKeyPresence.exists}
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
+          <span>{m.rke_open()}</span>
+        </button>
+      </div>
+    {/if}
     <div class="gate-actions">
       <button class="btn btn-danger" data-open-reset onclick={() => (resetOpen = true)}>
         <span>{m.reset_confirm()}</span>
@@ -162,6 +194,11 @@
     </div>
 
     <div class="gate-foot">
+      {#if recoveryKeyPresence.exists}
+        <button class="btn btn-ghost" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
+          <span>{m.rke_open()}</span>
+        </button>
+      {/if}
       <button class="btn btn-ghost" data-forgot-key onclick={() => (resetOpen = true)}>
         <span>{m.ak_forgot()}</span>
       </button>

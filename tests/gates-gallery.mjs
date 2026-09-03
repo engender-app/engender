@@ -45,7 +45,18 @@ const SCENES = [
   'android-key-no-lock',
   'android-key-invalidated',
   'device-recovery',
-  'schema-too-new'
+  'schema-too-new',
+  /* The recovery key's screens (ADR-0054, ticket sec-02). Four of these five
+     are a screen that already existed, shown again with a recovery wrap on
+     disk: the PIN gate grows a way out, the two dead ends grow an action,
+     and the fixture writes the wrap so the difference is real rather than a
+     prop. The fifth pair - the entry itself and the module a recovery unlock
+     is held on - have no other address. */
+  'recovery-entry',
+  'post-recovery',
+  'unlock-pin-with-key',
+  'device-recovery-with-key',
+  'android-key-invalidated-with-key'
 ];
 
 /* The security module is the one surface whose *content* differs by

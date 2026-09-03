@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest';
 import { clearBrowserMirrors, wipeLocalData, type LocalDataTargets } from './reset.ts';
+import { RECOVERY_KEY_FILE } from './recovery-key-file.ts';
 import { BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
@@ -71,6 +72,23 @@ test('a database that will not close is no reason to leave the data', async () =
   await wipeLocalData(deps);
   expect(log).toContain('remove photos (recursive)');
   expect(log).toContain('clear cache');
+});
+
+/* The recovery key is swept by the same recursive walk and by no line of
+   its own (ADR-0054, ticket sec-01), which is worth a test precisely
+   because there is nothing in reset.ts naming it: a reset that left the
+   file behind would leave a written key that opens a journal the person
+   asked to be rid of - and, once a new journal is set up on the same
+   device, a stale wrap sitting next to it. Whoever narrows this sweep to a
+   list of known names has to fail here. */
+test('a reset takes the recovery key with everything else under the root', async () => {
+  const { deps, log } = targets({
+    entries: ['gender-diary.sqlite3', 'keystore.json', RECOVERY_KEY_FILE, '.opfs-sahpool']
+  });
+  await wipeLocalData(deps);
+
+  expect(log).toContain(`remove ${RECOVERY_KEY_FILE} (recursive)`);
+  expect(log).toContain('remove keystore.json (recursive)');
 });
 
 test('a reset during an interrupted conversion takes the plaintext journal and the marker too', async () => {
