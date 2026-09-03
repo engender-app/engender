@@ -34,6 +34,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
+  import { compareStretchLink } from '$lib/components/kit/compareStretchLink.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
@@ -158,6 +159,18 @@
   let entriesRemaining = $derived(
     Math.max(0, (entriesQuery.value ?? NOTHING_IN_RANGE).total - entriesInRange.length)
   );
+
+  /* Ticket 18: this stretch as one side of `/compare`, and the same-length
+     window before it as the other - an open-ended tryout's own end clamps
+     to today at read time and is never stored (ADR-0049, ADR-0010), the
+     same clamp `periodFromEra` already gives an open era on `/compare`
+     itself. `compareStretchLink` answers whether there is enough journal
+     to offer that at all. */
+  let openEnded = $derived(detail.record ? detail.record.endEpochDay === null : false);
+  let stretch = $derived(
+    detail.record ? { start: detail.record.startEpochDay, end: detail.record.endEpochDay ?? todayEpochDay() } : null
+  );
+  const compareLink = compareStretchLink(() => stretch);
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
@@ -398,6 +411,26 @@
         </div>
       {/snippet}
     </ReadGate>
+
+    {#if compareLink.state.status !== 'hidden'}
+      {@const compareState = compareLink.state}
+      <div class="screen-part">
+        <Notice
+          icon="shuffle"
+          key="tryout-compare"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.entries)}
+          title={m.tryout_compare_title()}
+          text={compareState.status === 'ready'
+            ? (openEnded ? m.tryout_compare_open_hint() : undefined)
+            : compareState.status === 'tooShort'
+              ? m.tryout_compare_too_short()
+              : m.tryout_compare_no_data()}
+          action={compareState.status === 'ready'
+            ? { label: m.tryout_compare_action(), href: compareState.href }
+            : undefined}
+        />
+      </div>
+    {/if}
   {/if}
 
   <RecordSheet
