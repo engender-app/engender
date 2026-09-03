@@ -2077,7 +2077,7 @@
   "curve_window_180": "180 days",
   "curve_legend_band": "Modelled range",
   "curve_legend_results": "Your results",
-  "curve_legend_markers": "What else you logged",
+  "curve_legend_markers": "Also logged",
   "curve_marker_heading": "Marked here",
   "curve_marker_clear": "Close",
   "curve_markers_note": "The marks along the bottom are side effects, injections, and the days a counter or a body reading went above your own range for the last six months. Nothing here says one caused the other.",

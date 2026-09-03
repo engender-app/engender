@@ -601,18 +601,23 @@
     min-height: 3.5rem;
   }
 
-  /* The same ink and weight the marks themselves are drawn in
-     (components/CurveMarkers.svelte), so the swatch is the mark rather than
-     a second thing that stands for it. */
+  /* The mark itself at legend size, not a shape that stands for one: the
+     same ink and the same width CurveMarkers.svelte strokes it at. A border
+     rather than a background collapsed to a bare rule with no box, because
+     a zero-width flex item takes no space to draw the border on. */
   .legend-marker {
-    width: 0;
+    width: 1.25px;
     height: 11px;
-    border-left: 1.5px solid color-mix(in oklab, var(--text) 52%, transparent);
+    border-radius: 1px;
+    background: color-mix(in oklab, var(--text) 30%, transparent);
   }
 
+  /* No margin of its own: the rows are 44px tall and their own leading is
+     already the space under the heading, so a gap here put more air below
+     the label than above it. */
   .marker-list {
     list-style: none;
-    margin: var(--space-2) 0 0;
+    margin: 0;
     padding: 0;
   }
 

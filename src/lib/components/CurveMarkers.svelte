@@ -71,9 +71,14 @@
   } = $props();
 
   /** How far a mark rises off the baseline, as a share of the plot's height.
-      The kit layer's own fifth, so a chart that draws both does not have two
-      heights of tick meaning the same thing. */
-  const MARK_HEIGHT = 0.2;
+
+      An eighth, where the kit layer's own marks take a fifth. The kit's sit
+      under a line chart, whose stroke is the strongest thing on the card; a
+      hormone band is a pale wash, so at a fifth and the kit's weight two
+      dozen marks read as a bar chart drawn over the curve rather than as a
+      ruler under it. Shot at 180 days with a weekly injection - which is
+      twenty-six of them - that is exactly what it looked like. */
+  const MARK_HEIGHT = 0.125;
   /** How far the second line of a gathered mark sits from the first. */
   const DOUBLE_GAP = 3;
   /** How wide a tap target is at most, in viewBox units. The same trade the
@@ -167,12 +172,17 @@
 </g>
 
 <style>
-  /* The kit layer's own weight and colour (kit.css, .kit-annotation-mark):
-     above the gutter's text, below the stroke of anything plotted, and mixed
-     from --text so it holds in all eight palettes and both themes. */
+  /* Mixed from --text rather than given a hue of its own, which is the kit
+     layer's rule and holds for the same reason: eight palettes across two
+     themes, and ink is the only thing all of them share.
+
+     Lighter than the kit's 52% though, and thinner. A mark has to sit above
+     the axis labels and below anything plotted, and what is plotted here is
+     a 34%-opacity wash rather than a line - at the kit's weight the marks
+     were the darkest thing on the card. */
   .curve-marker {
-    stroke: color-mix(in oklab, var(--text) 52%, transparent);
-    stroke-width: 1.5;
+    stroke: color-mix(in oklab, var(--text) 30%, transparent);
+    stroke-width: 1.25;
     stroke-linecap: round;
     /* --dur-fast is already 1ms under prefers-reduced-motion (theme/base.css),
        so this needs no media query of its own. */
