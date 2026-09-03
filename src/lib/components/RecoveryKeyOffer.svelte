@@ -13,10 +13,13 @@
 
      `device-bound` - somebody has just chosen the mode with no secret at
      all, which is the choice that creates the unrecoverable state, and they
-     are already thinking about what happens if it goes wrong. Different copy
-     per platform, because the cliff is a different event on each: a browser
-     clearing its data on the web, the screen lock coming off on Android,
-     where a scheduled backup may already cover it (ADR-0042).
+     are already thinking about what happens if it goes wrong. Web only, and
+     not by preference: Android cannot move an open journal to device-bound
+     at all, because its Keystore bridge mints its own data key and cannot be
+     asked to wrap an existing one (ADR-0041), so `AccessModeSetup` does not
+     offer that row there and this moment does not exist on a phone. An
+     Android-worded body was written for it and then deleted rather than
+     left as copy nothing can reach.
 
      `secret-changed` - a passphrase or PIN has just been changed, which is
      the moment somebody is thinking about the secret at all. Shown only
@@ -29,20 +32,13 @@
      for the other a completed secret change, and both had somewhere they
      were already going. */
   import { m } from '$lib/paraglide/messages';
-  import { isAndroid } from '$lib/platform';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
 
   let { variant, onDismiss }: { variant: 'device-bound' | 'secret-changed'; onDismiss: () => void } =
     $props();
 
-  let body = $derived(
-    variant === 'secret-changed'
-      ? m.rkn_offer()
-      : isAndroid()
-        ? m.rko_body_android()
-        : m.rko_body_web()
-  );
+  let body = $derived(variant === 'secret-changed' ? m.rkn_offer() : m.rko_body_web());
 </script>
 
 <div class="card" data-recovery-offer={variant}>

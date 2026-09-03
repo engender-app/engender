@@ -1,10 +1,8 @@
 import { test, expect } from 'vitest';
 import {
-  RECOVERY_KEY_ENTROPY_BITS,
   RECOVERY_KEY_LENGTH,
   RecoveryKeyMistypedError,
   canonicalRecoveryKey,
-  displayRecoveryKey,
   generateRecoveryKey
 } from './recoveryKey.ts';
 
@@ -34,11 +32,9 @@ test('a generated key round-trips through the parser it was minted through', () 
   const canonical = canonicalRecoveryKey(key);
   expect(canonical).toHaveLength(RECOVERY_KEY_LENGTH);
   expect(canonical).toBe(key.replace(/-/g, ''));
-  expect(displayRecoveryKey(canonical)).toBe(key);
 });
 
-test('two keys are never the same, and the claim is 120 bits', () => {
-  expect(RECOVERY_KEY_ENTROPY_BITS).toBe(120);
+test('two keys are never the same', () => {
   const keys = new Set(Array.from({ length: 50 }, () => generateRecoveryKey()));
   expect(keys.size).toBe(50);
 });

@@ -13,11 +13,8 @@
      (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
      sure I still have it". */
   import { m } from '$lib/paraglide/messages';
-  import {
-    mintRecoveryKey,
-    recoveryKeyExists,
-    revokeRecoveryKey
-  } from '$lib/data/recovery-key';
+  import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { journalDataKey } from '$lib/stores/boot.svelte';
   import { printCurrentPage } from '$lib/print/print';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -26,21 +23,13 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
 
-  /** Null until the first read answers, so the screen draws neither state
-      while it does not know which one is true. Offering "make a key" for a
-      frame to somebody who has one would be the wrong sentence, and the
-      read is a file open rather than something slow enough to need a
-      spinner. */
-  let exists = $state<boolean | null>(null);
   /** The minted key, present only between minting and leaving the screen.
       Held in one place and never written anywhere else. */
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
   let busy = $state(false);
 
-  const load = recoveryKeyExists().then((found) => {
-    exists = found;
-  });
+  refreshRecoveryKeyPresence();
 
   async function mint() {
     if (busy) return;
@@ -51,7 +40,7 @@
          beats it. journalDataKey() is the same door the entry-draft mirror
          goes through. */
       shown = await mintRecoveryKey(await journalDataKey());
-      exists = true;
+      await refreshRecoveryKeyPresence();
       confirming = null;
     } catch {
       toast(m.rk_failed());
@@ -65,7 +54,7 @@
     busy = true;
     try {
       await revokeRecoveryKey();
-      exists = false;
+      await refreshRecoveryKeyPresence();
       confirming = null;
       toast(m.rk_removed_toast());
     } catch {
@@ -96,7 +85,7 @@
 <div class="screen">
   <ScreenHeader title={m.rk_title()} back="/settings/security" />
 
-  {#await load then _}
+  {#if recoveryKeyPresence.known}
     {#if shown !== null}
       <!-- The one moment the characters exist. No back arrow out of this
            branch beyond the header's, and the primary action is the
@@ -125,10 +114,9 @@
           }}>{m.rk_done()}</button
         >
       </div>
-    {:else if exists}
+    {:else if recoveryKeyPresence.exists}
       <div class="card">
         <p class="ob-text">{m.rk_active_body()}</p>
-        <p class="ob-text">{m.rk_next_start()}</p>
       </div>
       <ListCard>
         <ListRow
@@ -153,7 +141,7 @@
         {m.rk_make()}
       </button>
     {/if}
-  {/await}
+  {/if}
 </div>
 
 <Sheet
@@ -161,11 +149,14 @@
   title={confirming === 'revoke' ? m.rk_revoke_title() : m.rk_replace_title()}
   onClose={() => (confirming = null)}
 >
+  <!-- No "takes effect at the next start" line here, and the reason is
+       worth keeping: this branch shipped one, and it was false. Revoking
+       removes the file and replacing overwrites it, so in both cases the old
+       key stops opening the journal at once. What survives unchanged is the
+       session already open, which holds the data key in memory and consults
+       neither file again - and that is not what somebody at this confirm is
+       asking about. The two bodies already say what stops working. -->
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
-  <!-- On both confirms rather than only on the card behind them: this is
-       the sentence somebody needs at the moment they decide, and "removed"
-       without "from the next start" would read as instant. -->
-  <p class="ob-text">{m.rk_next_start()}</p>
   {#if confirming === 'revoke'}
     <button class="btn btn-primary" type="button" data-confirm-revoke disabled={busy} onclick={revoke}>
       {m.rk_revoke_confirm()}

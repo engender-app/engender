@@ -17,7 +17,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
-  import { recoveryKeyExists } from '$lib/data/recovery-key';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
 
   let current = $state('');
   let next = $state('');
@@ -30,10 +30,7 @@
      here and nothing to say about it. What is worth one line is the case
      where there is none, offered once, at the moment somebody is already
      thinking about the secret. */
-  let hasRecoveryKey = $state(false);
-  recoveryKeyExists().then((found) => {
-    hasRecoveryKey = found;
-  });
+  refreshRecoveryKeyPresence();
   let offering = $state(false);
 
   async function submit(event: SubmitEvent) {
@@ -54,7 +51,7 @@
     try {
       await changeJournalPassphrase(current, next);
       toast(m.pp_changed_toast());
-      if (!hasRecoveryKey) {
+      if (!recoveryKeyPresence.exists) {
         offering = true;
         return;
       }

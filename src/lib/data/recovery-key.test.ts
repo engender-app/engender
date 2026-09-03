@@ -110,10 +110,13 @@ test('a recovery key still opens the journal after the access mode changes', asy
 
   const toPin = await rewrapKeystore(metadata, 'the old passphrase', '4321', undefined, 'pin');
   expect(await unlockKeystore(toPin, '4321')).toEqual(dataKey);
+  /* Asserted after each direction rather than once at the end: a rewrap
+     that broke the recovery wrap on the way out and mended it on the way
+     back would pass a single check at the finish. */
+  expect(await openWithRecoveryKey(written, ports)).toEqual(dataKey);
 
   const backToPassphrase = await rewrapKeystore(toPin, '4321', 'a new passphrase', undefined, 'passphrase');
   expect(await unlockKeystore(backToPassphrase, 'a new passphrase')).toEqual(dataKey);
-
   expect(await openWithRecoveryKey(written, ports)).toEqual(dataKey);
 });
 

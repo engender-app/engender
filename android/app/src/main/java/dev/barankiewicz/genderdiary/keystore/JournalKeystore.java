@@ -64,8 +64,9 @@ import javax.crypto.spec.PSource;
  * which no Keystore alias is involved in - so a destroyed alias is no longer
  * the end of the journal for anyone who made one. Nothing here changes: this
  * class still holds a blob it cannot open, and it is not what opens it. The
- * entry path that offers the written key at the gate is ticket sec-02's, so
- * until that lands a minted key is a file waiting for a door.
+ * entry path that offers the written key is AndroidKeyGate's, on the
+ * invalidated screen this paragraph describes: where a recovery key exists
+ * that screen leads with it rather than offering a reset and nothing else.
  */
 public final class JournalKeystore {
 

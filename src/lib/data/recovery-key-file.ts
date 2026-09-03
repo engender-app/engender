@@ -44,12 +44,21 @@ export async function writeRecoveryWrapFile(wrap: RecoveryWrap): Promise<void> {
      `keepExistingData`: it only replaces the real file on close(), so a
      process that dies mid-write leaves the previous recovery key intact
      rather than a truncated file that opens nothing. Replacing a key is the
-     case that matters - an interruption there leaves the old key working,
-     and the screen's own copy is what tells somebody which one they hold. */
+     case that matters - an interruption there leaves the old key working.
+
+     Aborted rather than closed when the write throws, which is the half
+     `writeKeystoreFile` gets wrong and this file copied at first: close()
+     is what commits the swap, so a `finally { close() }` publishes exactly
+     the truncated file the swap exists to prevent. abort() discards it and
+     leaves the previous key where it was. The same one-line fix is owed to
+     keystore-file.ts, which is out of this ticket's scope and named in its
+     notes instead. */
   try {
     await writable.write(serialized);
-  } finally {
     await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
   }
 }
 

@@ -43,7 +43,7 @@
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import GateScreen, { gateBodyClass } from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
-  import { recoveryKeyExists } from '$lib/data/recovery-key';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import AccessModeSetup, { accessModeSetupErrorMessage, accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
@@ -63,10 +63,7 @@
      entry must not be offered where there is none - a door onto nothing
      would send somebody looking for paper they never had. False until the
      read answers, so the way out appears rather than disappearing. */
-  let hasRecoveryKey = $state(false);
-  recoveryKeyExists().then((found) => {
-    hasRecoveryKey = found;
-  });
+  refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
 
   let mode = $derived(passphraseMode(bootState));
@@ -332,7 +329,7 @@
           <!-- Not the primary action and not styled like one: this is the
                door somebody looks for after the first one failed, so it sits
                with the way out rather than competing with the field above. -->
-          {#if hasRecoveryKey}
+          {#if recoveryKeyPresence.exists}
             <button class="btn btn-ghost" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
               <span>{m.rke_open()}</span>
             </button>
@@ -356,7 +353,15 @@
            front of a reset (ADR-0054). Where one exists the notice points at
            it instead, because the alternative is telling somebody to delete
            a journal they could still open. -->
-      <span class="notice-title">{hasRecoveryKey ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span>
+      <!-- The no-recovery line only once it is known to be true. This sheet
+           sits in front of a reset, so a sentence that is briefly wrong here
+           is a sentence that tells somebody to delete a journal they could
+           still open. -->
+      {#if recoveryKeyPresence.known}
+        <span class="notice-title"
+          >{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span
+        >
+      {/if}
       {unlockingBiometric ? m.bm_forgot_key_note() : m.pp_forgot_key_note()}
     </div>
   </div>
