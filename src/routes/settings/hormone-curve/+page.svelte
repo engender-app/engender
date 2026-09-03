@@ -125,6 +125,18 @@
     )
   );
 
+  /** The markers one chart draws: everything about the person, plus the
+      injections that this chart's own curve was built from.
+
+      Every chart here is built from a subset of the dose log - an ester's
+      band from the doses that resolve to that ester, an illustrative shape
+      from the doses that resolve to that shape - so a tick under a band that
+      did not count the dose is the card disagreeing with itself. The query
+      tags each injection with the chart it belongs to and this is where that
+      is spent. */
+  const markersFor = (series: string) =>
+    markers.filter((marker) => marker.series === undefined || marker.series === series);
+
   /** Localized, like every other number this app shows (labContextLabel.ts's
       fmtHours): a Polish reader expects "1 234", not "1,234". Bare
       toLocaleString would follow the browser's locale rather than the one
@@ -202,15 +214,26 @@
   function pickMarker(chart: string, mark: AnnotationMark) {
     const open = pickedMarker[chart] ?? null;
     pickedMarker = { ...pickedMarker, [chart]: open?.key === mark.key ? null : mark };
-    // A marker takes the readout over from a result, rather than the two
-    // fighting for the same three lines.
-    picked = {};
+    /* A marker takes this card's readout over from a result, because one
+       readout cannot say both. Only this card's: two esters are two cards
+       with a readout each, and closing the other one would be this card
+       reaching across the screen. */
+    picked = { ...picked, [chart]: null };
   }
 
   /** What one mark is called when a screen reader lands on it. Every
       annotation it gathered, not only the first: a doubled tick that
       announced one of three would be a control lying about what it opens. */
   const markLabel = (mark: AnnotationMark): string => mark.annotations.map(annotationLabel).join('; ');
+
+  /* A marker open in a readout is a mark on the plot, and the plot is
+     redrawn from a different set of days. Left alone the card would go on
+     naming a record with no tick under it, so the window takes the
+     selection with it. */
+  function changeWindow(days: (typeof WINDOWS)[number]) {
+    windowDays = days;
+    pickedMarker = {};
+  }
 
   function toggleFit(next: boolean) {
     prefs.hormoneCurveFitToOwnLabs = next;
@@ -235,6 +258,13 @@
      Every annotation the mark gathered gets a row of its own, because a
      doubled tick standing for an injection and a headache on the same day
      leads to two different screens. -->
+<!-- The mark at legend size, on both kinds of chart. -->
+{#snippet markerLegend(shown: number)}
+  {#if shown > 0}
+    <span class="legend-item"><span class="legend-marker"></span>{m.curve_legend_markers()}</span>
+  {/if}
+{/snippet}
+
 {#snippet markerReadout(mark: AnnotationMark, close: () => void)}
   <div class="spread">
     <p class="readout-label">{m.curve_marker_heading()}</p>
@@ -248,7 +278,7 @@
         {#if annotation.href}
           <a class="marker-link" href={annotation.href}>{annotationLine(annotation)}</a>
         {:else}
-          <span class="marker-link is-plain">{annotationLine(annotation)}</span>
+          <span class="marker-link">{annotationLine(annotation)}</span>
         {/if}
       </li>
     {/each}
@@ -302,7 +332,7 @@
       name={m.curve_window_label()}
       options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
       value={String(windowDays)}
-      onChange={(value) => (windowDays = Number(value) as (typeof WINDOWS)[number])}
+      onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
       compact
       key="curve-window"
     />
@@ -342,7 +372,7 @@
                 unit: points[index].result.unit,
                 date: fmtDay(points[index].result.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
               })}
-            {markers}
+            markers={markersFor(curve.ester)}
             selectedMarker={openMark?.key ?? null}
             onSelectMarker={(mark) => pickMarker(curve.ester, mark)}
             {markLabel}
@@ -351,9 +381,7 @@
           <div class="curve-legend">
             <span class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</span>
             <span class="legend-item"><span class="legend-result"></span>{m.curve_legend_results()}</span>
-            {#if markers.length > 0}
-              <span class="legend-item"><span class="legend-marker"></span>{m.curve_legend_markers()}</span>
-            {/if}
+            {@render markerLegend(markersFor(curve.ester).length)}
           </div>
 
           <!-- The readout. aria-live because tapping a result changes text
@@ -428,7 +456,7 @@
                 from: fmtDay(fromEpochDay, { day: 'numeric', month: 'short' }),
                 to: fmtDay(today, { day: 'numeric', month: 'short' })
               })}
-              {markers}
+              markers={markersFor(curve.key)}
               selectedMarker={openMark?.key ?? null}
               onSelectMarker={(mark) => pickMarker(curve.key, mark)}
               {markLabel}
@@ -436,9 +464,7 @@
 
             <div class="curve-legend">
               <span class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</span>
-              {#if markers.length > 0}
-                <span class="legend-item"><span class="legend-marker"></span>{m.curve_legend_markers()}</span>
-              {/if}
+              {@render markerLegend(markersFor(curve.key).length)}
             </div>
 
             <!-- The marker readout takes the card's own readout over while a
@@ -621,21 +647,22 @@
     padding: 0;
   }
 
-  /* Full width and 44px tall, which is the whole reason the tap-through is
-     here rather than on the tick. */
+  /* Full width and a whole touch target tall, which is the whole reason the
+     tap-through is here rather than on the tick. The token and not a number:
+     it is 48px, Android's floor, and the app is held to it
+     (theme/base.css, tests/accessibility-audit.test.ts). */
   .marker-link {
     display: flex;
     align-items: center;
-    min-height: 44px;
-    color: var(--accent);
+    min-height: var(--touch-target);
     text-decoration: none;
   }
 
-  /* A marker with no record to open never occurs today - all six kinds carry
-     an address - but the shape admits one, and a plain row is what it should
-     read as rather than a link that goes nowhere. */
-  .marker-link.is-plain {
-    color: var(--text);
+  /* Only the anchor takes the accent. A marker with no record to open never
+     occurs today - all six kinds carry an address - but the type admits one,
+     and dropping the row would lose a mark the plot is drawing. */
+  a.marker-link {
+    color: var(--accent);
   }
 
   .readout-label {

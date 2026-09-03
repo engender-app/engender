@@ -392,6 +392,7 @@ const COMPOSING_READS: readonly ComposingRead[] = [
     composes: [
       ['sideEffects', 'getSideEffectsInRange'],
       ['doses', 'getDoses'],
+      ['regimen', 'getEpisodes'],
       ['stats', 'tallyTrend'],
       ['stats', 'bodyRegionReadings']
     ]

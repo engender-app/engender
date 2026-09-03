@@ -1,3 +1,34 @@
+<script lang="ts" module>
+  import type { AnnotationMark as Mark, ChartAnnotation as Annotation } from '$lib/charts/annotations';
+
+  /** What a chart has to be handed to draw a marker layer, as one type
+      rather than four props twice over: both curve charts take exactly this
+      set and forward it whole, and a fifth prop added here should not be
+      four edits. */
+  export interface CurveMarkerProps {
+    /** Already selected for the range and ordered by where they sit. Empty,
+        or either callback missing, and no layer is drawn at all: a marker's
+        whole purpose is going to the record it stands for, so one nothing
+        can answer is a tick with nowhere to go. */
+    markers?: readonly Annotation[];
+    /** The key of the gathered mark that is open in the readout. */
+    selectedMarker?: string | null;
+    onSelectMarker?: (mark: Mark) => void;
+    /** The accessible name for one mark. A control with no name cannot be
+        announced, and every one of these is a control. */
+    markLabel?: (mark: Mark) => string;
+  }
+
+  /** Whether a chart handed those props has a layer to draw. */
+  export function drawsMarkers(props: CurveMarkerProps): boolean {
+    return (
+      props.onSelectMarker !== undefined &&
+      props.markLabel !== undefined &&
+      (props.markers?.length ?? 0) > 0
+    );
+  }
+</script>
+
 <script lang="ts">
   /* What else was logged on the days a hormone curve covers (phase 8
      features ticket 15).
@@ -63,10 +94,10 @@
     selected?: string | null;
     /** The whole mark and not its key: a gathered mark carries every
         annotation that landed on it, and a caller handed only the key would
-        have to work out which ones those were a second time. */
+        have to work out which ones those were a second time. Required here
+        where CurveMarkerProps has it optional - a host decides whether to
+        draw a layer at all, and by the time it does there is a handler. */
     onSelect: (mark: AnnotationMark) => void;
-    /** The accessible name for one mark. Required: a control with no name
-        cannot be announced, and every one of these is a control. */
     markLabel: (mark: AnnotationMark) => string;
   } = $props();
 

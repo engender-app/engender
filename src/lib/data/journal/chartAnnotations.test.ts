@@ -198,38 +198,139 @@ test('a side effect marks its own day and goes to the side effects screen', asyn
   );
 });
 
-/* The band is built from injections that were actually taken, so the marks
-   under it have to be the same set: a mark under a peak the curve does not
-   have reads as the chart disagreeing with itself. */
-test('injections mark, an oral dose does not, and a skipped injection does not', async () => {
-  const journal = await journalWith();
-  const at = (day: number) => startOfDayTimestamp(day) + 36000000;
+const at = (day: number) => startOfDayTimestamp(day) + 36000000;
 
-  await journal.doses.upsertDose({
-    timestamp: at(daysAgo(14)),
+const injection = (day: number, extra: Record<string, unknown> = {}) => ({
+  timestamp: at(day),
+  dose: 4,
+  doseUnit: 'mg',
+  route: 'im' as const,
+  injectionSite: 'thigh-left' as const,
+  vehicle: 'oil' as const,
+  ...extra
+});
+
+/* Every chart on the screen is built from a subset of the dose log, so the
+   marks under one have to be that same subset: a tick under a band that did
+   not count the dose is the card disagreeing with itself. */
+test('an injection marks under the ester its own episode resolves to', async () => {
+  const journal = await journalWith();
+
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
     dose: 4,
     doseUnit: 'mg',
     route: 'im',
-    injectionSite: 'thigh-left',
-    vehicle: 'oil'
+    interval: 'every 7 days',
+    startEpochDay: daysAgo(60),
+    endEpochDay: daysAgo(30)
   });
-  await journal.doses.upsertDose({
-    timestamp: at(daysAgo(7)),
-    dose: 4,
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol enanthate',
+    ester: 'enanthate',
+    dose: 5,
     doseUnit: 'mg',
-    status: 'skipped',
     route: 'im',
-    injectionSite: 'thigh-right',
-    vehicle: 'oil'
+    interval: 'every 7 days',
+    startEpochDay: daysAgo(29),
+    endEpochDay: null
   });
-  await journal.doses.upsertDose({ timestamp: at(daysAgo(3)), dose: 2, doseUnit: 'mg', route: 'oral' });
+
+  await journal.doses.upsertDose(injection(daysAgo(45)));
+  await journal.doses.upsertDose(injection(daysAgo(14)));
 
   const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
 
   assert.deepEqual(
-    markers.map((a) => ({ kind: a.kind, day: a.fromEpochDay, href: a.href })),
-    [{ kind: 'injection', day: daysAgo(14), href: '/doses' }]
+    markers.map((a) => ({ day: a.fromEpochDay, series: a.series, name: a.name })),
+    [
+      { day: daysAgo(45), series: 'valerate', name: 'estradiol valerate' },
+      { day: daysAgo(14), series: 'enanthate', name: 'estradiol enanthate' }
+    ]
   );
+});
+
+test('a dose no chart draws is marked by none of them', async () => {
+  const journal = await journalWith();
+
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 7 days',
+    startEpochDay: daysAgo(60),
+    endEpochDay: null
+  });
+
+  // Nothing was taken, so nothing reached the bloodstream the chart is about.
+  await journal.doses.upsertDose(injection(daysAgo(20), { status: 'skipped' }));
+  // Logged by volume, which is what both curve modules drop it for.
+  await journal.doses.upsertDose(injection(daysAgo(15), { dose: 0.2, doseUnit: 'mL' }));
+  // Before any episode, so nothing attributes it to an ester.
+  await journal.doses.upsertDose(injection(daysAgo(80)));
+
+  assert.deepEqual(await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY), []);
+});
+
+/* A pill is not an injection. The illustrative curve an oral dose draws is
+   still marked - side effects and the days that stood out reach every chart
+   on the screen - but nothing there claims an injection happened. */
+test('an oral dose is no injection and marks nothing', async () => {
+  const journal = await journalWith();
+
+  await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: daysAgo(60),
+    endEpochDay: null
+  });
+  await journal.doses.upsertDose({ timestamp: at(daysAgo(10)), dose: 2, doseUnit: 'mg', route: 'oral' });
+
+  assert.deepEqual(await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY), []);
+});
+
+/* A testosterone ester has no published posterior, so its injections are
+   drawn by an illustrative curve rather than a band - and the mark has to
+   follow the dose to that chart, not sit under a band that does not exist. */
+test('an injection with no band of its own marks under its illustrative curve', async () => {
+  const journal = await journalWith();
+
+  await journal.regimen.upsertEpisode({
+    drug: 'testosterone cypionate',
+    ester: 'cypionate',
+    dose: 80,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 7 days',
+    startEpochDay: daysAgo(60),
+    endEpochDay: null
+  });
+  await journal.doses.upsertDose(injection(daysAgo(10), { dose: 80 }));
+
+  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
+
+  assert.deepEqual(
+    markers.map((a) => ({ kind: a.kind, series: a.series })),
+    [{ kind: 'injection', series: 'testosterone:injected' }]
+  );
+});
+
+/* Everything that is about the person rather than about one drug goes under
+   every chart, which is what an absent series means. */
+test('a side effect carries no series, so every chart draws it', async () => {
+  const journal = await journalWith();
+
+  await journal.sideEffects.upsertSideEffect({ name: 'headaches', severity: 2, epochDay: daysAgo(10) });
+
+  const [marker] = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
+  assert.equal(marker.series, undefined);
 });
 
 test('a tally day above the person\'s own recent counts marks, and the steady ones do not', async () => {

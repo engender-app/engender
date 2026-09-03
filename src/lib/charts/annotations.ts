@@ -154,6 +154,17 @@ export interface ChartAnnotationSource {
       journaling pause is a stretch nothing owns a screen for, and a milestone
       mark on a chart was never meant to be a way out of the chart. */
   href?: string;
+  /** Which of a screen's several charts this belongs on, or absent for all
+      of them (ticket 15).
+
+      The hormone curve screen draws a chart per ester and a chart per
+      illustrative shape, and each one is built from only the doses that
+      resolve to it. An injection therefore belongs under exactly one of
+      them, and a tick under a band that did not count that dose is the
+      chart disagreeing with itself. Everything else on that screen - a side
+      effect, a day that stood out - is about the person rather than about
+      one drug, and belongs under all of them. */
+  series?: string;
 }
 
 /** One annotation that falls inside the range asked for, clipped to it. */
@@ -174,6 +185,8 @@ export interface ChartAnnotation {
   endsInRange: boolean;
   /** The source's, carried through unchanged. */
   href?: string;
+  /** The source's, carried through unchanged. */
+  series?: string;
 }
 
 export interface AnnotationRange {
@@ -228,6 +241,7 @@ export function annotationsInRange(
       fromEpochDay: Math.max(start, range.from),
       toEpochDay: Math.min(end, range.to),
       href: source.href,
+      series: source.series,
       startsInRange: start >= range.from,
       // A moment ends on the day it happened, and a moment outside the range
       // never got this far. A stretch that has not ended has no day to draw
