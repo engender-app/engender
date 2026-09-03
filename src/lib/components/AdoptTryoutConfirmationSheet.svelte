@@ -13,15 +13,24 @@
   } from '$lib/data/epochDay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
+  import type { OfferCopy } from '$lib/data/offers';
+
+  /* The title and the two outer answers arrive as one `copy` object (phase
+     8 features ticket 22): this is one entry in the offer registry, and an
+     offer's words live beside what it writes. The middle button stays
+     here - "adopt without a milestone" is this sheet's own third answer,
+     not a word the registry has an opinion about. */
 
   let {
     open,
+    copy,
     tryout,
     feltSense = [],
     onConfirm,
     onDismiss
   }: {
     open: boolean;
+    copy: OfferCopy;
     tryout: Tryout | null;
     feltSense?: FeltSenseEntry[];
     onConfirm: (options: {
@@ -91,7 +100,7 @@
   }
 </script>
 
-<Sheet {open} title={m.tryout_adopt_sheet_title()} onClose={onDismiss}>
+<Sheet {open} title={copy.title()} onClose={onDismiss}>
   {#if tryout}
     <h3 class="adopt-heading">{m.tryout_adopt_prompt_title({ name: tryout.label })}</h3>
 
@@ -146,7 +155,7 @@
         data-confirm-adopt-milestone
         onclick={handleAdoptWithMilestone}
       >
-        <span>{m.tryout_adopt_confirm_add()}</span>
+        <span>{copy.confirm()}</span>
       </button>
       <button
         type="button"
@@ -162,7 +171,7 @@
         data-dismiss-adopt
         onclick={onDismiss}
       >
-        <span>{m.keep_it()}</span>
+        <span>{copy.decline()}</span>
       </button>
     </div>
   {/if}

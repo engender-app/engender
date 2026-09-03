@@ -33,7 +33,13 @@
   } from '$lib/data/vocabulary/roadmapLabels';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import RoadmapMilestonePromptSheet from '$lib/components/RoadmapMilestonePromptSheet.svelte';
-  import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import {
+    OFFERS,
+    answerOffer,
+    openOffer,
+    type OfferAnswer,
+    type RoadmapGoalMilestone
+  } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -83,38 +89,42 @@
     return 'unchecked';
   }
 
+  /* One entry in the offer registry (phase 8 features ticket 22,
+     ADR-0045), and `answerOffer` below is the only path from a tick to a
+     milestone. */
+  const MILESTONE_OFFER = OFFERS['roadmap-goal-milestone'];
   let promptGoal = $state<{ key: string; title: string } | null>(null);
+
+  /* ADR-0045's second half, which this screen did not keep: "each confirmed
+     link is recorded ... so the same source doesn't offer to mint twice".
+     Unchecking a goal and checking it again re-offered, and confirming a
+     second time wrote a *second* milestone against the same
+     `roadmapGoalKey`, because `upsertMilestone` inserts whenever it is
+     handed no id. `openOffer` refuses once the goal has its milestone,
+     which is the check the surgery hub already made through
+     `linkedMilestone`. */
+  const offerMilestone = (key: string, title: string) => {
+    if (!prefs.roadmapMilestoneSyncEnabled) return;
+    const already = vocabulary.milestones.find((milestone) => milestone.roadmapGoalKey === key);
+    promptGoal = openOffer({ key, title }, already?.id ?? null);
+  };
 
   const toggleBuiltIn = (goalKey: RoadmapGoalKey) => {
     const current = statuses[goalKey] ?? 'unchecked';
     const next = nextStatus(current);
     journal.roadmap.setGoalStatus(pack.key, goalKey, next);
-    if (current === 'unchecked' && next === 'checked' && prefs.roadmapMilestoneSyncEnabled) {
-      promptGoal = { key: goalKey, title: roadmapGoalTitle(goalKey) };
-    }
+    if (current === 'unchecked' && next === 'checked') offerMilestone(goalKey, roadmapGoalTitle(goalKey));
   };
 
   const toggleCustom = (goal: { id: string; status: RoadmapGoalStatus; text: string }) => {
     const current = goal.status;
     const next = nextStatus(current);
     journal.roadmap.setCustomGoalStatus(goal.id, next);
-    if (current === 'unchecked' && next === 'checked' && prefs.roadmapMilestoneSyncEnabled) {
-      promptGoal = { key: goal.id, title: goal.text };
-    }
+    if (current === 'unchecked' && next === 'checked') offerMilestone(goal.id, goal.text);
   };
 
-  async function handleMilestoneConfirm(data: {
-    title: string;
-    epochDay: number;
-    photo: NormalizedPhoto | null;
-    goalKey: string | null;
-  }) {
-    await journal.milestones.upsertMilestone({
-      name: data.title,
-      epochDay: data.epochDay,
-      roadmapGoalKey: data.goalKey,
-      photo: data.photo ? { action: 'replace', photo: data.photo } : { action: 'preserve' }
-    });
+  async function answerMilestoneOffer(given: OfferAnswer, data: RoadmapGoalMilestone | null) {
+    await answerOffer(MILESTONE_OFFER, promptGoal && data ? data : null, given, journal);
     promptGoal = null;
   }
 
@@ -259,10 +269,11 @@
 
 <RoadmapMilestonePromptSheet
   open={promptGoal !== null}
+  copy={MILESTONE_OFFER.copy}
   goalKey={promptGoal?.key ?? null}
   goalTitle={promptGoal?.title ?? ''}
-  onConfirm={handleMilestoneConfirm}
-  onDismiss={() => (promptGoal = null)}
+  onConfirm={(data) => answerMilestoneOffer('confirm', data)}
+  onDismiss={() => void answerMilestoneOffer('decline', null)}
 />
 
 <style>

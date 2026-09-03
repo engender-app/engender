@@ -18,6 +18,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
+  import { OFFERS, answerOffer, type OfferAnswer, type OfferedFeltSense } from '$lib/data/offers';
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
   import FeltSenseOfferSheet from './FeltSenseOfferSheet.svelte';
@@ -38,11 +39,20 @@
   let badge = $derived(s.type === 'today' ? m.ms_status_today() : s.isAnnivToday ? m.ms_status_anniversary() : null);
   let origin = $derived(resolveMilestoneOrigin(milestone));
 
+  /* The anniversary showing is one entry in the offer registry (phase 8
+     features ticket 22, ADR-0045), and `answerOffer` is the only path from
+     here to a write. No offer-once check: last year's felt sense does not
+     answer this year's, which offers.ts's header spells out. */
+  const OFFER = OFFERS['milestone-anniversary-felt-sense'];
   let offering = $state(false);
-  async function saveOffer(input: { mood: number; note: string | null }) {
-    await journal.feltSense.add({ milestoneId: milestone.id }, { epochDay: todayEpochDay(), ...input });
+
+  async function answer(given: OfferAnswer, subject: OfferedFeltSense | null) {
+    await answerOffer(OFFER, offering ? subject : null, given, journal);
     offering = false;
   }
+
+  const saveOffer = (input: { mood: number; note: string | null }) =>
+    answer('confirm', { owner: { milestoneId: milestone.id }, epochDay: todayEpochDay(), ...input });
 </script>
 
 <ListRow
@@ -70,7 +80,7 @@
     data-anniv-feeling={milestone.id}
     onclick={() => (offering = true)}
     chevron={false}
-    title={m.ms_feeling_anniv_title()}
+    title={OFFER.copy.title()}
   >
     {#snippet leading()}<span class="kit-row-ico"><Icon name="heart" size={20} /></span>{/snippet}
     {#snippet trailing()}<Icon name="chevronRight" size={20} />{/snippet}
@@ -78,8 +88,8 @@
 
   <FeltSenseOfferSheet
     open={offering}
-    title={m.ms_feeling_anniv_title()}
+    copy={OFFER.copy}
     onSave={saveOffer}
-    onSkip={() => (offering = false)}
+    onSkip={() => void answer('decline', null)}
   />
 {/if}
