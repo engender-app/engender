@@ -7,6 +7,30 @@ import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import type { Journal } from './journal.ts';
+import type { SqliteDriver } from '../sqlite/driver.ts';
+import type { RemindersArea } from './reminders.ts';
+import { makeStockArea } from './stock.ts';
+import { STOCK_PREFIX, stockAutoSource } from '../autoSource.ts';
+
+const DIED = /the process died here/;
+
+/** A driver that stops running statements matching `sql`, and a reminders
+    area that stops deleting - the two points a process can die between
+    deleteEntry's two writes. Neither comes back. */
+const driverDyingOn = (driver: SqliteDriver, sql: string): SqliteDriver => ({
+  ...driver,
+  run(statement, params) {
+    if (statement.includes(sql)) throw new Error('the process died here');
+    return driver.run(statement, params);
+  }
+});
+
+const remindersDyingOnDelete = (reminders: RemindersArea): RemindersArea => ({
+  ...reminders,
+  deleteReminder() {
+    throw new Error('the process died here');
+  }
+});
 
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
 
@@ -235,5 +259,57 @@ test('deleting a stock entry drops its auto-managed reminder too', async () => {
 
   await journal.stock.deleteEntry(stockId);
 
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+});
+
+/* Two writes with no transaction around them, so the question is what a
+   death between them leaves behind. The reminder is deleted first because
+   reconcileRunOutReminders only ever visits drugs that still have a
+   medication_stock row: a reminder outliving its row is unreachable by
+   every path that could clear it, and keeps firing for a drug the journal
+   no longer counts. */
+test('a death mid-delete cannot leave a reminder for a drug with no stock row', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol');
+  const stockId = await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 3, unit: 'pills', recordedEpochDay: 19000 });
+  await journal.doses.upsertDose({ timestamp: at(19000), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.stock.reconcileRunOutReminders(19000);
+  const [auto] = await journal.reminders.getReminders();
+
+  /** Every run-out reminder whose drug the journal no longer counts - the
+      state nothing can clear, and so the one no interruption may leave. */
+  const orphaned = async () => {
+    const counted = new Set((await journal.stock.getEntries()).map((entry) => stockAutoSource(entry.drug)));
+    return (await journal.reminders.getReminders()).filter(
+      (reminder) => reminder.autoSource?.startsWith(STOCK_PREFIX) && !counted.has(reminder.autoSource)
+    );
+  };
+
+  // Dying on the reminder, the first of the two writes: nothing was
+  // written, so both the row and its reminder are still here.
+  const beforeTheReminder = makeStockArea(db, journal.doses, journal.regimen, remindersDyingOnDelete(journal.reminders));
+  await assert.rejects(beforeTheReminder.deleteEntry(stockId), DIED);
+  assert.deepEqual(await orphaned(), []);
+  assert.deepEqual((await journal.reminders.getReminders()).map((reminder) => reminder.id), [auto.id]);
+  assert.equal((await journal.stock.getEntries()).length, 1);
+
+  // Dying on the row, the second: the reminder is gone and the row it
+  // belonged to survives, which is the state reconcileRunOutReminders
+  // still visits - it iterates the rows that exist.
+  const beforeTheRow = makeStockArea(
+    driverDyingOn(db, 'DELETE FROM medication_stock'),
+    journal.doses,
+    journal.regimen,
+    journal.reminders
+  );
+  await assert.rejects(beforeTheRow.deleteEntry(stockId), DIED);
+  assert.deepEqual(await orphaned(), []);
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+  await journal.stock.reconcileRunOutReminders(19000);
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+
+  // And the delete retries from there.
+  await journal.stock.deleteEntry(stockId);
+  assert.deepEqual(await journal.stock.getEntries(), []);
   assert.deepEqual(await journal.reminders.getReminders(), []);
 });
