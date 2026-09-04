@@ -10,7 +10,8 @@
      The shape now is four chart kinds and a list. One area chart with a
      picker for which scale it plots, so the number of charts stops growing
      with the number of dimensions; horizontal bars for where each scale sat
-     over the period; a distribution for how many days landed on each mood;
+     over the period; an ordered proportional strip for how the days fall
+     across the mood scale (ADR-0058, which is why that one is not a ring);
      a second bar set for the tags, whose bars open the entries behind them.
      Then the patterns, and a list card into the six deeper screens.
 
@@ -53,7 +54,7 @@
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import Distribution from '$lib/components/kit/Distribution.svelte';
+  import OrderedStrip from '$lib/components/kit/OrderedStrip.svelte';
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
   import type { PairedRow } from '$lib/components/kit/pairedRow';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -713,7 +714,7 @@
     {#if seriesQuery.loading}
       <Skeleton variant="block" />
     {:else}
-      <Distribution steps={moodSteps} />
+      <OrderedStrip steps={moodSteps} />
     {/if}
   </ChartCard>
 
