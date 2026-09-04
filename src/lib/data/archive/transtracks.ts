@@ -5,10 +5,11 @@
 
    TransTracks carries real identity - Photo and Milestone are both keyed by
    a stable `UUID.randomUUID()` that round-trips through the app's own
-   export/import - so unlike Daylio there is no content-derived uuid to
-   mint. Reusing the source file's own id is what makes a repeated import a
-   no-op (ADR-0002), the same guarantee a derived hash gives Daylio for
-   different reasons.
+   export/import - so a well-formed id is reused as-is (ADR-0002), which is
+   what makes a repeated import a no-op. A hostile or corrupt file's id is
+   not trusted with that shape unchecked, though: resolvePhotoId falls back
+   to a uuid derived from the id string itself, the same guarantee a
+   derived hash gives Daylio for different reasons.
 
    The container is a real zip: `data.json` at the root, JPEGs under
    `photos/`, deflate-compressed by Android's ZipOutputStream default. This
