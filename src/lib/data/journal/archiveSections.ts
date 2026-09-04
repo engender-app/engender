@@ -298,6 +298,15 @@ const SECTIONS = [
   }),
   section({
     name: 'milestones',
+    // A milestone linked to a procedure or a tryout stores that owner's
+    // uuid directly (applyMilestones inserts procedure_id/tryout_id as
+    // given), and neither column carries ON DELETE CASCADE - so applying a
+    // milestone before its owner exists fails the same FK the reverse
+    // order would fail on discard. `after` fixes both at once: reversed,
+    // it clears milestones before tryout or procedure can be discarded out
+    // from under one (ticket 02's sweep found this empty by never having
+    // linked either owner before running a full replace).
+    after: ['tryouts', 'procedures'],
     // The other half of the photo table, per entries' own note above.
     discard: ['DELETE FROM photo WHERE milestone_id IS NOT NULL', 'DELETE FROM milestone'],
     // Ticket 04's own worked case: a milestone set travels as names, not as
