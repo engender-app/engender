@@ -2632,31 +2632,25 @@ try {
 
    Three kinds of line, and the third is the one only a real journal can show.
    A row whose areas hold a write states when. A row that fronts no dated
-   stream states what is behind it, whatever the journal holds. And a row
-   whose areas have never been written to says nothing at all, which is what
-   keeps a fresh journal from being thirteen rows of "nothing yet" - walked on
-   the voice benchmark, since neither demo seed writes one (the note above
-   this block's own voice step says so) while every other read row now has
-   something.
+   stream states what is behind it instead, whatever the journal holds. And a
+   reading row with nothing written yet states the same thing - walked on the
+   voice benchmark, since neither demo seed writes one (the note above this
+   block's own voice step says so) while "Fill every feature" writes something
+   in every other reading row.
 
    Handles, never wording or structure (ADR-0029). Each row carries
-   `data-hub-line` naming which kind it drew, and carries none where it has
-   nothing to say - so the absence check hangs off the row's own handle, which
-   is present in all three cases. Asserting the copy would let a reworded line
-   pass for free, and gripping the kit's `.kit-row-sub` class would be
-   structure. */
+   `data-hub-line` naming which kind it drew, so the three are told apart by
+   that rather than by the copy, which a rewording would let pass for free, or
+   by the kit's `.kit-row-sub` class, which is structure. */
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="measurements"][data-hub-line="last"]', { timeout: 8000 });
 
-  if ((await page.locator('[data-list-row="care"][data-hub-line="written"]').count()) === 0) {
+  if ((await page.locator('[data-list-row="care"][data-hub-line="no-stream"]').count()) === 0) {
     throw new Error('the care row states nothing about what is behind it');
   }
-  if ((await page.locator('[data-list-row="voice-benchmark"]').count()) === 0) {
-    throw new Error('the voice benchmark row is missing, so its silent state cannot be walked');
-  }
-  if ((await page.locator('[data-list-row="voice-benchmark"][data-hub-line]').count()) !== 0) {
-    throw new Error('a row with nothing ever written in it drew a line anyway');
+  if ((await page.locator('[data-list-row="voice-benchmark"][data-hub-line="not-yet"]').count()) === 0) {
+    throw new Error('a reading row with nothing written in it does not say what is behind it');
   }
 
   // Photos and voice memos live together now, and Body keeps the rest.

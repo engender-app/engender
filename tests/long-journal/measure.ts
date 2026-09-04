@@ -622,7 +622,7 @@ export async function measureLongJournal(
      what a row's line costs is a share of one number here, so a row added to
      the hub costs another MAX inside this measurement rather than another
      round trip through the worker queue. */
-  await measure('hub-last-writes', 'More hub, every area’s last write plus the area record', async () => {
+  await measure('hub-last-writes', 'More hub, the last write in every area plus the area record', async () => {
     const [lastWrites, states] = await Promise.all([
       journal.lastWrite.getLastWrites(today),
       journal.areaStates.getAreaStates()

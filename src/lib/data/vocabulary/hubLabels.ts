@@ -6,23 +6,29 @@
    import that (ADR-0016). `hubRows.ts` holds the rows, what sits behind them
    and which of them read; this is where they get their words.
 
-   Three `Record`s, each total over the keys it is about: every row's title,
-   every group's heading, and a written line for exactly the rows that carry
-   one. So a row added without a title, or declared as stating what is behind
-   it and then given nothing to state, is a typecheck failure rather than a
-   blank line on the app's largest navigation surface.
+   Three `Record`s, each total over every key it is about: a title per row, a
+   heading per group, and a line per row saying what is behind it. So a row
+   added without either is a typecheck failure rather than a blank line on the
+   app's largest navigation surface.
 
-   The line copy is three shapes and no more, which is what keeps this
+   Every row has that line, which is the spec's user story 13 - "each row to
+   tell me what is behind it, so that navigating is also reading" - and a
+   reading replaces it wherever the row has one. Thirteen rows never get a
+   reading at all; the other thirteen show their line until something is
+   written in them.
+
+   The reading copy is three frames and no more, which is what keeps it
    translatable: a Polish noun dropped into a frame needs a case the English
-   never asks for (docs/ui-copy.md), so none of these interpolates one. The
-   row's title is directly above the line and supplies the noun already -
-   "Body measurements" over "Last logged 3 days ago" says what was logged
-   without the line repeating it. */
+   never asks for (docs/ui-copy.md), so none of them interpolates one, and the
+   duration that does travel through them stays nominative in both languages.
+   The row's title is directly above and supplies the noun already - "Body
+   measurements" over "Last logged 3 days ago" says what was logged without
+   the line repeating it. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay, fmtDuration } from '$lib/data/dates';
 import { calendarDuration } from '$lib/data/epochDay';
-import type { HubGroupKey, HubLine, HubRowKey, WrittenRowKey } from '$lib/data/hubRows';
+import type { HubGroupKey, HubLine, HubRowKey } from '$lib/data/hubRows';
 
 const ROW_TITLE: Record<HubRowKey, () => string> = {
   measurements: m.body_measurements,
@@ -53,25 +59,40 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   voice: m.recordings_label
 };
 
-/** What the thirteen written rows say, keyed by exactly those rows: a row
-    declared `written` in `hubRows.ts` and left out here does not compile, and
-    a row that reports a reading cannot be given a line to contradict it.
+/** What every row says about what is behind it: the whole of a row that never
+    reads, and the standing line of one that does until it has a reading.
 
-    Each of these is earned by a title that does not say what the screen is
-    (DIRECTION.md 3b). "Eras", "Words", "Modes", "Care" and "Safe space" name
-    something the app invented; a person who has not opened them cannot tell
-    from the word alone. */
-const ROW_LINE: Record<WrittenRowKey, () => string> = {
+    Total over the row keys, so a row added here without one does not compile.
+    Each is earned by a title that does not say what the screen is
+    (DIRECTION.md 3b) - "Eras", "Words", "Modes", "Care", "Safe space" name
+    something the app invented - and, on the reading rows, by a fresh journal
+    otherwise leaving thirteen rows mute. Each is a short form of that
+    screen's own intro rather than new copy, so the row and the screen behind
+    it say the same thing (ADR-0024). */
+const ROW_LINE: Record<HubRowKey, () => string> = {
+  measurements: m.hub_sub_measurements,
+  sizes: m.hub_sub_sizes,
+  'hair-progress': m.hub_sub_hair_progress,
+  'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,
+  'cycle-events': m.hub_sub_cycle_events,
+  'side-effects': m.hub_sub_side_effects,
+  surgery: m.hub_sub_surgery,
+  dilation: m.hub_sub_dilation,
   'appointment-prep': m.hub_sub_appointment_prep,
   'clinician-summary': m.hub_sub_clinician_summary,
+  milestones: m.hub_sub_milestones,
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,
+  tryouts: m.hub_sub_tryouts,
   presentations: m.hub_sub_presentations,
   eras: m.hub_sub_eras,
   words: m.hub_sub_words,
   doubt: m.hub_sub_doubt,
+  'voice-benchmark': m.hub_sub_voice_benchmark,
   'entry-templates': m.hub_sub_entry_templates,
+  wear: m.hub_sub_wear,
+  effects: m.hub_sub_effects,
   resources: m.hub_sub_resources,
   photos: m.hub_sub_photos,
   voice: m.hub_sub_voice
@@ -96,33 +117,22 @@ export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
   return GROUP_HEADING[key]();
 }
 
-/** The row's second line, or `null` where the row has nothing to say yet.
+/** The row's second line. Never null: every row says something.
 
-    Four shapes. A reading of when something was last written, in the
+    Four shapes. The line about what is behind the row, which is what a row
+    with no reading to give shows - whether it will never have one or simply
+    does not yet. A reading of when something was last written, in the
     `{gap} ago` form the injection-site map and the hair-removal screen
-    already use; the same reading once a whole quiet window has passed, worded
+    already use. The same reading once a whole quiet window has passed, worded
     as an observation rather than as a prompt, since somebody who had a hard
-    spring is not being asked about it here; the day an area ended, in the
-    words its own screen used to say it (`area_finish_done_title`), so the two
-    surfaces agree; and a written line for a row that reports nothing.
-
-    Null for a row whose areas have never been written to. A fresh journal
-    gets titles alone rather than thirteen rows each saying "nothing yet",
-    which is the hub filling in as somebody uses the app rather than starting
-    full of blanks. */
-export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number): string | null {
+    spring is not being asked about it here. And the day an area ended, in the
+    words its own screen uses to say it (`area_finish_done_title`), so the two
+    surfaces agree. */
+export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number): string {
   switch (line.kind) {
-    case 'silent':
-      return null;
-    case 'written': {
-      /* The cast is `rowLine`'s own invariant restated: it answers `written`
-         for exactly the rows declared `written`, which is `WrittenRowKey`.
-         Guarded anyway rather than called blind, so a row list and a label
-         record that ever disagree lose a line instead of throwing on the
-         app's largest navigation surface. */
-      const written = ROW_LINE[key as WrittenRowKey];
-      return written ? written() : null;
-    }
+    case 'no-stream':
+    case 'not-yet':
+      return ROW_LINE[key]();
     case 'last':
       return line.daysAgo === 0
         ? m.hub_line_today()

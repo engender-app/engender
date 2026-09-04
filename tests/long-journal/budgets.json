@@ -207,7 +207,7 @@
       "targetMs": 800
     },
     "hub-last-writes": {
-      "what": "More hub, every area’s last write plus the area record",
+      "what": "More hub, the last write in every area plus the area record",
       "baselineMs": 5,
       "budgetMs": 200,
       "targetMs": 250
