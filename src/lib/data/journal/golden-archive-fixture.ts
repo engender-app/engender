@@ -166,6 +166,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
   await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
+  await journal.marginNotes.add({ entryId: entry, epochDay: 20050, text: 'reading this back, zażółć gęślą jaźń' });
 
   const milestone = await journal.milestones.upsertMilestone({
     name: 'HRT start',

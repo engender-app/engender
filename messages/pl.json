@@ -2987,5 +2987,15 @@
   "revisit_set_confirm": "Ustaw",
   "revisit_change": "Zmień dzień",
   "revisit_cancel": "Anuluj powrót do wpisu",
-  "random_draw_label": "Losowy wpis"
+  "random_draw_label": "Losowy wpis",
+  "margin_note_search_label": "Notatka na marginesie",
+  "margin_note_add": "Dodaj notatkę na marginesie",
+  "margin_note_delete_aria": "Usuń tę notatkę na marginesie",
+  "margin_note_edit_sheet": "Edytuj notatkę na marginesie",
+  "margin_note_add_sheet": "Dodaj notatkę na marginesie",
+  "margin_note_placeholder": "Co widać teraz, czego nie było widać wtedy?",
+  "margin_note_save": "Zapisz",
+  "margin_note_delete_sheet": "Usuń notatkę na marginesie",
+  "margin_note_delete_q": "Usunąć tę notatkę? Wpis zostaje bez zmian.",
+  "margin_note_delete": "Usuń"
 }

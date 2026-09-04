@@ -262,6 +262,31 @@ export async function runJournalContract(
     await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
   });
 
+  /* A margin note's independence from its entry (phase 8 features ticket
+     07): adding, editing and deleting one leaves the entry's own note
+     untouched, on the driver rather than assumed from the two tables being
+     separate in the schema - a trigger, a cascade or a shared-connection
+     quirk on either tier could still smuggle a write across. */
+  await r.section("a margin note never touches the entry's own note", async () => {
+    const entryId = await journal.entries.upsertEntry({
+      epochDay: 20200,
+      mood: 3,
+      note: 'written on the day, byte for byte'
+    });
+    const originalNote = (await journal.entries.getEntry(entryId))?.note;
+
+    const noteId = await journal.marginNotes.add({ entryId, epochDay: 20201, text: 'a first thought' });
+    r.equal('adding a margin note leaves the entry note unchanged', (await journal.entries.getEntry(entryId))?.note, originalNote);
+
+    await journal.marginNotes.edit(noteId, 'a corrected thought');
+    r.equal('editing a margin note leaves the entry note unchanged', (await journal.entries.getEntry(entryId))?.note, originalNote);
+
+    await journal.marginNotes.remove(noteId);
+    r.equal('deleting a margin note leaves the entry note unchanged', (await journal.entries.getEntry(entryId))?.note, originalNote);
+
+    await journal.entries.deleteEntry(entryId).catch(() => {});
+  });
+
   /* The fold is shared code, so this cannot differ between tiers - but a
      platform that mangled the source encoding would show up here rather than
      as a confusing search miss above. */

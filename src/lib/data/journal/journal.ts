@@ -54,6 +54,7 @@ import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeRoadmapArea, type RoadmapArea } from './roadmap';
 import { makeSavedQuestionsArea, type SavedQuestionsArea } from './savedQuestions';
+import { makeMarginNotesArea, type MarginNotesArea } from './marginNotes';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
 import { makeStatsArea, type StatsArea } from './stats';
@@ -175,6 +176,12 @@ export interface Journal {
       "Saved question"). Rows only - what a saved question is asked as lives
       in savedQuestionQuery.ts, above this seam. */
   savedQuestions: SavedQuestionsArea;
+  /** A dated note an entry's owner added afterwards, on rereading (phase 8
+      features ticket 07, CONTEXT: "Margin note"). Rows only, owned by an
+      entry's rowid directly - what a margin note is rendered as (a visibly
+      later layer) lives above this seam, the same split every other area
+      here keeps. */
+  marginNotes: MarginNotesArea;
   /** The person's own named stretches of their timeline (phase 6 ticket 01,
       ADR-0049, CONTEXT: "Era"). Rows and the journal edge an open bound
       clamps to, nothing else: an era owns no colour, no mute and no other
@@ -381,6 +388,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const voicePracticeTakes = makeVoicePracticeTakesArea(driver);
   const journalingPauses = makeJournalingPausesArea(driver);
   const savedQuestions = makeSavedQuestionsArea(driver);
+  const marginNotes = makeMarginNotesArea(driver);
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
   const comfortItems = makeComfortItemsArea(driver);
@@ -414,6 +422,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     cycleEvents,
     journalingPauses,
     savedQuestions,
+    marginNotes,
     eras,
     eraMutes,
     chartAnnotations: makeChartAnnotationsArea({

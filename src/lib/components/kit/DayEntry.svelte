@@ -38,6 +38,7 @@
      belongs to the navigation and to $lib/motion/container.svelte, not here
      - this only says which row was tapped, and only while it has somewhere
      to go. */
+  import type { Snippet } from 'svelte';
   import Icon from '../Icon.svelte';
   import MoodFace from '../MoodFace.svelte';
   import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
@@ -53,7 +54,8 @@
     presentation,
     href,
     key,
-    clampNote = true
+    clampNote = true,
+    marginNotes
   }: {
     /** Already formatted against the active locale by the caller. */
     time: string;
@@ -81,6 +83,18 @@
         clamping to two lines. Every other caller leaves this on, which is
         what keeps a day card the same height whatever somebody wrote. */
     clampNote?: boolean;
+    /** A margin note is content about this entry rather than of it (phase 8
+        features ticket 07), so it is a snippet the caller supplies rather
+        than a prop this component reads a journal for - the same
+        presentational rule `tags`/`marks`/`presentation` already keep,
+        applied to a caller that also writes, not only reads. Rendered
+        inside this row's own `.kit-entry-body` rather than as a sibling
+        row, so the timeline rail above - which counts on being the only
+        thing in a day card and reaches for `:first-child`/`:last-child` -
+        never has to know a margin note exists. Omitted everywhere this
+        component is drawn without the reading-room surfaces around it
+        (Home, on-this-day): nothing there changes. */
+    marginNotes?: Snippet;
   } = $props();
 </script>
 
@@ -123,6 +137,17 @@
   <article class="kit-entry" data-entry-card={key}>{@render body()}</article>
 {/if}
 
+{#if marginNotes}
+  <!-- A sibling of `.kit-entry`, not nested in it: a margin note's own
+       controls are buttons, and `.kit-entry` is the row's whole press
+       target when `href` is set - interactive content has no business
+       inside an `<a>`. Indented past the mood rail so it reads as
+       attached to the entry above rather than as the day card's next row
+       (kit.css's `:first-of-type`/`:last-of-type` fix is the rail's own
+       half of this). -->
+  <div class="kit-entry-annotations">{@render marginNotes()}</div>
+{/if}
+
 <style>
   /* A run of entries meant to be read rather than scanned (phase 8 features
      ticket 06): the same row, the whole note. */
@@ -131,5 +156,9 @@
     -webkit-line-clamp: unset;
     line-clamp: unset;
     overflow: visible;
+  }
+
+  .kit-entry-annotations {
+    padding: 0 var(--space-4) var(--space-2) calc(var(--space-4) + 26px + var(--space-3));
   }
 </style>
