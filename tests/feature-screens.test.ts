@@ -95,6 +95,13 @@ const ROUTES = [
      view"); its sibling /settings/live-tiles predates that line and is not
      on it. */
   'settings/notifications',
+  /* Reached from the shell rather than from a hub row, and deliberately
+     linked from nowhere (phase 8 features ticket 05, ADR-0062): the return
+     surface opens itself once per gap and is a moment rather than a place.
+     Still a feature screen in every way this file asks about, and on the
+     list for the reason the note above the list gives - a screen that is
+     not here escapes every assertion in it. */
+  'coming-back',
   // Reached from inside a feature screen
   'settings/stock',
   'settings/exposure',
@@ -113,8 +120,8 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 34 of them', () => {
-  it('is the count SCREENS.md gives, plus the eight added since', () => {
+describe('all 35 of them', () => {
+  it('is the count SCREENS.md gives, plus the nine added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
        /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
        /settings/eras and the notifications view, then 30 through 32 as
@@ -127,9 +134,13 @@ describe('all 34 of them', () => {
        correcting it is still nobody's ticket. Then 33 and 34 as features
        tickets 14 and 27 landed on the same day: 14's /settings/words,
        built on the kit from the start, and 27's metric reference, the
-       first route here that was never a hub row and never will be. */
-    expect(ROUTES.length).toBe(34);
-    expect(new Set(ROUTES).size).toBe(34);
+       first route here that was never a hub row and never will be. The
+       35th, ticket 05's return surface, is the second of those and goes
+       further: the metric reference is at least reachable from the screen
+       it explains, while this one is linked from nowhere on purpose
+       (ADR-0062). */
+    expect(ROUTES.length).toBe(35);
+    expect(new Set(ROUTES).size).toBe(35);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {

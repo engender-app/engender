@@ -157,11 +157,19 @@
     {#if action}{@render rowAction(action)}{/if}
   </div>
 {:else if action}
+  <!-- The split shape names both halves: `data-row-action` has always been
+       on the control, and `data-row-main` is here for the same reason
+       (ADR-0029, and the test that holds it). A row that acts in place from
+       its main half - the return surface's two offers - is otherwise only
+       reachable by its class, which is structure and exactly what the
+       walkthrough may not grip. -->
   <div class="kit-row is-split" data-list-row={key} {...rest}>
     {#if href}
-      <a class="kit-row-main" data-no-press {href} {onclick}>{@render body()}</a>
+      <a class="kit-row-main" data-row-main={key} data-no-press {href} {onclick}>{@render body()}</a>
     {:else}
-      <button type="button" class="kit-row-main" data-no-press {onclick}>{@render body()}</button>
+      <button type="button" class="kit-row-main" data-row-main={key} data-no-press {onclick}
+        >{@render body()}</button
+      >
     {/if}
     {@render rowAction(action)}
   </div>
