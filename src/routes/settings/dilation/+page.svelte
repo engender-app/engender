@@ -10,7 +10,9 @@
 
      Expected-but-not-logged renders as a gap, copying doses/+page.svelte's
      adherence rows exactly (ADR-0010): a static row naming the day, and
-     either what was logged or `dilation_session_nothing_logged` - no count,
+     either what was logged or `adherence_nothing_logged`, reused from the
+     dose log's own row rather than a synonym key for the same words - no
+     count,
      no streak, no colour. Tapping a gap opens the session sheet for that
      day; tapping a logged row edits it. */
   import { m } from '$lib/paraglide/messages';
@@ -109,8 +111,11 @@
     stagesInput = stagesInput.filter((_, i) => i !== index);
   }
 
+  /* A frequency of 0 is a real stage - a rest stretch a surgeon writes into
+     the plan, expecting nothing for its days (taperSchedule.ts) - so this
+     only rules out a negative or blank one, never zero. */
   let scheduleCanSave = $derived(
-    stagesInput.length > 0 && stagesInput.every((s) => Number(s.everyNDays) > 0 && Number(s.days) > 0)
+    stagesInput.length > 0 && stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
   );
 
   async function saveSchedule() {
@@ -205,7 +210,7 @@
                   <input
                     class="input"
                     type="number"
-                    min="1"
+                    min="0"
                     inputmode="numeric"
                     data-stage-frequency={index}
                     aria-label={m.dilation_stage_frequency_aria()}
@@ -291,7 +296,7 @@
             >
               {#snippet trailing()}
                 {#if !logged}
-                  {m.dilation_session_nothing_logged()}
+                  {m.adherence_nothing_logged()}
                 {:else if !logged.note}
                   {m.dilation_session_logged()}
                 {/if}
