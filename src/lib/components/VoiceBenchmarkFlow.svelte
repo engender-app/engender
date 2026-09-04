@@ -160,6 +160,16 @@
     frames = [];
     phase = 'recording';
 
+    /* Back to the top of the step. Tapping Record scrolls the button it was
+       on into view, and now that the figure is a full graph below the
+       passage that left the screen 636px down - with the passage somebody
+       is supposed to be reading off the top of it. Measured at 390x844:
+       the step is 1480px of content during a take, so what fits together is
+       the passage and the field, with the legend and the citation a short
+       scroll below (they are both on screen before the take starts, which
+       is when a citation is read). */
+    document.querySelector('main.app-main')?.scrollTo({ top: 0 });
+
     poll = setInterval(() => {
       if (!session) return;
       reading = session.read();
