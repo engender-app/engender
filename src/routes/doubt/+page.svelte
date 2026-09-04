@@ -83,10 +83,11 @@
       expensive. */
   const PHOTO_LIMIT = 6;
   /* Unlocked letters shown before the section hands over to the letters
-     screen (phase 8 features ticket 21). Three, because a letter is the
-     longest thing on a screen read in a bad moment and a fourth row pushes
-     the entries below it off a 390px viewport; the rest are one tap away
-     rather than gone.
+     screen (phase 8 features ticket 21). Three, for PHOTO_LIMIT's reason
+     rather than a measured one: a letter is the longest thing anywhere on
+     this screen, and a person who has written twenty of them should meet a
+     glance here and not a second letters screen grafted onto a crisis
+     dashboard. The rest are one tap away rather than gone.
 
      Truncation versus link, the decision the ticket asks for in writing:
      each row shows the day the letter was written and the opening of its
