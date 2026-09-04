@@ -53,6 +53,8 @@
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
   import { bandsFor, comfortBand } from '$lib/audio/bands';
+  import { metricHref } from '$lib/data/voice/metrics';
+  import { metricName } from '$lib/data/voice/metricLabels';
   import { acousticDelta } from '$lib/audio/benchmarkDelta';
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -239,9 +241,14 @@
       <h3>{m.vc_delta_title()}</h3>
       {#if delta}
         <dl class="vc-delta-figures">
-          <div><dt>{m.vb_pitch()}</dt>
+          <!-- Each figure's name is the way into its own section of the
+               metric reference (ticket 27). A sentence per figure belongs
+               on the take, where somebody is reading their own numbers for
+               the first time; two deltas do not need teaching under them,
+               they need a way to ask what the figure is. -->
+          <div><dt><a href={metricHref('pitch')}>{metricName('pitch')}</a></dt>
             <dd>{m.vb_hz({ value: signed(delta.f0DeltaHz, 0) })} ({m.vb_semitones({ value: signed(delta.f0DeltaSemitones, 1) })})</dd></div>
-          <div><dt>{m.vb_resonance()}</dt>
+          <div><dt><a href={metricHref('resonance')}>{metricName('resonance')}</a></dt>
             <dd>
               {#if delta.f1DeltaHz !== null && delta.f2DeltaHz !== null}
                 {m.vb_hz({ value: signed(delta.f1DeltaHz, 0) })} · {m.vb_hz({ value: signed(delta.f2DeltaHz, 0) })}
@@ -450,6 +457,18 @@
   .vc-delta-figures { display: grid; gap: var(--space-3); margin: 0; }
   .vc-delta-figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
   .vc-delta-figures dt { color: var(--muted); font-size: var(--text-sm); }
+  /* The name is the link, so it keeps the label's own colour and says it
+     is pressable with an underline in the section's stripe rather than by
+     turning blue. Same treatment as the sentences on a take
+     (VoiceFigures.svelte). */
+  .vc-delta-figures dt a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--role-c) 55%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  .vc-delta-figures dt a:hover { color: var(--role-ink); text-decoration-color: var(--role-c); }
   .vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); text-align: right; }
   .vc-aside { color: var(--muted); font-weight: 400; }
 </style>

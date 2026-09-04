@@ -28,7 +28,6 @@
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
   import { bandsFor, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { noteName } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
   import type { Formants } from '$lib/audio/resonance';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -39,6 +38,7 @@
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import VoiceFigures from '$lib/components/VoiceFigures.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
   import VoicingRibbon from '$lib/components/VoicingRibbon.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
@@ -278,11 +278,6 @@
     editingPassage = false;
   }
 
-  /** A figure as the screen states it: a fixed number of places, as text.
-      Named for what it produces rather than for rounding, which is what it
-      does on the way. */
-  const figure = (value: number, places = 0) => value.toFixed(places);
-
   onDestroy(() => {
     stopPolling();
     // Leaving mid-take closes the microphone rather than leaving it open
@@ -319,35 +314,14 @@
     {@const figures = passageTake.figures}
     <div class="screen-part vb-body">
       <SectionHeading text={m.vb_measured()} />
-      <dl class="vb-figures kit-panel">
-        <div><dt>{m.vb_pitch()}</dt>
-          <dd>{m.vb_hz({ value: figure(figures.f0MedianHz) })}
-            <span class="vb-aside">{noteName(figures.f0MedianHz)}</span></dd></div>
-        <div><dt>{m.vb_span()}</dt>
-          <dd>{m.vb_hz_range({ low: figure(figures.f0P10Hz), high: figure(figures.f0P90Hz) })}</dd></div>
-        <div><dt>{m.vb_spread()}</dt>
-          <dd>{m.vb_semitones({ value: figure(figures.semitoneSd, 1) })}</dd></div>
-        <div><dt>{m.vb_rate()}</dt>
-          <dd>{m.vb_wpm({ value: figure(figures.wordsPerMinute) })}</dd></div>
-        <div><dt>{m.vb_resonance()}</dt>
-          <dd>
-            {#if vowelTake?.formants}
-              {m.vb_hz({ value: figure(vowelTake.formants.f1Hz) })} · {m.vb_hz({
-                value: figure(vowelTake.formants.f2Hz)
-              })}
-            {:else}
-              <span class="vb-aside">{m.vb_not_measured()}</span>
-            {/if}
-          </dd></div>
-        <div><dt>{m.vb_room()}</dt>
-          <dd>
-            {#if vowelTake}
-              {m.vb_db({ value: figure(vowelTake.snrDb) })}
-            {:else}
-              <span class="vb-aside">{m.vb_not_measured()}</span>
-            {/if}
-          </dd></div>
-      </dl>
+      <!-- Six figures, each with the sentence that says what it is and
+           links into its own reference section (ticket 27). The list was
+           markup here until then; what the flow keeps is the take. -->
+      <VoiceFigures
+        {figures}
+        formants={vowelTake?.formants ?? null}
+        snrDb={vowelTake ? vowelTake.snrDb : null}
+      />
 
       <!-- The picture the numbers came from (ticket 09). It sits under the
            figures rather than over them: the numbers are what a person came
@@ -528,36 +502,6 @@
 
   .vb-hint {
     margin: 0 0 var(--space-4);
-  }
-
-  .vb-figures {
-    display: grid;
-    gap: var(--space-3);
-    margin: 0;
-  }
-
-  .vb-figures > div {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .vb-figures dt {
-    color: var(--muted);
-    font-size: var(--text-sm);
-  }
-
-  .vb-figures dd {
-    margin: 0;
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-semibold);
-    text-align: right;
-  }
-
-  .vb-aside {
-    color: var(--muted);
-    font-weight: var(--weight-regular);
   }
 
   /* What a take shows while it runs, now that no figure does. The held
