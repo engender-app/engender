@@ -16,7 +16,7 @@ function lab(epochDay: number, analyte: string, value: number, unit: string): La
   };
 }
 
-function effect(epochDay: number, name: string, severity: number): SideEffect {
+function effect(epochDay: number, name: string, severity: number | null): SideEffect {
   return { id: `se-${epochDay}-${name}`, epochDay, name, severity };
 }
 
@@ -35,6 +35,10 @@ describe('debriefListItems', () => {
     expect(debriefListItems([], [effect(100, 'Headache', 3)])).toEqual([
       { epochDay: 100, text: 'Headache (3/5)' }
     ]);
+  });
+
+  it('formats a side effect left blank as just its name, no dangling parenthetical', () => {
+    expect(debriefListItems([], [effect(100, 'Brain fog', null)])).toEqual([{ epochDay: 100, text: 'Brain fog' }]);
   });
 
   it('merges both kinds sorted by epoch day, earliest first', () => {

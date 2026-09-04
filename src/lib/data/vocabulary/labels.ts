@@ -292,8 +292,10 @@ export const hairScaleSub = (scale: string): string => lookup(HAIR_SCALE_SUB, sc
    way: purely descriptive wording, never a recommendation or a warning. */
 const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.severity_4, m.severity_5];
 
-/** The name of a severity, 1 to 5. */
-export const severityName = (value: number): string => SEVERITY_NAME[value - 1]?.() ?? String(value);
+/** The name of a severity, 1 to 5, or null when none was given - the
+    caller's own business, not a word here (ticket 23). */
+export const severityName = (value: number | null): string | null =>
+  value === null ? null : (SEVERITY_NAME[value - 1]?.() ?? String(value));
 
 /* Hair-removal treatment areas (phase 5 ticket 08) are a fixed set, not a
    built-in row, the same reasoning MEASUREMENT_TYPE_NAME gives - and their

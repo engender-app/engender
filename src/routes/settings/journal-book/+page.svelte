@@ -215,7 +215,12 @@
       <div class="section-block">
         <ListCard>
           {#each book.sideEffects as effect (effect.id)}
-            <ListRow static title={effect.name} subtitle={`${dayLong(effect.epochDay)} · ${severityName(effect.severity)}`} />
+            {@const severity = severityName(effect.severity)}
+            <ListRow
+              static
+              title={effect.name}
+              subtitle={severity ? `${dayLong(effect.epochDay)} · ${severity}` : dayLong(effect.epochDay)}
+            />
           {/each}
         </ListCard>
       </div>
