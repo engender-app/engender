@@ -84,21 +84,7 @@ async function shoot(page, name) {
       if (getComputedStyle(el).position !== 'static') el.style.position = 'static';
     }
   });
-  /* Neither `fullPage: true` nor an element shot of [data-app-root] reaches
-     past the viewport in this app: the document itself never scrolls, and
-     the scroller is `main#app-main` ([data-app-scroll-region]) one level
-     in. So the viewport is grown to the scroller's full height and shrunk
-     back once the shot is taken, which keeps the layout the 390px one and
-     makes only the height unreal (found on ticket F21, 2026-09-04 - it
-     shipped six clipped screenshots before the fix). */
-  const tall = await page.evaluate(() => {
-    const region = document.querySelector('[data-app-scroll-region]');
-    if (!region) return window.innerHeight;
-    return Math.min(window.innerHeight + (region.scrollHeight - region.clientHeight) + 40, 8000);
-  });
-  await page.setViewportSize({ width: 390, height: tall });
-  await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true });
   shots.push(name);
 }
 
