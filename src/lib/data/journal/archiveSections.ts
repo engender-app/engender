@@ -611,8 +611,7 @@ const SECTIONS = [
       min_hz: 'minHz',
       max_hz: 'maxHz',
       median_hz: 'medianHz',
-      felt_sense: 'feltSense',
-      sealed_until_epoch_day: 'sealedUntilEpochDay'
+      felt_sense: 'feltSense'
     }
   }),
   section({

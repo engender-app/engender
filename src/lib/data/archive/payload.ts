@@ -290,9 +290,10 @@ export interface ArchiveLetter {
   unlockEpochDay: number;
 }
 
-/** A practice take (phase 8 features ticket 10), sealed until
-    `sealedUntilEpochDay` the same way a letter is - never stored as a
-    `sealed` flag either. */
+/** A practice take (phase 8 features ticket 10), sealed until the day after
+    `epochDay` the same way a letter is sealed until its own unlock day -
+    never stored as a `sealed` flag, and here not even as the unlock day
+    itself, which types.ts's own comment gives the ADR-0010 reason for. */
 export interface ArchiveVoicePracticeTake {
   id: string;
   epochDay: number;
@@ -300,7 +301,6 @@ export interface ArchiveVoicePracticeTake {
   maxHz: number;
   medianHz: number;
   feltSense: number | null;
-  sealedUntilEpochDay: number;
 }
 
 /** One bundled transition-roadmap goal with a status recorded at all

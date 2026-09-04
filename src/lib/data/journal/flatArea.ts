@@ -5,12 +5,12 @@
    adding alongside `Area`; what qualifies for this factory is narrower than
    the vocabulary entry needs to be. Here it means an area whose row is its
    domain object - a travelling uuid, a handful of scalar columns,
-   `updated_at`, no join, no projection and no cascade. Six of the
+   `updated_at`, no join, no projection and no cascade. Seven of the
    journal's areas are that shape, and
    each had written the same three statements by hand: a SELECT naming its
    columns, an UPDATE-or-INSERT naming them twice more, and a DELETE. Forty-
    eight id-addressed writes copied that way is how the delete contract came
-   to split in two (ADR-0053), which is what this exists to stop: the six
+   to split in two (ADR-0053), which is what this exists to stop: the seven
    share `upsert` and `delete`, so the contract holds by construction rather
    than by everyone remembering it.
 
@@ -28,7 +28,7 @@
    severity or a garment category is.
 
    NOT THE ARCHIVE'S DESCRIPTOR. `archiveTable.ts`'s `FlatTable` maps the
-   same six tables column-by-column and looks like the same declaration
+   same seven tables column-by-column and looks like the same declaration
    written twice. It is not: that one says what **travels**, this one says
    what is **stored**, and the two legitimately differ - `tally_event.context`
    is a stored column no archive carries, `regimen_episode.hidden` the same
@@ -38,7 +38,7 @@
    divergence, which is the descriptor-as-policy-language ADR-0027 refused.
    They agree today, and nothing here depends on them agreeing.
 
-   `eras` is the seventh flat area and stays out. Its pre-write check is
+   `eras` is the eighth flat area and stays out. Its pre-write check is
    `assertEraFits(await getEras(), input)` - a whole-table invariant that
    returns four discriminated conflict cases so the editor can name the era
    you are overlapping while you type. That is behaviour, not validation,
