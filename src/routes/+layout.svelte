@@ -43,7 +43,7 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
-  import { readWhatIsWaiting } from '$lib/data/comingBackReads';
+  import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
@@ -354,16 +354,23 @@
      be replaced without a reload.
 
      So this does re-read on every arrival at Home, and what makes that
-     affordable is `readWhatIsWaiting`'s own shape: it stops at one bounded
-     read - the gap, eighteen `MAX`es - unless three weeks have passed, which
-     is the same read AreaFinish already makes on eight screens. The
-     `path` check runs again after the await, because a slow read must not
-     pull somebody off a screen they navigated to in the meantime. */
+     affordable is that the first read answers on its own for almost
+     everybody: `readReturnGap` is eighteen bounded `MAX`es, the same read
+     AreaFinish already makes on eight screens, and the five behind
+     `readWhatIsWaiting` are only paid for once three weeks have passed and
+     the gap is one this person has not met. The `path` check runs again
+     after the awaits, because a slow read must not pull somebody off a
+     screen they navigated to in the meantime.
+
+     Nothing is navigated to on an empty answer: a gap with nothing waiting
+     in it is not a return worth a screen, and the person is left on Home. */
   $effect(() => {
     if (!isReadyState(bootState) || locked || !prefs.onboarded) return;
     if (path !== '/') return;
-    void readWhatIsWaiting(journal, todayEpochDay()).then((waiting) => {
-      if (!waiting || prefs.comingBackSeenSince === waiting.sinceEpochDay) return;
+    const day = todayEpochDay();
+    void readReturnGap(journal, day).then(async (since) => {
+      if (since === null || prefs.comingBackSeenSince === since) return;
+      if (!(await readWhatIsWaiting(journal, day, since))) return;
       if (page.url.pathname !== '/') return;
       goto('/coming-back');
     });

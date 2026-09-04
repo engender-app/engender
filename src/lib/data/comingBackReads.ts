@@ -9,12 +9,19 @@
    deciding from another is two surfaces disagreeing about whether the
    person came back.
 
-   Two stages, and the order is the point. The gap is one call - eighteen
-   bounded `MAX`es through `lastWrite.ts` - and almost every boot ends
-   there, because almost every boot is not a return. Only a gap past the
-   threshold pays for the five reads behind the items. */
+   Two calls, and they are separate on purpose rather than for tidiness.
+   `readReturnGap` is one query - eighteen bounded `MAX`es through
+   `lastWrite.ts` - and almost every boot ends there, because almost every
+   boot is not a return. `readWhatIsWaiting` then costs five reads and is
+   asked *about a gap it is handed*, so the caller decides which gap it is
+   asking about and can go on asking about the same one.
 
-import { RETURN_GAP_DAYS, lastWriteDay, whatIsWaiting, type ComingBack } from './comingBack';
+   The screen depends on that. Backfilling a dose writes a row inside the
+   gap, so a screen that re-derived the gap on every write would have
+   answered "not a return any more" while somebody was still using it. It
+   reads the gap once and the items as often as the journal changes. */
+
+import { returnGap, whatIsWaiting, type ComingBack } from './comingBack';
 import type { DosesArea } from './journal/doses';
 import type { ErasArea } from './journal/eras';
 import type { LastWriteArea } from './journal/lastWrite';
@@ -45,23 +52,26 @@ export interface ComingBackAreas {
     long as fewer than this many letters exist that were written after it. */
 const LETTER_PAGE = 60;
 
-/** What is waiting, read and decided, or null when this is not a return.
+/** Whether this is a return, and which gap - the day of the last write
+    before it, or null.
 
-    `todayEpochDay` is an argument here too - nothing below reads a clock -
-    so a caller passes the same day it drew the rest of its screen with. */
+    `todayEpochDay` is an argument here too, as it is everywhere in this
+    feature: nothing reads a clock, so a caller passes the same day it drew
+    the rest of its screen with. */
+export async function readReturnGap(
+  areas: Pick<ComingBackAreas, 'lastWrite'>,
+  todayEpochDay: number
+): Promise<number | null> {
+  return returnGap(await areas.lastWrite.getLastWrites(todayEpochDay), todayEpochDay);
+}
+
+/** What is waiting in `sinceEpochDay`'s gap, or null when nothing is. */
 export async function readWhatIsWaiting(
   areas: ComingBackAreas,
-  todayEpochDay: number
+  todayEpochDay: number,
+  sinceEpochDay: number
 ): Promise<ComingBack | null> {
-  const lastWrites = await areas.lastWrite.getLastWrites(todayEpochDay);
-  const since = lastWriteDay(lastWrites);
-  /* The threshold twice, which looks like a duplicate of `whatIsWaiting`'s
-     own check and is not: this one decides whether to spend the five reads
-     below, and that one decides what the person sees. The one that matters
-     is still the selection's - delete this line and the surface behaves
-     identically, only slower. */
-  if (since === null || todayEpochDay - since < RETURN_GAP_DAYS) return null;
-
+  const since = sinceEpochDay;
   const [letters, milestones, eras, runningWearSession, doses] = await Promise.all([
     areas.letters.getLetters(LETTER_PAGE),
     areas.milestones.getMilestones(),
@@ -76,7 +86,7 @@ export async function readWhatIsWaiting(
 
   return whatIsWaiting({
     todayEpochDay,
-    lastWrites,
+    sinceEpochDay: since,
     letters,
     milestones,
     eras,
