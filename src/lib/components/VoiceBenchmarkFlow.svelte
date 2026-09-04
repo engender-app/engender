@@ -39,6 +39,7 @@
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import VoiceGauge from '$lib/components/VoiceGauge.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -384,18 +385,39 @@
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
       {/if}
 
-      <!-- No live figure in this flow at all (Alicja, 2026-09-04: "for a
-           benchmark, its enough to get a graph right after finishing it").
-           A benchmark is a measurement, and its picture is the take drawn
-           on the summary from the track that was just stored. Watching a
-           curve while making one is what the practise tab is for.
+      <!-- The graph goes from the reading step and stays on the held note
+           (Alicja, 2026-09-04, in three passes: no live graph while reading
+           a passage; a benchmark's own picture is enough right after
+           finishing it; and steadiness "should still be there to guide the
+           user that their voice during the vowel recordings should be
+           stable").
 
-           What a take shows while it runs is what the gate is measuring, in
-           words: how long the voice has been going, and anything to do
-           differently about the room or the level. Those sentences were
-           inside the figure before, and they are the half that carried it
-           under either reduced-motion path. -->
-      {#if phase === 'recording' || phase === 'retry'}
+           Which is the distinction. Reading a passage has no shape to hit -
+           pitch moves by design, the numbers come afterwards, and watching
+           a curve while reading aloud is what the practise tab is for.
+           Holding a note has exactly one: flat. So the vowel step keeps a
+           figure and it is the one that measures the thing being asked for,
+           semitones around the note itself, with no bands on it because
+           where the note sits is not the question.
+
+           The reading step keeps what the figure's words carried: how long
+           the voice has been going, and anything to do differently about
+           the room or the level. -->
+      {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}
+        <VoiceGauge
+          data-vb-gauge
+          {role}
+          {comfort}
+          reading="steadiness"
+          language={bands.language}
+          languageGuessed={bands.guessed}
+          {frames}
+          report={reading}
+          {targetSeconds}
+          label={m.vb_gauge_label_steady()}
+          advice={phase === 'retry' ? retryAdvice : liveAdvice}
+        />
+      {:else if phase === 'recording' || phase === 'retry'}
         <div class="vb-live" data-vb-live>
           <span class="vb-live-held">{m.vb_gauge_run({ seconds: heldSeconds })}</span>
           <p class="vb-live-advice" aria-live="polite">

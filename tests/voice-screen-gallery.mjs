@@ -120,7 +120,7 @@ for (const theme of THEMES) {
   await page.waitForSelector('[data-vb-skip]', { timeout: 15000 });
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(1800);
-  await shoot(page, `vs-3-holding-the-note-${theme}`);
+  await shoot(page, `vs-3-vowel-steadiness-${theme}`);
 
   // 4. The summary: six figures, then the take drawn from its own track.
   await page.waitForSelector('[data-vb-save]', { timeout: 20000 });
