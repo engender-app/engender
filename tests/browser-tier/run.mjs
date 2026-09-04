@@ -1226,6 +1226,38 @@ try {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
 
+// --- Phase 8 audit ticket 14: a seeded query declares its tables on the
+// first pass, so it settles in one run rather than discovering a late read
+// and paying for a second ---------------------------------------------------
+try {
+  const live = await load('/live-reads.html', 'live-reads-probe');
+  if (live.error) throw new Error(live.error);
+
+  if (live.seeding.unseededRuns === 2) ok('an unseeded query over a read with reads past its first await settles at two runs');
+  else fail('an unseeded query over a read with reads past its first await settles at two runs', `${live.seeding.unseededRuns} run(s)`);
+
+  if (live.seeding.seededRuns === 1) ok('the same read, seeded with its own table list, settles at one run');
+  else fail('the same read, seeded with its own table list, settles at one run', `${live.seeding.seededRuns} run(s)`);
+
+  if (live.seeding.unseededFeltSenseRuns === 2)
+    ok("Home's unseeded per-tryout felt-sense read settles at two runs");
+  else
+    fail(
+      "Home's unseeded per-tryout felt-sense read settles at two runs",
+      `${live.seeding.unseededFeltSenseRuns} run(s)`
+    );
+
+  if (live.seeding.seededFeltSenseRuns === 1)
+    ok('the same read, seeded with TRYOUT_FELT_SENSE_TABLES, settles at one run');
+  else
+    fail(
+      'the same read, seeded with TRYOUT_FELT_SENSE_TABLES, settles at one run',
+      `${live.seeding.seededFeltSenseRuns} run(s)`
+    );
+} catch (e) {
+  fail('phase 8 audit ticket 14 seeded live reads', e.message ?? String(e));
+}
+
 // --- Phase 5 audit deepening ticket 09: a dependent read waits for its record
 await block('ticket 09 detail draft', 3, async () => {
   const detail = await load('/detail-draft.html', 'detail-draft-probe');

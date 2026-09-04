@@ -28,6 +28,7 @@ import type { LastWriteArea } from './journal/lastWrite';
 import type { LettersArea } from './journal/letters';
 import type { MilestonesArea } from './journal/milestones';
 import type { WearSessionsArea } from './journal/wearSessions';
+import { tablesReadBy, type TableName } from './live/writes';
 
 /** The areas the return surface reads. The ones `openJournal` already
     built, so every fact arrives through the same method its own screen
@@ -40,6 +41,26 @@ export interface ComingBackAreas {
   wearSessions: WearSessionsArea;
   doses: DosesArea;
 }
+
+/** The tables `readWhatIsWaiting` reads, for the live query that watches it
+    (`/coming-back`'s `waitingQuery`, phase 8 audit ticket 14). Its own five
+    calls are all made after the gap's own `await`, so a live query would
+    otherwise discover every one of them a re-run late; seeding with this
+    list is what a call site is never allowed to hand-write itself
+    (`liveQuery`'s own doc, and the risk `liveQueryWatchingOnly` warns about).
+
+    Built from `tablesReadBy` rather than copied by hand: a table added to
+    one of these five reads in writes.ts reaches this list, and so the seed,
+    without a second edit here. */
+export const WAITING_TABLES: TableName[] = [
+  ...new Set([
+    ...tablesReadBy('letters', 'getLetters'),
+    ...tablesReadBy('milestones', 'getMilestones'),
+    ...tablesReadBy('eras', 'getEras'),
+    ...tablesReadBy('wearSessions', 'getRunningSession'),
+    ...tablesReadBy('doses', 'getComparison')
+  ])
+];
 
 /** How many letters to look at. `getLetters` is paged newest-first and the
     selection only ever shows a few of the most recently unlocked, so a
