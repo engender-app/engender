@@ -19,13 +19,19 @@ const root = fileURLToPath(new URL('../../..', import.meta.url));
 const practise = readFileSync(root + '/src/lib/components/VoicePractice.svelte', 'utf8');
 const benchmarkFlow = readFileSync(root + '/src/lib/components/VoiceBenchmarkFlow.svelte', 'utf8');
 
+/** Shared by both describe blocks below: the named constant is declared and
+    sits at or under the audit's safe two-minute bound. */
+function expectCeilingWithinAuditBound(source: string, constantName: string) {
+  const match = source.match(new RegExp(`const ${constantName} = (\\d+);`));
+  expect(match).not.toBeNull();
+  const seconds = Number(match?.[1]);
+  expect(seconds).toBeGreaterThan(0);
+  expect(seconds).toBeLessThanOrEqual(120);
+}
+
 describe('the practise take stops itself at a ceiling', () => {
   it('defines a ceiling under the audit\'s safe two-minute bound', () => {
-    const match = practise.match(/const PRACTISE_CEILING_SECONDS = (\d+);/);
-    expect(match).not.toBeNull();
-    const seconds = Number(match?.[1]);
-    expect(seconds).toBeGreaterThan(0);
-    expect(seconds).toBeLessThanOrEqual(120);
+    expectCeilingWithinAuditBound(practise, 'PRACTISE_CEILING_SECONDS');
   });
 
   it('closes the take through stop(), not discard(), once the ceiling is reached', () => {
@@ -46,11 +52,7 @@ describe('the practise take stops itself at a ceiling', () => {
 
 describe('the passage step stops itself at the same ceiling', () => {
   it('defines a ceiling under the audit\'s safe two-minute bound', () => {
-    const match = benchmarkFlow.match(/const PASSAGE_CEILING_SECONDS = (\d+);/);
-    expect(match).not.toBeNull();
-    const seconds = Number(match?.[1]);
-    expect(seconds).toBeGreaterThan(0);
-    expect(seconds).toBeLessThanOrEqual(120);
+    expectCeilingWithinAuditBound(benchmarkFlow, 'PASSAGE_CEILING_SECONDS');
   });
 
   it('closes the take through stop(), not discard(), once the ceiling is reached', () => {
