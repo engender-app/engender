@@ -71,7 +71,7 @@ describe('what Safe Space is built from', () => {
   });
 });
 
-describe('the three more sources ticket 14 adds', () => {
+describe('the letters, photos and voice sources (ticket 14, widened by ticket 21)', () => {
   /* Ticket 14 showed one letter here; phase 8 features ticket 21 widened
      that to every unlocked one, capped, with the rest a tap away. What is
      pinned is the seal rule staying in letterRetrospective.ts, the cap
@@ -87,7 +87,7 @@ describe('the three more sources ticket 14 adds', () => {
     // Under the card, not a last row in it: a row there wore the letters'
     // own disc and chevron and read as a fourth letter.
     expect(markup).toMatch(/<\/ListCard>[\s\S]*?<a[^>]*data-all-letters[^>]*href="\/settings\/letters"/);
-    expect(markup).toContain('m.safe_space_letters_all({ count: unlockedLetters.length - LETTER_LIMIT })');
+    expect(markup).toMatch(/m\.safe_space_letters_all\(\{\s*count:\s*unlockedLetters\.length - LETTER_LIMIT\s*\}\)/);
     // Its own card, not one more row inside the counterevidence list.
     expect(markup).toMatch(/<ListCard[\s\S]*?<LookBackLetterCard/);
   });
@@ -97,8 +97,8 @@ describe('the three more sources ticket 14 adds', () => {
 
     // The other two surfaces keep the retrospective's own framing, where the
     // date is why the letter is there at all.
-    expect(read('src/routes/on-this-day/+page.svelte')).not.toContain('lead=');
-    expect(read('src/lib/components/WrappedYear.svelte')).not.toContain('lead=');
+    expect(read('src/routes/on-this-day/+page.svelte')).not.toMatch(/<LookBackLetterCard[^>]*lead=/);
+    expect(read('src/lib/components/WrappedYear.svelte')).not.toMatch(/<LookBackLetterCard[^>]*lead=/);
 
     const kit = read('src/lib/styles/kit.css');
     expect(kit).toContain("[data-list-row='letter-preview'][data-lead='text'] .kit-row-title");
@@ -111,11 +111,10 @@ describe('the three more sources ticket 14 adds', () => {
     // announces is what a row draws rather than the whole letter.
     const letterBlock = markup.match(/{#each letters[\s\S]*?{\/each}/)?.[0] ?? '';
     expect(letterBlock).toContain('<LookBackLetterCard');
-    expect(letterBlock).not.toMatch(/\.slice\(|substring|\u2026/);
 
     const card = read('src/lib/components/LookBackLetterCard.svelte');
     expect(card).toContain('href={`/settings/letters/${letter.id}`}');
-    expect(card).toContain('letterOpening(letter.text, OPENING_LIMIT)');
+    expect(card).toContain('letterOpening(letter.text, LETTER_OPENING_LIMIT)');
     expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
   });
 

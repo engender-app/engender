@@ -2000,8 +2000,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} more letter",
-        "countPlural=other": "{count} more letters"
+        "countPlural=one": "See the other letter",
+        "countPlural=other": "See the other {count} letters"
       }
     }
   ],
