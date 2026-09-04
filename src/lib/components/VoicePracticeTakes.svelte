@@ -3,10 +3,21 @@
 
      A take reuses the time-capsule letter's own seal mechanics rather than
      a second one - `isSealedUntil` is the same predicate `isLetterSealed`
-     delegates to now - so this list is modelled on `/settings/letters`'
+     delegates to now, handed `epochDay + 1` rather than a stored unlock
+     day, because that is the only unlock day a take ever has (ADR-0010;
+     types.ts's own note). So this list is modelled on `/settings/letters`'
      own row: sealed shows the seal and nothing else, open shows what it is
      for. What differs is what "open" shows: a letter's own text, here the
      figures `journal.voicePracticeTakes` stored at save time.
+
+     Felt sense is drawn, not only named: the row's own disc is the mood
+     face rather than a fixed icon once one was recorded, which is what
+     puts it beside the pitch figures the ticket asks for ("plotted beside
+     pitch, never in place of it") without a second chart this tab has no
+     other need of - moodFace.ts's drawings are this app's one way of
+     plotting a mood everywhere else, and this is the same drawing, not a
+     new one. It stays decorative (MoodFace is aria-hidden), so the mood
+     name is still read out in the subtitle line under it.
 
      The distinction from a benchmark's p10-p90 span is written under the
      list rather than assumed, because a "fix" that makes one match the
@@ -18,6 +29,8 @@
   import { isSealedUntil } from '$lib/data/sealedUntil';
   import type { VoicePracticeTake } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import Icon from '$lib/components/Icon.svelte';
+  import MoodFace from '$lib/components/MoodFace.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -47,14 +60,24 @@
     {#snippet rows()}
       <ListCard {role}>
         {#each takes as take (take.id)}
-          {@const sealed = isSealedUntil(take.sealedUntilEpochDay, today)}
+          {@const sealedUntilEpochDay = take.epochDay + 1}
+          {@const sealed = isSealedUntil(sealedUntilEpochDay, today)}
+          {#snippet takeDisc()}
+            {#if sealed}
+              <span class="kit-row-ico"><Icon name="lock" size={20} /></span>
+            {:else if take.feltSense !== null}
+              <MoodFace step={take.feltSense} size={36} />
+            {:else}
+              <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
+            {/if}
+          {/snippet}
           <ListRow
             key={take.id}
             data-practice-take={take.id}
-            icon={sealed ? 'lock' : 'mic'}
+            leading={takeDisc}
             title={sealed ? m.letters_sealed_title() : dayLabel(take.epochDay)}
             subtitle={sealed
-              ? m.letters_sealed_until({ date: dayLabel(take.sealedUntilEpochDay) })
+              ? m.letters_sealed_until({ date: dayLabel(sealedUntilEpochDay) })
               : [
                   m.vb_practice_take_figures({
                     median: String(Math.round(take.medianHz)),

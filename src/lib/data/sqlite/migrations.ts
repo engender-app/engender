@@ -1896,16 +1896,15 @@ ALTER TABLE voice_benchmark ADD COLUMN pitch_track TEXT;
    a tryout or a milestone by name (CONTEXT.md: "exactly one of the two"),
    and a practice take is neither.
 
-   `sealed_until_epoch_day` reuses the time-capsule letter's own seal
-   mechanics (letterStatus.ts's isLetterSealed, generalized to
-   sealedUntil.ts): sealed while it is after today, unsealed for good once it
-   is not, no stored flag and no re-sealing. What differs from a letter is
-   the day itself - a letter's is chosen by the person, this one is always
-   the day after the take, because the failure mode this ticket names is
-   judging a recording made twenty minutes ago, and the app already reasons
-   about "today" in whole days (ADR-0001). No UI asks how long to seal a
-   take for; that would be a control the ticket does not ask for and ships
-   nothing to weigh it against. */
+   No `sealed_until_epoch_day` column: the seal reuses the time-capsule
+   letter's own mechanics (letterStatus.ts's isLetterSealed, generalized to
+   sealedUntil.ts), but unlike a letter's `unlockEpochDay` - a real choice
+   the person makes - a take's unlock day is always `epoch_day + 1` and
+   never anything else, which is exactly the "computable from data already
+   present" case ADR-0010 refuses a column for. `isSealedUntil(epochDay + 1,
+   today)` at the point of reading is the whole rule; no UI asks how long to
+   seal a take for either, because that would be a control the ticket does
+   not ask for and ships nothing to weigh it against. */
 const SCHEMA_V59 = `
 CREATE TABLE voice_practice_take (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1915,7 +1914,6 @@ CREATE TABLE voice_practice_take (
   max_hz REAL NOT NULL,
   median_hz REAL NOT NULL,
   felt_sense INTEGER,
-  sealed_until_epoch_day INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day);

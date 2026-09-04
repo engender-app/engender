@@ -75,9 +75,10 @@ export interface VoiceBenchmark {
     (phase 8 features ticket 10). `minHz`/`maxHz` are true extremes, not the
     percentile span VoiceBenchmark reports - see audio/practiceTake.ts for
     why that is the honest figure here and not there. `feltSense` is the
-    app's own five-level mood scale (moodFace.ts) and is optional.
-    `sealedUntilEpochDay` is the day this take's figures become visible,
-    always the day after it was taken - see sealedUntil.ts. */
+    app's own five-level mood scale (moodFace.ts) and is optional. No
+    `sealedUntilEpochDay`: the day a take's figures become visible is always
+    `epochDay + 1`, so ADR-0010 asks for that computed at the point of
+    reading (sealedUntil.ts) rather than stored a second time. */
 export interface VoicePracticeTake {
   id: string;
   epochDay: number;
@@ -85,7 +86,6 @@ export interface VoicePracticeTake {
   maxHz: number;
   medianHz: number;
   feltSense: number | null;
-  sealedUntilEpochDay: number;
 }
 
 /** A short in-app video recording belonging to exactly one entry (phase 5

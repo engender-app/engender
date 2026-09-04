@@ -7,10 +7,11 @@
    itself standing apart from entry: the two are different activities and
    never compared (this ticket's Out of Scope).
 
-   Flat, so its three writes come from flatArea.ts and only the reads and the
-   seal are its own. `sealedUntilEpochDay` is always `epochDay + 1`, decided
-   at write time and never edited afterwards - see migrations.ts's v59
-   comment for why the day is fixed rather than chosen. */
+   Flat, so its three writes come from flatArea.ts and only the reads are its
+   own. No seal is stored: a take's own `epochDay + 1` is its unlock day and
+   nothing else ever is, which callers compute at the point of reading
+   (sealedUntil.ts) rather than a column repeating it - migrations.ts's v59
+   comment says why ADR-0010 asks for that. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoicePracticeTake } from '../types';
@@ -32,7 +33,9 @@ export interface VoicePracticeTakesArea {
   /** The day of the most recent take at or before `todayEpochDay`, or null
       if there is none (phase 8 features ticket 03, lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
-  /** Returns the take's id. Sealed until the day after `input.epochDay`. */
+  /** Returns the take's id. Sealed until the day after `input.epochDay`
+      (isSealedUntil, sealedUntil.ts), a fact the caller derives rather than
+      one this returns. */
   addTake(input: VoicePracticeTakeInput): Promise<string>;
   /** Idempotent. */
   deleteTake(id: string): Promise<void>;
@@ -56,8 +59,7 @@ export function makeVoicePracticeTakesArea(driver: SqliteDriver): VoicePracticeT
       minHz: 'min_hz',
       maxHz: 'max_hz',
       medianHz: 'median_hz',
-      feltSense: 'felt_sense',
-      sealedUntilEpochDay: 'sealed_until_epoch_day'
+      feltSense: 'felt_sense'
     },
     guard: (input) => assertValidFeltSense(input.feltSense)
   });
@@ -72,11 +74,7 @@ export function makeVoicePracticeTakesArea(driver: SqliteDriver): VoicePracticeT
       return latest?.epochDay ?? null;
     },
 
-    addTake: (input) =>
-      takes.upsert({
-        ...input,
-        sealedUntilEpochDay: input.epochDay + 1
-      }),
+    addTake: (input) => takes.upsert(input),
 
     deleteTake: takes.delete
   };

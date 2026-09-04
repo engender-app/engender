@@ -33,14 +33,6 @@ test('a take round-trips its figures and reads back newest first', async () => {
   assert.equal(takes[1].feltSense, 4);
 });
 
-test('a take is sealed until the day after it was taken, always', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.voicePracticeTakes.addTake({ epochDay: 100, minHz: 150, maxHz: 200, medianHz: 175, feltSense: null });
-
-  const [take] = await journal.voicePracticeTakes.getTakes();
-  assert.equal(take.sealedUntilEpochDay, 101);
-});
-
 test('a felt sense outside the five-level scale is refused before it is written', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
