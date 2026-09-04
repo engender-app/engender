@@ -11,12 +11,11 @@
      supports a shape a week's worth cannot fill.
 
      What changed in the rebuild. The figures were four small tiles in a row
-     and are a list card, which is what let the best-streak-ever figure
-     arrive as the line under the streak it sits against rather than as a
-     fifth tile saying a number about a different period. The mood arc is the
-     kit's area chart, so it carries a value scale and a mark per day and
-     re-tweens rather than being redrawn. Tag insights and the tally are the
-     kit's horizontal bars. The rest - milestones, photos, the tags you used
+     and are a list card, so a figure can carry a supporting line under it
+     instead of every one of them being a tile saying a bare number. The
+     mood arc is the kit's area chart, so it carries a value scale and a
+     mark per day and re-tweens rather than being redrawn. Tag insights and
+     the tally are the kit's horizontal bars. The rest - milestones, photos, the tags you used
      - is the same content on the kit's own surfaces.
 
      Sections with nothing in them are left out rather than rendered saying
@@ -42,7 +41,7 @@
   import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
-  import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
+  import type { WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import AreaChart from './kit/AreaChart.svelte';
   import BarRows from './kit/BarRows.svelte';
@@ -61,7 +60,6 @@
     anchorDuration = null,
     insights = [],
     tally = null,
-    streaks = null
   }: {
     title: string;
     subtitle: string;
@@ -80,7 +78,6 @@
         where the period has nothing to say (spec 06). */
     insights?: (WrappedTagInsight & { label: string })[];
     tally?: WrappedTallyCounts | null;
-    streaks?: WrappedStreaks | null;
   } = $props();
 
   /* Which stripe each area takes, and the two ways this app writes a
@@ -115,28 +112,14 @@
   <p class="wrapped-sub">{subtitle}</p>
 </header>
 
-<!-- The figures. A list rather than a row of small tiles, which is what let
-     the best-ever streak sit under the period's own best as the thing it is
-     measured against instead of becoming a fifth tile stating a number about
-     a different period. -->
+<!-- The figures. A list rather than a row of small tiles, so a figure can
+     carry a supporting line under it instead of every one of them having to
+     be a tile stating a bare number. -->
 <div class="wrapped-figure-list" data-kit-surface data-wrapped-stats>
 <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
   <ListRow static data-wrapped-stat title={m.wrapped_stat_entries()}>
     {#snippet trailing()}<b class="wrapped-figure-value">{recap.entryCount}</b>{/snippet}
   </ListRow>
-  {#if streaks}
-    <!-- The period's best against the best there has ever been. Never a
-         verdict on the pair: the label says which is which and the numbers
-         say the rest. -->
-    <ListRow
-      static
-      data-wrapped-stat
-      title={m.wrapped_stat_streak()}
-      subtitle={`${m.wrapped_stat_streak_ever()}: ${m.n_days({ n: streaks.ever })}`}
-    >
-      {#snippet trailing()}<b class="wrapped-figure-value">{m.n_days({ n: streaks.inPeriod })}</b>{/snippet}
-    </ListRow>
-  {/if}
   {#if recap.averageMood !== null}
     {@const mood = recap.averageMood}
     <ListRow static data-wrapped-stat title={m.wrapped_stat_mood()}>

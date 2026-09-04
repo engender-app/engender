@@ -942,13 +942,13 @@ CREATE TABLE roadmap_goal (
 `;
 
 /* v29: a declared, dated break from journaling (phase 5 ticket 21, CONTEXT:
-   "Streak" - amended). Modeled on `dose_pause` (v8): a dated range, open
+   "Journaling pause"). Modeled on `dose_pause` (v8): a dated range, open
    while `end_epoch_day` is null. No `episode_id` here, unlike dose_pause -
    this has nothing to do with a regimen, and has to work whether or not one
    exists, the same reasoning `side_effect` (v11) gives. No `reason` column
    either: ticket 21's scope is a start day and an optional end day only, not
-   a planned/accidental distinction - `Streak`'s computation treats every
-   pause the same regardless of why it was declared. */
+   a planned/accidental distinction - nothing reading a pause cares why it was
+   declared. */
 const SCHEMA_V29 = `
 CREATE TABLE journaling_pause (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,

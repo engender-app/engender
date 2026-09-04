@@ -5,8 +5,8 @@
    is queried asynchronously. Both halves need the same thing from a write -
    to be told what just changed - and neither should have to ask the screen
    that performed it. A screen calling `journal.entries.upsertEntry` cannot
-   be relied on to remember that Home's list, the streak, the calendar and
-   the stats charts all read that table; miss one and it shows yesterday's
+   be relied on to remember that Home's list, the calendar and the stats
+   charts all read that table; miss one and it shows yesterday's
    answer with no sign that it is doing so.
 
    So the announcement is taken off the call sites and attached to the
@@ -73,8 +73,7 @@ export const TABLE_NAMES = [
   'personalEffect',
   /* Cycle events (phase 5 ticket 03). */
   'cycleEvent',
-  /* The journaling pause (phase 5 ticket 21) - Streak's own reads key on
-     this too, since a pause changes what Streak answers. */
+  /* The journaling pause (phase 5 ticket 21). */
   'journalingPause',
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Its own name and
      not folded into 'entry', even though `getJournalBounds` reads the entry
@@ -300,6 +299,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // A bare `MAX(epoch_day)`, not the hydrated shape: nothing here reads
       // a tag, a photo, a recording or a video note.
       lastWriteEpochDay: ['entry'],
+      // A bare `COUNT(*)` over the entry table and nothing else: Home's
+      // count line and Safe Space's total both key on it.
+      countAll: ['entry'],
       // Note, day and presentation only - the word-frequency fold's own
       // read (phase 8 features ticket 14), not the hydrated shape.
       noteEntries: ['entry']
@@ -853,12 +855,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       tagInsights: ['entry', 'dimension', 'tag'],
       // No dimension: a share by tag counts entries, not values on them.
       tagShare: ['entry', 'tag'],
-      // A pause bridges a gap without extending the count (phase 5 ticket
-      // 21), which is the second table the streak-goal screen forgot.
-      streak: ['entry', 'journalingPause'],
-      // Deliberately entry-only: "best streak" is the gaps-and-islands
-      // question over entries, which ticket 21 left alone.
-      bestStreakEver: ['entry'],
       recap: ['entry', 'dimension', 'tag', 'milestone', 'photo'],
       isGoodDay: ['entry', 'tag']
     }

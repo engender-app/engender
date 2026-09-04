@@ -43,7 +43,6 @@ test('a trashed entry is invisible everywhere in stats (phase 5 ticket 19)', asy
 
   assert.deepEqual(await journal.stats.dayAverages('mood', 100, 101), [{ day: 100, value: 4, count: 1 }]);
   assert.deepEqual(await journal.stats.entryCountsByDay(100, 101), [{ day: 100, count: 1 }]);
-  assert.equal(await journal.stats.bestStreakEver(101), 1);
   assert.equal(await journal.stats.isGoodDay(101), false);
 
   const recap = await journal.stats.recap(100, 101);
@@ -459,126 +458,6 @@ test('a custom tag is named by its uuid, the way a built-in is named by its key'
   assert.deepEqual((await journal.stats.tagInsights('mood', 100, 103)).map((r) => r.id), [tag.id]);
 });
 
-/* streak */
-
-test('the streak is the run of days ending today, and today does not break it until today is over', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [today - 3, today - 2, today - 1]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-
-  // Nothing logged today yet: the run ending yesterday still stands.
-  assert.equal(await journal.stats.streak(today), 3);
-
-  await journal.entries.upsertEntry({ epochDay: today, mood: 4 });
-  assert.equal(await journal.stats.streak(today), 4);
-});
-
-test('a backdated entry filling a gap repairs the streak', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [today - 4, today - 3, today - 1, today]) {
-    await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  }
-  assert.equal(await journal.stats.streak(today), 2, 'the gap two days back stops the run');
-
-  await journal.entries.upsertEntry({ epochDay: today - 2, mood: 2, note: 'written up a day late' });
-
-  assert.equal(await journal.stats.streak(today), 5);
-});
-
-test('a run that ended before yesterday is not a streak, and no entries is no streak', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  assert.equal(await journal.stats.streak(today), 0);
-
-  for (const day of [today - 4, today - 3, today - 2]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  assert.equal(await journal.stats.streak(today), 0);
-});
-
-test('bestStreakEver finds the longest run across all of history, not just the run ending today', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [100, 101, 102, 103, 104]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  for (const day of [today - 1, today]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-
-  assert.equal(await journal.stats.bestStreakEver(today), 5, 'the five-day run from long ago beats the two-day run ending today');
-});
-
-test('bestStreakEver ignores entries dated in the future, and no entries is no streak', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  assert.equal(await journal.stats.bestStreakEver(today), 0);
-
-  await journal.entries.upsertEntry({ epochDay: today + 5, mood: 3 });
-  assert.equal(await journal.stats.bestStreakEver(today), 0);
-});
-
-test("a backdated entry filling a gap repairs bestStreakEver the same way it repairs the live streak", async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [today - 4, today - 3, today - 1, today]) {
-    await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  }
-  assert.equal(await journal.stats.bestStreakEver(today), 2);
-
-  await journal.entries.upsertEntry({ epochDay: today - 2, mood: 2, note: 'written up a day late' });
-  assert.equal(await journal.stats.bestStreakEver(today), 5);
-});
-
-test('days inside a journaling pause are not a gap, and resuming after one is not a broken streak', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [today - 10, today - 9, today - 8]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  await journal.journalingPauses.upsertPause({ startEpochDay: today - 7, endEpochDay: today - 1 });
-  await journal.entries.upsertEntry({ epochDay: today, mood: 4 });
-
-  // The three pre-pause days plus today - the seven paused days in between
-  // bridge the run without being counted as logged days themselves.
-  assert.equal(await journal.stats.streak(today), 4);
-});
-
-test('a still-running pause freezes the streak rather than reading as broken', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [today - 5, today - 4, today - 3]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  await journal.journalingPauses.upsertPause({ startEpochDay: today - 2, endEpochDay: null });
-
-  // Nothing logged today or yesterday, but both fall inside the open pause.
-  assert.equal(await journal.stats.streak(today), 3);
-});
-
-test('a day outside any pause range still breaks the streak', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: today - 10, mood: 3 });
-  await journal.journalingPauses.upsertPause({ startEpochDay: today - 5, endEpochDay: today - 3 });
-  await journal.entries.upsertEntry({ epochDay: today, mood: 3 });
-
-  // today - 9 through today - 6 are gaps the pause does not cover.
-  assert.equal(await journal.stats.streak(today), 1);
-});
-
-test('bestStreakEver is unaffected by a journaling pause - a different question from Streak', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [today - 10, today - 9, today - 8]) await journal.entries.upsertEntry({ epochDay: day, mood: 3 });
-  await journal.journalingPauses.upsertPause({ startEpochDay: today - 7, endEpochDay: today - 1 });
-  await journal.entries.upsertEntry({ epochDay: today, mood: 4 });
-
-  assert.equal(await journal.stats.bestStreakEver(today), 3, 'the three-day run, not the pause-bridged one Streak reports');
-});
-
-test('several entries on one day are one day of streak, and future entries do not extend it', async () => {
-  const today = 20000;
-  const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: today, timestamp: 1, mood: 3 });
-  await journal.entries.upsertEntry({ epochDay: today, timestamp: 2, mood: 5 });
-  await journal.entries.upsertEntry({ epochDay: today + 1, mood: 4 });
-  await journal.entries.upsertEntry({ epochDay: today + 2, mood: 4 });
-
-  assert.equal(await journal.stats.streak(today), 1);
-});
-
 /* recap */
 
 test('a recap counts what the range held and never stores any of it', async () => {
@@ -596,7 +475,6 @@ test('a recap counts what the range held and never stores any of it', async () =
 
   assert.equal(recap.entryCount, 5);
   assert.equal(recap.averageMood, 3);
-  assert.equal(recap.bestStreak, 3, 'the longest run inside the range, not the run ending today');
   assert.deepEqual(recap.topTags, [
     { id: 'e-tired', count: 3 },
     { id: 'a-work', count: 2 }
@@ -611,7 +489,6 @@ test('a recap of an empty month says so rather than dividing by zero', async () 
   assert.deepEqual(await journal.stats.recap(100, 129), {
     entryCount: 0,
     averageMood: null,
-    bestStreak: 0,
     topTags: [],
     milestones: [],
     biggestDimensionChange: null,
