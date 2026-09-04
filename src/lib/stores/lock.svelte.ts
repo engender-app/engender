@@ -28,6 +28,7 @@
 import { prefs } from '../data/prefs/store.svelte';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { isAndroid } from '../platform';
+import { ui } from './ui.svelte';
 
 export const lockState = $state({
   /** Set once the access mode's secret has been given, cleared on every lock. */
@@ -49,6 +50,12 @@ export function markUnlocked() {
 
 export function lockNow() {
   lockState.unlocked = false;
+  /* Quick add is a layout-level sibling of the gate chain, not below it, so
+     its own open flag is the only thing keeping it up. Locking is neither a
+     navigation nor an Escape - the fan's two other ways down - and closing
+     it here is cheaper than moving quick add inside the chain it would
+     otherwise hide behind (phase 8 audit ticket 08). */
+  ui.chooserOpen = false;
 }
 
 /** Two-finger swipe down (F24): lock, and on web put a neutral page over
