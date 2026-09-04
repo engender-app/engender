@@ -138,28 +138,28 @@ export function referenceBands(language: BandLanguage): readonly PitchBand[] {
   return middle ? [...ranges, middle] : ranges;
 }
 
-/** Which population's figures belong on a benchmark's figure: the language
-    of the passage that was read, from the key the row already stores
-    (data/voice/passages.ts).
+/** Which population's figures belong on a figure, and whether that is
+    known or guessed. The two always travel together - a caption that names
+    a language has to say when the language is a guess - so they are one
+    object rather than two props that can be passed inconsistently.
 
-    A built-in passage carries its language in the key. A custom passage
-    carries a fingerprint of its own text and no language at all, so the
-    app's own language is the best signal there is - Alicja's call on
-    2026-09-04. It is a guess, and the source line says whose figures are
-    being drawn so that the figure admits to it rather than presenting a
-    guess as a fact. Anything with no figures published falls back to
-    English rather than drawing a band for a population it has not
-    measured. */
-export function bandLanguageOf(passageKey: string, appLocale: string): BandLanguage {
-  const fromPassage = passageKey.startsWith('builtin-') ? passageKey.slice('builtin-'.length) : appLocale;
-  return fromPassage === 'pl' ? 'pl' : 'en';
-}
+    A built-in passage carries its language in its key
+    (data/voice/passages.ts). A custom passage carries a fingerprint of its
+    own text and no language at all, and the practise tab reads no passage
+    whatsoever; for both, the app's own language is the best signal there is
+    - Alicja's call on 2026-09-04 - and `guessed` is what makes the caption
+    admit to it rather than presenting a guess as a fact. Pass `''` for "no
+    passage".
 
-/** True when the bands being drawn are a guess at the passage's language
-    rather than a reading of it: a passage of somebody's own words says
-    nothing about which language it is in. */
-export function bandLanguageIsGuessed(passageKey: string): boolean {
-  return !passageKey.startsWith('builtin-');
+    A language with no published figures falls back to English rather than
+    drawing a band for a population nobody has measured. */
+export function bandsFor(
+  passageKey: string,
+  appLocale: string
+): { language: BandLanguage; guessed: boolean } {
+  const known = passageKey.startsWith('builtin-');
+  const fromPassage = known ? passageKey.slice('builtin-'.length) : appLocale;
+  return { language: fromPassage === 'pl' ? 'pl' : 'en', guessed: !known };
 }
 
 export interface PitchAxis {
@@ -235,7 +235,7 @@ export function bandEdges(language: BandLanguage): number[] {
     and can push the last label off the bottom; the upward pass pulls the
     whole crowded run back inside, which is why a single pass is not
     enough. */
-export function spreadLabels(at: readonly number[], minGap: number): number[] {
+export function spreadLabels(at: readonly number[], minGap: number, height: number): number[] {
   const spread = [...at];
   for (let i = 1; i < spread.length; i++) {
     const gap = spread[i - 1] - spread[i];
@@ -243,14 +243,14 @@ export function spreadLabels(at: readonly number[], minGap: number): number[] {
       // Half each, so a pair keeps its own middle rather than the lower one
       // carrying the whole move.
       const push = (minGap - gap) / 2;
-      spread[i - 1] = Math.min(100, spread[i - 1] + push);
+      spread[i - 1] = Math.min(height, spread[i - 1] + push);
       spread[i] = spread[i] - push;
     }
   }
   for (let i = spread.length - 1; i > 0; i--) {
     if (spread[i] < 0) spread[i] = 0;
     if (spread[i - 1] - spread[i] < minGap) {
-      spread[i - 1] = Math.min(100, spread[i] + minGap);
+      spread[i - 1] = Math.min(height, spread[i] + minGap);
     }
   }
   return spread;
@@ -279,4 +279,44 @@ export function comfortBand(
   if (low === high) return null;
   if (low < COMFORT_FLOOR_HZ || high > COMFORT_CEILING_HZ) return null;
   return { lowHz: low, highHz: high };
+}
+
+/** How many semitones either side of a held note its own figure shows.
+    Three, because the gate fails a vowel whose F0 varies by more than 8%
+    (quality.ts's MAX_F0_CV), which is about 1.4 semitones of spread - so a
+    take about to fail is plainly off the middle without slamming into the
+    edges. */
+export const STEADINESS_SEMITONES = 3;
+
+/** The axis a held note is judged on: not absolute hertz but semitones
+    around the note itself, because the vowel step's task is keeping one
+    pitch rather than reaching one (Alicja, 2026-09-04) and a flat line is
+    the whole answer. Null where nothing has been voiced yet and there is no
+    note to centre on.
+
+    This is deliberately the shape the whole ticket took the live gauge off:
+    a relative axis is unreadable for "where is my voice" and exactly right
+    for "am I holding still". The difference is that it is now one of two
+    named instruments rather than the only one there is. */
+export function steadinessAxis(referenceHz: number | null): PitchAxis | null {
+  if (referenceHz === null) return null;
+  const edge = 2 ** (STEADINESS_SEMITONES / 12);
+  return { lowHz: referenceHz / edge, highHz: referenceHz * edge };
+}
+
+/** Where the gutter's numbers go on a steadiness axis: one per semitone,
+    as frequencies, so the figure's one Hz-to-y mapping still does the
+    placing. */
+export function steadinessTicks(referenceHz: number): number[] {
+  const ticks: number[] = [];
+  for (let semitone = -STEADINESS_SEMITONES; semitone <= STEADINESS_SEMITONES; semitone++) {
+    ticks.push(referenceHz * 2 ** (semitone / 12));
+  }
+  return ticks;
+}
+
+/** How far a frequency is from a reference, in semitones, for labelling a
+    steadiness tick. */
+export function semitonesFrom(referenceHz: number, hz: number): number {
+  return 12 * Math.log2(hz / referenceHz);
 }

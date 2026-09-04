@@ -1491,8 +1491,8 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     ok(`the trace is drawn from the frames the microphone delivered (${f.tracePoints} points in ${f.traceRuns} run(s))`);
   else fail('the trace is drawn from the frames the microphone delivered', JSON.stringify(f));
 
-  /* Three bands, the overlap among them and hatched rather than filled, and
-     the comfort bracket's spine plus its two ticks. */
+  /* Both cited ranges, the region between them with its own fill and its
+     own two bounds, and the comfort bracket's spine plus its two ticks. */
   const bandsRight =
     f.bands.join(',') === 'cisMan,cisWoman,between' &&
     f.middleEdges === 2 &&
@@ -1506,9 +1506,7 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
       `${JSON.stringify(f.bands)}, ${f.middleEdges} edges, ${f.middleFills} fills, ${f.comfortMarks} bracket marks`
     );
 
-  /* ADR-0059 permits these bands only with their figures, their source and
-     the sentence about averages. Checked on the rendered figure, because
-     that is where the permission has to hold. */
+
   /* The take drawn afterwards: the trace from the stored track, the median
      and the p10-p90 pair. */
   if (r.take.traceRuns >= 1 && r.take.hasMedian === 1 && r.take.spanEdges === 2 && r.take.saysNoTrack === 0)
@@ -1522,6 +1520,9 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     ok('a benchmark from before the column says so instead of drawing an empty field');
   else fail('a benchmark from before the column says so rather than drawing an empty field', JSON.stringify(bare));
 
+  /* ADR-0059 permits these bands only with their figures, their source and
+     the sentence about averages. Checked on the rendered figure, because
+     that is where the permission has to hold. */
   const cited =
     f.bandFigures.length === 3 &&
     f.bandFigures.every((count) => count === 2) &&

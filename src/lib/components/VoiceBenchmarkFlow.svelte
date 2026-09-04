@@ -26,7 +26,7 @@
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
-  import { bandLanguageIsGuessed, bandLanguageOf, comfortBand } from '$lib/audio/bands';
+  import { bandsFor, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import { noteName } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
@@ -105,8 +105,7 @@
   /* Whose typical ranges belong on the figure: the language of the passage
      being read, not the app's (ADR-0059). A passage of somebody's own words
      carries no language, so the app's is a guess and the caption says so. */
-  let bandLanguage = $derived(bandLanguageOf(passageKey, getLocale()));
-  let bandLanguageGuessed = $derived(bandLanguageIsGuessed(passageKey));
+  let bands = $derived(bandsFor(passageKey, getLocale()));
   let targetSeconds = $derived(step === 'vowel' ? VOWEL_SECONDS : PASSAGE_TARGET_SECONDS);
 
   /** The gate's own findings, in words, and only ever about the recording. */
@@ -341,8 +340,8 @@
           data-vb-take
           {role}
           {comfort}
-          language={bandLanguage}
-          languageGuessed={bandLanguageGuessed}
+          language={bands.language}
+          languageGuessed={bands.guessed}
           pitchTrack={passageTake.pitchTrack}
           medianHz={figures.f0MedianHz}
           p10Hz={figures.f0P10Hz}
@@ -383,17 +382,33 @@
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
       {/if}
 
-      {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}
+      <!-- Two steps, two instruments, and each says which it is.
+
+           Reading always gets the full graph: absolute hertz, the passage
+           language's bands, the comfort band, the caption (Alicja,
+           2026-09-04, twice - "no way to tell what it measures at all", and
+           "when reading the passage we should always show the full graph").
+           It is there before the take starts too, so the bands are on
+           screen while somebody decides to begin rather than appearing
+           under them once it is too late to look.
+
+           The held note gets semitones around the note itself and no bands,
+           because that step's task is keeping one pitch rather than
+           reaching one, and a flat line is the whole answer. That is the
+           one place the relative axis this ticket took the gauge off is the
+           right instrument. -->
+      {#if step === 'passage' || phase === 'recording' || phase === 'retry'}
         <VoiceGauge
           data-vb-gauge
           {role}
           {comfort}
-          language={bandLanguage}
-          languageGuessed={bandLanguageGuessed}
+          reading={step === 'vowel' ? 'steadiness' : 'pitch'}
+          language={bands.language}
+          languageGuessed={bands.guessed}
           {frames}
           report={reading}
           {targetSeconds}
-          label={m.vb_gauge_label()}
+          label={step === 'vowel' ? m.vb_gauge_label_steady() : m.vb_gauge_label_passage()}
           advice={phase === 'retry' ? retryAdvice : liveAdvice}
         />
       {/if}
@@ -404,27 +419,6 @@
     </div>
 
     <div class="editor-savebar vb-bar">
-      <!-- On the passage step the figure rides the action bar rather than
-           the body: the passage is a screenful of text somebody is reading
-           off the screen, and a gauge under it is a gauge nobody can see.
-           The vowel step has nothing to read, so there it is the thing on
-           the screen and takes its full size. -->
-      {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
-        <VoiceGauge
-          compact
-          data-vb-gauge
-          {role}
-          {comfort}
-          language={bandLanguage}
-          languageGuessed={bandLanguageGuessed}
-          {frames}
-          report={reading}
-          {targetSeconds}
-          label={m.vb_gauge_label()}
-          advice={phase === 'retry' ? retryAdvice : liveAdvice}
-        />
-      {/if}
-
       {#if phase === 'recording'}
         <button class="btn btn-primary" data-vb-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>

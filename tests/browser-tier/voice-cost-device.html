@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>voice figure cost, on the device</title>
+    <style>
+      body { margin: 0; padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+      #readout dl { display: grid; gap: 6px; margin: 0; font-size: 20px; }
+      #readout dl > div { display: flex; justify-content: space-between; gap: 16px; }
+      #readout dt { color: var(--muted); }
+      #readout dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 700; }
+      #readout:empty::before { content: 'sampling...'; font-size: 20px; }
+    </style>
+  </head>
+  <body>
+    <div id="figure"></div>
+    <div id="readout"></div>
+    <script type="module" src="./voice-cost-device.svelte.ts"></script>
+  </body>
+</html>

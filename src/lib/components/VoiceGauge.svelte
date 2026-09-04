@@ -61,11 +61,20 @@
   import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { pitchAxis, type BandLanguage } from '$lib/audio/bands';
+  import {
+    DEFAULT_PITCH_AXIS,
+    pitchAxis,
+    semitonesFrom,
+    steadinessAxis,
+    steadinessTicks,
+    type BandLanguage,
+    type PitchAxis
+  } from '$lib/audio/bands';
+  import { median } from '$lib/audio/series';
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { hzLabel } from '$lib/components/pitchBandCopy';
+  import { hzLabel, semitoneLabel } from '$lib/components/pitchBandCopy';
 
   let {
     frames,
@@ -74,10 +83,10 @@
     label,
     advice,
     comfort = null,
+    reading = 'pitch',
     language,
     languageGuessed = false,
     role,
-    compact = false,
     ...rest
   }: {
     frames: readonly PitchFrame[];
@@ -89,22 +98,63 @@
     advice: string[];
     /** The person's own comfort band, when they have set one. */
     comfort?: { lowHz: number; highHz: number } | null;
-    /** Whose figures the bands are (bands.ts's `bandLanguageOf`). */
+    /** Which of the two questions this figure is answering.
+
+        `pitch` is where the voice is: absolute hertz, the passage
+        language's bands behind it, the comfort band, the caption. That is
+        what somebody reading a passage is watching, and Alicja's
+        instruction is that reading always gets the full graph.
+
+        `steadiness` is whether one note is being held: semitones either
+        side of the note itself, no bands, no citation. The vowel step's
+        task is keeping a pitch rather than reaching one, so a flat line is
+        the whole answer and an absolute scale is not what the eye is on
+        (Alicja, 2026-09-04). */
+    reading?: 'pitch' | 'steadiness';
+    /** Whose figures the bands are (bands.ts's `bandsFor`). Read only in
+        `pitch`; a steadiness figure cites nothing. */
     language: BandLanguage;
     languageGuessed?: boolean;
     role?: Role;
-    /** The passage step's form: the same figure at a third the height,
-        sitting on the action bar under a screenful of text somebody is busy
-        reading. The vowel step is where the figure is the thing being
-        looked at, and there it gets its full size. */
-    compact?: boolean;
     [attribute: string]: unknown;
   } = $props();
 
-  /** The axis, widened only for a voice or a comfort band that would
-      otherwise be drawn off it. It does not follow the trace around: the
-      point of an absolute axis is that the bands behind it stay put. */
-  let axis = $derived(pitchAxis({ hz: frames.map((frame) => frame.hz), comfort }));
+  /** The note a steadiness figure is centred on: the median of what is on
+      screen, which is the pitch actually being held. */
+  let heldHz = $derived.by(() => {
+    const voiced = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
+    return voiced.length === 0 ? null : median(voiced);
+  });
+
+  /** The absolute axis, widened once and never narrowed again.
+
+      `pitchAxis` is a pure function of what it is given, and what it is
+      given here is a rolling two-second window. Recomputed per reading that
+      made the "absolute" axis quietly elastic: one octave-error frame
+      widened the field, the bands slid, and two seconds later the frame
+      scrolled out of the window and everything slid back. Bands that move
+      are the whole defect this ticket set out to fix, so the widening is
+      kept rather than re-derived - the axis only ever grows, and only while
+      one take is on screen. */
+  let widened = $state<PitchAxis>(DEFAULT_PITCH_AXIS);
+  $effect(() => {
+    const wanted = pitchAxis({ hz: frames.map((frame) => frame.hz), comfort });
+    if (wanted.lowHz < widened.lowHz || wanted.highHz > widened.highHz) {
+      widened = {
+        lowHz: Math.min(widened.lowHz, wanted.lowHz),
+        highHz: Math.max(widened.highHz, wanted.highHz)
+      };
+    }
+  });
+
+  /* A fresh take starts from the default again, or a single bad frame in one
+     take would keep the field stretched for every take after it. */
+  $effect(() => {
+    if (frames.length === 0) widened = DEFAULT_PITCH_AXIS;
+  });
+
+  let steadiness = $derived(reading === 'steadiness' ? steadinessAxis(heldHz) : null);
+  let axis = $derived(steadiness ?? widened);
 
   /** The room, as a share of the field's own height. Full at 0 dB, gone by
       24 dB: the gate's floor is 15, so a take that is about to fail shows
@@ -142,7 +192,7 @@
      from the custom properties, and they inherit, so the figure and the run
      bar inside read the same one rather than each taking their own (kit/
      role.ts). -->
-<div class="vg" class:is-compact={compact} {...roleAttrs(role)} {...rest}>
+<div class="vg" {...roleAttrs(role)} {...rest}>
   <div class="vg-top">
     <span class="vg-label">{label}</span>
     <span class="vg-held">{heldLabel}</span>
@@ -150,13 +200,15 @@
 
   <PitchFigure
     {axis}
-    {compact}
     {comfort}
     trace={frames}
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
-    {hzLabel}
-    {language}
+    ticks={steadiness && heldHz !== null ? steadinessTicks(heldHz) : undefined}
+    tickLabel={steadiness && heldHz !== null
+      ? (hz) => semitoneLabel(semitonesFrom(heldHz, hz))
+      : hzLabel}
+    language={steadiness ? null : language}
     {languageGuessed}
   >
     {#snippet underPlot()}

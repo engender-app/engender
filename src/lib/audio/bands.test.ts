@@ -4,12 +4,16 @@ import {
   DEFAULT_PITCH_AXIS,
   axisFraction,
   bandEdges,
-  bandLanguageOf,
+  bandsFor,
   comfortBand,
   middleBand,
   pitchAxis,
   referenceBands,
+  semitonesFrom,
   spreadLabels,
+  STEADINESS_SEMITONES,
+  steadinessAxis,
+  steadinessTicks,
   typicalRanges
 } from './bands.ts';
 
@@ -105,17 +109,21 @@ test('the default axis holds every band of every language with room to spare', (
 });
 
 test('the bands follow the passage that was read, not the app', () => {
-  // builtInPassageKey's own shape (data/voice/passages.ts).
-  assert.equal(bandLanguageOf('builtin-pl', 'en'), 'pl');
-  assert.equal(bandLanguageOf('builtin-en', 'pl'), 'en');
-  // A custom passage carries no language, so the app's is the best signal
-  // there is (Alicja, 2026-09-04).
-  assert.equal(bandLanguageOf('custom-1a2b3c4d', 'pl'), 'pl');
-  assert.equal(bandLanguageOf('custom-1a2b3c4d', 'en'), 'en');
-  // A passage in a language with no published figures, and an app set to
-  // one: English, rather than no bands at all or a crash.
-  assert.equal(bandLanguageOf('builtin-de', 'de'), 'en');
-  assert.equal(bandLanguageOf('', 'de'), 'en');
+  // builtInPassageKey's own shape (data/voice/passages.ts). A built-in
+  // passage says which language it is, so nothing is guessed.
+  assert.deepEqual(bandsFor('builtin-pl', 'en'), { language: 'pl', guessed: false });
+  assert.deepEqual(bandsFor('builtin-en', 'pl'), { language: 'en', guessed: false });
+});
+
+test("a passage with no language of its own falls back, and says it guessed", () => {
+  // A custom passage carries a fingerprint, and the practise tab reads
+  // nothing at all (Alicja, 2026-09-04: fall back to the app's language).
+  assert.deepEqual(bandsFor('custom-1a2b3c4d', 'pl'), { language: 'pl', guessed: true });
+  assert.deepEqual(bandsFor('', 'en'), { language: 'en', guessed: true });
+  // A language with no published figures: English, rather than no bands at
+  // all or a crash. Still a guess, because it is not this passage's own.
+  assert.deepEqual(bandsFor('builtin-de', 'de'), { language: 'en', guessed: false });
+  assert.deepEqual(bandsFor('', 'de'), { language: 'en', guessed: true });
 });
 
 test('a voice outside the bands widens the axis rather than being clipped', () => {
@@ -183,7 +191,7 @@ test('a comfort band outside what a voice can be is not a band', () => {
 test('two gutter labels too close together are pushed apart, not dropped', () => {
   const axis = DEFAULT_PITCH_AXIS;
   const at = bandEdges('en').map((hz) => (1 - axisFraction(hz, axis)) * 100);
-  const spread = spreadLabels(at, 9);
+  const spread = spreadLabels(at, 9, 100);
 
   assert.equal(spread.length, at.length);
   for (let i = 1; i < spread.length; i++) {
@@ -192,16 +200,65 @@ test('two gutter labels too close together are pushed apart, not dropped', () =>
 });
 
 test('labels already far enough apart are left exactly where they were', () => {
-  assert.deepEqual(spreadLabels([90, 60, 30, 0], 9), [90, 60, 30, 0]);
+  assert.deepEqual(spreadLabels([90, 60, 30, 0], 9, 100), [90, 60, 30, 0]);
 });
 
 test('a pushed pair stays centred on where it was', () => {
-  assert.deepEqual(spreadLabels([52, 48], 10), [55, 45]);
+  assert.deepEqual(spreadLabels([52, 48], 10, 100), [55, 45]);
 });
 
 test('spreading never runs a label off the top or bottom of the box', () => {
-  const spread = spreadLabels([99, 98, 2, 1], 9);
+  const spread = spreadLabels([99, 98, 2, 1], 9, 100);
   for (const at of spread) {
     assert.ok(at >= 0 && at <= 100, `${at} is outside the box`);
   }
+});
+
+/* The vowel step's own instrument (Alicja, 2026-09-04): semitones around
+   the note being held, because that step's task is keeping one pitch rather
+   than reaching one. */
+
+test('a held note is judged on semitones around itself, not on hertz', () => {
+  const axis = steadinessAxis(200);
+  assert.ok(axis);
+  // Three semitones either side, so the note sits exactly in the middle
+  // whatever the note is.
+  assert.equal(axisFraction(200, axis).toFixed(6), '0.500000');
+  assert.ok(Math.abs(semitonesFrom(200, axis.highHz) - STEADINESS_SEMITONES) < 1e-9);
+  assert.ok(Math.abs(semitonesFrom(200, axis.lowHz) + STEADINESS_SEMITONES) < 1e-9);
+});
+
+test('the same held note is the same picture wherever the voice sits', () => {
+  // The point of a relative axis: a steady 120 Hz and a steady 260 Hz draw
+  // the same flat line in the middle, which an absolute axis cannot do.
+  for (const hz of [120, 200, 260]) {
+    const axis = steadinessAxis(hz);
+    assert.ok(axis);
+    assert.equal(axisFraction(hz, axis).toFixed(6), '0.500000');
+  }
+});
+
+test('nothing voiced yet is no axis, rather than an axis around zero', () => {
+  assert.equal(steadinessAxis(null), null);
+});
+
+test('a steadiness gutter is one tick per semitone, centred on the note', () => {
+  const ticks = steadinessTicks(200);
+  assert.equal(ticks.length, STEADINESS_SEMITONES * 2 + 1);
+  assert.deepEqual(
+    ticks.map((hz) => Math.round(semitonesFrom(200, hz))),
+    [-3, -2, -1, 0, 1, 2, 3]
+  );
+});
+
+test('the steadiness window is wider than the wobble the gate refuses', () => {
+  /* quality.ts fails a held vowel whose F0 coefficient of variation passes
+     8%, which is about 1.4 semitones of spread. The window has to be wider
+     than that or a take about to fail would already be off the edge of its
+     own figure with nowhere left to move. */
+  const failingSpreadSemitones = 12 * Math.log2(1 + 0.08);
+  assert.ok(
+    STEADINESS_SEMITONES > failingSpreadSemitones,
+    `${STEADINESS_SEMITONES} st window against ${failingSpreadSemitones.toFixed(2)} st of failing wobble`
+  );
 });

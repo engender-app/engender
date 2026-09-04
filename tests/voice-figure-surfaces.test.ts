@@ -47,6 +47,18 @@ describe('the voice figure', () => {
     expect(components.map((c) => c.path)).toContain('lib/components/VoiceGauge.svelte');
   });
 
+  it('draws no reference band without a caption under it', () => {
+    /* The other half of the rule: a figure that draws a band must be in
+       `pitch` reading, and the two components that pick a reading must send
+       a language with it. A bandless figure is only reachable through
+       `reading: 'steadiness'`, which is the vowel step's instrument. */
+    const gauge = components.find((c) => c.path === 'lib/components/VoiceGauge.svelte')!.source;
+    expect(gauge).toMatch(/language=\{steadiness \? null : language\}/);
+    const figure = components.find((c) => c.path === 'lib/components/PitchFigure.svelte')!.source;
+    // Bands are only ever drawn from the language, so null cannot draw one.
+    expect(figure).toMatch(/language === null\s*\?\s*\[\]/);
+  });
+
   it('is drawn live by exactly one component', () => {
     /* What makes a component a live gauge is not that it holds a
        QualityReport - the flow and the practise tab both do, to pass one
@@ -73,7 +85,14 @@ describe('the voice figure', () => {
        paragraphs twice, in half the width. */
     const figure = components.find((c) => c.path === 'lib/components/PitchFigure.svelte')!.source;
     expect(figure).toContain('PitchBandsCaption');
-    expect(figure).toMatch(/\{#if !compact && !captionShared\}/);
+    /* The caption renders wherever bands do. There were briefly two ways to
+       silence it and this test asserted the expression containing both, so
+       it ratified the second one instead of catching it: `compact` drew the
+       washes with no gutter, no legend, no source and no caveat. There is
+       one way now, `captionShared`, and a bandless figure (language null)
+       cites nothing so there is nothing to caption. */
+    expect(figure).toMatch(/\{#if language !== null && !captionShared\}/);
+    expect(figure).not.toContain('compact');
 
     for (const component of components) {
       const markup = drawn(component.source);
