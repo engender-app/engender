@@ -16,11 +16,12 @@
    DecompressionStream only gained the 'deflate-raw' format in Chrome 103,
    so unzipping goes through fflate rather than the platform decoder. */
 
-import { unzipSync, strFromU8 } from 'fflate';
+import { strFromU8 } from 'fflate';
 import { startOfDayTimestamp } from '../epochDay';
 import { emptyArchiveJournal } from '../journal/archiveSections';
 import { photoFileName } from '../photos/names';
 import type { ArchiveEntry, ArchiveJournal, ArchiveMilestone, ArchivePhoto } from './payload';
+import { openZip, type ZipReader } from './zipReader';
 
 const KNOWN_TOP_LEVEL_KEYS = ['settings', 'photos', 'milestones'] as const;
 
@@ -87,8 +88,7 @@ interface RawPayload {
     `transTracksPreview`, which throws by naming the record. */
 export function detectTransTracks(bytes: Uint8Array): boolean {
   try {
-    const entries = unzipSync(bytes, { filter: (file) => file.name === 'data.json' });
-    const raw = entries['data.json'];
+    const raw = openZip(bytes).read('data.json');
     if (!raw) return false;
     const parsed = JSON.parse(strFromU8(raw)) as RawPayload;
     return Array.isArray(parsed.photos) && Array.isArray(parsed.milestones);
@@ -97,8 +97,8 @@ export function detectTransTracks(bytes: Uint8Array): boolean {
   }
 }
 
-function readDataJson(zip: Record<string, Uint8Array>): RawPayload {
-  const raw = zip['data.json'];
+function readDataJson(reader: ZipReader): RawPayload {
+  const raw = reader.read('data.json');
   if (!raw) throw new TransTracksBackupError('does not contain a data.json');
   let parsed: unknown;
   try {
@@ -127,8 +127,8 @@ function requireEpochDay(value: unknown, index: number, kind: string): number {
 }
 
 export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJournal): Promise<TransTracksPreview> {
-  const zip = unzipSync(bytes);
-  const payload = readDataJson(zip);
+  const reader = openZip(bytes);
+  const payload = readDataJson(reader);
 
   const unknownTopLevelKeys = Object.keys(payload).filter(
     (key) => !(KNOWN_TOP_LEVEL_KEYS as readonly string[]).includes(key)
@@ -177,7 +177,7 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
     const sourceFileName = requireString(raw.fileName, 'fileName', index, 'photo');
     referencedFileNames += 1;
 
-    const zipBytes = zip[`photos/${sourceFileName}`];
+    const zipBytes = reader.read(`photos/${sourceFileName}`);
     if (!zipBytes || zipBytes.length === 0) {
       throw new TransTracksBackupError(`photo ${index} names ${sourceFileName}, which is missing from the zip`);
     }
@@ -203,7 +203,7 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
     newRawPhotos.set(fileName, zipBytes);
   });
 
-  const orphanedPhotoCount = Object.keys(zip).filter((name) => {
+  const orphanedPhotoCount = reader.names().filter((name) => {
     if (!name.startsWith('photos/') || name.endsWith('/')) return false;
     const fileName = name.slice('photos/'.length);
     return !rawPhotos.some((raw) => raw.fileName === fileName);

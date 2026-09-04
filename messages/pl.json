@@ -869,6 +869,8 @@
   "dlb_file_label": "Kopia z Daylio",
   "dlb_file_placeholder": "Wybierz plik .daylio…",
   "dlb_unreadable": "Nie udało się odczytać tego pliku jako kopii z Daylio. Nic nie zostało zaimportowane.",
+  "dlb_file_too_large": "Ta aplikacja odczytuje kopie z Daylio do 256 MB, a ten plik jest większy. Nic nie zostało zaimportowane.",
+  "dlb_too_large": "Ta aplikacja rozpakowuje maksymalnie 512 MB z kopii, a ta deklaruje więcej. Nic nie zostało zaimportowane.",
   "dlb_not_android": "Ta kopia pochodzi z Daylio na iPhone, gdzie dane leżą inaczej. Da się odczytać tylko kopie z Androida. Nic nie zostało zaimportowane.",
   "dlb_is_csv": "To eksport CSV z Daylio, nie kopia. Użyj importu CSV.",
   "dlb_failed": "Nie udało się dokończyć importu z Daylio. Dziennik jest dokładnie taki jak był.",
