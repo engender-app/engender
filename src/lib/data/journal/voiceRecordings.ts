@@ -21,17 +21,21 @@ type RecordingRow = { uuid: string; file_path: string };
 
 export type StagedRecording = { id: string; fileName: string };
 
-/** A recording placed in time, for the voice compare picker (ticket 25).
-    Entry-only (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no
-    owner name to carry - a recording's date is always its entry's epoch
-    day, no COALESCE needed. */
+/** A recording placed in time, for the memo browser (ticket 11). Entry-only
+    (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no owner name
+    to carry - a recording's date is always its entry's epoch day, no
+    COALESCE needed. `entryId` is the way through to it (a memo is entry
+    content and owns no screen of its own). */
 export interface DatedRecording extends VoiceRecording {
   epochDay: number;
+  entryId: number;
 }
 
 export interface VoiceArea {
-  /** Every recording in the journal, oldest first (ticket 25's compare
-      picker, mirroring PhotosArea.inJournal). */
+  /** Every recording in the journal, newest first, with the entry each one
+      belongs to (ticket 11's memo browser). Built for ticket 25's voice
+      compare picker, which was cut before shipping (ticket 09) - this is
+      its first caller. */
   inJournal(): Promise<DatedRecording[]>;
 }
 
@@ -119,15 +123,16 @@ export function makeVoiceArea(driver: SqliteDriver): VoiceArea {
   return {
     async inJournal() {
       // Excludes a trashed entry's recordings the same way every other
-      // entry-owned read does (phase 5 ticket 19).
-      const rows = await driver.query<RecordingRow & { epoch_day: number }>(
-        `SELECT v.uuid, v.file_path, e.epoch_day AS epoch_day
+      // entry-owned read does (phase 5 ticket 19). Newest entry first;
+      // several recordings on one entry keep their own attach order.
+      const rows = await driver.query<RecordingRow & { epoch_day: number; entry_id: number }>(
+        `SELECT v.uuid, v.file_path, v.entry_id AS entry_id, e.epoch_day AS epoch_day
          FROM voice_recording v
          JOIN entry e ON e.id = v.entry_id
          WHERE e.trashed_at IS NULL
-         ORDER BY epoch_day, v.order_index, v.id`
+         ORDER BY epoch_day DESC, v.entry_id DESC, v.order_index, v.id`
       );
-      return rows.map((row) => ({ ...toRecording(row), epochDay: row.epoch_day }));
+      return rows.map((row) => ({ ...toRecording(row), epochDay: row.epoch_day, entryId: row.entry_id }));
     }
   };
 }

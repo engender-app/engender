@@ -77,13 +77,14 @@
        asked for. The screen behind it is unchanged; ticket 16 is what
        changes what it does (ADR-0037), independently of this move. */
     { key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), href: '/doubt' },
-    { key: 'voice', icon: 'mic', title: () => m.recordings_label(), href: '/settings/voice' },
-    /* Both voice rows now point at one screen, on the tab each of them
-       promises (phase 8 features ticket 09): recording a benchmark and
-       reading benchmarks back were two routes describing one feature. Which
-       rows the hub carries, what they are called and which group they sit
-       in is the UX spec's to settle (its rule 2); this ticket repointed an
-       href and nothing else. */
+    /* This row promised "Voice recordings" while pointing at the benchmark
+       screen (phase 8 features ticket 09's own note on the same href).
+       Browsing entry recordings is its own screen now (ticket 11), so the
+       row finally points at what its title says. Which rows the hub
+       carries, what they are called and which group they sit in stays the
+       UX spec's to settle (its rule 2); this ticket repointed an href and
+       nothing else. */
+    { key: 'voice', icon: 'mic', title: () => m.recordings_label(), href: '/settings/voice/memos' },
     { key: 'voice-benchmark', icon: 'mic', title: () => m.vb_title(), href: '/settings/voice?tab=record' },
     { key: 'entry-templates', icon: 'grid', title: () => m.entry_templates_title(), href: '/settings/entry-templates' },
     { key: 'wear', icon: 'clock', title: () => m.wear_log(), href: '/settings/wear' },
