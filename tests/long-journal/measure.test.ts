@@ -13,9 +13,10 @@ import { expect, test } from 'vitest';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
 import { fakeFileStore } from '../../src/lib/data/photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../../src/lib/data/sqlite/test-support/migrated-db.ts';
+import { recordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import { generateLongJournal } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
-import { budgets, breaches, budgetFor, overTarget } from './budgets.mjs';
+import { budgets, breaches, budgetFor, mountBudgetsFor, overTarget } from './budgets.mjs';
 import { bytePatternPhoto } from './test-support.ts';
 
 async function measureSmallJournal(): Promise<Measurement[]> {
@@ -23,10 +24,11 @@ async function measureSmallJournal(): Promise<Measurement[]> {
   // harness's caller hands it - the thumbnail reads have to reach the
   // bytes the generator wrote.
   const files = fakeFileStore();
-  const journal = openJournal(await migratedDb(), files);
+  const recorder = recordingDriver(await migratedDb());
+  const journal = openJournal(recorder.driver, files);
   await journal.reconcileBuiltIns();
   const summary = await generateLongJournal(journal, { seed: 11, days: 120, makePhoto: bytePatternPhoto });
-  return measureLongJournal(journal, files, { today: summary.lastEpochDay, summary });
+  return measureLongJournal(journal, files, { today: summary.lastEpochDay, summary, recorder });
 }
 
 test('every measurement carries a name, a description, a time and a detail line', async () => {
@@ -76,6 +78,80 @@ test("archive-restore's phases account for the whole of it", async () => {
   expect(db).toBeGreaterThan(0);
   // And the read is inside the streaming window, not beside it.
   expect(at('archive-restore-read').ms).toBeLessThanOrEqual(files);
+});
+
+/* --- the screen mounts (phase 8 audit ticket 01) ------------------------
+
+   Four measurements are budgeted on what crossed the driver seam rather
+   than on time. What this tier can check is that the counts arrive, that
+   they are counts of something, and that the gate reads them; the numbers
+   themselves are the browser tier's, on the decade fixture. */
+const MOUNTS = ['mount-home', 'mount-stats', 'mount-more-hub', 'mount-coming-back'];
+
+test('every screen mount is counted in statements and bytes, and nothing else is', async () => {
+  const measurements = await measureSmallJournal();
+
+  for (const name of MOUNTS) {
+    const mount = measurements.find((m) => m.name === name);
+    if (!mount) throw new Error(`${name} is missing from the harness`);
+    expect(mount.statements, `${name} counted no statements`).toBeGreaterThan(0);
+    expect(mount.bytes, `${name} counted no bytes`).toBeGreaterThan(0);
+  }
+
+  for (const m of measurements.filter((m) => !MOUNTS.includes(m.name))) {
+    expect(m.statements, `${m.name} counts statements with no budget for them`).toBeUndefined();
+    expect(m.bytes).toBeUndefined();
+  }
+});
+
+test("Home's mount asks more of the journal than the hub's does", async () => {
+  const measurements = await measureSmallJournal();
+  const at = (name: string) => measurements.find((m) => m.name === name)!;
+
+  /* Not a fact about the fixture: it is the finding the instrument was
+     built for. Home fires twenty live queries to draw a grid of tiles and
+     the hub fires three to draw eighteen rows, so if these two ever come
+     back level, one of them is not being measured. */
+  expect(at('mount-home').statements!).toBeGreaterThan(at('mount-more-hub').statements!);
+  expect(at('mount-home').bytes!).toBeGreaterThan(at('mount-more-hub').bytes!);
+});
+
+test('every recorded mount budget is exactly the count rule', () => {
+  for (const name of MOUNTS) {
+    const budget = budgets.measurements[name];
+    expect(budget.statementBaseline, `${name} has no recorded statement count`).toBeGreaterThan(0);
+    expect(budget.byteBaseline).toBeGreaterThan(0);
+    expect({ statementBudget: budget.statementBudget, byteBudget: budget.byteBudget }).toEqual(
+      mountBudgetsFor(budget.statementBaseline!, budget.byteBaseline!)
+    );
+  }
+});
+
+test('a mount that fires one more statement or widens a read is a breach', () => {
+  const name = MOUNTS[0];
+  const budget = budgets.measurements[name];
+  const within = {
+    name,
+    what: 'x',
+    ms: 1,
+    detail: 'x',
+    statements: budget.statementBudget!,
+    bytes: budget.byteBudget!
+  };
+
+  expect(breaches([within])).toEqual([]);
+  expect(breaches([{ ...within, statements: within.statements + 1 }])[0]).toContain('statements over a budget');
+  expect(breaches([{ ...within, bytes: within.bytes + 1 }])[0]).toContain('bytes over a budget');
+});
+
+test('a count with no budget, and a budget with no count, are both breaches', () => {
+  const counted = { name: 'calendar-month', what: 'x', ms: 1, detail: 'x', statements: 3, bytes: 40 };
+  expect(breaches([counted])).toHaveLength(2);
+  expect(breaches([counted])[0]).toContain('statementBudget');
+
+  const uncounted = { name: MOUNTS[0], what: 'x', ms: 1, detail: 'x' };
+  expect(breaches([uncounted])).toHaveLength(2);
+  expect(breaches([uncounted])[0]).toContain('took no statements count');
 });
 
 test('budgets.json covers exactly what the harness measures', async () => {
