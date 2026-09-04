@@ -119,7 +119,10 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       unit: 'tablets',
       recordedEpochDay: TODAY - 10,
       reminderEverCreated: false,
-      reminderDismissed: false
+      reminderDismissed: false,
+      openedEpochDay: null,
+      inUseWindowDays: null,
+      inUseEndEpochDay: null
     };
     const stockB: MedicationStock = {
       id: 'stock-b',
@@ -128,7 +131,10 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       unit: 'vials',
       recordedEpochDay: TODAY - 10,
       reminderEverCreated: false,
-      reminderDismissed: false
+      reminderDismissed: false,
+      openedEpochDay: null,
+      inUseWindowDays: null,
+      inUseEndEpochDay: null
     };
     const stockC: MedicationStock = {
       id: 'stock-c',
@@ -137,7 +143,10 @@ describe('Stock projection and depletion logic (ticket 02)', () => {
       unit: 'capsules',
       recordedEpochDay: TODAY - 10,
       reminderEverCreated: false,
-      reminderDismissed: false
+      reminderDismissed: false,
+      openedEpochDay: null,
+      inUseWindowDays: null,
+      inUseEndEpochDay: null
     };
 
     const rows = [

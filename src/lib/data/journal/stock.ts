@@ -28,6 +28,14 @@ export interface StockEntryInput {
   quantity: number;
   unit: string;
   recordedEpochDay: number;
+  /** Ticket 13's "what is open, and until when" - all optional and
+      defaulted to null, so every caller before this ticket keeps working
+      unchanged. `inUseWindowDays` and `inUseEndEpochDay` are stored exactly
+      as passed, never cross-derived (inUseWindow.ts combines them for
+      display only). */
+  openedEpochDay?: number | null;
+  inUseWindowDays?: number | null;
+  inUseEndEpochDay?: number | null;
 }
 
 export interface StockProjectionRow {
@@ -68,6 +76,9 @@ type StockRow = {
   recorded_epoch_day: number;
   reminder_ever_created: number;
   reminder_dismissed: number;
+  opened_epoch_day: number | null;
+  in_use_window_days: number | null;
+  in_use_end_epoch_day: number | null;
 };
 
 const toStock = (row: StockRow): MedicationStock => ({
@@ -77,10 +88,15 @@ const toStock = (row: StockRow): MedicationStock => ({
   unit: row.unit,
   recordedEpochDay: row.recorded_epoch_day,
   reminderEverCreated: bool(row.reminder_ever_created),
-  reminderDismissed: bool(row.reminder_dismissed)
+  reminderDismissed: bool(row.reminder_dismissed),
+  openedEpochDay: row.opened_epoch_day,
+  inUseWindowDays: row.in_use_window_days,
+  inUseEndEpochDay: row.in_use_end_epoch_day
 });
 
-const STOCK_COLUMNS = 'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed';
+const STOCK_COLUMNS =
+  'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, ' +
+  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day';
 
 /** Where box 4's reminder marks which drug it belongs to
     (stockReminder.ts). The marker itself lives in autoSource.ts, which is
@@ -139,13 +155,22 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
          `everCreated && !existing` check), undoing the re-arm in the same
          breath it happened. */
       const everCreated = allReminders.some((reminder) => reminder.autoSource === autoSourceFor(drug));
-      const values = [input.quantity, input.unit, input.recordedEpochDay, everCreated ? 1 : 0, now()];
+      const values = [
+        input.quantity,
+        input.unit,
+        input.recordedEpochDay,
+        everCreated ? 1 : 0,
+        input.openedEpochDay ?? null,
+        input.inUseWindowDays ?? null,
+        input.inUseEndEpochDay ?? null,
+        now()
+      ];
 
       if (existing.length > 0) {
         await driver.run(
           `UPDATE medication_stock
               SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                  updated_at = ?
+                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, updated_at = ?
             WHERE drug = ?`,
           [...values, drug]
         );
@@ -154,8 +179,10 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
 
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO medication_stock (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO medication_stock
+           (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
+            opened_epoch_day, in_use_window_days, in_use_end_epoch_day, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, drug, ...values]
       );
       return uuid;

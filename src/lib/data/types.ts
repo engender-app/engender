@@ -981,6 +981,15 @@ export interface MedicationStock {
   /** Set once a person's own edit or delete took that prompt over; a fresh
       `upsertEntry` (stock.ts) is the only thing that clears it. */
   reminderDismissed: boolean;
+  /** When this container was opened (ticket 13, "What is open, and until
+      when"). Null until a person types one. */
+  openedEpochDay: number | null;
+  /** As typed, or null when an end date was typed instead - never derived
+      from `inUseEndEpochDay` (inUseWindow.ts). */
+  inUseWindowDays: number | null;
+  /** As typed, or null when a window in days was typed instead - never
+      derived from `inUseWindowDays`. */
+  inUseEndEpochDay: number | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
