@@ -46,19 +46,27 @@
 
   let { steps }: { steps: StripStep[] } = $props();
 
-  let total = $derived(steps.reduce((sum, s) => sum + s.count, 0));
-
   /* Under this, a percentage does not fit in its own segment. Ten percent
      of a card-width track is around 30px, which is what "34%" needs at
      --text-xs. */
   const MIN_LABEL_SHARE = 10;
 
-  const pct = (count: number) => `${Math.round(share(count, total))}%`;
+  /* Each step's share worked out once. The three rows below all place
+     against it - the segment's width, its label's cell, and whether that
+     label fits at all - and reading it per row is the same arithmetic four
+     times with four chances to disagree. */
+  let drawn = $derived.by(() => {
+    const total = steps.reduce((sum, s) => sum + s.count, 0);
+    return steps.map((step) => {
+      const percent = share(step.count, total);
+      return { ...step, percent, label: `${Math.round(percent)}%` };
+    });
+  });
 </script>
 
 <div class="kit-ordered" data-chart="ordered-strip">
   <div class="kit-ordered-track">
-    {#each steps as step (step.step)}
+    {#each drawn as step (step.step)}
       <!-- The segment is the only place the step's name reaches a screen
            reader: what is drawn is a width and a colour, and the ends
            caption below names two of the five. -->
@@ -66,16 +74,16 @@
         class="kit-ordered-seg"
         data-strip-step={step.step}
         role="img"
-        aria-label={`${step.name} ${pct(step.count)}`}
-        style={`--bar-share: ${share(step.count, total)}; --dist-fill: var(--mood-${step.step})`}
+        aria-label={`${step.name} ${step.label}`}
+        style={`--bar-share: ${step.percent}; --dist-fill: var(--mood-${step.step})`}
       ></span>
     {/each}
   </div>
 
   <p class="kit-ordered-shares" aria-hidden="true">
-    {#each steps as step (step.step)}
-      <span class="kit-ordered-share" style={`--bar-share: ${share(step.count, total)}`}>
-        {share(step.count, total) >= MIN_LABEL_SHARE ? pct(step.count) : ''}
+    {#each drawn as step (step.step)}
+      <span class="kit-ordered-share" style={`--bar-share: ${step.percent}`}>
+        {step.percent >= MIN_LABEL_SHARE ? step.label : ''}
       </span>
     {/each}
   </p>

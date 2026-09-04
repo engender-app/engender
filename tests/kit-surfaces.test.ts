@@ -39,8 +39,8 @@ function markup(file: string): string {
     rather than in the shared sheet, and the two components that ticket
     added are the first in the kit to take that up. A single-hue check that
     only read kit.css would have gone quietly vacuous the moment it
-    mattered, which is the failure tests/motion-system.ts already names for
-    its own cap. */
+    mattered - which is why tests/motion-system.test.ts reads every
+    component's style block too, and says so where it caps keyframe blur. */
 function styleBlock(file: string): string {
   return [...source(file).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map(([, css]) => css.replace(/\/\*[\s\S]*?\*\//g, ''))

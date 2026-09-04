@@ -1,28 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
-import { ARC_GAP, MAX_SLICES, MIN_ARC, arcs, sliced } from './parts';
+import { ARC_GAP, MAX_SLICES, MIN_ARC, arcs, slices } from './parts';
 
 const part = (key: string, amount: number) => ({ key, name: key, amount });
 
 describe('the slices a donut draws', () => {
   it('reads a share off the whole rather than off the largest part', () => {
-    const out = sliced([part('a', 3), part('b', 1)], 'Other');
+    const out = slices([part('a', 3), part('b', 1)], 'Other');
     expect(out.map((s) => s.share)).toEqual([75, 25]);
   });
 
   it('draws the largest part first, whatever order the caller counted in', () => {
-    const out = sliced([part('small', 1), part('big', 8), part('mid', 3)], 'Other');
+    const out = slices([part('small', 1), part('big', 8), part('mid', 3)], 'Other');
     expect(out.map((s) => s.key)).toEqual(['big', 'mid', 'small']);
   });
 
   it('keeps the caller order between two parts of the same size', () => {
-    const out = sliced([part('first', 2), part('second', 2)], 'Other');
+    const out = slices([part('first', 2), part('second', 2)], 'Other');
     expect(out.map((s) => s.key)).toEqual(['first', 'second']);
   });
 
   it('gathers everything past the cap into one remainder', () => {
     const many = Array.from({ length: 9 }, (_, i) => part(`p${i}`, 9 - i));
-    const out = sliced(many, 'Other');
+    const out = slices(many, 'Other');
     expect(out).toHaveLength(MAX_SLICES);
     const rest = out[out.length - 1];
     expect(rest.isRest).toBe(true);
@@ -33,7 +33,7 @@ describe('the slices a donut draws', () => {
 
   it('leaves a set that fits the cap exactly alone, with no remainder', () => {
     const five = Array.from({ length: MAX_SLICES }, (_, i) => part(`p${i}`, i + 1));
-    const out = sliced(five, 'Other');
+    const out = slices(five, 'Other');
     expect(out).toHaveLength(MAX_SLICES);
     expect(out.some((s) => s.isRest)).toBe(false);
   });
@@ -43,18 +43,18 @@ describe('the slices a donut draws', () => {
      share of the person's own data than it is. */
   it('adds up to the whole once the cap has dropped something', () => {
     const many = Array.from({ length: 12 }, (_, i) => part(`p${i}`, 12 - i));
-    const total = sliced(many, 'Other').reduce((sum, s) => sum + s.share, 0);
+    const total = slices(many, 'Other').reduce((sum, s) => sum + s.share, 0);
     expect(total).toBeCloseTo(100, 6);
   });
 
   it('drops a part nothing was logged against rather than naming a zero', () => {
-    const out = sliced([part('a', 4), part('none', 0), part('b', 2)], 'Other');
+    const out = slices([part('a', 4), part('none', 0), part('b', 2)], 'Other');
     expect(out.map((s) => s.key)).toEqual(['a', 'b']);
   });
 
   it('draws nothing at all for a whole that is empty', () => {
-    expect(sliced([], 'Other')).toEqual([]);
-    expect(sliced([part('a', 0)], 'Other')).toEqual([]);
+    expect(slices([], 'Other')).toEqual([]);
+    expect(slices([part('a', 0)], 'Other')).toEqual([]);
   });
 });
 
@@ -82,10 +82,29 @@ describe('the arcs a ring is drawn from', () => {
     expect(arcs([100], C)[0].dash).toBe(C);
   });
 
-  it('keeps a share too small to take the gap out of visible anyway', () => {
-    const out = arcs([99, 1], C);
-    // 1% of 200 is 2, which is the gap itself.
-    expect(out[1].dash).toBe(MIN_ARC);
+  it('gives an arc the floor where its share has room for the gap', () => {
+    // 2% of 200 is 4: a gap would leave 2, so the floor takes it to 3 and
+    // the break after it shrinks instead.
+    expect(arcs([98, 2], C)[1].dash).toBe(MIN_ARC);
+  });
+
+  /* The floor is what keeps a small share visible, and drawing past the
+     next arc's start is how it stops being: the next arc paints over this
+     one, so an overdrawn sliver renders shorter than the floor was for. */
+  it('never draws an arc past where the next one starts', () => {
+    const shares = [95, 0.5, 2, 2.5];
+    const out = arcs(shares, C);
+    out.forEach((arc, i) => {
+      const own = (shares[i] / 100) * C;
+      expect(arc.dash, `arc ${i}`).toBeLessThanOrEqual(own);
+      if (i > 0) expect(-arc.offset).toBeGreaterThanOrEqual(-out[i - 1].offset + out[i - 1].dash);
+    });
+  });
+
+  it('keeps a share too small for the gap at its own full length', () => {
+    // 0.5% of 200 is 1, under the gap and under the floor: it draws all of
+    // itself and gives up no break.
+    expect(arcs([99.5, 0.5], C)[1].dash).toBe(1);
   });
 
   it('draws no arc for a share of nothing', () => {
