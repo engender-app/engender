@@ -65,6 +65,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import VoiceBenchmarkFlow from '$lib/components/VoiceBenchmarkFlow.svelte';
   import VoiceComfortBand from '$lib/components/VoiceComfortBand.svelte';
+  import VoiceOwnSeries from '$lib/components/VoiceOwnSeries.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
   import VoicePracticeTakes from '$lib/components/VoicePracticeTakes.svelte';
@@ -85,8 +86,16 @@
   const TABS: Tab[] = ['record', 'practise', 'compare'];
 
   /* The trend takes role 0, the picker's stripe after it - the same split
-     the labs screen makes between its chart and its results. */
-  const SECTION_ROLE = { trend: 0, list: 1 };
+     the labs screen makes between its chart and its results.
+
+     The own-series card (ticket 29) shares the trend's stripe rather than
+     taking one of its own: it is the same question about the same
+     benchmarks, one figure at a time, and giving it role 1 would have
+     recoloured the picking list under it for no reason anybody reading the
+     screen could name. Its second line takes the stripe after, which is
+     the list's - two lines on one plot have to be told apart, and the flag
+     has no spare band on trans, which yields three. */
+  const SECTION_ROLE = { trend: 0, own: 0, ownPaired: 1, list: 1 };
 
   let requested = page.url.searchParams.get('tab');
   let tab = $state<Tab>(TABS.includes(requested as Tab) ? (requested as Tab) : 'record');
@@ -332,6 +341,19 @@
                 <ChartEmpty>{m.vc_trend_too_little()}</ChartEmpty>
               {/if}
             </ChartCard>
+          </div>
+          <div class="screen-part">
+            <!-- The five figures that carry no band, each against the
+                 person's own earlier takes (ticket 29, ADR-0060). Under
+                 the pitch trend, which is the one figure with a published
+                 range to read against, and above the picking list, because
+                 both cards answer "what has my own history been" while the
+                 list is where a pair gets chosen. -->
+            <VoiceOwnSeries
+              benchmarks={anchors}
+              role={roleAt(activeFlag.roles, SECTION_ROLE.own)}
+              pairedRole={roleAt(activeFlag.roles, SECTION_ROLE.ownPaired)}
+            />
           </div>
           <div class="screen-part">
             {#if comparing && !pair}

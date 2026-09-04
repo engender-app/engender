@@ -198,3 +198,14 @@ test('every Own-series figure in the registry draws a trend', () => {
     assert.equal(series.readings, 2, metric.key);
   }
 });
+
+/* What the plot needs in order to decide whether it may print a value
+   gutter: two ends of one range have numbers in common to print, two
+   measures on two ranges do not. */
+test('only a two-ended figure says its second line shares the scale', () => {
+  const takes = [take(1, PIXEL), take(2, PIXEL)];
+  assert.equal(ownSeries(takes, 'span').secondScaleShared, true);
+  assert.equal(ownSeries(takes, 'resonance').secondScaleShared, false);
+  assert.equal(ownSeries(takes, 'rate').secondScaleShared, false);
+  assert.equal(ownSeries([take(1, PIXEL)], 'span').secondScaleShared, false);
+});
