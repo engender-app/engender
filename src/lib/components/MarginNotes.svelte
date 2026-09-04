@@ -119,39 +119,53 @@
 />
 
 <style>
-  /* The layer. A left rule rather than a background tint - a tint would
-     read as a highlight on the entry, which is the exact mistake the
-     ticket names; a rule reads as something clipped to the margin. Text a
-     size down from the entry's own note and in the role's muted ink rather
-     than the primary one, so a glance already tells the two apart before a
-     word is read - the hard test the ticket sets ("which part was written
-     on the day") is a reading-order question, not a squint-at-the-colour
-     one, so the date sits first on every note, in the role's own mark
-     colour, and is never merged into the same line as the text. */
+  /* The layer. Not a coloured border - a coloured rule beside a card reads
+     as decoration the app puts on cards, not as "this is a different
+     moment", and a background tint would read as a highlight on the entry
+     itself, which is the exact mistake the ticket names. What actually
+     separates the two is a hairline break (the same neutral rule a
+     ListCard already draws between its own rows) plus a second, indented
+     column the note sits in - text a size down from the entry's own note,
+     in the muted ink rather than the primary one - so a glance already
+     tells the two apart before a word is read. The hard test the ticket
+     sets ("which part was written on the day") is a reading-order
+     question, which is why the date sits first on every note, in the
+     role's own mark colour, and is never merged onto the same line as the
+     text. */
   .margin-note-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding-top: var(--space-1);
-    border-left: 2px solid var(--role-ink, var(--outline-strong));
-    margin-left: 2px;
+    border-top: 1px solid var(--hairline);
   }
 
   .margin-note {
     display: flex;
     align-items: flex-start;
     gap: var(--space-2);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .margin-note:last-child {
+    border-bottom: none;
   }
 
   .margin-note-open {
     flex: 1;
     min-width: 0;
-    display: block;
+    min-height: var(--touch-target);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     text-align: left;
     background: none;
     border: none;
-    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
     cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--dur-fast);
+  }
+  .margin-note-open:hover {
+    background: var(--surface-2);
   }
 
   .margin-note-date {
@@ -174,20 +188,30 @@
 
   .margin-note-delete {
     flex-shrink: 0;
-    margin-top: var(--space-1);
+    margin: auto 0;
   }
 
+  /* Its own row, the same height and left alignment the notes above it
+     keep, so tapping it lands where a finger already is rather than
+     somewhere the layout jumped to. */
   .margin-note-add {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--space-1);
-    margin-top: var(--space-1);
-    padding: var(--space-1) var(--space-3);
+    min-height: var(--touch-target);
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
     background: none;
     border: none;
+    border-radius: var(--radius-sm);
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     color: var(--text-2);
     cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--dur-fast);
+  }
+  .margin-note-add:hover {
+    background: var(--surface-2);
   }
 </style>
