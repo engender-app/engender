@@ -3,10 +3,9 @@
 
    The stats seam computes more than wrapped asked it for. Tag insights -
    which tags went with better or worse days - is the most wrapped-shaped
-   read in the codebase and wrapped never called it. The tally trend, the
-   best streak in the journal's whole history, and the signed movement on
-   the dimension change wrapped already printed the endpoints of are the
-   other three.
+   read in the codebase and wrapped never called it. The tally trend and the
+   signed movement on the dimension change wrapped already printed the
+   endpoints of are the other two.
 
    What is here is the conditional and nothing else: whether a period has
    anything to say for a section. That is the part worth testing, because it
@@ -90,22 +89,3 @@ export function wrappedTallyCounts(
   return counts.misgendered || counts.correctlyGendered ? counts : null;
 }
 
-export interface WrappedStreaks {
-  /** The longest run inside the period (CONTEXT: Best streak, scoped to a
-      range - what `Recap.bestStreak` answers). */
-  inPeriod: number;
-  /** The longest run in the journal's whole history. */
-  ever: number;
-}
-
-/** The period's best streak against the best ever, or null with nothing to
-    say.
-
-    Null when the period holds no run at all: a wrapped whose period has no
-    streak has nothing for the best-ever figure to sit against, and the
-    number alone would be a fact about the rest of the journal on a screen
-    about this period. */
-export function wrappedStreaks(recap: Pick<Recap, 'bestStreak'>, bestEver: number): WrappedStreaks | null {
-  if (recap.bestStreak <= 0) return null;
-  return { inPeriod: recap.bestStreak, ever: Math.max(bestEver, recap.bestStreak) };
-}

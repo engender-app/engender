@@ -9,7 +9,7 @@
    purpose, which is exactly the acceptance criterion this file exists to
    hold. */
 
-/** One already-formatted stat tile: a count, a streak, or anything else a
+/** One already-formatted stat tile: a count, an average, or anything else a
     call site chooses to show as a number. Formatting is the caller's job -
     a locale-formatted number or a paraglide plural reads differently per
     element, and this module stays free of both so it can be used from

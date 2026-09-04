@@ -19,7 +19,6 @@ import { liveList, liveQuery, journal } from './live/journal.svelte';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime } from './dates';
 import { hairRemovalAreaName } from './vocabulary/labels';
-import { isPausedOn } from './journalingPause';
 import { spanCoversDay } from './span';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
@@ -34,11 +33,6 @@ import {
 export interface HomeTileGrid {
   /** Ordered, preference-gated, snooze-checked, uncapped. */
   readonly tiles: readonly HomeTile[];
-  /** Whether journaling is paused today, which is the pause tile's own
-      trigger seen from outside: Home's streak line is hidden by it whether
-      or not the tile is switched on, and reading it here saves a second
-      subscription to the same table. */
-  readonly pausedToday: boolean;
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose
       dismiss opens a sheet on the route rather than acting in place; the
       other ten dismiss themselves. */
@@ -200,14 +194,9 @@ export function homeTiles(
     })
   );
 
-  const pausedToday = $derived(isPausedOn(journalingPauses.rows, todayEpochDay));
-
   return {
     get tiles() {
       return tiles;
-    },
-    get pausedToday() {
-      return pausedToday;
     },
     snooze
   };

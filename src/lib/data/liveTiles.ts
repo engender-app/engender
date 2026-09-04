@@ -314,6 +314,57 @@ export const LIVE_TILE_ORDER = [
   'measurements-nudge'
 ] as const satisfies readonly LiveTileKind[];
 
+/** How much of the screen a tile is worth (phase 8 UX ticket 01, ADR-0055).
+
+    Three bands rather than a number per kind, because the tier is what the
+    ordering and the three visual weights are both read off - a per-kind
+    priority would be a fourth thing to keep in step with them and would
+    still have to be bucketed to draw.
+
+    - `today` is true today and false tomorrow: a wear session running now,
+      a dose slot the day expects, the two days of hair-removal aftercare.
+    - `moment` is something that has happened and is waiting: a letter that
+      unlocked, a bad moment Safe Space can answer, a surgery whose day is
+      approaching, a break that is running.
+    - `dormant` is a thing nothing is asking for: it has been a while since
+      a benchmark, a measurement, a felt sense on a tryout.
+
+    The dose panel is a moment rather than bound to today on purpose. It
+    qualifies for as long as an episode is active, which would make it a
+    permanent full-width row; what says a dose is actually due today is the
+    patch-schedule tile beside it. */
+export type HomeTileTier = 'today' | 'moment' | 'dormant';
+
+/** The three bands, in the order Home draws them. */
+export const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readonly HomeTileTier[];
+
+/** Which band each kind is in.
+
+    A mapped type over `LiveTileKind` rather than three arrays: a kind added
+    to the union is a missing-property error here, which three arrays could
+    not give - a kind absent from all of them would just never be drawn.
+    Demonstrated by deleting a line: the object stops satisfying the
+    `Record` and this file refuses to compile, naming the kind. */
+export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
+  'wear-timer': 'today',
+  'patch-schedule-tile': 'today',
+  'hair-removal-recovery': 'today',
+  'dose-panel': 'moment',
+  'surgery-countdown': 'moment',
+  'safe-space-nudge': 'moment',
+  'ready-letter': 'moment',
+  'revisit': 'moment',
+  'pause-active-banner': 'moment',
+  'active-tryout-tile': 'dormant',
+  'voice-benchmark-nudge': 'dormant',
+  'measurements-nudge': 'dormant'
+};
+
+/** How many tiles Home draws at their own weight. The rest fold into one
+    collapsed row in place - never a route, and never a true tile dropped
+    (ADR-0039's amendment). */
+export const HOME_TILE_CAP = 3;
+
 type Unordered = Exclude<LiveTileKind, (typeof LIVE_TILE_ORDER)[number]>;
 type AssertNoneUnordered<Missing extends never> = Missing;
 export type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
@@ -378,6 +429,10 @@ export interface HomeTile {
   /** The registry's own key, which is also the walkthrough's handle
       (ADR-0029) and the `{#each}` key. */
   key: LiveTileKind;
+  /** `LIVE_TILE_TIER[key]`, carried on the tile so the screen draws the
+      weight off what it is rendering rather than looking the kind up a
+      second time. */
+  tier: HomeTileTier;
   /** The kit's slot name, which `Tile.svelte` renders as `data-tile`. Four
       of these are shorter than the registry key and have been since the
       tiles were written; they are kept as they are because this ticket's
@@ -469,7 +524,10 @@ interface TileGate {
   snoozed: boolean;
 }
 
-type TileBuilder = (gate: TileGate) => HomeTile | null;
+/** A builder answers everything about a tile except its tier, which is
+    `LIVE_TILE_TIER`'s to say and `composeHomeTiles` stamps on - so no
+    builder can disagree with the table the ordering reads. */
+type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
 
 /** Home's grid: the eleven kinds, gated, in `LIVE_TILE_ORDER`, with nothing
     dropped for being eleventh. A `Record` keyed by `LiveTileKind` rather
@@ -739,7 +797,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         tileKey: 'pause-active',
         attrs: { 'data-pause-active-tile': true },
         title: m.tile_pause_active_title(),
-        value: m.streak_protected(),
+        value: m.tile_pause_value(),
         note:
           pause.endEpochDay != null
             ? m.tile_pause_until_date({ date: format.shortDay(pause.endEpochDay) })
@@ -804,12 +862,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
   };
 }
 
-/** The grid, in order, with every qualifying tile in it.
+/** The grid, in tier order, with every qualifying tile in it.
 
-    Nothing is dropped: the count Home used to hand-roll as eleven ternaries
-    is `tiles.length`, and there is no cap here for the same reason there is
-    no priority - a cap is a policy, and this ticket moved the grid without
-    changing what it shows.
+    Two loops rather than a sort: the tier bands are the outer order and
+    `LIVE_TILE_ORDER` is the order inside a band, which is exactly what
+    nesting the two lists says. Nothing is dropped here - the cap is
+    `splitHomeTiles` below, so the fold has the tiles it is folding.
 
     A tile whose area is hidden or finished never reaches its builder (phase 8
     features ticket 04). Folded into `enabled` rather than added as a third
@@ -819,10 +877,28 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const builders = buildersFor(input);
   const tiles: HomeTile[] = [];
-  for (const kind of LIVE_TILE_ORDER) {
-    const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
-    const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
-    if (tile) tiles.push(tile);
+  for (const tier of HOME_TILE_TIERS) {
+    for (const kind of LIVE_TILE_ORDER) {
+      if (LIVE_TILE_TIER[kind] !== tier) continue;
+      const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
+      const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
+      if (tile) tiles.push({ ...tile, tier });
+    }
   }
   return tiles;
+}
+
+/** The cap: the first `HOME_TILE_CAP` at their own weight, the rest folded
+    into one collapsed row in place.
+
+    Both halves come back, because the fold is a disclosure and not a
+    suppression - the row has to be able to draw what it is holding. At or
+    under the cap nothing is folded, so three tiles are three tiles rather
+    than two and a row saying "1 more". */
+export function splitHomeTiles(
+  tiles: readonly HomeTile[],
+  cap: number = HOME_TILE_CAP
+): { shown: HomeTile[]; folded: HomeTile[] } {
+  if (tiles.length <= cap) return { shown: [...tiles], folded: [] };
+  return { shown: tiles.slice(0, cap), folded: tiles.slice(cap) };
 }

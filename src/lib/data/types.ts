@@ -651,12 +651,11 @@ export interface DosePause {
   reason: PauseReason;
 }
 
-/** A dated break from journaling (phase 5 ticket 21, CONTEXT: "Streak" -
-    amended). No episode reference: unlike DosePause above, this has nothing
+/** A dated break from journaling (phase 5 ticket 21, CONTEXT: "Journaling
+    pause"). No episode reference: unlike DosePause above, this has nothing
     to do with a regimen. Null end day means the pause is still running, the
-    same reasoning DosePause.endEpochDay gives. `Streak`'s own computation
-    treats a day inside a pause range as neither a gap nor a logged day; see
-    `journalingPause.ts`'s `pauseCoversDay`. */
+    same reasoning DosePause.endEpochDay gives. Whether a day falls inside
+    one is `journalingPause.ts`'s `pauseCoversDay`. */
 export interface JournalingPause {
   id: string;
   startEpochDay: number;

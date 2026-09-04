@@ -9,7 +9,6 @@ import { dateInputValueFromEpochDay, todayEpochDay } from './epochDay';
 
 export interface WrappedShareSelection {
   counts: boolean;
-  streak: boolean;
   paletteArt: boolean;
 }
 
@@ -17,18 +16,15 @@ export interface WrappedShareSelection {
     that no element appears unless it was explicitly chosen. */
 export const WRAPPED_SHARE_NOTHING_SELECTED: WrappedShareSelection = {
   counts: false,
-  streak: false,
   paletteArt: false
 };
 
 export function wrappedShareContent(
   selection: WrappedShareSelection,
-  counts: WrappedCardStat,
-  streak: WrappedCardStat
+  counts: WrappedCardStat
 ): WrappedCardContent {
   const stats: WrappedCardStat[] = [];
   if (selection.counts) stats.push(counts);
-  if (selection.streak) stats.push(streak);
   return { stats, paletteArt: selection.paletteArt };
 }
 

@@ -19,7 +19,14 @@ describe('Tile component contract', () => {
     expect(tileFile).toContain('<button');
   });
 
+  it('stamps its weight on every branch, which is what the row rules select on', () => {
+    // Phase 8 UX ticket 01: a card or a row, decided by the caller and drawn
+    // by kit.css. Three branches, so three places it could be forgotten.
+    expect((tileFile.match(/data-weight=\{weight\}/g) ?? []).length).toBe(3);
+    expect(tileFile).toContain("weight = 'card'");
+  });
+
   it('renders single press anchor when action is absent', () => {
-    expect(tileFile).toContain('<a class="kit-tile press" data-tile={key} {href} {...rest}>');
+    expect(tileFile).toContain('<a class="kit-tile press" data-tile={key} data-weight={weight} {href} {...rest}>');
   });
 });

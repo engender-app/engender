@@ -9,9 +9,8 @@
 
    `rankHighestDays` is the pure half and the one this ticket's tests hold
    to TDD: sorting is all it does. It still takes `todayEpochDay` and
-   drops anything past it, the same discipline `bestStreakEver` follows in
-   stats.ts, rather than trusting that whatever fetched `byDay` already
-   bounded it. Ties break on the more recent day so the same journal
+   drops anything past it, rather than trusting that whatever fetched
+   `byDay` already bounded it. Ties break on the more recent day so the same journal
    always produces the same list.
 
    `highestDays` is the thin async half: it ranks, then asks the day

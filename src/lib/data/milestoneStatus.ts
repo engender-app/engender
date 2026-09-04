@@ -4,7 +4,7 @@
    Nothing here is stored (ADR-0010) - the schema has no `kind` column, and
    whether a day is a countdown or an anniversary is a question about today,
    which changes overnight. It also sits above the journal rather than in it,
-   for the reason ticket 10 gives about the streak: "today" is a local
+   for the reason ticket 10 gives about every dated read: "today" is a local
    calendar day (ADR-0001) and the data layer has no business deciding which
    one it is. So today arrives as an argument, and every case here is a plain
    fixture.

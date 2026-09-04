@@ -112,7 +112,7 @@ test('reads announce nothing at all', async () => {
 
   await journal.entries.entriesForDay(100);
   await journal.entries.recentDays(5);
-  await journal.stats.streak(100);
+  await journal.stats.entryCountsByDay(100, 110);
   await journal.tags.getTagGroups();
   await journal.milestones.getMilestones();
   await journal.labs.getAnalytes();
@@ -293,23 +293,12 @@ test('tablesReadBy answers with the tables a read depends on, and refuses anythi
   expect(() => tablesReadBy('nosuchArea', 'getEntry')).toThrow(/not a classified read/);
 });
 
-/* The two live defects the audit found, as the invariant that catches the
-   class rather than the two instances: a write's tables and the tables of
-   every read whose answer that write changes have to overlap, or the screen
-   holding that read shows its old number forever with nothing to see. */
-test('editing a journaling pause re-runs the streak read, the number the streak-goal screen shows', () => {
-  // The screen declared ['entry'] for this read while Home declared both
-  // tables, so the same streak went stale on one screen and not the other.
-  const dependsOn = new Set(tablesReadBy('stats', 'streak'));
-  for (const operation of ['upsertPause', 'deletePause'] as const) {
-    const written = tablesWrittenBy('journalingPauses', operation);
-    assert.ok(
-      written.some((table) => dependsOn.has(table)),
-      `journalingPauses.${operation} leaves stats.streak stale: writes ${written.join(', ')}, read depends on ${[...dependsOn].join(', ')}`
-    );
-  }
-});
-
+/* One of the two live defects the audit found, as the invariant that
+   catches the class rather than the instance: a write's tables and the
+   tables of every read whose answer that write changes have to overlap, or
+   the screen holding that read shows its old number forever with nothing to
+   see. The other defect was a journaling pause against the streak read,
+   which phase 8 UX ticket 01 deleted along with the streak. */
 test('editing a regimen episode re-runs the stock projection, the run-out date the stock screen shows', () => {
   // The screen declared ['stock', 'dose'], and the projection reads the
   // episode history too - so ending an episode left the old run-out date up.
