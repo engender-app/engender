@@ -143,6 +143,14 @@
      route, not over it, so no screen mounts and no query runs behind a
      screen somebody has not finished. */
   let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
+  /* Quick add is a layout-level sibling of the gate chain (below), not
+     inside it, so its own open flag is the only thing keeping it up. This
+     screen's arrival is the same kind of instead-of-the-route moment as a
+     mid-session lock - not a navigation, not Escape - so it gets the same
+     clear, for the same reason lockNow() does (phase 8 audit ticket 08). */
+  $effect(() => {
+    if (needsAccessModeAfterRecovery) ui.chooserOpen = false;
+  });
   /* Older code against a newer Journal (ticket 04). Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
