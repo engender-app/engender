@@ -16,6 +16,7 @@
    outside SQLite (ADR-0039). */
 
 import { isSealedUntil } from './sealedUntil';
+import type { LetterSeal } from './journal/letters';
 import type { Letter } from './types';
 
 export const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
@@ -90,11 +91,15 @@ export function clearLetterSnooze(storage?: Storage): void {
   }
 }
 
-export function unreadUnlockedLetters(
-  letters: Letter[],
+/** Generic over the letter shape rather than taking `Letter`: the two days
+    and the id are all these rules read, so a caller that never wants the
+    bodies can pass seals and get seals back (letters.ts's
+    `getLetterSeals`), and the letters screen still passes whole letters. */
+export function unreadUnlockedLetters<T extends LetterSeal>(
+  letters: readonly T[],
   todayEpochDay: number,
   readLetterIds?: Set<string> | readonly string[]
-): Letter[] {
+): T[] {
   const readSet =
     readLetterIds instanceof Set
       ? readLetterIds

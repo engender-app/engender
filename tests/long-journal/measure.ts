@@ -223,6 +223,13 @@ export async function measureLongJournal(
     const { result: measured, recording } = await recorder.record(operation);
     const ms = performance.now() - startedAt;
     held.push(measured.result);
+    if (true) {
+      const rows = [...recording.statements].sort((a, b) => b.bytes - a.bytes).slice(0, 12);
+      console.log(
+        `BREAKDOWN ${name}: ` +
+          rows.map((s) => `${s.bytes}B ${s.sql.replace(/\s+/g, ' ').slice(0, 90)}`).join('\n   ')
+      );
+    }
     measurements.push({
       name,
       what,

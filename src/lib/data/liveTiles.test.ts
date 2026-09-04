@@ -257,7 +257,7 @@ describe('liveTiles trigger predicates', () => {
   describe('shouldShowVoiceBenchmarkNudge', () => {
     it('stays silent until there is a benchmark to be overdue for', () => {
       const result = shouldShowVoiceBenchmarkNudge({
-        benchmarks: [],
+        latestBenchmarkEpochDay: null,
         todayEpochDay: today,
         enabled: true,
         snoozed: false
@@ -266,9 +266,8 @@ describe('liveTiles trigger predicates', () => {
     });
 
     it('triggers when the last benchmark was > 14 days ago', () => {
-      const benchmarks = [{ epochDay: today - 15 }];
       const result = shouldShowVoiceBenchmarkNudge({
-        benchmarks,
+        latestBenchmarkEpochDay: today - 15,
         todayEpochDay: today,
         enabled: true,
         snoozed: false
@@ -278,10 +277,9 @@ describe('liveTiles trigger predicates', () => {
     });
 
     it('suppresses when the last benchmark was <= 14 days ago', () => {
-      const benchmarks = [{ epochDay: today - 14 }];
       expect(
         shouldShowVoiceBenchmarkNudge({
-          benchmarks,
+          latestBenchmarkEpochDay: today - 14,
           todayEpochDay: today,
           enabled: true,
           snoozed: false
@@ -336,7 +334,7 @@ describe('liveTiles trigger predicates', () => {
         provider: ''
       };
       const result = shouldShowHairRemovalRecovery({
-        sessions: [session],
+        latestSession: session,
         todayEpochDay: today,
         enabled: true,
         snoozed: false
@@ -358,7 +356,7 @@ describe('liveTiles trigger predicates', () => {
       };
       expect(
         shouldShowHairRemovalRecovery({
-          sessions: [session],
+          latestSession: session,
           todayEpochDay: today,
           enabled: true,
           snoozed: false

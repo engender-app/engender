@@ -49,6 +49,11 @@ export interface MeasurementsArea {
       lastWrite.ts). One bounded row, not `getMeasurementsInRange(0, 999999)`
       reduced in JS the way `liveTiles.ts` used to. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
+  /** How many measurements are stored, over every type. One `COUNT(*)`, the
+      same shape `entries.countAll` is: a surface asking whether anything has
+      ever been measured has no business holding every measurement to find
+      out. */
+  countAll(): Promise<number>;
   /** Returns the measurement's id. Updating an unknown id throws. */
   upsertMeasurement(input: MeasurementInput): Promise<string>;
   /** Idempotent. */
@@ -114,6 +119,11 @@ export function makeMeasurementsArea(driver: SqliteDriver): MeasurementsArea {
         todayEpochDay
       ]);
       return latest?.epochDay ?? null;
+    },
+
+    async countAll() {
+      const rows = await driver.query<{ n: number }>('SELECT COUNT(*) AS n FROM measurement');
+      return rows[0].n;
     },
 
     upsertMeasurement: measurements.upsert,
