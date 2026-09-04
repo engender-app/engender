@@ -1254,6 +1254,14 @@ try {
       'the same read, seeded with TRYOUT_FELT_SENSE_TABLES, settles at one run',
       `${live.seeding.seededFeltSenseRuns} run(s)`
     );
+
+  if (live.seeding.compareRuns === 1)
+    ok("/compare's recap-then-dayAverages shape settles at one run unseeded, since dayAverages reads no table recap doesn't");
+  else
+    fail(
+      "/compare's recap-then-dayAverages shape settles at one run unseeded, since dayAverages reads no table recap doesn't",
+      `${live.seeding.compareRuns} run(s)`
+    );
 } catch (e) {
   fail('phase 8 audit ticket 14 seeded live reads', e.message ?? String(e));
 }
