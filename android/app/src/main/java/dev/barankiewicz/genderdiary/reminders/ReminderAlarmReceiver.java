@@ -75,14 +75,20 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(time)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            /* Phase 5 security ticket 01 (F-05). The default is
-               VISIBILITY_PUBLIC, which puts the title - a reminder the
-               person wrote, often the name of a medication - on the lock
-               screen of a phone lying face up on a table. Not the same
-               control as hideNotificationTitles: that one covers the shade,
-               which the OS draws in full whatever a notification asks for.
-               RetrospectiveNotificationsPlugin and AutoExportPlugin already
-               make this call. */
+            /* Phase 5 security ticket 01 (F-05), corrected by audit ticket
+               07: VISIBILITY_PRIVATE does not hide this title on a lock
+               screen by itself. It only asks the OS to conceal a
+               notification's content, and the OS only honours that where
+               the lock screen itself is set to hide sensitive content -
+               under Android's default "show all notification content", a
+               private notification still shows title and text in full. What
+               actually keeps a reminder's title off a locked phone's
+               screen is hideNotificationTitles, which resolveNotificationTitle
+               below applies unconditionally: it does not know whether the
+               screen is locked, so it hides the title whether it is or not.
+               This call is kept anyway, for the phones that do have
+               concealment configured, and RetrospectiveNotificationsPlugin
+               and AutoExportPlugin already make the same call. */
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1))
             .build();
