@@ -114,7 +114,13 @@ export const FINISHABLE_AREAS = [
      memos are entry content rather than a series of their own and there is
      nothing else here to name. */
   'voiceBenchmarks',
-  'voicePracticeTakes'
+  'voicePracticeTakes',
+  /* Dilation (phase 8 features ticket 12) - the motivating case ADR-0052
+     itself names: a taper tapers off, and finishing it says so is the
+     normal outcome rather than a lapse. The schedule (`taper`) stays out
+     below, the same reason `doseSchedules` does: it is what was meant to
+     happen, and the practice that ends is the sessions. */
+  'taperSessions'
 ] as const satisfies readonly ArchiveSectionName[];
 
 export type FinishableArea = (typeof FINISHABLE_AREAS)[number];
@@ -153,6 +159,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   regimenEpisodes: 'an episode carries its own end day, so a course that stopped is recorded by ending it',
   doseEvents: 'each dose is an event inside an episode, and the episode is where a course ends',
   doseSchedules: 'a schedule stops when the episode it belongs to does',
+  taper: 'a schedule stops when the practice recorded in taperSessions does (ticket 12)',
   dosePauses: 'a pause already carries the day it started and the day it ended',
   medicationStock: 'a running count of what is in the drawer, not a series of records to stop adding to',
   labResults: 'results arrive from outside on whatever schedule the prescription needs, so there is no practice of the person’s to declare done',

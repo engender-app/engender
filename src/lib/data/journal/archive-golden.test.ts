@@ -58,6 +58,8 @@ const SECTIONS = [
   'measurementTypes',
   'measurements',
   'sizeRecords',
+  'taper',
+  'taperSessions',
   'sideEffects',
   'cycleEvents',
   'journalingPauses',

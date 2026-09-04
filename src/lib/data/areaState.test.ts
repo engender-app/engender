@@ -47,7 +47,7 @@ test('one area answering does not answer for another', () => {
   assert.equal(areaQuiet('hairPhotos', states, TODAY), false);
 });
 
-test('the ten finishable areas are the nine that were approved plus ticket 10s practice take, voice fronting two of them', () => {
+test('the eleven finishable areas are the nine that were approved plus ticket 10s practice take and ticket 12s dilation, voice fronting two of them', () => {
   assert.deepEqual([...FINISHABLE_AREAS].sort(), [
     'hairPhotos',
     'hairRemovalSessions',
@@ -56,6 +56,7 @@ test('the ten finishable areas are the nine that were approved plus ticket 10s p
     'personalEffects',
     'sideEffects',
     'sizeRecords',
+    'taperSessions',
     'voiceBenchmarks',
     'voicePracticeTakes',
     'wearSessions'

@@ -255,6 +255,7 @@ test('a test may register an entry of its own and read it back through the same 
       voiceBenchmarks: journal.voiceBenchmarks,
       measurements: journal.measurements,
       sizeRecords: journal.sizeRecords,
+      taper: journal.taper,
       sideEffects: journal.sideEffects,
       personalEffects: journal.personalEffects,
       cycleEvents: journal.cycleEvents,

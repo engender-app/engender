@@ -45,7 +45,7 @@ describe('what the More hub is built from', () => {
     /* The row stays written in the list below so its icon, href and group
        are held like any other row's; what changed with ADR-0043 is that a
        filter decides whether it renders. Default and transfemme profiles
-       pass through a Health group of 5 rows, not 6. The decision lives in
+       pass through a Health group of 6 rows, not 7. The decision lives in
        cycleTracking.ts, not inline here - the hub only reads its answer. */
     expect(more).toContain("from '$lib/data/cycleTracking'");
     expect(more).toContain('cycleTrackingVisible');
@@ -53,7 +53,7 @@ describe('what the More hub is built from', () => {
   });
 
   it('keeps every row, with an unchanged icon, href and group', () => {
-    /* 25 rows in four groups (5 + 6 + 7 + 7), doubt included - the More
+    /* 26 rows in four groups (5 + 7 + 7 + 7), doubt included - the More
        hub's own header comment gives the same count. It was 23 in
        5 + 9 + 4 + 5 until deepening ticket 07 put labs, regimen,
        hormone-curve and doses behind the care row - the four surfaces /care
@@ -68,7 +68,9 @@ describe('what the More hub is built from', () => {
        feature-screens.test.ts's `ROUTES`. Phase 8 features ticket 14 added
        `words` to the Transition group, bringing it to 7: it groups note
        text by exactly the two things `presentations` and `eras` name.
-       Nothing else has moved, and no row changed its icon or href. */
+       Features ticket 12 added `dilation` to the Health group beside
+       `surgery`, bringing it to 7 too. Nothing else has moved, and no row
+       changed its icon or href. */
     const EXPECTED: [string, string, string][] = [
       ['photos', 'image', '/settings/photos'],
       ['measurements', 'ruler', '/settings/measurements'],
@@ -79,6 +81,7 @@ describe('what the More hub is built from', () => {
       ['cycle-events', 'calendar', '/settings/cycle-events'],
       ['side-effects', 'zap', '/settings/side-effects'],
       ['surgery', 'flag', '/settings/surgery'],
+      ['dilation', 'flask', '/settings/dilation'],
       ['appointment-prep', 'check', '/settings/appointment-prep'],
       ['clinician-summary', 'share', '/settings/clinician-summary'],
       ['milestones', 'flag', '/settings/milestones'],

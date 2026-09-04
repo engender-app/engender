@@ -2064,6 +2064,37 @@ const SCHEMA_V65 = `
 ALTER TABLE voice_benchmark ADD COLUMN capture_chain TEXT;
 `;
 
+/* The dilation taper (phase 8 features ticket 12, CONTEXT: "Taper"). Two
+   flat tables, both addressed through flatArea.ts:
+
+   `taper` is the schedule the person typed in - one row, since the app
+   models one taper at a time. `stages` is the stage sequence as JSON, the
+   way `flatArea.ts`'s header comment sanctions for a scalar column: the
+   expansion to expected sessions is arithmetic over the whole array at
+   once (taperSchedule.ts), never a query over one stage, so a child table
+   would buy nothing a JSON column does not already give.
+
+   `taper_session` is one row per session actually done - a day and
+   whatever the person chooses to note, nothing required beyond the day. */
+const SCHEMA_V66 = `
+CREATE TABLE taper (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid               TEXT NOT NULL UNIQUE,
+  surgery_epoch_day  INTEGER NOT NULL,
+  start_epoch_day    INTEGER NOT NULL,
+  stages             TEXT NOT NULL,
+  updated_at         INTEGER NOT NULL
+);
+CREATE TABLE taper_session (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  note       TEXT NOT NULL DEFAULT '',
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_taper_session_epoch_day ON taper_session(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2129,5 +2160,6 @@ export const migrations: Migration[] = [
   { version: 62, sql: SCHEMA_V62 },
   { version: 63, sql: SCHEMA_V63 },
   { version: 64, sql: SCHEMA_V64 },
-  { version: 65, sql: SCHEMA_V65 }
+  { version: 65, sql: SCHEMA_V65 },
+  { version: 66, sql: SCHEMA_V66 }
 ];

@@ -58,6 +58,7 @@ const ROUTES = [
   'settings/cycle-events',
   'settings/side-effects',
   'settings/surgery',
+  'settings/dilation',
   'settings/appointment-prep',
   'settings/clinician-summary',
   // Transition
@@ -120,8 +121,8 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 35 of them', () => {
-  it('is the count SCREENS.md gives, plus the nine added since', () => {
+describe('all 36 of them', () => {
+  it('is the count SCREENS.md gives, plus the ten added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
        /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
        /settings/eras and the notifications view, then 30 through 32 as
@@ -138,9 +139,10 @@ describe('all 35 of them', () => {
        35th, ticket 05's return surface, is the second of those and goes
        further: the metric reference is at least reachable from the screen
        it explains, while this one is linked from nowhere on purpose
-       (ADR-0062). */
-    expect(ROUTES.length).toBe(35);
-    expect(new Set(ROUTES).size).toBe(35);
+       (ADR-0062). The 36th, features ticket 12's /settings/dilation, is an
+       ordinary hub row again. */
+    expect(ROUTES.length).toBe(36);
+    expect(new Set(ROUTES).size).toBe(36);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
