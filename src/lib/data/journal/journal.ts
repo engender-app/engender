@@ -42,6 +42,7 @@ import { makeJournalingPausesArea, type JournalingPausesArea } from './journalin
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLastWriteArea, type LastWriteArea } from './lastWrite';
 import { makeLettersArea, type LettersArea } from './letters';
+import { makeRevisitsArea, type RevisitsArea } from './revisits';
 import { makeMeasurementsArea, type MeasurementsArea } from './measurements';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
@@ -294,6 +295,7 @@ export interface Journal {
       unlock day and nothing else - letterStatus.ts derives sealed/
       unlocked against today (ADR-0010) above this seam. */
   letters: LettersArea;
+  revisits: RevisitsArea;
   /** Which goals of which country pack someone has ticked off on the
       transition roadmap (phase 4 ticket 23). Holds ticks only: what the
       goals say is a bundled content module, not a table, so this area
@@ -488,6 +490,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     feltSense,
     tryouts,
     letters: makeLettersArea(driver),
+    revisits: makeRevisitsArea(driver),
     roadmap: makeRoadmapArea(driver),
     checklists,
     stats,

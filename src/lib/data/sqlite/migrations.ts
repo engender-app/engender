@@ -1935,6 +1935,36 @@ CREATE TABLE saved_question (
 );
 `;
 
+/* v61: revisits (phase 8 features ticket 08, ADR-0045: "the arrival offers
+   and never mints"). A day chosen to see one entry again.
+
+   `entry_id` holds the owning entry's own uuid, not its local row id - the
+   same plain-text FK shape milestone.procedure_id already uses (v45), and
+   for the same reason: a raw integer FK to `entry` would have to be
+   resolved against a rowid that can differ after an archive restore or
+   merge, and a uuid already survives that trip unresolved. `entryId` on
+   the app-facing Revisit type is still the ordinary numeric id every other
+   screen addresses an entry by - revisits.ts is the one place that joins
+   between the two.
+
+   UNIQUE on `entry_id`: one row per entry (the ticket's own "keyed by entry
+   and day"), so choosing a new day replaces the old one rather than piling
+   up a second offer for the same entry. `entry_epoch_day` rides along so a
+   read of what is due needs no second join back to `entry` to say when the
+   entry itself was written. */
+const SCHEMA_V61 = `
+CREATE TABLE revisit (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid              TEXT NOT NULL UNIQUE,
+  entry_id          TEXT NOT NULL UNIQUE REFERENCES entry(uuid),
+  entry_epoch_day   INTEGER NOT NULL,
+  created_epoch_day INTEGER NOT NULL,
+  target_epoch_day  INTEGER NOT NULL,
+  updated_at        INTEGER NOT NULL
+);
+CREATE INDEX idx_revisit_target_epoch_day ON revisit(target_epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1995,5 +2025,6 @@ export const migrations: Migration[] = [
   { version: 57, sql: SCHEMA_V57 },
   { version: 58, sql: SCHEMA_V58 },
   { version: 59, sql: SCHEMA_V59 },
-  { version: 60, sql: SCHEMA_V60 }
+  { version: 60, sql: SCHEMA_V60 },
+  { version: 61, sql: SCHEMA_V61 }
 ];

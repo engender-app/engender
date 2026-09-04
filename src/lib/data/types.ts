@@ -936,6 +936,23 @@ export interface Letter {
   unlockEpochDay: number;
 }
 
+/* A day chosen to see one entry again (phase 8 features ticket 08, ADR-0045:
+   "the arrival offers and never mints"). `entryId` is the entry's ordinary
+   numeric id - the way every other screen already addresses an entry - not
+   its uuid; the row's own portable identity lives only in the schema
+   (revisits.ts), the same split milestone.procedureId's plain-text FK
+   already draws between an app-facing id and a storage-level one. One row
+   per entry: choosing a new day replaces the old one rather than piling up
+   a second offer for the same entry (ticket's own "keyed by entry and
+   day"). */
+export interface Revisit {
+  id: string;
+  entryId: number;
+  entryEpochDay: number;
+  createdEpochDay: number;
+  targetEpochDay: number;
+}
+
 export interface MedicationStock {
   id: string;
   drug: string;

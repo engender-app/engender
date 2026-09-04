@@ -203,7 +203,12 @@ export const TABLE_NAMES = [
      folded into any of the search-adjacent tables: no other read here
      depends on a saved question's row, and saving or renaming one changes
      nothing a search itself returns. */
-  'savedQuestion'
+  'savedQuestion',
+  /* A revisit (phase 8 features ticket 08, ADR-0045). Its own name rather
+     than folded into 'entry': setting or cancelling one changes nothing an
+     entry read returns, and the live tile's own read would otherwise
+     re-run on every entry write in the journal. */
+  'revisit'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -485,6 +490,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   savedQuestions: classify<Journal['savedQuestions']>()({
     writes: { upsertSavedQuestion: ['savedQuestion'], deleteSavedQuestion: ['savedQuestion'] },
     reads: { getSavedQuestions: ['savedQuestion'] }
+  }),
+  revisits: classify<Journal['revisits']>()({
+    writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },
+    reads: { getRevisitForEntry: ['revisit'], getDueRevisits: ['revisit'] }
   }),
   eras: classify<Journal['eras']>()({
     writes: { upsertEra: ['era'], deleteEra: ['era'] },
