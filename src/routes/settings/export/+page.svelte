@@ -16,6 +16,7 @@
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
   import { recognizeSource } from '$lib/data/archive/sources';
+  import { IMPORT_FILE_SIZE_CEILING_BYTES, ZipTooLargeError } from '$lib/data/archive/zipReader';
   import type { ArchiveImportLogRecord } from '$lib/data/archive/payload';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
@@ -514,6 +515,14 @@
       backupPreview = null;
       backupError = '';
 
+      // Checked before the file is buffered at all: a corrupted or hostile
+      // member's declared size is zipReader.ts's job, but the file's own
+      // size on disk is cheaper to refuse before a single byte is read.
+      if (file.size > IMPORT_FILE_SIZE_CEILING_BYTES) {
+        backupError = m.dlb_file_too_large();
+        return;
+      }
+
       const bytes = new Uint8Array(await file.arrayBuffer());
       // A CSV handed to the backup row is a mistake worth naming, since the
       // row that reads it is one screen away (archive/sources.ts).
@@ -536,7 +545,7 @@
          when the real answer is "not this platform" sends them looking for
          a fix that does not exist. */
       const platform = error instanceof DaylioBackupError && error.kind === 'platform';
-      backupError = platform ? m.dlb_not_android() : m.dlb_unreadable();
+      backupError = error instanceof ZipTooLargeError ? m.dlb_too_large() : platform ? m.dlb_not_android() : m.dlb_unreadable();
     }
   }
 
