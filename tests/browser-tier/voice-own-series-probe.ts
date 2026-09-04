@@ -58,6 +58,7 @@ function take(epochDay: number, chain: string | null, over: Partial<BenchmarkFor
     f1Hz: 620 + epochDay / 8,
     f2Hz: 1740 + Math.sin(epochDay / 40) * 70,
     snrDb: 22 + epochDay / 60,
+    resonanceScale: 0.95 + epochDay / 2000,
     ...over
   };
 }

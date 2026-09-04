@@ -2,7 +2,7 @@
   /* One Own-series figure over every benchmark that can be read together
      (phase 8 features ticket 29, ADR-0060, ADR-0061).
 
-     Five of the six figures a benchmark reports have no dependable typical
+     Six of the seven figures a benchmark reports have no dependable typical
      range, so there is nothing to compare them against but the person's
      own earlier takes. Ticket 27 says that in words on the reference
      screen; this is where the earlier takes actually appear.
@@ -100,7 +100,8 @@
     spread: (value) => m.vb_semitones({ value: value.toFixed(1) }),
     rate: (value) => m.vb_wpm({ value: value.toFixed(0) }),
     resonance: (value) => m.vb_hz({ value: value.toFixed(0) }),
-    room: (value) => m.vb_db({ value: value.toFixed(0) })
+    room: (value) => m.vb_db({ value: value.toFixed(0) }),
+    scale: (value) => m.vb_scale_value({ value: value.toFixed(2) })
   };
 
   /** What the two lines of a two-line figure are called, in the legend and

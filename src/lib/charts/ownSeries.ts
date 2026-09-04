@@ -1,7 +1,7 @@
 /* One Own-series figure across the benchmarks that can be read together
    (phase 8 features ticket 29, ADR-0060, ADR-0061).
 
-   Five of the six figures a benchmark reports carry no published range and
+   Six of the seven figures a benchmark reports carry no published range and
    nothing to compare against except the person's own earlier takes
    (CONTEXT: "Own-series figure"). Ticket 27 says that in words on the
    reference screen. This is the half that makes the honest answer useful:
@@ -53,6 +53,7 @@ export interface BenchmarkForSeries extends ComparableTake {
   f1Hz: number | null;
   f2Hz: number | null;
   snrDb: number | null;
+  resonanceScale: number | null;
 }
 
 /** A stretch of benchmarks the app is willing to draw as one line. */
@@ -125,7 +126,11 @@ const FIGURES: Record<OwnSeriesMetricKey, FigureShape> = {
     second: { read: (b) => b.f2Hz, scale: 'own' },
     minPad: 20
   },
-  room: { read: (b) => b.snrDb, minPad: 1 }
+  room: { read: (b) => b.snrDb, minPad: 1 },
+  /* A factor around 1, not a frequency: a fifth of its own spread would be
+     near nothing on a flat run, so the pad is stated in the same units as
+     the other single-number figures rather than derived from the value. */
+  scale: { read: (b) => b.resonanceScale, minPad: 0.05 }
 };
 
 /** One figure across `benchmarks`, oldest first, split wherever the app

@@ -177,7 +177,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       // Earned: without it the row reads as something logged today rather
       // than as the day someone put to when it started.
       subtitle: m.day_first_noticed(),
-      href: '/settings/effects'
+      href: '/settings/personal-effects'
     })),
 
   cycleEvents: (day) =>

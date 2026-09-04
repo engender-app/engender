@@ -153,7 +153,8 @@
         snrDb: 24.5,
         note: null,
         pitchTrack: null,
-        captureChain: null
+        captureChain: null,
+        resonanceScale: null
       }
     ],
     labResults: [

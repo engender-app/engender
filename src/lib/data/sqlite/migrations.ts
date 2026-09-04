@@ -2095,6 +2095,21 @@ CREATE TABLE taper_session (
 CREATE INDEX idx_taper_session_epoch_day ON taper_session(epoch_day);
 `;
 
+/* The corner-vowel scaling factor (phase 8 features ticket 30,
+   CONTEXT: "Own-series figure"). One multiplicative factor fitted across
+   whichever of the three held vowels - /a/, /i/, /u/ - cleared the quality
+   gate and yielded a resonance (audio/vowelScale.ts). Null on a benchmark
+   that skipped the extra vowels, that held fewer than two usable ones, and
+   on every row from before this version, which asked for one vowel only and
+   has nothing to fit a factor across.
+
+   REAL rather than TEXT: the figure is a plain number to be plotted and
+   averaged like the others on the compare tab, not a comparison key like
+   `capture_chain`. */
+const SCHEMA_V67 = `
+ALTER TABLE voice_benchmark ADD COLUMN resonance_scale REAL;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2161,5 +2176,6 @@ export const migrations: Migration[] = [
   { version: 63, sql: SCHEMA_V63 },
   { version: 64, sql: SCHEMA_V64 },
   { version: 65, sql: SCHEMA_V65 },
-  { version: 66, sql: SCHEMA_V66 }
+  { version: 66, sql: SCHEMA_V66 },
+  { version: 67, sql: SCHEMA_V67 }
 ];

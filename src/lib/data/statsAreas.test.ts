@@ -16,6 +16,7 @@ import {
   statsAreaCards
 } from './statsAreas';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
+import { HUB_ROWS } from './hubRows';
 import type { AreaStates } from './areaState';
 
 const covered = new Set(STATS_AREA_PANELS.flatMap((panel) => panel.covers));
@@ -105,6 +106,38 @@ describe('the emptiness rule', () => {
   it('cannot hide the cycle row, which owns its own visibility', () => {
     const cycle = STATS_AREA_PANELS.find((panel) => panel.key === 'cycle-events');
     expect(cycle?.hides).toBeNull();
+  });
+});
+
+describe('agreeing with the More hub', () => {
+  it("draws the hub row's own icon and points at its screen, for every card that is one", () => {
+    /* This file's own promise - "the hub row's own icon, so the two surfaces
+       agree" (ADR-0024) - held rather than restated. It was restated and
+       drifted within the hour: phase 8 UX ticket 02 resolved three duplicated
+       hub icons and renamed the personal effects route while this module was
+       being merged, which left milestones on `flag`, the voice benchmark on
+       `mic`, personal effects on `sparkle`, and its href on a route that no
+       longer exists.
+
+       `labs` and `tally` are cards with no hub row of their own - one sits
+       behind /care and one is its own tab - so they are skipped rather than
+       failed, and the hub's own uniqueness test is what governs its icons. */
+    const hubRows = new Map<string, { icon: string; href: string }>(
+      HUB_ROWS.map((row) => [row.key, { icon: row.icon, href: row.href }])
+    );
+    let checked = 0;
+
+    for (const panel of STATS_AREA_PANELS) {
+      const row = hubRows.get(panel.key);
+      if (!row) continue;
+      checked += 1;
+      expect(panel.icon, `${panel.key} icon`).toBe(row.icon);
+      // The hub row's query string is its own (the benchmark tab); the path is
+      // what both surfaces have to agree on.
+      expect(panel.href, `${panel.key} href`).toBe(row.href.split('?')[0]);
+    }
+
+    expect(checked, 'no stats card matched a hub row, so this checked nothing').toBe(14);
   });
 });
 
