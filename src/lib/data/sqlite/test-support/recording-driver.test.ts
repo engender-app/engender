@@ -9,6 +9,8 @@
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { expect, test } from 'vitest';
+import { openJournal } from '../../journal/journal.ts';
+import { fakeFileStore } from '../../photos/test-support/fake-file-store.ts';
 import { migratedDb } from './migrated-db.ts';
 import { recordingDriver, tablesTouched } from './recording-driver.ts';
 
@@ -59,6 +61,36 @@ test('a statement that writes two tables names both', async () => {
   expect(recording.statements).toHaveLength(1);
   expect(recording.wrote).toEqual(['pref', 'tag']);
   expect(recording.read).toEqual([]);
+});
+
+test('a comma-separated table list names every table in it', () => {
+  /* The shape `dimensions.ts` reconciles the built-in presets with, and the
+     one a JOIN-only reading of the SQL misses entirely: a cross join
+     written as a list. Aliases and all. */
+  expect(
+    tablesTouched(
+      `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
+       SELECT gp.id, gd.id, ? FROM gender_preset gp, gender_dimension gd WHERE gp.uuid = ? AND gd.key = ?`
+    )
+  ).toEqual({ read: ['gender_dimension', 'gender_preset'], wrote: ['preset_dimension'] });
+
+  // And the commas that are not a table list stay out of it.
+  expect(tablesTouched('SELECT a, b FROM entry GROUP BY a, b ORDER BY a, b')).toEqual({
+    read: ['entry'],
+    wrote: []
+  });
+});
+
+test('a keyword standing where a table name would be is not a table', () => {
+  /* `UPDATE ON entry` inside a trigger definition reads as an update of a
+     table called "on" to a pattern that only knows `UPDATE <name>`. A
+     fabricated table name is worse than a missing one - it would send
+     whoever compares these against a declaration looking for a table that
+     does not exist. */
+  expect(tablesTouched('CREATE TRIGGER t AFTER UPDATE ON entry BEGIN DELETE FROM entry_fts; END')).toEqual({
+    read: [],
+    wrote: ['entry_fts']
+  });
 });
 
 test('a table name inside a string literal is not a table', () => {
@@ -149,6 +181,50 @@ test('a statement inside a transaction is recorded like any other', async () => 
   });
 
   expect(recording.wrote).toEqual(['pref']);
+});
+
+/* The one test here that can catch a parser fabricating a name, which is
+   the failure mode a hand-written pattern over SQL text has: every other
+   test asks about SQL this file wrote, and this one asks about the app's.
+   `reconcileBuiltIns` alone carries a cross join written as a comma list, a
+   correlated subquery and an upsert. */
+test('every table the app\'s own SQL names is a real table', async () => {
+  const { driver, record } = await recorded();
+  const journal = openJournal(driver, fakeFileStore());
+
+  const { recording } = await record(async () => {
+    await journal.reconcileBuiltIns();
+    const id = await journal.entries.upsertEntry({
+      epochDay: 100,
+      timestamp: 8_640_000_000,
+      mood: 4,
+      note: 'a note to tokenise',
+      dims: {},
+      tagIds: []
+    });
+    await journal.entries.recentDays(5);
+    await journal.stats.recap(0, 200);
+    await journal.lastWrite.getLastWrites(200);
+    await journal.entries.deleteEntry(id);
+    // The comma list lives in `addPreset`, so the real one runs here too.
+    const dims = await journal.dimensions.getDimensions();
+    await journal.dimensions.addPreset({ name: 'a preset', dims: [dims[0].key, dims[1].key] });
+  });
+
+  const real = new Set(
+    (
+      await driver.query<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view')"
+      )
+    ).map((row) => row.name)
+  );
+  const named = [...new Set([...recording.read, ...recording.wrote])];
+
+  expect(named.length).toBeGreaterThan(10);
+  expect(named.filter((name) => !real.has(name))).toEqual([]);
+  // And the comma list in `reconcileBuiltIns` is in there, both sides of it.
+  expect(recording.read).toContain('gender_preset');
+  expect(recording.read).toContain('gender_dimension');
 });
 
 /* The adapter is test support and has to stay there: it wraps every
