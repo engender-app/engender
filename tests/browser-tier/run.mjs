@@ -1453,6 +1453,29 @@ await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () =>
   else fail('a take pushed into the rails is caught while it is happening', `peak ${r.loudPeak}, ${JSON.stringify(r.loudFailed)}`);
 });
 
+// --- Phase 8 features ticket 28: the chain a take was recorded through ----
+await block('phase 8 features ticket 28 capture chain', 2, async () => {
+  const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
+  if (r.error) throw new Error(r.error);
+
+  /* The one thing only a browser can answer: what a real MediaStreamTrack
+     says about itself. The shape is the device, the microphone and one
+     token per constraint (audio/captureChain.ts). */
+  if (/^[^|]+\| [^|]+\| ec=(on|off|\?) ns=(on|off|\?) agc=(on|off|\?)$/.test(r.captureChain ?? ''))
+    ok(`a take records the chain it was made through (${r.captureChain})`);
+  else fail('a take records the chain it was made through', String(r.captureChain));
+
+  /* And the three flags are read back off the track rather than restated
+     from what was requested: the same device opened with the browser's
+     voice-call processing left on is a different chain. This is what has to
+     be true for a device that refuses the unprocessed request and opens
+     anyway, which is ADR-0061's case. */
+  const { unprocessed, processed } = r.openedChains ?? {};
+  if (unprocessed && processed && unprocessed !== processed)
+    ok(`the flags come off the track: unprocessed (${unprocessed}) is not the processed path (${processed})`);
+  else fail('the flags come off the track rather than from the request', `${unprocessed} against ${processed}`);
+});
+
 // --- Phase 8 features ticket 09: the stored track, and the figure drawn on
 //     the absolute axis, both off a real recording -------------------------
 await block('phase 8 features ticket 09 voice figure', 8, async () => {
