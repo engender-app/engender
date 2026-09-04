@@ -370,18 +370,21 @@
            controls in the whole of this measurement, and no API can read
            it back, so it ships as an instruction rather than as a stored
            number a benchmark could not verify (ticket 28, ADR-0061). Both
-           steps get it: the vowel is a take too. It goes while a take is
-           running, like the step's own hint, because the gauge needs the
-           room. -->
-      {#if phase === 'idle'}
+           steps get it, because the vowel is a take too, and it goes after
+           each step's own words rather than in front of them: what this
+           screen is comes first, how to hold the phone second. It leaves
+           while a take is running, like the hints it follows, because the
+           gauge needs the room. -->
+      {#snippet distance()}
         <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
-      {/if}
+      {/snippet}
 
       {#if step === 'passage'}
         <!-- What a benchmark is, which is worth reading once and is in the
              way of a take in progress. It goes when the flow starts. -->
         {#if phase === 'idle'}
           <p class="muted small vb-hint">{m.vb_lead()}</p>
+          {@render distance()}
         {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
@@ -393,6 +396,7 @@
              saying it, and the instruction is taking up the room the gauge
              needs. -->
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
+        {@render distance()}
       {/if}
 
       <!-- The graph goes from the reading step and stays on the held note
