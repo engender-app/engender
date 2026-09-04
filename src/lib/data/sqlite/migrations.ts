@@ -2023,6 +2023,22 @@ ALTER TABLE side_effect_v63 RENAME TO side_effect;
 CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
 `;
 
+/* v64: what is open, and until when (phase 8 features ticket 13). A
+   container's opened date and either an in-use window in days or an
+   explicit end date, whichever a person types - stored as typed rather
+   than one derived from the other, because they are two different things
+   a label can say (inUseWindow.ts combines them for display only, never
+   for storage).
+
+   Hangs off medication_stock rather than a second notion of a container,
+   per ADR-0046: it is already one row per drug. All three nullable and
+   defaulted to NULL, since every existing row has none of this typed. */
+const SCHEMA_V64 = `
+ALTER TABLE medication_stock ADD COLUMN opened_epoch_day INTEGER;
+ALTER TABLE medication_stock ADD COLUMN in_use_window_days INTEGER;
+ALTER TABLE medication_stock ADD COLUMN in_use_end_epoch_day INTEGER;
+`;
+
 /* What recorded a benchmark (phase 8 features ticket 28, ADR-0061). The
    phone the take was made on and whether the three unprocessed constraints
    the recording flow asks for were actually honoured, as one string
@@ -2044,7 +2060,7 @@ CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
    distance, which is the largest controllable in the literature and cannot
    be read from any API - it ships as an instruction in the recording flow,
    because a number the app cannot verify would be a stored guess. */
-const SCHEMA_V64 = `
+const SCHEMA_V65 = `
 ALTER TABLE voice_benchmark ADD COLUMN capture_chain TEXT;
 `;
 
@@ -2112,5 +2128,6 @@ export const migrations: Migration[] = [
   { version: 61, sql: SCHEMA_V61 },
   { version: 62, sql: SCHEMA_V62 },
   { version: 63, sql: SCHEMA_V63 },
-  { version: 64, sql: SCHEMA_V64 }
+  { version: 64, sql: SCHEMA_V64 },
+  { version: 65, sql: SCHEMA_V65 }
 ];

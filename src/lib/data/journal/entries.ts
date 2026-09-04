@@ -18,6 +18,7 @@
    with it, via the injected store. */
 
 import { bodyRegionIsLogged } from '../bodyMap';
+import type { WordFrequencySource } from '../wordFrequency';
 import { GOOD_DAY_REGION_EUPHORIA_FLOOR } from './stats';
 import {
   BAD_MOMENT_MOOD_CEILING,
@@ -243,6 +244,13 @@ export interface EntriesArea {
       its own toggle the way setTagHidden does rather than folding into a
       content save. Throws on an unknown id. */
   setEntryStarred(id: number, starred: boolean): Promise<void>;
+  /** Every untrashed entry carrying a non-empty note, in no particular
+      order - what a text fold needs (phase 8 features ticket 14's
+      word-frequency fold) and nothing `hydrate()` also fetches: no dims,
+      tags, photos, recordings or body regions, none of which a fold over
+      note text reads. A blank note contributes no words, so it is excluded
+      at the query rather than filtered by every caller. */
+  noteEntries(): Promise<WordFrequencySource[]>;
 }
 
 export interface TrashedEntry extends Entry {
@@ -1172,6 +1180,18 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         [todayEpochDay]
       );
       return rows[0]?.day ?? null;
+    },
+
+    async noteEntries() {
+      const rows = await driver.query<{ epoch_day: number; note: string; presentation_id: string | null }>(
+        `SELECT epoch_day, note, presentation_id FROM entry
+         WHERE trashed_at IS NULL AND note IS NOT NULL AND note != ''`
+      );
+      return rows.map((row) => ({
+        epochDay: row.epoch_day,
+        note: row.note,
+        presentationId: row.presentation_id
+      }));
     }
   };
 }
