@@ -598,3 +598,21 @@
     </div>
   </Sheet>
 </div>
+
+<style>
+  /* Moved out of screens.css by phase 8 UX ticket 01: deleting the
+     streak-goal screen left this screen its only consumer, and the ratchet's
+     rule is that a class one file reads belongs in that file's own block,
+     where an unused rule is a compiler warning rather than dead text. */
+  .pref-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .pref-row:last-child {
+    margin-bottom: 0;
+  }
+</style>

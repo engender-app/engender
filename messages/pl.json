@@ -3186,7 +3186,7 @@
   "coming_back_wear_saved": "Zamknięto na {date}.",
   "coming_back_wear_end_hint": "Aplikacja potrzebuje tego, żeby zamknąć sesję.",
   "home_count_since": "{entries} od {date}",
-  "home_tiles_more": "Jeszcze {count}",
+  "home_tiles_more": "{names} i jeszcze {count}",
   "home_tiles_fewer": "Pokaż mniej",
   "safe_space_stat_written_title": "Zapisane wpisy",
   "safe_space_stat_written_note": "W całym dzienniku",

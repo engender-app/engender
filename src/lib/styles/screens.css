@@ -632,8 +632,6 @@
 [data-mood-swatch="plum"] { background: linear-gradient(90deg, #ECE5ED, #E5D1E7, #E0B9E5, #DD9AE4, #D975E5); }
 [data-mood-swatch="moss"] { background: linear-gradient(90deg, #E3E9E0, #C8DEBE, #A1D389, #66C835, #51B022); }
 
-.pref-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-4); }
-.pref-row:last-child { margin-bottom: 0; }
 .taggroup-toggles { padding: 0 var(--space-4) var(--space-3) calc(var(--space-4) + 34px); border-top: 1px solid var(--border); }
 .taggroup-row { padding: var(--space-2) 0; font-size: var(--text-sm); }
 .manage-tags-link {

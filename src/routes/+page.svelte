@@ -89,6 +89,8 @@
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
+  import { splitHomeTiles } from '$lib/data/liveTiles';
+  import Icon from '$lib/components/Icon.svelte';
 
   const today = todayEpochDay();
 
@@ -101,6 +103,45 @@
   const liveTiles = homeTiles(today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
   });
+
+  /* Three at a time, the rest folded in place (phase 8 UX ticket 01,
+     ADR-0055). Expanding raises the cap rather than appending the folded
+     ones somewhere else, so the order and the three weights hold whether
+     the fold is open or shut - which is what makes it a fold rather than a
+     second list.
+
+     The fold names what it is holding rather than counting it: the point of
+     a fold over a suppression is that you can tell whether it is worth
+     opening without opening it. Two names and a remainder, because three
+     titles do not fit a row at 390px. */
+  let tilesExpanded = $state(false);
+  let tileSplit = $derived(splitHomeTiles(liveTiles.tiles));
+  let shownTiles = $derived(tilesExpanded ? liveTiles.tiles : tileSplit.shown);
+  /* The tiers are contiguous in the order, so filtering them apart keeps
+     each block's own order and needs no second sort. */
+  let cardTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
+  let rowTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
+  let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
+  const FOLD_NAMES = 2;
+  let foldLabel = $derived.by(() => {
+    const names = tileSplit.folded.slice(0, FOLD_NAMES).map((tile) => tile.title).join(', ');
+    const rest = tileSplit.folded.length - Math.min(FOLD_NAMES, tileSplit.folded.length);
+    return rest > 0 ? m.home_tiles_more({ names, count: String(rest) }) : names;
+  });
+
+  /* The count line, and what decides the day-one shape (phase 8 UX ticket
+     01). One narrow count over the entry table plus the bounds read the
+     eras screen already owns - not the recap, which is scoped to a range
+     and pays for six queries including two window functions.
+
+     `null` until the count answers, and the blocks below wait for it rather
+     than treating not-yet-known as none: a journal of four hundred entries
+     that painted the day-one shape for a frame and then filled in would be
+     the app telling somebody their journal was empty. */
+  let entryCountQuery = liveQuery((j) => j.entries.countAll());
+  let journalBoundsQuery = liveQuery((j) => j.eras.getJournalBounds());
+  let entryCount = $derived(entryCountQuery.value);
+  let hasEntries = $derived(entryCount == null ? null : entryCount > 0);
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -265,6 +306,25 @@
          still name the app under disguise; those are ticket 24's screen. -->
     <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <!-- How much is here, and since when. The streak stood in this slot and
+         was a run that could break; this only grows. Same size and colour as
+         the greeting above it, so the header reads as name, then today, then
+         history, and none of the three is a score. Absent at zero entries,
+         where "0 entries since nothing" is a worse first screen than no
+         line at all.
+
+         A month and a year rather than a day: the flag sun reserves the
+         right of these lines, which leaves about 26 characters at 390px,
+         and the day the journal opened on is not the fact this line is
+         about. -->
+    {#if entryCount && journalBoundsQuery.value}
+      <p class="home-count" data-home-count>
+        {m.home_count_since({
+          entries: m.n_entries({ n: entryCount }),
+          date: fmtDay(journalBoundsQuery.value.firstEpochDay, { month: 'short', year: 'numeric' })
+        })}
+      </p>
+    {/if}
   </header>
 
   <!-- The anniversary, as one line rather than a card with a confetti loop
@@ -362,103 +422,194 @@
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
 
-  <!-- Live tiles grid (ticket 45): wear timer, dose log, etc.
-       Unbordered grid, positioned near the top of Home - above milestones,
-       the week strip and recent entries - carrying its own role-coloured
-       stripe (HOME_AREA_ROLE.liveTiles). Disappears completely - no heading,
-       no gap - when no live tile condition holds. -->
-  {#if liveTiles.tiles.length > 0}
-    <div transition:disclose>
-      <TileGrid
-        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-        data-live-tile-grid
-      >
-        <!-- One slide rule for all eleven. It used to be two: seven tiles
-             asked whether they had a sibling and four asked whether one of
-             the original five was showing, so a journal with only the wear
-             and measurements tiles slid one in and left the other to
-             appear (deepening ticket 07). -->
-        {#each liveTiles.tiles as tile (tile.key)}
-          <div transition:tileSlide={{ enabled: liveTiles.tiles.length > 1 }}>
-            <Tile
+  <!-- The live tiles (ticket 45, capped and weighted by phase 8 UX ticket
+       01). Three at most, ordered by tier, and the tier drawn as weight so
+       the difference carries the same information as the ordering rather
+       than twelve tiles differing only by hue.
+
+       Three blocks, because the three weights want three shapes: a
+       bound-to-today tile is a full-width row with its action, a moment is
+       a card in the two-up grid, and a dormant nudge is a line in a list
+       with no action of its own - tapping it opens the screen the action
+       lived on. They share one role, so they still read as one area of the
+       screen (HOME_AREA_ROLE.liveTiles).
+
+       Separation is an opaque surface and a line: box-shadow is banned in
+       the kit and tested for. -->
+  {#if shownTiles.length > 0 || tileSplit.folded.length > 0}
+    <div class="home-tiles" transition:disclose>
+      {#if rowTiles.length > 0}
+        <TileGrid
+          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+          flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+          data-live-tile-grid
+          data-rows
+        >
+          {#each rowTiles as tile (tile.key)}
+            <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
+              <Tile
+                key={tile.tileKey}
+                weight="row"
+                title={tile.title}
+                value={tile.value}
+                note={tile.note}
+                href={tile.href}
+                action={tile.action}
+                dismiss={tile.dismiss}
+                {...tile.attrs}
+                data-live-tile={tile.key}
+              />
+            </div>
+          {/each}
+        </TileGrid>
+      {/if}
+
+      {#if cardTiles.length > 0}
+        <TileGrid
+          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+          flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+          data-live-tile-grid
+        >
+          <!-- One slide rule for all of them. It used to be two: seven tiles
+               asked whether they had a sibling and four asked whether one of
+               the original five was showing, so a journal with only the wear
+               and measurements tiles slid one in and left the other to
+               appear (deepening ticket 07). -->
+          {#each cardTiles as tile (tile.key)}
+            <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
+              <Tile
+                key={tile.tileKey}
+                title={tile.title}
+                value={tile.value}
+                note={tile.note}
+                href={tile.href}
+                action={tile.action}
+                dismiss={tile.dismiss}
+                {...tile.attrs}
+                data-live-tile={tile.key}
+              />
+            </div>
+          {/each}
+        </TileGrid>
+      {/if}
+
+      <!-- The quiet weight. A dormant nudge keeps neither its action nor its
+           dismiss: the whole line taps through to the screen its action
+           opened anyway, and the fewest controls belong on the quietest
+           thing. Its value goes with them - "40 days" is what the note
+           already says. -->
+      {#if quietTiles.length > 0}
+        <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+          {#each quietTiles as tile (tile.key)}
+            <ListRow
               key={tile.tileKey}
-              title={tile.title}
-              value={tile.value}
-              note={tile.note}
               href={tile.href}
-              action={tile.action}
-              dismiss={tile.dismiss}
+              title={tile.title}
+              subtitle={tile.note}
               {...tile.attrs}
               data-live-tile={tile.key}
             />
-          </div>
-        {/each}
-      </TileGrid>
+          {/each}
+        </ListCard>
+      {/if}
+
+      {#if tileSplit.folded.length > 0}
+        <button
+          type="button"
+          class="home-fold press"
+          data-home-tiles-fold
+          aria-expanded={tilesExpanded}
+          onclick={() => (tilesExpanded = !tilesExpanded)}
+        >
+          <span class="home-fold-mark" class:is-open={tilesExpanded} aria-hidden="true">
+            <Icon name="chevronDown" size={16} />
+          </span>
+          <span class="home-fold-text">{tilesExpanded ? m.home_tiles_fewer() : foldLabel}</span>
+        </button>
+      {/if}
     </div>
   {/if}
 
-  <!-- The two look-back tiles. The grid is unconditional and each tile
-       gates itself on its own preference and its own floor, which is what
-       keeps the two halves independent: turning wrapped off unmounts its
-       tile and the recap read behind it, and leaves this one's sibling
-       exactly where it was. With neither qualifying the grid has no
-       children and so no height, and the air around it belongs to its
-       neighbours rather than to itself. -->
-  <TileGrid
-    role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
-    flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-  >
-    {#if prefs.wrappedEnabled}
-      <WrappedHomeCard />
-    {/if}
-    {#if prefs.onThisDayEnabled}
-      <OnThisDayHomeCard />
-    {/if}
-  </TileGrid>
+  <!-- The two look-back tiles. Each gates itself on its own preference and
+       its own floor, which is what keeps the two halves independent:
+       turning wrapped off unmounts its tile and the recap read behind it,
+       and leaves this one's sibling exactly where it was. With neither
+       qualifying the grid has no children and so no height, and the air
+       around it belongs to its neighbours rather than to itself.
+
+       The whole grid waits for the first entry (phase 8 UX ticket 01):
+       there is nothing to look back on, and a zero-height grid was one of
+       the four unfinished things day one used to show. -->
+  {#if hasEntries}
+    <TileGrid
+      role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
+      flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+    >
+      {#if prefs.wrappedEnabled}
+        <WrappedHomeCard />
+      {/if}
+      {#if prefs.onThisDayEnabled}
+        <OnThisDayHomeCard />
+      {/if}
+    </TileGrid>
+  {/if}
 
   <!-- NAV-003: this section used to disappear entirely with no milestones,
        which also meant Timeline - only linked from here - was structurally
-       unreachable exactly when its own empty state most needed to be seen. -->
-  <SectionHeading text={m.milestones()}>
-    {#snippet action()}
-      <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
-    {/snippet}
-  </SectionHeading>
-  <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}>
-    {#if upcoming.length}
-      {#each upcoming.slice(0, 4) as x (x.m.id)}
-        <MilestoneCard milestone={x.m} s={x.s} />
-      {/each}
-    {:else}
-      <ListRow
-        href="/settings/milestones"
-        data-milestones-empty
-        chevron={false}
-        title={m.home_milestones_empty_title()}
-        subtitle={m.home_milestones_empty_body()}
-      />
-    {/if}
-  </ListCard>
+       unreachable exactly when its own empty state most needed to be seen.
+       So the empty row stays for anybody with a journal.
 
-  <SectionHeading text={m.last_seven()}>
-    {#snippet action()}
-      <ChartPicker
-        key="home-metric"
-        label={m.colour_days_by()}
-        value={vocabulary.activeMetric}
-        options={metricOptions}
-        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
-      />
-    {/snippet}
-  </SectionHeading>
-  <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
+       What it waits for now is the first entry (phase 8 UX ticket 01): on
+       day one the empty row is one of four unfinished things, and a
+       milestone somebody has already set is not - so a journal with
+       milestones and no entries still shows them. -->
+  {#if hasEntries || upcoming.length}
+    <SectionHeading text={m.milestones()}>
+      {#snippet action()}
+        <a class="kit-heading-action" href="/timeline">{m.timeline()}</a>
+      {/snippet}
+    </SectionHeading>
+    <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.milestones)}>
+      {#if upcoming.length}
+        {#each upcoming.slice(0, 4) as x (x.m.id)}
+          <MilestoneCard milestone={x.m} s={x.s} />
+        {/each}
+      {:else}
+        <ListRow
+          href="/settings/milestones"
+          data-milestones-empty
+          chevron={false}
+          title={m.home_milestones_empty_title()}
+          subtitle={m.home_milestones_empty_body()}
+        />
+      {/if}
+    </ListCard>
+  {/if}
 
-  <SectionHeading text={m.recent_entries()}>
-    {#snippet action()}
-      <a class="kit-heading-action" href="/calendar">{m.nav_calendar()}</a>
-    {/snippet}
-  </SectionHeading>
+  <!-- The week, and the days. Both wait for the first entry (phase 8 UX
+       ticket 01): seven grey cells and a heading over an empty list are two
+       more of day one's four placeholders, and the start-here notice below
+       is the one thing that screen owes. -->
+  {#if hasEntries}
+    <SectionHeading text={m.last_seven()}>
+      {#snippet action()}
+        <ChartPicker
+          key="home-metric"
+          label={m.colour_days_by()}
+          value={vocabulary.activeMetric}
+          options={metricOptions}
+          onPick={(value) => selectMetric(value === 'mood' ? null : value)}
+        />
+      {/snippet}
+    </SectionHeading>
+    <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
+
+    <SectionHeading text={m.recent_entries()}>
+      {#snippet action()}
+        <a class="kit-heading-action" href="/calendar">{m.nav_calendar()}</a>
+      {/snippet}
+    </SectionHeading>
+  {/if}
   <div class="home-swap">
     <ReadGate read={recent} variant="card" count={3}>
       {#snippet rows()}
@@ -698,13 +849,31 @@
     color: var(--accent);
     max-width: min(62%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
-  /* The same reservation for the quiet line under it, which sits lower where
-     the circle is narrower but still reaches into the outer ring's band on a
-     320px screen (the date's glyph edge measured 1.4px inside it). */
-  .home-hello {
+  /* The same reservation for the two quiet lines under it, which sit lower
+     where the circle is narrower but still reach into the outer ring's band
+     on a 320px screen (the date's glyph edge measured 1.4px inside it). */
+  .home-hello,
+  .home-count {
     max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
   .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
+  /* The count line takes the greeting's own size, colour and weight rather
+     than a step of its own: the header is three quiet lines under a
+     wordmark, and a fourth type size in it would be the thing you notice
+     about it. Tabular numerals so the figure does not shift width as it
+     grows. */
+  .home-count {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-1) 0 0;
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+    /* The sun's clearance leaves about 26 characters at 390px, so this line
+       wraps for most journals. Balanced, so it breaks after "since" rather
+       than stranding the year on a line of its own. Ignored where it is not
+       supported, which leaves the ordinary wrap. */
+    text-wrap: balance;
+  }
   /* Round 4, item 20: the gap before a Home heading was two spacings
      stacked - the block rhythm's 12px AND the heading's own 20px
      padding-top - and read as air, however many times one of them was
@@ -803,6 +972,74 @@
   :global(html[data-a11y-motion='reduce']) .home-cheer i { animation: none; }
   @media (prefers-reduced-motion: reduce) {
     .home-cheer i { animation: none; }
+  }
+
+  /* The three weights, as three blocks of one area. They share the section's
+     stripe, so what separates them is the seam between an opaque surface and
+     the page rather than a shadow or a second colour - box-shadow is banned
+     in the kit and tested for.
+
+     Tighter between the blocks than Home's own rhythm between sections
+     (--space-2 against --space-3): three weights of one thing sit closer
+     together than two different things do. */
+  .home-tiles {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  /* The fold. A row rather than a link, because it discloses in place and
+     goes nowhere - ADR-0039's amendment is that overflow folds and never
+     becomes a route, and a chevron pointing right would promise the
+     opposite. It names what it holds so you can tell whether to open it.
+
+     Full width and 44px tall: it is the control for everything the cap left
+     out, and the touch floor applies to it like any other row. */
+  .home-fold {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: 1px solid var(--outline);
+    border-radius: var(--r-card);
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .home-fold:hover,
+  .home-fold:active {
+    color: var(--text);
+    border-color: var(--outline-strong);
+  }
+
+  /* Tier 3, change within a screen: the mark turns to point at what it has
+     opened. Substituted rather than clamped under reduced motion - the
+     rotation is the state, so what it substitutes to is the rotated mark
+     arriving at once rather than no rotation at all. */
+  .home-fold-mark {
+    display: inline-flex;
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+
+  .home-fold-mark.is-open {
+    transform: rotate(180deg);
+  }
+
+  :global(html[data-a11y-motion='reduce']) .home-fold-mark { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .home-fold-mark { transition: none; }
+  }
+
+  .home-fold-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Tier 3: the skeleton crossfades into the day cards. Both children sit in

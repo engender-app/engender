@@ -18,6 +18,12 @@
      a press by scaling, which a full-width list row cannot do without
      moving the card around it.
 
+     Two weights. A card is the two-up default: title, value under it at
+     display size, note under that. A row takes the whole width and reads
+     along one line instead - title and value together, note beneath - so a
+     screen ordering its tiles by urgency can draw the difference rather
+     than only sorting by it.
+
      Anything else the caller puts on it lands on the anchor. That is how a
      screen stamps its own walkthrough handle without the kit learning what
      wrapped or on-this-day are: `data-tile` names the slot, and the
@@ -48,6 +54,7 @@
     note,
     href,
     key,
+    weight = 'card',
     action,
     dismiss,
     ...rest
@@ -59,6 +66,13 @@
     note?: string;
     href: string;
     key?: string;
+    /** How much of the screen the tile is worth. A card is the two-up
+        default. A row takes the grid's whole width, puts its value beside
+        its title rather than under it and drops the flag bar, which is what
+        a thing bound to today gets on Home (phase 8 UX ticket 01) - the
+        weight is the tile's own layout, so it belongs here rather than as
+        an override reaching in from a screen. */
+    weight?: 'card' | 'row';
     /** An optional in-place control for the tile (ADR-0039). */
     action?: TileAction;
     /** An optional dismiss control for the tile. */
@@ -69,7 +83,7 @@
 </script>
 
 {#if action}
-  <div class="kit-tile is-split" data-tile={key} class:has-dismiss={!!dismiss} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -114,7 +128,7 @@
     {/if}
   </div>
 {:else if dismiss}
-  <div class="kit-tile is-split" data-tile={key} class:has-dismiss={true} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -135,7 +149,7 @@
     </button>
   </div>
 {:else}
-  <a class="kit-tile press" data-tile={key} {href} {...rest}>
+  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} {...rest}>
     <span class="kit-tile-title">{title}</span>
     {#if value}<span class="kit-tile-value">{value}</span>{/if}
     {#if note}<span class="kit-tile-note">{note}</span>{/if}

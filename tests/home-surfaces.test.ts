@@ -159,20 +159,74 @@ describe('what spec 08 took off Home', () => {
     /* ADR-0029: the handle is the kind's own key, so an added tile cannot
        arrive without one and none of them can be renamed by a copy edit. */
     expect(markup).toContain('data-live-tile={tile.key}');
-    expect(markup).toMatch(/\{#each liveTiles\.tiles as tile \(tile\.key\)\}/);
+    // Three blocks since the weights landed, each keyed on the same field.
+    expect((markup.match(/as tile \(tile\.key\)\}/g) ?? []).length).toBe(3);
     for (const kind of LIVE_TILE_ORDER) expect(UNPROMPTED_KINDS).toContain(kind);
   });
 
-  it('gives all eleven tiles one slide-in rule', () => {
-    /* The bug this ticket fixes: seven tiles asked `liveTilesCount > 1` and
-       four asked a hand-written disjunction of only the original five, so a
-       journal showing the wear and measurements tiles slid one in and let
-       the other appear. */
-    const grid = markup.match(/\{#each liveTiles\.tiles[\s\S]*?\{\/each\}/)?.[0];
-    expect(grid, 'the grid is one each block').toBeDefined();
-    expect(grid).toContain('transition:tileSlide={{ enabled: liveTiles.tiles.length > 1 }}');
-    expect((markup.match(/transition:tileSlide/g) ?? []).length, 'one slide rule, not eleven').toBe(1);
+  it('gives every tile the same slide-in rule', () => {
+    /* The bug deepening ticket 07 fixed: seven tiles asked `liveTilesCount >
+       1` and four asked a hand-written disjunction of only the original
+       five, so a journal showing the wear and measurements tiles slid one in
+       and let the other appear. Two grids since the weights landed - the
+       rows and the cards - and the rule is written the same way in both,
+       over what is on screen rather than over one grid's own length. */
+    const rules = markup.match(/transition:tileSlide=\{\{[^}]*\}\}/g) ?? [];
+    expect(rules.length, 'one per grid, not one per tile').toBe(2);
+    for (const rule of rules) expect(rule).toBe('transition:tileSlide={{ enabled: shownTiles.length > 1 }}');
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
+  });
+
+  it('draws the three tiers as three weights, and asks one module for the split', () => {
+    /* Phase 8 UX ticket 01. The cap and the ordering are
+       liveTiles.grid.test.ts's, through `splitHomeTiles` and
+       `composeHomeTiles`; what is Home's is that it draws the answer at
+       three weights rather than twelve tiles differing only by hue. */
+    expect(home).toContain("from '$lib/data/liveTiles'");
+    expect(home).toContain('splitHomeTiles(liveTiles.tiles)');
+    expect(home).toMatch(/tile\.tier === 'moment'/);
+    expect(home).toMatch(/tile\.tier === 'today'/);
+    expect(home).toMatch(/tile\.tier === 'dormant'/);
+    // A row, a card, a line - and the rows take the grid's whole width.
+    expect(markup).toContain('weight="row"');
+    expect(markup).toContain('data-rows');
+    expect(markup).toMatch(/<ListRow[\s\S]*?data-live-tile=\{tile\.key\}/);
+  });
+
+  it('folds the overflow in place rather than into a route, and names it', () => {
+    /* ADR-0039's amendment: nothing true is suppressed and the fold is not a
+       destination. A button, so it announces its state; a link would promise
+       a screen that does not exist. */
+    const fold = markup.match(/<button[^>]*data-home-tiles-fold[\s\S]*?<\/button>/)?.[0];
+    expect(fold, 'the fold is one control').toBeDefined();
+    expect(fold).toContain('aria-expanded={tilesExpanded}');
+    expect(fold).not.toContain('href');
+    expect(home).toContain('m.home_tiles_more(');
+    expect(home).toContain('m.home_tiles_fewer()');
+  });
+
+  it('counts the whole journal from one narrow read, and says nothing at zero', () => {
+    /* Entries and the span, not the recap - which is scoped to a range and
+       pays for six queries including two window functions. */
+    expect(home).toContain('j.entries.countAll()');
+    expect(home).toContain('j.eras.getJournalBounds()');
+    expect(home).not.toContain('j.stats.recap');
+    // `{#if entryCount && ...}` is the absence at zero, and the `&&` is what
+    // also holds the line back until the count has answered.
+    expect(markup).toMatch(/\{#if entryCount && journalBoundsQuery\.value\}/);
+  });
+
+  it('makes day one wait for the first entry, on a count rather than on a guess', () => {
+    /* The week strip's seven grey cells, the milestones empty row and the
+       zero-height look-back grid were three of the four unfinished things a
+       first-run Home used to show. `hasEntries` is null until the count
+       answers, so not-yet-known never paints as none. */
+    expect(home).toMatch(/hasEntries = \$derived\(entryCount == null \? null : entryCount > 0\)/);
+    expect(markup).toMatch(/\{#if hasEntries\}\s*<TileGrid[\s\S]*?HOME_AREA_ROLE\.lookBack/);
+    expect(markup).toMatch(/\{#if hasEntries \|\| upcoming\.length\}/);
+    expect(markup).toMatch(/\{#if hasEntries\}\s*<SectionHeading text=\{m\.last_seven\(\)\}/);
+    // The one thing day one keeps besides the header and the chips.
+    expect(markup).toContain('key="no-entries"');
   });
 
   it('gives the live tiles grid its own role', () => {
@@ -204,8 +258,7 @@ describe('what spec 08 took off Home', () => {
        because what has to hold is an absence - over the code rather than the
        whole file, since the comments still say what used to be here and why
        it left. */
-    expect(code, 'no read of it').not.toMatch(/streak/i);
-    expect(markup, 'no line drawing it').not.toMatch(/streak/i);
+    expect(code, 'nothing reads it and nothing draws it').not.toMatch(/streak/i);
   });
 
   it('throws its one extra moment once, on a milestone day', () => {
