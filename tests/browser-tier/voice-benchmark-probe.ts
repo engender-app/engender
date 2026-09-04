@@ -52,7 +52,8 @@ function drawnFigure(frames: readonly PitchFrame[], report: QualityReport) {
       targetSeconds: 1.5,
       label: 'probe',
       advice: [],
-      comfort: { lowHz: 200, highHz: 230 }
+      comfort: { lowHz: 200, highHz: 230 },
+      language: 'en' as const
     }
   });
 
@@ -81,7 +82,8 @@ function drawnFigure(frames: readonly PitchFrame[], report: QualityReport) {
     bandFigures: [...target.querySelectorAll('[data-pitch-band]')].map(
       (li) => (li.textContent ?? '').match(/\d+/g)?.length ?? 0
     ),
-    overlapEdges: target.querySelectorAll('[data-pitch-overlap] line').length,
+    middleEdges: target.querySelectorAll('[data-pitch-middle] line').length,
+    middleFills: target.querySelectorAll('[data-pitch-middle] rect').length,
     comfortMarks: target.querySelectorAll('[data-pitch-comfort] line').length,
     sourceText: target.querySelector('[data-pitch-source]')?.textContent?.trim() ?? '',
     caveatText: target.querySelector('[data-pitch-caveat]')?.textContent?.trim() ?? ''
@@ -116,7 +118,7 @@ function drawnTake(pitchTrack: string | null) {
   document.body.append(target);
   mount(VoiceTake, {
     target,
-    props: { pitchTrack, medianHz: SIGNAL_HZ, p10Hz: 176, p90Hz: 194 }
+    props: { pitchTrack, medianHz: SIGNAL_HZ, p10Hz: 176, p90Hz: 194, language: 'en' as const }
   });
 
   return {

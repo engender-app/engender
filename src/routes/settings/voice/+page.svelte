@@ -38,6 +38,7 @@
      the exact contract this picker needs. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -51,7 +52,7 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
-  import { comfortBand } from '$lib/audio/bands';
+  import { bandLanguageIsGuessed, bandLanguageOf, comfortBand } from '$lib/audio/bands';
   import { acousticDelta } from '$lib/audio/benchmarkDelta';
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -115,6 +116,18 @@
      passages has nothing to compute, and that gate lives in
      benchmarkDelta.ts itself rather than here. */
   let delta = $derived(pair ? acousticDelta(anchors[pair.left], anchors[pair.right]) : undefined);
+
+  /* The pair's shared caption takes its language from the left take. Safe
+     because a pair is only comparable at all when both were read from the
+     same passage, which is benchmarkDelta.ts's own gate - and where they
+     were not, the caption still names whose figures the bands are, which is
+     what ADR-0059 asks of it. */
+  let pairLanguage = $derived(
+    pair ? bandLanguageOf(anchors[pair.left].passageKey, getLocale()) : bandLanguageOf('', getLocale())
+  );
+  let pairLanguageGuessed = $derived(
+    pair ? bandLanguageIsGuessed(anchors[pair.left].passageKey) : true
+  );
 
   /* F0 median over every benchmark, oldest first - independent of which two
      are picked to compare. The trend and the pair compare are two different
@@ -205,6 +218,7 @@
             data-vc-take={benchmark.id}
             {comfort}
             captionShared
+            language={bandLanguageOf(benchmark.passageKey, getLocale())}
             role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
             pitchTrack={benchmark.pitchTrack}
             medianHz={benchmark.f0MedianHz}
@@ -219,7 +233,7 @@
          the same three paragraphs twice over the two charts they are about
          (PitchBandsCaption.svelte's own note). -->
     <div class="screen-part" {...roleAttrs(roleAt(activeFlag.roles, SECTION_ROLE.trend))}>
-      <PitchBandsCaption />
+      <PitchBandsCaption language={pairLanguage} languageGuessed={pairLanguageGuessed} />
     </div>
 
     <div class="screen-part vc-delta" data-benchmark-delta>

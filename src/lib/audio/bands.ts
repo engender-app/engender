@@ -10,12 +10,39 @@
    comparison between two takes months apart.
 
    So the axis is absolute Hz, and ADR-0059 narrows PRODUCT.md's rule to
-   allow the two typical ranges on it, with their figures, their source and
-   a caveat. The narrowing stops here: it is the pitch graph and nothing
-   else. There is still no verdict, no score, no label on a voice and no
-   direction of travel - a band is a region with a name and a citation, and
-   the person's own comfort band is a different object that ships beside it.
-   Formant search windows are untouched, and resonance.ts says why.
+   allow two typical speaking-pitch ranges on it, with their figures, their
+   source and a caveat. The narrowing stops there: it is the pitch graph and
+   nothing else. There is still no verdict, no score, no label on a voice and
+   no direction of travel. Formant search windows are untouched
+   (resonance.ts), and the semitone spread never gets a band at all - the
+   reason is in the ADR and it is a measurement, not a preference.
+
+   **The bands are per language, because pitch is.** They were English
+   figures on both passages until 2026-09-04, which was wrong in the
+   direction that hurts. Andreeva et al. 2014 measured read passages across
+   four languages and say it plainly: the register of Polish male speakers
+   "is in the same range of absolute f0 values as that of English and German
+   female speakers". A Polish cis man reading aloud sits near 163 Hz, so
+   English-sourced bands put him inside the band labelled cis woman - and
+   put a Polish trans woman at 190 Hz inside that same band while she is
+   still inside a male distribution centred above her. So a band renders
+   only where the cited population's language matches the passage being
+   read, keyed the way passages.ts already keys the passage itself.
+
+   **Each range is mean +/- one standard deviation** of its published
+   population, computed here rather than written down as bounds, so what the
+   ADR cites and what the figure draws cannot drift apart. One SD is about
+   two thirds of the speakers measured; it is the tightest claim the sources
+   support, and widening it to two would put "typical cis man" on a range
+   from 73 to 157 Hz, which is not a typical anything.
+
+   **The middle band is computed, and it is usually a gap.** On sourced
+   figures neither language's ranges meet, so the region between them is a
+   gap rather than an intersection and is captioned as one. It is drawn
+   because a bare line where two blocks touch reads as a pass mark, and
+   because it is the region a great many of this app's users are working
+   through. `middleBand` reports which kind it found; nothing here decides
+   in advance.
 
    **Semitone-linear.** The axis is log2 in Hz, so the distance from 100 to
    200 Hz is the distance from 150 to 300: pitch is heard in ratios, the
@@ -28,45 +55,112 @@
    paraglide (ADR-0016). The band captions and the caveat are the screen's,
    because they are copy. */
 
-export type PitchBandKey = 'cisMan' | 'cisWoman' | 'overlap';
+/** The languages there are published read-passage figures for. Not "the
+    languages the app speaks": a passage in a language with no figures falls
+    back rather than inventing a band (`bandLanguageOf`). */
+export type BandLanguage = 'en' | 'pl';
 
-export interface PitchBand {
-  key: PitchBandKey;
+export type PopulationKey = 'cisMan' | 'cisWoman';
+export type PitchBandKey = PopulationKey | 'between';
+
+export interface PopulationBand {
+  key: PopulationKey;
   lowHz: number;
   highHz: number;
 }
 
-/** The two typical speaking-pitch ranges, as ADR-0059 fixes them: adult
-    speakers, habitual reading pitch, from Baken and Orlikoff's Clinical
-    Measurement of Speech and Voice (2000).
-
-    The man band's upper bound is the loose end of the spread that reference
-    reports rather than the 155 Hz figure often quoted from it, and that is a
-    deliberate choice recorded in the ADR: at 155 the two ranges do not meet
-    at all, and the region between them - the one a great many of this app's
-    users are working towards - would be a gap with no name, or worse, a line
-    where two blocks touch. A line there reads as a pass mark. */
-export const TYPICAL_RANGES: readonly PitchBand[] = [
-  { key: 'cisMan', lowHz: 85, highHz: 180 },
-  { key: 'cisWoman', lowHz: 165, highHz: 255 }
-];
-
-/** Where two ranges genuinely coincide, or null when they do not meet.
-    Computed rather than written down, so the overlap cannot drift out of
-    agreement with the ranges it is the overlap of. */
-export function overlapOf(a: PitchBand, b: PitchBand): PitchBand | null {
-  const lowHz = Math.max(a.lowHz, b.lowHz);
-  const highHz = Math.min(a.highHz, b.highHz);
-  return lowHz < highHz ? { key: 'overlap', lowHz, highHz } : null;
+export interface MiddleBand {
+  key: 'between';
+  /** Which one the arithmetic found. `overlap` where the two ranges
+      genuinely coincide, `gap` where neither covers the region. The caption
+      differs, because the two say opposite things about the same picture. */
+  kind: 'overlap' | 'gap';
+  lowHz: number;
+  highHz: number;
 }
 
-/** What the figure draws: the two ranges, and their overlap as a band in
-    its own right with its own caption. */
-const OVERLAP = overlapOf(TYPICAL_RANGES[0], TYPICAL_RANGES[1]);
+export type PitchBand = PopulationBand | MiddleBand;
 
-export const REFERENCE_BANDS: readonly PitchBand[] = OVERLAP
-  ? [...TYPICAL_RANGES, OVERLAP]
-  : TYPICAL_RANGES;
+/** Mean and standard deviation of speaking f0 over a read passage, by
+    language and population. ADR-0059 carries the citations and the
+    corpus caveat; these are the numbers those papers report.
+
+      en  Leung, Oates, Papp & Chan (2022), Journal of Voice 36(3):
+          379 speakers of Australian English aged 18-60 reading a passage,
+          creak separated from modal phonation before averaging.
+      pl  Andreeva, Demenko, Moebius, Zimmerer, Juegler &
+          Oleskowicz-Popiel (2014), Interspeech 2014: 48 Polish speakers
+          from BABEL reading three five-sentence passages. */
+const POPULATIONS: Record<BandLanguage, Record<PopulationKey, { meanHz: number; sdHz: number }>> = {
+  en: {
+    cisMan: { meanHz: 115, sdHz: 21 },
+    cisWoman: { meanHz: 199, sdHz: 28 }
+  },
+  pl: {
+    cisMan: { meanHz: 163, sdHz: 22 },
+    cisWoman: { meanHz: 266, sdHz: 24 }
+  }
+};
+
+/** The two typical ranges for a language, low band first. */
+export function typicalRanges(language: BandLanguage): readonly PopulationBand[] {
+  const population = POPULATIONS[language];
+  return (['cisMan', 'cisWoman'] as const).map((key) => ({
+    key,
+    lowHz: population[key].meanHz - population[key].sdHz,
+    highHz: population[key].meanHz + population[key].sdHz
+  }));
+}
+
+/** What sits between two ranges: their intersection where they coincide,
+    the space between them where they do not, or nothing at all where they
+    meet exactly at a point.
+
+    Computed rather than written down, so the middle band cannot drift out
+    of agreement with the ranges it is the middle of, and so the caption
+    cannot claim an overlap that the figures do not support. */
+export function middleBand(a: PopulationBand, b: PopulationBand): MiddleBand | null {
+  const [lower, upper] = a.lowHz <= b.lowHz ? [a, b] : [b, a];
+  if (lower.highHz > upper.lowHz) {
+    return { key: 'between', kind: 'overlap', lowHz: upper.lowHz, highHz: lower.highHz };
+  }
+  if (lower.highHz < upper.lowHz) {
+    return { key: 'between', kind: 'gap', lowHz: lower.highHz, highHz: upper.lowHz };
+  }
+  return null;
+}
+
+/** What the figure draws for a language: the two ranges, and the middle
+    band in its own right with its own caption. */
+export function referenceBands(language: BandLanguage): readonly PitchBand[] {
+  const ranges = typicalRanges(language);
+  const middle = middleBand(ranges[0], ranges[1]);
+  return middle ? [...ranges, middle] : ranges;
+}
+
+/** Which population's figures belong on a benchmark's figure: the language
+    of the passage that was read, from the key the row already stores
+    (data/voice/passages.ts).
+
+    A built-in passage carries its language in the key. A custom passage
+    carries a fingerprint of its own text and no language at all, so the
+    app's own language is the best signal there is - Alicja's call on
+    2026-09-04. It is a guess, and the source line says whose figures are
+    being drawn so that the figure admits to it rather than presenting a
+    guess as a fact. Anything with no figures published falls back to
+    English rather than drawing a band for a population it has not
+    measured. */
+export function bandLanguageOf(passageKey: string, appLocale: string): BandLanguage {
+  const fromPassage = passageKey.startsWith('builtin-') ? passageKey.slice('builtin-'.length) : appLocale;
+  return fromPassage === 'pl' ? 'pl' : 'en';
+}
+
+/** True when the bands being drawn are a guess at the passage's language
+    rather than a reading of it: a passage of somebody's own words says
+    nothing about which language it is in. */
+export function bandLanguageIsGuessed(passageKey: string): boolean {
+  return !passageKey.startsWith('builtin-');
+}
 
 export interface PitchAxis {
   lowHz: number;
@@ -74,18 +168,20 @@ export interface PitchAxis {
 }
 
 /** The axis an ordinary take is drawn on. Fixed, and wide enough that every
-    reference band sits clear of both edges: two benchmarks months apart are
-    only comparable by eye if the axis under them did not move, so the
-    common case must not compute its own bounds from its own data. */
-export const DEFAULT_PITCH_AXIS: PitchAxis = { lowHz: 70, highHz: 300 };
+    band of every language sits clear of both edges: two benchmarks months
+    apart are only comparable by eye if the axis under them did not move, so
+    the common case must not compute its own bounds from its own data. The
+    ceiling clears the Polish cis woman range, which is the highest band
+    there is. */
+export const DEFAULT_PITCH_AXIS: PitchAxis = { lowHz: 70, highHz: 330 };
 
 /** A quarter-octave of air, in ratio terms, kept between the axis end and
     whatever forced it out there. */
 const WIDEN_RATIO = 2 ** (3 / 12);
 
 /** The axis for one figure: the default, widened only by what would
-    otherwise be drawn off it. A voice below the man band or above the woman
-    band is a real voice and gets shown, not clipped to the edge where it
+    otherwise be drawn off it. A voice below the lowest band or above the
+    highest is a real voice and gets shown, not clipped to the edge where it
     would read as a flat line against the frame. */
 export function pitchAxis(subject: {
   hz?: readonly (number | null)[];
@@ -112,41 +208,17 @@ export function axisFraction(hz: number, axis: PitchAxis): number {
   return Math.max(0, Math.min(1, at));
 }
 
-/** The frequencies worth a gridline: the band edges, which are the only
-    values on this axis that mean anything. Deduplicated, because 165 Hz is
-    the woman band's floor and the overlap's floor and is one line. */
-export function bandEdges(): number[] {
+/** The frequencies worth a number in the gutter: the band edges of the
+    language being read, which are the only values on this axis that mean
+    anything. Deduplicated - the middle band's edges are the two ranges'
+    own, so there are four of them and not six. */
+export function bandEdges(language: BandLanguage): number[] {
   const edges = new Set<number>();
-  for (const band of REFERENCE_BANDS) {
+  for (const band of referenceBands(language)) {
     edges.add(band.lowHz);
     edges.add(band.highHz);
   }
   return [...edges].sort((a, b) => a - b);
-}
-
-/** What a voice can plausibly be, for reading a typed-in comfort band. Wider
-    than the tracker's own search range at neither end - a band it could
-    never contain a frame of is a typo, not a preference. */
-const COMFORT_FLOOR_HZ = 60;
-const COMFORT_CEILING_HZ = 500;
-
-/** The person's own comfort band, from the two numbers they typed. There is
-    no default and no norm table behind it: absent unless both ends are set,
-    and it is a different object from the reference bands - theirs is a
-    citation, this one is a decision.
-
-    Read the way round it was meant if the two arrived swapped, and refused
-    outright if either end is somewhere no voice goes. */
-export function comfortBand(
-  lowHz: number | null,
-  highHz: number | null
-): { lowHz: number; highHz: number } | null {
-  if (lowHz === null || highHz === null) return null;
-  const low = Math.min(lowHz, highHz);
-  const high = Math.max(lowHz, highHz);
-  if (low === high) return null;
-  if (low < COMFORT_FLOOR_HZ || high > COMFORT_CEILING_HZ) return null;
-  return { lowHz: low, highHz: high };
 }
 
 /** Pushes a descending list of label positions apart so no two are closer
@@ -154,8 +226,8 @@ export function comfortBand(
     keeping every label inside the 0-to-100 box.
 
     Here rather than in the component because it is geometry, and because it
-    is the kind of arithmetic that silently stops working: 165 and 180 Hz are
-    under six per cent of this axis apart, so their two numbers rendered as
+    is the kind of arithmetic that silently stops working: two band edges
+    can land under six per cent of the axis apart, so their numbers render as
     one smudge, and both of them are load-bearing. Dropping one was the
     other option and it loses a band's edge from the readout.
 
@@ -182,4 +254,29 @@ export function spreadLabels(at: readonly number[], minGap: number): number[] {
     }
   }
   return spread;
+}
+
+/** What a voice can plausibly be, for reading a typed-in comfort band. Wider
+    than the tracker's own search range at neither end - a band it could
+    never contain a frame of is a typo, not a preference. */
+const COMFORT_FLOOR_HZ = 60;
+const COMFORT_CEILING_HZ = 500;
+
+/** The person's own comfort band, from the two numbers they typed. There is
+    no default and no norm table behind it: absent unless both ends are set,
+    and it is a different object from the reference bands - theirs is a
+    citation, this one is a decision.
+
+    Read the way round it was meant if the two arrived swapped, and refused
+    outright if either end is somewhere no voice goes. */
+export function comfortBand(
+  lowHz: number | null,
+  highHz: number | null
+): { lowHz: number; highHz: number } | null {
+  if (lowHz === null || highHz === null) return null;
+  const low = Math.min(lowHz, highHz);
+  const high = Math.max(lowHz, highHz);
+  if (low === high) return null;
+  if (low < COMFORT_FLOOR_HZ || high > COMFORT_CEILING_HZ) return null;
+  return { lowHz: low, highHz: high };
 }

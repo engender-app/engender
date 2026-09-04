@@ -26,21 +26,23 @@
      separates the two kinds of claim before any of the captions are read:
      a citation is a region, a decision is line work.
 
-     **The overlap is the two washes coinciding.** Where the two ranges
-     coincide is its own band (the ticket, and ADR-0059), with its own
-     bounds and its own caption, and it must not be a line where two blocks
-     meet - a line there reads as a pass mark. Both washes are therefore
-     drawn in the hue over transparency rather than mixed into the ground,
-     so the strip they share is exactly twice one wash: the truthful
-     rendering of "both of these are true here", arrived at by arithmetic
-     rather than by a third colour somebody chose.
+     **The middle band is drawn at less than either range, never more.**
+     On sourced per-language figures the two ranges do not meet, so what
+     sits between them is a gap: fewer speakers are there than in either
+     range, and the fill says so at half a range's wash. A denser middle
+     band would be the target zone ADR-0012 forbids, and the bare line two
+     touching blocks would leave reads as a pass mark just as loudly, which
+     is why the region is drawn at all. Where two ranges do coincide the
+     same code draws the intersection, and the caption changes with it
+     (bands.ts's `middleBand`).
 
-     The first build hatched it instead, on the reasoning that a denser
-     region reads as a target. Hatching lost: 165 to 180 Hz is under six
-     per cent of the axis, so at the 390px floor the band is eight pixels
-     tall and vertical hairlines in eight pixels are a comb, not a texture.
-     The hairline bounds and the caption carry "its own band" without
-     needing one.
+     Two earlier builds of this band are worth not repeating. It was hatched
+     first, on the reasoning that a denser region reads as a target: at the
+     390px floor the band was eight pixels tall and vertical hairlines in
+     eight pixels are a comb. Then it was the two washes overlapping, which
+     only existed because the English man band had been widened past its
+     source to manufacture an intersection - the per-language figures
+     retired both the widening and the overlap.
 
      Nothing here is a verdict on a voice. There is one hue, the section's
      own flag stripe; no band is louder than another; nothing is red, green,
@@ -54,7 +56,14 @@
      reduced-motion path. The trace is redrawn rather than transitioned. */
   import type { Snippet } from 'svelte';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { REFERENCE_BANDS, axisFraction, bandEdges, spreadLabels, type PitchAxis } from '$lib/audio/bands';
+  import {
+    axisFraction,
+    bandEdges,
+    referenceBands,
+    spreadLabels,
+    type BandLanguage,
+    type PitchAxis
+  } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
@@ -68,6 +77,8 @@
     comfort = null,
     gate = null,
     hzLabel,
+    language,
+    languageGuessed = false,
     underPlot,
     captionShared = false,
     role,
@@ -91,6 +102,13 @@
     gate?: { roomFraction: number; roofWeight: number; clipping: boolean } | null;
     /** How a frequency is written in the gutter, in the caller's locale. */
     hzLabel: (hz: number) => string;
+    /** Whose figures the bands are: the language of the passage being read,
+        not the app's (bands.ts's `bandLanguageOf`). Pitch differs by
+        language by more than it differs by gender within one, so a band
+        drawn for the wrong population is worse than no band. */
+    language: BandLanguage;
+    /** True where that language is a guess, which the caption says. */
+    languageGuessed?: boolean;
     /** True when whoever embedded this figure is rendering one
         PitchBandsCaption for it and its neighbour instead: two takes side
         by side would otherwise carry the same three paragraphs twice, in
@@ -125,14 +143,14 @@
   const y = (hz: number) => (1 - axisFraction(hz, axis)) * HEIGHT;
 
   let bands = $derived(
-    REFERENCE_BANDS.map((band) => ({
+    referenceBands(language).map((band) => ({
       key: band.key,
       top: y(band.highHz),
       height: y(band.lowHz) - y(band.highHz)
     }))
   );
 
-  let overlap = $derived(bands.find((band) => band.key === 'overlap'));
+  let middle = $derived(bands.find((band) => band.key === 'between'));
 
   /** How much room one gutter number needs, in the box's own units. At the
       field's own height a --text-xs line is about nine of them. */
@@ -148,7 +166,7 @@
       the axis apart, and at the 390px floor that is two numbers in the same
       eight pixels. */
   let edges = $derived.by(() => {
-    const hzs = bandEdges();
+    const hzs = bandEdges(language);
     const exact = hzs.map((hz) => y(hz));
     const nudged = spreadLabels(exact, LABEL_GAP);
     return hzs.map((hz, index) => ({ hz, y: nudged[index] }));
@@ -206,21 +224,27 @@
         aria-hidden="true"
       >
         <!-- Both typical ranges, each a wash in the hue over whatever is
-             behind it. The overlap needs no fill of its own: it is the
-             strip where these two already coincide, so it comes out at
-             twice one wash on its own. -->
+             behind it. Over transparency rather than mixed into the ground,
+             so that where two of them coincide the shared strip comes out
+             at twice one wash by arithmetic rather than by a third colour
+             somebody picked. -->
         {#each bands as band (band.key)}
-          {#if band.key !== 'overlap'}
+          {#if band.key !== 'between'}
             <rect class="pf-band" x="0" y={band.top} width={WIDTH} height={band.height} />
           {/if}
         {/each}
 
-        {#if overlap}
-          <!-- Its own bounds, so the strip is a band with two edges rather
-               than a shade somebody has to notice. -->
-          <g class="pf-overlap" data-pitch-overlap>
-            {#each [overlap.top, overlap.top + overlap.height] as at (at)}
-              <line x1="0" y1={at} x2={WIDTH} y2={at} vector-effect="non-scaling-stroke" />
+        {#if middle}
+          <!-- The region between the two ranges, which on sourced figures
+               is a gap rather than an intersection: fewer speakers sit here
+               than in either range, so it is drawn at half a range's wash
+               and never more. Its two bounds are the ranges' own facing
+               edges, and they are what stop it reading as the line where
+               two blocks touch. -->
+          <g data-pitch-middle>
+            <rect class="pf-middle" x="0" y={middle.top} width={WIDTH} height={middle.height} />
+            {#each [middle.top, middle.top + middle.height] as at (at)}
+              <line class="pf-middle-edge" x1="0" y1={at} x2={WIDTH} y2={at} vector-effect="non-scaling-stroke" />
             {/each}
           </g>
         {/if}
@@ -301,7 +325,7 @@
   {#if underPlot}{@render underPlot()}{/if}
 
   {#if !compact && !captionShared}
-    <PitchBandsCaption />
+    <PitchBandsCaption {language} {languageGuessed} />
   {/if}
 </div>
 
@@ -376,7 +400,11 @@
     fill: color-mix(in oklab, var(--role-c) 18%, transparent);
   }
 
-  .pf-overlap line {
+  .pf-middle {
+    fill: color-mix(in oklab, var(--role-c) 9%, transparent);
+  }
+
+  .pf-middle-edge {
     stroke: color-mix(in oklab, var(--role-c) 30%, transparent);
     stroke-width: 1;
   }

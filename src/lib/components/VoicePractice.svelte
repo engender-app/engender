@@ -25,7 +25,8 @@
      caller of VoiceGauge, not a second gauge. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { comfortBand } from '$lib/audio/bands';
+  import { getLocale } from '$lib/paraglide/runtime';
+  import { bandLanguageOf, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -60,6 +61,11 @@
 
   let role = $derived(roleAt(activeFlag.roles, 0));
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
+  /* Practising reads nothing, so there is no passage to take a language
+     from and the app's is a guess at what is being spoken. Marked as one:
+     the bands are per language because pitch is, and a band drawn for the
+     wrong population is worse than no band (ADR-0059). */
+  let bandLanguage = $derived(bandLanguageOf('', getLocale()));
 
   /** The gate's findings, in words, and only ever about the recording. The
       length check is left out of the sentence: on this tab a short stretch
@@ -149,6 +155,8 @@
           data-vp-gauge
           {role}
           {comfort}
+          language={bandLanguage}
+          languageGuessed
           {frames}
           report={reading}
           targetSeconds={TARGET_SECONDS}

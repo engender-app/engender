@@ -1481,7 +1481,8 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
   /* The axis is absolute. On the old relative axis a steady voice sat in
      the middle of the box whatever it was, so the one assertion that tells
      the two apart is where 185 Hz landed: the figure has to draw it where
-     bands.ts puts it, well above the box's own middle. */
+     bands.ts puts it on the fixed 70-330 Hz axis, not in the middle of the
+     box wherever the voice happens to be. */
   if (f.traceMeanY !== null && Math.abs(f.traceMeanY - f.expectedY) < 2)
     ok(`the live trace lands where the axis puts 185 Hz (y ${f.traceMeanY.toFixed(1)} against ${f.expectedY.toFixed(1)})`);
   else fail('the live trace lands where the axis puts 185 Hz', `y ${f.traceMeanY} against ${f.expectedY}`);
@@ -1493,13 +1494,16 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
   /* Three bands, the overlap among them and hatched rather than filled, and
      the comfort bracket's spine plus its two ticks. */
   const bandsRight =
-    f.bands.join(',') === 'cisMan,cisWoman,overlap' && f.overlapEdges === 2 && f.comfortMarks === 3;
+    f.bands.join(',') === 'cisMan,cisWoman,between' &&
+    f.middleEdges === 2 &&
+    f.middleFills === 1 &&
+    f.comfortMarks === 3;
   if (bandsRight)
-    ok('the figure carries all three reference bands, the overlap with its own two edges, and the comfort bracket');
+    ok('the figure carries both cited ranges, the region between them bounded and filled, and the comfort bracket');
   else
     fail(
-      'the figure carries all three reference bands and the comfort bracket',
-      `${JSON.stringify(f.bands)}, ${f.overlapEdges} overlap edges, ${f.comfortMarks} bracket marks`
+      'the figure carries both cited ranges, the region between them, and the comfort bracket',
+      `${JSON.stringify(f.bands)}, ${f.middleEdges} edges, ${f.middleFills} fills, ${f.comfortMarks} bracket marks`
     );
 
   /* ADR-0059 permits these bands only with their figures, their source and

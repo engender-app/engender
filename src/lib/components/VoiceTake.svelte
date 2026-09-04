@@ -25,7 +25,7 @@
      not move at all. */
   import { m } from '$lib/paraglide/messages';
   import { decodePitchTrack } from '$lib/audio/track';
-  import { pitchAxis } from '$lib/audio/bands';
+  import { pitchAxis, type BandLanguage } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -38,6 +38,8 @@
     p10Hz,
     p90Hz,
     comfort = null,
+    language,
+    languageGuessed = false,
     captionShared = false,
     role,
     ...rest
@@ -49,6 +51,11 @@
     p10Hz: number;
     p90Hz: number;
     comfort?: { lowHz: number; highHz: number } | null;
+    /** Whose figures the bands are: the language of the passage this
+        benchmark was read from, which the row stores (bands.ts's
+        `bandLanguageOf`). */
+    language: BandLanguage;
+    languageGuessed?: boolean;
     /** Passed straight to the figure: two takes side by side share one
         caption (PitchBandsCaption.svelte). */
     captionShared?: boolean;
@@ -76,6 +83,8 @@
         span={{ lowHz: p10Hz, highHz: p90Hz }}
         {medianHz}
         {hzLabel}
+        {language}
+        {languageGuessed}
         {captionShared}
       />
       <!-- The figure's own legend names the reference bands; these two marks
