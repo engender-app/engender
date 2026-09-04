@@ -234,6 +234,16 @@
   let hits = $derived(results.hits);
   let total = $derived(results.total);
   let groups = $derived(entryDayGroups(hits));
+
+  /* Batched over every entry the page currently shows, the one read
+     marginNotes.ts's own reasoning asks for rather than one per row (phase
+     8 features ticket 07). Reads `hits` before its first await, the same
+     reactivity contract every liveQuery here follows, so paging in more
+     results re-runs it. */
+  let entryIds = $derived(hits.map((entry) => entry.id));
+  let marginNotesRead = liveQuery((j) => j.marginNotes.forEntries(entryIds));
+  let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
+
   /* What is left, and therefore whether there is anything to ask for. Read
      off the count rather than off "the page came back full", which cannot
      tell a last page that happens to be exactly thirty from a full one. */
@@ -378,7 +388,7 @@
         {#if hitRows.length}
           <SectionHeading text={m.search_entries_heading()} />
         {/if}
-        <EntryDays {groups} {role} />
+        <EntryDays {groups} {role} {marginNotesByEntry} />
         {#if remaining > 0}
           <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
             <span>{m.search_more({ count: Math.min(PAGE, remaining) })}</span>

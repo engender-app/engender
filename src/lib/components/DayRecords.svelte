@@ -38,9 +38,11 @@
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
+  import type { MarginNote } from '$lib/data/types';
   import type { Role } from '$lib/theme/roles';
   import PhotoThumb from './PhotoThumb.svelte';
   import Sheet from './Sheet.svelte';
+  import MarginNotes from './MarginNotes.svelte';
   import DayCard from './kit/DayCard.svelte';
   import DayEntry from './kit/DayEntry.svelte';
   import ListCard from './kit/ListCard.svelte';
@@ -52,7 +54,8 @@
     epochDay,
     records,
     entriesRole,
-    alsoRole
+    alsoRole,
+    marginNotesByEntry
   }: {
     epochDay: number;
     records: DayRecords;
@@ -60,6 +63,14 @@
     entriesRole?: Role;
     /** The context list's stripe, role 1 at the call site. */
     alsoRole?: Role;
+    /** Batched by the route, the same reason `records` itself is: one read
+        for the whole screen rather than one per entry (phase 8 features
+        ticket 07). Omitted, every entry reads as carrying none - the
+        gallery probe that renders this component with no journal behind it
+        (tests/browser-tier/day-gallery) has nothing to batch, and an entry
+        with none still draws its own "add a note" affordance, which needs
+        no read at all. */
+    marginNotesByEntry?: Map<number, MarginNote[]>;
   } = $props();
 
   let entries = $derived(records.entries);
@@ -109,7 +120,13 @@
         tags={entryTags(e)}
         marks={entryMarks(e)}
         {presentation}
-      />
+      >
+        {#snippet marginNotes()}
+          {#if marginNotesByEntry}
+            <MarginNotes entryId={e.id} notes={marginNotesByEntry.get(e.id) ?? []} />
+          {/if}
+        {/snippet}
+      </DayEntry>
     {/each}
   </DayCard>
 {/if}

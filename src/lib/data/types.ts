@@ -154,6 +154,20 @@ export interface Entry {
   presentationId: string | null;
 }
 
+/** A dated note an entry's owner added afterwards, on rereading (phase 8
+    features ticket 07, CONTEXT: "Margin note"). Owned by exactly one entry,
+    which never travels here (`FeltSenseEntry`'s own reasoning: the caller
+    already knows which entry it asked for). Never the entry's own `note` -
+    the two are stored, read and rendered apart on purpose, so that adding,
+    editing or removing one can never touch the other. */
+export interface MarginNote {
+  id: string;
+  /** The day the note itself was written, not the entry's day - a fact
+      about when the person looked back (ADR-0010), fixed at creation. */
+  epochDay: number;
+  text: string;
+}
+
 /** A named way of showing up that a person moves between repeatedly - "mode"
     on screen, after the vernacular (phase 5 deepening ticket 17, ADR-0048,
     CONTEXT: "Presentation"). Owns a name and a colour and nothing else: no

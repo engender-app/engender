@@ -85,6 +85,16 @@
   let dayRead = liveQuery((j) => j.day.getDay(epochDay));
   let day = $derived(dayRead.value);
 
+  /* Margin notes are not one of `day.ts`'s sections (they render with the
+     entry they annotate, not as a record of the day they were written on -
+     day.ts's own DAY_OPT_OUTS says why): a second, batched read rather than
+     a section, over whichever entries this day turns out to hold. Reads
+     `day?.entries` before its first await, the same reactivity contract
+     `dayRead` above follows. */
+  let entryIds = $derived((day?.entries ?? []).map((e) => e.id));
+  let marginNotesRead = liveQuery((j) => j.marginNotes.forEntries(entryIds));
+  let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
+
   /* What the gate branches on: a day is empty when no section has a row,
      which is not something a single list read can say for itself. Flattening
      every section is the emptiness test and nothing else - the two halves of
@@ -116,7 +126,7 @@
       <!-- `day!` because the gate renders this snippet only once the read
            has landed with something, which the compiler cannot see across a
            snippet boundary. -->
-      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} />
+      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} />
     {/snippet}
     {#snippet empty()}
       <Notice

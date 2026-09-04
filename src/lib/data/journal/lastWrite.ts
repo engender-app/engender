@@ -277,7 +277,13 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // The record of which areas are hidden or finished; asking it for its own
   // last write answers nothing a consumer of this registry could use.
   areaStates: 'the record of which areas are finished, not itself a stream to ask about',
-  savedQuestions: 'a tool the person built for themselves, not a record of something that happened'
+  savedQuestions: 'a tool the person built for themselves, not a record of something that happened',
+  // Mirrors day.ts's own opt-out (phase 8 features ticket 07): a margin
+  // note is not a stream any of this registry's four consumers reports a
+  // gap about - it is drawn wherever the entry it annotates is, and asking
+  // "when was one last written" answers nothing the return surface or the
+  // hub would use it for.
+  marginNotes: 'drawn beside the entry it annotates, not a stream of its own to report a gap about'
 };
 
 export const LAST_WRITE_ENTRIES: readonly LastWriteEntry[] = ENTRIES;

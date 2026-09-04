@@ -20,14 +20,17 @@
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
+  import type { MarginNote } from '$lib/data/types';
   import type { Role } from '$lib/theme/roles';
+  import MarginNotes from './MarginNotes.svelte';
   import DayCard from './kit/DayCard.svelte';
   import DayEntry from './kit/DayEntry.svelte';
 
   let {
     groups,
     role,
-    clampNotes = true
+    clampNotes = true,
+    marginNotesByEntry
   }: {
     groups: EntryDayGroup[];
     role?: Role;
@@ -35,6 +38,13 @@
         whole point of a run over a hit list is enough of each entry to
         read rather than to scan. */
     clampNotes?: boolean;
+    /** Batched by the caller, one read for the whole page rather than one
+        per entry (phase 8 features ticket 07, marginNotes.ts's own
+        reasoning). Omitted, every entry reads as carrying none - the
+        starred shelf (starred/+page.svelte) draws no margin-note
+        affordance for exactly that reason: it is not one of the four
+        surfaces the ticket names. */
+    marginNotesByEntry?: Map<number, MarginNote[]>;
   } = $props();
 </script>
 
@@ -57,7 +67,13 @@
           marks={entryMarks(entry)}
           {presentation}
           clampNote={clampNotes}
-        />
+        >
+          {#snippet marginNotes()}
+            {#if marginNotesByEntry}
+              <MarginNotes entryId={entry.id} notes={marginNotesByEntry.get(entry.id) ?? []} />
+            {/if}
+          {/snippet}
+        </DayEntry>
       {/each}
     </DayCard>
   {/each}

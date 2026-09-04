@@ -415,6 +415,31 @@ const AREAS = [
     uuid: 'uuid',
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['title']
+  }),
+  /* A margin note (phase 8 features ticket 07, CONTEXT: "Margin note").
+     Dated by the entry it annotates rather than by the day the note itself
+     was written: an entry has no name a person would recognise it by
+     besides its own day, and "a hit needs to say which entry it belongs
+     to" (the ticket's own condition) is what the visible date on a hit row
+     already draws for every other area - so this is the one place that
+     date names the owner rather than the row. `context` carries the
+     entry's own id (its rowid, the same identity `/entry/[id]` already
+     opens by) for the href, the way `feltSense`'s `context` carries its
+     owning tryout's id - `CAST` to TEXT because `context` is a string
+     column in every other area (each of them a uuid) and an entry's id is
+     the one integer identity this registry ever hands back through it.
+     Excludes a trashed entry's notes, the same reason `photos.ts`'s own
+     reads do. */
+  area({
+    key: 'marginNotes',
+    covers: ['marginNotes'],
+    tables: ['marginNote'],
+    from: 'margin_note mn JOIN entry e ON e.id = mn.entry_id',
+    uuid: 'mn.uuid',
+    date: { kind: 'epochDay', column: 'e.epoch_day' },
+    columns: ['mn.text'],
+    context: 'CAST(e.id AS TEXT)',
+    where: { sql: 'e.trashed_at IS NULL', params: () => [] }
   })
 ] as const;
 

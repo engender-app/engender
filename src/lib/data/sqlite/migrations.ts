@@ -1935,6 +1935,32 @@ CREATE TABLE saved_question (
 );
 `;
 
+/* v61: margin notes (phase 8 features ticket 07, ADR-0010, ADR-0027).
+
+   `entry_id` cascades on delete like `entry_body_region`'s own FK: a margin
+   note has no files to clean up, so there is no ordering rule for the
+   database to get wrong the way photos.ts's comment worries about, and a
+   purged entry (purgeExpiredTrash) should take its margin notes with it -
+   nothing downstream expects an annotation to outlive the entry it
+   annotates. Trashing an entry does not delete its row, only flags it, so a
+   trashed entry's margin notes survive untouched until the purge or an
+   untrash.
+
+   `epoch_day` is the day the note was written, stored rather than derived,
+   for the same reason ADR-0010 already gives: it is a fact about when the
+   person looked back, and nothing else in the schema could produce it. */
+const SCHEMA_V61 = `
+CREATE TABLE margin_note (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid TEXT NOT NULL UNIQUE,
+  entry_id INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  epoch_day INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1995,5 +2021,6 @@ export const migrations: Migration[] = [
   { version: 57, sql: SCHEMA_V57 },
   { version: 58, sql: SCHEMA_V58 },
   { version: 59, sql: SCHEMA_V59 },
-  { version: 60, sql: SCHEMA_V60 }
+  { version: 60, sql: SCHEMA_V60 },
+  { version: 61, sql: SCHEMA_V61 }
 ];

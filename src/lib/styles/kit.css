@@ -699,9 +699,20 @@ a.kit-entry:active {
   background: var(--hairline);
 }
 
-/* 13px is the middle of the 26px face at the top of the cell. */
-.kit-entry:first-child .kit-entry-mark::before { top: 13px; }
-.kit-entry:last-child .kit-entry-mark::before { bottom: calc(100% - 13px); }
+/* 13px is the middle of the 26px face at the top of the cell.
+
+   `:first-of-type`/`:last-of-type` rather than `:first-child`/`:last-child`
+   since phase 8 features ticket 07: a margin note's block
+   (DayEntry.svelte's own `marginNotes` snippet) is a sibling of `.kit-entry`
+   rather than nested inside it - an entry's row stays a plain link and
+   never grows interactive controls inside an `<a>` - so an entry followed
+   by one is no longer its card's literal last child. Every `.kit-entry` in
+   one card shares one tag (`a` where the card is interactive, `article`
+   where it is not, DayEntry's own `{#if href}`), so matching by type still
+   picks out exactly the entries and nothing a margin note's own `div`
+   contributes. */
+.kit-entry:first-of-type .kit-entry-mark::before { top: 13px; }
+.kit-entry:last-of-type .kit-entry-mark::before { bottom: calc(100% - 13px); }
 
 .kit-entry-mark > * {
   position: relative;
