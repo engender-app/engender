@@ -147,7 +147,7 @@ test('a mount that fires one more statement or widens a read is a breach', () =>
 test('a count with no budget, and a budget with no count, are both breaches', () => {
   const counted = { name: 'calendar-month', what: 'x', ms: 1, detail: 'x', statements: 3, bytes: 40 };
   expect(breaches([counted])).toHaveLength(2);
-  expect(breaches([counted])[0]).toContain('statementBudget');
+  expect(breaches([counted])[0]).toContain('counts statements and has no budget');
 
   const uncounted = { name: MOUNTS[0], what: 'x', ms: 1, detail: 'x' };
   expect(breaches([uncounted])).toHaveLength(2);

@@ -108,14 +108,12 @@ export function mountBudgetsFor(statementBaseline, byteBaseline) {
 const COUNTS = [
   {
     unit: 'statements',
-    field: 'statementBudget',
     /** @param {{ statements?: number }} m */ measured: (m) => m.statements,
     /** @param {Budget} b */ ceiling: (b) => b.statementBudget,
     /** @param {Budget} b */ baseline: (b) => b.statementBaseline
   },
   {
     unit: 'bytes',
-    field: 'byteBudget',
     /** @param {{ bytes?: number }} m */ measured: (m) => m.bytes,
     /** @param {Budget} b */ ceiling: (b) => b.byteBudget,
     /** @param {Budget} b */ baseline: (b) => b.byteBaseline
@@ -172,13 +170,13 @@ export function breaches(measurements, table = budgets.measurements) {
       if (ceiling == null) {
         if (measured != null) {
           found.push(
-            `${m.name} counts ${count.unit} and has no ${count.field} - add one to budgets.json or CI is not watching it`
+            `${m.name} counts ${count.unit} and has no budget for them - add one to budgets.json or CI is not watching it`
           );
         }
         continue;
       }
       if (measured == null) {
-        found.push(`${m.name} has a ${count.field} and the run took no ${count.unit} count for it`);
+        found.push(`${m.name} has a ${count.unit} budget and the run took no ${count.unit} count for it`);
         continue;
       }
       if (measured > ceiling) {
