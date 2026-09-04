@@ -851,6 +851,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // never changes when a presentation is renamed, recoloured or hidden.
       presentationDays: ['entry'],
       tagInsights: ['entry', 'dimension', 'tag'],
+      // No dimension: a share by tag counts entries, not values on them.
+      tagShare: ['entry', 'tag'],
       // A pause bridges a gap without extending the count (phase 5 ticket
       // 21), which is the second table the streak-goal screen forgot.
       streak: ['entry', 'journalingPause'],

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles.ts';
 import { UNPROMPTED_ROWS } from '../src/lib/unprompted/registry.ts';
+import { HUB_ROWS } from '../src/lib/data/hubRows.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -152,8 +153,12 @@ describe('the support directory panel', () => {
 });
 
 describe('More hub row for Safe Space', () => {
-  it('points to /doubt with safe_space_title', () => {
-    expect(more).toContain("key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), href: '/doubt'");
+  it('points to /doubt, and its title is the one the screen uses', () => {
+    /* The row list moved into `hubRows.ts` with phase 8 UX ticket 02, and the
+       titles with it into `vocabulary/hubLabels.ts`, so this asks the module
+       for the row and the label module for the key it draws the title from. */
+    expect(HUB_ROWS.find((row) => row.key === 'doubt')).toMatchObject({ href: '/doubt', icon: 'heart' });
+    expect(read('src/lib/data/vocabulary/hubLabels.ts')).toContain('doubt: m.safe_space_title');
   });
 });
 

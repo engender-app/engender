@@ -88,7 +88,7 @@ const ROUTES = [
      screen to the kit. */
   'settings/voice/metrics',
   'settings/wear',
-  'settings/effects',
+  'settings/personal-effects',
   'settings/resources',
   /* Two views over the unprompted registry (phase 6 ticket 04). The
      notifications view joins the list because its own milestone spec says so

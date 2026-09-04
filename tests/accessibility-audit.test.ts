@@ -38,7 +38,12 @@ describe('phase 2 accessibility seams', () => {
        be three columns of text per row, which is a table with one column
        that matters. */
     expect(stats).toContain('valueRows');
-    expect(stats).toContain('<BarRows rows={valueRows} />');
+    /* `measure="track"` since phase 8 UX ticket 03: the bar is where the day
+       sits in the metric's own range, which is what the sheet's own comment
+       promised while the primitive was quietly re-normalising it against the
+       longest row. The value beside it is text either way, which is what
+       this check is about. */
+    expect(stats).toContain('<BarRows rows={valueRows} measure="track" />');
     /* And a second scale joins that list rather than only the picture
        (phase 6 ticket 12). The plot is one image to a screen reader and a
        scrub is a way of reading a picture, so a comparison whose numbers

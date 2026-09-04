@@ -15,6 +15,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { AREA_GROUPS, AREA_GROUP_KEYS } from '../data/areaGroups.ts';
+import { AREA_GROUP_ROW_KEYS } from '../data/hubRows.ts';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -44,10 +45,10 @@ describe('where the finish control is mounted', () => {
   it('puts each group on the screen that owns it', () => {
     expect(mounts).toEqual([
       { route: 'settings/dilation', group: 'dilation' },
-      { route: 'settings/effects', group: 'effects' },
       { route: 'settings/hair-progress', group: 'hair-progress' },
       { route: 'settings/hair-removal', group: 'hair-removal' },
       { route: 'settings/measurements', group: 'measurements' },
+      { route: 'settings/personal-effects', group: 'effects' },
       { route: 'settings/side-effects', group: 'side-effects' },
       { route: 'settings/sizes', group: 'sizes' },
       { route: 'settings/voice', group: 'voice' },
@@ -69,15 +70,35 @@ describe('where the finish control is mounted', () => {
     expect(new Set(covered).size).toBe(11);
   });
 
-  it('names groups the More hub already has rows for', () => {
-    /* `areaLabels.ts` claims each group's name is the hub row's own, and
-       `AreaGroupKey` is written out by hand beside a hub whose rows a data
-       module cannot import (the hub is the UX spec's, and it is a route).
-       This is the only thing that catches the two drifting apart. */
-    const hub = readFileSync(`${root}/src/routes/more/+page.svelte`, 'utf8');
-
+  it('names groups the More hub has rows for, and the same screen owns both', () => {
+    /* `areaLabels.ts` claims each group's name is the hub row's own, and this
+       is what catches the two drifting apart. It used to grep the hub's route
+       for `key: '<group>'`, since the row list was written inline in a
+       route a data module could not import; phase 8 UX ticket 02 moved the
+       rows into `hubRows.ts`, which declares the mapping outright - so the
+       check can now be that the row fronting a group is on the same screen
+       the finish control is mounted on, rather than that the hub file happens
+       to contain a matching string. */
     for (const key of AREA_GROUP_KEYS) {
-      expect(hub, key).toContain(`key: '${key}'`);
+      expect(Object.keys(AREA_GROUP_ROW_KEYS), key).toContain(key);
     }
+
+    const owner = Object.fromEntries(mounts.map((m) => [m.group, m.route]));
+    expect(AREA_GROUP_ROW_KEYS).toEqual({
+      measurements: 'measurements',
+      sizes: 'sizes',
+      wear: 'wear',
+      'hair-progress': 'hair-progress',
+      'hair-removal': 'hair-removal',
+      'side-effects': 'side-effects',
+      effects: 'effects',
+      voice: 'voice-benchmark',
+      dilation: 'dilation'
+    });
+    /* The two names differ for exactly one group, and on purpose: `voice`
+       finishes the benchmarks and the practice takes together, and the row
+       that fronts both is the benchmark row - the memos row is entry content
+       and is not finishable at all. */
+    expect(owner['voice']).toBe('settings/voice');
   });
 });
