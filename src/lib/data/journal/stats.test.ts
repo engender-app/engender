@@ -1000,3 +1000,52 @@ test('a presentation with no days in the range answers with none, not an error',
 
   assert.deepEqual(await journal.stats.presentationDays(girl.id, 100, 100), []);
 });
+
+test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole (phase 8 UX ticket 03)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  /* Four distinct tags, so the recap's own LIMIT 3 would drop one. That drop
+     is the whole reason this read exists: a parts-of-a-whole form computes
+     each share against the sum of what it is handed, so a top three drawn as
+     a full circle inflates every share and can never show the remainder
+     ADR-0058 requires. */
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-tired', 'e-happy'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-tired', 'e-calm'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-tired'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 3, tags: ['e-happy', 'e-sad'] });
+
+  const share = await journal.stats.tagShare(100, 103);
+  assert.deepEqual(share, [
+    { id: 'e-tired', count: 3 },
+    { id: 'e-sad', count: 1 },
+    { id: 'e-happy', count: 2 },
+    { id: 'e-calm', count: 1 }
+  ].sort((a, b) => b.count - a.count || (a.id < b.id ? -1 : 1)));
+
+  // The recap the ring used to read stops at three, which is the bug.
+  assert.equal((await journal.stats.recap(100, 103)).topTags.length, 3);
+  assert.equal(share.length, 4);
+
+  // An entry carrying two tags counts once under each, so the whole is tag
+  // uses rather than entries - which is what a share by tag is a share of.
+  assert.equal(share.reduce((sum, t) => sum + t.count, 0), 7);
+});
+
+test('tagShare leaves a hidden tag out and a trashed entry uncounted', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-tired', 'e-happy'] });
+  const trashed = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-tired'] });
+  await journal.entries.deleteEntry(trashed);
+  await journal.tags.setTagHidden('e-happy', true);
+
+  assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 1 }]);
+});
+
+test('tagShare is bounded by its range at both ends', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 99, mood: 3, tags: ['e-tired'] });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-tired'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-tired'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-tired'] });
+
+  assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 2 }]);
+});
