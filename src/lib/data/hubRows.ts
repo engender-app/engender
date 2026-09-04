@@ -399,10 +399,23 @@ const ROWS = [
   }
 ] as const satisfies readonly HubRowSpec[];
 
-export const HUB_ROWS: readonly HubRowSpec[] = ROWS;
-
 /** Every row key, narrow. */
 export type HubRowKey = (typeof ROWS)[number]['key'];
+
+/** The rows that state what is behind them rather than reporting a reading.
+
+    `vocabulary/hubLabels.ts` keys its written lines by this rather than by
+    every row, so a row declared `written` with no line to show is a compile
+    error and a row that reads cannot be given one. Proven by deleting an
+    entry there. */
+export type WrittenRowKey = Extract<(typeof ROWS)[number], { line: 'written' }>['key'];
+
+/** One row as the list holds it: `HubRowSpec` with its key still narrow, so a
+    consumer reaching for a row's title cannot be handed a `string` the label
+    record has never heard of. */
+export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
+
+export const HUB_ROWS: readonly HubRow[] = ROWS;
 
 /* Every finishable group has to be fronted by a row, or it is one a person
    can declare finished on its own screen and which then moves nowhere on the
@@ -532,7 +545,7 @@ export interface HubSection {
       keeps its icon and its screen and only stops sitting under the heading
       it used to. */
   key: HubGroupKey | 'finished';
-  rows: { spec: HubRowSpec; line: HubLine }[];
+  rows: { spec: HubRow; line: HubLine }[];
 }
 
 /** The hub, assembled: every group in order with its rows, then the finished

@@ -42,7 +42,7 @@ const ROUTES = [
   ['transition', '/settings/tryouts'],
   ['practice', '/settings/voice'],
   ['practice', '/settings/wear'],
-  ['practice', '/settings/effects'],
+  ['practice', '/settings/personal-effects'],
   ['practice', '/settings/resources'],
   ['in-context', '/settings/stock']
 ];

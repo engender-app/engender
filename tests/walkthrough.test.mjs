@@ -2479,7 +2479,7 @@ try {
     '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
     '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/presentations',
     '/settings/eras',
-    '/settings/voice', '/settings/wear', '/settings/effects', '/settings/resources',
+    '/settings/voice', '/settings/wear', '/settings/personal-effects', '/settings/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
@@ -3402,7 +3402,7 @@ try {
   /* The personal effects onset nudge (phase 5 ticket 49).
      Absent on a fresh journal with no regimen. Once an active regimen
      episode with a literature onset window is added, opening the fan shows
-     the effects row; tapping it navigates to /settings/effects and closes
+     the effects row; tapping it navigates to /settings/personal-effects and closes
      the fan. When the anchor is moved past the onset window (>12 months),
      the row is absent again. */
   const localIso = (daysAgo = 0) => {
@@ -3435,7 +3435,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
   await page.locator('[data-choose="effects"]').click();
-  await page.waitForFunction(() => window.location.pathname === '/settings/effects', null, { timeout: 8000 });
+  await page.waitForFunction(() => window.location.pathname === '/settings/personal-effects', null, { timeout: 8000 });
   if ((await page.locator('[data-fan]').count()) > 0) {
     throw new Error('the fan remained open after tapping effects');
   }
@@ -3457,7 +3457,7 @@ try {
   }
   await page.locator('[data-quick-add]').click();
 
-  ok('quick add: personal effects nudge appears only during onset window and navigates to /settings/effects');
+  ok('quick add: personal effects nudge appears only during onset window and navigates to /settings/personal-effects');
 } catch (e) { fail('quick add effects nudge', e); }
 
 
