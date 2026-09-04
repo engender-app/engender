@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
-import { breaches, budgetFor, budgets, mb, overTarget } from './budgets.mjs';
+import { breaches, budgetFor, budgets, mb, mountBudgetsFor, overTarget } from './budgets.mjs';
 
 const NAME = 'long-journal';
 
@@ -96,6 +96,7 @@ console.log(
 console.log('');
 
 const pad = (text, width) => String(text).padEnd(width);
+const kb = (bytes) => `${(bytes / 1024).toFixed(1)}KB`;
 const widest = Math.max(...measurements.map((m) => m.what.length));
 
 for (const m of measurements) {
@@ -103,6 +104,15 @@ for (const m of measurements) {
   const against = budget ? `  budget ${budget.budgetMs}ms` : '  NO BUDGET';
   console.log(`  ${pad(m.what, widest)}  ${pad(`${Math.round(m.ms)}ms`, 9)}${recording ? '' : against}`);
   console.log(`  ${pad('', widest)}  ${m.detail}`);
+  /* A screen mount's own line, because time is the least of what it says:
+     the statements are round trips through a serialising boundary and the
+     bytes are what that boundary carries (phase 8 audit ticket 01). */
+  if (m.statements != null) {
+    const counts = `${m.statements} statements, ${kb(m.bytes)} across the driver seam`;
+    const ceilings =
+      budget?.statementBudget != null ? `  budget ${budget.statementBudget} statements, ${kb(budget.byteBudget)}` : '';
+    console.log(`  ${pad('', widest)}  ${counts}${recording ? '' : ceilings}`);
+  }
 }
 console.log('');
 
@@ -124,7 +134,16 @@ if (recording) {
               what: m.what,
               baselineMs,
               budgetMs: budgetFor(baselineMs, targetMs),
-              targetMs
+              targetMs,
+              // Only a screen mount carries these, and mountBudgetsFor()'s
+              // rule is applied here for the same reason budgetFor()'s is.
+              ...(m.statements == null
+                ? {}
+                : {
+                    statementBaseline: m.statements,
+                    byteBaseline: m.bytes,
+                    ...mountBudgetsFor(m.statements, m.bytes)
+                  })
             }
           ];
         })
