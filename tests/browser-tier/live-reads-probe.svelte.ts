@@ -18,7 +18,7 @@
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
-import { openJournal } from '../../src/lib/data/journal/journal.ts';
+import { openJournal, type Journal } from '../../src/lib/data/journal/journal.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import {
   attachJournal,
@@ -27,6 +27,9 @@ import {
   liveQueryWatchingOnly,
   type LiveQuery
 } from '../../src/lib/data/live/journal.svelte.ts';
+import { readWhatIsWaiting, WAITING_TABLES } from '../../src/lib/data/comingBackReads.ts';
+import { TRYOUT_FELT_SENSE_TABLES } from '../../src/lib/data/liveTiles.ts';
+import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
 const publish = (value: unknown) => {
@@ -84,6 +87,16 @@ async function run() {
   // Stock: a count, and doses logged against it after it was recorded.
   await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: TODAY - 5 });
   await journal.doses.upsertDose({ timestamp: at(TODAY - 3), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  // A tryout spanning TODAY, so the felt-sense loop below actually calls
+  // `forTryout` rather than skipping every row.
+  await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alicja',
+    description: null,
+    startEpochDay: TODAY - 10,
+    endEpochDay: null
+  });
 
   let projectionRuns = 0;
   let projectionQuery: LiveQuery<number>;
@@ -148,6 +161,106 @@ async function run() {
     until(() => recapRuns > recapRunsAfterMilestone, 'the narrowed recap to be re-read after an entry write')
   );
 
+  /* Ticket 14: a query whose reads all sit past its first `await` costs a
+     wasted round trip unless seeded. `readWhatIsWaiting` is that shape only
+     once something unrelated is awaited first, the way `/coming-back` awaits
+     its gap before ever touching `j` - copied here rather than reduced away,
+     since a direct `await readWhatIsWaiting(j, ...)` call is itself the
+     query's first synchronous operation and never exhibits the bug at all.
+     An unseeded run of the real shape should settle at two closure runs, a
+     run seeded with WAITING_TABLES at one. */
+  const gap = Promise.resolve(TODAY - 40);
+  let unseededRuns = 0;
+  let unseededQuery: LiveQuery<number>;
+  let seededRuns = 0;
+  let seededQuery: LiveQuery<number>;
+
+  $effect.root(() => {
+    unseededQuery = liveQuery(async (j) => {
+      const since = await gap;
+      const waiting = await readWhatIsWaiting(j, TODAY, since);
+      unseededRuns += 1;
+      return waiting?.items.length ?? 0;
+    });
+    seededQuery = liveQuery(async (j) => {
+      const since = await gap;
+      const waiting = await readWhatIsWaiting(j, TODAY, since);
+      seededRuns += 1;
+      return waiting?.items.length ?? 0;
+    }, WAITING_TABLES);
+  });
+
+  await until(() => unseededQuery.value !== undefined, 'the unseeded waiting query to settle');
+  await until(() => seededQuery.value !== undefined, 'the seeded waiting query to settle');
+  // A second run, if one is coming, lands within a flush and a round trip -
+  // the same margin the narrowing check above gives a write it does watch.
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  /* Home's per-tryout felt-sense read (liveTiles.svelte.ts): unlike
+     `readWhatIsWaiting` above, its own first operation - `getTryouts` - is
+     already synchronous, so it needs no unrelated await ahead of it to
+     reproduce the late discovery; `forTryout`, called from inside the loop
+     over the tryout list's own result, is what sits past the first await. */
+  let unseededFeltSenseRuns = 0;
+  let unseededFeltSenseQuery: LiveQuery<number>;
+  let seededFeltSenseRuns = 0;
+  let seededFeltSenseQuery: LiveQuery<number>;
+
+  $effect.root(() => {
+    const run = async (j: Journal) => {
+      const rows = await j.tryouts.getTryouts();
+      let seen = 0;
+      for (const tryout of rows) {
+        if (spanCoversDay(tryout, TODAY)) {
+          await j.feltSense.forTryout(tryout.id);
+          seen += 1;
+        }
+      }
+      return seen;
+    };
+    unseededFeltSenseQuery = liveQuery(async (j) => {
+      const seen = await run(j);
+      unseededFeltSenseRuns += 1;
+      return seen;
+    });
+    seededFeltSenseQuery = liveQuery(async (j) => {
+      const seen = await run(j);
+      seededFeltSenseRuns += 1;
+      return seen;
+    }, TRYOUT_FELT_SENSE_TABLES);
+  });
+
+  await until(() => unseededFeltSenseQuery.value !== undefined, 'the unseeded felt-sense query to settle');
+  await until(() => seededFeltSenseQuery.value !== undefined, 'the seeded felt-sense query to settle');
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  /* /compare's sideStats (routes/compare/+page.svelte): `recap` is called
+     synchronously as this closure's own first statement, so its declared
+     tables - including 'dimension' - are registered before `dayAverages`
+     runs past the `Promise.all` await, and `dayAverages` (writes.ts)
+     declares no table `recap` doesn't already. No seed needed, left as a
+     comment there rather than a change - this settles the claim with a
+     real run count instead of a trace, and stands as the regression guard
+     the by-hand reasoning alone cannot be: if a future edit ever widens
+     `dayAverages`'s tables past `recap`'s, this starts failing. */
+  let compareRuns = 0;
+  let compareQuery: LiveQuery<number>;
+
+  $effect.root(() => {
+    compareQuery = liveQuery(async (j) => {
+      const recap = await j.stats.recap(TODAY - 30, TODAY);
+      const series = await j.stats.dayAverages('mood', TODAY - 30, TODAY);
+      compareRuns += 1;
+      return recap.entryCount + series.length;
+    });
+  });
+
+  await until(() => compareQuery.value !== undefined, 'the compare-shaped query to settle');
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
   publish({
     projection: { runsBefore: projectionRunsBefore, runsAfter: projectionRuns, error: projectionError },
     narrowed: {
@@ -155,7 +268,8 @@ async function run() {
       afterMilestone: recapRunsAfterMilestone,
       afterEntry: recapRuns,
       error: recapError
-    }
+    },
+    seeding: { unseededRuns, seededRuns, unseededFeltSenseRuns, seededFeltSenseRuns, compareRuns }
   });
 }
 
