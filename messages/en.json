@@ -911,6 +911,7 @@
   "disguise_preview_android": "how the app appears in your launcher",
   "disguise_preview_web": "how the tab appears",
   "disguise_installed_note": "If you have already installed this app, the name and icon on your home screen change when your browser next refreshes them. Browsers do that on their own schedule, so it may take a while.",
+  "disguise_android_gap_note": "Android still shows the app’s real name in Settings, on its app-info screen, and in the widget picker.",
   "decoy_search": "Search notes",
   "decoy_note_groceries_title": "Groceries",
   "decoy_note_groceries_body": "milk, eggs, oats, coffee, something for dinner",

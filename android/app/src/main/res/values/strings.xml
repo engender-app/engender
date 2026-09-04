@@ -17,7 +17,7 @@
          resources here have never carried translations, only the web side
          (Paraglide) does. -->
     <string name="widget_quick_log_title">How are you feeling?</string>
-    <string name="widget_quick_log_description">Log your mood in one tap.</string>
+    <string name="widget_quick_log_description">Add an entry with one tap, picking one of five quick ratings.</string>
     <string-array name="widget_mood_names">
         <item>Awful</item>
         <item>Bad</item>
@@ -29,7 +29,7 @@
     <!-- Tally widget (ticket 33). Same non-localization note as the
          quick-log widget above. -->
     <string name="widget_tally_title">Log the moment</string>
-    <string name="widget_tally_description">Log misgendering or correct gendering in one tap.</string>
+    <string name="widget_tally_description">Add an entry with one tap, picking one of two quick options.</string>
     <string-array name="widget_tally_labels">
         <item>Misgendered</item>
         <item>Correctly gendered</item>
@@ -38,5 +38,5 @@
     <!-- Doubt-entry widget (ticket 34). Same non-localization note as the
          other widgets above. -->
     <string name="widget_doubt_title">Log a doubt</string>
-    <string name="widget_doubt_description">Open the doubt entry in one tap.</string>
+    <string name="widget_doubt_description">Open a blank entry to fill in with one tap.</string>
 </resources>
