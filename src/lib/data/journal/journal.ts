@@ -63,6 +63,7 @@ import { makeTryoutsArea, type TryoutsArea } from './tryouts';
 import { makeVideoArea, type VideoArea } from './videoNotes';
 import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchmarks';
+import { makeVoicePracticeTakesArea, type VoicePracticeTakesArea } from './voicePracticeTakes';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
 import { discardJournalRows } from './restore';
@@ -115,6 +116,10 @@ export interface Journal {
       benchmark") - a different kind of record from `voice`, on its own
       table, so a memo and a benchmark can never be mistaken for each other. */
   voiceBenchmarks: VoiceBenchmarksArea;
+  /** How a practice session went (phase 8 features ticket 10) - a different
+      activity from a benchmark and never compared to one, on its own table
+      for the same reason `voiceBenchmarks` has one. */
+  voicePracticeTakes: VoicePracticeTakesArea;
 
   /** Every video note (phase 5 ticket 22), read back dated and oldest first
       - entry-only, so like `voice` it has no attach/remove of its own:
@@ -366,6 +371,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const hairRemoval = makeHairRemovalArea(driver, files);
   const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
+  const voicePracticeTakes = makeVoicePracticeTakesArea(driver);
   const journalingPauses = makeJournalingPausesArea(driver);
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
@@ -384,6 +390,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     entryTemplates: makeEntryTemplatesArea(driver),
     voice: makeVoiceArea(driver),
     voiceBenchmarks,
+    voicePracticeTakes,
     videos: makeVideoArea(driver),
     labs,
     measurements,

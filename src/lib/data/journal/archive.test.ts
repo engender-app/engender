@@ -710,6 +710,7 @@ const CARRIED: Record<string, string[]> = {
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
   letter: ['uuid', 'epoch_day', 'text', 'unlock_epoch_day'],
+  voice_practice_take: ['uuid', 'epoch_day', 'min_hz', 'max_hz', 'median_hz', 'felt_sense'],
   // No uuid: a tick is named by its pack and goal keys, which mean the
   // same thing on every device, the way a built-in tag travels as its key
   // (ADR-0002).

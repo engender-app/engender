@@ -1877,6 +1877,48 @@ const SCHEMA_V58 = `
 ALTER TABLE voice_benchmark ADD COLUMN pitch_track TEXT;
 `;
 
+/* A practice take (phase 8 features ticket 10). Practising and benchmarking
+   are different activities (this ticket's Why) - a benchmark is a fixed,
+   comparable measurement; a practice take is what somebody does with their
+   voice most days, and it gets its own table rather than a nullable
+   passage_key on voice_benchmark, the same reasoning voiceBenchmark itself
+   got a table separate from entry.
+
+   `min_hz`/`max_hz` rather than voice_benchmark's p10/p90: a practice take is
+   short and deliberate and the person knows what they just did, so the true
+   extremes are the honest answer here where they would mostly show one
+   creaky frame on a thirty-second passage read (pitch.ts's own header).
+   `median_hz` alongside them for the same reason voice_benchmark keeps one.
+
+   `felt_sense` is the app's own five-level mood scale (moodFace.ts),
+   reused rather than a new one, and nullable: recording how a take felt is
+   offered and never required. Not the felt_sense table - that one belongs to
+   a tryout or a milestone by name (CONTEXT.md: "exactly one of the two"),
+   and a practice take is neither.
+
+   No `sealed_until_epoch_day` column: the seal reuses the time-capsule
+   letter's own mechanics (letterStatus.ts's isLetterSealed, generalized to
+   sealedUntil.ts), but unlike a letter's `unlockEpochDay` - a real choice
+   the person makes - a take's unlock day is always `epoch_day + 1` and
+   never anything else, which is exactly the "computable from data already
+   present" case ADR-0010 refuses a column for. `isSealedUntil(epochDay + 1,
+   today)` at the point of reading is the whole rule; no UI asks how long to
+   seal a take for either, because that would be a control the ticket does
+   not ask for and ships nothing to weigh it against. */
+const SCHEMA_V59 = `
+CREATE TABLE voice_practice_take (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid TEXT NOT NULL UNIQUE,
+  epoch_day INTEGER NOT NULL,
+  min_hz REAL NOT NULL,
+  max_hz REAL NOT NULL,
+  median_hz REAL NOT NULL,
+  felt_sense INTEGER,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1935,5 +1977,6 @@ export const migrations: Migration[] = [
   { version: 55, sql: SCHEMA_V55 },
   { version: 56, sql: SCHEMA_V56 },
   { version: 57, sql: SCHEMA_V57 },
-  { version: 58, sql: SCHEMA_V58 }
+  { version: 58, sql: SCHEMA_V58 },
+  { version: 59, sql: SCHEMA_V59 }
 ];

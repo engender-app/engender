@@ -23,11 +23,12 @@ test('every finishable area is grouped, and none of them twice', () => {
   assert.equal(new Set(grouped).size, grouped.length);
 });
 
-test('hair progress is the one group that fronts two areas', () => {
+test('hair progress and voice are the two groups that front two areas', () => {
   const several = AREA_GROUP_KEYS.filter((key) => AREA_GROUPS[key].length > 1);
 
-  assert.deepEqual(several, ['hair-progress']);
+  assert.deepEqual(several, ['hair-progress', 'voice']);
   assert.deepEqual([...AREA_GROUPS['hair-progress']], ['hairStages', 'hairPhotos']);
+  assert.deepEqual([...AREA_GROUPS['voice']], ['voiceBenchmarks', 'voicePracticeTakes']);
 });
 
 test('a group of one is finished on the day its area is', () => {

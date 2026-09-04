@@ -65,8 +65,12 @@ export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
     reverse a one-directional rule through the back door. */
 export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 
-/** The areas a person can declare finished, approved area by area by Alicja
-    on 2026-09-03 and resolved to section keys here.
+/** The areas a person can declare finished: the original nine approved area
+    by area by Alicja on 2026-09-03, plus `voicePracticeTakes` (phase 8
+    features ticket 10), which that ticket posed as an open choice rather
+    than a decision Alicja had already made - "decide with the deepening
+    spec's ticket 13 in hand whether practice takes join the finishable set
+    or sit behind the same row" - resolved here and worth her confirming.
 
     The rule they satisfy: finishing is a statement about the person's
     *practice of tracking*, so it fits an accumulating dated series they
@@ -88,11 +92,29 @@ export const FINISHABLE_AREAS = [
      photographs together, and finishing that practice finishes both. */
   'hairStages',
   'hairPhotos',
-  /* The only voice section there is (`payload.ts`). A voice memo belongs to
-     an entry and travels inside `entries`, so the memos are entry content
-     rather than a series of their own and there is nothing else here to
-     name. */
-  'voiceBenchmarks'
+  /* Two sections, one hub row, the same shape hairStages/hairPhotos give:
+     a benchmark and a practice take are both dated records of the same
+     ongoing practice of tracking a voice, so declaring that practice done
+     finishes both together (phase 8 features ticket 10).
+
+     This is a different question from why a letter stays out below, and
+     answering it is not "how letter-like is the seal" - a practice take
+     reuses that mechanic outright (sealedUntil.ts). It is whether there is
+     a *practice* left over once one sealed record opens. A letter has none:
+     writing it, sealing it and it later being read is the whole transaction,
+     and nothing about "have you written enough letters" is a question this
+     app asks. A practice take's seal only withholds one take's own figures
+     for a day - the practice of taking them is what keeps going the way any
+     other measurement does, which is what makes "done practising" a real
+     statement to make about it. Its own opt-out from day.ts and
+     lastWrite.ts is about the seal alone and says nothing about this
+     question - see the comment there.
+
+     A voice memo belongs to an entry and travels inside `entries`, so the
+     memos are entry content rather than a series of their own and there is
+     nothing else here to name. */
+  'voiceBenchmarks',
+  'voicePracticeTakes'
 ] as const satisfies readonly ArchiveSectionName[];
 
 export type FinishableArea = (typeof FINISHABLE_AREAS)[number];
