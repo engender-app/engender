@@ -39,11 +39,16 @@ describe('what Safe Space is built from', () => {
     expect(markup).toContain('<BreathingExercise');
   });
 
-  it('renders a statistics TileGrid with streak and good moments, opted into the tight two-up variant', () => {
+  it('renders a statistics TileGrid with what is written and good moments, opted into the tight two-up variant', () => {
     expect(markup).toContain('<TileGrid');
-    expect(markup).toContain('key="streak"');
+    /* Phase 8 UX ticket 01: this said "days in a row" until the streak went.
+       A run is the one figure on this screen that could go down, and
+       somebody arriving here after a fortnight away would have been told
+       their evidence was zero. */
+    expect(markup).toContain('key="written"');
     expect(markup).toContain('key="evidence"');
-    expect(doubt).toContain('j.stats.streak');
+    expect(doubt).toContain('j.entries.countAll()');
+    expect(doubt, 'no run of consecutive days').not.toContain('j.stats.streak');
     // Alicja's review: these two tiles' notes are short enough that the
     // 390px floor's default single-column stack is overcautious for them.
     expect(markup).toMatch(/<TileGrid[^>]*data-tight[^>]*>/);

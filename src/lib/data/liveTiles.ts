@@ -797,7 +797,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         tileKey: 'pause-active',
         attrs: { 'data-pause-active-tile': true },
         title: m.tile_pause_active_title(),
-        value: m.streak_protected(),
+        value: m.tile_pause_value(),
         note:
           pause.endEpochDay != null
             ? m.tile_pause_until_date({ date: format.shortDay(pause.endEpochDay) })

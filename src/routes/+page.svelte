@@ -15,11 +15,10 @@
      doubt and is now a row of the More hub, one tap from the tab bar and
      silent until asked. The wrapped and on-this-day teasers, which are the
      two look-back tiles; each keeps its own preference gate, so silencing
-     one leaves the other alone. And the streak, which was a pill of its own
-     under the greeting and is now the caption on the week it describes -
-     a big number with a small label and an accent is a template the craft
-     floor names, and folding it into the strip removed a surface as well as
-     the tell.
+     one leaves the other alone. And the streak, which was a pill under the
+     greeting, then the caption on the week, and is gone entirely since
+     phase 8 UX ticket 01 - four surfaces were writing copy to defuse it,
+     which is a mechanic fighting the product.
 
      Colour comes from the flag, categorically (DIRECTION.md): each area
      takes one stripe as its own. The two conditional notices take a fixed
@@ -102,10 +101,6 @@
   const liveTiles = homeTiles(today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
   });
-  /* The header borrows the pause tile's own line rather than deriving the
-     same sentence a second time: when a pause is running and its tile is
-     switched on, the streak line says what the tile says. */
-  let pauseTile = $derived(liveTiles.tiles.find((tile) => tile.key === 'pause-active-banner'));
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -155,39 +150,29 @@
   let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
   let dayGroups = $derived(recentDayGroups(recent.rows, RECENT_ENTRY_CAP));
 
-  let streakQuery = liveQuery((j) => j.stats.streak(today));
-  let streak = $derived(streakQuery.value ?? 0);
-
-  /* A second authored moment, and the only one besides the sun: past a
-     week's run, opening Home throws a little confetti over the streak line.
-     It plays once on arriving and stops - it is not a loop, which is the
-     line DIRECTION.md's tier 4 actually draws, and it is why the old
-     celebration card's infinite `cf-fall` had to go rather than move here.
-
-     Gated on the streak having run past a week so it stays an event. At
-     `streak > 1`, which is what puts the line on screen at all, it would
-     fire most mornings and stop meaning anything.
+  /* The one authored moment besides the sun: on a milestone day, opening
+     Home throws a little confetti over the notice that names it. It plays
+     once on arriving and stops - it is not a loop, which is the line
+     DIRECTION.md's tier 4 actually draws, and it is why the old celebration
+     card's infinite `cf-fall` had to go rather than move here.
 
      The pieces are a fixed table rather than a random scatter: a moment
      that is different every time cannot be reviewed, and a screenshot of it
      is not evidence of anything. Nine, because that is what fits across the
-     line's width without reading as a shower. */
-  const STREAK_CHEER_FLOOR = 7;
-  let cheering = $derived(streak > STREAK_CHEER_FLOOR && !liveTiles.pausedToday);
-  /* `dx` is how far the piece drifts sideways, and it only means anything to
-     the streak's burst: the nine fan outward from the middle of the line as
-     they go up, which is what makes it read as thrown rather than dropped.
-     The milestone's fall ignores it. */
+     notice's width without reading as a shower.
+
+     It threw a second burst over the streak line until phase 8 UX ticket 01
+     deleted the streak. */
   const CHEER = [
-    { i: 0, x: 4, d: 0, r: 200, dx: -13 },
-    { i: 1, x: 17, d: 0.16, r: -260, dx: -9 },
-    { i: 2, x: 29, d: 0.07, r: 300, dx: -6 },
-    { i: 3, x: 41, d: 0.26, r: -180, dx: -2 },
-    { i: 4, x: 52, d: 0.03, r: 240, dx: 0 },
-    { i: 5, x: 64, d: 0.2, r: -300, dx: 2 },
-    { i: 6, x: 76, d: 0.11, r: 260, dx: 6 },
-    { i: 7, x: 87, d: 0.3, r: -220, dx: 9 },
-    { i: 8, x: 95, d: 0.05, r: 180, dx: 13 }
+    { i: 0, x: 4, d: 0, r: 200 },
+    { i: 1, x: 17, d: 0.16, r: -260 },
+    { i: 2, x: 29, d: 0.07, r: 300 },
+    { i: 3, x: 41, d: 0.26, r: -180 },
+    { i: 4, x: 52, d: 0.03, r: 240 },
+    { i: 5, x: 64, d: 0.2, r: -300 },
+    { i: 6, x: 76, d: 0.11, r: 260 },
+    { i: 7, x: 87, d: 0.3, r: -220 },
+    { i: 8, x: 95, d: 0.05, r: 180 }
   ];
 
   /* Which reading shades the week. The kit's own picker rather than a sheet
@@ -256,15 +241,10 @@
   }
 </script>
 
-<!-- The nine pieces, once, because the streak's moment and a milestone's are
-     the same moment about two different facts, and two copies of the table is
-     how they would stop being. -->
-{#snippet cheer(burst = false)}
-  <span class="home-cheer" class:is-burst={burst} aria-hidden="true">
+{#snippet cheer()}
+  <span class="home-cheer" aria-hidden="true">
     {#each CHEER as piece (piece.i)}
-      <i
-        style={`--x: ${piece.x}%; --d: ${piece.d}s; --r: ${piece.r}deg; --dx: ${piece.dx}px`}
-      ></i>
+      <i style={`--x: ${piece.x}%; --d: ${piece.d}s; --r: ${piece.r}deg`}></i>
     {/each}
   </span>
 {/snippet}
@@ -285,21 +265,6 @@
          still name the app under disguise; those are ticket 24's screen. -->
     <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
     <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-    <!-- Under the greeting rather than under the week strip. Still not the
-         hero-metric template the craft floor names - no pill, no accent, no
-         display size - which is what "the streak is not a hero metric" is
-         about; where the line sits is a composition decision and this is
-         where it was asked for. -->
-    {#if streak > 1 && !liveTiles.pausedToday}
-      <div class="home-streak-wrap">
-        {#if cheering}{@render cheer(true)}{/if}
-        <p class="home-streak" data-home-streak="line">{streak} {m.streak_row()}</p>
-      </div>
-    {:else if liveTiles.pausedToday && pauseTile}
-      <div class="home-streak-wrap">
-        <p class="home-streak" data-home-streak="paused">{pauseTile.note}</p>
-      </div>
-    {/if}
   </header>
 
   <!-- The anniversary, as one line rather than a card with a confetti loop
@@ -309,12 +274,10 @@
        (DIRECTION.md, tiers 0 and 4). It takes the milestones' own colour,
        since that is what it is about. -->
   {#if celebrate}
-    <!-- The same nine pieces the streak throws, over the notice that says
-         which milestone it is (Alicja, 2026-08-25: "we want the same confetti
-         animation when it's a milestone day"). It is the streak's own
-         argument applied to a rarer fact - a moment that plays once and stops
-         costs nothing after it stops - and this one fires on the day a
-         milestone lands rather than on most mornings. -->
+    <!-- Nine pieces over the notice that says which milestone it is (Alicja,
+         2026-08-25: "we want the same confetti animation when it's a
+         milestone day"). A moment that plays once and stops costs nothing
+         after it stops, and this one fires on the day a milestone lands. -->
     <div class="home-celebrate">
       {@render cheer()}
       <Notice
@@ -490,10 +453,6 @@
     {/snippet}
   </SectionHeading>
   <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
-  <!-- The streak, as the caption on the week it describes. -->
-  {#if streak > 1 && !liveTiles.pausedToday}
-    <p class="home-week-caption" data-home-streak="week">{streak} {m.streak_row()}</p>
-  {/if}
 
   <SectionHeading text={m.recent_entries()}>
     {#snippet action()}
@@ -739,11 +698,10 @@
     color: var(--accent);
     max-width: min(62%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
-  /* The same reservation for the two quiet lines, which sit lower where the
-     circle is narrower but still reach into the outer ring's band on a
+  /* The same reservation for the quiet line under it, which sits lower where
+     the circle is narrower but still reaches into the outer ring's band on a
      320px screen (the date's glyph edge measured 1.4px inside it). */
-  .home-hello,
-  .home-streak-wrap {
+  .home-hello {
     max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
   }
   .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
@@ -784,27 +742,8 @@
      of the screen and the last entry"). */
   .home > :last-child:not(.home-swap) { margin-bottom: 0; }
 
-  /* The streak, under the greeting. No pill, no accent, no icon and no
-     display size: those are what made it read as a score, and DIRECTION.md's
-     slop audit names the big-number-plus-label-plus-accent template outright.
-     What changed at review is where the line sits, not what it is. */
-  .home-streak-wrap {
-    display: inline-grid;
-    justify-items: start;
-    position: relative;
-    margin-top: var(--space-2);
-  }
-  .home-streak {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* The second authored moment: past a week's run, arriving on Home throws a
-     little confetti over the streak line, once. Over that line and nowhere
-     else - the band is a grid row above the text and exactly as wide as it,
-     which is what keeps this a mark on one fact rather than a screen effect.
+  /* The authored moment: on a milestone day, arriving on Home throws a
+     little confetti over the notice naming it, once.
 
      It plays and stops. DIRECTION.md's tier 4 rules out a second ambient
      *loop*, which is why the celebration card's infinite `cf-fall` was
@@ -812,22 +751,9 @@
      category as the sun's entrance, and it spends the authored duration
      twice over.
 
-     Out of the flow, which is what lets the streak sit close under the
-     greeting. In flow the band's own height was 22px of permanent gap between
-     the two lines, on every day the confetti fires and none of the days it
-     does not - a moment cannot be allowed to decide the resting layout.
-
-     It used to sit entirely above the line, and from there the pieces fell
-     through the greeting: the band's own top was one line-height under "Hi
-     Alice" and the fall started 10px above even that. It starts at the streak
-     line's own top edge now (Alicja, 2026-08-25), so what the confetti crosses
-     is the fact it is about.
-
-     The two moments then went different ways, which is the point of the
-     is-burst variant below. A milestone's falls, and falls far enough to cross
-     its notice. A streak's is thrown: it goes up, fans out, tumbles and
-     decelerates, because a run of days is something you are keeping up rather
-     than something arriving.
+     Out of the flow, so the band's own height is never a permanent gap on
+     the days it does not fire - a moment cannot be allowed to decide the
+     resting layout.
 
      Only transform and opacity move, per the performance contract, and the
      pieces are 5x8 rectangles so there is nothing to rasterize. */
@@ -846,11 +772,6 @@
        stopping at its top edge (Alicja, 2026-08-25). */
     height: 46px;
     pointer-events: none;
-  }
-  /* The streak's, which goes the other way and needs far less room: up from
-     the line, not down across a card. */
-  .home-cheer.is-burst {
-    height: 16px;
   }
   .home-cheer i {
     position: absolute;
@@ -877,49 +798,11 @@
     100% { transform: translateY(46px) rotate(var(--r)); opacity: 0; }
   }
 
-  /* Thrown rather than dropped: up, out and tumbling, on --ease-out so the
-     pieces decelerate towards the top the way something thrown does at its
-     apex. It stops 13px above the line and is already fading by then, which is
-     what keeps it off the greeting - the pieces reach the bottom of that line's
-     box at their faintest rather than crossing the words (Alicja, 2026-08-25:
-     "it shouldn't cover the 'hi alice' text too much").
-
-     Shorter than the fall, because a throw is over faster than a drop, and the
-     resting values here are restated rather than inherited: this rule is where
-     the animation is declared, so this is where the 1ms clamp has to find the
-     end state (tests/motion-system.test.ts). */
-  .home-cheer.is-burst i {
-    opacity: 0;
-    transform: translate(var(--dx, 0), -11px) rotate(var(--r));
-    animation: cheer-burst calc(var(--dur-authored) * 2) var(--ease-out) var(--d) both;
-  }
-  /* One fade interval, from just after the throw to the very end, and no stops
-     in between. That is what puts the opacity on the same curve as the
-     position, which is the thing that was wrong: a timing function eases each
-     keyframe interval separately, so holding opacity at 1 until a third of the
-     way through gave the transform - specified at 0% and 100% only, and so
-     eased across the whole duration - time to arrive and park before the fade
-     had started. The piece stopped, then disappeared (Alicja, 2026-08-25).
-
-     Sharing the interval means sharing the easing: the fade goes fast early and
-     slowly late, exactly as the travel does, so a piece is dimming the whole
-     way up and is nearly gone by the time it reaches the top. */
-  @keyframes cheer-burst {
-    0% { transform: translate(0, 2px) rotate(0deg); opacity: 0; }
-    10% { opacity: 1; }
-    100% { transform: translate(var(--dx, 0), -11px) rotate(var(--r)); opacity: 0; }
-  }
-  /* Substituted rather than clamped: at 1ms this is a flicker, and the moment
-     it stands for is "well done", which the line underneath already says. */
+  /* Substituted rather than clamped: at 1ms this is a flicker, and the
+     notice underneath already names the milestone it stands for. */
   :global(html[data-a11y-motion='reduce']) .home-cheer i { animation: none; }
-  /* The burst needs saying separately in the media block below: `.home-cheer i`
-     is one class and this is two, so without it the more specific rule keeps
-     its animation and the clamp turns a thrown piece into a 1ms flicker. The
-     attribute selector above already outweighs it. */
-  :global(html[data-a11y-motion='reduce']) .home-cheer.is-burst i { animation: none; }
   @media (prefers-reduced-motion: reduce) {
     .home-cheer i { animation: none; }
-    .home-cheer.is-burst i { animation: none; }
   }
 
   /* Tier 3: the skeleton crossfades into the day cards. Both children sit in

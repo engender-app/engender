@@ -40,7 +40,7 @@
   import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
-  import type { WrappedStreaks, WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
+  import type { WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
   import type { RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import RiveSlot from './RiveSlot.svelte';
@@ -63,7 +63,6 @@
     anchorDuration = null,
     insights = [],
     tally = null,
-    streaks = null,
     letters = []
   }: {
     /** The calendar year, as a number: the cover prints it and the month
@@ -83,7 +82,6 @@
     anchorDuration?: { name: string; duration: string } | null;
     insights?: (WrappedTagInsight & { label: string })[];
     tally?: WrappedTallyCounts | null;
-    streaks?: WrappedStreaks | null;
     /** The year's unlocked letters, already selected by the caller
         (letterRetrospective.ts): written inside the period, sealed ones
         kept out. A retrospective shows a past self's words only once the
@@ -117,16 +115,6 @@
 
   let figures = $derived([
     { key: 'entries', label: m.wrapped_stat_entries(), value: String(recap.entryCount), note: undefined },
-    ...(streaks
-      ? [
-          {
-            key: 'streak',
-            label: m.wrapped_stat_streak(),
-            value: m.n_days({ n: streaks.inPeriod }),
-            note: `${m.wrapped_stat_streak_ever()}: ${m.n_days({ n: streaks.ever })}`
-          }
-        ]
-      : []),
     ...(recap.averageMood !== null
       ? [
           {

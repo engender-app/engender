@@ -1,6 +1,6 @@
 /* Browser-tier check for the phase 5 audit's deepening ticket 03: a live
-   query resolves its own dependencies, so the two screens the audit found
-   showing a stale number update when the data behind them changes.
+   query resolves its own dependencies, so a screen the audit found showing
+   a stale number updates when the data behind it changes.
 
    Here rather than in the Node tier because `liveQuery` is the rune-bearing
    half of the reactive layer (ADR-0017): what has to be proved is that the
@@ -8,10 +8,12 @@
    The registry side - which tables each read declares - is covered in
    writes.test.ts, and this is the other end of the same claim.
 
-   The two queries are the ones the screens make, copied verbatim from
-   settings/streak-goal and settings/stock, so this fails if either screen's
-   read stops resolving what it reads. Rune-bearing, hence the .svelte.ts
-   name: the plugin in browser-tier.vite.config.ts compiles this. */
+   The query is the one the screen makes, copied verbatim from
+   settings/stock, so this fails if that screen's read stops resolving what
+   it reads. The audit's other defect was settings/streak-goal, which phase 8
+   UX ticket 01 deleted along with the streak. Rune-bearing, hence the
+   .svelte.ts name: the plugin in browser-tier.vite.config.ts compiles
+   this. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -33,7 +35,8 @@ const publish = (value: unknown) => {
 };
 
 /** A fixed day rather than today's: every figure below is a fixture, and a
-    streak that depends on the wall clock is a test that fails on a date. */
+    projection that depends on the wall clock is a test that fails on a
+    date. */
 const TODAY = 19_000;
 const at = (epochDay: number) => epochDay * 86_400_000;
 
@@ -75,9 +78,6 @@ async function run() {
   const journal = attachJournal(openJournal(booted.driver, opfsPhotoFiles()));
   await journal.reconcileBuiltIns();
 
-  /* A streak of one with a gap behind it: today has an entry, yesterday does
-     not, the day before does. Declaring a pause over yesterday bridges the
-     gap and the streak becomes 2 (CONTEXT: "Streak"). */
   await journal.entries.upsertEntry({ epochDay: TODAY, mood: 4 });
   await journal.entries.upsertEntry({ epochDay: TODAY - 2, mood: 4 });
 
@@ -85,16 +85,12 @@ async function run() {
   await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: TODAY - 5 });
   await journal.doses.upsertDose({ timestamp: at(TODAY - 3), route: 'oral', dose: 2, doseUnit: 'mg' });
 
-  let streakQuery: LiveQuery<number>;
   let projectionRuns = 0;
   let projectionQuery: LiveQuery<number>;
   let recapRuns = 0;
   let recapQuery: LiveQuery<number>;
 
   $effect.root(() => {
-    // settings/streak-goal's own read.
-    streakQuery = liveQuery((j) => j.stats.streak(TODAY));
-
     // settings/stock's own read, counting its runs: what the screen shows is
     // a projected date, and what this has to catch is the read happening
     // again at all.
@@ -115,23 +111,13 @@ async function run() {
 
   journalIsOpen();
 
-  await until(() => streakQuery!.value !== undefined, 'the streak query to answer');
   await until(() => projectionRuns > 0, 'the stock projection query to answer');
   await until(() => recapRuns > 0, 'the narrowed recap query to answer');
 
-  const streakBefore = streakQuery!.value;
   const projectionRunsBefore = projectionRuns;
   const recapRunsBefore = recapRuns;
 
-  // The first defect: the streak-goal screen declared ['entry'] for a read
-  // that also reads journaling pauses, so this write reached nothing.
-  await journal.journalingPauses.upsertPause({ startEpochDay: TODAY - 1, endEpochDay: TODAY - 1 });
-  const streakError = await reasonIfNotReached(
-    until(() => streakQuery!.value !== streakBefore, 'the streak to be re-read after a pause was declared')
-  );
-  const streakAfter = streakQuery!.value;
-
-  // The second: the stock screen declared ['stock', 'dose'] for a projection
+  // The defect: the stock screen declared ['stock', 'dose'] for a projection
   // that reads the regimen episode history too.
   await journal.regimen.upsertEpisode({
     drug: 'estradiol',
@@ -163,7 +149,6 @@ async function run() {
   );
 
   publish({
-    streak: { before: streakBefore, after: streakAfter, error: streakError },
     projection: { runsBefore: projectionRunsBefore, runsAfter: projectionRuns, error: projectionError },
     narrowed: {
       runsBefore: recapRunsBefore,

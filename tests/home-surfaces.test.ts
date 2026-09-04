@@ -35,6 +35,10 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 const home = read('src/routes/+page.svelte');
 /** The markup half: a string in the script block may be anything. */
 const markup = home.replace(/<script[\s\S]*?<\/script>/g, '');
+/** Both halves with the prose taken out, for the rules that are about an
+    absence: a comment saying what a screen no longer does is not the screen
+    still doing it. */
+const code = home.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
 
 describe('what Home is built from', () => {
   it('takes its surfaces from the kit and draws no card of its own', () => {
@@ -194,26 +198,21 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toContain('href="/calendar"');
   });
 
-  it('keeps the streak off the hero-metric template', () => {
-    /* DIRECTION.md's slop audit names the template rather than a position: a
-       big accent number, a small label, a supporting line, on a surface of
-       its own. So this checks the shape and not where the line sits, which
-       moved to the greeting at review and could move again. */
-    const rule = home.match(/\.home-streak \{[^}]*\}/s)?.[0];
-    expect(rule, 'the streak has a rule of its own').toBeDefined();
-    expect(rule).toContain('var(--text-sm)');
-    expect(rule).toContain('var(--text-2)');
-    expect(rule, 'no pill behind it').not.toMatch(/background|border-radius/);
-    expect(rule, 'no accent on it').not.toMatch(/--accent/);
+  it('computes no run of consecutive days, and names none', () => {
+    /* Phase 8 UX ticket 01, ADR-0055: the streak is gone from all six of its
+       readers, and Home held two of its four defusal surfaces. A grep,
+       because what has to hold is an absence - over the code rather than the
+       whole file, since the comments still say what used to be here and why
+       it left. */
+    expect(code, 'no read of it').not.toMatch(/streak/i);
+    expect(markup, 'no line drawing it').not.toMatch(/streak/i);
   });
 
-  it('throws its one extra moment once, and only past a week', () => {
-    /* The second authored moment (review, 2026-08-25). Tier 4 rules out a
-       second ambient *loop*, not a second moment - so what matters is that
-       this one ends, and that it stays an event rather than a most-mornings
-       thing. */
-    expect(home).toContain('const STREAK_CHEER_FLOOR = 7');
-    expect(home).toMatch(/streak > STREAK_CHEER_FLOOR/);
+  it('throws its one extra moment once, on a milestone day', () => {
+    /* The one authored moment besides the sun. Tier 4 rules out a second
+       ambient *loop*, not a moment - so what matters is that this one ends,
+       and that it fires on a rare day rather than most mornings. */
+    expect(home).toMatch(/\{#if celebrate\}/);
     // The animation moved into this file's own <style> block (phase 5 audit
     // ticket 16), so `home` is read here rather than screens.css.
     expect(home).toMatch(/animation: cheer-fall[^;]*;/);
@@ -233,7 +232,6 @@ describe('the handles the walkthrough grips', () => {
     'data-home-header',
     'data-home-hero',
     'data-home-hello',
-    'data-home-streak',
     'data-backup-notice',
     'data-quick-log-dims',
     'data-qld-input',

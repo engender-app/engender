@@ -42,7 +42,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { smartBack } from '$lib/navigation/smart-back';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
-  import { wrappedStreaks, wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
+  import { wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
   import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
   import { touchesMutedEra } from '$lib/data/resurfacingConsent';
   import {
@@ -256,19 +256,10 @@
     return { misgendered, correctlyGendered };
   });
 
-  /* Gated on the range as well as the preference, like every read above it:
-     the unknown-cadence and half-finished-range states draw no figures, and
-     a whole-history streak query behind a screen that shows none is the
-     thing the branch exists to prevent. */
-  let bestEverQuery = liveQuery((j) =>
-    on && range && !muted ? j.stats.bestStreakEver(today) : Promise.resolve(0)
-  );
-
   let insights = $derived(nameTagInsights(wrappedTagInsights(insightsQuery.rows) ?? []));
   let tally = $derived(
     tallyQuery.value ? wrappedTallyCounts(tallyQuery.value.misgendered, tallyQuery.value.correctlyGendered) : null
   );
-  let streaks = $derived(recap ? wrappedStreaks(recap, bestEverQuery.value ?? 0) : null);
 
   /* The year's letters to the future self (phase 5 deepening ticket 13):
      written inside the period and unlocked today, which is the only way a
@@ -467,7 +458,6 @@
         {anchorDuration}
         {insights}
         {tally}
-        {streaks}
         letters={yearLetters}
       />
     {:else}
@@ -481,7 +471,6 @@
         {anchorDuration}
         {insights}
         {tally}
-        {streaks}
       />
     {/if}
   {/if}
