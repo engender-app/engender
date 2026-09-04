@@ -8,6 +8,7 @@ import {
   AREA_GROUP_ROW_KEYS,
   HUB_GROUP_KEYS,
   HUB_ROWS,
+  LAST_WRITE_WITHOUT_A_ROW,
   hubSections,
   rowHidden,
   rowLine,
@@ -47,10 +48,9 @@ test('every row has its own key, and every group it names is drawn', () => {
 });
 
 test('no two rows anywhere on the hub share an icon', () => {
-  /* Stronger than the ticket's "no two adjacent rows", and deliberately: the
-     three pairs it names - the two voice-ish rows, roadmap and resources,
-     milestones and surgery - were never adjacent to begin with, so an
-     adjacency test would have passed over all three. */
+  /* Stronger than the ticket's "no two adjacent rows", and deliberately:
+     hubRows.ts records that none of the three duplicated pairs was adjacent,
+     so an adjacency test would have passed over all three. */
   const icons = HUB_ROWS.map((row) => row.icon);
 
   assert.equal(new Set(icons).size, icons.length, 'two rows draw the same icon');
@@ -78,8 +78,8 @@ test('a row carries a reading exactly where its own areas have one', () => {
   /* The invariant behind the two-way split, so a row cannot be declared
      `read` with nothing to read or `written` while sitting on a registered
      area. Seven rows front an area that opted out of the last-write registry
-     on purpose - a sealed letter, a span, reference data - and those read as
-     `written` for the same reason the five view-only rows do. */
+     on purpose - a sealed letter, a span, reference data - and those never
+     report a reading, for the same reason the five view-only rows do not. */
   for (const row of HUB_ROWS) {
     assert.equal(
       row.line === 'read',
@@ -89,7 +89,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows read and thirteen state what is behind them', () => {
+test('thirteen rows can report a reading and thirteen never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
   assert.equal(reads.length, 13);
@@ -104,17 +104,19 @@ test('every area a row names is one the archive knows, and every registered read
      registry once. */
   const claimed = new Set(HUB_ROWS.flatMap((row) => rowReads(row)));
   const registered = LAST_WRITE_ENTRIES.map((entry) => entry.key);
+  const excused = Object.keys(LAST_WRITE_WITHOUT_A_ROW);
 
-  assert.equal(claimed.size + 5, registered.length);
+  assert.equal(claimed.size + excused.length, registered.length);
   for (const area of claimed) assert.ok(registered.includes(area), `${area} is not in the last-write registry`);
 });
 
 // --- what a row says --------------------------------------------------------
 
-test('a row whose areas have never been written to says nothing at all', () => {
-  /* Rather than "nothing yet" repeated down a fresh journal. The hub fills in
-     as somebody uses the app. */
-  assert.deepEqual(rowLine(spec('measurements'), reading()), { kind: 'silent' });
+test('a row whose areas have never been written to says what is behind it', () => {
+  /* Not nothing, and not "nothing yet": the spec's user story 13 wants each
+     row to tell the person what is behind it, so a reading row with an empty
+     area falls back to the same line a row that never reads shows. */
+  assert.deepEqual(rowLine(spec('measurements'), reading()), { kind: 'not-yet' });
 });
 
 test('a row that was written to recently says when', () => {
@@ -186,7 +188,7 @@ test('a row only reads the areas it fronts, and asks for nothing else', () => {
   assert.deepEqual(asked, []);
 });
 
-test('a written row states what is behind it whatever the journal holds', () => {
+test('a row that can never read states what is behind it whatever the journal holds', () => {
   /* `letters` is one of the seven rows that front a real archive section and
      still cannot report a recency: a letter is sealed until its unlock day, so
      the registry has no entry for it - which is also why `lastWrites` cannot
@@ -194,7 +196,7 @@ test('a written row states what is behind it whatever the journal holds', () => 
   const everything = reading({ lastWrites: { measurements: TODAY - 1, sizeRecords: TODAY - 1 } });
 
   assert.deepEqual(rowReads(spec('letters')), []);
-  assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'written' });
+  assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'no-stream' });
 });
 
 // --- finished ---------------------------------------------------------------
@@ -237,7 +239,7 @@ test('a finish dated in the future has not happened yet', () => {
      person named, and a row does not move until it arrives. */
   const line = rowLine(spec('wear'), reading({ states: { wearSessions: finished(TODAY + 10) } }));
 
-  assert.deepEqual(line, { kind: 'silent' });
+  assert.deepEqual(line, { kind: 'not-yet' });
 });
 
 // --- hidden -----------------------------------------------------------------
@@ -314,13 +316,13 @@ test('a hidden area is absent from the assembled hub rather than moved', () => {
   assert.equal(keys.length, HUB_ROWS.length - 1);
 });
 
-test('a fresh journal draws every row, each with nothing under it', () => {
+test('a fresh journal draws every row, each saying what is behind it', () => {
   const sections = hubSections(reading());
   const rows = sections.flatMap((section) => section.rows);
 
   assert.equal(rows.length, HUB_ROWS.length);
   for (const row of rows) {
-    assert.ok(['silent', 'written'].includes(row.line.kind), `${row.spec.key} has a reading on an empty journal`);
+    assert.ok(['not-yet', 'no-stream'].includes(row.line.kind), `${row.spec.key} has a reading on an empty journal`);
   }
 });
 

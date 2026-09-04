@@ -79,8 +79,8 @@ describe('what the More hub is built from', () => {
 });
 
 describe('every row the hub carries', () => {
-  /* One row per line: key, icon, href, group, and whether the row reports a
-     reading of its own areas or states what is behind it.
+  /* One row per line: key, icon, href, group, and whether the row can report
+     a reading of its own areas.
 
      Written out here rather than derived, so this is an independent statement
      of the hub and not a restatement of the module's own filter. It was 23
@@ -91,13 +91,10 @@ describe('every row the hub carries', () => {
      features ticket 09 split the old voice row in two, ticket 14 added
      `words` and ticket 12 added `dilation`.
 
-     Phase 8 UX ticket 02 moved two rows and no more: `photos` out of Body and
-     `voice` out of Practice, into a Media group, because both front content
-     that travels inside an entry rather than a series of its own. Three
-     duplicated icon pairs are resolved - `milestones` gave up `flag` to the
-     surgery journey, `resources` gave up `globe` to the roadmap, and the
-     voice benchmark gave up `mic` to the memos - and the personal effects
-     row's route says which effects it means. */
+     Phase 8 UX ticket 02 moved `photos` and `voice` into a new Media group,
+     resolved three duplicated icon pairs and renamed the personal effects
+     route. Its reasons are in `hubRows.ts`; what this line-by-line list is
+     for is noticing an unintended change to any of it. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/settings/measurements', 'body', 'read'],
     ['sizes', 'package', '/settings/sizes', 'body', 'read'],

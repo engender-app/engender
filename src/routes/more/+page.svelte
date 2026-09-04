@@ -1,31 +1,21 @@
 <script lang="ts">
   /* The More hub, reading its own data (phase 8 UX ticket 02).
 
-     What it was: twenty-six rows of a title and an icon, in four groups,
-     declared inline here as four const arrays. One of them was different.
-     `/care` earned its tap by opening on the regimen, the last dose, the next
-     expected slot, the last lab draw and the run-out day, each a live read of
-     the module that owns it, and that is what earned the four rows it
-     replaced. The other twenty-five said nothing about what was behind them.
+     Twenty-six rows of a title and an icon, in four groups, used to be
+     declared inline here as four const arrays, and only `/care` said anything
+     about what was behind it. Every row says something now, and this screen
+     owns none of the reasoning: `hubRows.ts` holds the rows and what sits
+     behind them, `vocabulary/hubLabels.ts` holds the words. What is left here
+     is three live reads and a loop.
 
-     Now every row carries a second line and this screen owns none of the
-     reasoning behind it. `hubRows.ts` holds the rows, which archive sections
-     sit behind each one, which of them report a reading and which state what
-     they are; `vocabulary/hubLabels.ts` holds the words. What is left here is
-     three live reads and a loop.
+     Three, not one per row. The readings come out of one assembled call
+     (`journal/lastWrite.ts`, measured as `hub-last-writes` before this screen
+     was written), beside the area record and the regimen episode list
+     ADR-0043's gate needs.
 
-     Three, not eighteen. The lines come out of one assembled call
-     (`journal/lastWrite.ts`) - measured at 5ms over the ten-year fixture
-     before this screen was written, against a 250ms target
-     (`hub-last-writes` in tests/long-journal/budgets.json) - plus the area
-     record, plus the regimen episode list ADR-0043's cycle gate needs. A row
-     added to the hub costs another bounded MAX inside that first number
-     rather than another round trip.
-
-     Both new reads render as titles alone until they land rather than behind
-     a gate: this is a navigation surface, and a person who tapped More is on
-     their way somewhere. A skeleton in front of twenty-six links they can
-     already read would be slower than the links. */
+     Nothing gates the screen on them. This is a navigation surface, and a
+     skeleton in front of twenty-six links a person can already read would be
+     slower than the links. */
   import { m } from '$lib/paraglide/messages';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -63,13 +53,13 @@
 
      Until then the written rows already say their line, because a line about
      what is behind a row needs no read at all. */
-  let read = $derived(
+  let landed = $derived(
     lastWritesQuery.value !== undefined && statesQuery.value !== undefined
       ? { lastWrites: lastWritesQuery.value, states: statesQuery.value }
       : { lastWrites: {}, states: {} }
   );
 
-  let sections = $derived(hubSections({ todayEpochDay: today, ...read, cycleShown }));
+  let sections = $derived(hubSections({ todayEpochDay: today, ...landed, cycleShown }));
 
   /* The group's own place in the list rather than its place among whatever
      rendered, so Body keeps one stripe whether or not a finished group sits
@@ -97,11 +87,11 @@
         <!-- Which section the row was drawn in and which kind of line it
              carries, both on the row rather than on wrappers of their own: a
              finished row is the same row under a different heading, and the
-             line is the kit's `.kit-row-sub`, which is a class and so
-             something the walkthrough may not grip (ADR-0029). Naming the
-             kind rather than the element also lets a flow tell a reading
-             apart from a written line, which the element alone could not.
-             Absent on a row with nothing to say, which is the state. -->
+             line itself is the kit's `.kit-row-sub`, a class and so something
+             the walkthrough may not grip (ADR-0029). Naming the kind rather
+             than the element also lets a flow tell a reading apart from the
+             line about what is behind the row, which the element could
+             not. -->
         <ListRow
           key={row.spec.key}
           icon={row.spec.icon}
@@ -109,7 +99,7 @@
           subtitle={hubRowLine(row.spec.key, row.line, today)}
           href={row.spec.href}
           data-hub-section={section.key}
-          data-hub-line={row.line.kind === 'silent' ? undefined : row.line.kind}
+          data-hub-line={row.line.kind}
         />
       {/each}
     </ListCard>

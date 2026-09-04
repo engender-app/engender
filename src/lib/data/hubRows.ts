@@ -7,8 +7,9 @@
    lab draw and the run-out day, each a live read of the module that owns it.
    The other twenty-five said nothing about what was behind them.
 
-   So every row now carries a second line, and which kind it carries is
-   declared here rather than decided at the call site:
+   So every row now says something, and what it can say is declared here
+   rather than decided at the call site. `line` is whether the row reports a
+   reading at all:
 
      read      the row reports its own areas' last write, out of the one
                assembled read `journal/lastWrite.ts` answers with. Thirteen
@@ -16,17 +17,17 @@
                report a last write where the registry has one, and seven of
                the rows it counted front an area that opted out of that
                registry on purpose - a sealed letter, a span, a schedule,
-               reference data. Those get a written line instead, for the same
-               reason the five view-only rows do.
-     written   a short line about what is behind the row, from
-               `vocabulary/hubLabels.ts`. DIRECTION.md 3b says subtitles are
-               earned rather than standard, and each of these is earned by a
-               title that does not say what the screen is: "Words", "Eras",
-               "Modes", "Care", "Safe space".
+               reference data.
+     written   the row never reports a reading, so what it says is a line
+               about what is behind it.
 
-   This settles the DIRECTION.md 3b tension the ticket names rather than
-   discovering it during the work: a live read is not a subtitle. The two
-   coexist, on different rows, for different reasons.
+   A reading row with nothing written yet says the same line a `written` row
+   does. The spec's own user story 13 is what settles that - "I want **each**
+   row to tell me what is behind it, so that navigating is also reading" - and
+   it is the DIRECTION.md 3b tension the ticket asked to have settled: a live
+   read is not a subtitle, but a row with no reading to give still owes the
+   person a sentence. Every row's line is in `vocabulary/hubLabels.ts`, total
+   over the row keys, and a reading replaces it once there is one.
 
    Three other things live here because the hub is where they are presentation
    rather than record:
@@ -37,15 +38,16 @@
      - a hidden area's absence, which falls out of the same mapping: a row
        goes only when every hideable section behind it is hidden, and
        `cycleEvents` is not hideable at all (ADR-0043), so the row fronting
-       only it can never disappear this way. That is structural rather than a
-       special case below.
+       only it can never disappear this way. That much is structural rather
+       than a special case. ADR-0043's *positive* gate is not: it belongs to
+       one named row and is written out as one, below.
      - the finished group, and the day it shows.
 
    Node-tier safe: no clock, no driver, no paraglide, no runes. Every function
    takes today as an argument. The words are `vocabulary/hubLabels.ts`'s, the
    same split `areaGroups.ts` keeps from `vocabulary/areaLabels.ts`. */
 
-import { FINISH_SUGGESTION_QUIET_DAYS, groupFinishedOn, type AreaGroupKey } from './areaGroups';
+import { FINISH_SUGGESTION_QUIET_DAYS, groupFinishedOn, latestWrite, type AreaGroupKey } from './areaGroups';
 import { areaHidden, type AreaStates } from './areaState';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
@@ -402,14 +404,6 @@ const ROWS = [
 /** Every row key, narrow. */
 export type HubRowKey = (typeof ROWS)[number]['key'];
 
-/** The rows that state what is behind them rather than reporting a reading.
-
-    `vocabulary/hubLabels.ts` keys its written lines by this rather than by
-    every row, so a row declared `written` with no line to show is a compile
-    error and a row that reads cannot be given one. Proven by deleting an
-    entry there. */
-export type WrittenRowKey = Extract<(typeof ROWS)[number], { line: 'written' }>['key'];
-
 /** One row as the list holds it: `HubRowSpec` with its key still narrow, so a
     consumer reaching for a row's title cannot be handed a `string` the label
     record has never heard of. */
@@ -477,14 +471,19 @@ export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
   return spec.areas.every((area) => area !== 'cycleEvents' && areaHidden(area, states));
 }
 
-/** What a row's second line says. `written` carries no data because the
-    words are all of it (`vocabulary/hubLabels.ts`). */
+/** What a row's second line says.
+
+    The first two carry no data because the words are all of it, and both draw
+    the same line - the one about what is behind the row
+    (`vocabulary/hubLabels.ts`). They stay separate kinds because the facts
+    are different, and a test or a flow wants to tell them apart: one row can
+    never have a reading, the other does not have one yet. */
 export type HubLine =
-  /** A row whose areas have never been written to. No line at all, rather
-      than a row of "nothing yet" repeated down a fresh journal: the hub fills
-      in as somebody uses the app, which is the spec's own user story. */
-  | { kind: 'silent' }
-  | { kind: 'written' }
+  /** The row reports no reading, ever: it fronts no dated stream, or fronts
+      one the last-write registry deliberately refuses to answer for. */
+  | { kind: 'no-stream' }
+  /** The row reports a reading, and nothing has been written in it yet. */
+  | { kind: 'not-yet' }
   /** Written to, recently enough that the gap is not the point. */
   | { kind: 'last'; epochDay: number; daysAgo: number }
   /** Written to, and then not for a whole quiet window. The observation the
@@ -492,6 +491,13 @@ export type HubLine =
   | { kind: 'quiet'; epochDay: number; daysAgo: number }
   /** The person has said this one ended, and when. */
   | { kind: 'finished'; epochDay: number };
+
+/** The one row ADR-0043's positive gate belongs to, named rather than left as
+    a literal in the loop below. It is a special case on purpose and there is
+    exactly one: cycle tracking is the only area whose row is added back by an
+    active testosterone regimen or an explicit opt-in, and a general
+    "gated on" field would be one implementation dressed as a mechanism. */
+const CYCLE_GATED_ROW = 'cycle-events';
 
 /** Everything the hub reads, so nothing below asks for itself. */
 export interface HubReading {
@@ -506,21 +512,6 @@ export interface HubReading {
   cycleShown: boolean;
 }
 
-/** The most recent write across a row's areas, or null where none has one.
-
-    The latest rather than the earliest, and an area with nothing in it is
-    passed over rather than answering null for the whole row - the same rule
-    `groupLastWrite` states for a finishable group, applied to a row that
-    fronts sections no group covers. */
-function rowLastWrite(spec: HubRowSpec, lastWrites: HubReading['lastWrites']): number | null {
-  let latest: number | null = null;
-  for (const area of rowReads(spec)) {
-    const day = lastWrites[area] ?? null;
-    if (day !== null && (latest === null || day > latest)) latest = day;
-  }
-  return latest;
-}
-
 /** The day a row's group ended, or null while it has not. A row fronting two
     sections reads as finished only when both are, which is `groupFinishedOn`'s
     own rule; a row fronting no group never reads as finished. */
@@ -528,9 +519,10 @@ export function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDa
   if (spec.finishes === null) return null;
   const day = groupFinishedOn(spec.finishes, states);
   /* Clamped against today rather than trusted as a flag, which is the rule
-     `areaQuiet` states and `groupFinishedOn` deliberately leaves to its
-     callers: the stored fact is the day the person named, and a row does not
-     move to the finished set before that day arrives. */
+     `areaQuiet` states (areaState.ts) and `groupFinishedOn` deliberately
+     leaves to its callers: the stored fact is the day the person named, and
+     what follows from it on any given day is read. So a row dated to end
+     next month is not in the finished set today. */
   return day !== null && day <= todayEpochDay ? day : null;
 }
 
@@ -538,10 +530,10 @@ export function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDa
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
-  if (spec.line === 'written') return { kind: 'written' };
+  if (spec.line === 'written') return { kind: 'no-stream' };
 
-  const epochDay = rowLastWrite(spec, reading.lastWrites);
-  if (epochDay === null) return { kind: 'silent' };
+  const epochDay = latestWrite(rowReads(spec), reading.lastWrites);
+  if (epochDay === null) return { kind: 'not-yet' };
 
   const daysAgo = reading.todayEpochDay - epochDay;
   return { kind: daysAgo >= FINISH_SUGGESTION_QUIET_DAYS ? 'quiet' : 'last', epochDay, daysAgo };
@@ -568,7 +560,7 @@ export function hubSections(reading: HubReading): HubSection[] {
 
   for (const spec of HUB_ROWS) {
     if (rowHidden(spec, reading.states)) continue;
-    if (spec.key === 'cycle-events' && !reading.cycleShown) continue;
+    if (spec.key === CYCLE_GATED_ROW && !reading.cycleShown) continue;
     const line = rowLine(spec, reading);
     byKey.get(line.kind === 'finished' ? 'finished' : spec.group)!.push({ spec, line });
   }
