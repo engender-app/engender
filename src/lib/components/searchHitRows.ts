@@ -118,7 +118,13 @@ const AREA_ROWS: Record<
   },
   regimenEpisodes: { icon: 'timeline', label: () => m.regimen(), href: () => '/settings/regimen' },
   medicationStock: { icon: 'package', label: () => m.stock_title(), href: () => '/settings/stock' },
-  reminders: { icon: 'bell', label: () => m.reminders(), href: () => '/settings/reminders' }
+  reminders: { icon: 'bell', label: () => m.reminders(), href: () => '/settings/reminders' },
+  /* A margin note has no screen of its own - it opens the entry it
+     annotates, and `date` on the row is already that entry's own day
+     (textSearch.ts's own reasoning for dating this area by the owner
+     rather than by when the note was written), which is what lets the hit
+     name the entry without this label needing to. */
+  marginNotes: { icon: 'note', label: () => m.margin_note_search_label(), href: (hit) => `/entry/${hit.context}` }
 };
 
 /** The text a row shows: the window around the match, joined, or the whole

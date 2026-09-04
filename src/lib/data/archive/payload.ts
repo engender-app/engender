@@ -635,6 +635,19 @@ export interface ArchiveFeltSenseEntry {
   note: string | null;
 }
 
+/** A margin note (phase 8 features ticket 07, CONTEXT: "Margin note"),
+    named by its entry's own travelling uuid rather than its rowid, the same
+    rule `ArchiveFeltSenseEntry`'s owner fields follow - nothing on the
+    device importing this knows a rowid it did not mint (ADR-0002). Exactly
+    one owner, unlike a felt-sense entry's two: a margin note always
+    belongs to an entry, so there is nothing to make optional. */
+export interface ArchiveMarginNote {
+  id: string;
+  entryId: string;
+  epochDay: number;
+  text: string;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -736,6 +749,7 @@ export interface ArchiveJournal {
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
   savedQuestions: ArchiveSavedQuestion[];
+  marginNotes: ArchiveMarginNote[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

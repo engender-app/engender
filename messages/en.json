@@ -2920,5 +2920,15 @@
   "saved_question_delete_aria": "Delete this saved question",
   "saved_question_no_results": "Nothing matches this question yet.",
   "saved_question_gone_title": "This saved question is gone",
-  "saved_question_gone_body": "It may have been renamed or deleted on another device."
+  "saved_question_gone_body": "It may have been renamed or deleted on another device.",
+  "margin_note_search_label": "Margin note",
+  "margin_note_add": "Add a margin note",
+  "margin_note_delete_aria": "Delete this margin note",
+  "margin_note_edit_sheet": "Edit the margin note",
+  "margin_note_add_sheet": "Add a margin note",
+  "margin_note_placeholder": "What do you know now that you didn't then?",
+  "margin_note_save": "Save",
+  "margin_note_delete_sheet": "Delete margin note",
+  "margin_note_delete_q": "Delete this note? The entry stays exactly as you wrote it.",
+  "margin_note_delete": "Delete"
 }

@@ -784,6 +784,30 @@ export async function applyFeltSenseEntries({ driver, journal, ts }: Restoring):
   );
 }
 
+/* A margin note's owner is required rather than optional, unlike felt
+   sense's own two-owner shape above: a note with no entry to resolve is
+   dropped, the same reasoning applyFeltSenseEntries gives for either of its
+   owners going missing - a merge is allowed to carry only part of another
+   device's history. */
+export async function applyMarginNotes({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM margin_note');
+  const entryIds = await rowidsByUuid(
+    driver,
+    'entry',
+    journal.marginNotes.map((note) => note.entryId)
+  );
+
+  const rows: unknown[][] = [];
+  for (const note of journal.marginNotes) {
+    if (present.has(note.id)) continue;
+    const entryId = entryIds.get(note.entryId);
+    if (entryId === undefined) continue;
+    rows.push([note.id, entryId, note.epochDay, note.text, ts]);
+  }
+
+  await insertRows(driver, 'INSERT INTO margin_note (uuid, entry_id, epoch_day, text, updated_at)', rows);
+}
+
 /* Both of these resolve their episode by uuid against what is in the table
    after applyRegimenEpisodes ran. A row whose episode is not there is
    dropped rather than inserted against a guessed episode: a schedule

@@ -724,6 +724,9 @@ const CARRIED: Record<string, string[]> = {
   // Exactly one of tryout_id/milestone_id travels, each as that owner's own
   // uuid, the same shape `photo`'s entry_id/milestone_id pair carries.
   felt_sense: ['uuid', 'tryout_id', 'milestone_id', 'epoch_day', 'mood', 'note'],
+  // Exactly one owner, unlike felt_sense's two - a margin note always
+  // belongs to an entry (phase 8 features ticket 07).
+  margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Every figure travels: they are measurements of the two files, not state

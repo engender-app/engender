@@ -2970,5 +2970,15 @@
   "saved_question_delete_aria": "Usuń to zapisane pytanie",
   "saved_question_no_results": "Nic jeszcze nie odpowiada temu pytaniu.",
   "saved_question_gone_title": "Tego zapisanego pytania już nie ma",
-  "saved_question_gone_body": "Mogło zostać zmienione albo usunięte na innym urządzeniu."
+  "saved_question_gone_body": "Mogło zostać zmienione albo usunięte na innym urządzeniu.",
+  "margin_note_search_label": "Notatka na marginesie",
+  "margin_note_add": "Dodaj notatkę na marginesie",
+  "margin_note_delete_aria": "Usuń tę notatkę na marginesie",
+  "margin_note_edit_sheet": "Edytuj notatkę na marginesie",
+  "margin_note_add_sheet": "Dodaj notatkę na marginesie",
+  "margin_note_placeholder": "Co widać teraz, czego nie było widać wtedy?",
+  "margin_note_save": "Zapisz",
+  "margin_note_delete_sheet": "Usuń notatkę na marginesie",
+  "margin_note_delete_q": "Usunąć tę notatkę? Wpis zostaje bez zmian.",
+  "margin_note_delete": "Usuń"
 }

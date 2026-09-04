@@ -89,6 +89,14 @@
   let groups = $derived(entryDayGroups(hits));
   let remaining = $derived(Math.max(0, total - hits.length));
 
+  /* Batched over every entry the run currently shows (phase 8 features
+     ticket 07, marginNotes.ts's own reasoning) - the same read /search
+     makes for its own entries section. Reads `hits` before its first
+     await, so paging in more of the run re-runs it. */
+  let entryIds = $derived(hits.map((entry) => entry.id));
+  let marginNotesRead = liveQuery((j) => j.marginNotes.forEntries(entryIds));
+  let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
+
   let elsewhereResults = $derived(elsewhere.value ?? NOTHING_ELSEWHERE);
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, question?.queryText.trim() ?? ''));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
@@ -148,7 +156,7 @@
           {#if hitRows.length}
             <SectionHeading text={m.search_entries_heading()} />
           {/if}
-          <EntryDays {groups} {role} clampNotes={false} />
+          <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
           {#if remaining > 0}
             <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
               <span>{m.search_more({ count: Math.min(PAGE, remaining) })}</span>

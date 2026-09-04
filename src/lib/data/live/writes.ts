@@ -203,7 +203,14 @@ export const TABLE_NAMES = [
      folded into any of the search-adjacent tables: no other read here
      depends on a saved question's row, and saving or renaming one changes
      nothing a search itself returns. */
-  'savedQuestion'
+  'savedQuestion',
+  /* A margin note (phase 8 features ticket 07). Its own name and not
+     folded into 'entry': the whole point of the feature is that a margin
+     note and the entry it annotates are read and written apart, so an
+     entry's own query must not re-run when a margin note changes, and the
+     reverse - adding, editing or removing a note must not make every
+     screen reading entries think the entry itself changed. */
+  'marginNote'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -485,6 +492,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   savedQuestions: classify<Journal['savedQuestions']>()({
     writes: { upsertSavedQuestion: ['savedQuestion'], deleteSavedQuestion: ['savedQuestion'] },
     reads: { getSavedQuestions: ['savedQuestion'] }
+  }),
+  marginNotes: classify<Journal['marginNotes']>()({
+    writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },
+    reads: { forEntries: ['marginNote'] }
   }),
   eras: classify<Journal['eras']>()({
     writes: { upsertEra: ['era'], deleteEra: ['era'] },
