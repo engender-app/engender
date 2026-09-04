@@ -119,17 +119,47 @@ const WROTE = new RegExp(
   `\\b(?:insert(?: or [a-z]+)? into|replace into|update(?: or [a-z]+)?|delete from) ${NAME}`,
   'gi'
 );
-/* A `FROM` that belongs to a `DELETE` names what is being written, not what
-   is being read - and the lookbehind is why a delete whose `WHERE` holds a
-   subquery reports the subquery's table as its only read. Whitespace is
-   collapsed by then, so one space is the whole gap. */
-const READ = new RegExp(`(?<!delete )\\b(?:from|join) ${NAME}`, 'gi');
+/* One item of a table list: a name, optionally aliased. The alias is
+   matched but never captured - it is here only so the comma after it still
+   belongs to the list. */
+const ITEM = '[`"\\[]?[a-z_][a-z0-9_]*(?: (?:as )?[a-z_][a-z0-9_]*)?';
+/* A `FROM` or a `JOIN` and everything that hangs off it as a list, because
+   SQLite's older cross-join spelling is a list rather than a keyword and
+   `dimensions.ts` reconciles the built-in presets with one
+   (`FROM gender_preset gp, gender_dimension gd`). A JOIN-only reading names
+   the first table and silently drops the second.
+
+   The lookbehind keeps a `DELETE`'s own `FROM` out of the read set, which
+   is why a delete whose `WHERE` holds a subquery reports one table written
+   and the subquery's table read. Whitespace is collapsed by the time this
+   runs, so one space is the whole gap.
+
+   `GROUP BY a, b` and `ORDER BY a, b` cannot be mistaken for the list: a
+   comma continues it only where it directly follows an item, and `t GROUP`
+   is one item followed by ` BY`, not by a comma. */
+const READ = new RegExp(`(?<!delete )\\b(?:from|join) (${ITEM}(?:, ${ITEM})*)`, 'gi');
 /** `WITH x AS (` and the `, y AS (` that follow it. A column alias cannot be
     followed by an open paren, so this needs no `WITH` anchor to be safe. */
 const CTE = /\b([a-z_][a-z0-9_]*) as \(/gi;
 
+/** Words that can stand where a table name is expected and are not one.
+    `UPDATE ON entry` inside a trigger definition is the case that matters:
+    a pattern reading `UPDATE <name>` takes `on` for a table, and a
+    fabricated name is worse than a missing one - it sends whoever compares
+    these against a declaration looking for a table that does not exist. */
+const NOT_A_TABLE = new Set(['on', 'select', 'set', 'values', 'where']);
+
 const namesIn = (pattern: RegExp, text: string): string[] =>
   [...text.matchAll(pattern)].map((match) => match[1].toLowerCase());
+
+/** The leading name of each item in a matched table list. */
+const listedNames = (text: string): string[] =>
+  [...text.matchAll(READ)].flatMap((match) =>
+    match[1].split(',').flatMap((item) => {
+      const name = /^[`"[]?([a-z_][a-z0-9_]*)/i.exec(item.trim());
+      return name ? [name[1].toLowerCase()] : [];
+    })
+  );
 
 /** Which tables a statement - or a `;`-separated script - names, reads and
     writes apart. Text only: it reads the SQL, not the schema, so a trigger
@@ -137,8 +167,9 @@ const namesIn = (pattern: RegExp, text: string): string[] =>
 export function tablesTouched(sql: string): TablesTouched {
   const text = normalised(sql);
   const ctes = new Set(namesIn(CTE, text));
-  const sorted = (names: string[]) => [...new Set(names)].filter((name) => !ctes.has(name)).sort();
-  return { read: sorted(namesIn(READ, text)), wrote: sorted(namesIn(WROTE, text)) };
+  const sorted = (names: string[]) =>
+    [...new Set(names)].filter((name) => !ctes.has(name) && !NOT_A_TABLE.has(name)).sort();
+  return { read: sorted(listedNames(text)), wrote: sorted(namesIn(WROTE, text)) };
 }
 
 const encoder = new TextEncoder();
