@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { RETURN_GAP_DAYS, WAITING_PER_KIND, lastWriteDay, whatIsWaiting } from './comingBack.ts';
 import { adherence, expectedSlots } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
-import type { DoseEvent, DoseSchedule } from './types.ts';
+import type { DoseEvent, DoseSchedule, RegimenEpisode } from './types.ts';
 
 const TODAY = 20000;
 const AWAY = TODAY - 40;
@@ -16,10 +16,12 @@ const SCHEDULE: DoseSchedule = {
   doseAmounts: [{ dose: 4, doseUnit: 'mg' }]
 };
 
-const EPISODE = {
+const EPISODE: RegimenEpisode = {
   id: 'e1',
   drug: 'estradiol valerate',
-  route: 'im' as const,
+  ester: 'valerate',
+  route: 'intramuscular',
+  interval: 'every 7 days',
   dose: 4,
   doseUnit: 'mg',
   startEpochDay: TODAY - 400,
@@ -154,7 +156,8 @@ test('one dose slot is asked about, the most recent one, and never a count of th
     kind: 'dose',
     slotEpochDay: TODAY - 1,
     episodeId: 'e1',
-    route: 'im',
+    episodeRoute: 'intramuscular',
+    drug: 'estradiol valerate',
     dose: 4,
     doseUnit: 'mg'
   });
