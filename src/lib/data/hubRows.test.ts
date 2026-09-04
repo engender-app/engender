@@ -187,7 +187,14 @@ test('a row only reads the areas it fronts, and asks for nothing else', () => {
 });
 
 test('a written row states what is behind it whatever the journal holds', () => {
-  assert.deepEqual(rowLine(spec('letters'), reading({ lastWrites: { letters: TODAY - 1 } })), { kind: 'written' });
+  /* `letters` is one of the seven rows that front a real archive section and
+     still cannot report a recency: a letter is sealed until its unlock day, so
+     the registry has no entry for it - which is also why `lastWrites` cannot
+     be handed a `letters` key to try it with. A full read changes nothing. */
+  const everything = reading({ lastWrites: { measurements: TODAY - 1, sizeRecords: TODAY - 1 } });
+
+  assert.deepEqual(rowReads(spec('letters')), []);
+  assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'written' });
 });
 
 // --- finished ---------------------------------------------------------------

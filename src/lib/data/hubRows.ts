@@ -452,9 +452,16 @@ type RowArea = (typeof ROWS)[number]['areas'][number];
     derived from `lastWrite.ts` rather than listed a second time here. */
 const AREAS_WITH_A_LAST_WRITE: ReadonlySet<string> = new Set(LAST_WRITE_ENTRIES.map((entry) => entry.key));
 
+/* The set is built from the registry's own keys, so membership in it *is*
+   `LastWriteKey`. Written as a predicate rather than left widened, because
+   what it buys is at the other end: `HubReading.lastWrites` can then be keyed
+   by the registry instead of by `string`, and a caller handing this the wrong
+   read fails to compile. */
+const hasLastWrite = (area: ArchiveSectionName): area is LastWriteKey => AREAS_WITH_A_LAST_WRITE.has(area);
+
 /** Which of a row's areas have a last write to report. */
-export function rowReads(spec: HubRowSpec): ArchiveSectionName[] {
-  return spec.areas.filter((area) => AREAS_WITH_A_LAST_WRITE.has(area));
+export function rowReads(spec: HubRowSpec): LastWriteKey[] {
+  return spec.areas.filter(hasLastWrite);
 }
 
 /** Whether a row has gone with a hidden area.
@@ -489,8 +496,9 @@ export type HubLine =
 /** Everything the hub reads, so nothing below asks for itself. */
 export interface HubReading {
   todayEpochDay: number;
-  /** One assembled call, `journal/lastWrite.ts` - not a query per row. */
-  lastWrites: Partial<Record<string, number | null>>;
+  /** One assembled call, `journal/lastWrite.ts` - not a query per row.
+      Partial so a caller with nothing read yet can pass `{}`. */
+  lastWrites: Partial<Record<LastWriteKey, number | null>>;
   states: AreaStates;
   /** `cycleTrackingVisible`'s answer, which is the screen's to fetch: it
       needs the regimen episode list and a preference, neither of which
