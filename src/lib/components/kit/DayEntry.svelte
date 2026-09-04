@@ -52,7 +52,8 @@
     marks,
     presentation,
     href,
-    key
+    key,
+    clampNote = true
   }: {
     /** Already formatted against the active locale by the caller. */
     time: string;
@@ -75,6 +76,11 @@
     /** Where the entry opens. Omitted, the row is a plain article. */
     href?: string;
     key?: string;
+    /** Off for a run of entries meant to be read rather than scanned
+        (phase 8 features ticket 06) - the note prints in full instead of
+        clamping to two lines. Every other caller leaves this on, which is
+        what keeps a day card the same height whatever somebody wrote. */
+    clampNote?: boolean;
   } = $props();
 </script>
 
@@ -88,7 +94,7 @@
     {#if presentation}
       <span class="kit-entry-presentation" data-entry-presentation style="color: {presentation.color}">{presentation.name}</span>
     {/if}
-    {#if note}<p class="kit-entry-note" data-entry-note>{note}</p>{/if}
+    {#if note}<p class="kit-entry-note" class:is-full={!clampNote} data-entry-note>{note}</p>{/if}
     {#if tags?.length || marks?.length}
       <span class="kit-entry-meta">
         {#each marks ?? [] as mark (mark)}<Icon name={mark} size={16} />{/each}
@@ -116,3 +122,14 @@
 {:else}
   <article class="kit-entry" data-entry-card={key}>{@render body()}</article>
 {/if}
+
+<style>
+  /* A run of entries meant to be read rather than scanned (phase 8 features
+     ticket 06): the same row, the whole note. */
+  .kit-entry-note.is-full {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+  }
+</style>

@@ -52,6 +52,7 @@ import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import { makeRoadmapArea, type RoadmapArea } from './roadmap';
+import { makeSavedQuestionsArea, type SavedQuestionsArea } from './savedQuestions';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
 import { makeStatsArea, type StatsArea } from './stats';
@@ -169,6 +170,10 @@ export interface Journal {
       days inside a pause do not count as a gap; this area owns only the
       rows themselves. */
   journalingPauses: JournalingPausesArea;
+  /** A search somebody kept a name for (phase 8 features ticket 06, CONTEXT:
+      "Saved question"). Rows only - what a saved question is asked as lives
+      in savedQuestionQuery.ts, above this seam. */
+  savedQuestions: SavedQuestionsArea;
   /** The person's own named stretches of their timeline (phase 6 ticket 01,
       ADR-0049, CONTEXT: "Era"). Rows and the journal edge an open bound
       clamps to, nothing else: an era owns no colour, no mute and no other
@@ -373,6 +378,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const voicePracticeTakes = makeVoicePracticeTakesArea(driver);
   const journalingPauses = makeJournalingPausesArea(driver);
+  const savedQuestions = makeSavedQuestionsArea(driver);
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
   const comfortItems = makeComfortItemsArea(driver);
@@ -405,6 +411,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     sideEffects,
     cycleEvents,
     journalingPauses,
+    savedQuestions,
     eras,
     eraMutes,
     chartAnnotations: makeChartAnnotationsArea({

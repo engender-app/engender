@@ -303,6 +303,22 @@ export interface ArchiveVoicePracticeTake {
   feltSense: number | null;
 }
 
+/** A saved question (phase 8 features ticket 06, CONTEXT: "Saved question").
+    `tagIds`/`moods` travel comma-joined, the same as the row is stored -
+    an archive descriptor has no array column either, and the split back
+    into a list is savedQuestions.ts's job on the way out of a restore too. */
+export interface ArchiveSavedQuestion {
+  id: string;
+  name: string;
+  queryText: string;
+  tagIds: string;
+  moods: string;
+  startEpochDay: number | null;
+  endEpochDay: number | null;
+  hasNote: boolean;
+  hasPhoto: boolean;
+}
+
 /** One bundled transition-roadmap goal with a status recorded at all
     (phase 4 ticket 23, widened phase 5 ticket 20 for the tri-state), named
     by its pack and its goal key rather than a uuid - both strings mean the
@@ -719,6 +735,7 @@ export interface ArchiveJournal {
   comfortItems: ArchiveComfortItem[];
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
+  savedQuestions: ArchiveSavedQuestion[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

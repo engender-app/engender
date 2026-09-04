@@ -391,6 +391,17 @@
   }
 /* One run of day cards, whichever screen is drawing it (EntryDays.svelte). */
 .entry-days { display: grid; gap: var(--space-3); }
+/* When a hit was recorded, at the trailing edge of its row. The month and
+   the year rather than the exact day: a search result wants placing in
+   time, and the record's own screen is where the full date lives (the
+   starred shelf's photo dates read the same way, in the same format).
+   Shared with the saved-question run (phase 8 features ticket 06), which
+   draws the same elsewhere-hit row. */
+.search-hit-date {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  white-space: nowrap;
+}
 /* Not infinite scroll (SCREENS.md): a page is asked for, and the control
    that asks says how many are coming. */
 .search-more { width: 100%; margin-top: var(--space-4); }
