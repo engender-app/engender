@@ -598,6 +598,22 @@ const SECTIONS = [
     orderBy: 'epoch_day, id',
     columns: { uuid: 'id', epoch_day: 'epochDay', text: 'text', unlock_epoch_day: 'unlockEpochDay' }
   }),
+  flat({
+    name: 'voicePracticeTakes',
+    // A private practice record, sealed the same way a letter is.
+    travels: 'none',
+    table: 'voice_practice_take',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      min_hz: 'minHz',
+      max_hz: 'maxHz',
+      median_hz: 'medianHz',
+      felt_sense: 'feltSense'
+    }
+  }),
   section({
     name: 'roadmapChecks',
     discard: ['DELETE FROM roadmap_check'],

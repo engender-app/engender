@@ -375,6 +375,13 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // view listing the day it was written is a second place to meet it, out of
   // the order the seal exists to keep.
   letters: 'sealed until its unlock day',
+  // Phase 8 features ticket 10: sealed until the day after it was taken
+  // (voicePracticeTakes.ts), so a day-view row would be a second place to
+  // meet its figures before the seal does - the same risk letters' own
+  // opt-out above guards against, independent of whether the area is
+  // finishable (areaState.ts joins it to voiceBenchmarks on that separate
+  // question, and says why there).
+  voicePracticeTakes: 'sealed until the day after it was taken',
 
   // Phase 7 ticket 03: this device's own bookkeeping about where an import
   // came from, dated by when the import ran rather than by anything the

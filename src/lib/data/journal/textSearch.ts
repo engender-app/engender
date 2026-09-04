@@ -465,6 +465,9 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   personalEffects: 'no text of its own: the marker is a day and an effect key',
 
   measurements: 'no text of its own: a type, a value and a unit',
+  // Phase 8 features ticket 10: a min, a max, a median and a felt-sense
+  // rating on the app's own mood scale, none of it text.
+  voicePracticeTakes: 'no text of its own: three pitch figures and a felt-sense rating',
   cycleEvents: 'no text of its own: one of three kinds on a day',
   // `tally_event.context` is a column with no reader and no writer left
   // (tally.ts: register finding 32.4 dropped its entry point, and a

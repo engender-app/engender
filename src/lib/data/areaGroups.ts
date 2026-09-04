@@ -39,10 +39,13 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Seven of the eight front exactly one area. Hair progress fronts two, and
-    the `voice` group is `voiceBenchmarks` alone - a voice memo belongs to an
-    entry and travels inside `entries` (CONTEXT: "Area"), so the memos screen
-    is not finishable and has no group here. */
+    Six of the eight front exactly one area. Hair progress fronts two, and so
+    does voice now (phase 8 features ticket 10): a benchmark and a practice
+    take are both dated records of the same practice, so `voice` finishes
+    them together the way hair progress finishes its stagings and its
+    photographs. A voice memo belongs to an entry and travels inside
+    `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
+    has no group here. */
 export const AREA_GROUPS = {
   measurements: ['measurements'],
   sizes: ['sizeRecords'],
@@ -51,7 +54,7 @@ export const AREA_GROUPS = {
   'hair-removal': ['hairRemovalSessions'],
   'side-effects': ['sideEffects'],
   effects: ['personalEffects'],
-  voice: ['voiceBenchmarks']
+  voice: ['voiceBenchmarks', 'voicePracticeTakes']
 } as const satisfies Record<AreaGroupKey, readonly FinishableArea[]>;
 
 /* A finishable area with no group would be one nothing on screen could ever

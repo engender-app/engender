@@ -130,6 +130,11 @@ export const TABLE_NAMES = [
      tile, the compare view - must not re-query every time an entry's voice
      memo changes, nor the reverse. */
   'voiceBenchmark',
+  /* Practice takes (phase 8 features ticket 10). Its own name and not
+     folded into 'voiceBenchmark': the two are different activities, never
+     read together, and a practice save should not re-run a benchmark
+     screen's own reads. */
+  'voicePracticeTake',
   /* Video notes (phase 5 ticket 22). Its own name rather than folded into
      'entry' or shared with 'voiceRecording', for the reason that one gives:
      a screen could read video notes without reading recordings or the rest
@@ -381,6 +386,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getBenchmarks: ['voiceBenchmark'],
       getBenchmarksOnDay: ['voiceBenchmark'],
       lastWriteEpochDay: ['voiceBenchmark']
+    }
+  }),
+  voicePracticeTakes: classify<Journal['voicePracticeTakes']>()({
+    writes: { addTake: ['voicePracticeTake'], deleteTake: ['voicePracticeTake'] },
+    reads: {
+      getTakes: ['voicePracticeTake'],
+      getTakesOnDay: ['voicePracticeTake'],
+      lastWriteEpochDay: ['voicePracticeTake']
     }
   }),
   // Read-only for the same reason `voice` is: a video note's row is owned by

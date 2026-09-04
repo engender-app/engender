@@ -60,11 +60,12 @@ describe('where the finish control is mounted', () => {
   });
 
   it('covers every finishable area through those eight screens', () => {
-    /* The sections, not the groups: hair progress is one screen and two
-       areas, so a count of screens would not prove the nine are reachable. */
+    /* The sections, not the groups: hair progress and voice are each one
+       screen and two areas, so a count of screens would not prove the ten
+       are reachable. */
     const covered = mounts.flatMap((m) => [...AREA_GROUPS[m.group as keyof typeof AREA_GROUPS]]);
-    expect(covered.length).toBe(9);
-    expect(new Set(covered).size).toBe(9);
+    expect(covered.length).toBe(10);
+    expect(new Set(covered).size).toBe(10);
   });
 
   it('names groups the More hub already has rows for', () => {

@@ -255,6 +255,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
   await journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   await journal.letters.addLetter({ epochDay: 20000, text: 'read this in a year', unlockEpochDay: 20365 });
+  await journal.voicePracticeTakes.addTake({ epochDay: 20000, minHz: 150, maxHz: 220, medianHz: 180, feltSense: 4 });
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
   await journal.roadmap.addCustomGoal('social', 'Tell my sister');

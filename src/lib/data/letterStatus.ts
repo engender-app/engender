@@ -15,6 +15,7 @@
    Live tile state (read resolution and 24h snooze) lives in localStorage
    outside SQLite (ADR-0039). */
 
+import { isSealedUntil } from './sealedUntil';
 import type { Letter } from './types';
 
 export const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
@@ -28,7 +29,7 @@ function resolveStorage(storage?: Storage): Storage | null {
 }
 
 export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpochDay: number): boolean {
-  return letter.unlockEpochDay > todayEpochDay;
+  return isSealedUntil(letter.unlockEpochDay, todayEpochDay);
 }
 
 export function getReadLetterIds(storage?: Storage): Set<string> {
