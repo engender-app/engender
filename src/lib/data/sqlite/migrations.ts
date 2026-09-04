@@ -1994,6 +1994,35 @@ CREATE TABLE margin_note (
 CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
 `;
 
+/* v63: severity becomes something you can leave blank (phase 8 features
+   ticket 23). The side-effect screen introduces itself as "no grading and
+   no advice" and then required a 1-5 grade with three pre-selected, which
+   contradicted its own intro and put a meaningless three on every record
+   nobody actually graded - the same reasoning ADR-0010's body-region split
+   already carries for dysphoria/euphoria: an axis says nothing rather than
+   saying zero.
+
+   A table-level CHECK cannot be altered in place, so this is the copy, drop,
+   rename shape v37/v38 use. Every existing row keeps its stored severity
+   unchanged (Out of Scope: migrating existing threes) - a stored three might
+   have been meant, and this ticket is only about what a new record can
+   leave unanswered. */
+const SCHEMA_V63 = `
+CREATE TABLE side_effect_v63 (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  severity   INTEGER CHECK (severity IS NULL OR severity BETWEEN 1 AND 5),
+  epoch_day  INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+INSERT INTO side_effect_v63 (id, uuid, name, severity, epoch_day, updated_at)
+  SELECT id, uuid, name, severity, epoch_day, updated_at FROM side_effect;
+DROP TABLE side_effect;
+ALTER TABLE side_effect_v63 RENAME TO side_effect;
+CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2056,5 +2085,6 @@ export const migrations: Migration[] = [
   { version: 59, sql: SCHEMA_V59 },
   { version: 60, sql: SCHEMA_V60 },
   { version: 61, sql: SCHEMA_V61 },
-  { version: 62, sql: SCHEMA_V62 }
+  { version: 62, sql: SCHEMA_V62 },
+  { version: 63, sql: SCHEMA_V63 }
 ];

@@ -34,8 +34,10 @@ export interface SideEffectsArea {
 
 /** The schema's CHECK is the backstop (like reminder's recurrence); this is
     what turns a bad value into a message naming the ticket's own scale
-    instead of a raw SQLite constraint failure. */
-function assertValidSeverity(severity: number): void {
+    instead of a raw SQLite constraint failure. Null passes: leaving severity
+    blank is the point of ticket 23, not a value to reject. */
+function assertValidSeverity(severity: number | null): void {
+  if (severity === null) return;
   if (!Number.isInteger(severity) || severity < MIN_SEVERITY || severity > MAX_SEVERITY) {
     throw new Error(`invalid severity: ${severity}`);
   }

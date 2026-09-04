@@ -156,7 +156,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       key: `side-effect-${effect.id}`,
       icon: 'zap',
       title: effect.name,
-      subtitle: severityName(effect.severity),
+      subtitle: severityName(effect.severity) ?? undefined,
       href: '/settings/side-effects'
     })),
 

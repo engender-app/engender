@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 62);
+  assert.equal(db.getUserVersion(), 63);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -307,6 +307,29 @@ test('v11 side_effect carries no episode reference and rejects severity outside 
   );
   assert.throws(() =>
     db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'nausea', 6, 100, 1000)")
+  );
+});
+
+test('v63 makes severity nullable, still rejects out-of-range values, and carries pre-existing rows across unchanged', async () => {
+  const preV63 = migrations.filter((m) => m.version <= 11);
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), preV63);
+  db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s1', 'nausea', 3, 100, 1000)");
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw.prepare('SELECT severity FROM side_effect WHERE uuid = ?').get('s1') as { severity: number };
+  assert.equal(row.severity, 3);
+
+  assert.doesNotThrow(() =>
+    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s2', 'headache', NULL, 100, 1000)")
+  );
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'headache', 0, 100, 1000)")
+  );
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s4', 'headache', 6, 100, 1000)")
   );
 });
 

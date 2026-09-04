@@ -204,7 +204,7 @@
         {#snippet children()}
           <Segmented
             name={m.hair_removal_pain_label()}
-            options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) }))}
+            options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))}
             value={draft.painRating}
             onChange={(v) => (draft.painRating = v)}
           />

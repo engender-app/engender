@@ -698,8 +698,9 @@ export interface Era {
 export interface SideEffect {
   id: string;
   name: string;
-  /** 1 (barely noticeable) to 5 (severe). */
-  severity: number;
+  /** 1 (barely noticeable) to 5 (severe), or null: the sheet asks for a
+      grade and does not require one (phase 8 features ticket 23). */
+  severity: number | null;
   epochDay: number;
 }
 
