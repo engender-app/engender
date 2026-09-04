@@ -14,6 +14,7 @@
    Pure, and node-tested: nothing here decodes audio (audio/capture.ts). */
 
 import { trackPitch, wordsPerMinute } from './pitch';
+import { downsamplePitchTrack, encodePitchTrack } from './track';
 import { analyseFormants, type Formants } from './resonance';
 import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality, type QualityReport } from './quality';
 
@@ -31,6 +32,14 @@ export interface PassageFigures {
 export interface PassageTake {
   quality: QualityReport;
   figures: PassageFigures | null;
+  /** The passage's pitch over time, downsampled and encoded for the row's
+      own column (track.ts, phase 8 features ticket 09). Null where nothing
+      was voiced. It is produced here rather than on the screen for the
+      reason this module exists at all: the recording screen holds no
+      analysis of its own, and a second caller downsampling its own copy of
+      the same frames is how a stored track drifts from the figures beside
+      it. */
+  pitchTrack: string | null;
 }
 
 export interface VowelTake {
@@ -51,6 +60,7 @@ export function analysePassage(samples: Float32Array, sampleRate: number, wordCo
 
   return {
     quality,
+    pitchTrack: encodePitchTrack(downsamplePitchTrack(track.frames)),
     figures:
       track.stats && rate !== null
         ? {

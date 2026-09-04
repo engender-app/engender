@@ -327,7 +327,11 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     f1Hz: 705,
     f2Hz: 1265,
     snrDb: 26.3,
-    note: 'quiet room, morning'
+    note: 'quiet room, morning',
+    // A short stored track (ticket 09), so the fixture proves the column
+    // travels rather than only that it exists. Encoded as audio/track.ts
+    // writes it, hole included.
+    pitchTrack: '178.5,181.2,,176.9,180.4'
   });
 
   // The import log's only writer is a real commit (ticket 03): run one

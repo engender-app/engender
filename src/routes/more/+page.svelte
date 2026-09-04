@@ -78,13 +78,13 @@
        changes what it does (ADR-0037), independently of this move. */
     { key: 'doubt', icon: 'heart', title: () => m.safe_space_title(), href: '/doubt' },
     { key: 'voice', icon: 'mic', title: () => m.recordings_label(), href: '/settings/voice' },
-    /* Its own row rather than a way in from the recordings screen (phase 5
-       deepening ticket 15): a benchmark is a different record from a voice
-       memo, and the screen next door is the memo compare surface, which this
-       milestone's ticket 16 owns. Until then the hub is where a benchmark
-       starts, and the Home nudge - which only fires once one exists - is the
-       reminder rather than the entrance. */
-    { key: 'voice-benchmark', icon: 'mic', title: () => m.vb_title(), href: '/settings/voice/record' },
+    /* Both voice rows now point at one screen, on the tab each of them
+       promises (phase 8 features ticket 09): recording a benchmark and
+       reading benchmarks back were two routes describing one feature. Which
+       rows the hub carries, what they are called and which group they sit
+       in is the UX spec's to settle (its rule 2); this ticket repointed an
+       href and nothing else. */
+    { key: 'voice-benchmark', icon: 'mic', title: () => m.vb_title(), href: '/settings/voice?tab=record' },
     { key: 'entry-templates', icon: 'grid', title: () => m.entry_templates_title(), href: '/settings/entry-templates' },
     { key: 'wear', icon: 'clock', title: () => m.wear_log(), href: '/settings/wear' },
     { key: 'effects', icon: 'sparkle', title: () => m.effects_timeline(), href: '/settings/effects' },

@@ -795,6 +795,9 @@ export interface ArchiveVoiceBenchmark {
   f2Hz: number | null;
   snrDb: number | null;
   note: string | null;
+  /** The downsampled pitch track (phase 8 features ticket 09), absent on an
+      archive written before it and on any take from before schema v58. */
+  pitchTrack: string | null;
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

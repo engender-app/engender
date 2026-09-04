@@ -809,7 +809,12 @@ const SECTIONS = [
       f1_hz: 'f1Hz',
       f2_hz: 'f2Hz',
       snr_db: 'snrDb',
-      note: 'note'
+      note: 'note',
+      /* `pitch_track` has a `whenAbsent` for the same reason `passage_key`
+         does, and one of its own: archives written before ticket 09 do not
+         carry the field, and neither does a benchmark taken before schema
+         v58 that is still in the journal. Both restore as no track. */
+      pitch_track: { field: 'pitchTrack', whenAbsent: null }
     }
   }),
   /* The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort

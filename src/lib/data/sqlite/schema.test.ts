@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 57);
+  assert.equal(db.getUserVersion(), 58);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -950,6 +950,47 @@ test('v51 adds era_mute, presence keyed by era_uuid alone', async () => {
 
   const columns = (db.raw.prepare('PRAGMA table_info(era_mute)').all() as { name: string }[]).map((c) => c.name);
   assert.deepEqual(columns, ['id', 'era_uuid', 'updated_at']);
+});
+
+test('v58 adds the pitch track column, and a benchmark from before it has none', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 57)
+  );
+
+  /* A benchmark recorded before the column existed. The point of writing it
+     at v57 rather than after the upgrade is that this is the only state the
+     screen cannot produce for itself: the frames it would draw were thrown
+     away, so `pitch_track` reads null and the take is undrawable forever
+     (ticket 09, ADR-0059). */
+  db.raw.exec(`INSERT INTO voice_benchmark
+    (uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
+     f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute,
+     f1_hz, f2_hz, snr_db, note, updated_at)
+    VALUES ('vb-old', 20000, 1000, 'builtin', 'a.webm', NULL,
+     180, 168, 205, 2.4, 140, NULL, NULL, NULL, NULL, 1000)`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw
+    .prepare("SELECT pitch_track, f0_median_hz FROM voice_benchmark WHERE uuid = 'vb-old'")
+    .get() as { pitch_track: string | null; f0_median_hz: number };
+  assert.equal(row.pitch_track, null);
+  // The figures the old row did keep are untouched by the upgrade.
+  assert.equal(row.f0_median_hz, 180);
+
+  db.raw.exec("UPDATE voice_benchmark SET pitch_track = '180.4,,176.2' WHERE uuid = 'vb-old'");
+  assert.equal(
+    (
+      db.raw.prepare("SELECT pitch_track FROM voice_benchmark WHERE uuid = 'vb-old'").get() as {
+        pitch_track: string;
+      }
+    ).pitch_track,
+    '180.4,,176.2'
+  );
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

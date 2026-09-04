@@ -1,6 +1,13 @@
 <script lang="ts">
   /* Making a voice benchmark (phase 5 deepening ticket 15, CONTEXT: "Voice
-     benchmark").
+     benchmark"), as one tab of the voice screen (phase 8 features
+     ticket 09).
+
+     It was its own route until ticket 09 merged the two halves of this
+     feature into one screen with three tabs. Nothing about the flow itself
+     changed in that move: it is a component rather than a page, it reports
+     a finished benchmark to whoever embedded it instead of navigating, and
+     the screen's own header is the screen's.
 
      Two takes in one sitting: the passage read out, then one note held. They
      are separate steps because they fail separately - a vowel spoiled by a
@@ -16,10 +23,10 @@
      The analysis is pure and lives in $lib/audio; the microphone and the
      decode live in stores/voiceBenchmark.ts. What is here is the flow. */
   import { onDestroy } from 'svelte';
-  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
+  import { bandsFor, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import { noteName } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
@@ -32,13 +39,17 @@
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
+  import VoicingRibbon from '$lib/components/VoicingRibbon.svelte';
+  import VoiceTake from '$lib/components/VoiceTake.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+
+  let { onSaved }: { onSaved: () => void } = $props();
 
   /** What the gate wants of a held vowel, and what the run bar fills
       towards. The passage has no target of its own - it is done when the
@@ -71,7 +82,11 @@
   let frames = $state<readonly PitchFrame[]>([]);
   let failed = $state<QualityCheck[]>([]);
 
-  let passageTake = $state<{ bytes: Uint8Array; figures: ReturnType<typeof analysePassage>['figures'] } | null>(null);
+  let passageTake = $state<{
+    bytes: Uint8Array;
+    figures: ReturnType<typeof analysePassage>['figures'];
+    pitchTrack: string | null;
+  } | null>(null);
   let vowelTake = $state<{ bytes: Uint8Array; formants: Formants | null; snrDb: number } | null>(null);
   let note = $state('');
 
@@ -85,6 +100,30 @@
   let passageDraft = $state('');
 
   let role = $derived(roleAt(activeFlag.roles, 0));
+  /** The person's own band, if they have set one. Drawn on the live figure
+      as well as on the finished take: the point of it is to be visible
+      while somebody is speaking. */
+  let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
+  /** The voice's longest unbroken run so far, as the gate counts it. */
+  let heldSeconds = $derived((reading?.longestVoicedSeconds ?? 0).toFixed(1));
+
+  /** The sentence beside the ribbon, in priority order: what to do
+      differently if the gate has found something, otherwise that nothing
+      is arriving yet, otherwise nothing at all.
+
+      Silence is reported in words as well as drawn, so somebody who cannot
+      see the ribbon gets the same answer - the contract the figure this
+      replaced was held to. It clears the moment a voice arrives rather
+      than lingering. */
+  let liveLine = $derived.by(() => {
+    if (phase === 'retry') return retryAdvice.join(' ');
+    if (liveAdvice.length > 0) return liveAdvice.join(' ');
+    return frames.some((frame) => frame.hz !== null) ? '' : m.vb_hearing_silent();
+  });
+  /* Whose typical ranges belong on the figure: the language of the passage
+     being read, not the app's (ADR-0059). A passage of somebody's own words
+     carries no language, so the app's is a guess and the caption says so. */
+  let bands = $derived(bandsFor(passageKey, getLocale()));
   let targetSeconds = $derived(step === 'vowel' ? VOWEL_SECONDS : PASSAGE_TARGET_SECONDS);
 
   /** The gate's own findings, in words, and only ever about the recording. */
@@ -174,7 +213,11 @@
         phase = 'retry';
         return;
       }
-      passageTake = { bytes: take.bytes, figures: analysed.figures };
+      passageTake = {
+        bytes: take.bytes,
+        figures: analysed.figures,
+        pitchTrack: analysed.pitchTrack
+      };
       step = 'vowel';
       phase = 'idle';
       return;
@@ -210,10 +253,11 @@
         f1Hz: vowelTake?.formants?.f1Hz ?? null,
         f2Hz: vowelTake?.formants?.f2Hz ?? null,
         snrDb: vowelTake?.snrDb ?? null,
-        note: note.trim() || null
+        note: note.trim() || null,
+        pitchTrack: passageTake.pitchTrack
       });
       toast(m.vb_saved());
-      await goto('/settings/voice');
+      onSaved();
     } finally {
       saving = false;
     }
@@ -248,15 +292,7 @@
   });
 </script>
 
-<div class="screen">
-  <!-- The lead says what a benchmark is, which is worth reading once and is
-       in the way of a take in progress. It goes when the flow starts. -->
-  <ScreenHeader
-    title={m.vb_title()}
-    subtitle={step === 'passage' && phase === 'idle' ? m.vb_lead() : undefined}
-    back="/settings/voice"
-  />
-
+<div class="vbf">
   {#if refusal}
     <div class="screen-part">
       <!-- The ask is a real button rather than a sentence about settings
@@ -313,6 +349,24 @@
           </dd></div>
       </dl>
 
+      <!-- The picture the numbers came from (ticket 09). It sits under the
+           figures rather than over them: the numbers are what a person came
+           to save, and the drawing is what makes them mean something. -->
+      <div class="vb-take">
+        <SectionHeading text={m.vb_take_heading()} />
+        <VoiceTake
+          data-vb-take
+          {role}
+          {comfort}
+          language={bands.language}
+          languageGuessed={bands.guessed}
+          pitchTrack={passageTake.pitchTrack}
+          medianHz={figures.f0MedianHz}
+          p10Hz={figures.f0P10Hz}
+          p90Hz={figures.f0P90Hz}
+        />
+      </div>
+
       <label class="field vb-note">
         <span class="field-label">{m.vb_note_label()}</span>
         <textarea class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
@@ -325,10 +379,15 @@
       </button>
     </div>
   {:else}
-    <div class="screen-part vb-body">
+    <div class="screen-part vb-body" {...roleAttrs(role)}>
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
 
       {#if step === 'passage'}
+        <!-- What a benchmark is, which is worth reading once and is in the
+             way of a take in progress. It goes when the flow starts. -->
+        {#if phase === 'idle'}
+          <p class="muted small vb-hint">{m.vb_lead()}</p>
+        {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
           <Icon name="pencil" size={18} />
@@ -341,16 +400,52 @@
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
       {/if}
 
+      <!-- The graph goes from the reading step and stays on the held note
+           (Alicja, 2026-09-04, in three passes: no live graph while reading
+           a passage; a benchmark's own picture is enough right after
+           finishing it; and steadiness "should still be there to guide the
+           user that their voice during the vowel recordings should be
+           stable").
+
+           Which is the distinction. Reading a passage has no shape to hit -
+           pitch moves by design, the numbers come afterwards, and watching
+           a curve while reading aloud is what the practise tab is for.
+           Holding a note has exactly one: flat. So the vowel step keeps a
+           figure and it is the one that measures the thing being asked for,
+           semitones around the note itself, with no bands on it because
+           where the note sits is not the question.
+
+           The reading step keeps what the figure's words carried: how long
+           the voice has been going, and anything to do differently about
+           the room or the level. -->
       {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}
         <VoiceGauge
           data-vb-gauge
           {role}
+          {comfort}
+          reading="steadiness"
+          language={bands.language}
+          languageGuessed={bands.guessed}
           {frames}
           report={reading}
           {targetSeconds}
-          label={m.vb_gauge_label()}
+          label={m.vb_gauge_label_steady()}
           advice={phase === 'retry' ? retryAdvice : liveAdvice}
         />
+      {:else if phase === 'recording' || phase === 'retry'}
+        <!-- One rail of the last two seconds: filled where the tracker
+             found a voice, gaps for the breaths and the commas, empty when
+             nothing is arriving. Presence has no magnitude, which is what
+             lets it say "this is working" in 6px where a pitch figure
+             needed 148 and a gutter. -->
+        <div class="vb-live" data-vb-live>
+          <div class="vb-live-top">
+            <span class="vb-live-label">{m.vb_hearing_label()}</span>
+            <span class="vb-live-held">{m.vb_gauge_run({ seconds: heldSeconds })}</span>
+          </div>
+          <VoicingRibbon data-vb-hearing {frames} label={m.vb_hearing_label()} />
+          <p class="vb-live-advice" aria-live="polite">{liveLine}</p>
+        </div>
       {/if}
 
       {#if phase === 'retry'}
@@ -359,24 +454,6 @@
     </div>
 
     <div class="editor-savebar vb-bar">
-      <!-- On the passage step the figure rides the action bar rather than
-           the body: the passage is a screenful of text somebody is reading
-           off the screen, and a gauge under it is a gauge nobody can see.
-           The vowel step has nothing to read, so there it is the thing on
-           the screen and takes its full size. -->
-      {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
-        <VoiceGauge
-          compact
-          data-vb-gauge
-          {role}
-          {frames}
-          report={reading}
-          {targetSeconds}
-          label={m.vb_gauge_label()}
-          advice={phase === 'retry' ? retryAdvice : liveAdvice}
-        />
-      {/if}
-
       {#if phase === 'recording'}
         <button class="btn btn-primary" data-vb-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
@@ -481,6 +558,51 @@
   .vb-aside {
     color: var(--muted);
     font-weight: var(--weight-regular);
+  }
+
+  /* What a take shows while it runs, now that no figure does. The held
+     figure and the advice sit together as one readout rather than as two
+     stray lines. */
+  .vb-live {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  .vb-live-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .vb-live-label {
+    font-size: var(--text-sm);
+    color: var(--muted);
+  }
+
+  .vb-live-held {
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    color: var(--role-ink);
+  }
+
+  .vb-live-advice {
+    margin: 0;
+    /* One line of room kept whether or not there is anything to say, so
+       nothing jumps up the screen the moment a check clears. */
+    min-height: calc(var(--text-sm) * 1.5);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .vb-take {
+    margin-top: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .vb-note {
