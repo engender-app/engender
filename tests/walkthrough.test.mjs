@@ -2639,21 +2639,23 @@ try {
    this block's own voice step says so) while every other read row now has
    something.
 
-   Handles, never wording (ADR-0029). The line is `.kit-row-sub` inside the
-   row's own handle, so the absence check has a live element to hang off: the
-   row is present in all three cases and it is the line under it that differs.
-   Asserting on the copy would let a reworded line pass for free. */
+   Handles, never wording or structure (ADR-0029). Each row carries
+   `data-hub-line` naming which kind it drew, and carries none where it has
+   nothing to say - so the absence check hangs off the row's own handle, which
+   is present in all three cases. Asserting the copy would let a reworded line
+   pass for free, and gripping the kit's `.kit-row-sub` class would be
+   structure. */
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="measurements"] .kit-row-sub', { timeout: 8000 });
+  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="last"]', { timeout: 8000 });
 
-  if ((await page.locator('[data-list-row="care"] .kit-row-sub').count()) === 0) {
+  if ((await page.locator('[data-list-row="care"][data-hub-line="written"]').count()) === 0) {
     throw new Error('the care row states nothing about what is behind it');
   }
   if ((await page.locator('[data-list-row="voice-benchmark"]').count()) === 0) {
     throw new Error('the voice benchmark row is missing, so its silent state cannot be walked');
   }
-  if ((await page.locator('[data-list-row="voice-benchmark"] .kit-row-sub').count()) !== 0) {
+  if ((await page.locator('[data-list-row="voice-benchmark"][data-hub-line]').count()) !== 0) {
     throw new Error('a row with nothing ever written in it drew a line anyway');
   }
 
@@ -2682,7 +2684,7 @@ try {
   if ((await page.locator('[data-list-row="wear"][data-hub-section="practice"]').count()) !== 0) {
     throw new Error('the finished row is drawn in two places at once');
   }
-  if ((await page.locator('[data-list-row="wear"] .kit-row-sub').count()) === 0) {
+  if ((await page.locator('[data-list-row="wear"][data-hub-line="finished"]').count()) === 0) {
     throw new Error('a finished row does not say when it ended');
   }
   // Still one tap away, and the screen behind it still works.

@@ -94,11 +94,14 @@
     <SectionHeading text={hubGroupHeading(section.key)} />
     <ListCard role={roleAt(activeFlag.roles, roleIndex(section.key))}>
       {#each section.rows as row (row.spec.key)}
-        <!-- Which section the row was drawn in, on the row rather than on a
-             wrapper of its own: a finished row is the same row under a
-             different heading, and the walkthrough needs to see it move
-             without the screen growing an element for it to grip
-             (ADR-0029). -->
+        <!-- Which section the row was drawn in and which kind of line it
+             carries, both on the row rather than on wrappers of their own: a
+             finished row is the same row under a different heading, and the
+             line is the kit's `.kit-row-sub`, which is a class and so
+             something the walkthrough may not grip (ADR-0029). Naming the
+             kind rather than the element also lets a flow tell a reading
+             apart from a written line, which the element alone could not.
+             Absent on a row with nothing to say, which is the state. -->
         <ListRow
           key={row.spec.key}
           icon={row.spec.icon}
@@ -106,6 +109,7 @@
           subtitle={hubRowLine(row.spec.key, row.line, today)}
           href={row.spec.href}
           data-hub-section={section.key}
+          data-hub-line={row.line.kind === 'silent' ? undefined : row.line.kind}
         />
       {/each}
     </ListCard>
