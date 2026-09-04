@@ -93,6 +93,7 @@ mount(VoiceGauge, {
     label: 'device cost probe',
     advice: [],
     comfort: { lowHz: 200, highHz: 235 },
+    reading: 'pitch',
     language: 'en'
   }
 });

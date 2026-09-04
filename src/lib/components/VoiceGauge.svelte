@@ -7,14 +7,13 @@
      second one drifts from the gate it is supposed to be showing, and the
      screen would then be encouraging a take the save rejects.
 
-     It has one caller now, the practise tab, and that is the whole of where
-     a live curve belongs. Making a benchmark draws none: a benchmark is a
-     measurement and its picture is the take, drawn on the summary from the
-     track that was just stored (Alicja, 2026-09-04: "for a benchmark, its
-     enough to get a graph right after finishing it"). What a take shows
-     while it runs is the gate's own findings in words, which is the half of
-     this component that carried it under either reduced-motion path
-     anyway.
+     Two callers, one per reading. The practise tab watches pitch, which is
+     the whole of where a live curve of where-your-voice-is belongs. The
+     vowel step watches steadiness, because holding a note has exactly one
+     shape to hit and a figure is how somebody sees they are holding it.
+     Reading a passage has neither: pitch moves by design there, so that
+     step keeps this component's words and none of its marks (Alicja,
+     2026-09-04).
 
      Four conditions hold at once for three seconds of held breath, and the
      obvious build is four indicator dots going on and off. That version
@@ -23,7 +22,7 @@
      is one object instead, and each condition is the same measurement the
      gate makes, drawn as itself:
 
-       the trace   the pitch of the last two seconds, frame by frame,
+       the trace   the pitch of the last two seconds, frame by frame, now
                    against an absolute Hz axis with the reference bands
                    behind it (PitchFigure.svelte). A break in the line is a
                    frame that was not voiced.
@@ -69,11 +68,20 @@
   import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { DEFAULT_PITCH_AXIS, pitchAxis, type BandLanguage, type PitchAxis } from '$lib/audio/bands';
+  import {
+    DEFAULT_PITCH_AXIS,
+    pitchAxis,
+    semitonesFrom,
+    steadinessAxis,
+    steadinessTicks,
+    type BandLanguage,
+    type PitchAxis
+  } from '$lib/audio/bands';
+  import { median } from '$lib/audio/series';
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { hzLabel } from '$lib/components/pitchBandCopy';
+  import { hzLabel, semitoneLabel } from '$lib/components/pitchBandCopy';
 
   let {
     frames,
@@ -82,6 +90,7 @@
     label,
     advice,
     comfort = null,
+    reading = 'pitch',
     language,
     languageGuessed = false,
     role,
@@ -96,12 +105,33 @@
     advice: string[];
     /** The person's own comfort band, when they have set one. */
     comfort?: { lowHz: number; highHz: number } | null;
-    /** Whose figures the bands are (bands.ts's `bandsFor`). */
+    /** Which of the two questions this figure is answering.
+
+        `pitch` is where the voice is: absolute hertz, the passage
+        language's bands behind it, the comfort band, the caption. That is
+        what somebody reading a passage is watching, and Alicja's
+        instruction is that reading always gets the full graph.
+
+        `steadiness` is whether one note is being held: semitones either
+        side of the note itself, no bands, no citation. The vowel step's
+        task is keeping a pitch rather than reaching one, so a flat line is
+        the whole answer and an absolute scale is not what the eye is on
+        (Alicja, 2026-09-04). */
+    reading?: 'pitch' | 'steadiness';
+    /** Whose figures the bands are (bands.ts's `bandsFor`). Read only in
+        `pitch`; a steadiness figure cites nothing. */
     language: BandLanguage;
     languageGuessed?: boolean;
     role?: Role;
     [attribute: string]: unknown;
   } = $props();
+
+  /** The note a steadiness figure is centred on: the median of what is on
+      screen, which is the pitch actually being held. */
+  let heldHz = $derived.by(() => {
+    const voiced = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
+    return voiced.length === 0 ? null : median(voiced);
+  });
 
   /** The absolute axis, widened once and never narrowed again.
 
@@ -130,7 +160,8 @@
     if (frames.length === 0) widened = DEFAULT_PITCH_AXIS;
   });
 
-  let axis = $derived(widened);
+  let steadiness = $derived(reading === 'steadiness' ? steadinessAxis(heldHz) : null);
+  let axis = $derived(steadiness ?? widened);
 
   /** The room, as a share of the field's own height. Full at 0 dB, gone by
       24 dB: the gate's floor is 15, so a take that is about to fail shows
@@ -180,8 +211,11 @@
     trace={frames}
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
-    tickLabel={hzLabel}
-    {language}
+    ticks={steadiness && heldHz !== null ? steadinessTicks(heldHz) : undefined}
+    tickLabel={steadiness && heldHz !== null
+      ? (hz) => semitoneLabel(semitonesFrom(heldHz, hz))
+      : hzLabel}
+    language={steadiness ? null : language}
     {languageGuessed}
   >
     {#snippet underPlot()}

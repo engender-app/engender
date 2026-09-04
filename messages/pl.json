@@ -2722,6 +2722,7 @@
   "vb_vowel_skip": "Pomiń dźwięk",
   "vb_vowel_start": "Zacznij trzy sekundy",
   "vb_gauge_run": "Utrzymane: {seconds}s",
+  "vb_gauge_label_steady": "Jak równo trzymasz ten dźwięk, w półtonach",
   "vb_fail_clipping": "Dalej od mikrofonu.",
   "vb_fail_noise": "Gdzieś ciszej, jeśli jest gdzie.",
   "vb_fail_short": "Utrzymaj trochę dłużej.",

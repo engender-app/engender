@@ -50,13 +50,20 @@
      go (PRODUCT.md's "No judgment encoded anywhere", and ADR-0012 as
      ADR-0059 narrows it).
 
-     One form, and it always carries its scale. There was briefly a 44px
-     strip with no gutter and no bands for the action bar, and it drew a
-     pitch trace nothing could be read off - the relative gauge this ticket
-     exists to replace, in miniature (Alicja, 2026-09-04: "no way to tell
-     what it measures at all"). A figure either carries its scale or is not
-     drawn, and where a live figure did not earn its space the answer was to
-     take the figure away rather than to shrink it.
+     **Two axes, because the two steps ask different questions.** With a
+     language it draws absolute hertz with that language's bands behind it,
+     which is what somebody reading a passage is watching. With `language`
+     null it draws whatever axis the caller hands it and labels the ticks in
+     the caller's unit, and it draws no bands - which is what somebody
+     holding one note is watching, since the task there is keeping a pitch
+     rather than reaching one and a flat line is the whole answer.
+
+     Both carry their scale in the gutter. There was briefly a third form -
+     a 44px strip with no gutter and no bands on the action bar - and it
+     drew a pitch trace nothing could be read off, which is the relative
+     gauge this ticket exists to replace, in miniature (Alicja, 2026-09-04:
+     "no way to tell what it measures at all"). A figure either carries its
+     scale or is not drawn.
 
      Motion: tier 3. Data moves, the container does not, and only transform
      and opacity are animated - the two frame edges scale, so the app's
@@ -84,6 +91,7 @@
     medianHz = null,
     comfort = null,
     gate = null,
+    ticks,
     tickLabel,
     language,
     languageGuessed = false,
@@ -107,13 +115,25 @@
     /** What the recording conditions are doing, when something is being
         recorded. Null for a take that is already finished. */
     gate?: { roomFraction: number; roofWeight: number; clipping: boolean } | null;
-    /** How a tick is written, in the caller's locale. */
+    /** Which frequencies get a number in the gutter. Omitted with a
+        language, where the band edges are the only values on the axis that
+        mean anything and the figure knows them. */
+    ticks?: readonly number[];
+    /** How a tick is written, in the caller's locale and the caller's unit:
+        hertz where the axis is absolute, signed semitones where it is a
+        take's own note. */
     tickLabel: (hz: number) => string;
     /** Whose figures the bands are: the language of the passage being read,
         not the app's (bands.ts's `bandLanguageOf`). Pitch differs by
         language by more than it differs by gender within one, so a band
-        drawn for the wrong population is worse than no band. */
-    language: BandLanguage;
+        drawn for the wrong population is worse than no band.
+
+        Null draws no bands and, with them, no caption: a figure measuring a
+        take against its own note cites nothing, so there is nothing for a
+        source line to name. That is the only way to reach a bandless
+        figure, which is what keeps ADR-0059's "never without its citation"
+        rule from having a hole in it. */
+    language: BandLanguage | null;
     /** True where that language is a guess, which the caption says. */
     languageGuessed?: boolean;
     /** True when whoever embedded this figure is rendering one
@@ -147,11 +167,13 @@
   const y = (hz: number) => (1 - axisFraction(hz, axis)) * HEIGHT;
 
   let bands = $derived(
-    referenceBands(language).map((band) => ({
-      key: band.key,
-      top: y(band.highHz),
-      height: y(band.lowHz) - y(band.highHz)
-    }))
+    language === null
+      ? []
+      : referenceBands(language).map((band) => ({
+          key: band.key,
+          top: y(band.highHz),
+          height: y(band.lowHz) - y(band.highHz)
+        }))
   );
 
   let middle = $derived(bands.find((band) => band.key === 'between'));
@@ -170,7 +192,8 @@
       the axis apart, and at the 390px floor that is two numbers in the same
       eight pixels. */
   let edges = $derived.by(() => {
-    const hzs = bandEdges(language);
+    const hzs =
+      language === null ? [...(ticks ?? [])].sort((a, b) => b - a).reverse() : bandEdges(language);
     const exact = hzs.map((hz) => y(hz));
     const nudged = spreadLabels(exact, LABEL_GAP, HEIGHT);
     return hzs.map((hz, index) => ({ hz, y: nudged[index] }));
@@ -320,7 +343,7 @@
 
   {#if underPlot}{@render underPlot()}{/if}
 
-  {#if !captionShared}
+  {#if language !== null && !captionShared}
     <PitchBandsCaption {language} {languageGuessed} />
   {/if}
 </div>

@@ -2680,6 +2680,7 @@
   "vb_vowel_skip": "Skip the note",
   "vb_vowel_start": "Start the three seconds",
   "vb_gauge_run": "Held for {seconds}s",
+  "vb_gauge_label_steady": "How steady this note is, in semitones",
   "vb_fail_clipping": "Further from the microphone.",
   "vb_fail_noise": "Somewhere quieter, if there is one.",
   "vb_fail_short": "Hold it a little longer.",
