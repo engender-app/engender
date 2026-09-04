@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
+import dev.barankiewicz.genderdiary.clipboard.SensitiveClipboardPlugin;
 import dev.barankiewicz.genderdiary.disguise.DisguisePlugin;
 import dev.barankiewicz.genderdiary.keystore.KeystorePlugin;
 import dev.barankiewicz.genderdiary.keystore.PinBindingPlugin;
@@ -41,6 +42,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("QuickExit", QuickExitPlugin.class),
         new PluginEntry("DeviceReset", DeviceResetPlugin.class),
         new PluginEntry("Print", PrintPlugin.class),
+        new PluginEntry("SensitiveClipboard", SensitiveClipboardPlugin.class),
         // NAV-001/NAV-002: the official @capacitor/app plugin, registered
         // the same way as our own plugins so the Android back gesture
         // (src/lib/android/back-navigation.ts) has something real to call.

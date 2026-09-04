@@ -164,24 +164,69 @@ test('epochDay is used directly - no date arithmetic runs on it', async () => {
 });
 
 test('a photo becomes a dated entry carrying it, identified by the photo\'s own uuid', async () => {
-  const source = photo({ id: 'photo-uuid', epochDay: 20_050, fileName: 'body.jpg' });
+  const id = '33333333-3333-3333-3333-333333333333';
+  const source = photo({ id, epochDay: 20_050, fileName: 'body.jpg' });
   const bytes = jpeg('body');
   const preview = await transTracksPreview(backup({ photos: [source], photoFiles: { 'body.jpg': bytes } }), empty());
 
   assert.equal(preview.photoCount, 1);
   assert.equal(preview.journal.entries.length, 1);
   const [entry] = preview.journal.entries;
-  assert.equal(entry.uuid, 'photo-uuid');
+  assert.equal(entry.uuid, id);
   assert.equal(entry.epochDay, 20_050);
   assert.equal(entry.mood, null);
   assert.equal(entry.note, '');
   assert.equal(entry.photos.length, 1);
-  assert.equal(entry.photos[0].id, 'photo-uuid');
-  assert.equal(entry.photos[0].fileName, photoFileName('photo-uuid'));
+  assert.equal(entry.photos[0].id, id);
+  assert.equal(entry.photos[0].fileName, photoFileName(id));
   assert.equal(entry.photos[0].starred, false);
 
-  assert.deepEqual([...preview.rawPhotos.keys()], [photoFileName('photo-uuid')]);
-  assert.deepEqual(preview.rawPhotos.get(photoFileName('photo-uuid')), bytes);
+  assert.deepEqual([...preview.rawPhotos.keys()], [photoFileName(id)]);
+  assert.deepEqual(preview.rawPhotos.get(photoFileName(id)), bytes);
+});
+
+/* A hostile or corrupt file's own `photos[].id` must not become the stored
+   photo file's name or the row's travelling uuid unvalidated (ADR-0002) -
+   ticket 12. A real TransTracks uuid still passes straight through (the test
+   above); anything else is replaced by a uuid derived from that same string,
+   so the file cannot choose the identity but a repeated import of the same
+   file is still a no-op. */
+
+test('a photo id containing a separator imports rather than throwing during the file pass', async () => {
+  const source = photo({ id: 'a/../b', epochDay: 20_060, fileName: 'body.jpg' });
+  const bytes = jpeg('body');
+  const preview = await transTracksPreview(backup({ photos: [source], photoFiles: { 'body.jpg': bytes } }), empty());
+
+  assert.equal(preview.photoCount, 1);
+  const [entry] = preview.journal.entries;
+  assert.notEqual(entry.uuid, 'a/../b');
+  assert.match(entry.uuid, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  assert.equal(entry.photos[0].fileName, photoFileName(entry.uuid));
+  assert.deepEqual([...preview.rawPhotos.keys()], [photoFileName(entry.uuid)]);
+});
+
+test('a photo id that is not a uuid imports with a uuid derived from it, and the photo file is named from it', async () => {
+  const source = photo({ id: 'not-a-real-uuid', epochDay: 20_070, fileName: 'body.jpg' });
+  const bytes = jpeg('body');
+  const preview = await transTracksPreview(backup({ photos: [source], photoFiles: { 'body.jpg': bytes } }), empty());
+
+  const [entry] = preview.journal.entries;
+  assert.notEqual(entry.uuid, 'not-a-real-uuid');
+  assert.match(entry.uuid, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  assert.equal(entry.photos[0].id, entry.uuid);
+  assert.equal(entry.photos[0].fileName, photoFileName(entry.uuid));
+});
+
+test('importing the same file twice is still a no-op even when its photo id is not a uuid', async () => {
+  const source = photo({ id: 'not-a-real-uuid', epochDay: 20_070, fileName: 'body.jpg' });
+  const bytes = backup({ photos: [source], photoFiles: { 'body.jpg': jpeg('body') } });
+
+  const first = await transTracksPreview(bytes, empty());
+  const second = await transTracksPreview(bytes, first.journal);
+
+  assert.equal(first.photoCount, 1);
+  assert.equal(second.photoCount, 0);
+  assert.deepEqual(second.journal.entries, []);
 });
 
 test('a referenced photo file that is present but empty is also a structural error', async () => {
