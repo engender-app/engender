@@ -31,10 +31,10 @@ import {
   type HomeTilesInput,
   type LiveTileKind
 } from './liveTiles';
+import type { LetterSeal } from './journal/letters';
 import type {
   DoseSchedule,
   HairRemovalSession,
-  Letter,
   Revisit,
   Procedure,
   RegimenEpisode,
@@ -86,9 +86,9 @@ const procedure: Procedure = {
   notes: ''
 };
 
-const letters: Letter[] = [
-  { id: 'letter-1', epochDay: TODAY - 40, text: 'hello', unlockEpochDay: TODAY - 2 },
-  { id: 'letter-2', epochDay: TODAY - 30, text: 'again', unlockEpochDay: TODAY - 1 }
+const letters: LetterSeal[] = [
+  { id: 'letter-1', epochDay: TODAY - 40, unlockEpochDay: TODAY - 2 },
+  { id: 'letter-2', epochDay: TODAY - 30, unlockEpochDay: TODAY - 1 }
 ];
 
 const dueRevisits: Revisit[] = [
@@ -152,9 +152,9 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       schedules: [schedule],
       dosePauses: [],
       todayDoses: [],
-      voiceBenchmarks: [{ epochDay: TODAY - 20 }],
+      latestBenchmarkEpochDay: TODAY - 20,
       journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
-      hairRemovalSessions: [hairRemovalSession],
+      latestHairRemovalSession: hairRemovalSession,
       measurements: { count: 3, latestDay: TODAY - 40 }
     },
     actions: {

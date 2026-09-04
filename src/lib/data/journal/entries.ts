@@ -200,6 +200,13 @@ export interface EntriesArea {
       body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
+  /** The same entry's id alone, `undefined` when there is none. Its own read
+      rather than a field off the one above, because hydrating an entry costs
+      six more statements pulling dimension values, tag links, photos,
+      recordings, video notes and body regions - and a surface offering to
+      revisit a bad moment needs the id it would link to and nothing else
+      (phase 8 audit ticket 13). */
+  latestBadMomentEntryId(dysphoriaTagIds?: readonly string[]): Promise<number | undefined>;
   /** The day of the most recent untrashed entry at or before `todayEpochDay`,
       or null if there is none (phase 8 features ticket 03, lastWrite.ts). One
       bounded `MAX`, not a fetched list reduced in JS. A row dated after today
@@ -831,6 +838,39 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     }
   };
 
+  /* The newest bad moment, at whatever width the caller needs it: the two
+     reads below differ only in their SELECT list, and the rule for what
+     counts as a bad moment (ticket 50, ADR-0040) has no business being
+     written twice. */
+  const latestBadMomentRow = <Row extends Record<string, unknown> = EntryRow,>(
+    columns: string,
+    dysphoriaTagIds: readonly string[]
+  ): Promise<Row[]> => {
+    const placeholders = dysphoriaTagIds.map(() => '?').join(', ');
+    const tagClause =
+      dysphoriaTagIds.length > 0
+        ? `OR EXISTS (
+            SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
+            WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
+          )`
+        : '';
+    return driver.query<Row>(
+      `SELECT ${columns} FROM entry e
+       WHERE e.trashed_at IS NULL
+         AND (
+           (e.mood IS NOT NULL AND e.mood <= ?)
+           ${tagClause}
+           OR EXISTS (
+             SELECT 1 FROM entry_body_region ebr
+             WHERE ebr.entry_id = e.id AND ebr.dysphoria >= ?
+           )
+         )
+       ORDER BY e.id DESC
+       LIMIT 1`,
+      [BAD_MOMENT_MOOD_CEILING, ...dysphoriaTagIds, BAD_MOMENT_REGION_DYSPHORIA_FLOOR]
+    );
+  };
+
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
@@ -919,36 +959,18 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     },
 
     async latestBadMomentEntry(dysphoriaTagIds = DYSPHORIA_TAG_KEYS) {
-      const placeholders = dysphoriaTagIds.map(() => '?').join(', ');
-      const tagClause =
-        dysphoriaTagIds.length > 0
-          ? `OR EXISTS (
-              SELECT 1 FROM entry_tag et JOIN tag t ON t.id = et.tag_id
-              WHERE et.entry_id = e.id AND COALESCE(t.key, t.uuid) IN (${placeholders})
-            )`
-          : '';
-      const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
-         WHERE e.trashed_at IS NULL
-           AND (
-             (e.mood IS NOT NULL AND e.mood <= ?)
-             ${tagClause}
-             OR EXISTS (
-               SELECT 1 FROM entry_body_region ebr
-               WHERE ebr.entry_id = e.id AND ebr.dysphoria >= ?
-             )
-           )
-         ORDER BY e.id DESC
-         LIMIT 1`,
-        [
-          BAD_MOMENT_MOOD_CEILING,
-          ...dysphoriaTagIds,
-          BAD_MOMENT_REGION_DYSPHORIA_FLOOR
-        ]
+      const rows = await latestBadMomentRow(
+        'e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id',
+        dysphoriaTagIds
       );
       if (rows.length === 0) return undefined;
       const hydrated = await hydrate(rows);
       return hydrated[0];
+    },
+
+    async latestBadMomentEntryId(dysphoriaTagIds = DYSPHORIA_TAG_KEYS) {
+      const rows = await latestBadMomentRow<{ id: number }>('e.id', dysphoriaTagIds);
+      return rows[0]?.id;
     },
 
     async searchEntries(query, matchingTagIds, filtersOrLimit, limit) {

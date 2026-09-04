@@ -61,6 +61,14 @@ export interface HairRemovalArea {
   /** The day of the most recent session at or before `todayEpochDay`, or
       null if there is none (phase 8 features ticket 03, lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
+  /** The newest session at or before `todayEpochDay`, or null when there is
+      none - the whole row, since a surface saying a session just happened
+      names the area it was on. Bounded by today for the reason
+      `lastWriteEpochDay` is (lastWrite.ts): a row dated after today is a
+      clock-skewed import or a bad write, not the last thing that happened.
+      Ties on the newest day answer with the one written first, which is the
+      row `getSessions`' own ordering put first. */
+  latestSession(todayEpochDay: number): Promise<HairRemovalSession | null>;
   /** A session's photos, oldest first. */
   getPhotos(sessionId: string): Promise<HairRemovalPhoto[]>;
   /** Normalizes nothing itself - `photo` must already be through
@@ -160,6 +168,15 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
         [todayEpochDay]
       );
       return rows[0]?.day ?? null;
+    },
+
+    async latestSession(todayEpochDay) {
+      const rows = await driver.query<HairRemovalSessionRow>(
+        `SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session
+          WHERE epoch_day <= ? ORDER BY epoch_day DESC, id LIMIT 1`,
+        [todayEpochDay]
+      );
+      return rows.length ? toHairRemovalSession(rows[0]) : null;
     },
 
     async getPhotos(sessionId) {
