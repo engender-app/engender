@@ -30,6 +30,8 @@ import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
 import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
 import { readReturnGap, readWhatIsWaiting } from '../../src/lib/data/comingBackReads.ts';
+import { offeredWrappedPeriod } from '../../src/lib/data/wrapped.ts';
+import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
 import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import type { LongJournalSummary } from './generate.ts';
@@ -111,14 +113,20 @@ const LABS_ANALYTE = 'Estradiol';
 const MEASUREMENT_TYPE = 'waist';
 
 /** What Home's letter tile pages, its recent-days strip takes, and the
-    range its measurement nudge asks for - the literals `+page.svelte` and
-    `liveTiles.svelte.ts` pass today. `MEASUREMENTS_EVER` is not a bound so
-    much as the absence of one, and reading like that here is the point:
-    F1's finding is a screen asking for every measurement ever stored to
-    compute two numbers. */
+    upper end of the range its measurement nudge asks for - the literals
+    `+page.svelte` and `liveTiles.svelte.ts` pass today.
+    `MEASUREMENTS_RANGE_END` is a bound in name only, and reading like that
+    here is the point: the audit's first finding is a screen asking for
+    every measurement ever stored to compute two numbers. */
 const HOME_LETTER_PAGE = 100;
 const HOME_RECENT_DAYS = 5;
-const MEASUREMENTS_EVER = 999999;
+const MEASUREMENTS_RANGE_END = 999999;
+
+/** The metric Home's week strip and the stats cards are drawn on when
+    nobody has picked another, which is what a mount reads. Mood, the one
+    metric that is not a gender dimension. */
+const HOME_METRIC = 'mood';
+const STATS_METRIC = 'mood';
 
 /** The stats tab's default range, and the interval length its custom card
     starts on. Both are what the screen mounts with rather than what a
@@ -128,7 +136,7 @@ const CUSTOM_INTERVAL_DAYS = 28;
 
 /** The two interval cards' "the whole journal", which is the convention
     `stats.ts` already uses for it. */
-const EVER = Number.MIN_SAFE_INTEGER;
+const WHOLE_JOURNAL_FROM = Number.MIN_SAFE_INTEGER;
 
 /** The gap the return surface is measured over. A season, which is the
     length of absence the screen exists for - long enough that letters have
@@ -139,6 +147,21 @@ const RETURN_GAP_DAYS = 90;
     ride with it (pack.ts's default), because the KDF is part of what an
     export costs and a cheap one would flatter the number. */
 const EXPORT_PASSWORD = 'benchmark-export-password';
+
+/** Every read at once and still named, which is what a screen's mount is:
+    its live queries are created in order and their promises overlap. An
+    object rather than a positional `Promise.all` because a mount fires
+    twenty-five reads and a list of twenty-five names written twice - once
+    to await, once to hold - is a list that drifts. */
+async function together<Reads extends Record<string, Promise<unknown>>>(
+  reads: Reads
+): Promise<{ [Name in keyof Reads]: Awaited<Reads[Name]> }> {
+  const names = Object.keys(reads);
+  const values = await Promise.all(Object.values(reads));
+  return Object.fromEntries(names.map((name, i) => [name, values[i]])) as {
+    [Name in keyof Reads]: Awaited<Reads[Name]>;
+  };
+}
 
 const DAYLIO_HEADER = 'full_date,date,weekday,time,mood,activities,note_title,note';
 
@@ -197,14 +220,14 @@ export async function measureLongJournal(
     operation: () => Promise<{ result: unknown; detail: string }>
   ): Promise<void> {
     const startedAt = performance.now();
-    const { result, recording } = await recorder.record(operation);
+    const { result: measured, recording } = await recorder.record(operation);
     const ms = performance.now() - startedAt;
-    held.push(result.result);
+    held.push(measured.result);
     measurements.push({
       name,
       what,
       ms,
-      detail: result.detail,
+      detail: measured.detail,
       statements: recording.statements.length,
       bytes: recording.bytes
     });
@@ -698,74 +721,57 @@ export async function measureLongJournal(
      architecture is actually priced in. Milliseconds are here too and are
      the least of it: native SQLite answers almost all of this in single
      figures, while one Home mount moves most of a megabyte across a
-     boundary that serialises everything. On desktop that is a
-     same-process `postMessage`; on the Capacitor bridge it is 900KB of
-     JSON. So the budget these carry is a statement count and a byte count,
-     and the milliseconds are a footnote on the platform where they are
-     cheap.
+     boundary that serialises everything. On desktop that is a same-process
+     `postMessage`; on the Capacitor bridge it is that payload as JSON. So
+     the budget these carry is a statement count and a byte count, and the
+     milliseconds are a footnote on the platform where they are cheap.
 
-     Each mount fires the reads its screen fires on arrival, in the shape it
-     fires them - concurrently where the screen's live queries overlap,
-     serially where one of its queries loops. The read lists are restated
-     here rather than imported, for the reason `hub-last-writes` and every
-     stats measurement above restate theirs: a screen's reads live in
-     `$lib`'s rune modules and a `liveQuery` cannot be created outside a
-     component. What that costs is drift, and what limits the drift is that
-     a read added to one of these screens and not to its mount here shows up
-     as an unexplained gap between this budget and the device benchmark
-     rather than silently. A read *removed* from a screen leaves this
-     measuring something nobody asks for, which is the failure mode to watch
-     when one of the tickets below lands.
+     Each mount fires the reads its screen fires on arrival - the route's
+     own, its tile grid's, and those of every child component that mounts
+     unconditionally or behind a preference that ships on. Concurrently
+     where the screen's live queries overlap, serially where one of its
+     queries loops.
+
+     The read lists are restated here rather than imported, for the reason
+     `hub-last-writes` and every stats measurement above restate theirs: a
+     screen's reads live in `.svelte` and `.svelte.ts` files, and a
+     `liveQuery` is an effect that cannot be created outside a component.
+     What that costs is drift. A read added to a screen and not here shows
+     up as a gap between this budget and the device benchmark rather than as
+     a failure, and a read taken away leaves this measuring something nobody
+     asks for - which is the thing to check when one of the tickets below
+     lands.
 
      Seeded at today's numbers on purpose. Tickets 13, 14, 16 and 19 each
      state their acceptance as a reduction in one of these figures, so the
-     budget's job here is to be the ratchet they tighten - not a target
+     budget's job here is to be the ratchet they tighten, not a target
      anybody has agreed to yet. */
   const dimensionKeys = (await journal.dimensions.getDimensions()).map((dimension) => dimension.key);
 
-  await mount('mount-home', 'Home, every read its tiles and its own panels fire on arrival', async () => {
-    /* Sixteen live queries from `homeTiles()` plus four the route holds
-       itself. The felt-sense one is the shape it is on purpose: it re-reads
-       the tryout list and then asks one question per tryout that covers
-       today, serially, which is what makes it the only read here that grows
-       with a loop rather than with the table. */
-    /* One caveat for whoever tightens this number: the fixture holds voice
-       *recordings* but no voice *benchmarks*, so `getBenchmarks()` comes
-       back empty here. That read is the largest single row the data audit
-       measured on its own fixture - 520 benchmarks carrying pitch tracks,
-       524KB - and none of it is inside this baseline. A narrower benchmarks
-       read will therefore show as a small saving here and a large one on a
-       real journal. */
-    const [
-      runningWear,
-      episodes,
-      procedures,
-      letters,
-      dueRevisits,
-      latestBadEntry,
-      tryouts,
-      feltSense,
-      schedules,
-      dosePauses,
-      todayDoses,
-      benchmarks,
-      journalingPauses,
-      areaStates,
-      hairRemovalSessions,
-      measurementRows,
-      debriefState,
-      projections,
-      recent,
-      streak
-    ] = await Promise.all([
-      journal.wearSessions.getRunningSession(),
-      journal.regimen.getEpisodes(),
-      journal.procedures.getProcedures(),
-      journal.letters.getLetters(HOME_LETTER_PAGE),
-      journal.revisits.getDueRevisits(today),
-      journal.entries.latestBadMomentEntry(),
-      journal.tryouts.getTryouts(),
-      (async () => {
+  await mount('mount-home', 'Home, every read its tiles, panels and cards fire on arrival', async () => {
+    /* Sixteen live queries from `homeTiles()`, five the route holds itself,
+       and the three look-back surfaces under it: the wrapped card, the
+       on-this-day card and the week strip. The two cards are gated on
+       `wrappedEnabled` and `onThisDayEnabled`, which both ship on, so a
+       default install pays for them.
+
+       Two of these grow by a loop rather than by a table, and they are the
+       shape they are on purpose. The felt-sense read re-reads the tryout
+       list and then asks one question per tryout that covers today. The
+       on-this-day card asks whether each lookback day clears the good-day
+       bar, one statement per candidate. */
+    const wrappedPeriod = offeredWrappedPeriod(today);
+    const lookbackDays = onThisDayCandidates(today);
+
+    const reads = await together({
+      runningWear: journal.wearSessions.getRunningSession(),
+      episodes: journal.regimen.getEpisodes(),
+      procedures: journal.procedures.getProcedures(),
+      letters: journal.letters.getLetters(HOME_LETTER_PAGE),
+      dueRevisits: journal.revisits.getDueRevisits(today),
+      latestBadEntry: journal.entries.latestBadMomentEntry(),
+      tryouts: journal.tryouts.getTryouts(),
+      latestFeltSenseByTryout: (async () => {
         const rows = await journal.tryouts.getTryouts();
         const latest = new Map<string, number | null>();
         for (const tryout of rows) {
@@ -775,46 +781,40 @@ export async function measureLongJournal(
         }
         return latest;
       })(),
-      journal.doses.getSchedules(),
-      journal.doses.getPauses(),
-      journal.doses.getDoses(today, today),
-      journal.voiceBenchmarks.getBenchmarks(),
-      journal.journalingPauses.getPauses(),
-      journal.areaStates.getAreaStates(),
-      journal.hairRemoval.getSessions(),
-      journal.measurements.getMeasurementsInRange(0, MEASUREMENTS_EVER),
-      journal.checklists.getDebriefState(),
-      journal.stock.getProjections(today),
-      journal.entries.recentDays(HOME_RECENT_DAYS),
-      journal.stats.streak(today)
-    ]);
+      schedules: journal.doses.getSchedules(),
+      dosePauses: journal.doses.getPauses(),
+      todayDoses: journal.doses.getDoses(today, today),
+      benchmarks: journal.voiceBenchmarks.getBenchmarks(),
+      journalingPauses: journal.journalingPauses.getPauses(),
+      areaStates: journal.areaStates.getAreaStates(),
+      hairRemovalSessions: journal.hairRemoval.getSessions(),
+      measurements: journal.measurements.getMeasurementsInRange(0, MEASUREMENTS_RANGE_END),
+      entryCount: journal.entries.countAll(),
+      journalBounds: journal.eras.getJournalBounds(),
+      debriefState: journal.checklists.getDebriefState(),
+      projections: journal.stock.getProjections(today),
+      recent: journal.entries.recentDays(HOME_RECENT_DAYS),
+      // The wrapped card, which asks the mute layer before it asks for a
+      // recap, and the on-this-day card, which asks it before its loop.
+      eras: journal.eras.getEras(),
+      mutedEraUuids: journal.eraMutes.getMutedEraUuids(),
+      weekAverages: journal.stats.dayAverages(HOME_METRIC, today - 6, today)
+    });
+
+    /* Serial after the mute layer, the way both cards are: each reads
+       `eras` and the mute set, and only then decides whether to ask. The
+       wrapped card skips its recap entirely for a muted period. */
+    const muted = touchesMutedEra(reads.eras, reads.mutedEraUuids, wrappedPeriod.start, wrappedPeriod.end);
+    const wrappedRecap = muted ? null : await journal.stats.recap(wrappedPeriod.start, wrappedPeriod.end);
+    const goodDays = await Promise.all(lookbackDays.map((day) => journal.stats.isGoodDay(day.epochDay)));
 
     return {
-      result: [
-        runningWear,
-        episodes,
-        procedures,
-        letters,
-        dueRevisits,
-        latestBadEntry,
-        tryouts,
-        feltSense,
-        schedules,
-        dosePauses,
-        todayDoses,
-        benchmarks,
-        journalingPauses,
-        areaStates,
-        hairRemovalSessions,
-        measurementRows,
-        debriefState,
-        projections,
-        recent,
-        streak
-      ],
+      result: [reads, wrappedRecap, goodDays],
       detail:
-        `${benchmarks.length} voice benchmarks, ${measurementRows.length} measurements, ${letters.length} letters, ` +
-        `${feltSense.size} tryouts asked one at a time, ${projections.length} stock projections, streak ${streak}`
+        `${reads.benchmarks.length} voice benchmarks, ${reads.measurements.length} measurements, ` +
+        `${reads.letters.length} letters, ${reads.latestFeltSenseByTryout.size} tryouts asked one at a time, ` +
+        `${reads.projections.length} stock projections, ${lookbackDays.length} lookback days asked one at a time, ` +
+        `${reads.entryCount} entries counted, wrapped recap ${wrappedRecap ? 'read' : 'skipped as muted'}`
     };
   });
 
@@ -825,64 +825,35 @@ export async function measureLongJournal(
        rarely recurs three times inside even the 90-day preset - and that is
        most of what this mount weighs. */
     const from = today - STATS_DEFAULT_RANGE + 1;
-    const [x, y] = dimensionKeys;
-    const [
-      streak,
-      pauses,
-      annotations,
-      series,
-      insights,
-      spreads,
-      correlationCards,
-      intervalMood,
-      customInterval,
-      recap,
-      tagShare,
-      lastWrites,
-      areaStates,
-      constellation
-    ] = await Promise.all([
-      journal.stats.streak(today),
-      journal.journalingPauses.getPauses(),
-      journal.chartAnnotations.getAnnotations(from, today, today),
-      Promise.all(CHARTED_METRICS.map((key) => journal.stats.dayAverages(key, from, today))),
-      journal.stats.tagInsights('mood', from, today),
-      journal.stats.daySpread('mood', from, today),
-      journal.correlationCards.getCards(from, today),
-      journal.intervalMoodPattern.dayOfInterval(EVER, today),
-      journal.intervalMoodPattern.byCustomInterval(EVER, today, CUSTOM_INTERVAL_DAYS),
-      journal.stats.recap(from, today),
-      journal.stats.tagShare(from, today),
-      journal.lastWrite.getLastWrites(today),
-      journal.areaStates.getAreaStates(),
-      /* Measured whether or not the fixture has a presentation to gate the
-         card on: a budget for a screen is worth having at its widest
-         mount, and the card's reveal is the one animation the screen
-         exists for (ticket 19). */
-      journal.stats.constellationReadings(x, y, from, today)
-    ]);
+    const [xKey, yKey] = dimensionKeys;
+
+    const reads = await together({
+      annotations: journal.chartAnnotations.getAnnotations(from, today, today),
+      series: Promise.all(CHARTED_METRICS.map((key) => journal.stats.dayAverages(key, from, today))),
+      insights: journal.stats.tagInsights(STATS_METRIC, from, today),
+      spreads: journal.stats.daySpread(STATS_METRIC, from, today),
+      correlationCards: journal.correlationCards.getCards(from, today),
+      intervalMood: journal.intervalMoodPattern.dayOfInterval(WHOLE_JOURNAL_FROM, today),
+      customInterval: journal.intervalMoodPattern.byCustomInterval(WHOLE_JOURNAL_FROM, today, CUSTOM_INTERVAL_DAYS),
+      recap: journal.stats.recap(from, today),
+      tagShare: journal.stats.tagShare(from, today),
+      lastWrites: journal.lastWrite.getLastWrites(today),
+      areaStates: journal.areaStates.getAreaStates(),
+      /* Measured whether or not the fixture holds a presentation to gate
+         the card on, and over the first two dimensions the journal has
+         rather than the first two the vocabulary store calls active - which
+         are the same two on a fixture that hides none. A budget for a
+         screen is worth having at its widest mount, and this card's reveal
+         is the one animation the screen exists for (ticket 19). */
+      constellation: journal.stats.constellationReadings(xKey, yKey, from, today)
+    });
 
     return {
-      result: [
-        streak,
-        pauses,
-        annotations,
-        series,
-        insights,
-        spreads,
-        correlationCards,
-        intervalMood,
-        customInterval,
-        recap,
-        tagShare,
-        lastWrites,
-        areaStates,
-        constellation
-      ],
+      result: reads,
       detail:
-        `${STATS_DEFAULT_RANGE} days for ${CHARTED_METRICS.length} metrics, ${insights.length} tag insights, ` +
-        `${intervalMood.length + customInterval.length} interval buckets over the whole journal, ` +
-        `${constellation.length} constellation readings, ${recap.entryCount} entries in range`
+        `${STATS_DEFAULT_RANGE} days for ${CHARTED_METRICS.length} metrics, ${reads.insights.length} tag insights, ` +
+        `${reads.intervalMood.length + reads.customInterval.length} interval buckets over the whole journal, ` +
+        `${reads.constellation.length} constellation readings, ${reads.recap.entryCount} entries in range`
     };
   });
 
@@ -892,29 +863,32 @@ export async function measureLongJournal(
        plus the regimen episode list ADR-0043's cycle gate reads. Both are
        worth having: one says which read is slow, this says what the screen
        costs. */
-    const [episodes, lastWrites, states] = await Promise.all([
-      journal.regimen.getEpisodes(),
-      journal.lastWrite.getLastWrites(today),
-      journal.areaStates.getAreaStates()
-    ]);
+    const reads = await together({
+      episodes: journal.regimen.getEpisodes(),
+      lastWrites: journal.lastWrite.getLastWrites(today),
+      states: journal.areaStates.getAreaStates()
+    });
 
     return {
-      result: [episodes, lastWrites, states],
-      detail: `${Object.keys(lastWrites).length} areas asked, ${episodes.length} regimen episodes, ${Object.keys(states).length} area rows`
+      result: reads,
+      detail:
+        `${Object.keys(reads.lastWrites).length} areas asked, ${reads.episodes.length} regimen episodes, ` +
+        `${Object.keys(reads.states).length} area rows`
     };
   });
 
   await mount('mount-coming-back', 'the return surface, the gap and everything waiting in it', async () => {
     /* Two calls, and the screen makes them in this order for a reason of
-       its own: the gap is decided once and held, because backfilling a
-       dose writes a row inside the gap and a screen that re-derived it
-       would decide mid-visit that this was not a return after all.
+       its own: the gap is decided once and held, because backfilling a dose
+       writes a row inside the gap and a screen that re-derived it would
+       decide mid-visit that this was not a return after all.
 
        The fixture journals nearly every day, so it has no real gap and
        `readReturnGap` answers null - which is the cheap path almost every
        boot takes and is worth counting on its own. What is waiting is then
-       asked about a gap chosen here: a season away, which is the case the
-       screen was built for. */
+       asked about a gap chosen here rather than found, so this one figure
+       is a screen's cost on a fixture that cannot produce the screen: a
+       season away, which is the absence it was built for. */
     const gap = await readReturnGap(journal, today);
     const since = today - RETURN_GAP_DAYS;
     const waiting = await readWhatIsWaiting(journal, today, since);

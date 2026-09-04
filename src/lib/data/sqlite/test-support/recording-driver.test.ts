@@ -200,7 +200,7 @@ test('every table the app\'s own SQL names is a real table', async () => {
       mood: 4,
       note: 'a note to tokenise',
       dims: {},
-      tagIds: []
+      tags: []
     });
     await journal.entries.recentDays(5);
     await journal.stats.recap(0, 200);
