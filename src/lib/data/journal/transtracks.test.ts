@@ -54,11 +54,19 @@ async function setup() {
 test('preview counts equal the merge, and importing the same TransTracks backup twice is a no-op', async () => {
   const { journal, fileStore } = await setup();
   const existingMilestoneId = await journal.milestones.upsertMilestone({ name: 'already here', epochDay: 19_000 });
+  const milestoneId = '11111111-1111-1111-1111-111111111111';
+  const photoId = '22222222-2222-2222-2222-222222222222';
   const bytes = backup({
     milestones: [
-      { id: 'm-1', epochDay: 20_000, timestamp: 1_700_000_000_000, title: 'Started HRT', description: 'Hands shaking' }
+      {
+        id: milestoneId,
+        epochDay: 20_000,
+        timestamp: 1_700_000_000_000,
+        title: 'Started HRT',
+        description: 'Hands shaking'
+      }
     ],
-    photos: [{ id: 'p-1', epochDay: 20_010, timestamp: 1_700_100_000_000, fileName: 'face.jpg', type: 0 }],
+    photos: [{ id: photoId, epochDay: 20_010, timestamp: 1_700_100_000_000, fileName: 'face.jpg', type: 0 }],
     photoFiles: { 'face.jpg': strToU8('the photo bytes') }
   });
 
@@ -74,9 +82,9 @@ test('preview counts equal the merge, and importing the same TransTracks backup 
   assert.ok(milestones.some((m) => m.id === existingMilestoneId && m.name === 'already here'));
   const imported = milestones.find((m) => m.name === 'Started HRT')!;
   assert.equal(imported.description, 'Hands shaking');
-  assert.equal(imported.id, 'm-1');
+  assert.equal(imported.id, milestoneId);
 
-  const fileName = photoFileName('p-1');
+  const fileName = photoFileName(photoId);
   assert.deepEqual(new TextDecoder().decode((await fileStore.read(fileName))!), 'the photo bytes');
   assert.deepEqual(new TextDecoder().decode((await fileStore.read(thumbFileName(fileName)))!), 'thumb:the photo bytes');
 
