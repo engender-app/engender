@@ -2560,6 +2560,34 @@ try {
     throw new Error('the compare tab still shows the practise tab\'s comfort row');
   }
 
+  /* The metric reference (phase 8 features ticket 27). Reached from a
+     figure in the app, and there is no figure to press here: a benchmark
+     needs a microphone this browser does not have, so the link itself is
+     asserted in the browser tier against a mounted list
+     (tests/browser-tier/voice-metrics-probe.ts). What only a built app can
+     say is that the route boots at all - `/doses` sticks at "booting" in a
+     production build while every test in the node tier passes - so this
+     walks to it by URL and reads what it drew. */
+  await page.goto(BASE + '/settings/voice/metrics', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-metric="pitch"]');
+  const explained = await page.locator('[data-metric]').count();
+  if (explained !== 6) {
+    throw new Error(`the metric reference explains ${explained} figures, not six`);
+  }
+  const fields = await page.locator('[data-metric="room"] [data-metric-field]').count();
+  if (fields !== 7) {
+    throw new Error(`an own-series figure carries ${fields} fields, not seven`);
+  }
+  if ((await page.locator('[data-metric="pitch"] [data-metric-bands]').count()) !== 2) {
+    throw new Error('the pitch section does not state a published range per passage language');
+  }
+  if ((await page.locator('[data-metric="spread"] [data-metric-bands]').count()) !== 0) {
+    throw new Error('an own-series figure draws a band (ADR-0060)');
+  }
+  if ((await page.locator('[data-metrics-reviewed]').count()) === 0) {
+    throw new Error('the metric table shows no reviewed-on date');
+  }
+
   // Roadmap and effects carry no empty-state Notice of their own (their
   // toggles and tracks always render) - checked instead for a signal that
   // only exists once something is ticked or marked.
