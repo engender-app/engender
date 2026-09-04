@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 63);
+  assert.equal(db.getUserVersion(), 64);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1014,6 +1014,48 @@ test('v58 adds the pitch track column, and a benchmark from before it has none',
       }
     ).pitch_track,
     '180.4,,176.2'
+  );
+});
+
+test('v64 adds the capture chain column, and a benchmark from before it has none', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 63)
+  );
+
+  /* A benchmark recorded before the column existed. Nothing about the
+     equipment was kept then and none of it can be reconstructed, so the
+     chain reads null forever and the device-sensitive figures decline to
+     compare this take rather than assuming it shares a phone with the next
+     one (ticket 28, ADR-0061). */
+  db.raw.exec(`INSERT INTO voice_benchmark
+    (uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
+     f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute,
+     f1_hz, f2_hz, snr_db, note, pitch_track, updated_at)
+    VALUES ('vb-chainless', 20000, 1000, 'builtin', 'a.webm', NULL,
+     180, 168, 205, 2.4, 140, 700, 1260, 24.5, NULL, '180.4,,176.2', 1000)`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw
+    .prepare("SELECT capture_chain, f1_hz FROM voice_benchmark WHERE uuid = 'vb-chainless'")
+    .get() as { capture_chain: string | null; f1_hz: number };
+  assert.equal(row.capture_chain, null);
+  // The figures the old row did keep are untouched by the upgrade.
+  assert.equal(row.f1_hz, 700);
+
+  const chain = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
+  db.raw.exec(`UPDATE voice_benchmark SET capture_chain = '${chain}' WHERE uuid = 'vb-chainless'`);
+  assert.equal(
+    (
+      db.raw.prepare("SELECT capture_chain FROM voice_benchmark WHERE uuid = 'vb-chainless'").get() as {
+        capture_chain: string;
+      }
+    ).capture_chain,
+    chain
   );
 });
 

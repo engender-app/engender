@@ -69,6 +69,12 @@ export interface VoiceBenchmark {
       taken before schema v58, which kept only the figures - a screen with
       one of those in hand draws no take rather than an empty chart. */
   pitchTrack: string | null;
+  /** What recorded it: the phone, and whether the unprocessed capture the
+      flow asked for was granted (audio/captureChain.ts, ADR-0061). Null on
+      a benchmark taken before schema v64, which recorded nothing about the
+      equipment - the device-sensitive figures then decline to compare it
+      rather than assuming it matches. */
+  captureChain: string | null;
 }
 
 /** A practice take: how a session went with nothing to compare it against
