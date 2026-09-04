@@ -95,9 +95,10 @@ test('the tryouts constraint is what keeps felt-sense rows from being dropped', 
   const tryouts = ARCHIVE_SECTIONS.find((s) => s.name === 'tryouts')!;
   const milestones = ARCHIVE_SECTIONS.find((s) => s.name === 'milestones')!;
   const feltSense = ARCHIVE_SECTIONS.find((s) => s.name === 'feltSenseEntries')!;
+  const procedures = ARCHIVE_SECTIONS.find((s) => s.name === 'procedures')!;
 
-  const survives = await applied([feltSense, tryouts, milestones], journal);
-  const lost = await applied([{ ...feltSense, after: [] }, tryouts, milestones], journal);
+  const survives = await applied([feltSense, tryouts, milestones, procedures], journal);
+  const lost = await applied([{ ...feltSense, after: [] }, tryouts, milestones, procedures], journal);
 
   assert.equal(survives, 1, 'the declared constraint moved the felt-sense rows after their tryouts');
   assert.equal(lost, 0, 'without it they are applied first and dropped for want of a tryout');
