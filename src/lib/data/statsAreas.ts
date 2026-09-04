@@ -189,7 +189,7 @@ const PANELS = [
     hides: 'milestones',
     finishes: null,
     href: '/settings/milestones',
-    icon: 'flag'
+    icon: 'sparkle'
   }),
   panel({
     key: 'tryouts',
@@ -211,7 +211,7 @@ const PANELS = [
     hides: 'voiceBenchmarks',
     finishes: 'voice',
     href: '/settings/voice',
-    icon: 'mic'
+    icon: 'curve'
   }),
   panel({
     key: 'wear',
@@ -228,8 +228,8 @@ const PANELS = [
     covers: ['personalEffects'],
     hides: 'personalEffects',
     finishes: 'effects',
-    href: '/settings/effects',
-    icon: 'sparkle'
+    href: '/settings/personal-effects',
+    icon: 'eye'
   }),
   panel({
     key: 'tally',

@@ -102,23 +102,36 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
   return found.sort((a, b) => a.epochDay - b.epochDay);
 }
 
-/** The most recent write anywhere in a group, or null where nothing has ever
-    been written in any of it (`journal/lastWrite.ts`).
+/** The most recent write across some set of areas, or null where nothing has
+    ever been written in any of them (`journal/lastWrite.ts`).
 
     The latest rather than the earliest, and a section with nothing in it is
-    passed over rather than answering null for the whole group: somebody can
-    log hair stages for two years and never take a photograph, and an empty
-    half is not a quiet half. */
-export function groupLastWrite(
-  key: AreaGroupKey,
-  lastWrites: Partial<Record<FinishableArea, number | null>>
+    passed over rather than answering null for the whole set: somebody can log
+    hair stages for two years and never take a photograph, and an empty half
+    is not a quiet half.
+
+    Generic over the key rather than pinned to `FinishableArea`, because the
+    other caller is the More hub, which asks the same question about rows that
+    front sections no finishable group covers (`hubRows.ts`). One shape, two
+    callers, rather than the same loop and the same reasoning written twice. */
+export function latestWrite<Key extends string>(
+  areas: readonly Key[],
+  lastWrites: Partial<Record<Key, number | null>>
 ): number | null {
   let latest: number | null = null;
-  for (const area of AREA_GROUPS[key]) {
+  for (const area of areas) {
     const day = lastWrites[area] ?? null;
     if (day !== null && (latest === null || day > latest)) latest = day;
   }
   return latest;
+}
+
+/** The most recent write anywhere in a group. */
+export function groupLastWrite(
+  key: AreaGroupKey,
+  lastWrites: Partial<Record<FinishableArea, number | null>>
+): number | null {
+  return latestWrite(AREA_GROUPS[key], lastWrites);
 }
 
 /** How long an area has to go unwritten before the app asks about it once.
