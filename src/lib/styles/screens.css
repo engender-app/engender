@@ -874,19 +874,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* What a chart says it is leaving out, or declines to conclude. Not the
-   explanatory paragraph DIRECTION.md's chart rules refuse - that one tells
-   you what a reading means, and these two say that a hidden tag was hidden
-   and that folding a history by an interval does not make the interval
-   real. Under the card rather than inside it, because ChartCard has
-   deliberately nowhere to put a paragraph. */
-.stats-note {
-  margin: var(--space-2) var(--space-1) 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-body);
-  color: var(--text-2);
-}
-
 /* The one text action on the screen: every reading in the range, as
    numbers. Right-aligned under the chart it belongs to, at the touch floor. */
 .stats-open {
@@ -906,10 +893,11 @@
   cursor: pointer;
 }
 
-/* .stats-note used to be named here too, and never won - kit.css is imported
-   after this file and matched it at the same specificity. The note case now
-   lives in kit.css beside the rule it is an exception to; what is left here
-   is the button, which is a control that wants the tighter gap anyway. */
+/* `.stats-note` used to be named here too, and never won - kit.css is imported
+   after this file and matched it at the same specificity. Its three consumers
+   have since moved inside the cards they qualify (phase 8 UX ticket 03), so
+   the class is gone from both files and what is left here is the button,
+   which is a control that wants the tighter gap anyway. */
 .stats-open + :is(.kit-chart, .kit-list) {
   margin-top: var(--space-4);
 }
