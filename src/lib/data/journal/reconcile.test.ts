@@ -75,6 +75,41 @@ test('restores a missing built-in affirmation without touching a custom one', as
   assert.ok(affirmations.some((a) => a.text === 'You are doing great.'), 'custom line survived');
 });
 
+test('the appointment debrief seeds hidden, and an ordinary template seeds visible (ticket 25)', async () => {
+  const db = await migratedDb();
+  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
+
+  const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
+    hidden: number;
+  };
+  assert.equal(debrief.hidden, 1, 'appointment_debrief seeds hidden');
+
+  const ordinary = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
+    hidden: number;
+  };
+  assert.equal(ordinary.hidden, 0, 'euphoria_day seeds visible');
+});
+
+test('a reconcile over an existing journal leaves a person-set entry template hidden flag alone (ticket 25)', async () => {
+  const db = await migratedDb();
+  const journal = openJournal(db, fakeFileStore());
+  await journal.reconcileBuiltIns();
+
+  db.raw.exec("UPDATE entry_template SET hidden = 0 WHERE key = 'appointment_debrief'");
+  db.raw.exec("DELETE FROM entry_template WHERE key = 'euphoria_day'");
+  await journal.reconcileBuiltIns();
+
+  const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
+    hidden: number;
+  };
+  assert.equal(debrief.hidden, 0, 'a debrief the person showed stays shown');
+
+  const restored = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
+    hidden: number;
+  };
+  assert.equal(restored.hidden, 0, 'a restored built-in gets its own seed default');
+});
+
 // The physical schema tables reconcileBuiltIns inserts into, mapped to the
 // logical TableName writes.ts announces (ticket 28's drift guard): a new
 // built-in table added to reconcile.ts without an entry here, or without a
