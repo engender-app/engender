@@ -23,10 +23,12 @@ import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import {
   attachJournal,
   journalIsOpen,
+  liveList,
   liveQuery,
   liveQueryWatchingOnly,
   type LiveQuery
 } from '../../src/lib/data/live/journal.svelte.ts';
+import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
 const publish = (value: unknown) => {
@@ -89,6 +91,8 @@ async function run() {
   let projectionQuery: LiveQuery<number>;
   let recapRuns = 0;
   let recapQuery: LiveQuery<number>;
+  let feltSenseRuns = 0;
+  let feltSenseQuery!: LiveQuery<Map<string, number>>;
 
   $effect.root(() => {
     // settings/stock's own read, counting its runs: what the screen shows is
@@ -107,15 +111,53 @@ async function run() {
       recapRuns += 1;
       return recap.entryCount;
     });
+
+    /* Home's felt-sense read (phase 8 audit ticket 13): one batched question
+       fed the ids a `liveList` beside it already answered with, rather than a
+       second `getTryouts` and then one query per tryout. Its dependency on
+       that list is a synchronous read of `rows` before the first await, which
+       is a Svelte dependency and not a table version - so this is the check
+       that the two kinds of dependency reach the same effect. */
+    const tryouts = liveList((j) => j.tryouts.getTryouts());
+    feltSenseQuery = liveQuery((j) => {
+      const ids = tryouts.rows.filter((t) => spanCoversDay(t, TODAY)).map((t) => t.id);
+      feltSenseRuns += 1;
+      return j.feltSense.latestDaysForTryouts(ids);
+    });
   });
 
   journalIsOpen();
 
   await until(() => projectionRuns > 0, 'the stock projection query to answer');
   await until(() => recapRuns > 0, 'the narrowed recap query to answer');
+  await until(() => feltSenseQuery.value !== undefined, "Home's felt-sense query to answer");
 
   const projectionRunsBefore = projectionRuns;
   const recapRunsBefore = recapRuns;
+  const feltSenseRunsBefore = feltSenseRuns;
+
+  /* An active tryout with one felt-sense entry: neither of these two writes
+     is visible to a query that asked its ids once. The first changes the
+     list this query reads through; the second changes the answer. */
+  const tryoutId = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: TODAY - 10,
+    endEpochDay: null
+  });
+  const feltSenseError = await reasonIfNotReached(
+    until(
+      () => (feltSenseQuery.value?.size ?? 0) === 0 && feltSenseRuns > feltSenseRunsBefore,
+      "Home's felt-sense query to be re-read after a tryout was added"
+    )
+  );
+  await journal.feltSense.add({ tryoutId }, { epochDay: TODAY - 4, mood: 3 });
+  const feltSenseWriteError = await reasonIfNotReached(
+    until(
+      () => feltSenseQuery.value?.get(tryoutId) === TODAY - 4,
+      "Home's felt-sense query to answer with the day just written"
+    )
+  );
 
   // The defect: the stock screen declared ['stock', 'dose'] for a projection
   // that reads the regimen episode history too.
@@ -155,6 +197,13 @@ async function run() {
       afterMilestone: recapRunsAfterMilestone,
       afterEntry: recapRuns,
       error: recapError
+    },
+    feltSense: {
+      runsBefore: feltSenseRunsBefore,
+      runsAfterTryout: feltSenseRuns,
+      latestDay: feltSenseQuery.value?.get(tryoutId) ?? null,
+      expectedDay: TODAY - 4,
+      error: feltSenseError ?? feltSenseWriteError
     }
   });
 }
