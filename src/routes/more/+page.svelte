@@ -55,14 +55,21 @@
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
 
-  let sections = $derived(
-    hubSections({
-      todayEpochDay: today,
-      lastWrites: lastWritesQuery.value ?? {},
-      states: statesQuery.value ?? {},
-      cycleShown
-    })
+  /* Both reads or neither, which is a correctness rule and not only a tidier
+     transition. Rendering whichever landed first would put a finished row in
+     its old group with a reading under it, and then move it into the finished
+     set once the area record arrived - a wrong state on screen, not a partial
+     one. Held together, the hub goes from titles to titles-and-lines once.
+
+     Until then the written rows already say their line, because a line about
+     what is behind a row needs no read at all. */
+  let read = $derived(
+    lastWritesQuery.value !== undefined && statesQuery.value !== undefined
+      ? { lastWrites: lastWritesQuery.value, states: statesQuery.value }
+      : { lastWrites: {}, states: {} }
   );
+
+  let sections = $derived(hubSections({ todayEpochDay: today, ...read, cycleShown }));
 
   /* The group's own place in the list rather than its place among whatever
      rendered, so Body keeps one stripe whether or not a finished group sits
