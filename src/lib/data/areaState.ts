@@ -166,6 +166,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   comfortItems: 'a standing list with no dates in it at all',
   importLog: 'this device’s bookkeeping about where an import came from',
   areaStates: 'the record of which areas are finished, which cannot itself be one of them',
+  savedQuestions: 'a saved shortcut into search, not a practice that runs and can stop',
   dimensions: 'reference data, not a series (CONTEXT: "Reference data")',
   presets: 'reference data, not a series (CONTEXT: "Reference data")',
   tagGroups: 'reference data, not a series (CONTEXT: "Reference data")',

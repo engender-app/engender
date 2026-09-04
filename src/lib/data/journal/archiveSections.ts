@@ -392,6 +392,27 @@ const SECTIONS = [
     orderBy: 'start_epoch_day, id',
     columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
   }),
+  flat({
+    name: 'savedQuestions',
+    // A saved search is a tool the person built for themselves, not a
+    // record of something that happened to them - the same judgement
+    // journalingPauses and cycleEvents above already made.
+    travels: 'none',
+    table: 'saved_question',
+    identity: 'uuid',
+    orderBy: 'updated_at DESC, id',
+    columns: {
+      uuid: 'id',
+      name: 'name',
+      query_text: 'queryText',
+      tag_ids: 'tagIds',
+      moods: 'moods',
+      start_epoch_day: 'startEpochDay',
+      end_epoch_day: 'endEpochDay',
+      has_note: { field: 'hasNote', bool: true },
+      has_photo: { field: 'hasPhoto', bool: true }
+    }
+  }),
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
      no children, no built-ins - nothing ships seeded, so every row is the
      person's own and `uuid` alone tells two devices' rows apart. No `after`:

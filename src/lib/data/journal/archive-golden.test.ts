@@ -60,6 +60,7 @@ const SECTIONS = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
+  'savedQuestions',
   'eras',
   'eraMutes',
   'effectCategories',

@@ -276,7 +276,8 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   importLog: 'device bookkeeping, dated by when the import ran, not a diary record',
   // The record of which areas are hidden or finished; asking it for its own
   // last write answers nothing a consumer of this registry could use.
-  areaStates: 'the record of which areas are finished, not itself a stream to ask about'
+  areaStates: 'the record of which areas are finished, not itself a stream to ask about',
+  savedQuestions: 'a tool the person built for themselves, not a record of something that happened'
 };
 
 export const LAST_WRITE_ENTRIES: readonly LastWriteEntry[] = ENTRIES;

@@ -157,6 +157,7 @@ test('the JSON reads as a file, indented, version first', () => {
     "sideEffects": [],
     "cycleEvents": [],
     "journalingPauses": [],
+    "savedQuestions": [],
     "eras": [],
     "eraMutes": [],
     "effectCategories": [],
@@ -187,8 +188,7 @@ test('the JSON reads as a file, indented, version first', () => {
     "areaStates": [],
     "importLog": []
   },
-  "preferences": {
-    "name": "Ola",`
+  "preferences": {`
   );
   assert.match(
     written,

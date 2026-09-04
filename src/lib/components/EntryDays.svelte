@@ -24,7 +24,18 @@
   import DayCard from './kit/DayCard.svelte';
   import DayEntry from './kit/DayEntry.svelte';
 
-  let { groups, role }: { groups: EntryDayGroup[]; role?: Role } = $props();
+  let {
+    groups,
+    role,
+    clampNotes = true
+  }: {
+    groups: EntryDayGroup[];
+    role?: Role;
+    /** Off for a saved question's run (phase 8 features ticket 06): the
+        whole point of a run over a hit list is enough of each entry to
+        read rather than to scan. */
+    clampNotes?: boolean;
+  } = $props();
 </script>
 
 <div class="entry-days">
@@ -45,6 +56,7 @@
           tags={entryTags(entry)}
           marks={entryMarks(entry)}
           {presentation}
+          clampNote={clampNotes}
         />
       {/each}
     </DayCard>
