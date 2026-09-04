@@ -35,7 +35,8 @@ export type AreaGroupKey =
   | 'hair-removal'
   | 'side-effects'
   | 'effects'
-  | 'voice';
+  | 'voice'
+  | 'dilation';
 
 /** Which areas each group finishes, together.
 
@@ -54,7 +55,8 @@ export const AREA_GROUPS = {
   'hair-removal': ['hairRemovalSessions'],
   'side-effects': ['sideEffects'],
   effects: ['personalEffects'],
-  voice: ['voiceBenchmarks', 'voicePracticeTakes']
+  voice: ['voiceBenchmarks', 'voicePracticeTakes'],
+  dilation: ['taperSessions']
 } as const satisfies Record<AreaGroupKey, readonly FinishableArea[]>;
 
 /* A finishable area with no group would be one nothing on screen could ever

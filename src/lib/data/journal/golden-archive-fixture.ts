@@ -190,6 +190,16 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.measurements.setMeasurementTypeHidden('underbust', true);
   await journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20000, value: 41, unit: 'cm' });
   await journal.sizeRecords.upsertRecord({ epochDay: 20000, category: 'pants', size: '32', brand: 'Levi\'s', fitNote: 'true to size' });
+  await journal.taper.upsertTaper({
+    surgeryEpochDay: 19950,
+    startEpochDay: 19955,
+    stages: [
+      { everyNDays: 1, days: 14 },
+      { everyNDays: 3, days: 30 }
+    ]
+  });
+  await journal.taper.upsertSession({ epochDay: 19955, note: 'first one, went fine' });
+  await journal.taper.upsertSession({ epochDay: 19956, note: '' });
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });

@@ -51,6 +51,8 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   measurementTypes: (r) => r.key,
   measurements: (r) => r.id,
   sizeRecords: (r) => r.id,
+  taper: (r) => r.id,
+  taperSessions: (r) => r.id,
   sideEffects: (r) => r.id,
   cycleEvents: (r) => r.id,
   journalingPauses: (r) => r.id,

@@ -22,7 +22,8 @@ const GROUP_NAME: Record<AreaGroupKey, () => string> = {
   'hair-removal': m.hair_removal,
   'side-effects': m.side_effects,
   effects: m.effects_timeline,
-  voice: m.vb_title
+  voice: m.vb_title,
+  dilation: m.dilation
 };
 
 /** What a group is called.
