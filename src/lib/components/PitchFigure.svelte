@@ -26,16 +26,21 @@
      separates the two kinds of claim before any of the captions are read:
      a citation is a region, a decision is line work.
 
-     **The overlap is hatched, not emphasized.** Where the two ranges
-     coincide is its own band (the ticket, and ADR-0059), and the obvious
-     build - a third fill, a little stronger - is a target zone, which is
-     exactly what ADR-0012 forbids and what a line between two blocks would
-     imply just as loudly. So it is the same hue at the same visual density,
-     textured rather than weighted: vertical hairlines, the drafting mark for
-     "two things coincide here". The stroke sits at a higher alpha than the
-     washes precisely so that the *band* does not - hatching covers about a
-     sixth of its area, and matching the alpha would have made the region a
-     lot of this app's users care about the faintest thing on the figure.
+     **The overlap is the two washes coinciding.** Where the two ranges
+     coincide is its own band (the ticket, and ADR-0059), with its own
+     bounds and its own caption, and it must not be a line where two blocks
+     meet - a line there reads as a pass mark. Both washes are therefore
+     drawn in the hue over transparency rather than mixed into the ground,
+     so the strip they share is exactly twice one wash: the truthful
+     rendering of "both of these are true here", arrived at by arithmetic
+     rather than by a third colour somebody chose.
+
+     The first build hatched it instead, on the reasoning that a denser
+     region reads as a target. Hatching lost: 165 to 180 Hz is under six
+     per cent of the axis, so at the 390px floor the band is eight pixels
+     tall and vertical hairlines in eight pixels are a comb, not a texture.
+     The hairline bounds and the caption carry "its own band" without
+     needing one.
 
      Nothing here is a verdict on a voice. There is one hue, the section's
      own flag stripe; no band is louder than another; nothing is red, green,
@@ -47,23 +52,24 @@
      and opacity are animated - the two frame edges scale, so the app's
      duration clamp turns every reading into an instant cut under either
      reduced-motion path. The trace is redrawn rather than transitioned. */
+  import type { Snippet } from 'svelte';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { REFERENCE_BANDS, axisFraction, bandEdges, type PitchAxis } from '$lib/audio/bands';
+  import { REFERENCE_BANDS, axisFraction, bandEdges, spreadLabels, type PitchAxis } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
+  import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
 
   let {
     axis,
     trace,
-    traceWeight = 2,
+    traceWeight = 2.5,
     span = null,
     medianHz = null,
     comfort = null,
     gate = null,
     hzLabel,
-    bandLabel,
-    sourceNote,
-    caveat,
+    underPlot,
+    captionShared = false,
     role,
     compact = false,
     ...rest
@@ -85,15 +91,20 @@
     gate?: { roomFraction: number; roofWeight: number; clipping: boolean } | null;
     /** How a frequency is written in the gutter, in the caller's locale. */
     hzLabel: (hz: number) => string;
-    /** What each band is called. The captions are copy and belong to the
-        screen, not to the geometry. */
-    bandLabel: (key: string) => string;
-    /** Where the figures come from, and the sentence about averages. Both
-        travel with the figure rather than with whichever screen embedded it:
-        ADR-0059 allows these bands only *with* their source and their
-        caveat, so a caller cannot draw one without the other two. */
-    sourceNote: string;
-    caveat: string;
+    /** True when whoever embedded this figure is rendering one
+        PitchBandsCaption for it and its neighbour instead: two takes side
+        by side would otherwise carry the same three paragraphs twice, in
+        half the width. It is the only way to leave the caption off a figure
+        that draws the bands, and not a way to leave it off altogether -
+        ADR-0059 permits the bands only with their figures, their source and
+        their caveat, and voice-figure-surfaces.test.ts holds every caller
+        that sets this to also import the caption. */
+    captionShared?: boolean;
+    /** A mark that belongs to the field rather than to the page: the live
+        gauge's run bar. It goes between the plot and the legend, because a
+        bar sitting under three lines of citation reads as unrelated to the
+        picture it is about. */
+    underPlot?: Snippet;
     role?: Role;
     /** The action bar's form: the field alone, at a third the height, under
         a screenful of text somebody is busy reading. */
@@ -107,8 +118,6 @@
      weight it was authored at however far the box has been stretched. */
   const WIDTH = 300;
   const HEIGHT = 100;
-  /** How far apart the overlap's hairlines are, in user units. */
-  const HATCH_STEP = 7;
 
   /** Where a frequency lands in the box: the axis is log2 in Hz
       (audio/bands.ts), and this is the only place that turns its 0-to-1
@@ -124,13 +133,26 @@
   );
 
   let overlap = $derived(bands.find((band) => band.key === 'overlap'));
-  let hatchLines = $derived(
-    overlap ? Array.from({ length: Math.floor(WIDTH / HATCH_STEP) + 1 }, (_, i) => i * HATCH_STEP) : []
-  );
 
-  /** The gridlines, and the numbers beside them: the band edges, which are
-      the only frequencies on this axis that mean anything. */
-  let edges = $derived(bandEdges().map((hz) => ({ hz, y: y(hz) })));
+  /** How much room one gutter number needs, in the box's own units. At the
+      field's own height a --text-xs line is about nine of them. */
+  const LABEL_GAP = 9;
+
+  /** The frequencies worth a number in the gutter: the band edges, which
+      are the only values on this axis that mean anything. They get no
+      gridline of their own - each one is already the edge of a wash, and a
+      line on top of it would be furniture competing with the trace.
+
+      The number is nudged off its own frequency where two of them would
+      collide (bands.ts's spreadLabels): 165 and 180 Hz are six per cent of
+      the axis apart, and at the 390px floor that is two numbers in the same
+      eight pixels. */
+  let edges = $derived.by(() => {
+    const hzs = bandEdges();
+    const exact = hzs.map((hz) => y(hz));
+    const nudged = spreadLabels(exact, LABEL_GAP);
+    return hzs.map((hz, index) => ({ hz, y: nudged[index] }));
+  });
 
   /** The trace, as one polyline per unbroken voiced run. */
   let runs = $derived.by(() => {
@@ -153,8 +175,8 @@
 
   /* The comfort bracket's spine, inset from the right edge by its own tick
      length so the ticks have somewhere to go. */
-  const BRACKET_TICK = 7;
-  const BRACKET_X = WIDTH - BRACKET_TICK - 1;
+  const BRACKET_TICK = 8;
+  const BRACKET_X = WIDTH - BRACKET_TICK - 6;
 </script>
 
 <div
@@ -183,6 +205,10 @@
         preserveAspectRatio="none"
         aria-hidden="true"
       >
+        <!-- Both typical ranges, each a wash in the hue over whatever is
+             behind it. The overlap needs no fill of its own: it is the
+             strip where these two already coincide, so it comes out at
+             twice one wash on its own. -->
         {#each bands as band (band.key)}
           {#if band.key !== 'overlap'}
             <rect class="pf-band" x="0" y={band.top} width={WIDTH} height={band.height} />
@@ -190,29 +216,14 @@
         {/each}
 
         {#if overlap}
-          <g class="pf-hatch" data-pitch-overlap>
-            {#each hatchLines as at (at)}
-              <line
-                x1={at}
-                y1={overlap.top}
-                x2={at}
-                y2={overlap.top + overlap.height}
-                vector-effect="non-scaling-stroke"
-              />
+          <!-- Its own bounds, so the strip is a band with two edges rather
+               than a shade somebody has to notice. -->
+          <g class="pf-overlap" data-pitch-overlap>
+            {#each [overlap.top, overlap.top + overlap.height] as at (at)}
+              <line x1="0" y1={at} x2={WIDTH} y2={at} vector-effect="non-scaling-stroke" />
             {/each}
           </g>
         {/if}
-
-        {#each edges as edge (edge.hz)}
-          <line
-            class="pf-edge"
-            x1="0"
-            y1={edge.y}
-            x2={WIDTH}
-            y2={edge.y}
-            vector-effect="non-scaling-stroke"
-          />
-        {/each}
 
         {#if span}
           <!-- The take's own span: p10 to p90 and not minimum to maximum,
@@ -222,6 +233,7 @@
           {#each [span.highHz, span.lowHz] as edge (edge)}
             <line
               class="pf-span"
+              data-pitch-span
               x1="0"
               y1={y(edge)}
               x2={WIDTH}
@@ -286,20 +298,10 @@
     </div>
   </div>
 
-  {#if !compact}
-    <ul class="pf-legend">
-      {#each REFERENCE_BANDS as band (band.key)}
-        <li data-pitch-band={band.key}>
-          <span class="pf-swatch" class:is-hatch={band.key === 'overlap'} aria-hidden="true"></span>
-          <span class="pf-swatch-text">
-            {bandLabel(band.key)}
-            <span class="pf-swatch-figures">{hzLabel(band.lowHz)}-{hzLabel(band.highHz)}</span>
-          </span>
-        </li>
-      {/each}
-    </ul>
-    <p class="pf-note" data-pitch-source>{sourceNote}</p>
-    <p class="pf-note" data-pitch-caveat>{caveat}</p>
+  {#if underPlot}{@render underPlot()}{/if}
+
+  {#if !compact && !captionShared}
+    <PitchBandsCaption />
   {/if}
 </div>
 
@@ -365,17 +367,17 @@
     transform: translateY(2px);
   }
 
+  /* Over transparency rather than mixed into the ground, for two reasons:
+     the overlap then falls out of the arithmetic instead of being a colour
+     somebody picked, and a wash mixed into --bg is very nearly --surface on
+     a dark theme, which is how the first build drew three bands nobody
+     could see. */
   .pf-band {
-    fill: var(--role-wash);
+    fill: color-mix(in oklab, var(--role-c) 18%, transparent);
   }
 
-  .pf-hatch line {
-    stroke: color-mix(in oklab, var(--role-c) 22%, transparent);
-    stroke-width: 1;
-  }
-
-  .pf-edge {
-    stroke: color-mix(in oklab, var(--role-c) 28%, transparent);
+  .pf-overlap line {
+    stroke: color-mix(in oklab, var(--role-c) 30%, transparent);
     stroke-width: 1;
   }
 
@@ -391,7 +393,14 @@
 
   /* The take's own two statements, in the hue's text weight rather than its
      stripe: they are closer to a written figure than to a drawn line, and
-     the trace has to stay the loudest thing in the field. */
+     the trace has to stay the loudest thing in the field.
+
+     Four marks can land within a few pixels of each other - a voice at
+     191 Hz puts its median, its span and the overlap's top edge inside one
+     small stretch of the axis - so they are separated by weight as well as
+     by kind: the trace at 2.5px in the stripe undiluted, the median at 2px
+     in ink, the span at 1px dashed in ink, the band edges at 1px in 30% of
+     the hue. Read down that ladder and the crowded case still resolves. */
   .pf-span {
     stroke: var(--role-ink);
     stroke-width: 1;
@@ -400,7 +409,7 @@
 
   .pf-median {
     stroke: var(--role-ink);
-    stroke-width: 1.5;
+    stroke-width: 2;
   }
 
   .pf-comfort line {
@@ -440,55 +449,4 @@
     transform: scaleY(calc(1 + var(--pf-room, 0) * 11));
   }
 
-  .pf-legend {
-    display: grid;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    font-size: var(--text-xs);
-    color: var(--muted);
-  }
-
-  .pf-legend li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .pf-swatch {
-    flex: 0 0 auto;
-    width: 1.4em;
-    height: 0.7em;
-    border-radius: 2px;
-    background: var(--role-wash);
-  }
-
-  /* The legend's own hatch, at the figure's own spacing, so the swatch is
-     the band rather than a colour standing in for it. */
-  .pf-swatch.is-hatch {
-    background: repeating-linear-gradient(
-      to right,
-      color-mix(in oklab, var(--role-c) 22%, transparent) 0 1px,
-      transparent 1px 4px
-    );
-  }
-
-  .pf-swatch-text {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-2);
-  }
-
-  .pf-note {
-    margin: 0;
-    font-size: var(--text-xs);
-    line-height: 1.5;
-    color: var(--muted);
-  }
-
-  .pf-swatch-figures {
-    font-variant-numeric: tabular-nums;
-    color: var(--role-ink);
-  }
 </style>

@@ -1453,6 +1453,85 @@ await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () =>
   else fail('a take pushed into the rails is caught while it is happening', `peak ${r.loudPeak}, ${JSON.stringify(r.loudFailed)}`);
 });
 
+// --- Phase 8 features ticket 09: the stored track, and the figure drawn on
+//     the absolute axis, both off a real recording -------------------------
+await block('phase 8 features ticket 09 voice figure', 8, async () => {
+  const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
+  if (r.error) throw new Error(r.error);
+  const f = r.figure;
+
+  /* Four seconds of oscillator at four points a second, less the frames at
+     the end that YIN needs the samples after to compute. A track much
+     shorter than that means the downsampling lost most of the take. */
+  if (r.storedPoints >= 13 && r.storedPoints <= 17 && r.storedVoicedPoints === r.storedPoints)
+    ok(`a real recording stores a track of its whole passage (${r.storedPoints} points over ${r.storedSpanSeconds.toFixed(2)}s)`);
+  else
+    fail(
+      'a real recording stores a track of its whole passage',
+      `${r.storedPoints} points, ${r.storedVoicedPoints} voiced, ${r.storedSpanSeconds}s`
+    );
+
+  /* The point of storing it: what comes back out is the take, not a
+     smoothed version of it. The oscillator is at 185 Hz and the median of
+     four frames cannot move that by more than the tracker's own error. */
+  if (r.storedWorstHzError !== null && r.storedWorstHzError <= 2)
+    ok(`the stored track reads back as the take it came from (worst point off by ${r.storedWorstHzError.toFixed(2)} Hz)`);
+  else fail('the stored track reads back as the take it came from', `worst error ${r.storedWorstHzError} Hz`);
+
+  /* The axis is absolute. On the old relative axis a steady voice sat in
+     the middle of the box whatever it was, so the one assertion that tells
+     the two apart is where 185 Hz landed: the figure has to draw it where
+     bands.ts puts it, well above the box's own middle. */
+  if (f.traceMeanY !== null && Math.abs(f.traceMeanY - f.expectedY) < 2)
+    ok(`the live trace lands where the axis puts 185 Hz (y ${f.traceMeanY.toFixed(1)} against ${f.expectedY.toFixed(1)})`);
+  else fail('the live trace lands where the axis puts 185 Hz', `y ${f.traceMeanY} against ${f.expectedY}`);
+
+  if (f.traceRuns >= 1 && f.tracePoints > 100)
+    ok(`the trace is drawn from the frames the microphone delivered (${f.tracePoints} points in ${f.traceRuns} run(s))`);
+  else fail('the trace is drawn from the frames the microphone delivered', JSON.stringify(f));
+
+  /* Three bands, the overlap among them and hatched rather than filled, and
+     the comfort bracket's spine plus its two ticks. */
+  const bandsRight =
+    f.bands.join(',') === 'cisMan,cisWoman,overlap' && f.overlapEdges === 2 && f.comfortMarks === 3;
+  if (bandsRight)
+    ok('the figure carries all three reference bands, the overlap with its own two edges, and the comfort bracket');
+  else
+    fail(
+      'the figure carries all three reference bands and the comfort bracket',
+      `${JSON.stringify(f.bands)}, ${f.overlapEdges} overlap edges, ${f.comfortMarks} bracket marks`
+    );
+
+  /* ADR-0059 permits these bands only with their figures, their source and
+     the sentence about averages. Checked on the rendered figure, because
+     that is where the permission has to hold. */
+  /* The take drawn afterwards: the trace from the stored track, the median
+     and the p10-p90 pair. */
+  if (r.take.traceRuns >= 1 && r.take.hasMedian === 1 && r.take.spanEdges === 2 && r.take.saysNoTrack === 0)
+    ok('a finished take draws its stored track with the median and the p10-p90 pair');
+  else fail('a finished take draws its stored track with the median and the span', JSON.stringify(r.take));
+
+  /* And the one state no benchmark can be moved out of: taken before the
+     column existed, so there is nothing to draw and the screen says it. */
+  const bare = r.takeWithoutTrack;
+  if (bare.saysNoTrack === 1 && bare.traceRuns === 0 && bare.hasMedian === 0)
+    ok('a benchmark from before the column says so instead of drawing an empty field');
+  else fail('a benchmark from before the column says so rather than drawing an empty field', JSON.stringify(bare));
+
+  const cited =
+    f.bandFigures.length === 3 &&
+    f.bandFigures.every((count) => count === 2) &&
+    f.sourceText.length > 20 &&
+    f.caveatText.length > 20;
+  if (cited)
+    ok('every band prints its two Hz figures, and the source line and the caveat are both there');
+  else
+    fail(
+      'every band prints its two Hz figures, with the source line and the caveat',
+      `figures ${JSON.stringify(f.bandFigures)}, source ${f.sourceText.length} chars, caveat ${f.caveatText.length} chars`
+    );
+});
+
 // --- Ticket 16 (phase 8 deepening): the draft mirror's stale-removal repro,
 //     and that clearing it on save (EntryEditor.svelte's fix) closes it.
 await block('ticket 16 browser tier', 10, async () => {

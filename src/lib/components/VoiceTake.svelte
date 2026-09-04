@@ -29,7 +29,7 @@
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { bandLabel, caveatText, hzLabel, sourceText } from '$lib/components/pitchBandCopy';
+  import { hzLabel } from '$lib/components/pitchBandCopy';
   import { wipe } from '$lib/motion/reveal';
 
   let {
@@ -38,6 +38,7 @@
     p10Hz,
     p90Hz,
     comfort = null,
+    captionShared = false,
     role,
     ...rest
   }: {
@@ -48,6 +49,9 @@
     p10Hz: number;
     p90Hz: number;
     comfort?: { lowHz: number; highHz: number } | null;
+    /** Passed straight to the figure: two takes side by side share one
+        caption (PitchBandsCaption.svelte). */
+    captionShared?: boolean;
     role?: Role;
     [attribute: string]: unknown;
   } = $props();
@@ -72,9 +76,7 @@
         span={{ lowHz: p10Hz, highHz: p90Hz }}
         {medianHz}
         {hzLabel}
-        {bandLabel}
-        sourceNote={sourceText()}
-        caveat={caveatText()}
+        {captionShared}
       />
       <!-- The figure's own legend names the reference bands; these two marks
            are the take's, so they are named where the take is. Their values

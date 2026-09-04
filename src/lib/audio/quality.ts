@@ -9,7 +9,9 @@
 
    Nothing here is a judgement about a voice (PRODUCT.md:109). Every check is
    about the recording - level, room, length, steadiness - and a take that
-   fails one is a take to make again, never a voice that fell short.
+   fails one is a take to make again, never a voice that fell short. ADR-0059
+   narrowed that rule for the pitch graph's reference bands and for nothing
+   else: no check in here gained a range, and none will.
 
    Pure, like its siblings, and it takes the pitch track rather than
    recomputing it (see resonance.ts's header for why). */

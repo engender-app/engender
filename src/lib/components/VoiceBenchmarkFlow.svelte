@@ -334,6 +334,7 @@
         <SectionHeading text={m.vb_take_heading()} />
         <VoiceTake
           data-vb-take
+          {role}
           {comfort}
           pitchTrack={passageTake.pitchTrack}
           medianHz={figures.f0MedianHz}

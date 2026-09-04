@@ -148,3 +148,38 @@ export function comfortBand(
   if (low < COMFORT_FLOOR_HZ || high > COMFORT_CEILING_HZ) return null;
   return { lowHz: low, highHz: high };
 }
+
+/** Pushes a descending list of label positions apart so no two are closer
+    than `minGap`, keeping each crowded pair centred on where it was and
+    keeping every label inside the 0-to-100 box.
+
+    Here rather than in the component because it is geometry, and because it
+    is the kind of arithmetic that silently stops working: 165 and 180 Hz are
+    under six per cent of this axis apart, so their two numbers rendered as
+    one smudge, and both of them are load-bearing. Dropping one was the
+    other option and it loses a band's edge from the readout.
+
+    One pass down, then one back up. The downward pass fixes every collision
+    and can push the last label off the bottom; the upward pass pulls the
+    whole crowded run back inside, which is why a single pass is not
+    enough. */
+export function spreadLabels(at: readonly number[], minGap: number): number[] {
+  const spread = [...at];
+  for (let i = 1; i < spread.length; i++) {
+    const gap = spread[i - 1] - spread[i];
+    if (gap < minGap) {
+      // Half each, so a pair keeps its own middle rather than the lower one
+      // carrying the whole move.
+      const push = (minGap - gap) / 2;
+      spread[i - 1] = Math.min(100, spread[i - 1] + push);
+      spread[i] = spread[i] - push;
+    }
+  }
+  for (let i = spread.length - 1; i > 0; i--) {
+    if (spread[i] < 0) spread[i] = 0;
+    if (spread[i - 1] - spread[i] < minGap) {
+      spread[i - 1] = Math.min(100, spread[i] + minGap);
+    }
+  }
+  return spread;
+}

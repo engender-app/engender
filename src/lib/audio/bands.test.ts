@@ -8,7 +8,8 @@ import {
   bandEdges,
   comfortBand,
   overlapOf,
-  pitchAxis
+  pitchAxis,
+  spreadLabels
 } from './bands.ts';
 
 /* The absolute axis and the bands on it (phase 8 features ticket 09,
@@ -108,4 +109,38 @@ test('a comfort band outside what a voice can be is not a band', () => {
   assert.equal(comfortBand(20, 220), null);
   assert.equal(comfortBand(190, 900), null);
   assert.equal(comfortBand(200, 200), null);
+});
+
+test('two gutter labels too close together are pushed apart, not dropped', () => {
+  /* 165 and 180 Hz are under six per cent of the axis apart, so at the
+     390px floor their two numbers overlap into one unreadable smudge -
+     which is what the first render of the figure did. Both numbers are
+     load-bearing, so they move rather than one of them going. */
+  const axis = DEFAULT_PITCH_AXIS;
+  const at = bandEdges().map((hz) => (1 - axisFraction(hz, axis)) * 100);
+  const spread = spreadLabels(at, 9);
+
+  assert.equal(spread.length, at.length);
+  for (let i = 1; i < spread.length; i++) {
+    assert.ok(spread[i - 1] - spread[i] >= 9 - 1e-9, `${spread[i - 1]} and ${spread[i]} still collide`);
+  }
+  // The two that were already clear of each other did not move.
+  assert.equal(spread[0], at[0]);
+  assert.equal(spread[3], at[3]);
+});
+
+test('labels already far enough apart are left exactly where they were', () => {
+  assert.deepEqual(spreadLabels([90, 60, 30, 0], 9), [90, 60, 30, 0]);
+});
+
+test('a pushed pair stays centred on where it was', () => {
+  // Two labels 4 apart, wanting 10: each moves 3, so the middle holds.
+  assert.deepEqual(spreadLabels([52, 48], 10), [55, 45]);
+});
+
+test('spreading never runs a label off the top or bottom of the box', () => {
+  const spread = spreadLabels([99, 98, 2, 1], 9);
+  for (const at of spread) {
+    assert.ok(at >= 0 && at <= 100, `${at} is outside the box`);
+  }
 });
