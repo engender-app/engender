@@ -14,10 +14,17 @@
    else: no check in here gained a range, and none will.
 
    Pure, like its siblings, and it takes the pitch track rather than
-   recomputing it (see resonance.ts's header for why). */
+   recomputing it (see resonance.ts's header for why).
 
-import type { PitchTrack } from './pitch';
-import { median, percentileOfSorted } from './series';
+   **The gate and the measuring are separate, and the measuring is a running
+   total.** `assessQuality` applies the thresholds to a `QualitySignals` and
+   nothing else. Two things produce one: `takeSignals`, over a whole decoded
+   take, and the live gauge (audio/live.ts), which never has the whole take in
+   hand and keeps the same numbers running as frames complete. One
+   accumulator behind both, so the bar somebody watched and the verdict on
+   the take that got stored cannot disagree. */
+
+import { frameGeometry, rms, type PitchTrack } from './pitch';
 
 /** Full scale is 1.0, so a peak this close to it means samples were very
     likely already flattened against the rails by the time they arrived. */
@@ -58,7 +65,8 @@ export const PASSAGE_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'to
 /** The vowel is held, so all four apply. */
 export const VOWEL_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort', 'unsteady'];
 
-export interface QualityReport {
+/** What the gate decides on: four measurements, no verdict. */
+export interface QualitySignals {
   /** Largest absolute sample in the take. */
   peak: number;
   /** Voiced level against the room floor. */
@@ -67,6 +75,9 @@ export interface QualityReport {
   longestVoicedSeconds: number;
   /** null when nothing was voiced, which is not the same as steady. */
   f0Cv: number | null;
+}
+
+export interface QualityReport extends QualitySignals {
   /** Every check that failed, in the order they are listed - all of them,
       not the first, because a take can be both too loud and too short and
       fixing one of those alone is a wasted retake. */
@@ -74,85 +85,186 @@ export interface QualityReport {
   passed: boolean;
 }
 
+/* **Why the frame levels are a histogram and not a list.**
+
+   Two of the numbers below are ranks rather than sums: the median level of
+   the voiced frames and the quiet quarter of the room's. A rank cannot be
+   kept as a running total the way a peak or a mean can - it needs to know
+   about every value that came before it - and keeping the values themselves
+   is what made the live gauge's poll grow with the take.
+
+   So the levels go into a fixed histogram of dBFS bins, which is the
+   constant-space version of the sorted list, and every rank is read off it.
+   dB bins rather than linear ones because the answer is a ratio in dB, so
+   the quantisation is even where the threshold is. At 0.1 dB a bin the two
+   ranks are each off by at most 0.05 dB, against a gate that asks for 15.
+
+   A fixed-size random reservoir was the other option and was not taken: it
+   would make the same take read differently on two runs, and this number is
+   compared against a threshold and then written into a stored benchmark. */
+const LEVEL_FLOOR_DB = -120;
+const LEVEL_BIN_DB = 0.1;
+const LEVEL_BINS = Math.round(-LEVEL_FLOOR_DB / LEVEL_BIN_DB) + 1;
+
+interface Levels {
+  add(level: number): void;
+  readonly count: number;
+  /** Which bin the value at `fraction` of the way up falls in. Bin 0 is the
+      underflow: at or below -120 dBFS, which is digital silence as far as
+      any microphone is concerned. */
+  rankBin(fraction: number): number;
+}
+
+function makeLevels(): Levels {
+  const bins = new Int32Array(LEVEL_BINS);
+  let count = 0;
+  return {
+    add(level) {
+      // A level of zero takes the log to -Infinity, which clamps into the
+      // underflow bin - which is where it belongs.
+      const bin = Math.round((20 * Math.log10(level) - LEVEL_FLOOR_DB) / LEVEL_BIN_DB);
+      bins[Math.min(LEVEL_BINS - 1, Math.max(0, bin))]++;
+      count++;
+    },
+    get count() {
+      return count;
+    },
+    rankBin(fraction) {
+      const rank = fraction * (count - 1);
+      let seen = 0;
+      for (let bin = 0; bin < LEVEL_BINS; bin++) {
+        seen += bins[bin];
+        if (seen > rank) return bin;
+      }
+      return LEVEL_BINS - 1;
+    }
+  };
+}
+
+/** The gate's measurements, kept as each frame completes rather than
+    recomputed from the take. `observeSamples` is the peak's, `observeFrame`
+    is everything else's - a frame's level over one hop, and the F0 the
+    tracker gave it, with null meaning room. */
+export interface RunningQualitySignals {
+  observeSamples(chunk: Float32Array): void;
+  observeFrame(level: number, hz: number | null): void;
+  signals(): QualitySignals;
+}
+
+export function runningQualitySignals(hopSeconds: number): RunningQualitySignals {
+  let peak = 0;
+  const voicedLevels = makeLevels();
+  const roomLevels = makeLevels();
+
+  let voicedFrames = 0;
+  let longestRun = 0;
+  let run = 0;
+
+  // Welford, so the coefficient of variation survives being a running one:
+  // the two-pass mean-then-variance it replaces cannot be done in a single
+  // sweep, and summing the squares instead loses its leading digits at the
+  // 8% spread the steadiness check actually turns on.
+  let mean = 0;
+  let sumSquaredDeviation = 0;
+
+  return {
+    observeSamples(chunk) {
+      for (const sample of chunk) peak = Math.max(peak, Math.abs(sample));
+    },
+
+    observeFrame(level, hz) {
+      if (hz === null) {
+        roomLevels.add(level);
+        run = 0;
+        return;
+      }
+      voicedLevels.add(level);
+      voicedFrames++;
+      run++;
+      longestRun = Math.max(longestRun, run);
+
+      const delta = hz - mean;
+      mean += delta / voicedFrames;
+      sumSquaredDeviation += delta * (hz - mean);
+    },
+
+    signals() {
+      return {
+        peak,
+        snrDb: signalToNoiseDb(voicedLevels, roomLevels),
+        voicedSeconds: voicedFrames * hopSeconds,
+        longestVoicedSeconds: longestRun * hopSeconds,
+        // A take with no pitch in it is caught by the length check, and
+        // calling it steady would be the gate laundering it through.
+        f0Cv:
+          voicedFrames === 0 || mean === 0
+            ? null
+            : Math.sqrt(sumSquaredDeviation / voicedFrames) / mean
+      };
+    }
+  };
+}
+
 /** Voice against room: the median level of the frames the pitch track called
-    voiced, over the median level of the frames it did not.
+    voiced, over the quiet quarter of the frames it did not.
 
     Splitting on the track rather than on a loudness percentile is what makes
     this a measurement of the room instead of a measurement of the quiet part
     of a sentence: a held vowel has no quiet part, so a percentile floor would
     divide the voice by itself and report every clean sustained take as noisy.
 
+    Both ranks sit on the same dB grid, so the ratio is the distance between
+    two bins and no logarithm is taken here at all.
+
     Two ends of the scale, both stated rather than left implicit. A take with
     no voiced frame has no signal to measure and scores zero, which the length
     check is failing it for anyway. A take with too little unvoiced audio to
     call a room has none to measure, and it got that way by being periodic
     from end to end - which is what a clean take with the microphone already
-    running sounds like - so it scores the ceiling. */
-function signalToNoiseDb(samples: Float32Array, sampleRate: number, track: PitchTrack): number {
-  const hop = track.frames.length > 1
-    ? Math.round((track.frames[1].atSeconds - track.frames[0].atSeconds) * sampleRate)
-    : samples.length;
-  if (hop <= 0) return 0;
+    running sounds like - so it scores the ceiling. A room that lands in the
+    underflow bin scores the ceiling for the same reason: there is nothing
+    there to divide by. */
+function signalToNoiseDb(voicedLevels: Levels, roomLevels: Levels): number {
+  if (voicedLevels.count === 0) return 0;
+  if (roomLevels.count < MIN_ROOM_FRAMES) return MAX_SNR_DB;
+  const floor = roomLevels.rankBin(ROOM_PERCENTILE);
+  if (floor === 0) return MAX_SNR_DB;
+  return Math.min(MAX_SNR_DB, (voicedLevels.rankBin(0.5) - floor) * LEVEL_BIN_DB);
+}
 
-  const voiced: number[] = [];
-  const room: number[] = [];
+/** The same measurements over a take that is already whole - the decoded
+    file, which is what a stored benchmark is judged on. The frames come from
+    the tracker; this only has to say how loud each one was. */
+export function takeSignals(
+  samples: Float32Array,
+  sampleRate: number,
+  track: PitchTrack
+): QualitySignals {
+  const { hop, hopSeconds } = frameGeometry(sampleRate);
+  const running = runningQualitySignals(hopSeconds);
+  running.observeSamples(samples);
   for (const frame of track.frames) {
     const from = Math.round(frame.atSeconds * sampleRate);
     const length = Math.min(hop, samples.length - from);
     if (length <= 0) break;
-    let sum = 0;
-    for (let i = from; i < from + length; i++) sum += samples[i] * samples[i];
-    (frame.hz === null ? room : voiced).push(Math.sqrt(sum / length));
+    running.observeFrame(rms(samples, from, length), frame.hz);
   }
-
-  if (voiced.length === 0) return 0;
-  if (room.length < MIN_ROOM_FRAMES) return MAX_SNR_DB;
-  const floor = percentileOfSorted([...room].sort((a, b) => a - b), ROOM_PERCENTILE);
-  if (floor === 0) return MAX_SNR_DB;
-  return Math.min(MAX_SNR_DB, 20 * Math.log10(median(voiced) / floor));
-}
-
-/** How far the take drifted in pitch, relative to its own centre. Null when
-    no frame was voiced: a take with no pitch in it is caught by the length
-    check, and calling it steady would be the gate laundering it through. */
-function f0CoefficientOfVariation(track: PitchTrack): number | null {
-  const voiced = track.frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
-  if (voiced.length === 0) return null;
-  const mean = voiced.reduce((total, hz) => total + hz, 0) / voiced.length;
-  if (mean === 0) return null;
-  const variance = voiced.reduce((total, hz) => total + (hz - mean) * (hz - mean), 0) / voiced.length;
-  return Math.sqrt(variance) / mean;
+  return running.signals();
 }
 
 export function assessQuality(
-  samples: Float32Array,
-  sampleRate: number,
-  track: PitchTrack,
+  signals: QualitySignals,
   checks: readonly QualityCheck[]
 ): QualityReport {
-  let peak = 0;
-  for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
-
-  const snrDb = signalToNoiseDb(samples, sampleRate, track);
-  const f0Cv = f0CoefficientOfVariation(track);
-
   const failing: Record<QualityCheck, boolean> = {
-    clipping: peak >= PEAK_CEILING,
-    noise: snrDb < MIN_SNR_DB,
-    tooShort: track.longestVoicedSeconds < MIN_VOICED_SECONDS,
+    clipping: signals.peak >= PEAK_CEILING,
+    noise: signals.snrDb < MIN_SNR_DB,
+    tooShort: signals.longestVoicedSeconds < MIN_VOICED_SECONDS,
     // A take with no pitch at all fails the length check, so steadiness has
     // nothing to add to it and stays quiet rather than piling on.
-    unsteady: f0Cv !== null && f0Cv > MAX_F0_CV
+    unsteady: signals.f0Cv !== null && signals.f0Cv > MAX_F0_CV
   };
 
   const failed = checks.filter((check) => failing[check]);
-  return {
-    peak,
-    snrDb,
-    voicedSeconds: track.voicedSeconds,
-    longestVoicedSeconds: track.longestVoicedSeconds,
-    f0Cv,
-    failed,
-    passed: failed.length === 0
-  };
+  return { ...signals, failed, passed: failed.length === 0 };
 }

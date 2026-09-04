@@ -16,7 +16,7 @@
 import { trackPitch, wordsPerMinute } from './pitch';
 import { downsamplePitchTrack, encodePitchTrack } from './track';
 import { analyseFormants, type Formants } from './resonance';
-import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality, type QualityReport } from './quality';
+import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality, takeSignals, type QualityReport } from './quality';
 
 /** The pitch figures a benchmark row stores, in the row's own terms. Null
     where the take held no voiced frame at all, which the quality report is
@@ -55,7 +55,7 @@ export interface VowelTake {
     from the first voiced frame to the last (CONTEXT: "Benchmark passage"). */
 export function analysePassage(samples: Float32Array, sampleRate: number, wordCount: number): PassageTake {
   const track = trackPitch(samples, sampleRate);
-  const quality = assessQuality(samples, sampleRate, track, PASSAGE_CHECKS);
+  const quality = assessQuality(takeSignals(samples, sampleRate, track), PASSAGE_CHECKS);
   const rate = wordsPerMinute(wordCount, track.spokenSeconds);
 
   return {
@@ -79,7 +79,7 @@ export function analysePassage(samples: Float32Array, sampleRate: number, wordCo
 export function analyseVowel(samples: Float32Array, sampleRate: number): VowelTake {
   const track = trackPitch(samples, sampleRate);
   return {
-    quality: assessQuality(samples, sampleRate, track, VOWEL_CHECKS),
+    quality: assessQuality(takeSignals(samples, sampleRate, track), VOWEL_CHECKS),
     formants: analyseFormants(samples, sampleRate, track)
   };
 }

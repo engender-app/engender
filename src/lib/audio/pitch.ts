@@ -108,7 +108,10 @@ export function wordsPerMinute(wordCount: number, spokenSeconds: number): number
   return (wordCount / spokenSeconds) * 60;
 }
 
-function rms(samples: Float32Array, from: number, length: number): number {
+/** Root mean square over a span. Exported because the gate measures a
+    frame's level with the same arithmetic the voicing decision used
+    (quality.ts), and two spellings of it would be two answers. */
+export function rms(samples: Float32Array, from: number, length: number): number {
   let sum = 0;
   for (let i = from; i < from + length; i++) sum += samples[i] * samples[i];
   return Math.sqrt(sum / length);

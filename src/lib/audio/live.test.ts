@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { clipped, mix, noise, sine } from './test-support/synth.ts';
-import { makeLiveGauge } from './live.ts';
+import { makeLiveGauge, type LiveGauge } from './live.ts';
 import { trackPitch } from './pitch.ts';
-import { VOWEL_CHECKS, assessQuality } from './quality.ts';
+import { VOWEL_CHECKS, assessQuality, takeSignals } from './quality.ts';
 
 /* The live gauge (ticket 15, seam 3). Its whole reason to exist is that it
    computes each frame once, so what it has to prove is that feeding a take
@@ -19,7 +19,7 @@ const gaugeOver = (samples: Float32Array, chunkLength: number) => {
 };
 
 const whole = (samples: Float32Array) =>
-  assessQuality(samples, 16000, trackPitch(samples, 16000), VOWEL_CHECKS);
+  assessQuality(takeSignals(samples, 16000, trackPitch(samples, 16000)), VOWEL_CHECKS);
 
 test('a take pushed in pieces reads the same as the same take analysed whole', () => {
   const { samples } = mix(sine(190, 3, 16000, 0.4), noise(3, 16000, 0.004));
@@ -67,9 +67,53 @@ test('a take that goes into the rails halfway is caught from then on', () => {
   assert.ok(gauge.read().failed.includes('clipping'));
 });
 
-test('what it captured is what the take is finally analysed from', () => {
+test('it counts the seconds it was given', () => {
   const { samples } = mix(sine(190, 2, 16000, 0.4), noise(2, 16000, 0.004));
-  const gauge = gaugeOver(samples, 999);
-  assert.deepEqual(Array.from(gauge.captured()), Array.from(samples));
-  assert.ok(Math.abs(gauge.secondsCaptured() - 2) < 1e-9);
+  assert.ok(Math.abs(gaugeOver(samples, 999).secondsCaptured() - 2) < 1e-9);
 });
+
+/* What ticket AU-05 is about: the poll used to re-aggregate every sample
+   captured so far, so a five-minute take cost thirty times what a ten-second
+   one did and a single read ate the phone's whole frame budget somewhere
+   around a minute in. Both tests below feed the take as the microphone does -
+   one second of samples pushed over and over - so the only thing that grows
+   with the take is whatever the gauge decided to keep. */
+
+/** One second of a good take, pushed `seconds` times. The same buffer each
+    time on purpose: the test must not be the thing holding the take. */
+const pushSeconds = (gauge: LiveGauge, seconds: number) => {
+  const second = mix(sine(190, 1, 16000, 0.4), noise(1, 16000, 0.004)).samples;
+  for (let i = 0; i < seconds; i++) gauge.push(second);
+};
+
+test('a poll costs the same at five minutes of take as at ten seconds', () => {
+  const cost = (seconds: number) => {
+    const gauge = makeLiveGauge(16000, VOWEL_CHECKS);
+    pushSeconds(gauge, seconds);
+    gauge.read();
+    const started = performance.now();
+    for (let i = 0; i < 500; i++) gauge.read();
+    return performance.now() - started;
+  };
+
+  // A ratio rather than a millisecond budget, so this asserts the shape of
+  // the cost and not the speed of the machine it ran on. Thirty times the
+  // take: linear would be near 30, flat is near 1, and 3 leaves room for a
+  // loaded runner without letting the old behaviour back through.
+  const short = cost(10);
+  const long = cost(300);
+  assert.ok(long < short * 3, `${short.toFixed(1)} ms at 10 s, ${long.toFixed(1)} ms at 300 s`);
+}, 120_000);
+
+test('the take itself is not retained', () => {
+  const gauge = makeLiveGauge(16000, VOWEL_CHECKS);
+  const before = process.memoryUsage().arrayBuffers;
+  pushSeconds(gauge, 300);
+  const held = process.memoryUsage().arrayBuffers - before;
+
+  // Five minutes at 16 kHz is 19.2 MB of Float32Array. What the gauge needs
+  // to keep is the tail a frame still reads from, which is under a kilobyte.
+  assert.ok(held < 2_000_000, `${(held / 1e6).toFixed(1)} MB held after a 300 s take`);
+  // Reading here so the gauge is still alive at the measurement above.
+  assert.equal(gauge.read().failed.length, 0);
+}, 120_000);
