@@ -67,6 +67,10 @@ export interface NewVoiceBenchmark {
       equipment, and a made-up chain would be worse than none. The
       recording flow always has one. */
   captureChain?: string | null;
+  /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30). Null
+      the same way `f1Hz`/`f2Hz` are: fewer than two of the three held vowels
+      cleared the gate, or the flow skipped the extra two entirely. */
+  resonanceScale?: number | null;
 }
 
 export interface VoiceBenchmarksArea {
@@ -107,6 +111,7 @@ type BenchmarkRow = {
   note: string | null;
   pitch_track: string | null;
   capture_chain: string | null;
+  resonance_scale: number | null;
 };
 
 const toBenchmark = (row: BenchmarkRow): VoiceBenchmark => ({
@@ -126,12 +131,13 @@ const toBenchmark = (row: BenchmarkRow): VoiceBenchmark => ({
   snrDb: row.snr_db,
   note: row.note,
   pitchTrack: row.pitch_track,
-  captureChain: row.capture_chain
+  captureChain: row.capture_chain,
+  resonanceScale: row.resonance_scale
 });
 
 const BENCHMARK_COLUMNS = `uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
    f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute, f1_hz, f2_hz, snr_db, note,
-   pitch_track, capture_chain`;
+   pitch_track, capture_chain, resonance_scale`;
 
 export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileStore): VoiceBenchmarksArea {
   return {
@@ -161,7 +167,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
       const timestamp = now();
       await driver.run(
         `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.epochDay,
@@ -180,6 +186,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
           input.note ?? null,
           input.pitchTrack ?? null,
           input.captureChain ?? null,
+          input.resonanceScale ?? null,
           timestamp
         ]
       );

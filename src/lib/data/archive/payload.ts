@@ -895,6 +895,10 @@ export interface ArchiveVoiceBenchmark {
       because a restored benchmark that lost its chain would silently
       rejoin a series it does not belong to. */
   captureChain: string | null;
+  /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30),
+      absent on an archive written before it and null on any take that held
+      fewer than two of the three vowels. */
+  resonanceScale: number | null;
 }
 
 /** A photo file travelling in the body, and how many bytes of it there

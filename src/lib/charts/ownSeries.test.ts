@@ -27,6 +27,7 @@ function take(epochDay: number, chain: string | null, over: Partial<BenchmarkFor
     f1Hz: 600 + epochDay,
     f2Hz: 1400 + epochDay,
     snrDb: 20 + epochDay / 10,
+    resonanceScale: 0.9 + epochDay / 100,
     ...over
   };
 }
@@ -187,7 +188,7 @@ test('a semitone figure and a decibel figure are read in their own units', () =>
 test('every Own-series figure in the registry draws a trend', () => {
   assert.deepEqual(
     OWN_SERIES_METRICS.map((metric) => metric.key),
-    ['span', 'spread', 'rate', 'resonance', 'room']
+    ['span', 'spread', 'rate', 'resonance', 'room', 'scale']
   );
 
   for (const metric of OWN_SERIES_METRICS) {
