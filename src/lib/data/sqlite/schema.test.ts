@@ -1048,7 +1048,7 @@ test('v64 adds the capture chain column, and a benchmark from before it has none
   assert.equal(row.f1_hz, 700);
 
   const chain = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
-  db.raw.exec(`UPDATE voice_benchmark SET capture_chain = '${chain}' WHERE uuid = 'vb-chainless'`);
+  db.raw.prepare('UPDATE voice_benchmark SET capture_chain = ? WHERE uuid = ?').run(chain, 'vb-chainless');
   assert.equal(
     (
       db.raw.prepare("SELECT capture_chain FROM voice_benchmark WHERE uuid = 'vb-chainless'").get() as {

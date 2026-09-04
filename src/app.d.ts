@@ -13,6 +13,18 @@ declare global {
      build carries a 0.0.0-dev name that says which commit it came from, so
      nothing here can be mistaken for a release. */
   const __APP_VERSION__: string;
+
+  /* User-Agent Client Hints, which `lib.dom` does not declare yet. Only
+     the one hint this app reads: the device model, for a voice benchmark's
+     capture chain (stores/voiceRecording.ts, ADR-0061). Optional on
+     `Navigator` because Firefox and Safari implement none of it. */
+  interface NavigatorUAData {
+    getHighEntropyValues(hints: readonly string[]): Promise<{ model?: string }>;
+  }
+
+  interface Navigator {
+    readonly userAgentData?: NavigatorUAData;
+  }
 }
 
 export {};

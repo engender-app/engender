@@ -86,15 +86,18 @@
     bytes: Uint8Array;
     figures: ReturnType<typeof analysePassage>['figures'];
     pitchTrack: string | null;
-    /* The chain the passage was recorded through (ticket 28, ADR-0061),
-       carried from the session that made it because the row stores one
-       chain and the passage is the take the stored figures are read
-       against. The vowel step opens the same microphone under the same
-       constraints seconds later; a device that answered differently
-       between the two is not a state this app tells apart. */
+    /* The chain the passage was recorded through (ticket 28, ADR-0061).
+       Kept per take rather than once for the flow because the two steps
+       open the microphone separately, and the row stores the chain the
+       gated figures came from - see the save. */
     captureChain: string;
   } | null>(null);
-  let vowelTake = $state<{ bytes: Uint8Array; formants: Formants | null; snrDb: number } | null>(null);
+  let vowelTake = $state<{
+    bytes: Uint8Array;
+    formants: Formants | null;
+    snrDb: number;
+    captureChain: string;
+  } | null>(null);
   let note = $state('');
 
   /* The passage: whatever the person reads from, and the key their series is
@@ -237,7 +240,12 @@
       phase = 'retry';
       return;
     }
-    vowelTake = { bytes: take.bytes, formants: analysed.formants, snrDb: analysed.quality.snrDb };
+    vowelTake = {
+      bytes: take.bytes,
+      formants: analysed.formants,
+      snrDb: analysed.quality.snrDb,
+      captureChain: active.captureChain
+    };
     step = 'summary';
     phase = 'idle';
   }
@@ -263,7 +271,16 @@
         snrDb: vowelTake?.snrDb ?? null,
         note: note.trim() || null,
         pitchTrack: passageTake.pitchTrack,
-        captureChain: passageTake.captureChain
+        /* The vowel's chain where there is a vowel, and the passage's
+           otherwise. One column, and every figure it gates is the vowel
+           take's: the resonances and the room reading come from the held
+           note, while pitch, its spread and the rate are device-proof and
+           compare across everything (ADR-0060, ADR-0061). The two steps
+           are seconds apart on one phone in every ordinary case; where
+           somebody plugged a headset in between them, this is the chain
+           that makes the resonance refuse rather than the one that would
+           let it through. */
+        captureChain: vowelTake?.captureChain ?? passageTake.captureChain
       });
       toast(m.vb_saved());
       onSaved();

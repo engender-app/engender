@@ -28,8 +28,7 @@ import { DEFAULT_PITCH_AXIS, axisFraction } from '../../src/lib/audio/bands.ts';
 import { decodePitchTrack } from '../../src/lib/audio/track.ts';
 import type { PitchFrame } from '../../src/lib/audio/pitch.ts';
 import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '../../src/lib/audio/quality.ts';
-import { captureChainOf } from '../../src/lib/audio/captureChain.ts';
-import { openMicrophone } from '../../src/lib/stores/voiceRecording.ts';
+import { captureChainOfStream, openMicrophone } from '../../src/lib/stores/voiceRecording.ts';
 import { installFakeMicrophone } from '../fake-microphone.mjs';
 import { ANALYSIS_SAMPLE_RATE, startTake } from '../../src/lib/stores/voiceBenchmark.ts';
 import VoiceGauge from '../../src/lib/components/VoiceGauge.svelte';
@@ -152,12 +151,7 @@ async function openedChains() {
   for (const unprocessed of [true, false]) {
     const stream = await openMicrophone(unprocessed);
     if (typeof stream === 'string') throw new Error(`the microphone refused: ${stream}`);
-    const [track] = stream.getAudioTracks();
-    chains[unprocessed ? 'unprocessed' : 'processed'] = captureChainOf(
-      track.label,
-      track.getSettings(),
-      navigator.userAgent
-    );
+    chains[unprocessed ? 'unprocessed' : 'processed'] = await captureChainOfStream(stream);
     for (const open of stream.getTracks()) open.stop();
   }
   return chains;

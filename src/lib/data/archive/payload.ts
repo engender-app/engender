@@ -860,7 +860,7 @@ export interface ArchiveVoiceBenchmark {
   /** The downsampled pitch track (phase 8 features ticket 09), absent on an
       archive written before it and on any take from before schema v58. */
   pitchTrack: string | null;
-  /** What recorded it (phase 8 features ticket 28, ADR-0061). It travels
+  /** What recorded it (audio/captureChain.ts, ticket 28). It travels
       because a restored benchmark that lost its chain would silently
       rejoin a series it does not belong to. */
   captureChain: string | null;
