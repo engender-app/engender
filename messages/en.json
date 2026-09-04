@@ -1640,7 +1640,7 @@
   "vc_own_never_measured": "No benchmark has measured this yet.",
   "vc_own_break_device": "A different phone below this line. What a change of microphone does to these figures would read as a change in your voice, so the series starts again.",
   "vc_own_break_processing": "The same phone below this line, no longer handing over unprocessed sound. That moves these figures on its own, so the series starts again.",
-  "vc_own_break_unrecorded": "The app kept no record of what recorded the benchmarks on one side of this line, so it cannot say the two belong to one series.",
+  "vc_own_break_unrecorded": "The app kept no record of what recorded the benchmarks on at least one side of this line, so it cannot say the two belong to one series.",
   "vc_own_break_passage": "A different passage below this line. Different words are different numbers, so the series starts again.",
   "vc_own_span_high": "Top of the band",
   "vc_own_span_low": "Bottom of the band",

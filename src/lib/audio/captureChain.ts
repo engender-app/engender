@@ -129,7 +129,7 @@ export type ChainBreak = 'device' | 'processing' | 'unrecorded';
 
 export function captureChainBreak(a: string | null, b: string | null): ChainBreak | null {
   if (a === null || b === null) return 'unrecorded';
-  if (a === b) return null;
+  if (sameCaptureChain(a, b)) return null;
   return equipmentOf(a) === equipmentOf(b) ? 'processing' : 'device';
 }
 

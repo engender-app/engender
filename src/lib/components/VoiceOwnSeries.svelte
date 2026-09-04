@@ -42,7 +42,14 @@
      section for whichever figure is showing. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
-  import { ownSeries, type BenchmarkForSeries, type SeriesBreak } from '$lib/charts/ownSeries';
+  import type { ComponentProps } from 'svelte';
+  import type { PaddedRange, SeriesPoint } from '$lib/charts/geometry';
+  import {
+    ownSeries,
+    type BenchmarkForSeries,
+    type OwnSeriesRun,
+    type SeriesBreak
+  } from '$lib/charts/ownSeries';
   import { metricHref, OWN_SERIES_METRICS, type OwnSeriesMetricKey } from '$lib/data/voice/metrics';
   import { metricName } from '$lib/data/voice/metricLabels';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
@@ -82,16 +89,7 @@
   let drawn = $derived(
     series.scale === null
       ? null
-      : {
-          runs: series.runs,
-          breaks: series.breaks,
-          scale: series.scale,
-          secondScale: series.secondScale,
-          sharedScale: series.secondScaleShared,
-          /* Two lines that are not two ends of one range: a plot each,
-             so neither loses its own axis. */
-          split: series.secondScale !== null && !series.secondScaleShared
-        }
+      : { runs: series.runs, breaks: series.breaks, scale: series.scale, secondScale: series.secondScale }
   );
 
   /** How each figure writes a number, in its own units (ADR-0012). The
@@ -123,6 +121,76 @@
   let format = $derived(FORMAT[figure]);
   let lines = $derived(LINES[figure]);
   let dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /** What one plot draws: readings, the scale under them, and the name of
+      the line where the figure has more than one. */
+  interface Plot {
+    points: SeriesPoint[];
+    min: number;
+    max: number;
+    /** Written over the plot where a figure draws a plot per line, and
+        absent where the picker above has already named the only one. */
+    caption?: string;
+    ariaLabel: string;
+    /** The legend's name for the first line, only where a second shares
+        the plot. */
+    name?: string;
+    overlay?: ComponentProps<typeof AreaChart>['overlay'];
+  }
+
+  /** How a run is drawn: one plot, one plot with two lines on it, or a plot
+      per line.
+
+      Built here rather than as three `<AreaChart>` blocks in the markup:
+      the seven props they share are the same seven every time, and three
+      copies of them is three places a change to the scrub label or the
+      formatter can be missed. */
+  function plotsOf(run: OwnSeriesRun, scale: PaddedRange, secondScale: PaddedRange | null): Plot[] {
+    const label = metricName(figure);
+    if (run.second === null || secondScale === null || !lines) {
+      return [{ points: run.points, min: scale.min, max: scale.max, ariaLabel: label }];
+    }
+
+    const second = run.points.map((point, at) => ({ x: point.x, y: run.second![at] }));
+    /* Two ends of one range read as a band on one plot, and the plot keeps
+       its value gutter because both lines are placed against the same
+       numbers. Two separate measures do not: F1 near 620 Hz against F2
+       near 1740 would draw F1 flat on one scale, and placing each against
+       its own bounds on one plot costs the gutter altogether
+       (kit/AreaChart.svelte), which would leave the card with no hertz on
+       it until a finger landed. */
+    if (series.secondScaleShared) {
+      return [
+        {
+          points: run.points,
+          min: scale.min,
+          max: scale.max,
+          name: lines.first,
+          ariaLabel: label,
+          overlay: {
+            values: run.second,
+            min: secondScale.min,
+            max: secondScale.max,
+            name: lines.second,
+            formatValue: format,
+            sharedScale: true,
+            role: pairedRole
+          }
+        }
+      ];
+    }
+
+    return [
+      { points: run.points, min: scale.min, max: scale.max, caption: lines.first, ariaLabel: `${label}: ${lines.first}` },
+      {
+        points: second,
+        min: secondScale.min,
+        max: secondScale.max,
+        caption: lines.second,
+        ariaLabel: `${label}: ${lines.second}`
+      }
+    ];
+  }
 </script>
 
 <ChartCard heading={m.vc_own_heading()} kind="voice-own-series" {role}>
@@ -154,55 +222,25 @@
              plot with nothing on it would print. One line checked, not
              two: a take measures both formants or neither. -->
         <p class="vos-unmeasured">{m.vb_not_measured()}</p>
-      {:else if drawn.split && drawn.secondScale && lines}
-        <!-- A plot per line, each with its own hertz down the side. The
-             caption is what a legend would have said, moved to where it
-             names one plot instead of two lines. -->
-        <p class="vos-line">{lines.first}</p>
-        <AreaChart
-          points={run.points}
-          min={drawn.scale.min}
-          max={drawn.scale.max}
-          from={ends.from}
-          to={ends.to}
-          formatValue={format}
-          scrubLabel={(point) => dayLabel(point.x)}
-          ariaLabel={`${metricName(figure)}: ${lines.first}`}
-        />
-        <p class="vos-line">{lines.second}</p>
-        <AreaChart
-          points={run.points.map((point, at) => ({ x: point.x, y: run.second![at] }))}
-          min={drawn.secondScale.min}
-          max={drawn.secondScale.max}
-          from={ends.from}
-          to={ends.to}
-          formatValue={format}
-          scrubLabel={(point) => dayLabel(point.x)}
-          ariaLabel={`${metricName(figure)}: ${lines.second}`}
-        />
       {:else}
-        <AreaChart
-          points={run.points}
-          min={drawn.scale.min}
-          max={drawn.scale.max}
-          from={ends.from}
-          to={ends.to}
-          formatValue={format}
-          scrubLabel={(point) => dayLabel(point.x)}
-          name={lines?.first}
-          ariaLabel={metricName(figure)}
-          overlay={run.second && drawn.secondScale && lines
-            ? {
-                values: run.second,
-                min: drawn.secondScale.min,
-                max: drawn.secondScale.max,
-                name: lines.second,
-                formatValue: format,
-                sharedScale: drawn.sharedScale,
-                role: pairedRole
-              }
-            : undefined}
-        />
+        <!-- Keyed by position rather than by what it draws: switching to
+             another figure with the same number of plots then re-tweens the
+             lines that are already up instead of tearing them down. -->
+        {#each plotsOf(run, drawn.scale, drawn.secondScale) as plot, line (line)}
+          {#if plot.caption}<p class="vos-line">{plot.caption}</p>{/if}
+          <AreaChart
+            points={plot.points}
+            min={plot.min}
+            max={plot.max}
+            from={ends.from}
+            to={ends.to}
+            formatValue={format}
+            scrubLabel={(point) => dayLabel(point.x)}
+            name={plot.name}
+            ariaLabel={plot.ariaLabel}
+            overlay={plot.overlay}
+          />
+        {/each}
       {/if}
     {/each}
 
@@ -241,9 +279,6 @@
     font-size: var(--text-sm);
   }
 
-  /* The same quiet line the figure list carries under a take
-     (VoiceFigures.svelte's .vf-more), at the app's touch floor, with the
-     chevron saying it leads somewhere. */
   /* Which line a plot is, where a figure draws two of them on two scales.
      Quiet and small: the picker above has already said what the figure is,
      and this only says which half of it. */
@@ -262,6 +297,9 @@
     font-size: var(--text-sm);
   }
 
+  /* The same quiet line the figure list carries under a take
+     (VoiceFigures.svelte's .vf-more), at the app's touch floor, with the
+     chevron saying it leads somewhere. */
   .vos-more {
     margin: var(--space-3) 0 0;
   }

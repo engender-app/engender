@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { acousticDelta, type BenchmarkForDelta } from './benchmarkDelta.ts';
+import { captureChainOf, type CaptureSettings } from './captureChain.ts';
+import { acousticDelta, comparabilityBreak, type BenchmarkForDelta } from './benchmarkDelta.ts';
+
+const UNPROCESSED: CaptureSettings = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
 const PHONE = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
 const HEADSET = 'Pixel 10a | Wired headset | ec=off ns=off agc=off';
@@ -97,4 +100,18 @@ test('a take that recorded no chain compares no resonance either way round', () 
   assert.equal(unrecorded?.f1DeltaHz, null);
   assert.equal(acousticDelta(benchmark(), benchmark({ captureChain: null }))?.f1DeltaHz, null);
   assert.equal(acousticDelta(benchmark({ captureChain: null }), benchmark({ captureChain: null }))?.sameChain, false);
+});
+
+/* The gate the own-series trend breaks its line on, which is the same gate
+   the delta above is computed behind (phase 8 features ticket 29). */
+test('a change of passage is the reason even when the phone changed with it', () => {
+  const pixel = captureChainOf('Pixel 10a', 'mic', UNPROCESSED);
+  const samsung = captureChainOf('SM-A546B', 'mic', UNPROCESSED);
+  const read = (passageKey: string, captureChain: string | null) => ({ passageKey, captureChain });
+
+  assert.equal(comparabilityBreak(read('rainbow', pixel), read('rainbow', pixel)), null);
+  assert.equal(comparabilityBreak(read('rainbow', pixel), read('rainbow', samsung)), 'device');
+  assert.equal(comparabilityBreak(read('rainbow', pixel), read('wiatr', pixel)), 'passage');
+  assert.equal(comparabilityBreak(read('rainbow', pixel), read('wiatr', samsung)), 'passage');
+  assert.equal(comparabilityBreak(read('rainbow', null), read('rainbow', pixel)), 'unrecorded');
 });

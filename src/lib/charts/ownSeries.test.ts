@@ -31,7 +31,7 @@ function take(epochDay: number, chain: string | null, over: Partial<BenchmarkFor
   };
 }
 
-test('one chain and one passage is one run, oldest first, in the figure own units', () => {
+test('one chain and one passage is one run, oldest first, in the units the figure was measured in', () => {
   const series = ownSeries([take(1, PIXEL), take(2, PIXEL), take(3, PIXEL)], 'rate');
   assert.equal(series.runs.length, 1);
   assert.deepEqual(series.breaks, []);
