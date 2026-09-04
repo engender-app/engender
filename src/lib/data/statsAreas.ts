@@ -189,7 +189,11 @@ const PANELS = [
     finishes: 'dilation',
     href: '/settings/dilation',
     icon: 'flask',
-    preview: 'trend'
+    /* The dilation chart is keyed to the surgery day and re-keyed onto a
+       position rather than a date (ticket 16), so the stats range picker
+       says nothing about it. A preview over this screen's range would be a
+       different chart, which is the second implementation ADR-0056 refuses. */
+    preview: 'row'
   }),
   panel({
     key: 'milestones',
@@ -223,7 +227,12 @@ const PANELS = [
     finishes: 'voice',
     href: '/settings/voice',
     icon: 'mic',
-    preview: 'trend'
+    /* The benchmark trend's range is however long there have been
+       benchmarks - they land months apart, and its own screen says so. Drawn
+       against thirty days it is nearly always one point or none, and drawn
+       against all history it would be the one card on the screen quietly
+       ignoring the picker above it. */
+    preview: 'row'
   }),
   panel({
     key: 'wear',
@@ -253,9 +262,17 @@ const PANELS = [
     finishes: null,
     href: '/tally',
     icon: 'columns',
+    /* Both kinds, as two lines on one plot - the same two reads the tally
+       screen makes. Drawing only one would be the tab choosing which of the
+       two somebody should be looking at. */
     preview: 'trend'
   })
 ] as const;
+
+/** Every row the index draws, as a literal union - so
+    `vocabulary/statsAreaLabels.ts` is a full `Record` over the real keys and
+    a card added without a name is a typecheck failure. */
+export type StatsAreaKey = (typeof PANELS)[number]['key'];
 
 export const STATS_AREA_PANELS: readonly StatsAreaPanel[] = PANELS;
 
