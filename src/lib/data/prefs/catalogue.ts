@@ -382,7 +382,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lockOnLeave: false,
   disguise: false,
   quickExit: false,
-  hideNotificationTitles: false,
+  hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',
   checkInAffirmationsEnabled: true,

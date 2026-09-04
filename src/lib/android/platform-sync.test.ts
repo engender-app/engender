@@ -15,6 +15,7 @@ import {
   schedulableReminders,
   type PlatformSyncDeps
 } from './platform-sync';
+import { PREFERENCE_DEFAULTS } from '../data/prefs/catalogue';
 
 const TEXTS = {
   channelReminders: 'Reminders',
@@ -151,6 +152,40 @@ describe('assembleReminderSyncPayload', () => {
     });
 
     expect(payload.checkInEnabled).toBe(false);
+  });
+
+  test('a fresh install hides both the reminder title and the check-in affirmation (ticket AU-07)', () => {
+    const payload = assembleReminderSyncPayload({
+      reminders: [REMINDER],
+      recentEntries: [],
+      checkInEnabled: true,
+      checkInTime: '21:30',
+      checkInAffirmationsEnabled: true,
+      affirmationLines: ['You are enough.'],
+      hideNotificationTitles: PREFERENCE_DEFAULTS.hideNotificationTitles,
+      ...ALL_ON,
+      pausedToday: false,
+      texts: TEXTS
+    });
+
+    expect(payload.hideNotificationTitles).toBe(true);
+  });
+
+  test('an install that has explicitly turned titles back on keeps that choice (ticket AU-07)', () => {
+    const payload = assembleReminderSyncPayload({
+      reminders: [REMINDER],
+      recentEntries: [],
+      checkInEnabled: true,
+      checkInTime: '21:30',
+      checkInAffirmationsEnabled: true,
+      affirmationLines: ['You are enough.'],
+      hideNotificationTitles: false,
+      ...ALL_ON,
+      pausedToday: false,
+      texts: TEXTS
+    });
+
+    expect(payload.hideNotificationTitles).toBe(false);
   });
 });
 
