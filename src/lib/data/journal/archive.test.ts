@@ -506,7 +506,10 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       unit: 'vials',
       recordedEpochDay: 19000,
       reminderEverCreated: false,
-      reminderDismissed: false
+      reminderDismissed: false,
+      openedEpochDay: null,
+      inUseWindowDays: null,
+      inUseEndEpochDay: null
     }
   ]);
 });
@@ -689,7 +692,10 @@ const CARRIED: Record<string, string[]> = {
     'unit',
     'recorded_epoch_day',
     'reminder_ever_created',
-    'reminder_dismissed'
+    'reminder_dismissed',
+    'opened_epoch_day',
+    'in_use_window_days',
+    'in_use_end_epoch_day'
   ],
   side_effect: ['uuid', 'name', 'severity', 'epoch_day'],
   cycle_event: ['uuid', 'kind', 'epoch_day'],

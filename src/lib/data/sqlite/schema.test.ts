@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 64);
+  assert.equal(db.getUserVersion(), 65);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1017,12 +1017,12 @@ test('v58 adds the pitch track column, and a benchmark from before it has none',
   );
 });
 
-test('v64 adds the capture chain column, and a benchmark from before it has none', async () => {
+test('v65 adds the capture chain column, and a benchmark from before it has none', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(
     db,
     noopFileOps(),
-    migrations.filter((m) => m.version <= 63)
+    migrations.filter((m) => m.version <= 64)
   );
 
   /* A benchmark recorded before the column existed. Nothing about the

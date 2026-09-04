@@ -796,7 +796,10 @@ const SECTIONS = [
       unit: 'unit',
       recorded_epoch_day: 'recordedEpochDay',
       reminder_ever_created: { field: 'reminderEverCreated', bool: true },
-      reminder_dismissed: { field: 'reminderDismissed', bool: true }
+      reminder_dismissed: { field: 'reminderDismissed', bool: true },
+      opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
+      in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
+      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null }
     }
   }),
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
@@ -889,7 +892,7 @@ const SECTIONS = [
       pitch_track: { field: 'pitchTrack', whenAbsent: null },
       /* `capture_chain` the same way, one ticket later (ticket 28,
          ADR-0061): an archive written before it carries no chain, and
-         neither does a benchmark from before schema v64. */
+         neither does a benchmark from before schema v65. */
       capture_chain: { field: 'captureChain', whenAbsent: null }
     }
   }),

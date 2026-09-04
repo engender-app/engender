@@ -53,7 +53,7 @@ describe('what the More hub is built from', () => {
   });
 
   it('keeps every row, with an unchanged icon, href and group', () => {
-    /* 24 rows in four groups (5 + 6 + 6 + 7), doubt included - the More
+    /* 25 rows in four groups (5 + 6 + 7 + 7), doubt included - the More
        hub's own header comment gives the same count. It was 23 in
        5 + 9 + 4 + 5 until deepening ticket 07 put labs, regimen,
        hormone-curve and doses behind the care row - the four surfaces /care
@@ -65,8 +65,10 @@ describe('what the More hub is built from', () => {
        browser, `voice-benchmark` opens the record/practise/compare screen -
        and phase 6 ticket 07 added `entry-templates`; neither of those two
        rows ever joined this list, the same gap ticket 26 found in
-       feature-screens.test.ts's `ROUTES`. Nothing else has moved, and no row
-       changed its icon or href. */
+       feature-screens.test.ts's `ROUTES`. Phase 8 features ticket 14 added
+       `words` to the Transition group, bringing it to 7: it groups note
+       text by exactly the two things `presentations` and `eras` name.
+       Nothing else has moved, and no row changed its icon or href. */
     const EXPECTED: [string, string, string][] = [
       ['photos', 'image', '/settings/photos'],
       ['measurements', 'ruler', '/settings/measurements'],
@@ -85,6 +87,7 @@ describe('what the More hub is built from', () => {
       ['tryouts', 'tag', '/settings/tryouts'],
       ['presentations', 'palette', '/settings/presentations'],
       ['eras', 'columns', '/settings/eras'],
+      ['words', 'note', '/settings/words'],
       ['doubt', 'heart', '/doubt'],
       ['voice', 'mic', '/settings/voice/memos'],
       ['voice-benchmark', 'mic', '/settings/voice?tab=record'],
