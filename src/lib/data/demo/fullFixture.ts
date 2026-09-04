@@ -254,9 +254,25 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
     await journal.checklists.addToStandaloneChecklist(item);
   }
 
-  // Stock: current supply for the two drugs in regimen.
-  await journal.stock.upsertEntry({ drug: 'Estradiol valerate', quantity: 6, unit: 'mL', recordedEpochDay: today - 3 });
-  await journal.stock.upsertEntry({ drug: 'Progesterone', quantity: 40, unit: 'tablets', recordedEpochDay: today - 3 });
+  // Stock: current supply for the two drugs in regimen. The vial carries an
+  // opened date and an in-use window (ticket 13), past it on purpose - the
+  // demo persona is the one place "past it, with no adjective" gets seen.
+  await journal.stock.upsertEntry({
+    drug: 'Estradiol valerate',
+    quantity: 6,
+    unit: 'mL',
+    recordedEpochDay: today - 3,
+    openedEpochDay: today - 40,
+    inUseWindowDays: 28
+  });
+  await journal.stock.upsertEntry({
+    drug: 'Progesterone',
+    quantity: 40,
+    unit: 'tablets',
+    recordedEpochDay: today - 3,
+    openedEpochDay: today - 3,
+    inUseEndEpochDay: today + 60
+  });
 
   // Voice: two new mood-only entries carrying a recording, so the compare
   // picker has a pair to work with.
