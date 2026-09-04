@@ -1569,11 +1569,12 @@ a.kit-entry:active {
   --role-2-draw: var(--role-2, var(--accent-2));
 }
 
-/* With two metrics up there is no value gutter to leave room for: the plot
-   is the whole card. */
-.kit-area.has-overlay {
-  grid-template-columns: minmax(0, 1fr);
-}
+/* The one-column state - a plot with no value gutter beside it - lives in
+   AreaChart.svelte's own style block: `.no-gutter` has exactly one consumer
+   by construction and check-screens-classes.mjs fails a new single-consumer
+   class in a shared sheet. It used to be `.has-overlay` here, keyed to the
+   second line rather than to the gutter, which put a shared-scale pair's
+   numbers in a row of their own above the plot (ticket 29). */
 
 .kit-area-scale {
   display: flex;

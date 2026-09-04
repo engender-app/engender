@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { captureChainOf, deviceFromUserAgent, sameCaptureChain, type CaptureSettings } from './captureChain.ts';
+import {
+  captureChainBreak,
+  captureChainOf,
+  deviceFromUserAgent,
+  sameCaptureChain,
+  type CaptureSettings
+} from './captureChain.ts';
 
 const PIXEL = 'Mozilla/5.0 (Linux; Android 16; Pixel 10a Build/BP1A.250505.005) AppleWebKit/537.36';
 const REDUCED = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0';
@@ -69,4 +75,26 @@ test('an unrecorded chain is not the same as any other, including another unreco
   assert.equal(sameCaptureChain(null, chain('mic')), false);
   assert.equal(sameCaptureChain(chain('mic'), null), false);
   assert.equal(sameCaptureChain(null, null), false);
+});
+
+/* Why two chains differ, which is what the break in an own series says out
+   loud (phase 8 features ticket 29). */
+test('a change of phone and a change of processing are different breaks', () => {
+  assert.equal(captureChainBreak(chain('mic'), chain('mic', UNPROCESSED, 'SM-A546B')), 'device');
+  assert.equal(captureChainBreak(chain('Bottom microphone'), chain('Wired headset')), 'device');
+  assert.equal(captureChainBreak(chain('mic'), chain('mic', { ...UNPROCESSED, noiseSuppression: true })), 'processing');
+  assert.equal(captureChainBreak(chain('mic'), chain('mic', { ...UNPROCESSED, noiseSuppression: undefined })), 'processing');
+});
+
+test('one chain twice is no break at all', () => {
+  assert.equal(captureChainBreak(chain('mic'), chain('mic')), null);
+});
+
+/* A chain nobody recorded breaks the series without naming a phone: there
+   is no evidence of one phone or of two, and guessing either way would be
+   a claim about equipment the row never held. */
+test('an unrecorded chain breaks the series and says only that', () => {
+  assert.equal(captureChainBreak(null, chain('mic')), 'unrecorded');
+  assert.equal(captureChainBreak(chain('mic'), null), 'unrecorded');
+  assert.equal(captureChainBreak(null, null), 'unrecorded');
 });
