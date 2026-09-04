@@ -56,6 +56,7 @@
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -71,6 +72,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -202,6 +204,7 @@
           <VoiceTake
             data-vc-take={benchmark.id}
             {comfort}
+            captionShared
             role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
             pitchTrack={benchmark.pitchTrack}
             medianHz={benchmark.f0MedianHz}
@@ -210,6 +213,13 @@
           />
         </div>
       {/each}
+    </div>
+
+    <!-- One caption for the pair. Two of them, each in half the width, is
+         the same three paragraphs twice over the two charts they are about
+         (PitchBandsCaption.svelte's own note). -->
+    <div class="screen-part" {...roleAttrs(roleAt(activeFlag.roles, SECTION_ROLE.trend))}>
+      <PitchBandsCaption />
     </div>
 
     <div class="screen-part vc-delta" data-benchmark-delta>

@@ -2458,7 +2458,12 @@ try {
     ['/settings/milestones', 'milestones-empty'],
     ['/settings/letters', 'letters-empty'],
     ['/settings/tryouts', 'tryouts-empty'],
-    ['/settings/voice', 'voice-empty'],
+    /* `/settings/voice` was on this list for its memo picker's own
+       `voice-empty` notice. Phase 8 features ticket 09 moved memos off the
+       screen (ticket 11 gives them their own) and nothing in either demo
+       seed writes a benchmark, so the notice this asserted the absence of
+       no longer exists anywhere - which would have made the check pass for
+       free rather than fail. The voice screen's own walk is below. */
     ['/settings/wear', 'wear-empty'],
     ['/settings/stock', 'stock-empty']
   ];
@@ -2467,6 +2472,29 @@ try {
     if (await page.locator(`[data-notice="${emptyKey}"]`).count()) {
       throw new Error(`${route} still shows its empty state (${emptyKey}) after filling every feature`);
     }
+  }
+
+  /* The voice screen's three tabs (phase 8 features ticket 09): each one
+     renders its own surface and no other tab's, and the compare tab is the
+     one that lists benchmarks. Deliberately no microphone here - this
+     browser has none, and a step that waits on a live figure would hang
+     for thirty seconds and then blame the screen. The figure itself, with
+     its bands, its source and its caveat, is asserted in the browser tier
+     against an oscillator (tests/browser-tier/voice-benchmark-probe.ts). */
+  await page.goto(BASE + '/settings/voice', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-vb-passage]');
+  await page.locator('[data-segment="practise"]').click();
+  await page.waitForSelector('[data-comfort-band]');
+  if ((await page.locator('[data-vb-passage]').count()) !== 0) {
+    throw new Error('the practise tab still shows the benchmark passage');
+  }
+  if ((await page.locator('[data-vp-start]').count()) === 0) {
+    throw new Error('the practise tab offers no way to start');
+  }
+  await page.locator('[data-segment="compare"]').click();
+  await page.waitForSelector('[data-notice="voice-benchmark-empty"]');
+  if ((await page.locator('[data-comfort-band]').count()) !== 0) {
+    throw new Error('the compare tab still shows the practise tab\'s comfort row');
   }
 
   // Roadmap and effects carry no empty-state Notice of their own (their

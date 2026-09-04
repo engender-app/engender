@@ -65,7 +65,7 @@
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { bandLabel, caveatText, hzLabel, sourceText } from '$lib/components/pitchBandCopy';
+  import { hzLabel } from '$lib/components/pitchBandCopy';
 
   let {
     frames,
@@ -129,7 +129,7 @@
       steady note draws a fine line and a wandering one draws a heavy,
       unsettled one. */
   let traceWeight = $derived(
-    report?.f0Cv != null ? 2 + Math.min(1.6, report.f0Cv / MAX_F0_CV) * 1.4 : 2
+    report?.f0Cv != null ? 2.5 + Math.min(1.6, report.f0Cv / MAX_F0_CV) * 1.4 : 2.5
   );
 </script>
 
@@ -151,14 +151,13 @@
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
     {hzLabel}
-    {bandLabel}
-    sourceNote={sourceText()}
-    caveat={caveatText()}
-  />
-
-  <div class="vg-run" aria-hidden="true">
-    <span class="vg-run-fill" style="--vg-run: {runFraction}"></span>
-  </div>
+  >
+    {#snippet underPlot()}
+      <div class="vg-run" aria-hidden="true">
+        <span class="vg-run-fill" style="--vg-run: {runFraction}"></span>
+      </div>
+    {/snippet}
+  </PitchFigure>
 
   <p class="vg-advice" aria-live="polite">{advice.join(' ')}</p>
 </div>

@@ -4,7 +4,11 @@
    F1 and F2: the first two resonances of the tube between the vocal folds
    and the lips. F1 moves with how open the jaw and throat are, F2 with where
    the tongue sits and how the lips are shaped. Both are stated in Hz and
-   nothing here reads anything into them (PRODUCT.md:109) - they are a
+   nothing here reads anything into them (PRODUCT.md:109, and ADR-0059
+   deliberately did not narrow that rule here: F1/F2 norms are much shakier
+   than F0 norms and move with vowel, height and room, so a narrowed search
+   window is how an analyser starts refusing to find the formants somebody
+   actually has) - they are a
    measurement of a sustained vowel, not a verdict on a voice.
 
    Pure, like pitch.ts: a buffer in, two numbers or nothing out.
