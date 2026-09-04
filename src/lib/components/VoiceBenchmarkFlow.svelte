@@ -318,6 +318,7 @@
            links into its own reference section (ticket 27). The list was
            markup here until then; what the flow keeps is the take. -->
       <VoiceFigures
+        {role}
         {figures}
         formants={vowelTake?.formants ?? null}
         snrDb={vowelTake ? vowelTake.snrDb : null}

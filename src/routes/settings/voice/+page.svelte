@@ -462,6 +462,12 @@
      turning blue. Same treatment as the sentences on a take
      (VoiceFigures.svelte). */
   .vc-delta-figures dt a {
+    /* Padding out to the app's 48dp touch floor and given straight back as
+       negative margin, the same way a figure's sentence does it on a take
+       (VoiceFigures.svelte): a one-line label is about 20px of text. */
+    display: inline-block;
+    padding-block: 14px;
+    margin-block: -14px;
     color: inherit;
     text-decoration: underline;
     text-decoration-color: color-mix(in oklab, var(--role-c) 55%, transparent);

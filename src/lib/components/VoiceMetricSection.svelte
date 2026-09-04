@@ -25,21 +25,14 @@
      No badge for the tier, no verdict colour, no target, no mention of the
      reader's own numbers: this explains and never instructs (ADR-0060,
      ADR-0012). The heading above each section is the route's, so the
-     anchor a figure links to is the route's too. */
+     anchor a figure links to, and the stripe this inherits, are the
+     route's too. */
   import { m } from '$lib/paraglide/messages';
   import { bandsOf, type VoiceMetric } from '$lib/data/voice/metrics';
   import { bandSource, metricFields, passageLanguageName } from '$lib/data/voice/metricLabels';
   import { bandLabel, hzRangeLabel } from '$lib/components/pitchBandCopy';
-  import type { Role } from '$lib/theme/roles';
-  import { roleAttrs } from '$lib/components/kit/role';
 
-  let {
-    metric,
-    role
-  }: {
-    metric: VoiceMetric;
-    role?: Role;
-  } = $props();
+  let { metric }: { metric: VoiceMetric } = $props();
 
   let fields = $derived(metricFields(metric.key));
 
@@ -54,7 +47,11 @@
   );
 </script>
 
-<div class="vms kit-panel" data-metric={metric.key} data-metric-tier={metric.tier} {...roleAttrs(role)}>
+<!-- The stripe is the section's, set by the screen on the element the
+     anchor is on, and inherited from there: kit.css derives what a role
+     paints with into custom properties, so a surface inside one needs no
+     role of its own (kit/role.ts). -->
+<div class="vms kit-panel" data-metric={metric.key} data-metric-tier={metric.tier}>
   {#each fields as field (field.field)}
     <section class="vms-field" data-metric-field={field.field}>
       <h3>{field.heading}</h3>
@@ -66,15 +63,17 @@
             <p class="vms-lang">{passageLanguageName(language)}</p>
             <!-- Names and figures rather than a drawing: the graph on the
                  take is where a range is a shape, and here it is a
-                 published number with a citation under it. -->
-            <ul>
+                 published number with its citation under it. The figures
+                 hold their own column, so three ranges can be read down
+                 rather than hunted for at the end of three sentences. -->
+            <dl>
               {#each bands as band (band.key)}
-                <li>
-                  <span>{bandLabel(band)}</span>
-                  <span class="vms-figures">{hzRangeLabel(band)}</span>
-                </li>
+                <div>
+                  <dt>{bandLabel(band)}</dt>
+                  <dd class="vms-figures">{hzRangeLabel(band)}</dd>
+                </div>
               {/each}
-            </ul>
+            </dl>
             <p class="vms-source">{bandSource(language)}</p>
           </div>
         {/each}
@@ -93,26 +92,27 @@
   .vms {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    /* Generous between fields, tight inside one: seven answers read as
+       seven answers rather than as one wall of text (app.css's own rule
+       about a heading belonging to what comes after it, one level down). */
+    gap: var(--space-5);
   }
 
-  /* Seven fields read as seven answers rather than as one wall: the
-     question in the section's own ink, the answer under it in body text.
-     A field is never omitted, so the rhythm is the same in all six
-     sections and a person who reads two of them knows where the sentence
-     they came for is. */
   .vms-field {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
   }
 
+  /* The question, at body size in the section's own ink. Not a
+     letterspaced grey micro-label: the redesign took those out of this app
+     and a question the reader is meant to read is not an eyebrow. Weight
+     and colour carry the step down to the answer, which is the same size
+     because both are prose. */
   .vms-field h3 {
     margin: 0;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
     color: var(--role-ink);
   }
 
@@ -123,43 +123,53 @@
     color: var(--text-1);
   }
 
-  /* The published ranges, indented off the sentence that introduces them
-     and marked by the section's own stripe rather than by a swatch: a
-     coloured block here would be a legend for a graph this section does
-     not draw. */
+  /* The published ranges, set off from the sentence that introduces them by
+     a hairline rather than by a coloured bar: this is data under a claim,
+     not a callout, and a tinted rail here would read as the legend of a
+     graph the section does not draw. */
   .vms-bands {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-2);
     margin-top: var(--space-3);
-    padding-left: var(--space-3);
-    border-left: 2px solid color-mix(in oklab, var(--role-c) 40%, transparent);
+    padding-top: var(--space-3);
+    /* kit.css's own hairline, in the section's stripe: the ranges belong to
+       this figure rather than to the screen. */
+    border-top: var(--role-hairline);
   }
 
   .vms-lang {
     font-weight: var(--weight-medium);
   }
 
-  .vms-bands ul {
-    display: flex;
-    flex-direction: column;
+  .vms-bands dl {
+    display: grid;
     gap: var(--space-1);
     margin: 0;
-    padding: 0;
-    list-style: none;
+  }
+
+  /* Name on the left, figures in their own column on the right, tabular so
+     the digits line up down the three ranges. */
+  .vms-bands dl > div {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0 var(--space-3);
     font-size: var(--text-sm);
   }
 
-  .vms-bands li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-2);
+  .vms-bands dt {
     color: var(--muted);
+  }
+
+  .vms-bands dd {
+    margin: 0;
   }
 
   .vms-figures {
     font-variant-numeric: tabular-nums;
     color: var(--role-ink);
+    text-align: right;
   }
 
   /* Written as a compound selector rather than with !important: the
@@ -168,5 +178,11 @@
     font-size: var(--text-xs);
     line-height: 1.5;
     color: var(--muted);
+  }
+
+  /* The averages sentence is about both language blocks, so it sits clear
+     of the second one rather than trailing it. */
+  .vms-field p.vms-source[data-metric-caveat] {
+    margin-top: var(--space-3);
   }
 </style>
