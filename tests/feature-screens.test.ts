@@ -66,9 +66,7 @@ const ROUTES = [
   'settings/letters',
   'settings/tryouts',
   'settings/tryouts/[id]',
-  /* Phase 6 ticket 01. `settings/presentations` is absent from this list and
-     should not be - deepening ticket 17 added the screen and never joined it
-     here, which is a gap in that ticket rather than in this one. */
+  'settings/presentations',
   'settings/eras',
   // Practice
   'settings/voice',
@@ -99,16 +97,18 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 29 of them', () => {
-  it('is the count SCREENS.md gives, plus the three added since', () => {
+describe('all 30 of them', () => {
+  it('is the count SCREENS.md gives, plus the four added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
        /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
-       /settings/eras and the notifications view. Both arrived on their own
-       branch and each thought it was the 28th, which is what this line is
-       for: SCREENS.md is three tickets behind either way - see the note
-       above the list - and correcting it is still nobody's ticket. */
-    expect(ROUTES.length).toBe(29);
-    expect(new Set(ROUTES).size).toBe(29);
+       /settings/eras and the notifications view, then 30 as ticket 26 joined
+       /settings/presentations, which deepening ticket 17 had added without
+       ever landing here. Both 28 and 29 arrived on their own branch and each
+       thought it was the 28th, which is what this line is for: SCREENS.md is
+       four tickets behind either way - see the note above the list - and
+       correcting it is still nobody's ticket. */
+    expect(ROUTES.length).toBe(30);
+    expect(new Set(ROUTES).size).toBe(30);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
@@ -189,13 +189,17 @@ describe('what a first-run journal sees', () => {
 
 describe('what the worker is still fetching', () => {
   /** Reference data is held in memory and read synchronously (CONTEXT.md),
-      so a screen reading only that owes no loading state. Three here:
+      so a screen reading only that owes no loading state. Four here:
       milestones reads the milestone catalogue, resources reads a directory
-      compiled into the bundle, and the notifications view reads nothing but
-      the preference store, which is the same shape - a projection already in
-      memory, with no round trip to wait on. */
+      compiled into the bundle, the notifications view reads nothing but the
+      preference store, and presentations reads the mirrored vocabulary
+      (reference.svelte.ts) rather than a live query - all the same shape, a
+      projection already in memory, with no round trip to wait on. */
   const ENTRY_DATA = ROUTES.filter(
-    (route) => !['settings/milestones', 'settings/resources', 'settings/notifications'].includes(route)
+    (route) =>
+      !['settings/milestones', 'settings/resources', 'settings/notifications', 'settings/presentations'].includes(
+        route
+      )
   );
 
   it('keeps a loading state on every screen that reads the journal', () => {
