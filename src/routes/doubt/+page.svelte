@@ -288,14 +288,24 @@
            finding - written that day, or opened that day. There is no
            candidate day here, only the letters themselves, and Safe Space
            wants one framing regardless: this is what your past self wrote
-           you, deliberately, so `written` is hardcoded rather than derived. -->
+           you, deliberately, so `written` is hardcoded rather than derived.
+           `lead` follows from the same thing: with no candidate day, the
+           date is the least identifying fact about a letter, so the words
+           lead the row and the date sits under them. -->
       {#each letters as unlocked (unlocked.id)}
-        <LookBackLetterCard letter={unlocked} kind="written" />
+        <LookBackLetterCard letter={unlocked} kind="written" lead="text" />
       {/each}
-      {#if unlockedLetters.length > LETTER_LIMIT}
-        <ListRow key="all-letters" icon="book" title={m.safe_space_letters_all()} href="/settings/letters" />
-      {/if}
     </ListCard>
+    <!-- The way out sits under the card rather than as a last row in it,
+         which is where this screen's own save-snapshot button and search's
+         two "show more" controls already put the same gesture. A row inside
+         the card wore the letters' own book disc and chevron and read as a
+         fourth letter. -->
+    {#if unlockedLetters.length > LETTER_LIMIT}
+      <a class="btn btn-soft btn-block press" data-all-letters href="/settings/letters">
+        <span>{m.safe_space_letters_all({ count: unlockedLetters.length - LETTER_LIMIT })}</span>
+      </a>
+    {/if}
     <div style="margin-bottom:var(--space-3)"></div>
   {/if}
 

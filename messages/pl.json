@@ -2030,7 +2030,23 @@
       }
     }
   ],
-  "safe_space_letters_all": "Wszystkie twoje listy",
+  "safe_space_letters_all": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Jeszcze {count} list",
+        "countPlural=few": "Jeszcze {count} listy",
+        "countPlural=many": "Jeszcze {count} listów",
+        "countPlural=other": "Jeszcze {count} listów"
+      }
+    }
+  ],
   "safe_space_photos_intro": "Zdjęcia oznaczone gwiazdką.",
   "safe_space_chart_timeline_title": "Ostatnie 30 dni",
   "safe_space_chart_themes_title": "Motywy dające spokój",

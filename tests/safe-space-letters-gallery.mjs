@@ -45,10 +45,29 @@ for (const theme of ['light', 'dark']) {
       for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
     });
 
-  const shoot = async (name, fullPage = false) => {
+  /* Two things about capturing a whole screen here, both learned by
+     shipping six identical files first. `fullPage` catches the viewport and
+     nothing else, because the app scrolls `[data-app-root]` and not the
+     document. And an element shot of that container is clipped to what is
+     visible, because it is itself the scroller. So the screen is captured
+     by growing the viewport to the content and shrinking it back: the
+     layout is the 390px one throughout, only the height is unreal. */
+  const shoot = async (name) => {
     await strip();
+    const tall = await page.evaluate(() => {
+      // The scroller is the shell's own main region, not the app root and
+      // not the document - so the height a whole screen needs is this
+      // viewport plus everything below the fold inside it.
+      const scroller = document.querySelector('[data-app-scroll-region]');
+      const hidden = scroller.scrollHeight - scroller.clientHeight;
+      return Math.min(window.innerHeight + hidden + 40, 8000);
+    });
+    await page.setViewportSize({ width: 390, height: tall });
+    await page.waitForTimeout(500);
     const file = `${outDir}/${name}-trans-${theme}.png`;
-    await page.screenshot({ path: file, fullPage });
+    await page.locator('[data-app-root]').screenshot({ path: file });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
     shots.push(`${name}-trans-${theme}`);
   };
 
@@ -66,12 +85,15 @@ for (const theme of ['light', 'dark']) {
       const row = document.querySelector('[data-list-row="letter-preview"]');
       const card = row.closest('[data-list-card]');
       const intro = card.previousElementSibling;
+      // The way out of the section sits under the card, so the crop has to
+      // reach past it or the shot argues about a control it cut off.
+      const tail = document.querySelector('[data-all-letters]') ?? card;
       const top = intro.getBoundingClientRect();
-      const bottom = card.getBoundingClientRect();
+      const bottom = tail.getBoundingClientRect();
       return {
         x: Math.max(0, top.x - 8) + window.scrollX,
         y: Math.max(0, top.y - 8) + window.scrollY,
-        width: Math.min(window.innerWidth, bottom.width + 16),
+        width: Math.min(window.innerWidth, card.getBoundingClientRect().width + 16),
         height: Math.min(window.innerHeight - 16, bottom.bottom - top.top + 16)
       };
     });
@@ -114,7 +136,7 @@ for (const theme of ['light', 'dark']) {
   await settle('/doubt');
   await page.waitForSelector('[data-safe-space-stats]');
   await page.waitForTimeout(600);
-  await shoot('01-no-letters', true);
+  await shoot('01-no-letters');
 
   /* ---------- the demo persona's own two, which is the section at rest.
      ---------- */
@@ -125,7 +147,7 @@ for (const theme of ['light', 'dark']) {
   await settle('/doubt');
   await page.waitForSelector('[data-list-row="letter-preview"]');
   await page.waitForTimeout(600);
-  await shoot('02-two-letters', true);
+  await shoot('02-two-letters');
   await shootLetterBlock('03-two-letters-close');
 
   /* ---------- four unlocked letters: three rows and the way out to the
@@ -142,7 +164,7 @@ for (const theme of ['light', 'dark']) {
   await settle('/doubt');
   await page.waitForSelector('[data-list-row="letter-preview"]');
   await page.waitForTimeout(600);
-  await shoot('04-four-letters', true);
+  await shoot('04-four-letters');
   await shootLetterBlock('05-four-letters-close');
 
   /* ---------- and the other half of the decision: the whole letter, one
@@ -150,7 +172,7 @@ for (const theme of ['light', 'dark']) {
   await page.locator('[data-list-row="letter-preview"]').first().click();
   await page.waitForSelector('[data-letter-text]');
   await page.waitForTimeout(500);
-  await shoot('06-whole-letter', true);
+  await shoot('06-whole-letter');
 
   await page.close();
 }

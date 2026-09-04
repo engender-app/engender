@@ -489,17 +489,30 @@
   text-overflow: ellipsis;
 }
 
-/* The look-back letter card (phase 5 deepening ticket 13) carries a whole
-   letter as its subtitle, and the letter's full text is what the card opens
-   onto - so the row shows a preview of it, not the prose itself, the same
-   rule the scales row follows: the row is the summary, the screen behind it
-   is the whole. Two lines, clamped rather than truncated in code, so the
-   cut lands wherever the text wraps at the row's real width. */
-[data-list-row='letter-preview'] .kit-row-sub {
+/* The look-back letter card (phase 5 deepening ticket 13) carries a letter's
+   opening, and the letter's full text is what the card opens onto - so the
+   row shows a preview of it, not the prose itself, the same rule the scales
+   row follows: the row is the summary, the screen behind it is the whole.
+   Two lines, clamped here rather than cut here, so the visible cut lands
+   wherever the text wraps at the row's real width. The code-side cut
+   underneath it is letterOpening's, and it is set far enough past two lines
+   that the two never disagree about what is visible.
+
+   Which line the prose is on depends on the surface (phase 8 features
+   ticket 21): a retrospective leads with the date and carries the words
+   below it, Safe Space leads with the words. Both get the same allowance,
+   and the prose half drops to the body weight for the search hit's reason -
+   a paragraph set in medium reads as a heading. */
+[data-list-row='letter-preview'][data-lead='date'] .kit-row-sub,
+[data-list-row='letter-preview'][data-lead='text'] .kit-row-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+}
+
+[data-list-row='letter-preview'][data-lead='text'] .kit-row-title {
+  font-weight: var(--weight-regular);
 }
 
 /* A search hit's title is a run out of the middle of whatever it matched

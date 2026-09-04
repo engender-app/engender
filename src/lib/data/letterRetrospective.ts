@@ -85,6 +85,32 @@ export function safeSpaceLetters(letters: Letter[], todayEpochDay: number): Lett
     );
 }
 
+/** What a list row may carry of a letter: its opening, flattened to one
+    run of text and cut to `limit` characters on a word boundary, with an
+    ellipsis where the cut happened (phase 8 features ticket 21).
+
+    The row's own two-line clamp is CSS, and CSS cuts the paint rather than
+    the text - so a row whose text is a whole letter hands a screen reader
+    the whole letter as the link's name. On Safe Space that is three letters
+    read out in full before the person has chosen one of them. The clamp
+    stays, because it is what makes the visible cut land at the row's real
+    width; this is the cut underneath it, and `limit` is set well past what
+    two lines can show so the two never disagree about what is visible.
+
+    The flattening is not a compromise either: a row sets its text with
+    `white-space: normal`, so a letter's paragraph breaks are already
+    collapsed to spaces by the time anybody sees it. Doing it here means the
+    announced text matches the drawn text. */
+export function letterOpening(text: string, limit: number): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= limit) return flat;
+
+  const cut = flat.slice(0, limit);
+  const lastSpace = cut.lastIndexOf(' ');
+  // A single word longer than the whole allowance has no boundary to cut on.
+  return `${lastSpace === -1 ? cut : cut.slice(0, lastSpace)}\u2026`;
+}
+
 /** The unlocked letters with something to say about `candidateEpochDay`:
     written that day, or unlocked that day. Written wins when both are the
     same day. */

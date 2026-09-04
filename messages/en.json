@@ -1990,7 +1990,21 @@
       }
     }
   ],
-  "safe_space_letters_all": "All your letters",
+  "safe_space_letters_all": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} more letter",
+        "countPlural=other": "{count} more letters"
+      }
+    }
+  ],
   "safe_space_photos_intro": "Photos you starred.",
   "safe_space_chart_timeline_title": "Past 30 days",
   "safe_space_chart_themes_title": "Affirming themes",

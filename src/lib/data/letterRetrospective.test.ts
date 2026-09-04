@@ -8,7 +8,13 @@
    like on-this-day.test.ts. */
 import { test, expect } from 'vitest';
 import type { Letter } from './types.ts';
-import { wrappedLetters, onThisDayLetters, safeSpaceLetters, type RetrospectiveLetter } from './letterRetrospective.ts';
+import {
+  wrappedLetters,
+  onThisDayLetters,
+  safeSpaceLetters,
+  letterOpening,
+  type RetrospectiveLetter
+} from './letterRetrospective.ts';
 
 const letter = (over: Partial<Letter> & Pick<Letter, 'id' | 'epochDay' | 'unlockEpochDay'>): Letter => ({
   text: `letter ${over.id}`,
@@ -121,4 +127,37 @@ test('safeSpaceLetters leaves the caller its own array to slice, and does not re
 
   safeSpaceLetters(given, 500);
   expect(given.map((l) => l.id)).toEqual(['older', 'newer']);
+});
+
+/* letterOpening: what a row may carry of a letter. The row's own two-line
+   clamp is CSS, which cuts the paint and not the text, so a row whose
+   subtitle is the whole letter announces the whole letter to a screen
+   reader - three of them in a row on Safe Space, before the reader has
+   chosen anything. This is the code-side cut that stops that. */
+
+test('letterOpening leaves a short letter exactly as written', () => {
+  expect(letterOpening('The haircut was the right call.', 200)).toBe('The haircut was the right call.');
+});
+
+test('letterOpening flattens the paragraphs a row cannot show anyway', () => {
+  expect(letterOpening('One line.\n\nAnd another.\n  Indented.', 200)).toBe('One line. And another. Indented.');
+});
+
+test('letterOpening cuts a long letter on a word boundary and says it was cut', () => {
+  const opening = letterOpening('alpha bravo charlie delta echo foxtrot', 20);
+
+  expect(opening).toBe('alpha bravo charlie\u2026');
+  expect(opening.length).toBeLessThanOrEqual(21);
+});
+
+test('letterOpening cuts mid-word only where a word is longer than the whole allowance', () => {
+  expect(letterOpening('supercalifragilisticexpialidocious', 10)).toBe('supercalif\u2026');
+});
+
+test('letterOpening keeps a letter that lands exactly on the limit whole', () => {
+  expect(letterOpening('12345', 5)).toBe('12345');
+});
+
+test('letterOpening on an empty letter is empty, not an ellipsis', () => {
+  expect(letterOpening('   ', 200)).toBe('');
 });
