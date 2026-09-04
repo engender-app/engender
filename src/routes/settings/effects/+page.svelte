@@ -41,6 +41,7 @@
 
   import Switch from '$lib/components/Switch.svelte';
   import EffectsTimeline from '$lib/components/EffectsTimeline.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
@@ -357,6 +358,9 @@
       </button>
     </div>
   {/snippet}
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="effects" />
 
   <Sheet open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.effects_categories_heading()}</h3>

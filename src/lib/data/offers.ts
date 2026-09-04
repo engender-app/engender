@@ -86,6 +86,8 @@
    exists (see vitest.config.ts). Every area arrives as a type. */
 
 import { m } from '../paraglide/messages';
+import type { FinishableArea } from './areaState';
+import type { AreaStatesArea } from './journal/areaStates';
 import type { FeltSenseArea, FeltSenseOwner } from './journal/feltSense';
 import type { MilestonesArea } from './journal/milestones';
 import type { NormalizedPhoto } from './journal/photos';
@@ -100,12 +102,13 @@ export type OfferKey =
   | 'surgery-day-milestone'
   | 'tryout-adoption-milestone'
   | 'new-milestone-felt-sense'
-  | 'milestone-anniversary-felt-sense';
+  | 'milestone-anniversary-felt-sense'
+  | 'area-finished';
 
 /** What the person is being offered. One record, named by the archive
     section that holds it, so an offer cannot claim to write something the
     journal has no home for. */
-export type OfferedRecord = 'milestones' | 'feltSenseEntries';
+export type OfferedRecord = 'milestones' | 'feltSenseEntries' | 'areaStates';
 
 /** How the person answered. `'decline'` is a real answer and not the
     absence of one: it closes the offer and writes nothing. */
@@ -126,6 +129,7 @@ export interface OfferCopy {
     built, so a confirmed offer writes through exactly the path the owning
     screen would. */
 export interface OfferJournal {
+  areaStates: AreaStatesArea;
   milestones: MilestonesArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
@@ -152,6 +156,16 @@ export interface RoadmapGoalMilestone {
   epochDay: number;
   photo: NormalizedPhoto | null;
   goalKey: string | null;
+}
+
+/** What accepting the finish offer writes: every area the hub row fronts,
+    and the day the person settled on. The areas travel with the subject
+    rather than being looked up in the write, because a row fronting two
+    sections finishes both in one call and the screen already knows which
+    (areaGroups.ts). */
+export interface FinishedArea {
+  areas: readonly FinishableArea[];
+  epochDay: number;
 }
 
 /** What a felt-sense offer writes: whose it is, when, and how it felt. */
@@ -258,6 +272,39 @@ export const OFFERS = {
     offers: 'feltSenseEntries',
     copy: { title: () => m.ms_feeling_anniv_title(), ...FELT_SENSE_COPY },
     write: writeFeltSense
+  },
+
+  /* Phase 8 features ticket 04. The sixth, and the first whose trigger is
+     the absence of writes rather than a write: an area with something in it
+     and nothing added for half a year.
+
+     Two things keep it from being a nag, and neither is a rule this file
+     could hold. It is offered on the area's own screen, which somebody
+     reached on purpose, and never on Home and never as a notification. And
+     the no is kept forever in `areaFinishOfferDeclined` - which is this
+     offer's own version of ADR-0045's second half, the same way the roadmap
+     reads `roadmapGoalKey` and the surgery hub reads its linked milestone.
+     The threshold itself is `areaGroups.ts`'s FINISH_SUGGESTION_QUIET_DAYS.
+
+     It is also the one entry whose sheet a person can open without being
+     offered anything, from the control at the foot of the same screen. That
+     does not make it two offers: the sentence, the record and the write are
+     the same, and only what opened the sheet differs. What it does mean is
+     that `write` below is reached on a path no automatic trigger started,
+     which is fine - ADR-0045 constrains triggers, not people. */
+  'area-finished': {
+    key: 'area-finished',
+    trigger:
+      "the offer: an area with at least one write, none of them inside FINISH_SUGGESTION_QUIET_DAYS, not already hidden or finished, and never declined before. The same sheet is also opened by hand from the area's own screen, and confirming it reaches this write through the same call - one path to the record rather than a second one beside the registry",
+    offers: 'areaStates',
+    copy: {
+      title: () => m.area_finish_offer_title(),
+      confirm: () => m.area_finish_confirm(),
+      decline: () => m.area_finish_offer_dismiss()
+    },
+    write: async ({ areaStates }: OfferJournal, subject: FinishedArea) => {
+      await areaStates.setAreasFinished(subject.areas, subject.epochDay);
+    }
   }
 } satisfies { [K in OfferKey]: OfferRow<never> & { key: K } };
 

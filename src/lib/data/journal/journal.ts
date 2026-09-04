@@ -401,6 +401,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     eras,
     eraMutes,
     chartAnnotations: makeChartAnnotationsArea({
+      areaStates,
       milestones,
       regimen,
       doses,
@@ -412,7 +413,16 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       stats
     }),
     wearSessions,
-    clinicianSummary: makeClinicianSummaryArea({ regimen, doses, labs, exposure, sideEffects, checklists, procedures }),
+    clinicianSummary: makeClinicianSummaryArea({
+      areaStates,
+      regimen,
+      doses,
+      labs,
+      exposure,
+      sideEffects,
+      checklists,
+      procedures
+    }),
     day: makeDayArea({
       entries,
       milestones,
