@@ -84,12 +84,14 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(SENSITIVE_TITLE, notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
     }
 
-    /* Phase 5 security ticket 01 (F-05). hideNotificationTitles above is
-       about the shade, where the OS shows everything whatever the app asks
-       for. This is about the lock screen, where it does not: a notification
-       posted at the default VISIBILITY_PUBLIC shows its title and text to
-       anyone holding the phone, and the title is the reminder the person
-       wrote. The two cover different screens and both are needed. */
+    /* Phase 5 security ticket 01 (F-05), corrected by audit ticket 07.
+       hideNotificationTitles above is about the shade, where the OS shows
+       everything whatever the app asks for. The two tests below assert
+       that VISIBILITY_PRIVATE is set on the notification, not that a
+       locked screen is actually empty - see the comment beside
+       .setVisibility in ReminderAlarmReceiver.java for what that flag
+       does and does not buy, and for the field that hides a title on
+       every default lock screen unconditionally. */
 
     @Test
     public void reminderNotificationsAreHiddenOnALockedScreen() throws Exception {
