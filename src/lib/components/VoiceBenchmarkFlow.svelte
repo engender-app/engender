@@ -86,6 +86,13 @@
     bytes: Uint8Array;
     figures: ReturnType<typeof analysePassage>['figures'];
     pitchTrack: string | null;
+    /* The chain the passage was recorded through (ticket 28, ADR-0061),
+       carried from the session that made it because the row stores one
+       chain and the passage is the take the stored figures are read
+       against. The vowel step opens the same microphone under the same
+       constraints seconds later; a device that answered differently
+       between the two is not a state this app tells apart. */
+    captureChain: string;
   } | null>(null);
   let vowelTake = $state<{ bytes: Uint8Array; formants: Formants | null; snrDb: number } | null>(null);
   let note = $state('');
@@ -216,7 +223,8 @@
       passageTake = {
         bytes: take.bytes,
         figures: analysed.figures,
-        pitchTrack: analysed.pitchTrack
+        pitchTrack: analysed.pitchTrack,
+        captureChain: active.captureChain
       };
       step = 'vowel';
       phase = 'idle';
@@ -254,7 +262,8 @@
         f2Hz: vowelTake?.formants?.f2Hz ?? null,
         snrDb: vowelTake?.snrDb ?? null,
         note: note.trim() || null,
-        pitchTrack: passageTake.pitchTrack
+        pitchTrack: passageTake.pitchTrack,
+        captureChain: passageTake.captureChain
       });
       toast(m.vb_saved());
       onSaved();
@@ -356,6 +365,17 @@
   {:else}
     <div class="screen-part vb-body" {...roleAttrs(role)}>
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
+
+      <!-- Mouth-to-microphone distance is the largest thing a person
+           controls in the whole of this measurement, and no API can read
+           it back, so it ships as an instruction rather than as a stored
+           number a benchmark could not verify (ticket 28, ADR-0061). Both
+           steps get it: the vowel is a take too. It goes while a take is
+           running, like the step's own hint, because the gauge needs the
+           room. -->
+      {#if phase === 'idle'}
+        <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
+      {/if}
 
       {#if step === 'passage'}
         <!-- What a benchmark is, which is worth reading once and is in the

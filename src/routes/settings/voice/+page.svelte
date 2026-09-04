@@ -252,6 +252,12 @@
             <dd>
               {#if delta.f1DeltaHz !== null && delta.f2DeltaHz !== null}
                 {m.vb_hz({ value: signed(delta.f1DeltaHz, 0) })} · {m.vb_hz({ value: signed(delta.f2DeltaHz, 0) })}
+              {:else if !delta.sameChain}
+                <!-- Refused rather than missing (ADR-0061). Saying "not
+                     measured" about two takes that were both measured, on
+                     two different microphones, would be the one thing this
+                     cell must not do. -->
+                <span class="vc-aside">{m.vc_delta_other_mic()}</span>
               {:else}
                 <span class="vc-aside">{m.vb_not_measured()}</span>
               {/if}
