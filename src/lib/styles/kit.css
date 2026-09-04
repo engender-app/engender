@@ -1506,7 +1506,7 @@ a.kit-entry:active {
    two rules asked for never rendered. Stating it here, next to the rule it
    is an exception to, is what makes it hold - and is why the pair in
    screens.css is gone rather than moved. */
-:is(.stats-note, .wrapped-note) + :is([data-kit-surface], .skeleton-stack) {
+.wrapped-note + :is([data-kit-surface], .skeleton-stack) {
   margin-top: var(--space-4);
 }
 

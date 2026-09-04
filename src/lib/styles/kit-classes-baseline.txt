@@ -108,5 +108,4 @@ otd-photos
 segmented
 skeleton-stack
 stats-caption
-stats-note
 wrapped-photos
