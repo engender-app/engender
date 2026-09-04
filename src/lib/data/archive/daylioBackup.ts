@@ -50,6 +50,7 @@ import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEp
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
 import { photoFileName } from '../photos/names';
+import { audioMimeOf } from '../voiceRecordings/mime';
 import { htmlToText } from './html';
 import type { DaylioNaming } from './daylio';
 import type {
@@ -797,7 +798,7 @@ async function planAsset(
   const uuid = await derivedUuid(['daylio-asset', asset.checksum]);
 
   if (asset.type === AUDIO_ASSET) {
-    const extension = audioExtension(bytes) ?? extensionOf(asset.sourceName);
+    const extension = audioExtension(bytes) ?? recordingExtensionOf(asset.sourceName);
     if (!extension) {
       missing.add(id);
       return null;
@@ -820,6 +821,17 @@ async function planAsset(
 const extensionOf = (name: string): string | null => {
   const match = /\.[a-z0-9]{2,4}$/i.exec(name);
   return match ? match[0].toLowerCase() : null;
+};
+
+/** `extensionOf`'s guess, kept only when the player's own allowlist
+    (voiceRecordings/mime.ts) recognises it. `android_metadata.Name` is a
+    string the backup's own file chose, not this app's, so anything the regex
+    would otherwise admit - `.js`, `.htm` - joins the missing set the way
+    undecodable image bytes already do, rather than landing in the recording
+    store unplayable. */
+const recordingExtensionOf = (name: string): string | null => {
+  const extension = extensionOf(name);
+  return extension && audioMimeOf(extension) ? extension : null;
 };
 
 /** Every label a tag in this journal answers to, folded, so an imported
