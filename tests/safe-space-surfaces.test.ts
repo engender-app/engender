@@ -72,13 +72,30 @@ describe('what Safe Space is built from', () => {
 });
 
 describe('the three more sources ticket 14 adds', () => {
-  it('features the most recently unlocked letter through featuredLetter, not the full list', () => {
+  /* Ticket 14 showed one letter here; phase 8 features ticket 21 widened
+     that to every unlocked one, capped, with the rest a tap away. What is
+     pinned is the seal rule staying in letterRetrospective.ts, the cap
+     existing at all, and the letters keeping their own card rather than
+     being folded into the flat counterevidence list. */
+  it('lists the unlocked letters through safeSpaceLetters, capped, with an overflow row to the letters screen', () => {
     expect(doubt).toContain("from '$lib/data/letterRetrospective'");
-    expect(doubt).toContain('featuredLetter(');
+    expect(doubt).toContain('safeSpaceLetters(');
     expect(doubt).toContain("from '$lib/components/LookBackLetterCard.svelte'");
+    expect(doubt).toMatch(/LETTER_LIMIT\s*=\s*\d+/);
+    expect(doubt).toContain('unlockedLetters.length > LETTER_LIMIT');
     expect(markup).toContain('<LookBackLetterCard');
-    // Not folded into the flat counterevidence list as one more row.
-    expect(markup).not.toMatch(/<LookBackLetterCard[^>]*>\s*{#each/);
+    expect(markup).toMatch(/<ListRow[^>]*key="all-letters"[\s\S]*?href="\/settings\/letters"/);
+    // Its own card, not one more row inside the counterevidence list.
+    expect(markup).toMatch(/<ListCard[\s\S]*?<LookBackLetterCard/);
+  });
+
+  it('shows a letter as a preview that links to the whole thing, never as text this screen truncates itself', () => {
+    // The tap target is the letter's own screen; the row's own two-line
+    // clamp is the kit's, and nothing here slices the text to fake one.
+    const letterBlock = markup.match(/{#each letters[\s\S]*?{\/each}/)?.[0] ?? '';
+    expect(letterBlock).toContain('<LookBackLetterCard');
+    expect(letterBlock).not.toMatch(/\.slice\(|substring|\u2026/);
+    expect(read('src/lib/components/LookBackLetterCard.svelte')).toContain('href={`/settings/letters/${letter.id}`}');
   });
 
   it('reads starred photos and caps how many it shows', () => {
