@@ -19,6 +19,7 @@ import type { EntryInput } from '../journal/entries';
 import type { BodyRegionFeeling } from '../types';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
+import { demoNow } from './demoClock';
 import {
   epochDayFromLocalDate,
   localDateFromEpochDay,
@@ -99,9 +100,8 @@ const NOTES = [
   '',
 ];
 
-function buildEntries(): PersonaEntry[] {
+function buildEntries(today: number): PersonaEntry[] {
   const r = rng(20240331);
-  const today = todayEpochDay();
   const entries: PersonaEntry[] = [];
   /* Body-region intensities on most entries (phase 8 features ticket 16).
 
@@ -168,8 +168,10 @@ function buildEntries(): PersonaEntry[] {
       const hour = k === 0 ? 8 + Math.floor(r() * 5) : 17 + Math.floor(r() * 4);
       const minute = Math.floor(r() * 60);
       const note = NOTES[Math.floor(r() * NOTES.length)];
-      // Today's sample entry sits a few hours back so anything logged "now" sorts above it.
-      const ts = back === 0 ? Date.now() - 3 * 3600000 : startOfDayTimestamp(day) + hour * 3600000 + minute * 60000;
+      // The anchor day's sample entry sits a few hours back so anything
+      // logged "now" sorts above it. `demoNow` rather than Date.now() so a
+      // seed anchored on an earlier day stays inside that day (demoClock.ts).
+      const ts = back === 0 ? demoNow(today) - 3 * 3600000 : startOfDayTimestamp(day) + hour * 3600000 + minute * 60000;
       /* The last three weeks alternate between the persona's two
          presentations (phase 5 deepening ticket 17) - deterministic on
          `back` rather than a further draw from `r()`, so adding this does
@@ -240,7 +242,7 @@ function buildEntries(): PersonaEntry[] {
    persona - only where the table is empty, and only in a demo build.
    Anything left out here stays at the catalogue's default, which is what a
    real first run gets. */
-export function demoPreferences(): Partial<PreferenceValues> {
+export function demoPreferences(today: number = todayEpochDay()): Partial<PreferenceValues> {
   return {
     onboarded: true,
     name: 'Alice',
@@ -250,22 +252,20 @@ export function demoPreferences(): Partial<PreferenceValues> {
     // 34 is asserted on literally by walkthrough.test.mjs flow 10b, which
     // reads the notice's rendered day count to prove it was computed from
     // epoch millis rather than an epoch day. Change the offset there too.
-    lastBackupAt: startOfDayTimestamp(todayEpochDay() - 34),
+    lastBackupAt: startOfDayTimestamp(today - 34),
   };
 }
 
 /** The persona as journal input: no ids anywhere, because the journal mints
     every one of them (ADR-0002). Writing it is journal-seed.ts's job. */
-export function persona(): Persona {
-  const today = todayEpochDay();
-
+export function persona(today: number = todayEpochDay()): Persona {
   return {
     customTag: VOICE_PRACTICE,
     presentations: [
       { name: 'femme', roleIndex: 0 },
       { name: 'androgynous', roleIndex: 1 }
     ],
-    entries: buildEntries(),
+    entries: buildEntries(today),
     milestones: [
       {
         name: 'HRT start',

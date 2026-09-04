@@ -1,4 +1,4 @@
-/* The demo bar's two state jumps. Here rather than beside the journal
+/* The demo bar's three state jumps. Here rather than beside the journal
    because both exist only to drive a review build, and the whole demo module
    has to be droppable from a production bundle (ticket 05) - which it can
    only be if nothing outside `__DEMO__` imports it. DemoBar.svelte is the
@@ -16,6 +16,7 @@ import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
 import { seedFullFixture } from './fullFixture';
+import { seedReturnGap } from './returnGap';
 
 export async function resetDemo(): Promise<void> {
   // Defaults first, then the persona: without the defaults a palette or a
@@ -35,6 +36,17 @@ export async function resetDemoFull(): Promise<void> {
   await clearJournal(journal);
   await seedPersonaJournal(journal);
   await seedFullFixture(journal);
+}
+
+/** The persona and every area, five weeks stale - the state the return
+    surface exists for (phase 8 features ticket 05). A third jump rather than
+    a variant of the two above, because a journal that stops five weeks ago
+    is the wrong state for reviewing anything else: every screen's "recent"
+    is empty in it. returnGap.ts says what it adds and why. */
+export async function resetDemoComingBack(): Promise<void> {
+  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
+  await clearJournal(journal);
+  await seedReturnGap(journal);
 }
 
 /** True first-run state, for the demo bar's "Onboarding (first run)". Only
