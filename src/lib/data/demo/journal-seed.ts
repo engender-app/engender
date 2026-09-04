@@ -22,6 +22,7 @@
 import type { Journal } from '../journal/journal';
 import type { NormalizedPhoto } from '../journal/photos';
 import { persona } from './persona';
+import { todayEpochDay } from '../epochDay';
 
 /** Deletes every journal row, leaving preferences alone. Only the demo bar's
     state jumps need this - a real Replace import is ticket 14's, behind the
@@ -48,8 +49,8 @@ export async function clearJournal(journal: Journal): Promise<void> {
   await journal.discardEverything();
 }
 
-export async function seedPersonaJournal(journal: Journal): Promise<void> {
-  const { customTag, presentations, entries, milestones, reminders, labResults, tallyEvents } = persona();
+export async function seedPersonaJournal(journal: Journal, today: number = todayEpochDay()): Promise<void> {
+  const { customTag, presentations, entries, milestones, reminders, labResults, tallyEvents } = persona(today);
 
   await journal.tags.addTag(customTag.groupKey, customTag.label);
 

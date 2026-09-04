@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Icon from './Icon.svelte';
-  import { resetDemo, resetDemoFull, markFirstRun } from '$lib/data/demo/controls';
+  import { resetDemo, resetDemoFull, resetDemoComingBack, markFirstRun } from '$lib/data/demo/controls';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { frame, SIMULATED_INSETS } from '$lib/data/demo/frame.svelte';
 
@@ -144,6 +144,18 @@
       await resetDemoFull();
       goto('/more');
     }}>Fill every feature</button
+  >
+  <!-- Ticket 05: the one state neither jump above can produce, because both
+       stop on today and the return surface only exists after three weeks of
+       nothing. Lands on /coming-back rather than Home, since the shell's own
+       gate would take a reviewer there a moment later anyway. -->
+  <button
+    class="demo-btn"
+    data-fill-coming-back
+    onclick={async () => {
+      await resetDemoComingBack();
+      goto('/coming-back');
+    }}>Five weeks away</button
   >
   <div class="demo-jump">
     <label class="visually-hidden" for="demo-jump">Jump to screen</label>

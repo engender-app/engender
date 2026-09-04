@@ -21,6 +21,7 @@
 import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
 import { demoPhoto } from './journal-seed';
+import { demoNow } from './demoClock';
 import { demoAudioBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { GARMENT_CATEGORIES } from '../garmentCategories';
@@ -37,8 +38,8 @@ function rng(seed: number) {
   };
 }
 
-export async function seedFullFixture(journal: Journal): Promise<void> {
-  const today = todayEpochDay();
+export async function seedFullFixture(journal: Journal, today: number = todayEpochDay()): Promise<void> {
+  const now = demoNow(today);
   const r = rng(90210);
   const pick = <T>(from: readonly T[]): T => from[Math.floor(r() * from.length)];
   const between = (low: number, high: number) => low + Math.floor(r() * (high - low + 1));
@@ -222,7 +223,7 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
       note: r() < 0.2 ? 'a bit tight by the end' : null
     });
   }
-  await journal.wearSessions.upsertSession({ startTimestamp: Date.now() - 2 * 3_600_000, durationMs: null });
+  await journal.wearSessions.upsertSession({ startTimestamp: now - 2 * 3_600_000, durationMs: null });
 
   // Cycle events: roughly monthly over two years.
   for (let day = today - 730; day <= today; day += between(24, 34)) {
@@ -262,7 +263,7 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
   // picker has a pair to work with.
   await journal.entries.upsertEntry({
     epochDay: today - 4,
-    timestamp: Date.now() - 4 * 86_400_000,
+    timestamp: now - 4 * 86_400_000,
     mood: 3,
     note: '',
     dims: {},
@@ -272,7 +273,7 @@ export async function seedFullFixture(journal: Journal): Promise<void> {
   });
   await journal.entries.upsertEntry({
     epochDay: today - 60,
-    timestamp: Date.now() - 60 * 86_400_000,
+    timestamp: now - 60 * 86_400_000,
     mood: 4,
     note: '',
     dims: {},
