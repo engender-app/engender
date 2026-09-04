@@ -262,7 +262,6 @@
   "chart_annotation_span": "{label}, {from} do {to}",
   "chart_annotations_more": "{names} i jeszcze {count}",
   "chart_annotations_and_more": "i jeszcze {count}",
-  "chart_share_rest": "Pozostałe",
   "tag_insights": "Tagi w liczbach",
   "insights_note": "Obserwacje, nie wnioski. Tagi z mniej niż 3 wpisami w zakresie są ukryte.",
   "insights_empty": "Za mało otagowanych wpisów w tym zakresie.",

@@ -32,7 +32,7 @@
 
      The centre carries the total rather than being decorative, which is
      the other thing a ring has that bars do not: a hole. */
-  import { arcs, sliced, type Part } from '$lib/charts/parts';
+  import { MAX_SLICES, arcs, slices, type Part } from '$lib/charts/parts';
 
   let {
     parts,
@@ -69,13 +69,21 @@
      A narrower ladder was the first attempt and it did not survive the
      first look: 86/72/58 of a light stripe mixed into a light card are the
      same colour three times, so trans's light theme drew a five-part ring
-     as one blue band. Five values because MAX_SLICES is five. */
-  const WEIGHTS = ['100%', '78%', '58%', '38%', '22%'];
+     as one blue band.
 
-  let slices = $derived(sliced(parts, restName));
+     `satisfies` rather than a comment saying there are five: raising the
+     cap without adding a step here would hand the last arc a
+     --slice-weight of undefined, which is an invalid color-mix() and an
+     arc that paints nothing. This is the pair the ladder and the cap make,
+     held by the compiler. */
+  const WEIGHTS = ['100%', '78%', '58%', '38%', '22%'] satisfies {
+    length: typeof MAX_SLICES;
+  } & string[];
+
+  let drawn = $derived(slices(parts, restName));
   let ring = $derived(
     arcs(
-      slices.map((s) => s.share),
+      drawn.map((s) => s.share),
       CIRC
     )
   );
@@ -99,7 +107,7 @@
         <!-- The ring under the arcs, so the breaks between them read as
              breaks and a faint arc still sits on something. -->
         <circle class="kit-donut-track" cx="50" cy="50" r={R} />
-        {#each slices as slice, i (slice.key)}
+        {#each drawn as slice, i (slice.key)}
           <circle
             class="kit-donut-arc"
             cx="50"
@@ -126,7 +134,7 @@
   </div>
 
   <ul class="kit-donut-legend">
-    {#each slices as slice, i (slice.key)}
+    {#each drawn as slice, i (slice.key)}
       <li class="kit-donut-item" data-donut-slice={slice.key}>
         <span class="kit-donut-swatch" style={`--slice-weight: ${WEIGHTS[i]}`}></span>
         <span class="kit-donut-name">{slice.name}</span>
