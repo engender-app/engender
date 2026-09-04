@@ -438,6 +438,63 @@ try {
   ok('day detail keeps separate entries');
 } catch (e) { fail('day detail truthfulness', e); }
 
+/* 4c. a margin note: added, rendered as a layer, edited, deleted - and the
+   entry's own note untouched by any of it (phase 8 features ticket 07).
+   Grip handles only, per ADR-0029: data-margin-note-* rather than anything
+   read off the rendered date or text. */
+try {
+  await fresh('/entry/new/today');
+  await page.locator('[data-mood="3"]').click();
+  await page.locator('#ed-note').fill('Margin note proof entry');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-entry-note]');
+
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-margin-note-add]');
+  /* Entries on a day are timestamp order, oldest first (entries.ts), and
+     this one was just saved with the latest timestamp of any entry today's
+     earlier flows may have left behind - so `.last()` is this entry,
+     deterministically, whatever else `/day/today` is carrying. */
+  const entryNoteBefore = await page.locator('[data-entry-note]').last().textContent();
+
+  await page.locator('[data-margin-note-add]').last().click();
+  await page.waitForSelector('[data-margin-note-input]');
+  await page.locator('[data-margin-note-input]').fill('I know now what I did not then');
+  await page.locator('[data-margin-note-save]').click();
+  await page.waitForSelector('[data-margin-note]');
+  const afterAdd = await page.locator('[data-margin-note]').first().textContent();
+  if (!afterAdd?.includes('I know now what I did not then')) {
+    throw new Error('the margin note did not render after being added');
+  }
+  if ((await page.locator('[data-entry-note]').last().textContent()) !== entryNoteBefore) {
+    throw new Error("adding a margin note changed the entry's own note");
+  }
+
+  await page.locator('[data-margin-note-edit]').first().click();
+  await page.waitForSelector('[data-margin-note-input]');
+  await page.locator('[data-margin-note-input]').fill('corrected, on rereading');
+  await page.locator('[data-margin-note-save]').click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-margin-note]')?.textContent?.includes('corrected, on rereading'),
+    null,
+    { timeout: 8000 }
+  );
+  if ((await page.locator('[data-entry-note]').last().textContent()) !== entryNoteBefore) {
+    throw new Error("editing a margin note changed the entry's own note");
+  }
+
+  await page.locator('[data-margin-note-delete]').first().click();
+  await page.waitForSelector('[data-confirm-delete-margin-note]');
+  await page.locator('[data-confirm-delete-margin-note]').click();
+  await page.waitForSelector('[data-margin-note]', { state: 'detached' });
+  if ((await page.locator('[data-entry-note]').last().textContent()) !== entryNoteBefore) {
+    throw new Error("deleting a margin note changed the entry's own note");
+  }
+
+  ok('a margin note is added, rendered as a layer, edited and deleted, and the entry stays byte-identical throughout');
+} catch (e) { fail('margin note', e); }
+
 /* 5. search */
 try {
   await fresh('/search');
