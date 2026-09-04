@@ -13,6 +13,8 @@
   "measurementTypes": 5,
   "measurements": 2,
   "sizeRecords": 1,
+  "taper": 1,
+  "taperSessions": 2,
   "sideEffects": 1,
   "cycleEvents": 1,
   "journalingPauses": 1,

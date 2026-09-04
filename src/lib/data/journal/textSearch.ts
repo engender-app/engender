@@ -331,6 +331,18 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['fit_note', 'brand', 'size']
   }),
+  /* A dilation session's own note (ticket 12). The schedule that expects it
+     carries no text of its own - opted out below, the same reason
+     doseSchedules is. */
+  area({
+    key: 'taperSessions',
+    covers: ['taperSessions'],
+    tables: ['taper'],
+    from: 'taper_session',
+    uuid: 'uuid',
+    date: { kind: 'epochDay', column: 'epoch_day' },
+    columns: ['note']
+  }),
   /* The wear log's own shape: a session is a moment rather than a day
      (wearSessions.ts), which is the one place `SearchDate`'s second form is
      needed. */
@@ -507,6 +519,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
   hairPhotos: 'no text of its own: a dated photograph',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
+  taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',
   doseEvents: 'no text of its own: a drug, a dose and sites picked from closed lists',
 
   // ADR-0037 and ADR-0040. A snapshot holds copies of entry notes, so its

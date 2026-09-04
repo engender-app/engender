@@ -57,6 +57,7 @@ import { makeSavedQuestionsArea, type SavedQuestionsArea } from './savedQuestion
 import { makeMarginNotesArea, type MarginNotesArea } from './marginNotes';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
+import { makeTaperArea, type TaperArea } from './taper';
 import { makeStatsArea, type StatsArea } from './stats';
 import { makeStockArea, type StockArea } from './stock';
 import { makeTagsArea, type TagsArea } from './tags';
@@ -135,6 +136,13 @@ export interface Journal {
       measurements above without duplicating it: no body-measurement math,
       and no size normalized or converted across brands or systems. */
   sizeRecords: SizeRecordsArea;
+  /** The dilation taper schedule and its session log (phase 8 features
+      ticket 12, CONTEXT: "Taper"). One name for both, the same reasoning
+      `doses` gives for its schedule and its events: nothing reads a
+      session without knowing whether there is a schedule to compare it
+      against. Stores no expected session - the expansion is pure
+      arithmetic over the schedule and today (taperSchedule.ts, ADR-0010). */
+  taper: TaperArea;
   reminders: RemindersArea;
   /** Misgendering and correct-gendering events (CONTEXT: "Tally event").
       Its own record type, never an Entry or a quick log. */
@@ -377,6 +385,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const tags = makeTagsArea(driver);
   const measurements = makeMeasurementsArea(driver);
   const sizeRecords = makeSizeRecordsArea(driver);
+  const taper = makeTaperArea(driver);
   const personalEffects = makePersonalEffectsArea(driver);
   const cycleEvents = makeCycleEventsArea(driver);
   const tally = makeTallyArea(driver);
@@ -411,6 +420,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     labs,
     measurements,
     sizeRecords,
+    taper,
     reminders,
     tally,
     regimen,
@@ -456,6 +466,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       voiceBenchmarks,
       measurements,
       sizeRecords,
+      taper,
       sideEffects,
       personalEffects,
       cycleEvents,
@@ -475,6 +486,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       voiceBenchmarks,
       measurements,
       sizeRecords,
+      taper,
       sideEffects,
       personalEffects,
       cycleEvents,
