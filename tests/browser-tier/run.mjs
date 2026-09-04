@@ -1222,6 +1222,19 @@ try {
       'a narrowed query still re-runs for the table it does watch',
       live.narrowed.error ?? `still ${live.narrowed.afterEntry} run(s)`
     );
+
+  /* Phase 8 audit ticket 13: Home's batched felt-sense read is fed the ids a
+     live list beside it holds, so it depends on that list as well as on its
+     own tables. Both halves have to reach it. */
+  if (live.feltSense.runsAfterTryout > live.feltSense.runsBefore && live.feltSense.latestDay === live.feltSense.expectedDay)
+    ok('a batched read fed a live list re-runs for the list it reads and for the table it asks');
+  else
+    fail(
+      'a batched read fed a live list re-runs for the list it reads and for the table it asks',
+      live.feltSense.error ??
+        `${live.feltSense.runsBefore} run(s) before the tryout, ${live.feltSense.runsAfterTryout} after, ` +
+          `latest day ${live.feltSense.latestDay} rather than ${live.feltSense.expectedDay}`
+    );
 } catch (e) {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
