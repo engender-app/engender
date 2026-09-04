@@ -30,8 +30,33 @@ function markup(file: string): string {
     .replace(/<style[\s\S]*?<\/style>/g, '');
 }
 
+/** A component's own `<style>` block, comments stripped, or nothing where
+    it has none.
+
+    Read alongside kit.css by the mark rules below (phase 8 UX ticket 04).
+    A kit class has one consumer by construction - its component - so
+    scripts/check-screens-classes.mjs asks a new one to live beside it
+    rather than in the shared sheet, and the two components that ticket
+    added are the first in the kit to take that up. A single-hue check that
+    only read kit.css would have gone quietly vacuous the moment it
+    mattered, which is the failure tests/motion-system.ts already names for
+    its own cap. */
+function styleBlock(file: string): string {
+  return [...source(file).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+    .map(([, css]) => css.replace(/\/\*[\s\S]*?\*\//g, ''))
+    .join('\n');
+}
+
+/** Everything the kit paints with, wherever the ticket that wrote it chose
+    to put it: the shared sheet plus every kit component's own block. Every
+    ban below reads this rather than kit.css alone, or a component style
+    block becomes the place to put the shadow, the gradient and the second
+    hue none of them may have. */
+const kitAllCss = [kitNoComments, ...components.map(styleBlock)].join('\n');
+
 /** Just the rules that draw a chart's marks - the line, its fill, the
-    bars, the distribution. The card around them and the picker on its
+    bars, the distribution, the donut's arcs and the ordered strip's
+    segments. The card around them and the picker on its
     heading are chrome, and chrome is allowed the app's own surface and
     accent colours; the single-hue rule is about the marks.
 
@@ -41,11 +66,11 @@ function markup(file: string): string {
     (phase 5 UX ticket 23) is the first mark rule to carry one. Excluded by
     the state rather than by the selector, so the rules that paint the bar
     itself stay held to the hue. */
-const markCss = kitNoComments
+const markCss = kitAllCss
   .split('}')
   .filter((rule) => {
     const prelude = rule.split('{')[0] ?? '';
-    return /\.kit-(area|bar|dist)[a-z-]*/.test(prelude) && !prelude.includes(':focus-visible');
+    return /\.kit-(area|bar|dist|donut|ordered)[a-z-]*/.test(prelude) && !prelude.includes(':focus-visible');
   })
   .join('}');
 
@@ -82,6 +107,13 @@ describe('the surfaces', () => {
       'DayCard.svelte',
       'DayEntry.svelte',
       'Distribution.svelte',
+      /* Parts of a whole where the parts have no order (phase 8 UX ticket
+         04, ADR-0058): share by tag, share by presentation, share by
+         injection site. The one mark in the kit that cannot label itself -
+         an arc has nowhere to write a name that stays inside it at every
+         share - which is why it is also the one that carries a legend
+         outside the area chart. */
+      'Donut.svelte',
       /* Not a surface: no pixels beyond a label a screen would otherwise
          have hand-drawn (phase 5 audit ticket 10). It owns the wrapper, the
          label and the id the two agree on - the control is always the
@@ -110,6 +142,13 @@ describe('the surfaces', () => {
          not be changed without changing both. A chip and a day card ask it
          for a size; the picker asks for a blink. */
       'Notice.svelte',
+      /* The other half of ADR-0058's rule: parts of a whole where the
+         order is the information. Mood distribution draws as this rather
+         than as Distribution's columns, which is the one place the two
+         forms overlap - a ring of five ordered steps cannot show
+         mostly-the-middle-two, and neither can five columns without the
+         reader measuring them against each other. */
+      'OrderedStrip.svelte',
       'PairedDots.svelte',
       /* The rows, the add control, the confirm sheet and the alignment
          review five screens each assembled around a photo list (phase 5
@@ -141,21 +180,21 @@ describe('the surfaces', () => {
     // DIRECTION.md decision 2: two surfaces, not a stack of planes. The
     // app's one shadow belongs to the floating nav bar and its add button,
     // which are the shell's, not the kit's.
-    expect(kitNoComments).not.toMatch(/box-shadow/);
+    expect(kitAllCss).not.toMatch(/box-shadow/);
   });
 
   it('has no coloured bar down the side of anything', () => {
     // The craft floor names a coloured border-left above 1px as the single
     // most recognisable AI-UI tell there is, and the slop audit took one
     // off the notice this kit replaces.
-    const sided = [...kitNoComments.matchAll(/border-(left|right):\s*([^;]+);/g)];
+    const sided = [...kitAllCss.matchAll(/border-(left|right):\s*([^;]+);/g)];
     for (const [, side, value] of sided) {
       expect(value, `border-${side}`).toMatch(/^\s*1px|^\s*0/);
     }
   });
 
   it('paints flat colour, never a gradient', () => {
-    expect(kitNoComments).not.toMatch(/gradient\(/);
+    expect(kitAllCss).not.toMatch(/gradient\(/);
   });
 
   it('gives every interactive element a data-* handle (ADR-0029)', () => {
@@ -232,8 +271,17 @@ describe('the charts', () => {
        handed no role at all, which is what the app's other second line has
        always been drawn in. Colour is not the only separation either way:
        the second line is dashed. */
+    /* The donut's five (phase 8 UX ticket 04) are geometry and dilution,
+       not colour: --arc-dash, --arc-rest and --arc-offset are lengths
+       along the ring's own path, --circ is the circumference the first
+       two add up to, and --slice-weight is how much of --role-draw an arc
+       keeps before the rest of it is the card. So the hue is still the
+       section's stripe and nothing here can name a second one - which is
+       what this rule is about. The ordered strip needed none: its width
+       is --bar-share and its fill is --dist-fill, the same two the bars
+       and the distribution already use. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-draw|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d)$/;
+      /^(--role-ink|--role-mark|--role-draw|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
     /* The second hue, admitted for the area chart's second series and for
        nothing else. Read per rule rather than over the whole of markCss:
        allowing it globally would let the next bar set or distribution take a
@@ -263,15 +311,17 @@ describe('the charts', () => {
     expect(markCss).toMatch(/\.kit-area-line/);
     expect(markCss).toMatch(/\.kit-bar-mark/);
     expect(markCss).toMatch(/\.kit-dist-mark/);
+    expect(markCss).toMatch(/\.kit-donut-arc/);
+    expect(markCss).toMatch(/\.kit-ordered-seg/);
   });
 
   it('draws no gridline, no axis and no tick', () => {
     for (const furniture of ['gridline', 'axis', 'tick']) {
-      expect(kitNoComments, furniture).not.toMatch(new RegExp(`\\.kit-[a-z-]*${furniture}`));
+      expect(kitAllCss, furniture).not.toMatch(new RegExp(`\\.kit-[a-z-]*${furniture}`));
     }
   });
 
-  /* The one legend the kit draws, named here rather than left to be found -
+  /* The two legends the kit draws, named here rather than left to be found -
      the same way DIRECTION.md names the wear trend's, which is the app's
      other one and lives outside the kit.
 
@@ -281,13 +331,24 @@ describe('the charts', () => {
      ranges against one axis, no value gutter, and two unnamed lines are not
      a chart (phase 6 ticket 12).
 
-     What this does not license is a legend on any other chart in the kit,
-     which is what the assertion below is for: the next one that wants one is
-     arguing against this paragraph rather than extending it. */
-  it('draws a legend only for the area chart carrying a second metric', () => {
-    const legends = [...kitNoComments.matchAll(/\.kit-[a-z-]*legend[a-z-]*/g)].map(([sel]) => sel);
+     The donut is the second, and it is the argument this paragraph invited
+     rather than an extension of it (phase 8 UX ticket 04). Every other mark
+     in the kit can be labelled where it is drawn: a bar has a line above it,
+     a column has a name under it, a dot sits on a named row. An arc has
+     nowhere - there is no position on a segment where "estradiol, 34%" stays
+     inside it at every share, and the alternative, names around the ring on
+     leader lines, collides at phone width as soon as two small shares land
+     next to each other. So the names sit beside the ring and a swatch joins
+     each one to its segment. The cap is what keeps that honest: five arcs,
+     because a legend longer than that has stopped being a key and become the
+     chart, which is the state the horizontal bars were already in.
+
+     What this still does not license is a third. A chart that wants one is
+     arguing with both paragraphs. */
+  it('draws a legend only for the area chart with a second metric and for the donut', () => {
+    const legends = [...kitAllCss.matchAll(/\.kit-[a-z-]*legend[a-z-]*/g)].map(([sel]) => sel);
     expect(legends.length).toBeGreaterThan(0);
-    for (const selector of legends) expect(selector).toMatch(/^\.kit-area-legend/);
+    for (const selector of legends) expect(selector).toMatch(/^\.kit-(area|donut)-legend/);
   });
 
   it('caps how many points a chart draws, whatever range it is given', async () => {
