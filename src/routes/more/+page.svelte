@@ -37,7 +37,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { HUB_GROUP_KEYS, hubSections } from '$lib/data/hubRows';
+  import { HUB_GROUP_KEYS, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
 
   const today = todayEpochDay();
@@ -78,8 +78,8 @@
      and by every row in it stating the day it ended, not by losing its
      colour - the one uncoloured card on this screen is the Settings row
      below, which is the app talking about itself. */
-  const roleIndex = (key: string) =>
-    key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key as (typeof HUB_GROUP_KEYS)[number]);
+  const roleIndex = (key: HubSection['key']) =>
+    key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
 </script>
 
 <div class="screen">
