@@ -1384,9 +1384,9 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
     ok('a day past the cap shows five rows and one way to the rest');
   else fail('a day past the cap shows five rows and one way to the rest', JSON.stringify(maximal));
 
-  /* The count on that row is what is hidden, not what exists: 23 rows, 5
-     shown, so 18 more. */
-  if (maximal.moreLabel && maximal.moreLabel.includes('18'))
+  /* The count on that row is what is hidden, not what exists: 24 rows, 5
+     shown, so 19 more. */
+  if (maximal.moreLabel && maximal.moreLabel.includes('19'))
     ok('the overflow row counts what is hidden rather than what the day holds');
   else fail('the overflow row counts what is hidden rather than what the day holds', String(maximal.moreLabel));
 
@@ -1400,8 +1400,8 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
       keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : []
     };
   });
-  if (opened.open && opened.rows === 23) ok('the overflow opens a sheet holding the whole list, all 23 rows');
-  else fail('the overflow opens a sheet holding the whole list, all 23 rows', JSON.stringify(opened));
+  if (opened.open && opened.rows === 24) ok('the overflow opens a sheet holding the whole list, all 24 rows');
+  else fail('the overflow opens a sheet holding the whole list, all 24 rows', JSON.stringify(opened));
 
   /* Photographs collapse and records do not, checked on the full list now
      that the card only carries the first five: three hair photos are one row,

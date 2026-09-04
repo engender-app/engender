@@ -2475,6 +2475,7 @@ try {
     '/settings/measurements', '/settings/sizes', '/settings/hair-progress',
     '/settings/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
     '/settings/cycle-events', '/settings/side-effects', '/settings/surgery',
+    '/settings/dilation',
     '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
     '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/presentations',
     '/settings/eras',
@@ -2517,6 +2518,7 @@ try {
     ['/settings/cycle-events', 'cycle-events-empty'],
     ['/settings/side-effects', 'side-effects-empty'],
     ['/settings/surgery', 'surgery-empty'],
+    ['/settings/dilation', 'dilation-schedule-empty'],
     ['/settings/appointment-prep', 'appointment-prep-empty'],
     ['/settings/milestones', 'milestones-empty'],
     ['/settings/letters', 'letters-empty'],
@@ -2717,6 +2719,43 @@ try {
   ok('coming back after five weeks opens the return surface once, backfills one item at a time, and does not open again for the same gap');
 } catch (e) {
   fail('coming back', e);
+}
+
+/* Phase 8 features ticket 21: Safe Space lists the unlocked letters, and
+   the row is a preview that hands over to the whole letter rather than the
+   letter itself. Both halves are the decision the ticket asked to be
+   written down, so both are walked - a row that reads back nothing, or a
+   tap that lands anywhere but the letter's own text, is the failure this
+   catches and no unit test can.
+
+   After "fill every feature", which is what puts unlocked letters in the
+   journal at all - the persona alone writes none, and the section is
+   absent then on purpose. */
+try {
+  await fresh('/doubt');
+  const letterRows = page.locator('[data-list-row="letter-preview"]');
+  const shown = await letterRows.count();
+  if (shown === 0) {
+    throw new Error('Safe Space showed no unlocked letters with a journal that has two');
+  }
+  const preview = (await letterRows.first().innerText()).trim();
+  if (preview === '') {
+    throw new Error('a letter row on Safe Space carried no text at all');
+  }
+
+  await letterRows.first().click();
+  await page.waitForSelector('[data-letter-text]');
+  const whole = (await page.locator('[data-letter-text]').innerText()).trim();
+  if (whole === '') {
+    throw new Error('the letter opened from Safe Space had no text on it');
+  }
+  if (!page.url().includes('/settings/letters/')) {
+    throw new Error(`a letter row on Safe Space went to ${page.url()} instead of the letter`);
+  }
+
+  ok(`Safe Space lists ${shown} unlocked letter(s), and a row opens the whole letter`);
+} catch (e) {
+  fail('safe space letters', e);
 }
 
 /* Ticket 18: "compare this stretch" on a tryout and on a procedure, over

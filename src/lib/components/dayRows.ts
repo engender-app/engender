@@ -151,6 +151,15 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       href: '/settings/sizes'
     })),
 
+  taperSessions: (day) =>
+    day.taperSessions.map((session) => ({
+      key: `taper-${session.id}`,
+      icon: 'flask',
+      title: m.dilation(),
+      subtitle: session.note || undefined,
+      href: '/settings/dilation'
+    })),
+
   sideEffects: (day) =>
     day.sideEffects.map((effect) => ({
       key: `side-effect-${effect.id}`,

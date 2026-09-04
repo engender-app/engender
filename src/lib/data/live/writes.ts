@@ -51,6 +51,11 @@ export const TABLE_NAMES = [
   'measurement',
   /* The sizes-and-fit log (phase 5 ticket 23). */
   'sizeRecord',
+  /* The dilation taper's schedule and its session log alike (phase 8
+     features ticket 12): nothing reads a session without knowing whether
+     there is a schedule to compare it against, the same reasoning 'dose'
+     gives its own schedule and events. */
+  'taper',
   'reminder',
   'tally',
   'regimen',
@@ -461,6 +466,19 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getRecordsByCategory: ['sizeRecord'],
       getRecordsOnDay: ['sizeRecord'],
       lastWriteEpochDay: ['sizeRecord']
+    }
+  }),
+  taper: classify<Journal['taper']>()({
+    writes: {
+      upsertTaper: ['taper'],
+      upsertSession: ['taper'],
+      deleteSession: ['taper']
+    },
+    reads: {
+      getTaper: ['taper'],
+      getSessions: ['taper'],
+      getSessionsOnDay: ['taper'],
+      lastWriteEpochDay: ['taper']
     }
   }),
   sideEffects: classify<Journal['sideEffects']>()({

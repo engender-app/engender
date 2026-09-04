@@ -69,6 +69,7 @@ import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
 import type { SizeRecordsArea } from './sizeRecords';
+import type { TaperArea } from './taper';
 import type { TallyArea } from './tally';
 import type { TryoutsArea } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
@@ -84,6 +85,7 @@ export interface LastWriteAreas {
   voiceBenchmarks: VoiceBenchmarksArea;
   measurements: MeasurementsArea;
   sizeRecords: SizeRecordsArea;
+  taper: TaperArea;
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
   cycleEvents: CycleEventsArea;
@@ -156,6 +158,11 @@ const ENTRIES = [
     key: 'sizeRecords',
     tables: ['sizeRecord'],
     read: ({ sizeRecords, todayEpochDay }) => sizeRecords.lastWriteEpochDay(todayEpochDay)
+  }),
+  entry({
+    key: 'taperSessions',
+    tables: ['taper'],
+    read: ({ taper, todayEpochDay }) => taper.lastWriteEpochDay(todayEpochDay)
   }),
   entry({
     key: 'sideEffects',
@@ -247,6 +254,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
 
   regimenEpisodes: 'a span: what was being taken across a stretch of days, not a single write to date',
   doseSchedules: 'a schedule: what is meant to happen, never something written on a day',
+  taper: 'a schedule: what is meant to happen, never something written on a day (ticket 12)',
   dosePauses: 'a span: a break declared across days',
   journalingPauses: 'a span: a break declared across days',
   eras: 'a span the person named, not a record of one day',

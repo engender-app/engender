@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 66);
+  assert.equal(db.getUserVersion(), 67);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1059,12 +1059,12 @@ test('v65 adds the capture chain column, and a benchmark from before it has none
   );
 });
 
-test('v66 adds the corner-vowel scale column, and a benchmark from before it has none', async () => {
+test('v67 adds the corner-vowel scale column, and a benchmark from before it has none', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(
     db,
     noopFileOps(),
-    migrations.filter((m) => m.version <= 65)
+    migrations.filter((m) => m.version <= 66)
   );
 
   /* A benchmark recorded before the column existed asked for one vowel

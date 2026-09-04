@@ -56,36 +56,69 @@ export function wrappedLetters(
     .map((letter) => ({ letter, kind: 'written' as const }));
 }
 
-/** The unlocked letters with something to say about `candidateEpochDay`:
-    written that day, or unlocked that day. Written wins when both are the
-    same day. */
-/** The single strongest letter to show on Safe Space (phase 5 deepening
-    ticket 14, CONTEXT: "Safe space"): the most recently unlocked one, ties
-    broken by whichever was written most recently, and a final tie broken
-    by id for a deterministic pick between two letters unlocked and written
-    the same day.
+/** Every unlocked letter Safe Space may show, most recently unlocked
+    first, ties broken by whichever was written most recently and then by
+    id so two letters unlocked and written the same day still order the
+    same way on every read (phase 5 deepening ticket 14 for the ordering,
+    phase 8 features ticket 21 for the widening from one letter to all of
+    them, CONTEXT: "Safe space").
 
     Unlike the retrospectives above, there is no candidate day and no
     range: Safe Space is not looking back at a particular day, it is
-    reaching for whichever letter has the most to say to someone right now,
-    which is the one their past self most recently finished waiting on.
-    Returns null rather than undefined so a caller's `{#if}` reads the same
-    way ReadGate's empty branches do elsewhere on the screen. */
-export function featuredLetter(letters: Letter[], todayEpochDay: number): Letter | null {
-  const unlocked = letters.filter((l) => !isLetterSealed(l, todayEpochDay));
-  if (unlocked.length === 0) return null;
+    reaching for what a person's past self wrote them on purpose. Recency
+    of unlock is the order because the letter somebody most recently
+    finished waiting on is the one they are least likely to have read
+    already - it is not a claim that an older letter says less, and no
+    strength ranking is implied or wanted (ticket 21 rules one out).
 
-  return unlocked.reduce((newest, candidate) => {
-    if (candidate.unlockEpochDay !== newest.unlockEpochDay) {
-      return candidate.unlockEpochDay > newest.unlockEpochDay ? candidate : newest;
-    }
-    if (candidate.epochDay !== newest.epochDay) {
-      return candidate.epochDay > newest.epochDay ? candidate : newest;
-    }
-    return candidate.id > newest.id ? candidate : newest;
-  });
+    Returns the whole unlocked set rather than a capped one: the seal rule
+    and the order are this file's to own, how many rows a screen has space
+    for is the screen's. Sorts a copy, so a caller's live-query array is
+    left as the journal handed it over. */
+export function safeSpaceLetters(letters: Letter[], todayEpochDay: number): Letter[] {
+  return letters
+    .filter((l) => !isLetterSealed(l, todayEpochDay))
+    .slice()
+    .sort(
+      (a, b) =>
+        b.unlockEpochDay - a.unlockEpochDay || b.epochDay - a.epochDay || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
+    );
 }
 
+/** How much of a letter a list row may carry. Past what two lines can show
+    at any width the app renders at, so the code cut below and the row's own
+    CSS clamp never disagree about what is visible. It lives here rather than
+    on the card, next to the reasoning that depends on it. */
+export const LETTER_OPENING_LIMIT = 200;
+
+/** What a list row may carry of a letter: its opening, flattened to one
+    run of text and cut to `limit` characters on a word boundary, with an
+    ellipsis where the cut happened (phase 8 features ticket 21).
+
+    The row's own two-line clamp is CSS, and CSS cuts the paint rather than
+    the text - so a row whose text is a whole letter hands a screen reader
+    the whole letter as the link's name. On Safe Space that is three letters
+    read out in full before the person has chosen one of them. The clamp
+    stays, because it is what makes the visible cut land at the row's real
+    width; this is the cut underneath it.
+
+    The flattening is not a compromise either: a row sets its text with
+    `white-space: normal`, so a letter's paragraph breaks are already
+    collapsed to spaces by the time anybody sees it. Doing it here means the
+    announced text matches the drawn text. */
+export function letterOpening(text: string, limit: number): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= limit) return flat;
+
+  const cut = flat.slice(0, limit);
+  const lastSpace = cut.lastIndexOf(' ');
+  // A single word longer than the whole allowance has no boundary to cut on.
+  return `${lastSpace === -1 ? cut : cut.slice(0, lastSpace)}\u2026`;
+}
+
+/** The unlocked letters with something to say about `candidateEpochDay`:
+    written that day, or unlocked that day. Written wins when both are the
+    same day. */
 export function onThisDayLetters(
   letters: Letter[],
   candidateEpochDay: number,
