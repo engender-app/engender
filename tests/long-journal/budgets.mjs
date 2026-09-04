@@ -69,12 +69,67 @@ export function budgetFor(baselineMs, targetMs) {
   return targetMs == null ? floored : Math.min(floored, targetMs);
 }
 
+/** How much room a mount's byte budget leaves over the bytes it recorded.
+
+    The two count budgets are ratchets rather than gates, so the rule is
+    tighter than the time rule by design: `budgetMs` absorbs a shared CI
+    runner being slower than a quiet desktop by an unknown factor, and a
+    statement count has no such wobble to absorb. The fixture is generated
+    from a fixed seed, so a mount fires the same statements over the same
+    rows on every machine - and a statement budget is therefore exactly what
+    was recorded. One extra statement is a screen asking a new question, and
+    that is the thing worth failing on.
+
+    Bytes get a tenth of headroom for one case only: a column renamed or an
+    id scheme changed moves the serialised length a little without any
+    screen asking for more. A read that widened - a list where a scalar
+    would do - moves it by a multiple, which this still catches. */
+const MOUNT_BYTE_HEADROOM = 1.1;
+
+/**
+ * The count half of the gate, decided here for the same reason budgetFor()
+ * is: before any run.
+ *
+ * @param {number} statementBaseline
+ * @param {number} byteBaseline
+ * @returns {{ statementBudget: number, byteBudget: number }}
+ */
+export function mountBudgetsFor(statementBaseline, byteBaseline) {
+  return {
+    statementBudget: statementBaseline,
+    byteBudget: Math.ceil(byteBaseline * MOUNT_BYTE_HEADROOM)
+  };
+}
+
+/** The two counts a screen mount carries, and where each is written down.
+    A measurement with one of them and no budget for it is a breach, the
+    same way a measurement with no budget at all is: the alternative is CI
+    quietly not watching the metric this whole instrument exists for. */
+const COUNTS = [
+  {
+    unit: 'statements',
+    /** @param {{ statements?: number }} m */ measured: (m) => m.statements,
+    /** @param {Budget} b */ ceiling: (b) => b.statementBudget,
+    /** @param {Budget} b */ baseline: (b) => b.statementBaseline
+  },
+  {
+    unit: 'bytes',
+    /** @param {{ bytes?: number }} m */ measured: (m) => m.bytes,
+    /** @param {Budget} b */ ceiling: (b) => b.byteBudget,
+    /** @param {Budget} b */ baseline: (b) => b.byteBaseline
+  }
+];
+
 /**
  * @typedef {object} Budget
  * @property {string} what
  * @property {number} baselineMs
  * @property {number} budgetMs
  * @property {number} targetMs
+ * @property {number} [statementBaseline]
+ * @property {number} [statementBudget]
+ * @property {number} [byteBaseline]
+ * @property {number} [byteBudget]
  */
 
 /**
@@ -90,7 +145,7 @@ export const budgets = JSON.parse(readFileSync(new URL('./budgets.json', import.
 /**
  * Everything the run exceeded, one line each, ready to print.
  *
- * @param {{ name: string, ms: number }[]} measurements
+ * @param {{ name: string, ms: number, statements?: number, bytes?: number }[]} measurements
  * @param {Record<string, Budget>} [table] the budgets to judge against,
  *   defaulting to the recorded ones. Only the tests pass their own.
  * @returns {string[]}
@@ -107,6 +162,28 @@ export function breaches(measurements, table = budgets.measurements) {
     }
     if (m.ms > budget.budgetMs) {
       found.push(`${m.name}: ${Math.round(m.ms)}ms over a budget of ${budget.budgetMs}ms (baseline ${budget.baselineMs}ms)`);
+    }
+
+    for (const count of COUNTS) {
+      const measured = count.measured(m);
+      const ceiling = count.ceiling(budget);
+      if (ceiling == null) {
+        if (measured != null) {
+          found.push(
+            `${m.name} counts ${count.unit} and has no budget for them - add one to budgets.json or CI is not watching it`
+          );
+        }
+        continue;
+      }
+      if (measured == null) {
+        found.push(`${m.name} has a ${count.unit} budget and the run took no ${count.unit} count for it`);
+        continue;
+      }
+      if (measured > ceiling) {
+        found.push(
+          `${m.name}: ${measured} ${count.unit} over a budget of ${ceiling} (baseline ${count.baseline(budget)})`
+        );
+      }
     }
   }
 

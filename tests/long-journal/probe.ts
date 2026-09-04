@@ -19,6 +19,7 @@
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';
+import { recordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { encryptedFileStore } from '../../src/lib/data/photos/encrypted-file-store.ts';
 import { purgeExpiredTrash } from '../../src/lib/data/journal/entries.ts';
@@ -179,9 +180,15 @@ async function run() {
     detail: `${fixtureDetail}; ${fileNames.length} attachment files scanned against ${summary.photos} photo rows`
   });
 
-  const measurements = await measureLongJournal(openJournal(reopened.driver, reopenedFiles), reopenedFiles, {
+  /* The screen mounts are counted at the driver seam rather than timed, so
+     the journal they are measured over is opened on the recording adapter
+     (phase 8 audit ticket 01). It records only inside the windows the
+     harness opens, so nothing above pays for it. */
+  const recorder = recordingDriver(reopened.driver);
+  const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
-    summary
+    summary,
+    recorder
   });
 
   await reopened.driver.close();
