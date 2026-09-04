@@ -88,6 +88,13 @@ const ROUTES = [
      view"); its sibling /settings/live-tiles predates that line and is not
      on it. */
   'settings/notifications',
+  /* Reached from the shell rather than from a hub row, and deliberately
+     linked from nowhere (phase 8 features ticket 05, ADR-0062): the return
+     surface opens itself once per gap and is a moment rather than a place.
+     Still a feature screen in every way this file asks about, and on the
+     list for the reason the note above the list gives - a screen that is
+     not here escapes every assertion in it. */
+  'coming-back',
   // Reached from inside a feature screen
   'settings/stock',
   'settings/exposure',
@@ -106,7 +113,7 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 32 of them', () => {
+describe('all 33 of them', () => {
   it('is the count SCREENS.md gives, plus the six added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
        /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
@@ -118,8 +125,8 @@ describe('all 32 of them', () => {
        was the 28th, which is what this line is for: SCREENS.md is six
        tickets behind either way - see the note above the list - and
        correcting it is still nobody's ticket. */
-    expect(ROUTES.length).toBe(32);
-    expect(new Set(ROUTES).size).toBe(32);
+    expect(ROUTES.length).toBe(33);
+    expect(new Set(ROUTES).size).toBe(33);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { RETURN_GAP_DAYS, WAITING_PER_KIND, lastWriteDay, whatIsWaiting } from './comingBack.ts';
+import { RETURN_GAP_DAYS, WAITING_PER_KIND, lastWriteDay, waitingItemKey, whatIsWaiting } from './comingBack.ts';
 import { adherence, expectedSlots } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
 import type { DoseEvent, DoseSchedule, RegimenEpisode } from './types.ts';
@@ -145,7 +145,14 @@ test('a wear session still running is waiting, and carries the day it started', 
     runningWearSession: { id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) + 3_600_000 }
   });
 
-  assert.deepEqual(surface?.items, [{ kind: 'wear-session', sessionId: 'w1', startEpochDay: AWAY - 1 }]);
+  assert.deepEqual(surface?.items, [
+    {
+      kind: 'wear-session',
+      sessionId: 'w1',
+      startEpochDay: AWAY - 1,
+      startTimestamp: startOfDayTimestamp(AWAY - 1) + 3_600_000
+    }
+  ]);
 });
 
 test('one dose slot is asked about, the most recent one, and never a count of the rest', () => {
@@ -219,4 +226,21 @@ test('what arrived comes before what can be tidied', () => {
   });
 
   assert.deepEqual(surface?.items.map((item) => item.kind), ['letter', 'milestone', 'era', 'wear-session', 'dose']);
+});
+
+test('every item names itself by its own row, so two of a kind are two rows', () => {
+  const surface = whatIsWaiting({
+    ...BASE,
+    letters: [
+      { id: 'l1', unlockEpochDay: AWAY + 2 },
+      { id: 'l2', unlockEpochDay: AWAY + 3 }
+    ],
+    eras: [{ id: 'e', name: 'Second year', startEpochDay: AWAY - 90, endEpochDay: null }],
+    runningWearSession: { id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) },
+    doses: comparison()
+  });
+  const keys = surface!.items.map(waitingItemKey);
+
+  assert.deepEqual(keys, ['letter:l2', 'letter:l1', 'era:e', 'wear-session:w1', `dose:${TODAY - 1}`]);
+  assert.equal(new Set(keys).size, keys.length);
 });
