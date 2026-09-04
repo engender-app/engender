@@ -290,6 +290,19 @@ export interface ArchiveLetter {
   unlockEpochDay: number;
 }
 
+/** A practice take (phase 8 features ticket 10), sealed until
+    `sealedUntilEpochDay` the same way a letter is - never stored as a
+    `sealed` flag either. */
+export interface ArchiveVoicePracticeTake {
+  id: string;
+  epochDay: number;
+  minHz: number;
+  maxHz: number;
+  medianHz: number;
+  feltSense: number | null;
+  sealedUntilEpochDay: number;
+}
+
 /** One bundled transition-roadmap goal with a status recorded at all
     (phase 4 ticket 23, widened phase 5 ticket 20 for the tri-state), named
     by its pack and its goal key rather than a uuid - both strings mean the
@@ -688,6 +701,7 @@ export interface ArchiveJournal {
   tallyEvents: ArchiveTallyEvent[];
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
   letters: ArchiveLetter[];
+  voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
   roadmapGoals: ArchiveRoadmapGoal[];
   regimenEpisodes: ArchiveRegimenEpisode[];

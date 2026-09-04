@@ -65,6 +65,7 @@
   import VoiceComfortBand from '$lib/components/VoiceComfortBand.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
+  import VoicePracticeTakes from '$lib/components/VoicePracticeTakes.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
@@ -287,6 +288,11 @@
              it is set. -->
         <VoiceComfortBand role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
       </div>
+      <!-- Sealed takes, read back (phase 8 features ticket 10). Below the
+           comfort band: recording is the reason someone opened this tab,
+           the comfort band is what a live figure is read against, and a
+           past take's own record is what happened once already. -->
+      <VoicePracticeTakes role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
     {:else}
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
         {#snippet rows()}

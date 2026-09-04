@@ -265,6 +265,10 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // A letter is met on its unlock day (letterStatus.ts); asking when it was
   // last written is a second way to meet it before the seal does.
   letters: 'sealed until its unlock day',
+  // Phase 8 features ticket 10: a practice take reuses the letter's own
+  // seal mechanics, and the same reasoning applies - asking when one was
+  // last taken is a second way to meet its figures before the seal does.
+  voicePracticeTakes: 'sealed until the day after it was taken',
   // This device's own bookkeeping about where an import came from, dated by
   // when the import ran rather than by anything the person wrote.
   importLog: 'device bookkeeping, dated by when the import ran, not a diary record',

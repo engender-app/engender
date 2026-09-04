@@ -1,40 +1,45 @@
 <script lang="ts">
-  /* Practising, with the live graph and nothing kept (phase 8 features
-     ticket 09).
+  /* Practising, with the live graph (phase 8 features tickets 09 and 10).
 
      The benchmark flow is a measurement: a fixed passage, a held note, a
      quality gate, a row written down. Practising is the other thing a
-     person does with a voice app, and until this ticket the app had no
-     place for it - the only way to see the live figure at all was to start
-     a benchmark you did not want to save.
-
-     So this opens the microphone, draws the same figure the benchmark
-     draws, and stores nothing. No row, no file, no take: `discard()`
-     rather than `finish()` on the way out, so the recorded bytes are never
-     even decoded. That is the whole difference between the two tabs, and it
-     is why this one needs no gate verdict and shows no advice about
-     retaking - there is nothing to retake.
+     person does with a voice app - ticket 09 gave it the live figure, and
+     this ticket gives it something to keep: stopping offers a felt-sense
+     rating and a save, never both at once as a single "recording saved"
+     step, because the two observations the practice material is built on
+     (ears improve faster than muscles, and one bad take is one data point)
+     argue for asking how it felt before anything about the numbers is
+     shown at all - the numbers stay behind the seal `journal.voicePracticeTakes`
+     puts on every take until tomorrow (migrations.ts's own note on why).
+     Declining to save is still there; `stop()` calls `finish()` now rather
+     than `discard()`, but nothing is written until Save is pressed, and
+     nothing is asked if the take captured no voice at all.
 
      The gate's readings are still worth having, because the room and the
      level are what make the trace trustworthy: a figure drawn from a take
      that is clipping is a figure about the microphone. So the same advice
      line runs, and it is the only thing on this tab that mentions the
-     recording at all.
+     recording while it is running.
 
-     One live audio component in the tree (the ticket): this is a third
+     One live audio component in the tree (ticket 09): this is a third
      caller of VoiceGauge, not a second gauge. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { bandsFor, comfortBand } from '$lib/audio/bands';
-  import type { PitchFrame } from '$lib/audio/pitch';
+  import { trackPitch, type PitchFrame } from '$lib/audio/pitch';
+  import { practiceTakeStats, type PracticeTakeStats } from '$lib/audio/practiceTake';
   import { PASSAGE_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
+  import { todayEpochDay } from '$lib/data/epochDay';
+  import { journal } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { startTake, type TakeSession } from '$lib/stores/voiceBenchmark';
+  import { ANALYSIS_SAMPLE_RATE, startTake, type TakeSession } from '$lib/stores/voiceBenchmark';
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import Icon from '$lib/components/Icon.svelte';
+  import MoodPicker from '$lib/components/MoodPicker.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -55,6 +60,14 @@
   let askedAgain = $state(false);
   let reading = $state<QualityReport | null>(null);
   let frames = $state<readonly PitchFrame[]>([]);
+
+  /** Set once a stopped take has something to keep - the figures never
+      shown here, only used to save them, so the review step cannot become
+      a second place to read a number the seal is meant to hold back
+      (vb_practice_sealed_note). */
+  let review = $state<PracticeTakeStats | null>(null);
+  let feltSense = $state<number | null>(null);
+  let saving = $state(false);
 
   let session: TakeSession | null = null;
   let poll: ReturnType<typeof setInterval> | null = null;
@@ -113,9 +126,13 @@
     }, READING_MS);
   }
 
-  /** Stops, and keeps nothing. `discard()` closes the microphone without
-      asking MediaRecorder's bytes for anything, so a practice run leaves
-      no file to sweep and nothing to decode. */
+  /** Stops and closes the microphone, then offers a save if the take has
+      anything to save. `finish()` decodes the recorded bytes for the one
+      thing they are wanted for - the per-take figures - and neither the
+      bytes nor the decoded samples outlive this function; no file is
+      written, the same as before this ticket. Nothing voiced at all (silence,
+      cut off before a single frame) leaves nothing to review, so the take
+      is dropped exactly as a discard always was. */
   async function stop() {
     const active = session;
     session = null;
@@ -123,7 +140,31 @@
     running = false;
     frames = [];
     reading = null;
-    await active?.discard();
+
+    const take = await active?.finish();
+    if (!take) return;
+    const track = trackPitch(take.samples, ANALYSIS_SAMPLE_RATE);
+    review = practiceTakeStats(track.frames);
+  }
+
+  async function saveTake() {
+    if (!review) return;
+    saving = true;
+    await journal.voicePracticeTakes.addTake({
+      epochDay: todayEpochDay(),
+      minHz: review.minHz,
+      maxHz: review.maxHz,
+      medianHz: review.medianHz,
+      feltSense
+    });
+    saving = false;
+    review = null;
+    feltSense = null;
+  }
+
+  function discardTake() {
+    review = null;
+    feltSense = null;
   }
 
   onDestroy(() => {
@@ -146,6 +187,21 @@
           ? { label: m.vb_mic_ask(), primary: true, onclick: start }
           : undefined}
       />
+    </div>
+  {:else if review}
+    <div class="screen-part vp-body">
+      <SectionHeading text={m.vb_practice_review_heading()} />
+      <MoodPicker value={feltSense} onPick={(v) => (feltSense = v)} />
+      <p class="muted small vp-sealed-note">{m.vb_practice_sealed_note()}</p>
+    </div>
+
+    <div class="editor-savebar vp-review-actions">
+      <button class="btn btn-ghost" data-vp-discard disabled={saving} onclick={discardTake}>
+        <span>{m.vb_practice_discard()}</span>
+      </button>
+      <button class="btn btn-primary" data-vp-save disabled={saving} onclick={saveTake}>
+        <Icon name="check" size={20} /><span>{m.vb_practice_save()}</span>
+      </button>
     </div>
   {:else}
     <div class="screen-part vp-body">
@@ -194,5 +250,22 @@
 
   .vp-lead {
     margin: 0 0 var(--space-4);
+  }
+
+  .vp-sealed-note {
+    margin: var(--space-4) 0 0;
+  }
+
+  /* Discard and Save, side by side rather than stacked - the savebar's own
+     default - because neither is the primary action a person came to the
+     screen for the way a single save button usually is: declining to keep
+     a take is as ordinary an outcome here as keeping it. */
+  .vp-review-actions {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .vp-review-actions .btn {
+    flex: 1;
   }
 </style>

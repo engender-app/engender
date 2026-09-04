@@ -47,7 +47,7 @@ test('one area answering does not answer for another', () => {
   assert.equal(areaQuiet('hairPhotos', states, TODAY), false);
 });
 
-test('the nine finishable areas are the nine that were approved, voice among them once', () => {
+test('the ten finishable areas are the nine that were approved plus ticket 10s practice take, voice fronting two of them', () => {
   assert.deepEqual([...FINISHABLE_AREAS].sort(), [
     'hairPhotos',
     'hairRemovalSessions',
@@ -57,9 +57,10 @@ test('the nine finishable areas are the nine that were approved, voice among the
     'sideEffects',
     'sizeRecords',
     'voiceBenchmarks',
+    'voicePracticeTakes',
     'wearSessions'
   ]);
-  assert.equal(FINISHABLE_AREAS.filter((area) => area.startsWith('voice')).length, 1);
+  assert.equal(FINISHABLE_AREAS.filter((area) => area.startsWith('voice')).length, 2);
 });
 
 test('every area that is not finishable says why, and no area answers twice', () => {
