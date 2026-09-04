@@ -80,7 +80,7 @@ describe('what the More hub is built from', () => {
       ['presentations', 'palette', '/settings/presentations'],
       ['eras', 'columns', '/settings/eras'],
       ['doubt', 'heart', '/doubt'],
-      ['voice', 'mic', '/settings/voice'],
+      ['voice', 'mic', '/settings/voice/memos'],
       ['wear', 'clock', '/settings/wear'],
       ['effects', 'sparkle', '/settings/effects'],
       ['resources', 'globe', '/settings/resources'],
