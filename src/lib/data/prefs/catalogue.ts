@@ -347,6 +347,30 @@ export interface PreferenceValues {
       asking again about eight areas would be the app forgetting an answer
       somebody gave. */
   areaFinishOfferDeclined: string[];
+  /** The return this installation has already shown (phase 8 features
+      ticket 05, ADR-0062): the `sinceEpochDay` of the last gap the return
+      surface opened for, or null while it has opened for none.
+
+      This is what makes `/coming-back` a moment rather than a place. The
+      surface is linked from nowhere and opens by itself, so without a
+      record of which gap it has been shown for it would open again every
+      time somebody who came back, read it and wrote nothing reopened the
+      app - which is the one way a screen about what is waiting turns into a
+      screen that follows you around.
+
+      The gap's own last-write day rather than a date or a counter: it names
+      *which* return this was, so a new gap months later is a different
+      value and opens the surface again with no bookkeeping to expire. It
+      also cannot drift, because it is read off the journal each time rather
+      than incremented.
+
+      Device-local, unlike `areaFinishOfferDeclined` beside it, and the
+      difference is what each one records. That one holds an answer the
+      person gave and would be the app forgetting it. This holds what this
+      installation has drawn, like `lastOnThisDayNotifiedEpochDay` - and a
+      journal restored onto a new phone after a long gap should meet what is
+      waiting rather than inherit a note saying it was already shown. */
+  comingBackSeenSince: number | null;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -424,7 +448,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   backupNoticeDismissed: false,
   lastVerifiedAt: null,
   roadmapMilestoneSyncEnabled: true,
-  areaFinishOfferDeclined: []
+  areaFinishOfferDeclined: [],
+  comingBackSeenSince: null
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -505,7 +530,8 @@ export const DEVICE_LOCAL_KEYS = [
   'roadmapMilestoneSyncEnabled',
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
-  'hormoneCurveFitToOwnLabs'
+  'hormoneCurveFitToOwnLabs',
+  'comingBackSeenSince'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens

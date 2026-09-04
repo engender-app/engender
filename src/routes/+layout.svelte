@@ -43,6 +43,7 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
@@ -333,6 +334,46 @@
   $effect(() => {
     if (!isReadyState(bootState) || locked) return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
+  });
+
+  /* The return moment (phase 8 features ticket 05, ADR-0062). Here rather
+     than on Home, which the features spec does not render on and which is
+     built for somebody who was here yesterday anyway - and here rather than
+     as a hub row, because a place you can go and check what is waiting is a
+     place that accumulates what you have not done.
+
+     Only from Home: somebody who opened the app on a notification, a deep
+     link or an Android launch route asked for something specific, and a
+     return surface is not allowed to take that over.
+
+     What stops it opening twice is the preference and nothing else. The
+     surface stamps `comingBackSeenSince` as it draws, so this has an answer
+     before the person could have left it, and a flag latching the decision
+     for the page load would only add a second guard that disagrees - it
+     also has to be wrong for a demo build, where the journal underneath can
+     be replaced without a reload.
+
+     So this does re-read on every arrival at Home, and what makes that
+     affordable is that the first read answers on its own for almost
+     everybody: `readReturnGap` is eighteen bounded `MAX`es, the same read
+     AreaFinish already makes on eight screens, and the five behind
+     `readWhatIsWaiting` are only paid for once three weeks have passed and
+     the gap is one this person has not met. The `path` check runs again
+     after the awaits, because a slow read must not pull somebody off a
+     screen they navigated to in the meantime.
+
+     Nothing is navigated to on an empty answer: a gap with nothing waiting
+     in it is not a return worth a screen, and the person is left on Home. */
+  $effect(() => {
+    if (!isReadyState(bootState) || locked || !prefs.onboarded) return;
+    if (path !== '/') return;
+    const day = todayEpochDay();
+    void readReturnGap(journal, day).then(async (since) => {
+      if (since === null || prefs.comingBackSeenSince === since) return;
+      if (!(await readWhatIsWaiting(journal, day, since))) return;
+      if (page.url.pathname !== '/') return;
+      goto('/coming-back');
+    });
   });
 
   $effect(() => {
