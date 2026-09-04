@@ -12,6 +12,7 @@
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';
 import { openJournal } from '../../../src/lib/data/journal/journal.ts';
+import { recordingDriver } from '../../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import { encryptedFileStore } from '../../../src/lib/data/photos/encrypted-file-store.ts';
 import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-store.ts';
 import { thumbFileName } from '../../../src/lib/data/photos/names.ts';
@@ -133,7 +134,12 @@ async function run() {
     detail: `${startupState}; fixture ${summary.entries} entries across ${summary.daysWithEntries} days`
   });
 
-  const reopenedJournal = openJournal(reopened.driver, reopenedFiles);
+  /* Over the recording adapter, so the mount budgets mean the same thing
+     here as they do on desktop: the same statements counted the same way,
+     with the Capacitor bridge underneath instead of a worker (phase 8
+     audit ticket 01). */
+  const recorder = recordingDriver(reopened.driver);
+  const reopenedJournal = openJournal(recorder.driver, reopenedFiles);
   const rowsBeforeSweep = await reopenedJournal.photos.inJournal();
   const fileNames = await reopenedFiles.list();
   const fullNames = new Set(rowsBeforeSweep.flatMap((row) => (row.fileName ? [row.fileName] : [])));
@@ -176,7 +182,8 @@ async function run() {
 
   const measurements = await measureLongJournal(reopenedJournal, reopenedFiles, {
     today: summary.lastEpochDay,
-    summary
+    summary,
+    recorder
   });
 
   await reopened.driver.close();

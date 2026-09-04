@@ -132,13 +132,26 @@ public class LongJournalBenchmarkTest {
                 budget = "  NO BUDGET";
             }
             Log.i(TAG, String.format("  %-55s %4dms%s", m.getString("what"), ms, budget));
+            /* A screen mount's own line: what it crossed the driver seam for
+               (phase 8 audit ticket 01). On this platform a statement is a
+               Capacitor bridge call, so the count is the reading and the
+               milliseconds beside it say what one call costs here. */
+            if (m.has("statements")) {
+                String ceilings = budgetTable.has(name) && budgetTable.getJSONObject(name).has("statementBudget")
+                    ? String.format("  budget %d statements, %d bytes",
+                        budgetTable.getJSONObject(name).getInt("statementBudget"),
+                        budgetTable.getJSONObject(name).getInt("byteBudget"))
+                    : "  NO COUNT BUDGET";
+                Log.i(TAG, String.format("  %-55s %d statements, %d bytes%s",
+                    "", m.getInt("statements"), m.getInt("bytes"), ceilings));
+            }
         }
     }
 
     /** Logs a JSON block in the shape android-budgets.json needs, for re-recording. */
     private static void logRecordingBlock(JSONArray measurements, JSONObject budgets, JSONObject budgetTable)
         throws Exception {
-        Log.i(TAG, "--- android-budgets.json measurements block (5x baseline, 200ms floor) ---");
+        Log.i(TAG, "--- android-budgets.json measurements block (5x baseline, 200ms floor; mounts exact on statements, +10% on bytes) ---");
         StringBuilder sb = new StringBuilder("{\n");
         sb.append(String.format("  \"measuredOn\": \"%s\",\n", measuredOn()));
         sb.append(String.format("  \"fixture\": \"%s\",\n", budgets.getString("fixture")));
@@ -149,8 +162,21 @@ public class LongJournalBenchmarkTest {
             int baselineMs = (int) Math.round(m.getDouble("ms"));
             int budgetMs = Math.max(200, baselineMs * 5);
             int targetMs = budgetTable.has(name) ? budgetTable.getJSONObject(name).getInt("targetMs") : budgetMs;
-            sb.append(String.format("    \"%s\": {\"what\":\"%s\",\"baselineMs\":%d,\"budgetMs\":%d,\"targetMs\":%d}",
+            sb.append(String.format("    \"%s\": {\"what\":\"%s\",\"baselineMs\":%d,\"budgetMs\":%d,\"targetMs\":%d",
                 name, m.getString("what"), baselineMs, budgetMs, targetMs));
+            /* The count half, for the four screen mounts that carry one.
+               Without this a device re-record would drop the numbers the
+               probe took, and the next run would fail them as unbudgeted -
+               mountBudgetsFor()'s rule in budgets.mjs, restated because a
+               Java test cannot import it. */
+            if (m.has("statements")) {
+                int statements = m.getInt("statements");
+                int bytes = m.getInt("bytes");
+                sb.append(String.format(
+                    ",\"statementBaseline\":%d,\"byteBaseline\":%d,\"statementBudget\":%d,\"byteBudget\":%d",
+                    statements, bytes, statements, (int) Math.ceil(bytes * 1.1)));
+            }
+            sb.append("}");
             if (i < measurements.length() - 1) sb.append(",");
             sb.append("\n");
         }
@@ -186,6 +212,30 @@ public class LongJournalBenchmarkTest {
             if (ms > budgetMs) {
                 breaches.add(String.format("%s: %dms over a budget of %dms (baseline %dms)",
                     name, ms, budgetMs, budget.getInt("baselineMs")));
+            }
+
+            /* The two count budgets a screen mount carries, judged the same
+               way budgets.mjs judges them: a count with no budget is a
+               breach rather than a pass, because the alternative is this
+               gate quietly not watching the one metric that tracks what a
+               bridge call costs. */
+            if (m.has("statements") != budget.has("statementBudget")) {
+                breaches.add(m.has("statements")
+                    ? name + " counts statements and has no budget for them - add one to android-budgets.json"
+                    : name + " has a statement budget and the run took no count for it");
+                continue;
+            }
+            if (m.has("statements")) {
+                int statements = m.getInt("statements");
+                int bytes = m.getInt("bytes");
+                if (statements > budget.getInt("statementBudget")) {
+                    breaches.add(String.format("%s: %d statements over a budget of %d (baseline %d)",
+                        name, statements, budget.getInt("statementBudget"), budget.getInt("statementBaseline")));
+                }
+                if (bytes > budget.getInt("byteBudget")) {
+                    breaches.add(String.format("%s: %d bytes over a budget of %d (baseline %d)",
+                        name, bytes, budget.getInt("byteBudget"), budget.getInt("byteBaseline")));
+                }
             }
         }
 

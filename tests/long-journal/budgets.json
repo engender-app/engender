@@ -1,5 +1,5 @@
 {
-  "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, headless Chrome for Testing 151.0.7922.169. One run on a quiet desktop, and a fast one. Re-recorded whole after merging phase 5 audit tickets 01 and 03, for ticket 02, which added the three cold-start entries and made the probe reopen the journal after generating the fixture - so every measurement here is taken over that second connection, the way a real boot's reads are, and the numbers it replaces (recorded for phase 5 ticket 05 against the first open, on this same machine) were not comparable to them. Small measurements wobble by tens of percent between runs, which is what the five-times budget in budgets.mjs absorbs. The targets are carried across rather than recorded: what a person can wait for is a judgement, not a measurement. One entry was added after that whole re-recording rather than with it: `search-everywhere` (phase 5 deepening ticket 24), measured at 37ms on this same machine on 2026-09-01 over a query the fixture's non-entry text actually matches, and carrying the target the three entry-search measurements carry, since it is the same screen's wait. `hub-last-writes` was added the same way (phase 8 UX ticket 02), measured at 5ms on this same machine on 2026-09-04 before the hub's live lines were written - which is the order that ticket asks for, since a screen whose reads do not fit is meant to change shape rather than have its budget renegotiated afterwards. Re-record on the hardware a release is judged against before treating these as the last word: `npm run benchmark:long-journal -- --record` prints this block.",
+  "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, headless Chrome for Testing 151.0.7922.169. One run on a quiet desktop, and a fast one. Re-recorded whole after merging phase 5 audit tickets 01 and 03, for ticket 02, which added the three cold-start entries and made the probe reopen the journal after generating the fixture - so every measurement here is taken over that second connection, the way a real boot's reads are, and the numbers it replaces (recorded for phase 5 ticket 05 against the first open, on this same machine) were not comparable to them. Small measurements wobble by tens of percent between runs, which is what the five-times budget in budgets.mjs absorbs. The targets are carried across rather than recorded: what a person can wait for is a judgement, not a measurement. One entry was added after that whole re-recording rather than with it: `search-everywhere` (phase 5 deepening ticket 24), measured at 37ms on this same machine on 2026-09-01 over a query the fixture's non-entry text actually matches, and carrying the target the three entry-search measurements carry, since it is the same screen's wait. `hub-last-writes` was added the same way (phase 8 UX ticket 02), measured at 5ms on this same machine on 2026-09-04 before the hub's live lines were written - which is the order that ticket asks for, since a screen whose reads do not fit is meant to change shape rather than have its budget renegotiated afterwards. The four `mount-*` entries came in with phase 8 audit ticket 01 and are the only ones judged on something other than time: a statement count and a byte count taken at the driver seam, on this same machine on 2026-09-04, because what this architecture pays for a screen is the crossing rather than the query - the whole of Home's 543KB is 33ms of SQLite and a same-process postMessage here, and 543KB of JSON through a serialising bridge on a phone. Their count budgets follow `mountBudgetsFor()` rather than the five-times time rule, and they are seeded at today's numbers deliberately: tickets 13, 14, 16 and 19 each state their acceptance as a reduction in one of these figures, so the budget is the ratchet they tighten rather than a target anybody has agreed. Their `targetMs` is a judgement like every other: 500ms for Home and the stats tab, which assemble a whole screen and already contain reads carrying a 250ms target of their own, and 250ms for the two one-tap screens, which is what `hub-last-writes` already carries. Re-record on the hardware a release is judged against before treating these as the last word: `npm run benchmark:long-journal -- --record` prints this block.",
   "fixture": "seed 1, 3653 days ending epoch day 20676: 3291 entries over 2634 days with entries, 422 photos (393.6MB on disk), 125 lab results, 12 milestones, 24 tags. 265 entries carry a body-region euphoria or dysphoria value. Three regimen episodes (phase 5 ticket 36/38): oral Estradiol from day 30 (Monday/Wednesday/Friday, two-amount schedule, 1475 dose events, 95% of expected slots), Spironolactone for ~500 days in the middle (daily, ends well before the fixture's last 90 days), and injectable Estradiol valerate for the final 150 days (weekly, im) - the last two overlap the first, so a stretch of the fixture has two concurrently active episodes. 19 hair-progress stagings and 5 dated photos. A year each (irregular cadence, ending at the fixture's last day) of measurements, size records, hair-removal sessions, wear sessions and cycle events; a handful of side effects, personal effects, roadmap checks, letters, tryouts and one surgical procedure across the whole decade; ~16 voice recordings; one drug's stock count recorded years ago (so its projection reads the whole dose log) and one recorded near the end (so it doesn't). Encryption on: SQLite3MultipleCiphers under a data key, photos through the encrypting file store.",
   "measurements": {
     "boot-ready": {
@@ -205,6 +205,46 @@
       "baselineMs": 5,
       "budgetMs": 200,
       "targetMs": 250
+    },
+    "mount-home": {
+      "what": "Home, every read its tiles, panels and cards fire on arrival",
+      "baselineMs": 33,
+      "budgetMs": 200,
+      "targetMs": 500,
+      "statementBaseline": 57,
+      "byteBaseline": 555944,
+      "statementBudget": 57,
+      "byteBudget": 611539
+    },
+    "mount-stats": {
+      "what": "the stats tab at its default range, every card on it",
+      "baselineMs": 62,
+      "budgetMs": 310,
+      "targetMs": 500,
+      "statementBaseline": 66,
+      "byteBaseline": 781871,
+      "statementBudget": 66,
+      "byteBudget": 860059
+    },
+    "mount-more-hub": {
+      "what": "the More hub, every row it draws a live line for",
+      "baselineMs": 6,
+      "budgetMs": 200,
+      "targetMs": 250,
+      "statementBaseline": 21,
+      "byteBaseline": 1245,
+      "statementBudget": 21,
+      "byteBudget": 1370
+    },
+    "mount-coming-back": {
+      "what": "the return surface, the gap and everything waiting in it",
+      "baselineMs": 9,
+      "budgetMs": 200,
+      "targetMs": 250,
+      "statementBaseline": 33,
+      "byteBaseline": 19932,
+      "statementBudget": 33,
+      "byteBudget": 21926
     },
     "entry-save": {
       "what": "save button, one entry with realistic dimensions and tags",
