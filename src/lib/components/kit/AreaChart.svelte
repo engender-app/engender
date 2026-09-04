@@ -402,6 +402,7 @@
   <div
     class="kit-area"
     class:has-overlay={overlaid}
+    class:no-gutter={!oneScale}
     data-chart="area"
     role="img"
     aria-label={ariaLabel}
@@ -670,3 +671,17 @@
 {:else}
   <p class="kit-chart-empty">{m.not_enough_data()}</p>
 {/if}
+
+<style>
+  /* Whether the plot leaves a column for the value gutter, which is a
+     question about the gutter and not about how many lines are up: a pair
+     of lines placed against one range keeps its numbers (see `oneScale`),
+     and a pair against two ranges has none to print. `.kit-area`'s own
+     two-column grid is in kit.css with the rest of this chart; only the
+     collapsed state is here, because a new single-consumer class in a
+     shared sheet fails scripts/check-screens-classes.mjs and every class
+     of this one's kind has exactly one consumer by construction. */
+  .kit-area.no-gutter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+</style>

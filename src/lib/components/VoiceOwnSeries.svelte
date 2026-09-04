@@ -23,6 +23,17 @@
      a value sits at the same height above and below a break even though
      the two runs are not a line.
 
+     **Two numbers are two plots unless they are two ends of one range.**
+     The pitch band's top and bottom belong on one scale and read as a band
+     there. The two formants do not: F1 near 620 Hz against F2 near 1740
+     would draw F1 as a flat line on one scale, and placing each against
+     its own bounds on one plot costs the value gutter (kit/AreaChart's own
+     rule - one of two ranges printed beside both lines would have the
+     other read against numbers that are not its own). A figure with no
+     numbers on it at rest is the thing ticket 09's own rejected strip was:
+     "no way to tell what it measures at all". So they get a plot each, and
+     each plot keeps its hertz.
+
      **Nothing here draws a band, a target region or a worse-to-better
      colour**, and no axis is normalised: ADR-0060 is explicit that these
      five figures have no typical range the app may imply, and ADR-0012
@@ -76,7 +87,10 @@
           breaks: series.breaks,
           scale: series.scale,
           secondScale: series.secondScale,
-          sharedScale: series.secondScaleShared
+          sharedScale: series.secondScaleShared,
+          /* Two lines that are not two ends of one range: a plot each,
+             so neither loses its own axis. */
+          split: series.secondScale !== null && !series.secondScaleShared
         }
   );
 
@@ -133,14 +147,39 @@
       {/if}
       {@const ends = fmtRangeEnds(run.points[0].x, run.points[run.points.length - 1].x)}
       {#if !run.points.some((point) => point.y !== null)}
-        <!-- A run of takes that measured this figure and nothing else did:
-             the resonances and the room reading come off the held vowel,
-             so a stretch of takes that skipped it has positions and no
-             readings. Said in words, because the area chart draws nothing
-             at all with no reading in it and the break above would then
-             name a run nobody can see. One line checked, not two: a take
-             measures both formants or neither. -->
+        <!-- A run whose takes all skipped the held vowel: the resonances
+             and the room reading come off it, so the run has positions and
+             no readings. Said in this figure's own words rather than
+             through the chart's generic "not enough data", which is what a
+             plot with nothing on it would print. One line checked, not
+             two: a take measures both formants or neither. -->
         <p class="vos-unmeasured">{m.vb_not_measured()}</p>
+      {:else if drawn.split && drawn.secondScale && lines}
+        <!-- A plot per line, each with its own hertz down the side. The
+             caption is what a legend would have said, moved to where it
+             names one plot instead of two lines. -->
+        <p class="vos-line">{lines.first}</p>
+        <AreaChart
+          points={run.points}
+          min={drawn.scale.min}
+          max={drawn.scale.max}
+          from={ends.from}
+          to={ends.to}
+          formatValue={format}
+          scrubLabel={(point) => dayLabel(point.x)}
+          ariaLabel={`${metricName(figure)}: ${lines.first}`}
+        />
+        <p class="vos-line">{lines.second}</p>
+        <AreaChart
+          points={run.points.map((point, at) => ({ x: point.x, y: run.second![at] }))}
+          min={drawn.secondScale.min}
+          max={drawn.secondScale.max}
+          from={ends.from}
+          to={ends.to}
+          formatValue={format}
+          scrubLabel={(point) => dayLabel(point.x)}
+          ariaLabel={`${metricName(figure)}: ${lines.second}`}
+        />
       {:else}
         <AreaChart
           points={run.points}
@@ -205,6 +244,15 @@
   /* The same quiet line the figure list carries under a take
      (VoiceFigures.svelte's .vf-more), at the app's touch floor, with the
      chevron saying it leads somewhere. */
+  /* Which line a plot is, where a figure draws two of them on two scales.
+     Quiet and small: the picker above has already said what the figure is,
+     and this only says which half of it. */
+  .vos-line {
+    margin: var(--space-3) 0 var(--space-1);
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
   /* A run with no reading of this figure, where its plot would be. The
      chart body's own text colour and size, so the card holds its shape
      rather than collapsing around a missing plot. */

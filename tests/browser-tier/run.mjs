@@ -1693,17 +1693,25 @@ await block('ticket 29 browser tier', 6, async () => {
   else fail('the card offers every Own-series figure and nothing else', JSON.stringify(offered));
 
   /* Five takes, three on one phone and two on another. What only a render
-     can say: the two runs became two plots with a line each, and what sits
-     between them is words rather than a dotted join. */
+     can say: the history came out as two runs with a plot for each, every
+     plot carrying a line, and what sits between them is words rather than
+     a dotted join.
+
+     A figure written as two numbers on two scales draws a plot per line
+     rather than two lines on one, so its count is twice the runs - the
+     resonances are the case, and the reason is that a pair placed against
+     two ranges loses the value gutter and would leave the card with no
+     hertz on it at all. */
+  const perLine = { resonance: 2 };
   const drewBoth = registered.filter((key) => {
     const f = figures[key];
-    return f.plots === 2 && f.lines.every((count) => count >= 1);
+    return f.plots === 2 * (perLine[key] ?? 1) && f.lines.every((count) => count >= 1);
   });
   if (drewBoth.length === registered.length)
-    ok('every figure draws the history as two lines, one per chain');
+    ok('every figure draws the history as two runs, every plot with a line on it');
   else
     fail(
-      'every figure draws the history as two lines, one per chain',
+      'every figure draws the history as two runs, every plot with a line on it',
       JSON.stringify(registered.map((key) => [key, figures[key].plots, figures[key].lines]))
     );
 
@@ -1722,9 +1730,11 @@ await block('ticket 29 browser tier', 6, async () => {
   if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the five');
   else fail('no band, target region or heat ramp is drawn on any of the five', JSON.stringify(banded));
 
-  /* Native units, in the place they show without a finger on the plot: the
-     ends of the scale for a single-line figure, and the legend naming the
-     two lines where two of them share one scale. */
+  /* Native units, on the plot itself rather than under a finger: every
+     plot has to carry the ends of its own scale, written in the figure's
+     own unit (ADR-0012). A scrub readout would not do - a card that says
+     nothing until it is touched is the axis-free strip ticket 09 already
+     rejected. */
   const units = {
     span: /Hz/,
     spread: /semitone/,
@@ -1734,17 +1744,18 @@ await block('ticket 29 browser tier', 6, async () => {
   };
   const wrongUnit = registered.filter((key) => {
     const f = figures[key];
-    /* The gutter where there is one, and the readout under a finger where
-       two lines on two ranges leave the card without one. */
-    const printed = [...f.gutters, ...f.readouts].join(' ');
-    return !units[key].test(printed) || /\b0\.\d\b/.test(printed) || f.readouts.length !== f.plots;
+    const printed = f.gutters.join(' ');
+    /* A gutter per plot, not one on the card: what would fail here is a
+       plot placed against a range whose numbers are printed somewhere
+       else, or nowhere. */
+    return !units[key].test(printed) || /\b0\.\d\b/.test(printed) || f.gutters.length !== f.plots;
   });
   if (wrongUnit.length === 0)
-    ok(`each figure prints its own unit and no 0-to-1 axis (${figures.span.gutters[0]}; ${figures.resonance.readouts[0]})`);
+    ok(`every plot prints its own unit down its own side and no 0-to-1 axis (${figures.span.gutters[0]}; ${figures.resonance.gutters[0]})`);
   else
     fail(
-      'each figure prints its own unit and no 0-to-1 axis',
-      JSON.stringify(registered.map((key) => [key, figures[key].gutters, figures[key].readouts]))
+      'every plot prints its own unit down its own side and no 0-to-1 axis',
+      JSON.stringify(registered.map((key) => [key, figures[key].plots, figures[key].gutters]))
     );
 
   /* The two ends of the journal: one benchmark, and a figure nothing has
