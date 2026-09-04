@@ -71,14 +71,51 @@ describe('what Safe Space is built from', () => {
   });
 });
 
-describe('the three more sources ticket 14 adds', () => {
-  it('features the most recently unlocked letter through featuredLetter, not the full list', () => {
+describe('the letters, photos and voice sources (ticket 14, widened by ticket 21)', () => {
+  /* Ticket 14 showed one letter here; phase 8 features ticket 21 widened
+     that to every unlocked one, capped, with the rest a tap away. What is
+     pinned is the seal rule staying in letterRetrospective.ts, the cap
+     existing at all, and the letters keeping their own card rather than
+     being folded into the flat counterevidence list. */
+  it('lists the unlocked letters through safeSpaceLetters, capped, with an overflow row to the letters screen', () => {
     expect(doubt).toContain("from '$lib/data/letterRetrospective'");
-    expect(doubt).toContain('featuredLetter(');
+    expect(doubt).toContain('safeSpaceLetters(');
     expect(doubt).toContain("from '$lib/components/LookBackLetterCard.svelte'");
+    expect(doubt).toMatch(/LETTER_LIMIT\s*=\s*\d+/);
+    expect(doubt).toContain('unlockedLetters.length > LETTER_LIMIT');
     expect(markup).toContain('<LookBackLetterCard');
-    // Not folded into the flat counterevidence list as one more row.
-    expect(markup).not.toMatch(/<LookBackLetterCard[^>]*>\s*{#each/);
+    // Under the card, not a last row in it: a row there wore the letters'
+    // own disc and chevron and read as a fourth letter.
+    expect(markup).toMatch(/<\/ListCard>[\s\S]*?<a[^>]*data-all-letters[^>]*href="\/settings\/letters"/);
+    expect(markup).toMatch(/m\.safe_space_letters_all\(\{\s*count:\s*unlockedLetters\.length - LETTER_LIMIT\s*\}\)/);
+    // Its own card, not one more row inside the counterevidence list.
+    expect(markup).toMatch(/<ListCard[\s\S]*?<LookBackLetterCard/);
+  });
+
+  it('leads a Safe Space letter row with the letter, not with its date', () => {
+    expect(markup).toMatch(/<LookBackLetterCard[^>]*lead="text"/);
+
+    // The other two surfaces keep the retrospective's own framing, where the
+    // date is why the letter is there at all.
+    expect(read('src/routes/on-this-day/+page.svelte')).not.toMatch(/<LookBackLetterCard[^>]*lead=/);
+    expect(read('src/lib/components/WrappedYear.svelte')).not.toMatch(/<LookBackLetterCard[^>]*lead=/);
+
+    const kit = read('src/lib/styles/kit.css');
+    expect(kit).toContain("[data-list-row='letter-preview'][data-lead='text'] .kit-row-title");
+    expect(kit).toContain("[data-list-row='letter-preview'][data-lead='date'] .kit-row-sub");
+  });
+
+  it('shows a letter as a preview that links to the whole thing, and cuts that preview in code as well as in CSS', () => {
+    // The tap target is the letter's own screen, and the screen itself does
+    // no cutting: the card asks letterOpening for it, so what a row
+    // announces is what a row draws rather than the whole letter.
+    const letterBlock = markup.match(/{#each letters[\s\S]*?{\/each}/)?.[0] ?? '';
+    expect(letterBlock).toContain('<LookBackLetterCard');
+
+    const card = read('src/lib/components/LookBackLetterCard.svelte');
+    expect(card).toContain('href={`/settings/letters/${letter.id}`}');
+    expect(card).toContain('letterOpening(letter.text, LETTER_OPENING_LIMIT)');
+    expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
   });
 
   it('reads starred photos and caps how many it shows', () => {
