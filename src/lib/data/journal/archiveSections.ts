@@ -298,6 +298,15 @@ const SECTIONS = [
   }),
   section({
     name: 'milestones',
+    // A milestone linked to a procedure or a tryout stores that owner's
+    // uuid directly (applyMilestones inserts procedure_id/tryout_id as
+    // given), and neither column carries ON DELETE CASCADE - so applying a
+    // milestone before its owner exists fails the same FK the reverse
+    // order would fail on discard. `after` fixes both at once: reversed,
+    // it clears milestones before tryout or procedure can be discarded out
+    // from under one (ticket 02's sweep found this empty by never having
+    // linked either owner before running a full replace).
+    after: ['tryouts', 'procedures'],
     // The other half of the photo table, per entries' own note above.
     discard: ['DELETE FROM photo WHERE milestone_id IS NOT NULL', 'DELETE FROM milestone'],
     // Ticket 04's own worked case: a milestone set travels as names, not as
@@ -1071,19 +1080,25 @@ export function discardStatements(sections: readonly ArchiveSection[] = ARCHIVE_
     .flatMap((s) => s.discard);
 }
 
-/** Every section's rows, in wire order. */
+/** Every section's rows, in wire order. Concurrent: a read has no rowid to
+    resolve against another section, unlike the apply below, so nothing
+    forces the sections to wait on each other. */
 export async function readArchiveJournal(
   reading: SectionRead,
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
 ): Promise<ArchiveJournal> {
+  const rows = await Promise.all(sections.map((s) => s.read(reading)));
   const journal: Record<string, unknown[]> = {};
-  for (const s of sections) journal[s.name] = await s.read(reading);
+  sections.forEach((s, index) => (journal[s.name] = rows[index]));
   return journal as unknown as ArchiveJournal;
 }
 
 /** Every section written back, each one after whatever it depends on.
     Sequential and inside the caller's transaction: the later sections
-    resolve rowids the earlier ones produced. */
+    resolve rowids the earlier ones produced, which is true only of a write.
+    A read has nothing to resolve - every section's rows travel by their own
+    natural key, never by rowid - so readArchiveJournal above runs the same
+    sections concurrently instead. */
 export async function applyArchiveJournal(
   restoring: Restoring,
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS

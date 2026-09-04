@@ -16,6 +16,8 @@
   import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { journalDataKey } from '$lib/stores/boot.svelte';
+  import { copyRecoveryKey } from '$lib/data/recovery-key-clipboard';
+  import { isAndroid } from '$lib/platform';
   import { printCurrentPage } from '$lib/print/print';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -28,6 +30,10 @@
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
   let busy = $state(false);
+
+  /* Only the Android path marks the clip sensitive and takes it back, so
+     only the Android path may promise either. */
+  let android = $derived(isAndroid());
 
   refreshRecoveryKeyPresence();
 
@@ -70,11 +76,12 @@
      somebody who has one will want this and where retyping 25 characters by
      hand invites a transcription error the check symbol would then reject.
      The paste target is the point, so the copy tells people what not to
-     paste it into. */
+     paste it into. What the clipboard itself costs, and what Android does
+     about it, is data/recovery-key-clipboard.ts. */
   async function copy() {
     if (shown === null) return;
     try {
-      await navigator.clipboard.writeText(shown);
+      await copyRecoveryKey(shown);
       toast(m.rk_copied());
     } catch {
       toast(m.rk_failed());
@@ -104,6 +111,9 @@
             onclick={() => printCurrentPage(m.rk_title())}>{m.rk_print()}</button
           >
         </div>
+        {#if android}
+          <p class="rk-copy-note" data-recovery-key-copy-note>{m.rk_copy_clears_android()}</p>
+        {/if}
         <button
           class="btn btn-primary"
           type="button"
@@ -198,5 +208,15 @@
 
   .rk-actions .btn {
     flex: 1;
+  }
+
+  /* A footnote to the two buttons above it rather than another paragraph of
+     the screen's body, which is why it is smaller and sits tight under
+     them. */
+  .rk-copy-note {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    margin: 0 0 var(--space-4);
   }
 </style>

@@ -64,29 +64,41 @@ export interface Formants {
   f2Hz: number;
 }
 
-/** Levinson-Durbin: the autocorrelation coefficients to the predictor. Null
-    when the recursion goes singular, which is a frame with no structure to
-    predict rather than an error to raise. */
-function levinsonDurbin(autocorrelation: Float64Array, order: number): Float64Array | null {
-  const a = new Float64Array(order + 1);
+/** Levinson-Durbin: the autocorrelation coefficients to the predictor,
+    written into the caller's `a`. False when the recursion goes singular,
+    which is a frame with no structure to predict rather than an error to
+    raise.
+
+    `a` and `previous` are the caller's buffers, both sized `order + 1` and
+    reused frame to frame. Every index of `a` is written before this returns
+    true (each is set when the outer loop reaches it, and again by every
+    later iteration's inner loop), so a previous frame's values never leak
+    into a read; `previous` only ever holds a copy of `a` taken earlier in
+    the same call. */
+function levinsonDurbin(
+  autocorrelation: Float64Array,
+  order: number,
+  a: Float64Array,
+  previous: Float64Array
+): boolean {
   let error = autocorrelation[0];
-  if (error <= 0) return null;
+  if (error <= 0) return false;
   a[0] = 1;
 
   for (let i = 1; i <= order; i++) {
     let acc = autocorrelation[i];
     for (let j = 1; j < i; j++) acc -= a[j] * autocorrelation[i - j];
     const reflection = acc / error;
-    if (!Number.isFinite(reflection)) return null;
+    if (!Number.isFinite(reflection)) return false;
 
-    const previous = a.slice();
+    previous.set(a);
     a[i] = reflection;
     for (let j = 1; j < i; j++) a[j] = previous[j] - reflection * previous[i - j];
 
     error *= 1 - reflection * reflection;
-    if (error <= 0) return null;
+    if (error <= 0) return false;
   }
-  return a;
+  return true;
 }
 
 /** The first two peaks of the LPC spectral envelope inside the formant
@@ -95,20 +107,31 @@ function levinsonDurbin(autocorrelation: Float64Array, order: number): Float64Ar
     Peak picking rather than solving for the polynomial's complex roots: the
     peaks of |1/A(f)| are what the roots would be reported as anyway, the
     grid is finer than the method's own accuracy, and a root finder is a
-    hundred lines of numerics whose failure mode is silent. */
-function peakFormants(a: Float64Array, order: number, sampleRate: number): Formants | null {
-  const ceiling = Math.min(F2_CEILING_HZ + 400, sampleRate / 2 - 100);
-  const from = F1_RANGE_HZ[0] - 100;
-  const count = Math.floor((ceiling - from) / ENVELOPE_STEP_HZ) + 1;
+    hundred lines of numerics whose failure mode is silent.
 
-  const magnitude = new Float64Array(count);
+    `cosTable`/`sinTable` hold cos(omega*k)/sin(omega*k) for every (frequency
+    bin, order step) pair the envelope grid uses - the same values on every
+    frame, since they depend only on the fixed grid and order, never on this
+    frame's `a`. The caller builds them once per take instead of this
+    recomputing roughly order*count trig calls per frame. `magnitude` is the
+    caller's scratch buffer, sized `count` and fully overwritten below before
+    it is read. */
+function peakFormants(
+  a: Float64Array,
+  order: number,
+  count: number,
+  fromHz: number,
+  cosTable: Float64Array,
+  sinTable: Float64Array,
+  magnitude: Float64Array
+): Formants | null {
   for (let i = 0; i < count; i++) {
-    const omega = (2 * Math.PI * (from + i * ENVELOPE_STEP_HZ)) / sampleRate;
+    const base = i * (order + 1);
     let real = 1;
     let imaginary = 0;
     for (let k = 1; k <= order; k++) {
-      real -= a[k] * Math.cos(omega * k);
-      imaginary += a[k] * Math.sin(omega * k);
+      real -= a[k] * cosTable[base + k];
+      imaginary += a[k] * sinTable[base + k];
     }
     magnitude[i] = 1 / Math.sqrt(real * real + imaginary * imaginary);
   }
@@ -116,7 +139,7 @@ function peakFormants(a: Float64Array, order: number, sampleRate: number): Forma
   const peaks: number[] = [];
   for (let i = 1; i < count - 1; i++) {
     if (magnitude[i] > magnitude[i - 1] && magnitude[i] >= magnitude[i + 1]) {
-      peaks.push(from + i * ENVELOPE_STEP_HZ);
+      peaks.push(fromHz + i * ENVELOPE_STEP_HZ);
     }
   }
 
@@ -141,6 +164,34 @@ export function analyseFormants(
   const order = 2 + Math.round(sampleRate / 1000);
   if (samples.length < frameLength) return null;
 
+  // The Hamming taper depends only on frameLength, fixed for the whole take.
+  const taper = new Float64Array(frameLength);
+  for (let i = 0; i < frameLength; i++) {
+    taper[i] = 0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (frameLength - 1));
+  }
+
+  // The envelope grid and its trig tables likewise depend only on order and
+  // sampleRate, both fixed for the whole take - see peakFormants's header.
+  const ceilingHz = Math.min(F2_CEILING_HZ + 400, sampleRate / 2 - 100);
+  const gridFromHz = F1_RANGE_HZ[0] - 100;
+  const gridCount = Math.floor((ceilingHz - gridFromHz) / ENVELOPE_STEP_HZ) + 1;
+  const cosTable = new Float64Array(gridCount * (order + 1));
+  const sinTable = new Float64Array(gridCount * (order + 1));
+  for (let i = 0; i < gridCount; i++) {
+    const omega = (2 * Math.PI * (gridFromHz + i * ENVELOPE_STEP_HZ)) / sampleRate;
+    const base = i * (order + 1);
+    for (let k = 1; k <= order; k++) {
+      cosTable[base + k] = Math.cos(omega * k);
+      sinTable[base + k] = Math.sin(omega * k);
+    }
+  }
+
+  const windowed = new Float64Array(frameLength);
+  const autocorrelation = new Float64Array(order + 1);
+  const a = new Float64Array(order + 1);
+  const previous = new Float64Array(order + 1);
+  const magnitude = new Float64Array(gridCount);
+
   const f1s: number[] = [];
   const f2s: number[] = [];
 
@@ -150,14 +201,11 @@ export function analyseFormants(
     if (from + frameLength > samples.length) break;
 
     // Pre-emphasis and the Hamming window, in one pass over the frame.
-    const windowed = new Float64Array(frameLength);
     for (let i = 0; i < frameLength; i++) {
-      const previous = from + i === 0 ? 0 : samples[from + i - 1];
-      const taper = 0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (frameLength - 1));
-      windowed[i] = (samples[from + i] - PRE_EMPHASIS * previous) * taper;
+      const previousSample = from + i === 0 ? 0 : samples[from + i - 1];
+      windowed[i] = (samples[from + i] - PRE_EMPHASIS * previousSample) * taper[i];
     }
 
-    const autocorrelation = new Float64Array(order + 1);
     for (let lag = 0; lag <= order; lag++) {
       let sum = 0;
       for (let i = lag; i < frameLength; i++) sum += windowed[i] * windowed[i - lag];
@@ -167,9 +215,8 @@ export function analyseFormants(
     // nothing on a real frame and keeps the recursion off a singular matrix.
     autocorrelation[0] *= 1.0001;
 
-    const a = levinsonDurbin(autocorrelation, order);
-    if (!a) continue;
-    const formants = peakFormants(a, order, sampleRate);
+    if (!levinsonDurbin(autocorrelation, order, a, previous)) continue;
+    const formants = peakFormants(a, order, gridCount, gridFromHz, cosTable, sinTable, magnitude);
     if (!formants) continue;
     f1s.push(formants.f1Hz);
     f2s.push(formants.f2Hz);
