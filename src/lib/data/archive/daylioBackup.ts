@@ -212,13 +212,14 @@ function zipNames(reader: ZipReader): string[] {
 
 /** One entry's bytes, or null when the archive has no such entry. Named
     after normalisation, so the caller passes the form `zipNames` returned -
-    Daylio's own leading-slash form has to be tried too, since the reader
-    matches names literally. Decompresses that member alone, and only up
+    the reader matches names literally, so the raw, possibly leading-slash
+    form has to be found first. Decompresses that member alone, and only up
     to the shared reader's ceiling, which is what keeps a preview off the
     500 photos it is not reading, and off a member declaring more than
     this app will hold in memory at once. */
 function zipRead(reader: ZipReader, name: string): Uint8Array | null {
-  return reader.read(name) ?? reader.read(`/${name}`);
+  const raw = reader.names().find((candidate) => zipName(candidate) === name);
+  return raw ? reader.read(raw) : null;
 }
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:

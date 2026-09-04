@@ -543,9 +543,15 @@
          its own sentence: an iPhone backup is a different schema rather
          than a damaged file, and telling somebody their file is unreadable
          when the real answer is "not this platform" sends them looking for
-         a fix that does not exist. */
-      const platform = error instanceof DaylioBackupError && error.kind === 'platform';
-      backupError = error instanceof ZipTooLargeError ? m.dlb_too_large() : platform ? m.dlb_not_android() : m.dlb_unreadable();
+         a fix that does not exist. A ceiling refusal is its own case too,
+         ahead of the rest: it isn't a corrupt container. */
+      if (error instanceof ZipTooLargeError) {
+        backupError = m.dlb_too_large();
+      } else if (error instanceof DaylioBackupError && error.kind === 'platform') {
+        backupError = m.dlb_not_android();
+      } else {
+        backupError = m.dlb_unreadable();
+      }
     }
   }
 

@@ -81,3 +81,24 @@ test('read() of a name the zip does not carry is null, not a refusal', () => {
   const reader = openZip(bytes, 1_000_000);
   assert.equal(reader.read('missing.json'), null);
 });
+
+test('reading the same member twice bills the running total once, not twice', () => {
+  // The real shape this guards: daylioBackup.ts's preview sniffs an
+  // asset's bytes once (to pick an extension), and a later commit reads
+  // the same asset again to write it - through the same reader, since the
+  // preview's own closures are what the commit calls. A ceiling that
+  // billed both reads would refuse a backup for double what it actually
+  // holds.
+  const bytes = zipSync({
+    'a.json': [strToU8('a'.repeat(200)), { level: 0 }],
+    'b.json': [strToU8('b'.repeat(200)), { level: 0 }]
+  });
+  const reader = openZip(bytes, 500);
+
+  assert.equal(reader.read('a.json')!.length, 200);
+  // Would be 200 + 200 + 200 = 600 > 500 if the first member were billed
+  // again here - it must not be, so the real total (200 + 200 = 400)
+  // stays under the ceiling.
+  assert.equal(reader.read('a.json')!.length, 200);
+  assert.equal(reader.read('b.json')!.length, 200);
+});
