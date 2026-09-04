@@ -77,9 +77,10 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
+  import { savedQuestionInputOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -91,6 +92,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -109,6 +111,19 @@
   let endDate = $state('');
   let hasNote = $state(false);
   let hasPhoto = $state(false);
+  /* Saving a question keeps the query and every filter that is on, never
+     today's results (ticket 06's own acceptance criterion: a saved
+     question is read the same way an ad hoc search is, not frozen). */
+  let savingOpen = $state(false);
+  let savingName = $state('');
+
+  async function saveQuestion() {
+    const name = savingName.trim();
+    if (!name) return;
+    await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf(name, query.trim(), filters));
+    savingOpen = false;
+    savingName = '';
+  }
   /* How many pages have been asked for, one counter per read. Reset by
      anything that changes what is being searched for, because page four of
      one query is not page four of the next one and leaving it where it was
@@ -289,6 +304,9 @@
       <a class="icon-btn" href="/search/starred" aria-label={m.starred_shelf_open()}>
         <Icon name="star" />
       </a>
+      <a class="icon-btn" href="/search/questions" aria-label={m.saved_questions_open()}>
+        <Icon name="bookmark" />
+      </a>
       <button
         class="icon-btn"
         aria-label={m.search_filters()}
@@ -330,6 +348,15 @@
       {/each}
       <button class="tag-chip press" data-filter-clear onclick={clearAllFilters}>{m.search_filters_clear_all()}</button>
     </div>
+  {/if}
+
+  {#if hasCriteria}
+    <!-- Offered once a query has actually run, never for a blank box - a
+         question nobody has asked yet is not worth naming (the ticket's
+         own line). -->
+    <button class="btn btn-soft" data-search-save onclick={() => (savingOpen = true)}>
+      <Icon name="bookmark" size={20} /><span>{m.saved_question_save()}</span>
+    </button>
   {/if}
 
   <div aria-live="polite">
@@ -454,16 +481,30 @@
       </button>
     </div>
   </Sheet>
-</div>
 
-<style>
-  /* When a hit was recorded, at the trailing edge of its row. The month and
-     the year rather than the exact day: a search result wants placing in
-     time, and the record's own screen is where the full date lives (the
-     starred shelf's photo dates read the same way, in the same format). */
-  .search-hit-date {
-    font-size: var(--text-xs);
-    color: var(--text-2);
-    white-space: nowrap;
-  }
-</style>
+  <Sheet bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
+    <h3>{m.saved_question_save_sheet()}</h3>
+    <Field label={m.saved_question_name_label()} id="saved-question-name">
+      {#snippet children(id)}
+        <input
+          class="input"
+          {id}
+          name="saved-question-name"
+          placeholder={m.saved_question_name_placeholder()}
+          bind:value={savingName}
+        />
+      {/snippet}
+    </Field>
+    <p class="search-hint">{m.saved_question_save_hint()}</p>
+    <div class="stack-3">
+      <button
+        class="btn btn-primary"
+        data-saved-question-save-confirm
+        disabled={!savingName.trim()}
+        onclick={saveQuestion}
+      >
+        <span>{m.saved_question_save_confirm()}</span>
+      </button>
+    </div>
+  </Sheet>
+</div>
