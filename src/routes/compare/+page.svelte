@@ -59,7 +59,6 @@
   interface ComparisonSideStats {
     entryCount: number;
     averageMood: number | null;
-    bestStreak: number;
     topTagLabel: string;
     dimensionAverages: { name: string; average: number | null }[];
   }
@@ -153,7 +152,6 @@
     return {
       entryCount: recap.entryCount,
       averageMood: recap.averageMood,
-      bestStreak: recap.bestStreak,
       topTagLabel: recap.topTags.length
         ? recap.topTags
             .map((t) =>
@@ -322,11 +320,6 @@
           <span>{fmtDimension(b.dimensionAverages[i]?.average ?? null)}</span>
         </div>
       {/each}
-      <div class="rows-divide compare-metrics-row" data-compare-metric="streak">
-        <span class="compare-metric-name">{m.compare_streak_label()}</span>
-        <span>{m.n_days({ n: a.bestStreak })}</span>
-        <span>{m.n_days({ n: b.bestStreak })}</span>
-      </div>
       <div class="rows-divide compare-metrics-row compare-metrics-tags" data-compare-metric="tags">
         <span class="compare-metric-name">{m.recap_tags_title()}</span>
         <span class="compare-metric-text">{a.topTagLabel}</span>

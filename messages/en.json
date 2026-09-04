@@ -124,7 +124,6 @@
       }
     }
   ],
-  "streak_row": "days in a row",
   "backup_stale_title": "Your last backup was {days} days ago",
   "backup_stale_body": "Your journal lives only on this device.",
   "backup_now": "Back it up now",
@@ -389,6 +388,21 @@
       "match": {
         "nPlural=one": "{n} day",
         "nPlural=other": "{n} days"
+      }
+    }
+  ],
+  "n_entries": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} entry",
+        "nPlural=other": "{n} entries"
       }
     }
   ],
@@ -1790,7 +1804,6 @@
   "compare_mode_era": "Era",
   "compare_pick_era": "Pick an era",
   "compare_entries_label": "Entries logged",
-  "compare_streak_label": "Best streak",
   "stats_range_group": "Range",
   "insight_row_sub": "{count} entries · avg {with} with · {without} without",
   "chart_aria": "Line chart, {count} points from {from} to {to}",
@@ -1910,10 +1923,9 @@
   "tile_voice_benchmark_action": "Record baseline",
   "tile_voice_benchmark_days_ago": "{days} days since last baseline",
   "tile_pause_active_title": "Journaling pause",
-  "tile_pause_active_sub": "Replaces streak counter with reassurance during a journaling pause.",
-  "tile_pause_until_date": "Paused until {date} · Streak protected",
-  "tile_pause_ongoing": "Journaling paused · Streak protected",
-  "streak_protected": "Streak protected",
+  "tile_pause_active_sub": "While a break is running, says that a break is a break.",
+  "tile_pause_until_date": "Break until {date}",
+  "tile_pause_ongoing": "Journaling paused",
   "tile_hair_removal_title": "Hair removal recovery",
   "tile_hair_removal_sub": "Shows aftercare guidance after laser or electrolysis.",
   "tile_hair_removal_guidance": "Keep treated skin hydrated and protected from the sun.",
@@ -1959,7 +1971,6 @@
   "wrapped_muted_title": "Kept out of view",
   "wrapped_muted_body": "This period includes an era you keep out of resurfacing.",
   "wrapped_stat_entries": "Entries",
-  "wrapped_stat_streak": "Best streak",
   "wrapped_stat_mood": "Average mood",
   "wrapped_mood_arc": "Mood, day by day",
   "wrapped_scale_arc": "The scale that moved furthest",
@@ -2017,8 +2028,6 @@
   "safe_space_breathing_hold": "Hold",
   "safe_space_breathing_exhale": "Exhale",
   "safe_space_stats_title": "From your journal",
-  "safe_space_stat_streak_title": "Days logged",
-  "safe_space_stat_streak_note": "Consecutive days",
   "safe_space_stat_evidence_title": "Good moments",
   "safe_space_stat_evidence_note": "In your history",
   "safe_space_counterevidence_title": "From your own history",
@@ -2155,18 +2164,6 @@
   "look_back_letter_opened": "Opened {date}",
   "letters_gone_title": "This letter is gone",
   "letters_gone_body": "It may have been deleted. The rest of your letters are on the letters screen.",
-  "streak_goal_title": "Streak goals",
-  "streak_goal_row_sub": "A gentle target, and a few quiet achievements",
-  "streak_goal_intro": "Pick a target for how many days in a row you'd like to journal. A missed day doesn't erase what came before it, and backdating an entry into a gap repairs the streak exactly the way it does everywhere else in the app.",
-  "streak_goal_enable": "Set a goal",
-  "streak_goal_enable_sub": "Off by default. Turn it on if a target is useful to you, not because it's expected.",
-  "streak_goal_habit_journaling": "Journaling frequency",
-  "streak_goal_target_label": "Target",
-  "streak_goal_progress_met": "Goal reached: {days}.",
-  "streak_goal_progress_current": "{current} of {target} days",
-  "streak_goal_gap_note": "A gap here is just a gap. It's never treated as a broken streak.",
-  "streak_goal_achievements_title": "Achievements",
-  "streak_goal_achievements_intro": "Reached once, kept for good - even after a gap in your entries.",
   "journey_anchor_field_label": "Journey anchor",
   "journey_anchor_field_hint": "Stats and wrapped measure how long it's been from whichever milestone this is. Turn it off to leave the starting point unset.",
   "journey_anchor_row_badge": "Counting from here",
@@ -2652,7 +2649,6 @@
   "stats_all_history": "Reads your whole journal, not the range above.",
   "interval_day_n": "Day {n}",
   "stats_area_last": "Last logged {date}",
-  "wrapped_stat_streak_ever": "Best ever",
   "wrapped_cadence_range": "Range",
   "wrapped_range_title": "Any range",
   "scales_none_ticked": "None ticked",
@@ -3132,5 +3128,11 @@
   "coming_back_wear_decline": "Leave it running",
   "coming_back_dose_saved": "Logged on {date}.",
   "coming_back_wear_saved": "Closed on {date}.",
-  "coming_back_wear_end_hint": "The app needs this before it can close the session."
+  "coming_back_wear_end_hint": "The app needs this before it can close the session.",
+  "home_count_since": "{entries} since {date}",
+  "home_tiles_more": "{count} more",
+  "home_tiles_fewer": "Show fewer",
+  "safe_space_stat_written_title": "Entries written",
+  "safe_space_stat_written_note": "In your whole journal",
+  "tile_pause_value": "Nothing to catch up on"
 }

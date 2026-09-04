@@ -105,7 +105,6 @@ export interface JournalBookEntry {
     the wrapped screens say about the same range. */
 export interface JournalBookOpening {
   entryCount: number;
-  bestStreak: number;
   milestoneCount: number;
 }
 
@@ -187,7 +186,6 @@ async function readOpening(
   const recap = await stats.recap(fromEpochDay, toEpochDay);
   return {
     entryCount: recap.entryCount,
-    bestStreak: recap.bestStreak,
     milestoneCount: recap.milestones.length
   };
 }

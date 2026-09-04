@@ -864,9 +864,10 @@
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
 
-/* The journey anchor and the streak, which were a card each. One quiet line
-   under the range control: both are facts about where you are rather than
-   readings of the period, and neither is a hero metric (the slop audit). */
+/* The journey anchor, which was a card. One quiet line under the range
+   control: it is a fact about where you are rather than a reading of the
+   period, and it is not a hero metric (the slop audit). The streak sat
+   beside it until phase 8 UX ticket 01. */
 .stats-caption {
   margin: var(--space-3) var(--space-1) 0;
   font-size: var(--text-sm);
@@ -942,10 +943,8 @@
 }
 
 /* The figures, as rows of a list card rather than a row of small tiles
-   (phase 5 UX ticket 23). What the list bought is the best-ever streak: it
-   sits under the period's own best as the thing that one is measured
-   against, where a fifth tile would have stated a number about a different
-   period with nothing to say it was a different period. */
+   (phase 5 UX ticket 23). What the list buys is room for a supporting line
+   under a figure, which a tile stating a bare number has nowhere to put. */
 .wrapped-figure-value {
   font-family: var(--font-display);
   font-size: var(--text-lg);

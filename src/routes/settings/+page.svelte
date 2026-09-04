@@ -269,7 +269,6 @@
       <ListRow key="notifications" icon="zap" title={m.notif_title()} subtitle={m.notif_sub()} href="/settings/notifications" />
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
-      <ListRow key="streak-goal" icon="sparkle" title={m.streak_goal_title()} subtitle={m.streak_goal_row_sub()} href="/settings/streak-goal" />
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
     </ListCard>
 

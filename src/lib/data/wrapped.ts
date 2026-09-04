@@ -32,7 +32,7 @@ export const WRAPPED_CADENCES = ['year', 'month', 'week'] as const satisfies rea
     cadence would be three judgements to keep in step, and the thing being
     judged is the same either way - whether there is enough in the period to
     fill a screen rather than a screen of empty sections. Five is the point
-    where the arcs, the tags and the streak all have something to say; below
+    where the arcs, the tags and the counts all have something to say; below
     it a wrapped is a list of ones and zeroes. */
 export const WRAPPED_ENTRY_FLOOR = 5;
 

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { DayAverage, TagInsight } from './journal/stats';
 import {
   WRAPPED_TAG_INSIGHT_CAP,
-  wrappedStreaks,
   wrappedTagInsights,
   wrappedTallyCounts
 } from './wrappedSections';
@@ -68,26 +67,3 @@ describe('the tally counts on a wrapped', () => {
   });
 });
 
-describe('the best streak against the best ever', () => {
-  it('says nothing where the period holds no run', () => {
-    expect(wrappedStreaks({ bestStreak: 0 }, 31)).toBeNull();
-  });
-
-  it('pairs the period\'s own best with the history\'s', () => {
-    expect(wrappedStreaks({ bestStreak: 6 }, 31)).toEqual({ inPeriod: 6, ever: 31 });
-  });
-
-  /* The two figures are drawn as a pair and never compared: which is larger
-     is visible, and the app saying so would be the verdict it never gives. */
-  it('says nothing about which of the two is larger', () => {
-    expect(wrappedStreaks({ bestStreak: 31 }, 31)).toEqual({ inPeriod: 31, ever: 31 });
-  });
-
-  /* The ever figure is read with today as its anchor and excludes future
-     days, so a period ending in the future can hold a longer run than the
-     history it is part of. Reporting a best-ever smaller than the number
-     beside it would read as an error rather than as an edge. */
-  it('never reports a best ever shorter than the period beside it', () => {
-    expect(wrappedStreaks({ bestStreak: 9 }, 4)).toEqual({ inPeriod: 9, ever: 9 });
-  });
-});

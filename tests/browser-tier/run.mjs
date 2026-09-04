@@ -127,10 +127,10 @@ await block('ticket 04 browser tier', 7, async () => {
     ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
   else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
 
-  // Ticket 10: the streak counts consecutive days with a window function,
+  // Ticket 10: the recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.
-  if (first.windowFunctionRun >= 1) ok('the WASM build has the window functions the streak counts runs with');
-  else fail('the WASM build has the window functions the streak counts runs with', JSON.stringify(first.windowFunctionRun));
+  if (first.windowFunctionRun >= 1) ok('the WASM build has the window functions the recap reads with');
+  else fail('the WASM build has the window functions the recap reads with', JSON.stringify(first.windowFunctionRun));
 
   await reload();
   const second = await load('/driver.html', 'driver-probe');
@@ -1195,18 +1195,6 @@ await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
 try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
-
-  /* The streak-goal screen's read, against the write it used to miss.
-     `['entry']` was its declaration and `journaling_pause` is the other
-     table the streak reads, so the number stayed as it was for as long as
-     the screen was open. */
-  if (live.streak.after === 2 && live.streak.before === 1)
-    ok('declaring a journaling pause re-reads the streak the streak-goal screen shows (1 -> 2)');
-  else
-    fail(
-      'declaring a journaling pause re-reads the streak the streak-goal screen shows',
-      live.streak.error ?? `before ${live.streak.before}, after ${live.streak.after}`
-    );
 
   // The stock screen's read, against the write it used to miss: a projection
   // reads the episode history through regimen.getEpisodes().
