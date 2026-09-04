@@ -1,10 +1,10 @@
-/* The journaling pause area (phase 5 ticket 21, CONTEXT: "Streak" -
-   amended). A journaling pause is not an Entry and carries no episode
+/* The journaling pause area (phase 5 ticket 21, CONTEXT: "Journaling
+   pause"). A journaling pause is not an Entry and carries no episode
    reference - it has to work on its own, the same reasoning cycleEvents.ts
    and sideEffects.ts give. Rows only: whether a day falls inside a pause is
-   `journalingPause.ts`'s pauseCoversDay, read from here by `journal/stats.ts`
-   (Streak's amended computation) and by the check-in/Home suppression
-   checks - this module knows nothing about either.
+   `journalingPause.ts`'s pauseCoversDay, read from here by the check-in
+   suppression and by Home's pause tile - this module knows nothing about
+   either.
 
    Flat, so its three writes come from flatArea.ts and only the one read is
    its own. */

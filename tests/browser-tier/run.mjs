@@ -127,10 +127,10 @@ await block('ticket 04 browser tier', 7, async () => {
     ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
   else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
 
-  // Ticket 10: the streak counts consecutive days with a window function,
+  // Ticket 10: the recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.
-  if (first.windowFunctionRun >= 1) ok('the WASM build has the window functions the streak counts runs with');
-  else fail('the WASM build has the window functions the streak counts runs with', JSON.stringify(first.windowFunctionRun));
+  if (first.windowFunctionRun >= 1) ok('the WASM build has the window functions the recap reads with');
+  else fail('the WASM build has the window functions the recap reads with', JSON.stringify(first.windowFunctionRun));
 
   await reload();
   const second = await load('/driver.html', 'driver-probe');
@@ -1196,18 +1196,6 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  /* The streak-goal screen's read, against the write it used to miss.
-     `['entry']` was its declaration and `journaling_pause` is the other
-     table the streak reads, so the number stayed as it was for as long as
-     the screen was open. */
-  if (live.streak.after === 2 && live.streak.before === 1)
-    ok('declaring a journaling pause re-reads the streak the streak-goal screen shows (1 -> 2)');
-  else
-    fail(
-      'declaring a journaling pause re-reads the streak the streak-goal screen shows',
-      live.streak.error ?? `before ${live.streak.before}, after ${live.streak.after}`
-    );
-
   // The stock screen's read, against the write it used to miss: a projection
   // reads the episode history through regimen.getEpisodes().
   if (live.projection.runsAfter > live.projection.runsBefore)
@@ -1557,6 +1545,33 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     fail(
       'every band prints its two Hz figures, with the source line and the caveat',
       `figures ${JSON.stringify(f.bandFigures)}, source ${f.sourceText.length} chars, caveat ${f.caveatText.length} chars`
+    );
+});
+
+// --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
+await block('phase 8 audit ticket 03 mic teardown', 3, async () => {
+  const r = await load('/mic-teardown.html', 'mic-teardown-probe');
+  if (r.error) throw new Error(r.error);
+  const { teardown, throwingRecorder } = r;
+
+  if (teardown.streamOpened && teardown.trackStates.every((s) => s === 'ended'))
+    ok('a screen destroyed while the microphone is still opening leaves no track running');
+  else
+    fail(
+      'a screen destroyed while the microphone is still opening leaves no track running',
+      JSON.stringify(teardown)
+    );
+
+  if (teardown.intervalsArmed === 0)
+    ok('and arms no poll interval for a take nobody is on screen for any more');
+  else fail('no poll interval is armed for a take nobody is on screen for', `${teardown.intervalsArmed} armed`);
+
+  if (throwingRecorder.threw && throwingRecorder.trackStates.every((s) => s === 'ended'))
+    ok("a recorder that throws on stop() (already inactive) still leaves its tracks stopped");
+  else
+    fail(
+      "a recorder that throws on stop() still leaves its tracks stopped",
+      JSON.stringify(throwingRecorder)
     );
 });
 

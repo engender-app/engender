@@ -2,7 +2,7 @@
   /* Safe Space (ticket 52, ADR-0040, CONTEXT: "Safe space").
      The crisis-mode dashboard for intense dysphoria:
      - Calming tool: guided box breathing exercise with concentric ambient halo
-     - Grounding statistics: streak and good moments from the journal
+     - Grounding statistics: how much is written, and good moments from the journal
      - Visual charts: 30-day timeline and affirming themes breakdown
      - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries,
        plus (ticket 14) an unlocked letter and starred photos drawn alongside it,
@@ -110,8 +110,13 @@
   );
   let counterevidence = $derived(counterevidenceQuery.rows);
 
-  let streakQuery = liveQuery((j) => j.stats.streak(today));
-  let streakDays = $derived(streakQuery.value ?? 0);
+  /* How much is written, in total (phase 8 UX ticket 01). It was the run of
+     consecutive days, which is the one figure on this screen that could go
+     down: somebody arriving here after a fortnight away would have been told
+     their evidence was zero. A count over the whole journal only ever
+     grows. */
+  let entryCountQuery = liveQuery((j) => j.entries.countAll());
+  let entryCount = $derived(entryCountQuery.value ?? 0);
 
   let dayAveragesQuery = liveList((j) => j.stats.dayAverages('mood', from, today));
   let rawPoints = $derived(dayAveragesQuery.rows.map((r) => ({ x: r.day, y: r.value })));
@@ -230,10 +235,10 @@
     data-tight
   >
     <Tile
-      key="streak"
-      title={m.safe_space_stat_streak_title()}
-      value={String(streakDays)}
-      note={m.safe_space_stat_streak_note()}
+      key="written"
+      title={m.safe_space_stat_written_title()}
+      value={String(entryCount)}
+      note={m.safe_space_stat_written_note()}
       href="/calendar"
     />
     <Tile

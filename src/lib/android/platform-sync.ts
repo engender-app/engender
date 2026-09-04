@@ -69,7 +69,7 @@ export interface PlatformSyncDeps {
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<void> };
     /** The journaling pause (phase 5 ticket 21): while one covers today,
-        the check-in prompt goes quiet the same way a streak surface does,
+        the check-in prompt goes quiet while a journaling pause runs,
         without touching the `checkInEnabled` preference itself. */
     journalingPauses: { getPauses(): Promise<Array<{ startEpochDay: number; endEpochDay: number | null }>> };
     /** Which areas are hidden or finished (phase 8 features ticket 04):

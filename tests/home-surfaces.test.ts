@@ -36,6 +36,10 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 const home = read('src/routes/+page.svelte');
 /** The markup half: a string in the script block may be anything. */
 const markup = home.replace(/<script[\s\S]*?<\/script>/g, '');
+/** Both halves with the prose taken out, for the rules that are about an
+    absence: a comment saying what a screen no longer does is not the screen
+    still doing it. */
+const code = home.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
 
 describe('what Home is built from', () => {
   it('takes its surfaces from the kit and draws no card of its own', () => {
@@ -156,20 +160,94 @@ describe('what spec 08 took off Home', () => {
     /* ADR-0029: the handle is the kind's own key, so an added tile cannot
        arrive without one and none of them can be renamed by a copy edit. */
     expect(markup).toContain('data-live-tile={tile.key}');
-    expect(markup).toMatch(/\{#each liveTiles\.tiles as tile \(tile\.key\)\}/);
+    // Two blocks since the weights landed - the tile grids and the quiet
+    // list - each keyed on the same field.
+    expect((markup.match(/as tile \(tile\.key\)\}/g) ?? []).length).toBe(2);
     for (const kind of LIVE_TILE_ORDER) expect(UNPROMPTED_KINDS).toContain(kind);
   });
 
-  it('gives all eleven tiles one slide-in rule', () => {
-    /* The bug this ticket fixes: seven tiles asked `liveTilesCount > 1` and
-       four asked a hand-written disjunction of only the original five, so a
-       journal showing the wear and measurements tiles slid one in and let
-       the other appear. */
-    const grid = markup.match(/\{#each liveTiles\.tiles[\s\S]*?\{\/each\}/)?.[0];
-    expect(grid, 'the grid is one each block').toBeDefined();
-    expect(grid).toContain('transition:tileSlide={{ enabled: liveTiles.tiles.length > 1 }}');
-    expect((markup.match(/transition:tileSlide/g) ?? []).length, 'one slide rule, not eleven').toBe(1);
+  it('gives every tile the same slide-in rule', () => {
+    /* The bug deepening ticket 07 fixed: seven tiles asked `liveTilesCount >
+       1` and four asked a hand-written disjunction of only the original
+       five, so a journal showing the wear and measurements tiles slid one in
+       and let the other appear. Two grids since the weights landed - the
+       rows and the cards - and the rule is written the same way in both,
+       over what is on screen rather than over one grid's own length. */
+    const rules = markup.match(/transition:tileSlide=\{\{[^}]*\}\}/g) ?? [];
+    expect(rules.length, 'said once for every weight, not once per tile').toBe(1);
+    for (const rule of rules) expect(rule).toBe('transition:tileSlide={{ enabled: shownTiles.length > 1 }}');
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
+  });
+
+  it('draws the three tiers as three weights, and asks one module for the split', () => {
+    /* Phase 8 UX ticket 01. The cap and the ordering are
+       liveTiles.grid.test.ts's, through `splitHomeTiles` and
+       `composeHomeTiles`; what is Home's is that it draws the answer at
+       three weights rather than twelve tiles differing only by hue. */
+    expect(home).toContain("from '$lib/data/liveTiles'");
+    expect(home).toContain('splitHomeTiles(liveTiles.tiles)');
+    /* One table saying what a tier is drawn as, so a tier cannot be given a
+       weight in one place and a shape in another. A row, a card, and - for
+       dormant, which is not a tile at all - a row of a list. */
+    expect(home).toMatch(/tier: 'today', weight: 'row', rows: true/);
+    expect(home).toMatch(/tier: 'moment', weight: 'card'/);
+    expect(home).toMatch(/tile\.tier === 'dormant'/);
+    expect(markup).toContain('weight={block.weight}');
+    expect(markup).toContain('data-rows={block.rows}');
+    expect(markup).toMatch(/<ListRow[\s\S]*?data-live-tile=\{tile\.key\}/);
+  });
+
+  it('folds the overflow in place rather than into a route, and names it', () => {
+    /* ADR-0039's amendment: nothing true is suppressed and the fold is not a
+       destination. A button, so it announces its state; a link would promise
+       a screen that does not exist. */
+    const fold = markup.match(/<button[^>]*data-home-tiles-fold[\s\S]*?<\/button>/)?.[0];
+    expect(fold, 'the fold is one control').toBeDefined();
+    expect(fold).toContain('aria-expanded={tilesExpanded}');
+    expect(fold).not.toContain('href');
+    expect(home).toContain('m.home_tiles_more(');
+    expect(home).toContain('m.home_tiles_fewer()');
+  });
+
+  it('counts the whole journal from one narrow read, and says nothing at zero', () => {
+    /* Entries and the span, not the recap - which is scoped to a range and
+       pays for six queries including two window functions. */
+    expect(home).toContain('j.entries.countAll()');
+    expect(home).toContain('j.eras.getJournalBounds()');
+    expect(home).not.toContain('j.stats.recap');
+    // `{#if entryCount && ...}` is the absence at zero, and the `&&` is what
+    // also holds the line back until the count has answered.
+    expect(markup).toMatch(/\{#if entryCount && journalBoundsQuery\.value\}/);
+  });
+
+  it('offers somewhere to start until the journal has five entries, then stops on its own', () => {
+    /* Alicja, 2026-09-04. Day one has nothing on it once the placeholders
+       are gone, and "write an entry" says nothing about what the app
+       becomes. Five rather than one, so it is still there when somebody
+       comes back to read it; nothing to dismiss, because it leaves. */
+    expect(home).toContain('const GETTING_STARTED_UNTIL = 5');
+    expect(home).toMatch(/entryCount != null && entryCount < GETTING_STARTED_UNTIL/);
+    expect(markup).toContain('data-getting-started');
+    // Every row goes somewhere, and the last hands the inventory to the hub.
+    const rows = home.match(/const GETTING_STARTED = \[[\s\S]*?\];/)?.[0] ?? '';
+    expect(rows, 'the offers are one list').not.toBe('');
+    expect((rows.match(/href: '/g) ?? []).length).toBe(5);
+    expect(rows).toContain("href: '/more'");
+    // Nothing here may be a dismissable nudge: it is not one of the tiles.
+    expect(markup).not.toMatch(/data-getting-started[\s\S]{0,400}dismiss/);
+  });
+
+  it('makes day one wait for the first entry, on a count rather than on a guess', () => {
+    /* The week strip's seven grey cells, the milestones empty row and the
+       zero-height look-back grid were three of the four unfinished things a
+       first-run Home used to show. `hasEntries` is null until the count
+       answers, so not-yet-known never paints as none. */
+    expect(home).toMatch(/hasEntries = \$derived\(entryCount == null \? null : entryCount > 0\)/);
+    expect(markup).toMatch(/\{#if hasEntries\}\s*<TileGrid[\s\S]*?HOME_AREA_ROLE\.lookBack/);
+    expect(markup).toMatch(/\{#if hasEntries \|\| upcoming\.length\}/);
+    expect(markup).toMatch(/\{#if hasEntries\}\s*<SectionHeading text=\{m\.last_seven\(\)\}/);
+    // The one thing day one keeps besides the header and the chips.
+    expect(markup).toContain('key="no-entries"');
   });
 
   it('gives the live tiles grid its own role', () => {
@@ -195,26 +273,20 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toContain('href="/calendar"');
   });
 
-  it('keeps the streak off the hero-metric template', () => {
-    /* DIRECTION.md's slop audit names the template rather than a position: a
-       big accent number, a small label, a supporting line, on a surface of
-       its own. So this checks the shape and not where the line sits, which
-       moved to the greeting at review and could move again. */
-    const rule = home.match(/\.home-streak \{[^}]*\}/s)?.[0];
-    expect(rule, 'the streak has a rule of its own').toBeDefined();
-    expect(rule).toContain('var(--text-sm)');
-    expect(rule).toContain('var(--text-2)');
-    expect(rule, 'no pill behind it').not.toMatch(/background|border-radius/);
-    expect(rule, 'no accent on it').not.toMatch(/--accent/);
+  it('computes no run of consecutive days, and names none', () => {
+    /* Phase 8 UX ticket 01, ADR-0055: the streak is gone from all six of its
+       readers, and Home held two of its four defusal surfaces. A grep,
+       because what has to hold is an absence - over the code rather than the
+       whole file, since the comments still say what used to be here and why
+       it left. */
+    expect(code, 'nothing reads it and nothing draws it').not.toMatch(/streak/i);
   });
 
-  it('throws its one extra moment once, and only past a week', () => {
-    /* The second authored moment (review, 2026-08-25). Tier 4 rules out a
-       second ambient *loop*, not a second moment - so what matters is that
-       this one ends, and that it stays an event rather than a most-mornings
-       thing. */
-    expect(home).toContain('const STREAK_CHEER_FLOOR = 7');
-    expect(home).toMatch(/streak > STREAK_CHEER_FLOOR/);
+  it('throws its one extra moment once, on a milestone day', () => {
+    /* The one authored moment besides the sun. Tier 4 rules out a second
+       ambient *loop*, not a moment - so what matters is that this one ends,
+       and that it fires on a rare day rather than most mornings. */
+    expect(home).toMatch(/\{#if celebrate\}/);
     // The animation moved into this file's own <style> block (phase 5 audit
     // ticket 16), so `home` is read here rather than screens.css.
     expect(home).toMatch(/animation: cheer-fall[^;]*;/);
@@ -234,7 +306,6 @@ describe('the handles the walkthrough grips', () => {
     'data-home-header',
     'data-home-hero',
     'data-home-hello',
-    'data-home-streak',
     'data-backup-notice',
     'data-quick-log-dims',
     'data-qld-input',

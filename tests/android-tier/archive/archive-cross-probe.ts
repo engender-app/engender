@@ -202,8 +202,6 @@ function portableWith(marker: string) {
     checkInAffirmationsEnabled: values.checkInAffirmationsEnabled,
     preferredLabUnits: {},
     measurementUnit: values.measurementUnit,
-    streakGoalHabit: values.streakGoalHabit,
-    streakGoalTargetDays: values.streakGoalTargetDays,
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
     hairAnchorEpochDay: values.hairAnchorEpochDay,
     cycleTrackingEnabled: values.cycleTrackingEnabled,

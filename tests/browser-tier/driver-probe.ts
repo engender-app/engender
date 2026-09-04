@@ -56,11 +56,13 @@ async function run() {
   const miss = await result.driver.run("UPDATE entry SET updated_at = 2000 WHERE uuid = 'no-such-row'");
   await result.driver.run('DELETE FROM entry WHERE uuid = ?', [uuid]);
 
-  /* Ticket 10: the streak and the recap's best streak count runs of
-     consecutive days with ROW_NUMBER() OVER (...), the first window
-     functions in the codebase. A build compiled with SQLITE_OMIT_WINDOWFUNC
-     would fail on them here and nowhere else - the Node tier's SQLite is a
-     different build - so the check has to happen against the WASM one. */
+  /* Ticket 10: the recap's own reads use ROW_NUMBER() and NTILE, and the
+     day spread a named WINDOW clause. A build compiled with
+     SQLITE_OMIT_WINDOWFUNC would fail on them here and nowhere else - the
+     Node tier's SQLite is a different build - so the check has to happen
+     against the WASM one. The query below is the shape the streak used
+     before phase 8 UX ticket 01 deleted it, kept because it is the
+     smallest thing that exercises the feature. */
   const windowed = await result.driver.query<{ n: number }>(
     `WITH days AS (SELECT DISTINCT epoch_day AS day FROM entry),
           numbered AS (SELECT day, ROW_NUMBER() OVER (ORDER BY day) AS rn FROM days)

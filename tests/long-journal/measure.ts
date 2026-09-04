@@ -229,11 +229,6 @@ export async function measureLongJournal(
      slow is only actionable if the run says which query made it so.
      Measured in the order the screen issues them. */
   const yearStart = today - 364;
-  await measure('stats-year-streak', 'stats screen, the streak', async () => {
-    const streak = await journal.stats.streak(today);
-    return { result: streak, detail: `streak ${streak}` };
-  });
-
   await measure('stats-year-series', 'stats screen, 365 days of every chart', async () => {
     const series = await Promise.all(CHARTED_METRICS.map((key) => journal.stats.dayAverages(key, yearStart, today)));
     const points = series.reduce((total, s) => total + s.length, 0);
@@ -263,13 +258,13 @@ export async function measureLongJournal(
     return { result: insights, detail: `${insights.length} tag insights on ${INSIGHT_DIMENSION}` };
   });
 
-  // The recap over the same year: gaps-and-islands for the best streak, top
-  // tags and the biggest dimension change, all in one call.
+  // The recap over the same year: top tags and the biggest dimension
+  // change, all in one call.
   await measure('stats-recap-year', 'recap, one year', async () => {
     const recap = await journal.stats.recap(yearStart, today);
     return {
       result: recap,
-      detail: `${recap.entryCount} entries, best streak ${recap.bestStreak}, ${recap.topTags.length} top tags`
+      detail: `${recap.entryCount} entries, ${recap.topTags.length} top tags`
     };
   });
 

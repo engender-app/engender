@@ -26,12 +26,6 @@
       "budgetMs": 100,
       "targetMs": 100
     },
-    "stats-year-streak": {
-      "what": "stats screen, the streak",
-      "baselineMs": 6,
-      "budgetMs": 100,
-      "targetMs": 100
-    },
     "stats-year-series": {
       "what": "stats screen, 365 days of every chart",
       "baselineMs": 10,

@@ -39,7 +39,8 @@ export function epochDayFromTimestamp(ts: number): number {
 
     `Number.MIN_SAFE_INTEGER` is the convention where a read compares an
     `epoch_day` column, which is a plain integer comparison that a sentinel
-    survives (stats.ts's `bestStreakEver`). It is wrong for any read that
+    survives (stats.ts's interval folds read all history this way). It is
+    wrong for any read that
     turns the bound back into an instant: `startOfDayTimestamp` builds a
     `Date` from it, `new Date(1970, 0, 1 + MIN_SAFE_INTEGER)` is an Invalid
     Date, and `timestamp >= NaN` matches every row out. `doses.getDoses` is

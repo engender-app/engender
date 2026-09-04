@@ -3,32 +3,27 @@ import assert from 'node:assert/strict';
 import { wrappedShareContent, wrappedShareFileName, WRAPPED_SHARE_NOTHING_SELECTED } from './wrappedShare';
 
 const counts = { label: 'Entries', value: '12' };
-const streak = { label: 'Best streak', value: '5 days' };
 
 test('nothing selected produces an empty card', () => {
-  assert.deepEqual(wrappedShareContent(WRAPPED_SHARE_NOTHING_SELECTED, counts, streak), {
+  assert.deepEqual(wrappedShareContent(WRAPPED_SHARE_NOTHING_SELECTED, counts), {
     stats: [],
     paletteArt: false
   });
 });
 
-test('only the picked stats appear, counts before streak', () => {
-  assert.deepEqual(wrappedShareContent({ counts: true, streak: false, paletteArt: false }, counts, streak), {
+test('a stat reaches the card only when it was picked', () => {
+  assert.deepEqual(wrappedShareContent({ counts: false, paletteArt: false }, counts), {
+    stats: [],
+    paletteArt: false
+  });
+  assert.deepEqual(wrappedShareContent({ counts: true, paletteArt: false }, counts), {
     stats: [counts],
-    paletteArt: false
-  });
-  assert.deepEqual(wrappedShareContent({ counts: false, streak: true, paletteArt: false }, counts, streak), {
-    stats: [streak],
-    paletteArt: false
-  });
-  assert.deepEqual(wrappedShareContent({ counts: true, streak: true, paletteArt: false }, counts, streak), {
-    stats: [counts, streak],
     paletteArt: false
   });
 });
 
 test('palette art is independent of the stat picks', () => {
-  assert.deepEqual(wrappedShareContent({ counts: false, streak: false, paletteArt: true }, counts, streak), {
+  assert.deepEqual(wrappedShareContent({ counts: false, paletteArt: true }, counts), {
     stats: [],
     paletteArt: true
   });

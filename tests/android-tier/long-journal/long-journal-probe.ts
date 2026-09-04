@@ -157,12 +157,13 @@ async function run() {
   });
 
   const firstPaintStartedAt = performance.now();
-  const [dimensions, presets, tagGroups, milestones, streak, recent, week] = await Promise.all([
+  const [dimensions, presets, tagGroups, milestones, entryCount, bounds, recent, week] = await Promise.all([
     reopenedJournal.dimensions.getDimensions(),
     reopenedJournal.dimensions.getPresets(),
     reopenedJournal.tags.getTagGroups(),
     reopenedJournal.milestones.getMilestones(),
-    reopenedJournal.stats.streak(summary.lastEpochDay),
+    reopenedJournal.entries.countAll(),
+    reopenedJournal.eras.getJournalBounds(),
     reopenedJournal.entries.recentDays(RECENT_DAYS),
     reopenedJournal.stats.dayAverages('mood', summary.lastEpochDay - 6, summary.lastEpochDay)
   ]);
@@ -173,7 +174,7 @@ async function run() {
     detail:
       `${startupState}; ${dimensions.length} dimensions, ${presets.length} presets, ` +
       `${tagGroups.length} tag groups, ${milestones.length} milestones, ` +
-      `streak ${streak}, ${recent.length} recent entries, ${week.length} week points`
+      `${entryCount} entries since ${bounds?.firstEpochDay ?? 'nothing'}, ${recent.length} recent entries, ${week.length} week points`
   });
 
   let photoBytes = 0;
