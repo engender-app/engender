@@ -1630,6 +1630,8 @@
   "hair_removal_method_electrolysis": "Elektroliza",
   "hair_removal_method_other": "Inna",
   "ph_compare": "Porównaj",
+  "ph_tab_browse": "Przeglądaj",
+  "ph_tab_compare": "Porównaj",
   "ph_earlier": "Wcześniejsze zdjęcie",
   "ph_later": "Późniejsze zdjęcie",
   "ph_from_entry": "wpis w dzienniku",
@@ -2944,5 +2946,8 @@
   "clinician_summary_part_finished_areas": "Co zostało zakończone",
   "area_finish_table_area": "Nazwa",
   "area_finish_table_ended": "Zakończono",
-  "area_finish_offer_dismiss_sub": "Aplikacja nie zapyta o to ponownie."
+  "area_finish_offer_dismiss_sub": "Aplikacja nie zapyta o to ponownie.",
+  "vm_empty_title": "Jeszcze bez nagrań",
+  "vm_empty_body": "Nagrania głosowe dodane do wpisów zbierają się tutaj, w jednym miejscu - bez pamiętania, którego dnia je nagrano.",
+  "vm_open_entry_aria": "Otwórz wpis z {date}"
 }
