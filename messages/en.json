@@ -3043,5 +3043,5 @@
   "coming_back_wear_decline": "Leave it running",
   "coming_back_dose_saved": "Logged on {date}.",
   "coming_back_wear_saved": "Closed on {date}.",
-  "coming_back_wear_end_hint": "needed before this can be closed"
+  "coming_back_wear_end_hint": "The app needs this before it can close the session."
 }
