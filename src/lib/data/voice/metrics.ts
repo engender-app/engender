@@ -110,9 +110,12 @@ export function bandsOf(metric: VoiceMetric, language: BandLanguage): readonly P
   return referenceBands(language);
 }
 
-/** Where a figure's own explanation lives. Here rather than written out at
-    each call site so that the link and the section it lands on cannot
+/** Where the explanations live. */
+export const VOICE_METRICS_ROUTE = '/settings/voice/metrics';
+
+/** Where one figure's own explanation lives. Here rather than written out
+    at each call site so that a link and the section it lands on cannot
     drift: the reference screen builds its section anchors from the same
     keys (ticket 27's own rule that renaming and explaining are one edit
     applies to the anchor too). */
-export const metricHref = (key: VoiceMetricKey): string => `/settings/voice/metrics#${key}`;
+export const metricHref = (key: VoiceMetricKey): string => `${VOICE_METRICS_ROUTE}#${key}`;

@@ -1591,26 +1591,29 @@ await block('ticket 16 browser tier', 10, async () => {
 await block('ticket 27 browser tier', 7, async () => {
   const r = await load('/voice-metrics.html', 'voice-metrics-probe');
   if (r.error) throw new Error(r.error);
-  const { registered, figures, sections, reviewed } = r;
+  const { registered, figures, landings, listLink, route, sections, reviewed } = r;
 
   const listed = figures.map((f) => f.key);
   if (JSON.stringify(listed) === JSON.stringify(registered))
     ok(`every registered figure is in the list a take shows (${listed.join(', ')})`);
   else fail('every registered figure is in the list a take shows', JSON.stringify(listed));
 
-  const mute = figures.filter((f) => !f.href || f.sentence.length < 20);
-  if (mute.length === 0) ok('every figure carries a sentence, and the sentence is the link');
-  else fail('every figure carries a sentence, and the sentence is the link', JSON.stringify(mute));
+  const blank = figures.filter((f) => f.stated.length === 0);
+  if (blank.length === 0 && listLink?.href === route && listLink.text.length > 0)
+    ok(`the list states six figures and one way in (${listLink.text})`);
+  else fail('the list states six figures and one way in', JSON.stringify({ blank, listLink }));
 
-  /* The claim only a browser can answer: the fragment resolved against the
-     rendered reference screen, read back through `:target`. */
-  const stray = figures.filter((f) => f.landsOn !== f.key);
+  /* The claim only a browser can answer: every fragment metricHref builds,
+     resolved against the rendered reference screen and read back through
+     `:target`. The compare view renders two of these against its own
+     labels; nothing but a rendered document can say they land. */
+  const stray = landings.filter((l) => l.landsOn !== l.key);
   if (stray.length === 0)
-    ok('each figure\'s link lands on its own section of the reference screen');
+    ok('every figure\'s own fragment lands on its own section of the reference screen');
   else
     fail(
-      "each figure's link lands on its own section of the reference screen",
-      JSON.stringify(stray.map((f) => [f.key, f.href, f.landsOn]))
+      "every figure's own fragment lands on its own section of the reference screen",
+      JSON.stringify(stray.map((l) => [l.key, l.href, l.landsOn]))
     );
 
   const halfExplained = sections.filter((s) => s.fields !== 7);

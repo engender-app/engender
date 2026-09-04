@@ -26,8 +26,11 @@
    costliest misconception in this field, and an app that measures pitch
    well and says nothing would be reinforcing it.
 
-   Citations stay in English in both catalogues, the way author names,
-   journal titles and years are untranslated everywhere else in this app.
+   Author names, journal titles and years stay English in both catalogues,
+   the way they are untranslated everywhere else in this app. The words
+   around them do not: the Polish catalogue writes "i inni" rather than
+   "and others" (vb_band_source_pl, effects_source), so the same paper is
+   cited one way per language rather than two ways in one.
 
    Every map is indexed straight, with no cast and no fallback to the raw
    key: `VoiceMetric.key` is the union rather than `string`, so there is no
@@ -54,19 +57,6 @@ const NAME: Record<VoiceMetricKey, Message> = {
   rate: m.vb_rate,
   resonance: m.vb_resonance,
   room: m.vb_room
-};
-
-/** The one sentence that sits under the figure on the measured-take view
-    and links into its own section here. One sentence and not a paragraph:
-    a caption long enough to teach makes the figure unreadable, which is
-    the reason the reference screen exists at all. */
-const LINE: Record<VoiceMetricKey, Message> = {
-  pitch: m.vm_pitch_line,
-  span: m.vm_span_line,
-  spread: m.vm_spread_line,
-  rate: m.vm_rate_line,
-  resonance: m.vm_resonance_line,
-  room: m.vm_room_line
 };
 
 /** Field 1: what it measures, in one plain sentence. */
@@ -165,7 +155,6 @@ const BAND_SOURCE: Record<BandLanguage, Message> = {
 };
 
 export const metricName = (key: VoiceMetricKey): string => NAME[key]();
-export const metricLine = (key: VoiceMetricKey): string => LINE[key]();
 
 /** Which field a rendered pair is, so the screen can hang the pitch
     ranges under the one field they belong to without counting positions. */

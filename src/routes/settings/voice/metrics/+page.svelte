@@ -59,7 +59,10 @@
     </section>
   {/each}
 
-  <p class="muted small" data-metrics-reviewed>{m.vm_reviewed({ date: reviewedOn })}</p>
+  <!-- The roadmap's own reviewed-on line, reused rather than reworded: it
+       already says "content checked against its sources" and this table is
+       the same kind of claim (docs/ui-copy.md, "Does it exist already?"). -->
+  <p class="muted small" data-metrics-reviewed>{m.roadmap_reviewed_on({ date: reviewedOn })}</p>
 </div>
 
 <style>

@@ -1,12 +1,18 @@
 /* Browser-tier check for the metric reference (phase 8 features ticket 27,
    ADR-0060), the half no Node test can reach.
 
-   What is only provable here: that the link under a figure lands on that
-   figure's own section. The Node tier can compare two strings and say the
-   href matches the key; only a browser resolves a fragment against a
-   rendered document, and the failure this guards is a link into a section
-   that does not exist - six sentences that go nowhere, which is worse than
-   the bare numbers the ticket set out to fix.
+   What is only provable here: that the per-figure links the app builds
+   land on the sections the reference screen actually renders. The Node
+   tier can compare two strings and say an href matches a key; only a
+   browser resolves a fragment against a rendered document, and the
+   failure this guards is a link into a section that does not exist.
+
+   Both link surfaces are here because they are different shapes. The
+   figure list a take shows carries one link to the screen as a whole
+   (Alicja's call on 2026-09-04: six sentences under six numbers turned
+   the list into a page of links), and the compare view links each of its
+   two labels into that figure's own section. So what is driven below is
+   every href `metricHref` produces, whoever renders it.
 
    Both surfaces mount for real: the summary's figure list over a fixed set
    of figures, and the reference screen itself, which is a route component
@@ -32,7 +38,7 @@ import '$lib/styles/kit.css';
 import '$lib/styles/components.css';
 import '$lib/styles/screens.css';
 import '$lib/motion/press.css';
-import { VOICE_METRICS } from '$lib/data/voice/metrics';
+import { metricHref, VOICE_METRICS, VOICE_METRICS_ROUTE } from '$lib/data/voice/metrics';
 import { readFlagRoles, roleAt } from '$lib/theme/roles';
 import VoiceFigures from '$lib/components/VoiceFigures.svelte';
 import MetricReference from '../../src/routes/settings/voice/metrics/+page.svelte';
@@ -67,24 +73,23 @@ try {
   });
   mount(MetricReference, { target: document.querySelector('#reference')! });
 
-  /** Every figure in the list, with the link under it and where that link
-      lands once the browser has resolved the fragment. */
-  const figures = [...document.querySelectorAll('#figures [data-figure]')].map((row) => {
-    const key = row.getAttribute('data-figure');
-    const link = row.querySelector<HTMLAnchorElement>('a');
-    let landsOn: string | null = null;
-    if (link) {
-      // The browser's own answer, not a string comparison: the fragment is
-      // set on the real location and `:target` is whatever it matched.
-      location.hash = new URL(link.href).hash;
-      landsOn = document.querySelector(':target')?.id ?? null;
-    }
-    return {
-      key,
-      href: link?.getAttribute('href') ?? null,
-      sentence: (link?.textContent ?? '').trim(),
-      landsOn
-    };
+  /** Every figure the list states, and the one link under it. */
+  const figures = [...document.querySelectorAll('#figures [data-figure]')].map((row) => ({
+    key: row.getAttribute('data-figure'),
+    /* The figure itself, so a bare list is still asserted to be a list of
+       figures rather than of empty rows. */
+    stated: (row.querySelector('dd')?.textContent ?? '').trim()
+  }));
+
+  const listLink = document.querySelector<HTMLAnchorElement>('#figures .vf-more a');
+
+  /** Where each figure's own fragment lands, resolved by the browser
+      rather than compared as a string: the fragment goes on the real
+      location and `:target` is whatever it matched. */
+  const landings = VOICE_METRICS.map((metric) => {
+    const href = metricHref(metric.key);
+    location.hash = new URL(href, location.href).hash;
+    return { key: metric.key, href, landsOn: document.querySelector(':target')?.id ?? null };
   });
 
   const sections = [...document.querySelectorAll('#reference [data-metric]')].map((panel) => ({
@@ -105,6 +110,11 @@ try {
   publish(NAME, {
     registered: VOICE_METRICS.map((metric) => metric.key),
     figures,
+    landings,
+    listLink: listLink
+      ? { href: listLink.getAttribute('href'), text: (listLink.textContent ?? '').trim() }
+      : null,
+    route: VOICE_METRICS_ROUTE,
     sections,
     reviewed: document.querySelector('[data-metrics-reviewed]')?.textContent?.trim() ?? ''
   });
