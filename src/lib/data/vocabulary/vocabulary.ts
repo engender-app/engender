@@ -16,6 +16,7 @@ import { metricKey } from '../prefs/catalogue';
 import { reference } from '../live/reference.svelte';
 import { rankByLean, scaleLean } from '../lean';
 import { milestoneTemplateRows, regimenTemplateRows } from './builtins';
+import { resolveBuiltInWording } from './entryTemplates';
 import type {
   Affirmation,
   BodyRegion,
@@ -101,13 +102,22 @@ function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
   };
 }
 
-/** A built-in's wording is resolved by key, the same "data lives in the
-    mirror, wording lives in labels.ts" split every other built-in area
-    uses; an authored template's name and note scaffold are the person's
-    own words and pass through untouched (phase 6 ticket 07). */
+/** A built-in still seeded blank is resolved by key, the same "data lives
+    in the mirror, wording lives in labels.ts" split every other built-in
+    area uses; a custom template's name and note scaffold are the person's
+    own words and pass through untouched, same as a built-in the person has
+    edited (ticket 25's "editable-name question", answer 2: the edit
+    wins). `resolveBuiltInWording` is where that fallback direction is
+    decided and proven. */
 function localizeEntryTemplate(t: EntryTemplate): EntryTemplate {
   if (!t.builtIn) return t;
-  return { ...t, name: entryTemplateName(t.id), noteScaffold: entryTemplateNoteScaffold(t.id) ?? '' };
+  return {
+    ...t,
+    ...resolveBuiltInWording(
+      { name: t.name, noteScaffold: t.noteScaffold },
+      { name: entryTemplateName(t.id), noteScaffold: entryTemplateNoteScaffold(t.id) ?? '' }
+    )
+  };
 }
 
 /** Keys only; the names come from the message catalogue below. Not stored

@@ -21,6 +21,7 @@ import {
   BUILT_IN_TAG_GROUPS,
   ENTRY_TEMPLATES
 } from '../vocabulary/builtins';
+import { builtInTemplateHidden } from '../vocabulary/entryTemplates';
 import { now } from './support';
 
 /** The tables this module writes, single-sourced here because this is the
@@ -155,8 +156,8 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
   for (const t of ENTRY_TEMPLATES) {
     if (templateKeys.has(t.key)) continue;
     const result = await driver.run(
-      `INSERT INTO entry_template (key, name, note_scaffold, presentation_id, updated_at) VALUES (?, '', '', NULL, ?)`,
-      [t.key, ts]
+      `INSERT INTO entry_template (key, name, note_scaffold, presentation_id, hidden, updated_at) VALUES (?, '', '', NULL, ?, ?)`,
+      [t.key, builtInTemplateHidden(t) ? 1 : 0, ts]
     );
     for (const tagKey of t.tags) {
       await driver.run(
