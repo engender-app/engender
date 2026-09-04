@@ -18,10 +18,13 @@ import { startOfDayTimestamp } from './epochDay';
 import { SURFACE_ROWS, UNPROMPTED_KINDS } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import {
+  HOME_TILE_CAP,
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
+  LIVE_TILE_TIER,
   composeHomeTiles,
   liveTilePrefKeys,
+  splitHomeTiles,
   type HomeTileActions,
   type HomeTileFormat,
   type HomeTileReads,
@@ -185,6 +188,26 @@ const keysOf = (overrides?: Overrides) => composeHomeTiles(input(overrides)).map
 const tileNamed = (kind: LiveTileKind, overrides?: Overrides) =>
   composeHomeTiles(input(overrides)).find((t) => t.key === kind);
 const ORDER: LiveTileKind[] = [...LIVE_TILE_ORDER];
+/** The order the grid actually comes out in: tier first, LIVE_TILE_ORDER
+    inside a tier (phase 8 UX ticket 01). Written out rather than derived
+    from `LIVE_TILE_TIER`, which is the thing under test. */
+const TIERED: LiveTileKind[] = [
+  // Bound to today.
+  'wear-timer',
+  'patch-schedule-tile',
+  'hair-removal-recovery',
+  // A moment.
+  'dose-panel',
+  'surgery-countdown',
+  'safe-space-nudge',
+  'ready-letter',
+  'revisit',
+  'pause-active-banner',
+  // Dormant.
+  'active-tryout-tile',
+  'voice-benchmark-nudge',
+  'measurements-nudge'
+];
 
 describe('which kinds the grid is for', () => {
   it('draws the eleven live tiles and none of the registry\'s other seven', () => {
@@ -231,39 +254,76 @@ describe('which kinds the grid is for', () => {
   });
 });
 
-describe('the order, and the absence of a cap', () => {
-  it('draws every qualifying tile in LIVE_TILE_ORDER', () => {
-    expect(keysOf()).toEqual(ORDER);
-  });
+describe('the tier every kind is in', () => {
+  /* Phase 8 UX ticket 01. The tier is the policy: it decides the order, and
+     Home draws it as three weights so the difference is legible without
+     reading either tile. */
 
-  it('caps nothing: twelve qualify and twelve are drawn', () => {
-    const tiles = composeHomeTiles(input());
-    expect(tiles).toHaveLength(12);
-    expect(new Set(tiles.map((t) => t.key)).size).toBe(12);
-  });
+  it('puts every kind in exactly one of the three bands', () => {
+    const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
+    for (const kind of LIVE_TILE_ORDER) byTier[LIVE_TILE_TIER[kind]].push(kind);
 
-  it('keeps the order when the ones before a tile drop out', () => {
-    /* Order is the list's, not the reads': with the first six gone the
-       remaining six still come out in the same relative order. */
-    const enabled = allOn(true);
-    for (const kind of [
-      'wear-timer',
+    expect(byTier.today).toEqual(['wear-timer', 'patch-schedule-tile', 'hair-removal-recovery']);
+    expect(byTier.moment).toEqual([
       'dose-panel',
       'surgery-countdown',
       'safe-space-nudge',
       'ready-letter',
-      'revisit'
-    ] as const) {
-      enabled[kind] = false;
-    }
-    expect(keysOf({ enabled })).toEqual([
+      'revisit',
+      'pause-active-banner'
+    ]);
+    expect(byTier.dormant).toEqual([
       'active-tryout-tile',
-      'patch-schedule-tile',
       'voice-benchmark-nudge',
-      'pause-active-banner',
-      'hair-removal-recovery',
       'measurements-nudge'
     ]);
+    expect(byTier.today.length + byTier.moment.length + byTier.dormant.length).toBe(LIVE_TILE_ORDER.length);
+  });
+
+  it('carries the tier on the tile, which is what Home draws the weight from', () => {
+    for (const tile of composeHomeTiles(input())) expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+  });
+});
+
+describe('the order, and the cap', () => {
+  it('orders by tier first, and by LIVE_TILE_ORDER inside a tier', () => {
+    expect(keysOf()).toEqual(TIERED);
+  });
+
+  it('keeps the order when the ones before a tile drop out', () => {
+    /* Order is the policy\'s, not the reads\': with the first six of the
+       tiered order gone the remaining six come out in the same relative
+       order. */
+    const enabled = allOn(true);
+    for (const kind of TIERED.slice(0, 6)) enabled[kind] = false;
+    expect(keysOf({ enabled })).toEqual(TIERED.slice(6));
+  });
+
+  it('shows three and folds the rest, in place, with nothing dropped', () => {
+    const tiles = composeHomeTiles(input());
+    const { shown, folded } = splitHomeTiles(tiles);
+
+    expect(shown.map((t) => t.key)).toEqual(TIERED.slice(0, HOME_TILE_CAP));
+    expect(folded.map((t) => t.key)).toEqual(TIERED.slice(HOME_TILE_CAP));
+    expect([...shown, ...folded]).toEqual(tiles);
+  });
+
+  it('folds nothing while the cap is not reached', () => {
+    const enabled = allOn(false);
+    for (const kind of ['revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
+
+    expect(shown.map((t) => t.key)).toEqual(['revisit', 'measurements-nudge']);
+    expect(folded).toEqual([]);
+  });
+
+  it('folds nothing at exactly the cap, so three never becomes two and a row', () => {
+    const enabled = allOn(false);
+    for (const kind of ['wear-timer', 'revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
+
+    expect(shown).toHaveLength(HOME_TILE_CAP);
+    expect(folded).toEqual([]);
   });
 });
 
@@ -271,13 +331,13 @@ describe('the gate every tile answers to', () => {
   it.each(ORDER)('drops %s when its own preference is off, and nothing else', (kind) => {
     const enabled = allOn(true);
     enabled[kind] = false;
-    expect(keysOf({ enabled })).toEqual(ORDER.filter((k) => k !== kind));
+    expect(keysOf({ enabled })).toEqual(TIERED.filter((k) => k !== kind));
   });
 
   it.each(ORDER)('drops %s while it is snoozed, and nothing else', (kind) => {
     const snoozed = allOn(false);
     snoozed[kind] = true;
-    expect(keysOf({ snoozed })).toEqual(ORDER.filter((k) => k !== kind));
+    expect(keysOf({ snoozed })).toEqual(TIERED.filter((k) => k !== kind));
   });
 
   it('draws nothing at all with every preference off', () => {
