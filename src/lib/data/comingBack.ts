@@ -170,10 +170,18 @@ export function waitingItemKey(item: WaitingItem): string {
     the fields the selection actually uses. */
 export interface ComingBackInput {
   todayEpochDay: number;
-  /** From `journal/lastWrite.ts`. `Partial` because a caller may hand in a
-      subset in a test, and an area this build does not know about simply
-      does not vote. */
-  lastWrites: Partial<Record<string, number | null>>;
+  /** The gap being reported, from `returnGap` below - the day of the last
+      write before it.
+
+      A parameter rather than something this function works out for itself,
+      and the reason is a bug it had when it did: backfilling one dose writes
+      a row *inside* the gap, so the newest write moves forward, and a
+      surface that recomputed the gap from the journal each time would have
+      answered "no longer a return" halfway through somebody using it - the
+      letter and the milestone they had not read yet vanishing off the screen
+      because they logged a dose. A return is one gap, decided once, and the
+      screen holds it for as long as it is up. */
+  sinceEpochDay: number;
   letters: readonly Pick<Letter, 'id' | 'unlockEpochDay'>[];
   milestones: readonly Pick<Milestone, 'id' | 'name' | 'epochDay'>[];
   eras: readonly Pick<Era, 'id' | 'name' | 'startEpochDay' | 'endEpochDay'>[];
@@ -214,20 +222,56 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
   return [...items].sort((a, b) => dayOf(b) - dayOf(a)).slice(0, WAITING_PER_KIND);
 }
 
-/** What was waiting when the person came back, or null if this is not a
-    return at all.
+/** The two registered areas whose day is a plan rather than a record, and
+    so the two the gap is not measured over.
 
-    Null in three cases, and all three are "there is nothing to show" rather
-    than "the threshold said no": a journal never written to, a gap shorter
-    than `RETURN_GAP_DAYS`, and a long gap in which nothing actually arrived
-    and nothing is left open. The third is the one worth naming - a person
-    can be away for three months and have the app hold nothing for them,
-    and the honest thing then is no screen. */
-export function whatIsWaiting(input: ComingBackInput): ComingBack | null {
-  const since = lastWriteDay(input.lastWrites);
+    Every other area in the last-write registry answers "when did something
+    last happen": an entry, a dose, a measurement, a wear session. These two
+    answer "what day is on the calendar", and the app supports putting one
+    there in advance - `milestoneStatus` has a whole `countdown` arm for a
+    milestone that has not happened yet, and a procedure consult is an
+    appointment somebody books ahead of.
+
+    Left in, they close the gap they are inside of. Somebody who wrote
+    "name change hearing, 12 September" in July, stopped journalling in
+    August and opened the app in late September has a last write of
+    12 September as far as the registry is concerned, a gap of eight days,
+    and no return surface - on the one occasion the app had something real to
+    show them. Worse, the same row is what the surface would have reported.
+
+    Found by the demo seed, which dated a milestone inside its own gap and
+    made the whole screen disappear. Not a fault in `lastWrite.ts`: the
+    registry answers the question it says it answers, and this is the one
+    consumer for which "the newest dated record" and "the last time somebody
+    wrote something" are different questions. */
+export const PLANNED_AREAS = ['milestones', 'procedures'] as const;
+
+/** Whether coming back now is a return, and which gap it is.
+
+    The threshold, and the only place it is applied. Null where a journal has
+    never been written to and where the gap is shorter than
+    `RETURN_GAP_DAYS`; otherwise the day of the last write before the gap,
+    which is that return's own identity - what `comingBackSeenSince` stores
+    and what `whatIsWaiting` is then asked about. */
+export function returnGap(
+  lastWrites: Partial<Record<string, number | null>>,
+  todayEpochDay: number
+): number | null {
+  const written = Object.fromEntries(
+    Object.entries(lastWrites).filter(([area]) => !PLANNED_AREAS.includes(area as never))
+  );
+  const since = lastWriteDay(written);
   if (since === null) return null;
-  if (input.todayEpochDay - since < RETURN_GAP_DAYS) return null;
+  return todayEpochDay - since < RETURN_GAP_DAYS ? null : since;
+}
 
+/** What is waiting in the gap it is handed, or null if nothing is.
+
+    Null is a real answer and the copy has one for it: a person can be away
+    for three months and have the app hold nothing at all for them, and the
+    honest thing then is to say so rather than to find something to show. */
+export function whatIsWaiting(input: ComingBackInput): ComingBack | null {
+  const since = input.sinceEpochDay;
   const items: WaitingItem[] = [];
   /* The window nobody was looking at: the day after the last write, up to
      and including today. A letter that unlocks this morning is as much a

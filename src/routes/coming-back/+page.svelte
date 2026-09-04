@@ -54,7 +54,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { readWhatIsWaiting } from '$lib/data/comingBackReads';
+  import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { waitingItemKey, type WaitingItem } from '$lib/data/comingBack';
   import { OFFERS, answerOffer, type ReturningDose, type ReturningWearSession } from '$lib/data/offers';
   import { fmtDay } from '$lib/data/dates';
@@ -90,7 +90,21 @@
   const DOSE_OFFER = OFFERS['returning-dose'];
   const WEAR_OFFER = OFFERS['returning-wear-session'];
 
-  let waitingQuery = liveQuery((j) => readWhatIsWaiting(j, today));
+  /* The gap this screen is about, decided once and held.
+
+     A promise made at mount rather than a second live query, and it is
+     load-bearing. Backfilling a dose writes a row *inside* the gap, so the
+     newest write in the journal moves forward - and a screen that re-derived
+     its gap on every write would have decided, mid-visit, that this was no
+     longer a return: the letter and the milestone the person had not read
+     yet disappearing because they logged a dose. A return is one gap. The
+     items under it re-read as often as the journal changes. */
+  const gap = readReturnGap(journal, today);
+
+  let waitingQuery = liveQuery(async (j) => {
+    const since = await gap;
+    return since === null ? null : readWhatIsWaiting(j, today, since);
+  });
   let waitingRows = liveListIn(waitingQuery, (surface) => surface?.items ?? []);
 
   /** The rows the person has said no to, for as long as this screen is up. */

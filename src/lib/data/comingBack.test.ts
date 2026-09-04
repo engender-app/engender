@@ -1,6 +1,14 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { RETURN_GAP_DAYS, WAITING_PER_KIND, lastWriteDay, waitingItemKey, whatIsWaiting } from './comingBack.ts';
+import {
+  PLANNED_AREAS,
+  RETURN_GAP_DAYS,
+  WAITING_PER_KIND,
+  lastWriteDay,
+  returnGap,
+  waitingItemKey,
+  whatIsWaiting
+} from './comingBack.ts';
 import { adherence, expectedSlots } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
 import type { DoseEvent, DoseSchedule, RegimenEpisode } from './types.ts';
@@ -50,7 +58,7 @@ function comparison(loggedSlotDays: readonly number[] = []) {
 
 const BASE = {
   todayEpochDay: TODAY,
-  lastWrites: { entries: AWAY, doseEvents: AWAY - 2 },
+  sinceEpochDay: AWAY,
   letters: [],
   milestones: [],
   eras: [],
@@ -64,36 +72,36 @@ test('the last write is the newest day any area answers with, and null when none
   assert.equal(lastWriteDay({}), null);
 });
 
-test('nothing is waiting inside the threshold, however much has arrived', () => {
+test('a gap inside the threshold is not a return', () => {
   const nearly = TODAY - (RETURN_GAP_DAYS - 1);
 
-  assert.equal(
-    whatIsWaiting({
-      ...BASE,
-      lastWrites: { entries: nearly },
-      letters: [{ id: 'l1', unlockEpochDay: nearly + 1 }]
-    }),
-    null
-  );
+  assert.equal(returnGap({ entries: nearly }, TODAY), null);
 });
 
-test('the threshold itself is a return, not the day before it', () => {
+test('the threshold itself is a return, not the day after it', () => {
   const exactly = TODAY - RETURN_GAP_DAYS;
-  const surface = whatIsWaiting({
-    ...BASE,
-    lastWrites: { entries: exactly },
-    letters: [{ id: 'l1', unlockEpochDay: exactly + 3 }]
-  });
 
-  assert.equal(surface?.sinceEpochDay, exactly);
-  assert.deepEqual(surface?.items, [{ kind: 'letter', letterId: 'l1', unlockEpochDay: exactly + 3 }]);
+  assert.equal(returnGap({ entries: exactly }, TODAY), exactly);
 });
 
 test('a journal nobody has ever written to has nothing to come back to', () => {
-  assert.equal(whatIsWaiting({ ...BASE, lastWrites: { entries: null } }), null);
+  assert.equal(returnGap({ entries: null, doseEvents: null }, TODAY), null);
+  assert.equal(returnGap({}, TODAY), null);
 });
 
-test('a long gap with nothing waiting draws nothing', () => {
+test('a date somebody put on the calendar does not close the gap it sits in', () => {
+  /* The failure this exists for: a milestone written months ago for a day
+     inside the gap answers the last-write registry with that day, and the
+     surface it would have been reported on never opened. A procedure consult
+     is the same shape - an appointment booked ahead. */
+  for (const planned of PLANNED_AREAS) {
+    assert.equal(returnGap({ entries: AWAY, [planned]: TODAY - 4 }, TODAY), AWAY);
+  }
+  // And an ordinary area, which is a record of something that happened, does.
+  assert.equal(returnGap({ entries: AWAY, measurements: TODAY - 4 }, TODAY), null);
+});
+
+test('a gap with nothing waiting in it draws nothing', () => {
   assert.equal(whatIsWaiting(BASE), null);
 });
 
