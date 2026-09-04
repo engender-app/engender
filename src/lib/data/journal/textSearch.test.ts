@@ -74,12 +74,28 @@ test('every declared column is a real TEXT column of the table the area names', 
 
   for (const area of SEARCH_AREAS) {
     for (const declared of [...area.columns, area.uuid, ...(area.context ? [area.context] : [])]) {
-      // A join declares its columns qualified; the table is whichever alias
-      // the prefix names, resolved against the FROM clause the area wrote.
-      const [prefix, bare] = declared.includes('.') ? declared.split('.') : [null, declared];
+      /* `context` is a real column everywhere but marginNotes, whose owner
+         has no TEXT identity to point a hit's href at - an entry's domain
+         id is its rowid (ADR-0002), and the only TEXT column it owns is a
+         uuid nothing in the app navigates local routes by. `CAST(x AS
+         TEXT)` is SQLite's own way to say "this is text on the way out
+         regardless of what it is stored as", so the assertion below moves
+         to the column the cast wraps, and to a coarser one: that it exists,
+         not that it was already TEXT - a cast onto a column already TEXT
+         would be pointless and a real typo inside one still fails loudly. */
+      const cast = declared.match(/^CAST\(([a-zA-Z_]+)\.([a-zA-Z_]+) AS TEXT\)$/);
+      const [prefix, bare] = cast
+        ? [cast[1], cast[2]]
+        : declared.includes('.')
+          ? declared.split('.')
+          : [null, declared];
       const table = prefix === null ? area.from : tableForAlias(area.from, prefix);
       const columns = (await db.query<{ name: string; type: string }>(`PRAGMA table_info(${table})`)).map((c) => c);
       const column = columns.find((c) => c.name === bare);
+      if (cast) {
+        assert.ok(column, `${area.key} declares ${declared}, which ${table} does not have`);
+        continue;
+      }
       assert.ok(column, `${area.key} declares ${declared}, which ${table} does not have`);
       assert.equal(column.type, 'TEXT', `${area.key} declares ${declared}, which is not a TEXT column`);
     }
@@ -325,6 +341,8 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   const word = 'żółć';
 
   await journal.letters.addLetter({ epochDay: DAY, text: `letter ${word}`, unlockEpochDay: DAY });
+  const marginEntryId = await journal.entries.upsertEntry({ epochDay: DAY, mood: 3, note: 'plain entry note' });
+  await journal.marginNotes.add({ entryId: marginEntryId, epochDay: DAY, text: `margin ${word}` });
   await journal.presentations.addPresentation(`presentation ${word}`, 0);
   await journal.eras.upsertEra({ name: `era ${word}`, startEpochDay: DAY, endEpochDay: null });
   await journal.milestones.upsertMilestone({ name: `milestone ${word}`, epochDay: DAY });

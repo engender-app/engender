@@ -396,7 +396,14 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // changes and pauses (chartAnnotations.ts), not a record in a day's list.
   areaStates: 'a statement about the practice of tracking, not a record of a day',
   savedQuestions: 'a name for a search, not a record of a day it belongs to',
-  revisits: 'a schedule: sealed until the day chosen to see the entry again'
+  revisits: 'a schedule: sealed until the day chosen to see the entry again',
+  // Phase 8 features ticket 07: a margin note is drawn beside the entry it
+  // annotates, on this screen among others (DayRecords.svelte's own batched
+  // read, not a hydrated field of Entry - entries.ts stays untouched by this
+  // ticket). Keyed by the day it was written on, a margin note would need a
+  // second section here just to point back at its entry; keyed by the day
+  // it belongs to, it already is one - the entry's own row.
+  marginNotes: 'drawn beside the entry it annotates, not as a section of its own'
 };
 
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;

@@ -2937,5 +2937,15 @@
   "revisit_set_confirm": "Set",
   "revisit_change": "Change the day",
   "revisit_cancel": "Cancel this revisit",
-  "random_draw_label": "Random entry"
+  "random_draw_label": "Random entry",
+  "margin_note_search_label": "Margin note",
+  "margin_note_add": "Add a margin note",
+  "margin_note_delete_aria": "Delete this margin note",
+  "margin_note_edit_sheet": "Edit the margin note",
+  "margin_note_add_sheet": "Add a margin note",
+  "margin_note_placeholder": "What do you know now that you didn't then?",
+  "margin_note_save": "Save",
+  "margin_note_delete_sheet": "Delete margin note",
+  "margin_note_delete_q": "Delete this note? The entry stays exactly as you wrote it.",
+  "margin_note_delete": "Delete"
 }

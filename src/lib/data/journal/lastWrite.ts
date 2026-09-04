@@ -282,7 +282,13 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // never mints); asking when one was last set is a second way to meet it
   // before that day does, the same risk letters' own opt-out above guards
   // against.
-  revisits: 'sealed until the day chosen to see the entry again'
+  revisits: 'sealed until the day chosen to see the entry again',
+  // Mirrors day.ts's own opt-out (phase 8 features ticket 07): a margin
+  // note is not a stream any of this registry's four consumers reports a
+  // gap about - it is drawn wherever the entry it annotates is, and asking
+  // "when was one last written" answers nothing the return surface or the
+  // hub would use it for.
+  marginNotes: 'drawn beside the entry it annotates, not a stream of its own to report a gap about'
 };
 
 export const LAST_WRITE_ENTRIES: readonly LastWriteEntry[] = ENTRIES;

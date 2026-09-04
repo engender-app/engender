@@ -281,6 +281,21 @@ const SECTIONS = [
     read: read.readEntries,
     apply: apply.applyEntries
   }),
+  /* A margin note hangs off an entry's rowid (phase 8 features ticket 07),
+     the same reasoning `feltSenseEntries` gives for its own owners: it
+     resolves a rowid against a section already applied, so `entries` has
+     to be there first. `travels: 'none'`, the same call `entries` itself
+     makes just above - a margin note is the person's own record of what
+     they now know, not shareable structure (milestones' own comment on
+     `name` gives the fuller version of this test). */
+  section({
+    name: 'marginNotes',
+    after: ['entries'],
+    discard: ['DELETE FROM margin_note'],
+    travels: 'none',
+    read: read.readMarginNotes,
+    apply: apply.applyMarginNotes
+  }),
   section({
     name: 'milestones',
     // The other half of the photo table, per entries' own note above.

@@ -31,6 +31,7 @@ import type {
   ArchiveEntry,
   ArchiveEntryTemplate,
   ArchiveFeltSenseEntry,
+  ArchiveMarginNote,
   ArchiveHairPhoto,
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
@@ -518,6 +519,15 @@ export async function readFeltSenseEntries({ driver }: SectionRead): Promise<Arc
     mood: r.mood,
     note: r.note
   }));
+}
+
+export async function readMarginNotes({ driver }: SectionRead): Promise<ArchiveMarginNote[]> {
+  const rows = await driver.query<{ uuid: string; entry_uuid: string; epoch_day: number; text: string }>(
+    `SELECT mn.uuid, e.uuid AS entry_uuid, mn.epoch_day, mn.text
+       FROM margin_note mn JOIN entry e ON e.id = mn.entry_id
+      ORDER BY mn.epoch_day, mn.id`
+  );
+  return rows.map((r) => ({ id: r.uuid, entryId: r.entry_uuid, epochDay: r.epoch_day, text: r.text }));
 }
 
 export async function readEffectCategories({ driver }: SectionRead): Promise<ArchiveEffectCategory[]> {

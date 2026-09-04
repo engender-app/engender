@@ -208,7 +208,14 @@ export const TABLE_NAMES = [
      than folded into 'entry': setting or cancelling one changes nothing an
      entry read returns, and the live tile's own read would otherwise
      re-run on every entry write in the journal. */
-  'revisit'
+  'revisit',
+  /* A margin note (phase 8 features ticket 07). Its own name and not
+     folded into 'entry': the whole point of the feature is that a margin
+     note and the entry it annotates are read and written apart, so an
+     entry's own query must not re-run when a margin note changes, and the
+     reverse - adding, editing or removing a note must not make every
+     screen reading entries think the entry itself changed. */
+  'marginNote'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -494,6 +501,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   revisits: classify<Journal['revisits']>()({
     writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },
     reads: { getRevisitForEntry: ['revisit'], getDueRevisits: ['revisit'] }
+  }),
+  marginNotes: classify<Journal['marginNotes']>()({
+    writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },
+    reads: { forEntries: ['marginNote'] }
   }),
   eras: classify<Journal['eras']>()({
     writes: { upsertEra: ['era'], deleteEra: ['era'] },

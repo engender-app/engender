@@ -130,7 +130,12 @@ export const PATHS: Record<string, string> = {
   pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
   video: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 11 6-3.5v9L16 13z"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
-  bookmark: '<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5-7 4.5V4.5a1 1 0 0 1 1-1z"/>'
+  bookmark: '<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5-7 4.5V4.5a1 1 0 0 1 1-1z"/>',
+  // A margin note (phase 8 features ticket 07): a page with its corner
+  // turned down, the way a person folds one to mark a place they came back
+  // to - distinct from `book` (a whole journal or letter) and `pencil`
+  // (editing what is already there).
+  note: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 12h6M8 16h4"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have
