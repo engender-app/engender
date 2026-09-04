@@ -1635,13 +1635,37 @@ try {
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
   await page.getByRole('switch', { name: 'Quick exit' }).click();
 
+  /* Escaped rather than left open: the disguise sheet's own scrim sits over
+     the whole screen, including the add control the next step needs to
+     reach. */
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet-scrim]', { state: 'detached' });
+
+  /* Quick add floating over the lock screen (phase 8 audit ticket 08): opened here and left
+     open, so the blur below has something to fail to close if lockNow()
+     stops clearing it. Lock-on-leave rather than the two-finger gesture,
+     because it is the one path with no blank covering the mistake on any
+     platform - quick exit's blank hides the same bug by accident on the
+     web, and does not exist to hide it on Android. */
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-fan]');
+
   /* A dispatched blur rather than a real one: headless Chromium has no
      second window to hand focus to, and what is under test is that the
      event the listener waits for locks the app. */
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await page.waitForSelector('[data-applock]');
+  /* Detached rather than an instant count: the fan's cards carry their own
+     out:fanOut transition, so closing it leaves them in the DOM for that
+     transition's duration even once the flag is cleared - a plain count
+     right here would sometimes catch the fade mid-flight and fail for the
+     wrong reason. */
+  await page.waitForSelector('[data-fan]', { state: 'detached', timeout: 2000 }).catch(() => {
+    throw new Error('the quick-add fan is still floating over the lock screen');
+  });
   await sessionPassphrase();
   await page.waitForSelector('[data-settings-list]');
+  if (await page.locator('[data-fan]').count()) throw new Error('unlocking restored the fan');
 
   /* Two fingers, dispatched rather than driven: page.touchscreen only has
      one. What is under test is the gesture the listeners are looking for,
@@ -1705,7 +1729,7 @@ try {
      one. In a production build the first-run gate (flow 13) is what a
      wiped device meets instead. */
   await page.waitForSelector('[data-home-hello]');
-  ok('lock on leave, quick exit blanks and locks, disguised quick exit shows the decoy, the reset clears the gate');
+  ok('lock on leave, quick exit blanks and locks the fan away with it, disguised quick exit shows the decoy, the reset clears the gate');
 } catch (e) { fail('lock on leave, quick exit and reset', e); }
 
 /* 19. the About screen shows the version the build was given (ticket 01).
@@ -4097,6 +4121,12 @@ try {
   await booted();
   if (await page.locator('[data-home-hello]').count()) {
     throw new Error('a recovery unlock reached Home without choosing an access mode');
+  }
+  /* This screen's arrival is the same kind of instead-of-the-route moment
+     as a mid-session lock (flow 18), and quick add is the same
+     layout-level sibling there too (phase 8 audit ticket 08). */
+  if (await page.locator('[data-fan]').count()) {
+    throw new Error('the quick-add fan is floating over the post-recovery access-mode screen');
   }
 
   /* Device-bound from the forced module, which is the mode this browser can
