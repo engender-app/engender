@@ -347,6 +347,7 @@
   "settings_measurement_unit_title": "Jednostki pomiarów",
   "settings_measurement_unit_sub": "na jaką jednostkę przeliczane są wykresy pomiarów ciała",
   "size_log": "Rozmiary i dopasowanie",
+  "dilation": "Rozszerzanie",
   "side_effects": "Skutki uboczne",
   "cycle_events": "Cykl",
   "cycle_tracking_toggle_title": "Śledzenie cyklu",
@@ -1147,6 +1148,39 @@
   "size_log_category_underwear": "Bielizna",
   "size_log_category_shoes": "Buty",
   "size_log_category_outerwear": "Odzież wierzchnia",
+  "dilation_intro": "Twój harmonogram i zapisane sesje.",
+  "dilation_schedule_heading": "Harmonogram",
+  "dilation_schedule_empty_title": "Jeszcze brak harmonogramu",
+  "dilation_schedule_empty_body": "Wpisz harmonogram od chirurgii: dzień operacji, dzień startu i jak często wypada sesja w każdym etapie.",
+  "dilation_schedule_empty_action": "Dodaj harmonogram",
+  "dilation_schedule_edit_aria": "Edytuj harmonogram",
+  "dilation_surgery_day_label": "Dzień operacji",
+  "dilation_start_day_label": "Dzień startu",
+  "dilation_start_day_hint": "Zwykle kilka dni po operacji, gdy można już zacząć.",
+  "dilation_stage_legend": "Etapy",
+  "dilation_stage_hint": "Każdy etap to częstotliwość i liczba dni, w kolejności od chirurgii.",
+  "dilation_stage_frequency_aria": "Co ile dni",
+  "dilation_stage_duration_aria": "Przez ile dni",
+  "dilation_stage_add": "Dodaj etap",
+  "dilation_stage_delete_aria": "Usuń etap numer {index}",
+  "dilation_schedule_save": "Zapisz harmonogram",
+  "dilation_sessions_heading": "Sesje",
+  "dilation_sessions_empty_title": "Jeszcze nic nie zaplanowano",
+  "dilation_sessions_empty_body": "Sesje pojawią się tutaj, gdy zacznie się twój harmonogram.",
+  "dilation_session_logged": "Zapisano",
+  "dilation_session_add_aria": "Zapisz sesję",
+  "dilation_session_new_sheet": "Nowa sesja",
+  "dilation_session_edit_sheet": "Edytuj sesję",
+  "dilation_session_date_label": "Data",
+  "dilation_session_note_label": "Notatka",
+  "dilation_session_note_placeholder": "Opcjonalnie",
+  "dilation_session_save": "Zapisz",
+  "dilation_session_delete": "Usuń",
+  "dilation_session_delete_sheet": "Usuń sesję",
+  "dilation_session_delete_q": "Usunąć zapisaną sesję ({date})?",
+  "dilation_session_delete_hint": "Tego nie da się cofnąć.",
+  "dilation_chart_title": "Sesje od operacji",
+  "dilation_chart_aria": "Sesje rozszerzania według dnia od operacji",
   "ph_measurements_title": "Pomiary",
   "labs_time_label": "Godzina pobrania (opcjonalnie)",
   "labs_provider_label": "Laboratorium (opcjonalnie)",
@@ -2023,7 +2057,40 @@
   "safe_space_stat_evidence_note": "W twojej historii",
   "safe_space_counterevidence_title": "Z twojej historii",
   "safe_space_counterevidence_sub": "Wpisy oznaczone jako euforia, z wysoką euforią ciała lub z gwiazdką.",
-  "safe_space_letter_intro": "List zapieczętowany dla siebie, teraz odblokowany.",
+  "safe_space_letters_intro": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "List zapieczętowany dla siebie, teraz odblokowany.",
+        "countPlural=few": "Listy zapieczętowane dla siebie, teraz odblokowane.",
+        "countPlural=many": "Listy zapieczętowane dla siebie, teraz odblokowane.",
+        "countPlural=other": "Listy zapieczętowane dla siebie, teraz odblokowane."
+      }
+    }
+  ],
+  "safe_space_letters_all": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Zobacz pozostały list",
+        "countPlural=few": "Zobacz pozostałe {count} listy",
+        "countPlural=many": "Zobacz pozostałe {count} listów",
+        "countPlural=other": "Zobacz pozostałe {count} listów"
+      }
+    }
+  ],
   "safe_space_photos_intro": "Zdjęcia oznaczone gwiazdką.",
   "safe_space_chart_timeline_title": "Ostatnie 30 dni",
   "safe_space_chart_themes_title": "Motywy dające spokój",

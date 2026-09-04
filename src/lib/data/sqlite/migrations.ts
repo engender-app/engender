@@ -2064,6 +2064,37 @@ const SCHEMA_V65 = `
 ALTER TABLE voice_benchmark ADD COLUMN capture_chain TEXT;
 `;
 
+/* The dilation taper (phase 8 features ticket 12, CONTEXT: "Taper"). Two
+   flat tables, both addressed through flatArea.ts:
+
+   `taper` is the schedule the person typed in - one row, since the app
+   models one taper at a time. `stages` is the stage sequence as JSON, the
+   way `flatArea.ts`'s header comment sanctions for a scalar column: the
+   expansion to expected sessions is arithmetic over the whole array at
+   once (taperSchedule.ts), never a query over one stage, so a child table
+   would buy nothing a JSON column does not already give.
+
+   `taper_session` is one row per session actually done - a day and
+   whatever the person chooses to note, nothing required beyond the day. */
+const SCHEMA_V66 = `
+CREATE TABLE taper (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid               TEXT NOT NULL UNIQUE,
+  surgery_epoch_day  INTEGER NOT NULL,
+  start_epoch_day    INTEGER NOT NULL,
+  stages             TEXT NOT NULL,
+  updated_at         INTEGER NOT NULL
+);
+CREATE TABLE taper_session (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  note       TEXT NOT NULL DEFAULT '',
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_taper_session_epoch_day ON taper_session(epoch_day);
+`;
+
 /* The corner-vowel scaling factor (phase 8 features ticket 30,
    CONTEXT: "Own-series figure"). One multiplicative factor fitted across
    whichever of the three held vowels - /a/, /i/, /u/ - cleared the quality
@@ -2075,7 +2106,7 @@ ALTER TABLE voice_benchmark ADD COLUMN capture_chain TEXT;
    REAL rather than TEXT: the figure is a plain number to be plotted and
    averaged like the others on the compare tab, not a comparison key like
    `capture_chain`. */
-const SCHEMA_V66 = `
+const SCHEMA_V67 = `
 ALTER TABLE voice_benchmark ADD COLUMN resonance_scale REAL;
 `;
 
@@ -2145,5 +2176,6 @@ export const migrations: Migration[] = [
   { version: 63, sql: SCHEMA_V63 },
   { version: 64, sql: SCHEMA_V64 },
   { version: 65, sql: SCHEMA_V65 },
-  { version: 66, sql: SCHEMA_V66 }
+  { version: 66, sql: SCHEMA_V66 },
+  { version: 67, sql: SCHEMA_V67 }
 ];

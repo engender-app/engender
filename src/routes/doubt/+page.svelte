@@ -5,7 +5,9 @@
      - Grounding statistics: streak and good moments from the journal
      - Visual charts: 30-day timeline and affirming themes breakdown
      - Counterevidence pool: euphoria-tagged, high-euphoria body region, and starred entries,
-       plus (ticket 14) an unlocked letter and starred photos drawn alongside it
+       plus (ticket 14) an unlocked letter and starred photos drawn alongside it,
+       widened by phase 8 features ticket 21 from that one letter to every
+       unlocked one
      - Snapshots: frozen captures of past counterevidence pools
      - Comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"): who to
        text, which walk, which playlist, entirely the person's own words.
@@ -34,7 +36,7 @@
   import type { ComfortItem, CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { featuredLetter } from '$lib/data/letterRetrospective';
+  import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -80,6 +82,25 @@
       bound worth keeping for its own sake, not because decryption is
       expensive. */
   const PHOTO_LIMIT = 6;
+  /* Unlocked letters shown before the section hands over to the letters
+     screen (phase 8 features ticket 21). Three, for PHOTO_LIMIT's reason
+     rather than a measured one: a letter is the longest thing anywhere on
+     this screen, and a person who has written twenty of them should meet a
+     glance here and not a second letters screen grafted onto a crisis
+     dashboard. The rest are one tap away rather than gone.
+
+     Truncation versus link, the decision the ticket asks for in writing:
+     each row shows the day the letter was written and the opening of its
+     text, clamped by the kit row's own two-line rule, and the tap opens the
+     whole letter on /settings/letters/[id]. Neither half works alone here.
+     A date-only row asks somebody mid-crisis to gamble a navigation on a
+     letter they cannot place, and a letter cut off at two lines is the
+     failure the ticket names outright - so the preview is only ever a
+     handle for recognising which letter this is, and no letter is reachable
+     from this screen in truncated form only. The tap leaves Safe Space,
+     which is the cost: the letter's own screen is where its full text is
+     already read (one place, not two), and the back arrow returns here. */
+  const LETTER_LIMIT = 3;
 
   let today = $derived(todayEpochDay());
   let from = $derived(today - TIMELINE_DAYS + 1);
@@ -121,7 +142,8 @@
   let snapshots = $derived(snapshotsQuery.rows);
 
   let lettersQuery = liveList((j) => j.letters.getLetters(LETTER_LOOKBACK));
-  let letter = $derived(featuredLetter(lettersQuery.rows, today));
+  let unlockedLetters = $derived(safeSpaceLetters(lettersQuery.rows, today));
+  let letters = $derived(unlockedLetters.slice(0, LETTER_LIMIT));
 
   let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
   // Most recently starred-shelf-worthy first: starredPhotos() itself reads
@@ -257,16 +279,33 @@
   <SectionHeading text={m.safe_space_counterevidence_title()} />
   <p class="muted small" style="margin-bottom:var(--space-3)">{m.safe_space_counterevidence_sub()}</p>
 
-  {#if letter}
-    <p class="muted small" style="margin-bottom:var(--space-2)">{m.safe_space_letter_intro()}</p>
+  {#if letters.length}
+    <p class="muted small" style="margin-bottom:var(--space-2)">
+      {m.safe_space_letters_intro({ count: letters.length })}
+    </p>
     <ListCard role={roleAt(activeFlag.roles, 1)}>
       <!-- LookBackLetterCard's `kind` is normally the retrospective's own
            finding - written that day, or opened that day. There is no
-           candidate day here, only the letter itself, and Safe Space wants
-           one framing regardless: this is what your past self wrote you,
-           deliberately, so `written` is hardcoded rather than derived. -->
-      <LookBackLetterCard {letter} kind="written" />
+           candidate day here, only the letters themselves, and Safe Space
+           wants one framing regardless: this is what your past self wrote
+           you, deliberately, so `written` is hardcoded rather than derived.
+           `lead` follows from the same thing: with no candidate day, the
+           date is the least identifying fact about a letter, so the words
+           lead the row and the date sits under them. -->
+      {#each letters as unlocked (unlocked.id)}
+        <LookBackLetterCard letter={unlocked} kind="written" lead="text" />
+      {/each}
     </ListCard>
+    <!-- The way out sits under the card rather than as a last row in it,
+         which is where this screen's own save-snapshot button and search's
+         two "show more" controls already put the same gesture. A row inside
+         the card wore the letters' own book disc and chevron and read as a
+         fourth letter. -->
+    {#if unlockedLetters.length > LETTER_LIMIT}
+      <a class="btn btn-soft btn-block press" data-all-letters href="/settings/letters">
+        <span>{m.safe_space_letters_all({ count: unlockedLetters.length - LETTER_LIMIT })}</span>
+      </a>
+    {/if}
     <div style="margin-bottom:var(--space-3)"></div>
   {/if}
 

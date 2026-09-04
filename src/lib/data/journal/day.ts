@@ -68,6 +68,7 @@ import type {
   SideEffect,
   SizeRecord,
   TallyEvent,
+  TaperSession,
   VoiceBenchmark,
   WearSession
 } from '../types';
@@ -85,6 +86,7 @@ import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea, ProcedureDayRecord } from './procedures';
 import type { SideEffectsArea } from './sideEffects';
 import type { SizeRecordsArea } from './sizeRecords';
+import type { TaperArea } from './taper';
 import type { TallyArea } from './tally';
 import type { TryoutsArea, TryoutPhotoOnDay } from './tryouts';
 import type { VoiceBenchmarksArea } from './voiceBenchmarks';
@@ -103,6 +105,7 @@ export interface DayRecords {
   voiceBenchmarks: VoiceBenchmark[];
   measurements: Measurement[];
   sizeRecords: SizeRecord[];
+  taperSessions: TaperSession[];
   sideEffects: SideEffect[];
   personalEffects: PersonalEffect[];
   cycleEvents: CycleEvent[];
@@ -130,6 +133,7 @@ export interface DayAreas {
   voiceBenchmarks: VoiceBenchmarksArea;
   measurements: MeasurementsArea;
   sizeRecords: SizeRecordsArea;
+  taper: TaperArea;
   sideEffects: SideEffectsArea;
   personalEffects: PersonalEffectsArea;
   cycleEvents: CycleEventsArea;
@@ -223,6 +227,12 @@ const SECTIONS = [
     covers: ['sizeRecords'],
     tables: ['sizeRecord'],
     read: ({ sizeRecords, epochDay }) => sizeRecords.getRecordsOnDay(epochDay)
+  }),
+  section({
+    key: 'taperSessions',
+    covers: ['taperSessions'],
+    tables: ['taper'],
+    read: ({ taper, epochDay }) => taper.getSessionsOnDay(epochDay)
   }),
   section({
     key: 'sideEffects',
@@ -351,6 +361,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
 
   regimenEpisodes: 'a span: what was being taken across a stretch of days',
   doseSchedules: 'a schedule: what was meant to happen, not what did',
+  taper: 'a schedule: what was meant to happen, not what did (ticket 12)',
   dosePauses: 'a span: a break declared across days',
   journalingPauses: 'a span: a break declared across days',
   eras: 'a span: a stretch of days the person named, and not a record of one',

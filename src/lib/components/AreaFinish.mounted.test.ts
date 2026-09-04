@@ -43,6 +43,7 @@ describe('where the finish control is mounted', () => {
 
   it('puts each group on the screen that owns it', () => {
     expect(mounts).toEqual([
+      { route: 'settings/dilation', group: 'dilation' },
       { route: 'settings/effects', group: 'effects' },
       { route: 'settings/hair-progress', group: 'hair-progress' },
       { route: 'settings/hair-removal', group: 'hair-removal' },
@@ -59,13 +60,13 @@ describe('where the finish control is mounted', () => {
     expect(new Set(groups).size).toBe(groups.length);
   });
 
-  it('covers every finishable area through those eight screens', () => {
+  it('covers every finishable area through those nine screens', () => {
     /* The sections, not the groups: hair progress and voice are each one
-       screen and two areas, so a count of screens would not prove the ten
+       screen and two areas, so a count of screens would not prove the eleven
        are reachable. */
     const covered = mounts.flatMap((m) => [...AREA_GROUPS[m.group as keyof typeof AREA_GROUPS]]);
-    expect(covered.length).toBe(10);
-    expect(new Set(covered).size).toBe(10);
+    expect(covered.length).toBe(11);
+    expect(new Set(covered).size).toBe(11);
   });
 
   it('names groups the More hub already has rows for', () => {

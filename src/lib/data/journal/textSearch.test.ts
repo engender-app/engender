@@ -368,6 +368,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     note: `lab ${word}`
   });
   await journal.sizeRecords.upsertRecord({ epochDay: DAY, category: 'shirts', size: 'M', fitNote: `fit ${word}` });
+  await journal.taper.upsertSession({ epochDay: DAY, note: `taper ${word}` });
   await journal.wearSessions.upsertSession({
     startTimestamp: startOfDayTimestamp(DAY) + 9 * 3_600_000,
     durationMs: 3_600_000,

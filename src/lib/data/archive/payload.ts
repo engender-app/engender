@@ -255,6 +255,29 @@ export interface ArchiveSizeRecord {
   fitNote: string;
 }
 
+/** The dilation taper schedule (phase 8 features ticket 12, CONTEXT:
+    "Taper"). One row, since the app models one taper at a time; the array
+    shape is only what every flat section travels as. `stagesJson` is the
+    stage sequence as JSON text, exactly as the `taper` table itself stores
+    it (taper.ts) - a flat table's own columns travel as they are stored
+    (FlatColumn has no transform for a column that is not a scalar
+    already), and the stage sequence is scalar to both. Never the
+    expansion: that stays derived and never travels (ADR-0010). */
+export interface ArchiveTaper {
+  id: string;
+  surgeryEpochDay: number;
+  startEpochDay: number;
+  stagesJson: string;
+}
+
+/** One dilation session actually done (ticket 12). Nothing but the day and
+    whatever the person chose to note. */
+export interface ArchiveTaperSession {
+  id: string;
+  epochDay: number;
+  note: string;
+}
+
 export interface ArchiveTallyEvent {
   id: string;
   epochDay: number;
@@ -736,6 +759,8 @@ export interface ArchiveJournal {
   measurementTypes: ArchiveMeasurementType[];
   measurements: ArchiveMeasurement[];
   sizeRecords: ArchiveSizeRecord[];
+  taper: ArchiveTaper[];
+  taperSessions: ArchiveTaperSession[];
   sideEffects: ArchiveSideEffect[];
   cycleEvents: ArchiveCycleEvent[];
   journalingPauses: ArchiveJournalingPause[];

@@ -106,6 +106,7 @@ const AREA_ROWS: Record<
   },
   labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/settings/labs' },
   sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/settings/sizes' },
+  taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/settings/dilation' },
   wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/settings/wear' },
   // The compare surface rather than the recorder: a hit is a take somebody
   // is looking for, not a new one (dayRows.ts sends a benchmark there too).
