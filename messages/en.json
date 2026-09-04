@@ -1135,7 +1135,6 @@
   "dilation_sessions_heading": "Sessions",
   "dilation_sessions_empty_title": "Nothing expected yet",
   "dilation_sessions_empty_body": "Sessions will show here once your schedule starts.",
-  "dilation_session_nothing_logged": "Nothing logged",
   "dilation_session_logged": "Logged",
   "dilation_session_add_aria": "Log a session",
   "dilation_session_new_sheet": "New session",
