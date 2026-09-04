@@ -44,6 +44,20 @@ import { unreadUnlockedLetters } from './letterStatus';
 import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/registry';
 import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
+import { tablesReadBy, type TableName } from './live/writes';
+
+/** The tables `liveTiles.svelte.ts`'s per-tryout felt-sense read depends on.
+    `forTryout` is only ever called from inside the tryout list's own
+    `await`, so an unseeded live query would discover 'feltSense' a re-run
+    late on every Home mount (phase 8 audit ticket 14). Here rather than
+    beside the query itself for the same reason the rest of this file is:
+    a plain module the Node tier can test, which a `.svelte.ts` cannot be.
+
+    Built from `tablesReadBy` rather than a hand-written pair: a table added
+    to either read reaches this list without a second edit here. */
+export const TRYOUT_FELT_SENSE_TABLES: TableName[] = [
+  ...new Set([...tablesReadBy('tryouts', 'getTryouts'), ...tablesReadBy('feltSense', 'forTryout')])
+];
 
 export interface ActiveTryoutTileResult {
   tryout: Tryout;

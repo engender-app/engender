@@ -71,7 +71,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
+  import { readReturnGap, readWhatIsWaiting, WAITING_TABLES } from '$lib/data/comingBackReads';
   import { waitingItemKey, type WaitingItem } from '$lib/data/comingBack';
   import { OFFERS, answerOffer, type ReturningDose, type ReturningWearSession } from '$lib/data/offers';
   import { fmtDay } from '$lib/data/dates';
@@ -119,10 +119,13 @@
      items under it re-read as often as the journal changes. */
   const gap = readReturnGap(journal, today);
 
+  /* Seeded rather than left to discover itself: every one of `readWhatIsWaiting`'s
+     five reads sits past the gap's own `await`, so an unseeded query would
+     re-run once for nothing on every mount (phase 8 audit ticket 14). */
   let waitingQuery = liveQuery(async (j) => {
     const since = await gap;
     return since === null ? null : readWhatIsWaiting(j, today, since);
-  });
+  }, WAITING_TABLES);
   let waitingRows = liveListIn(waitingQuery, (surface) => surface?.items ?? []);
 
   /** The rows the person has said no to, for as long as this screen is up. */
