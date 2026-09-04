@@ -146,7 +146,9 @@ const PANELS = [
     hides: 'labResults',
     finishes: null,
     href: '/settings/labs',
-    icon: 'flask',
+    /* Not `flask`, which the hub already spends on dilation and which would
+       sit two rows away in the same card. */
+    icon: 'curve',
     preview: 'trend'
   }),
   panel({
