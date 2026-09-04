@@ -756,7 +756,8 @@ const CARRIED: Record<string, string[]> = {
     'f2_hz',
     'snr_db',
     'note',
-    'pitch_track'
+    'pitch_track',
+    'capture_chain'
   ],
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   checklist: ['uuid', 'owner_kind', 'owner_uuid', 'appointment_epoch_day'],

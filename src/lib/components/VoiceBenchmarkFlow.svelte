@@ -86,8 +86,18 @@
     bytes: Uint8Array;
     figures: ReturnType<typeof analysePassage>['figures'];
     pitchTrack: string | null;
+    /* The chain the passage was recorded through (ticket 28, ADR-0061).
+       Kept per take rather than once for the flow because the two steps
+       open the microphone separately, and the row stores the chain the
+       gated figures came from - see the save. */
+    captureChain: string;
   } | null>(null);
-  let vowelTake = $state<{ bytes: Uint8Array; formants: Formants | null; snrDb: number } | null>(null);
+  let vowelTake = $state<{
+    bytes: Uint8Array;
+    formants: Formants | null;
+    snrDb: number;
+    captureChain: string;
+  } | null>(null);
   let note = $state('');
 
   /* The passage: whatever the person reads from, and the key their series is
@@ -216,7 +226,8 @@
       passageTake = {
         bytes: take.bytes,
         figures: analysed.figures,
-        pitchTrack: analysed.pitchTrack
+        pitchTrack: analysed.pitchTrack,
+        captureChain: active.captureChain
       };
       step = 'vowel';
       phase = 'idle';
@@ -229,7 +240,12 @@
       phase = 'retry';
       return;
     }
-    vowelTake = { bytes: take.bytes, formants: analysed.formants, snrDb: analysed.quality.snrDb };
+    vowelTake = {
+      bytes: take.bytes,
+      formants: analysed.formants,
+      snrDb: analysed.quality.snrDb,
+      captureChain: active.captureChain
+    };
     step = 'summary';
     phase = 'idle';
   }
@@ -254,7 +270,17 @@
         f2Hz: vowelTake?.formants?.f2Hz ?? null,
         snrDb: vowelTake?.snrDb ?? null,
         note: note.trim() || null,
-        pitchTrack: passageTake.pitchTrack
+        pitchTrack: passageTake.pitchTrack,
+        /* The vowel's chain where there is a vowel, and the passage's
+           otherwise. One column, and every figure it gates is the vowel
+           take's: the resonances and the room reading come from the held
+           note, while pitch, its spread and the rate are device-proof and
+           compare across everything (ADR-0060, ADR-0061). The two steps
+           are seconds apart on one phone in every ordinary case; where
+           somebody plugged a headset in between them, this is the chain
+           that makes the resonance refuse rather than the one that would
+           let it through. */
+        captureChain: vowelTake?.captureChain ?? passageTake.captureChain
       });
       toast(m.vb_saved());
       onSaved();
@@ -357,11 +383,25 @@
     <div class="screen-part vb-body" {...roleAttrs(role)}>
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
 
+      <!-- Mouth-to-microphone distance is the largest thing a person
+           controls in the whole of this measurement, and no API can read
+           it back, so it ships as an instruction rather than as a stored
+           number a benchmark could not verify (ticket 28, ADR-0061). Both
+           steps get it, because the vowel is a take too, and it goes after
+           each step's own words rather than in front of them: what this
+           screen is comes first, how to hold the phone second. It leaves
+           while a take is running, like the hints it follows, because the
+           gauge needs the room. -->
+      {#snippet distance()}
+        <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
+      {/snippet}
+
       {#if step === 'passage'}
         <!-- What a benchmark is, which is worth reading once and is in the
              way of a take in progress. It goes when the flow starts. -->
         {#if phase === 'idle'}
           <p class="muted small vb-hint">{m.vb_lead()}</p>
+          {@render distance()}
         {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <button class="btn btn-quiet vb-passage-own" type="button" onclick={openPassageEditor}>
@@ -373,6 +413,7 @@
              saying it, and the instruction is taking up the room the gauge
              needs. -->
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
+        {@render distance()}
       {/if}
 
       <!-- The graph goes from the reading step and stays on the held note
