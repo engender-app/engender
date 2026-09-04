@@ -2624,6 +2624,83 @@ try {
   fail('fill every feature', e);
 }
 
+/* The hub reading its own data (phase 8 UX ticket 02).
+
+   Directly after "Fill every feature", because that is what puts a write in
+   most areas - a hub row's line is a read of the journal and there is nothing
+   to read on the persona alone.
+
+   Three kinds of line, and the third is the one only a real journal can show.
+   A row whose areas hold a write states when. A row that fronts no dated
+   stream states what is behind it, whatever the journal holds. And a row
+   whose areas have never been written to says nothing at all, which is what
+   keeps a fresh journal from being thirteen rows of "nothing yet" - walked on
+   the voice benchmark, since neither demo seed writes one (the note above
+   this block's own voice step says so) while every other read row now has
+   something.
+
+   Handles, never wording (ADR-0029). The line is `.kit-row-sub` inside the
+   row's own handle, so the absence check has a live element to hang off: the
+   row is present in all three cases and it is the line under it that differs.
+   Asserting on the copy would let a reworded line pass for free. */
+try {
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="measurements"] .kit-row-sub', { timeout: 8000 });
+
+  if ((await page.locator('[data-list-row="care"] .kit-row-sub').count()) === 0) {
+    throw new Error('the care row states nothing about what is behind it');
+  }
+  if ((await page.locator('[data-list-row="voice-benchmark"]').count()) === 0) {
+    throw new Error('the voice benchmark row is missing, so its silent state cannot be walked');
+  }
+  if ((await page.locator('[data-list-row="voice-benchmark"] .kit-row-sub').count()) !== 0) {
+    throw new Error('a row with nothing ever written in it drew a line anyway');
+  }
+
+  // Photos and voice memos live together now, and Body keeps the rest.
+  const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
+    rows.map((row) => row.getAttribute('data-list-row'))
+  );
+  if (mediaRows.join(',') !== 'photos,voice') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and voice memos`);
+  }
+
+  /* An area declared finished leaves its group for the finished set, keeps
+     its screen, and comes back when the person picks it up again. Walked
+     through the control on the area's own screen rather than by writing an
+     `area_state` row, because the whole claim is that the two surfaces
+     agree. */
+  await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
+  await page.locator('[data-area-finish]').click();
+  await page.waitForSelector('[data-area-finish-confirm]', { timeout: 8000 });
+  await page.locator('[data-area-finish-confirm]').click();
+  await page.waitForSelector('[data-area-finished]', { timeout: 8000 });
+
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="finished"]', { timeout: 8000 });
+  if ((await page.locator('[data-list-row="wear"][data-hub-section="practice"]').count()) !== 0) {
+    throw new Error('the finished row is drawn in two places at once');
+  }
+  if ((await page.locator('[data-list-row="wear"] .kit-row-sub').count()) === 0) {
+    throw new Error('a finished row does not say when it ended');
+  }
+  // Still one tap away, and the screen behind it still works.
+  await page.locator('[data-list-row="wear"]').click();
+  await page.waitForURL('**/settings/wear');
+  await page.waitForSelector('[data-area-finished]', { timeout: 8000 });
+
+  // Put it back, so nothing after this walks a hub with a finished area in it.
+  await page.locator('[data-area-finish-undo]').click();
+  await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="practice"]', { timeout: 8000 });
+
+  ok('the More hub reads its own data: a line where there is a write, a written line where there is no stream, nothing where nothing was written, and a finished area moving out of its group and back');
+} catch (e) {
+  fail('the hub reads its own data', e);
+}
+
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
 
    Directly after the fill-every-feature step, and it puts that journal back
