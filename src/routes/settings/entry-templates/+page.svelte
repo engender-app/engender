@@ -7,8 +7,9 @@
      being reachable from this screen, the same shape /settings/presentations
      already gives a hide-only area.
 
-     No empty state: reconcile seeds fourteen built-ins on every boot, so
-     the list is never empty the way a fresh presentations list can be. */
+     No empty state: reconcile seeds every `ENTRY_TEMPLATES` built-in on
+     every boot, so the list is never empty the way a fresh presentations
+     list can be. */
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
