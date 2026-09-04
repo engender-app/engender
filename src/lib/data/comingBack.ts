@@ -108,7 +108,17 @@ export type WaitingItem =
   | { kind: 'letter'; letterId: string; unlockEpochDay: number }
   | { kind: 'milestone'; milestoneId: string; name: string; epochDay: number }
   | { kind: 'era'; eraId: string; name: string; startEpochDay: number | null }
-  | { kind: 'wear-session'; sessionId: string; startEpochDay: number }
+  | {
+      kind: 'wear-session';
+      sessionId: string;
+      /** The row's own line: which day the session was started on. */
+      startEpochDay: number;
+      /** And the timestamp behind it, unrounded, because closing the
+          session writes a duration measured from it. Carried rather than
+          re-derived at the screen: a day converted back to a timestamp
+          would move the start of a session the person never touched. */
+      startTimestamp: number;
+    }
   | {
       kind: 'dose';
       slotEpochDay: number;
@@ -131,6 +141,29 @@ export type WaitingItem =
       dose: number;
       doseUnit: string;
     };
+
+/** One item's own identity, stable across a re-read.
+
+    Two callers need it and neither could mint it: the screen, to remember
+    which rows the person has said no to for as long as the screen is up
+    (ADR-0062 - a no on a moment is not stored), and the walkthrough, whose
+    handles are keys and never copy (ADR-0029). Built from the kind plus the
+    row's own id, so the dose - the one kind with no row of its own yet -
+    is named by the slot it is about. */
+export function waitingItemKey(item: WaitingItem): string {
+  switch (item.kind) {
+    case 'letter':
+      return `letter:${item.letterId}`;
+    case 'milestone':
+      return `milestone:${item.milestoneId}`;
+    case 'era':
+      return `era:${item.eraId}`;
+    case 'wear-session':
+      return `wear-session:${item.sessionId}`;
+    case 'dose':
+      return `dose:${item.slotEpochDay}`;
+  }
+}
 
 /** Everything `whatIsWaiting` reads. Rows arrive already fetched, the way
     every `shouldShow*` predicate takes them, and each one is narrowed to
@@ -240,7 +273,8 @@ export function whatIsWaiting(input: ComingBackInput): ComingBack | null {
     items.push({
       kind: 'wear-session',
       sessionId: input.runningWearSession.id,
-      startEpochDay: epochDayFromTimestamp(input.runningWearSession.startTimestamp)
+      startEpochDay: epochDayFromTimestamp(input.runningWearSession.startTimestamp),
+      startTimestamp: input.runningWearSession.startTimestamp
     });
   }
 

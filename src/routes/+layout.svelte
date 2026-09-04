@@ -43,6 +43,7 @@
   import { assertAndroidRuntimePluginRegistry } from '$lib/android/plugin-registry';
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
@@ -333,6 +334,35 @@
   $effect(() => {
     if (!isReadyState(bootState) || locked) return;
     if (!prefs.onboarded && !path.startsWith('/onboarding')) goto('/onboarding');
+  });
+
+  /* The return moment (phase 8 features ticket 05, ADR-0062). Here rather
+     than on Home, which the features spec does not render on and which is
+     built for somebody who was here yesterday anyway - and here rather than
+     as a hub row, because a place you can go and check what is waiting is a
+     place that accumulates what you have not done.
+
+     Only from Home, and only on the first arrival: somebody who opened the
+     app on a notification, a deep link or an Android launch route asked for
+     something specific, and a return surface is not allowed to take that
+     over. `openedReturn` holds within this page load so a second navigation
+     back to Home does not reopen a screen the person just left.
+
+     `readWhatIsWaiting` stops at one bounded read on almost every boot -
+     the gap is eighteen `MAX`es and nothing else runs unless it clears
+     three weeks - so the ordinary case costs one query and no navigation.
+     The screen then reads the same function again, which is deliberate: one
+     read path, so the gate and the screen cannot disagree about whether
+     this was a return. */
+  let openedReturn = false;
+  $effect(() => {
+    if (!isReadyState(bootState) || locked || !prefs.onboarded) return;
+    if (path !== '/' || openedReturn) return;
+    openedReturn = true;
+    void readWhatIsWaiting(journal, todayEpochDay()).then((waiting) => {
+      if (!waiting || prefs.comingBackSeenSince === waiting.sinceEpochDay) return;
+      goto('/coming-back');
+    });
   });
 
   $effect(() => {
