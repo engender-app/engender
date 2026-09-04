@@ -6,10 +6,16 @@
      an Android prompt (box 4, +layout.svelte's reconcileStockRunOutReminders). */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
+  import {
+    todayEpochDay,
+    epochDayFromDateInputValueOrToday,
+    epochDayFromDateInputValue,
+    dateInputValueFromEpochDay
+  } from '$lib/data/epochDay';
+  import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -22,6 +28,11 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+
+  const WINDOW_MODES = [
+    { value: 'days', label: m.stock_window_mode_days() },
+    { value: 'end', label: m.stock_window_mode_end() }
+  ];
 
   let rowsQuery = liveList((j) => j.stock.getProjections(todayEpochDay()));
   let projections = $derived(rowsQuery.rows);
@@ -39,6 +50,10 @@
     quantity: string;
     unit: string;
     recordedDate: string;
+    openedDate: string;
+    windowMode: 'days' | 'end';
+    windowDays: string;
+    windowEndDate: string;
   } | null>(null);
 
   function openEditor(row: StockProjectionRow | null) {
@@ -48,9 +63,22 @@
           drug: row.entry.drug,
           quantity: String(row.entry.quantity),
           unit: row.entry.unit,
-          recordedDate: dateInputValueFromEpochDay(row.entry.recordedEpochDay)
+          recordedDate: dateInputValueFromEpochDay(row.entry.recordedEpochDay),
+          openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
+          windowMode: row.entry.inUseEndEpochDay !== null ? 'end' : 'days',
+          windowDays: row.entry.inUseWindowDays === null ? '' : String(row.entry.inUseWindowDays),
+          windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay)
         }
-      : { drug: '', quantity: '', unit: '', recordedDate: dateInputValueFromEpochDay(todayEpochDay()) };
+      : {
+          drug: '',
+          quantity: '',
+          unit: '',
+          recordedDate: dateInputValueFromEpochDay(todayEpochDay()),
+          openedDate: '',
+          windowMode: 'days',
+          windowDays: '',
+          windowEndDate: ''
+        };
   }
 
   async function saveEntry() {
@@ -60,11 +88,24 @@
     const unit = editor.unit.trim();
     if (isNaN(quantity) || !drug || !unit) return;
 
+    // No opened date, nothing to project a window from - both columns stay
+    // null regardless of what the (hidden) window fields hold.
+    const openedEpochDay = editor.openedDate ? epochDayFromDateInputValue(editor.openedDate) : null;
+    const days = parseInt(editor.windowDays, 10);
+    const inUseWindowDays = openedEpochDay !== null && editor.windowMode === 'days' && !isNaN(days) ? days : null;
+    const inUseEndEpochDay =
+      openedEpochDay !== null && editor.windowMode === 'end' && editor.windowEndDate
+        ? epochDayFromDateInputValue(editor.windowEndDate)
+        : null;
+
     await journal.stock.upsertEntry({
       drug,
       quantity,
       unit,
-      recordedEpochDay: epochDayFromDateInputValueOrToday(editor.recordedDate)
+      recordedEpochDay: epochDayFromDateInputValueOrToday(editor.recordedDate),
+      openedEpochDay,
+      inUseWindowDays,
+      inUseEndEpochDay
     });
     editor = null;
   }
@@ -98,7 +139,8 @@
               subtitle={[
                 stockRemainingLabel(row.projection.remaining, row.entry.unit),
                 m.stock_recorded({ date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) }),
-                runOut.text
+                runOut.text,
+                stockOpenedWindowLine(row.entry, todayEpochDay())
               ]}
               onclick={() => openEditor(row)}
             >
@@ -171,6 +213,45 @@
           <DatePicker name="stock-date" bind:value={editor!.recordedDate} {id} />
         {/snippet}
       </Field>
+      <Field label={m.stock_opened_label()} id="stock-opened">
+        {#snippet children(id)}
+          <DatePicker name="stock-opened" bind:value={editor!.openedDate} {id} />
+        {/snippet}
+      </Field>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_opened_hint()}</p>
+      {#if editor.openedDate}
+        <Field label={m.stock_window_legend()} legend>
+          {#snippet children()}
+            <Segmented
+              name={m.stock_window_legend()}
+              options={WINDOW_MODES}
+              value={editor!.windowMode}
+              onChange={(v) => (editor!.windowMode = v as 'days' | 'end')}
+            />
+          {/snippet}
+        </Field>
+        {#if editor.windowMode === 'days'}
+          <Field label={m.stock_window_days_label()} id="stock-window-days">
+            {#snippet children(id)}
+              <input
+                class="input"
+                type="number"
+                {id}
+                name="stock-window-days"
+                placeholder={m.stock_window_days_placeholder()}
+                inputmode="numeric"
+                bind:value={editor!.windowDays}
+              />
+            {/snippet}
+          </Field>
+        {:else}
+          <Field label={m.stock_window_end_label()} id="stock-window-end">
+            {#snippet children(id)}
+              <DatePicker name="stock-window-end" bind:value={editor!.windowEndDate} {id} />
+            {/snippet}
+          </Field>
+        {/if}
+      {/if}
 
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveEntry}><span>{m.stock_save()}</span></button>
