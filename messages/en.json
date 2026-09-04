@@ -1793,7 +1793,7 @@
   "rem_allow_notifications": "Allow notifications",
   "rem_allow_exact_alarms": "Allow exact alarms",
   "rem_hide_titles_title": "Hide sensitive titles",
-  "rem_hide_titles_sub": "every notification shows a generic title and drops its message",
+  "rem_hide_titles_sub": "On by default: a reminder or check-in shows only its channel name, even on the lock screen. Turn this off and the real title shows there too.",
   "prov_reminder_stock": "Kept in step with your {drug} stock.",
   "prov_reminder_takeover_hint": "Edit it, and it's yours to manage from here on.",
   "prov_view_stock": "View stock",
