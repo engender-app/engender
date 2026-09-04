@@ -68,6 +68,7 @@ const ROUTES = [
   'settings/tryouts/[id]',
   'settings/presentations',
   'settings/eras',
+  'settings/words',
   // Practice
   'settings/voice',
   /* The More hub's `voice` row (icon 'mic') targets this route, not
@@ -79,6 +80,12 @@ const ROUTES = [
   /* The More hub's `entry-templates` row (icon 'grid'), same gap as the two
      above it - built from the kit, missing from this list. */
   'settings/entry-templates',
+  /* The metric reference (phase 8 features ticket 27): reached only from a
+     figure on the voice screen, never from the hub, which is ADR-0060's
+     own rule and what keeps it out of the UX spec's navigation rules. On
+     this list all the same, because what the list is for is holding a
+     screen to the kit. */
+  'settings/voice/metrics',
   'settings/wear',
   'settings/effects',
   'settings/resources',
@@ -113,8 +120,8 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 33 of them', () => {
-  it('is the count SCREENS.md gives, plus the six added since', () => {
+describe('all 35 of them', () => {
+  it('is the count SCREENS.md gives, plus the nine added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
        /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
        /settings/eras and the notifications view, then 30 through 32 as
@@ -122,11 +129,18 @@ describe('all 33 of them', () => {
        /settings/entry-templates - deepening ticket 17, phase 6 ticket 07
        and features ticket 11 had each added one without ever landing it
        here. Both 28 and 29 arrived on their own branch and each thought it
-       was the 28th, which is what this line is for: SCREENS.md is six
+       was the 28th, which is what this line is for: SCREENS.md is eight
        tickets behind either way - see the note above the list - and
-       correcting it is still nobody's ticket. */
-    expect(ROUTES.length).toBe(33);
-    expect(new Set(ROUTES).size).toBe(33);
+       correcting it is still nobody's ticket. Then 33 and 34 as features
+       tickets 14 and 27 landed on the same day: 14's /settings/words,
+       built on the kit from the start, and 27's metric reference, the
+       first route here that was never a hub row and never will be. The
+       35th, ticket 05's return surface, is the second of those and goes
+       further: the metric reference is at least reachable from the screen
+       it explains, while this one is linked from nowhere on purpose
+       (ADR-0062). */
+    expect(ROUTES.length).toBe(35);
+    expect(new Set(ROUTES).size).toBe(35);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
@@ -185,7 +199,12 @@ describe('what a first-run journal sees', () => {
         'settings/resources',
         'settings/entry-templates',
         'settings/clinician-summary',
-        'settings/exposure'
+        'settings/exposure',
+        /* The metric reference explains a fixed table of six figures
+           compiled into the bundle (data/voice/metrics.ts), so it has no
+           empty state for the same reason the bundled directory has
+           none. */
+        'settings/voice/metrics'
       ].includes(route)
   );
 
@@ -229,7 +248,10 @@ describe('what the worker is still fetching', () => {
         'settings/resources',
         'settings/notifications',
         'settings/presentations',
-        'settings/entry-templates'
+        'settings/entry-templates',
+        // Reads no journal at all: six figures explained, and not one of
+        // the person's own numbers anywhere on it (ADR-0060).
+        'settings/voice/metrics'
       ].includes(route)
   );
 
