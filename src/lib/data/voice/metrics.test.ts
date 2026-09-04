@@ -16,6 +16,8 @@
    measured, an own-series figure asked for a band - is unreachable
    through it. The rule under test is the production one either way. */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { test, expect } from 'vitest';
 import {
   VOICE_METRICS,
@@ -98,6 +100,28 @@ test('the shipped table draws the pitch bands for both passages', () => {
    like, and `npm run check` fails if the line below ever stops erroring -
    which is what would happen if VoiceMetricKey widened to `string` or the
    key list stopped being `as const`. */
+/* The check above proves the mechanism over a record written here, which
+   leaves one gap: widening one of metricLabels.ts's own maps to a
+   `Partial` or to `Record<string, Message>` would take the compile error
+   away and this file would not notice. That file cannot be imported here
+   at all - it reaches paraglide, which the Node tier has no business
+   loading (ADR-0016) - so the shape is read off its source instead. The
+   other half of this is a runtime one: the browser tier renders all six
+   sections and fails unless each carries all seven fields, so a map that
+   lost an entry is caught there whatever its type says. */
+test('every prose map is still typed against the whole key union', () => {
+  const source = readFileSync(fileURLToPath(new URL('./metricLabels.ts', import.meta.url)), 'utf8');
+  const maps = [...source.matchAll(/const ([A-Z_]+): ([^=]+) = \{/g)].map(([, name, type]) => [
+    name,
+    type.trim()
+  ]);
+
+  // The seven fields, plus the figure's own name.
+  const overMetrics = maps.filter(([, type]) => type.includes('VoiceMetricKey'));
+  expect(overMetrics.length).toBe(8);
+  expect(overMetrics.filter(([, type]) => type !== 'Record<VoiceMetricKey, Message>')).toEqual([]);
+});
+
 test('a prose map missing one metric does not typecheck', () => {
   // @ts-expect-error 'spread' is missing, which is exactly the state of a
   // metric registered in metrics.ts and never explained in metricLabels.ts.

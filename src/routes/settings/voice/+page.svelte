@@ -461,20 +461,23 @@
      is pressable with an underline in the section's stripe rather than by
      turning blue. Same treatment as the sentences on a take
      (VoiceFigures.svelte). */
+  /* The name is the link into that figure's own reference section. Padded
+     out to the app's 48dp touch floor and given straight back as negative
+     margin, because a one-line label is about 20px of text. Underlined in
+     --role-mark, the contrast-corrected stripe: kit.css:57 says the raw
+     --role-c is for the fallback ink and nothing else, and at 1px it
+     disappears on half the palettes. */
   .vc-delta-figures dt a {
-    /* Padding out to the app's 48dp touch floor and given straight back as
-       negative margin, the same way a figure's sentence does it on a take
-       (VoiceFigures.svelte): a one-line label is about 20px of text. */
     display: inline-block;
-    padding-block: 14px;
-    margin-block: -14px;
+    padding-block: 15px;
+    margin-block: -15px;
     color: inherit;
     text-decoration: underline;
-    text-decoration-color: color-mix(in oklab, var(--role-c) 55%, transparent);
+    text-decoration-color: color-mix(in oklab, var(--role-mark) 65%, transparent);
     text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
+    text-underline-offset: 3px;
   }
-  .vc-delta-figures dt a:hover { color: var(--role-ink); text-decoration-color: var(--role-c); }
+  .vc-delta-figures dt a:hover { color: var(--role-ink); text-decoration-color: var(--role-mark); }
   .vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); text-align: right; }
   .vc-aside { color: var(--muted); font-weight: 400; }
 </style>

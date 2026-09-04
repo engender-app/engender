@@ -1,37 +1,40 @@
 <script lang="ts">
-  /* What a take measured, with a sentence under each number saying what
-     the number is (phase 8 features ticket 27, ADR-0060).
+  /* What a take measured, and one way to find out what any of it means
+     (phase 8 features ticket 27, ADR-0060).
 
      It was six rows of a definition list inside the recording flow, which
      is where Alicja's complaint on 2026-09-04 landed: "it is very
      important to not just leave the user with a bunch of numbers that
-     don't mean anything to them." So each figure now carries one sentence
-     and that sentence is the way into its own section of the metric
-     reference. One sentence and not two: a caption long enough to teach
-     makes the list unreadable, which is the whole reason the reference
-     screen exists.
+     don't mean anything to them."
+
+     **One link at the foot rather than a sentence under each figure**, her
+     call on 2026-09-04 after seeing both built. The ticket asked for a
+     sentence per figure linking into that figure's own section; six
+     dotted sentences in one panel turned the list a person came to read
+     into a page of links, and the numbers are what they came for. So the
+     figures are bare and the way in is one line under them. The trade she
+     took with it: arriving at the reference screen means finding your own
+     figure among six sections rather than landing on it. The per-figure
+     anchors are still live and the compare view's two labels still use
+     them.
 
      Its own component rather than markup in the flow for the ordinary
      reason - the flow owns a microphone, a two-step take and a quality
      gate, and none of that is needed to state six numbers - and for one
-     specific one: the figure names, the sentences and the links all come
-     off the same registry keys (data/voice/metrics.ts), and a second place
-     writing a figure's label is how a link ends up pointing at a section
-     about something else.
-
-     Every row goes through one snippet, so a figure cannot be written
-     without its sentence and its link. That is the ticket's rule in the
-     markup: the explanation is the feature, not a caption on it.
+     specific one: the figure names come off the same registry keys the
+     reference screen builds its sections from (data/voice/metrics.ts), so
+     a name cannot be renamed on one surface and not the other.
 
      Nothing here reads anything into a voice (PRODUCT.md:109, ADR-0012).
-     A number, its unit, and what the number is. */
+     A number, its unit, and where to go to find out what it is. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import Icon from '$lib/components/Icon.svelte';
   import type { PassageFigures } from '$lib/audio/benchmark';
   import { noteName } from '$lib/audio/pitch';
   import type { Formants } from '$lib/audio/resonance';
-  import { metricHref, type VoiceMetricKey } from '$lib/data/voice/metrics';
-  import { metricLine, metricName } from '$lib/data/voice/metricLabels';
+  import { VOICE_METRICS_ROUTE, type VoiceMetricKey } from '$lib/data/voice/metrics';
+  import { metricName } from '$lib/data/voice/metricLabels';
   import { roleAttrs } from '$lib/components/kit/role';
   import type { Role } from '$lib/theme/roles';
 
@@ -58,20 +61,14 @@
   const figure = (value: number, places = 0) => value.toFixed(places);
 </script>
 
-<!-- One row: the name, the figure, and the sentence that leads to the
-     section explaining it. `value` is a snippet because the six figures
-     are six different shapes - a frequency with a note beside it, a range,
-     a count of semitones - and only their surroundings are shared. -->
+<!-- One row: the figure's name and the figure. `value` is a snippet
+     because the six are six different shapes - a frequency with a note
+     beside it, a range, a count of semitones - and only their
+     surroundings are shared. -->
 {#snippet row(key: VoiceMetricKey, value: Snippet)}
   <div data-figure={key}>
     <dt>{metricName(key)}</dt>
     <dd>{@render value()}</dd>
-    <!-- Inside the row's own `dd` rather than in a second one: the
-         sentence is about the figure, and a definition list with two
-         definitions per term reads as two answers to one question. -->
-    <dd class="vf-line">
-      <a href={metricHref(key)}>{metricLine(key)}</a>
-    </dd>
   </div>
 {/snippet}
 
@@ -116,22 +113,30 @@
   {@render row('room', roomValue)}
 </dl>
 
+<!-- The one way in. Outside the list rather than as a last row of it: it
+     is not a figure, and a definition list is a poor place for a control.
+     Its own words are the screen's title, so the link says where it goes
+     without a second string to keep in step. -->
+<p class="vf-more">
+  <a href={VOICE_METRICS_ROUTE}>
+    <span>{m.vm_title()}</span>
+    <Icon name="chevronRight" size={16} />
+  </a>
+</p>
+
 <style>
   .vf {
     display: grid;
-    gap: var(--space-4);
+    gap: var(--space-3);
     margin: 0;
   }
 
-  /* Two columns for the name and the number, and the sentence across both
-     underneath. A row is a small block now rather than one line, so the
-     gap between rows is a step wider than it was: at the old spacing a
-     sentence sat as close to the next figure's name as to its own. */
+  /* Name on the left, figure on the right, one line each. */
   .vf > div {
-    display: grid;
-    grid-template-columns: 1fr auto;
+    display: flex;
     align-items: baseline;
-    gap: 0 var(--space-3);
+    justify-content: space-between;
+    gap: var(--space-3);
   }
 
   .vf dt {
@@ -151,50 +156,28 @@
     font-weight: var(--weight-regular);
   }
 
-  /* The sentence spans the row and reads left to right, unlike the figure
-     above it. */
-  .vf dd.vf-line {
-    grid-column: 1 / -1;
-    margin-top: var(--space-1);
-    font-variant-numeric: normal;
-    font-weight: var(--weight-regular);
-    text-align: left;
+  .vf-more {
+    margin: var(--space-3) 0 0;
   }
 
-  /* The whole sentence is the link, because the sentence is what says
-     where it goes. Dotted rather than solid, in the area's own stripe: six
-     solidly underlined sentences in one panel read as a page of links, and
-     a dotted underline is already the convention for "there is an
-     explanation behind this". Never colour alone - the underline is what
-     carries it for anybody who cannot see the tint. */
-  /* A one-line sentence is about 20px of text and this app's touch floor
-     is Android's 48dp, so the anchor takes 15px of padding on each side
-     and gives it straight back as negative margin: the hit area clears the
-     floor while the sentence stays exactly where the layout put it. The
-     row gap is 16px, so two neighbouring sentences still cannot be
-     mistaken for each other. */
-  .vf-line a {
-    display: inline-block;
-    padding-block: 15px;
-    margin-block: -15px;
-    color: var(--muted);
-    font-size: var(--text-xs);
-    line-height: 1.5;
-    text-decoration: underline dotted;
-    /* --role-mark rather than --role-c: an underline is a mark, and the
-       mark token is the version of the stripe corrected to hold 3:1
-       (kit/role.ts). The raw stripe is a pale blue on half the palettes
-       and disappears at 1px. */
-    text-decoration-color: color-mix(in oklab, var(--role-mark) 65%, transparent);
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-  }
-
-  .vf-line a:hover {
+  /* A quiet control rather than a run of coloured words, and a real touch
+     target: the height comes from the app's own floor rather than from the
+     line box of two words. The chevron says it leads somewhere, which is
+     what stops the line reading as a caption on the panel above it. */
+  .vf-more a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
     color: var(--role-ink);
-    text-decoration: underline solid;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+  }
+
+  .vf-more a:hover span {
+    text-decoration: underline;
     text-decoration-color: var(--role-mark);
-    text-decoration-thickness: 1px;
     text-underline-offset: 3px;
   }
 </style>
