@@ -97,6 +97,17 @@
   let declined = $state(new Set<string>());
   let showing = $derived(waitingRows.rows.filter((item) => !declined.has(waitingItemKey(item))));
 
+  /* Two groups, in the order `comingBack.ts` already put the items in.
+     Split here rather than only in that order because an order nobody can
+     see is not an order: a letter that unlocked is something the journal was
+     holding for the person and a slot that went unlogged is a chore, and one
+     undifferentiated run of nine rows says they are the same kind of thing.
+     Two cards, no headings - a heading over the second group would have to
+     name it, and every honest name for it ("loose ends", "to sort out") is
+     the bill this screen is written not to be. */
+  let arrivals = $derived(showing.filter((item) => item.kind !== 'wear-session' && item.kind !== 'dose'));
+  let chores = $derived(showing.filter((item) => item.kind === 'wear-session' || item.kind === 'dose'));
+
   /* Arriving is meeting it. Stamped as soon as the read answers, so a person
      who reads this and writes nothing is not shown it again tomorrow - and
      stamped with the gap's own last-write day, so a new gap later is a
@@ -243,93 +254,120 @@
     <div class="screen-part">
       <p class="muted small coming-back-intro">{m.coming_back_intro()}</p>
 
-      <!-- One card, kept mounted while its rows leave under the person's own
-           taps; `resize` carries the height so the button under it does not
-           jump up a row at a time. -->
-      <div use:resize>
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          {#each showing as item (waitingItemKey(item))}
-            {#if item.kind === 'letter'}
-              <ListRow
-                key="coming-back-letter"
-                data-coming-back-item="letter"
-                icon="book"
-                title={m.coming_back_letter_title()}
-                subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
-                href="/settings/letters"
-              />
-            {:else if item.kind === 'milestone'}
-              <ListRow
-                key="coming-back-milestone"
-                data-coming-back-item="milestone"
-                icon="flag"
-                title={item.name}
-                subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
-                href="/settings/milestones"
-              />
-            {:else if item.kind === 'era'}
-              <ListRow
-                key="coming-back-era"
-                data-coming-back-item="era"
-                icon="columns"
-                title={item.name}
-                subtitle={item.startEpochDay === null
-                  ? m.coming_back_era_sub_no_start()
-                  : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
-                href="/settings/eras"
-              />
-            {:else if item.kind === 'wear-session'}
-              <!-- 'stop' is the glyph the wear tile's own control already
-                   carries, so the gesture this row opens is one the person
-                   has met before.
+      <!-- What the journal was holding *for* the person. Kept mounted while
+           its rows leave under their own taps: `resize` animates a box that
+           changes size under its own content, which is what a card losing a
+           row is, and a `{#key}` would have destroyed and rebuilt it. -->
+      {#if arrivals.length > 0}
+        <div use:resize>
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each arrivals as item (waitingItemKey(item))}
+              {#if item.kind === 'letter'}
+                <ListRow
+                  key="coming-back-letter"
+                  data-coming-back-item="letter"
+                  icon="book"
+                  title={m.coming_back_letter_title()}
+                  subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
+                  href="/settings/letters"
+                />
+              {:else if item.kind === 'milestone'}
+                <ListRow
+                  key="coming-back-milestone"
+                  data-coming-back-item="milestone"
+                  icon="flag"
+                  title={item.name}
+                  subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
+                  href="/settings/milestones"
+                />
+              {:else}
+                <!-- The era is neither an arrival nor a chore: it is where
+                     the person is, and it sits with the arrivals because it
+                     is the one row on the screen that is theirs rather than
+                     the app's. -->
+                <ListRow
+                  key="coming-back-era"
+                  data-coming-back-item="era"
+                  icon="columns"
+                  title={item.name}
+                  subtitle={item.startEpochDay === null
+                    ? m.coming_back_era_sub_no_start()
+                    : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
+                  href="/settings/eras"
+                />
+              {/if}
+            {/each}
+          </ListCard>
+        </div>
+      {/if}
+    </div>
 
-                   The no is an unmarked x here, which is the shape
-                   AreaFinish.svelte deliberately refused - and the reason
-                   splits the two rather than contradicting either. There the
-                   x would have spent a decision the app never asks again, so
-                   the no had to be a labelled row. Here the x means exactly
-                   what it means on every notice in the app: I have read this,
-                   take it off my screen. Nothing is stored, and the same row
-                   is here again on the next return if it is still waiting. -->
-              <ListRow
-                key="coming-back-wear"
-                data-coming-back-item="wear-session"
-                icon="stop"
-                title={m.coming_back_wear_row()}
-                subtitle={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
-                chevron={false}
-                onclick={() => openWear(item)}
-                action={{
-                  icon: 'x',
-                  label: WEAR_OFFER.copy.decline(),
-                  onclick: () => decline(item),
-                  attrs: { 'data-coming-back-decline': 'wear-session' }
-                }}
-              />
-            {:else}
-              <ListRow
-                key="coming-back-dose"
-                data-coming-back-item="dose"
-                icon="clock"
-                title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
-                subtitle={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
-                chevron={false}
-                onclick={() => openDose(item)}
-                action={{
-                  icon: 'x',
-                  label: DOSE_OFFER.copy.decline(),
-                  onclick: () => decline(item),
-                  attrs: { 'data-coming-back-decline': 'dose' }
-                }}
-              />
-            {/if}
-          {/each}
-        </ListCard>
+    <!-- The two offers, in a section of their own so the break between them
+         and the rows above is visible rather than only ordered. Its own
+         `screen-part`, which is what stamps the space between the two
+         (ADR-0038: cross-block spacing by attribute, never a margin a screen
+         invents). -->
+    {#if chores.length > 0}
+      <div class="screen-part">
+        <div use:resize>
+          <ListCard role={roleAt(activeFlag.roles, 1)}>
+            {#each chores as item (waitingItemKey(item))}
+              {#if item.kind === 'wear-session'}
+                <!-- 'stop' is the glyph the wear tile's own control already
+                     carries, so the gesture this row opens is one the person
+                     has met before.
+
+                     The no is an unmarked x here, which is the shape
+                     AreaFinish.svelte deliberately refused - and the reason
+                     splits the two rather than contradicting either. There
+                     the x would have spent a decision the app never asks
+                     again, so the no had to be a labelled row. Here it means
+                     what it means on every notice in the app: I have read
+                     this, take it off my screen. Nothing is stored, and the
+                     same row is here again on the next return if it is still
+                     waiting. -->
+                <ListRow
+                  key="coming-back-wear"
+                  data-coming-back-item="wear-session"
+                  icon="stop"
+                  title={m.coming_back_wear_row()}
+                  subtitle={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
+                  chevron={false}
+                  onclick={() => openWear(item)}
+                  action={{
+                    icon: 'x',
+                    label: WEAR_OFFER.copy.decline(),
+                    onclick: () => decline(item),
+                    attrs: { 'data-coming-back-decline': 'wear-session' }
+                  }}
+                />
+              {:else}
+                <ListRow
+                  key="coming-back-dose"
+                  data-coming-back-item="dose"
+                  icon="clock"
+                  title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
+                  subtitle={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
+                  chevron={false}
+                  onclick={() => openDose(item)}
+                  action={{
+                    icon: 'x',
+                    label: DOSE_OFFER.copy.decline(),
+                    onclick: () => decline(item),
+                    attrs: { 'data-coming-back-decline': 'dose' }
+                  }}
+                />
+              {/if}
+            {/each}
+          </ListCard>
+        </div>
       </div>
+    {/if}
 
-      <!-- A way off the screen that is not the back chevron. Somebody who
-           has read this and wants none of it should not have to work out
-           that back is how you agree to nothing. -->
+    <!-- A way off the screen that is not the back chevron. Somebody who has
+         read this and wants none of it should not have to work out that back
+         is how you agree to nothing. -->
+    <div class="screen-part">
       <button class="btn btn-ghost coming-back-done" data-coming-back-done onclick={() => goto('/')}>
         <span>{m.coming_back_done_action()}</span>
       </button>
@@ -462,7 +500,7 @@
   }
 
   .coming-back-done {
-    margin-top: var(--space-4);
+    width: 100%;
   }
 
   .coming-back-sheet-body {
