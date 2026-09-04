@@ -566,9 +566,13 @@ try {
   if (!(await page.locator('[data-chart-card="scales"] [data-bar-row]').count())) {
     throw new Error('no scale bars drawn');
   }
-  /* Five mood steps, always, so the columns stay under the right faces. */
-  if ((await page.locator('[data-dist-step]').count()) !== 5) {
-    throw new Error('the mood distribution should always draw its five steps');
+  /* Five mood steps, always. The columns this used to count became one
+     ordered strip (phase 8 UX ticket 04, ADR-0058) and the rule survived
+     the change of form intact: the sequence is what is being read, so a
+     step nothing landed on holds its place at zero width rather than
+     sliding the rest under the wrong part of the scale. */
+  if ((await page.locator('[data-strip-step]').count()) !== 5) {
+    throw new Error('the mood strip should always draw its five steps');
   }
   ok('stats range, value list, named tag insights and the scale bars');
 } catch (e) { fail('stats', e); }

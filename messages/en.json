@@ -240,6 +240,7 @@
   "chart_annotation_span": "{label}, {from} to {to}",
   "chart_annotations_more": "{names}, and {count} more",
   "chart_annotations_and_more": "and {count} more",
+  "chart_share_rest": "Other",
   "tag_insights": "Tag insights",
   "insights_note": "Observations, not conclusions. Tags with fewer than 3 entries in range are hidden.",
   "insights_empty": "Not enough tagged entries in this range yet.",

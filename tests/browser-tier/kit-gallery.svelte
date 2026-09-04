@@ -20,6 +20,8 @@
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
   import Distribution from '$lib/components/kit/Distribution.svelte';
+  import Donut from '$lib/components/kit/Donut.svelte';
+  import OrderedStrip from '$lib/components/kit/OrderedStrip.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
@@ -358,6 +360,63 @@
         { step: 4, name: 'Good', count: 14 },
         { step: 5, name: 'Great', count: 6 }
       ]}
+    />
+  </ChartCard>
+
+  <!-- The two forms phase 8 UX ticket 04 adds, and the rule between them
+       (ADR-0058): the same five mood steps as the distribution above, drawn
+       as one ordered bar, and two rings for the case where the parts have
+       no order at all.
+
+       Step 2 is empty on purpose. A step nothing landed on holds its place
+       so the sequence stays under the right part of the scale, which is the
+       thing a ring cannot do for an ordered scale at all. -->
+  <ChartCard heading="Across the mood scale" kind="ordered-strip">
+    <OrderedStrip
+      steps={[
+        { step: 1, name: 'Awful', count: 2 },
+        { step: 2, name: 'Bad', count: 0 },
+        { step: 3, name: 'Meh', count: 11 },
+        { step: 4, name: 'Good', count: 16 },
+        { step: 5, name: 'Great', count: 5 }
+      ]}
+    />
+  </ChartCard>
+
+  <ChartCard heading="Share by tag" kind="donut" role={roleAt(roles, 1)}>
+    <Donut
+      parts={[
+        { key: 'work', name: 'Work', amount: 34 },
+        { key: 'friends', name: 'Friends', amount: 21 },
+        { key: 'therapy', name: 'Therapy', amount: 13 },
+        { key: 'voice', name: 'Voice practice', amount: 8 }
+      ]}
+      restName="Other"
+      total="76"
+      note="entries"
+    />
+  </ChartCard>
+
+  <!-- Nine parts against a cap of five, so the remainder and the smallest
+       arc the ring will ever draw are both on screen. The last named part
+       is under one percent, which is the case the legend refuses to print
+       as a zero. -->
+  <ChartCard heading="Share by tag, capped" kind="donut-capped" role={roleAt(roles, 0)}>
+    <Donut
+      parts={[
+        { key: 'a', name: 'Getting dressed', amount: 120 },
+        { key: 'b', name: 'Work', amount: 64 },
+        { key: 'c', name: 'Friends', amount: 40 },
+        { key: 'd', name: 'Appointments', amount: 1 },
+        { key: 'e', name: 'Voice practice', amount: 1 },
+        { key: 'f', name: 'Family', amount: 1 },
+        { key: 'g', name: 'Travel', amount: 1 },
+        { key: 'h', name: 'Hair removal', amount: 1 },
+        { key: 'i', name: 'Swimming', amount: 1 }
+      ]}
+      restName="Other"
+      total="231"
+      note="entries"
     />
   </ChartCard>
 

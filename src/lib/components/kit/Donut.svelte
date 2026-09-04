@@ -55,10 +55,22 @@
   const R = 40;
   const CIRC = 2 * Math.PI * R;
 
-  /* The tint ladder, one step per arc, largest first. Five values because
-     MAX_SLICES is five - a sixth arc would need a step there is no room
-     for between the last one and the card. */
-  const WEIGHTS = ['100%', '86%', '72%', '58%', '44%'];
+  /* The tint ladder, one step per arc, largest first: how much of the
+     stripe each arc keeps before the rest of it is the ground behind the
+     ring.
+
+     The app's own heat ramp spacing (theme/roles.ts's HEAT_STEPS, which
+     palettes.css writes as --heat-0..4 and the calendar and the week strip
+     both shade with), five stops across the same range instead of four.
+     So an arc and a calendar cell are the same scale in the flag's hue,
+     which is the agreement ticket 20's review asked for, and the faintest
+     arc lands where --heat-1 does rather than somewhere new.
+
+     A narrower ladder was the first attempt and it did not survive the
+     first look: 86/72/58 of a light stripe mixed into a light card are the
+     same colour three times, so trans's light theme drew a five-part ring
+     as one blue band. Five values because MAX_SLICES is five. */
+  const WEIGHTS = ['100%', '78%', '58%', '38%', '22%'];
 
   let slices = $derived(sliced(parts, restName));
   let ring = $derived(
@@ -96,6 +108,15 @@
             style={`--arc-dash: ${round(ring[i].dash)}; --arc-rest: ${round(ring[i].rest)}; --arc-offset: ${round(ring[i].offset)}; --circ: ${round(CIRC)}; --slice-weight: ${WEIGHTS[i]}; --bar-index: ${i}`}
           ></circle>
         {/each}
+        <!-- The band's own two edges. A fill answers to no contrast ratio,
+             which is right, and it leaves the faintest arc on a light card
+             needing an edge to still be a shape - the same thing the
+             distribution's columns get from a hairline and the ordered
+             strip gets from one outline around the whole bar. Around the
+             band rather than around each arc: five outlined wedges would
+             draw four lines nobody asked for. -->
+        <circle class="kit-donut-edge" cx="50" cy="50" r={R - 6} />
+        <circle class="kit-donut-edge" cx="50" cy="50" r={R + 6} />
       </g>
     </svg>
     <p class="kit-donut-total">
@@ -156,9 +177,17 @@
     stroke-width: 12;
   }
 
+  /* Drawn on top of the arcs, so an arc's own edge never sits over the
+     line that says where the band is. */
+  .kit-donut-edge {
+    fill: none;
+    stroke: var(--outline);
+    stroke-width: 1;
+  }
+
   .kit-donut-arc {
     fill: none;
-    stroke: color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface));
+    stroke: color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface-2));
     stroke-width: 12;
     stroke-dasharray: var(--arc-dash) var(--arc-rest);
     stroke-dashoffset: var(--arc-offset);
@@ -238,7 +267,7 @@
     height: 10px;
     border-radius: 3px;
     border: 1px solid var(--outline);
-    background: color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface));
+    background: color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface-2));
   }
 
   .kit-donut-name {
