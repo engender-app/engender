@@ -2023,7 +2023,40 @@
   "safe_space_stat_evidence_note": "W twojej historii",
   "safe_space_counterevidence_title": "Z twojej historii",
   "safe_space_counterevidence_sub": "Wpisy oznaczone jako euforia, z wysoką euforią ciała lub z gwiazdką.",
-  "safe_space_letter_intro": "List zapieczętowany dla siebie, teraz odblokowany.",
+  "safe_space_letters_intro": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "List zapieczętowany dla siebie, teraz odblokowany.",
+        "countPlural=few": "Listy zapieczętowane dla siebie, teraz odblokowane.",
+        "countPlural=many": "Listy zapieczętowane dla siebie, teraz odblokowane.",
+        "countPlural=other": "Listy zapieczętowane dla siebie, teraz odblokowane."
+      }
+    }
+  ],
+  "safe_space_letters_all": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Zobacz pozostały list",
+        "countPlural=few": "Zobacz pozostałe {count} listy",
+        "countPlural=many": "Zobacz pozostałe {count} listów",
+        "countPlural=other": "Zobacz pozostałe {count} listów"
+      }
+    }
+  ],
   "safe_space_photos_intro": "Zdjęcia oznaczone gwiazdką.",
   "safe_space_chart_timeline_title": "Ostatnie 30 dni",
   "safe_space_chart_themes_title": "Motywy dające spokój",
