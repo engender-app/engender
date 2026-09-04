@@ -171,6 +171,13 @@
     switch (preset) {
       case 'week':
         return today + 7;
+      /* epochDayMonthsAgo's own clamping (31 Oct minus a month lands on 30
+         Sep, not a 1 Nov rollover) is exactly what a revisit's own presets
+         need going forward too, and negating `months` gives it that
+         direction: the function subtracts `months` from the total month
+         count, so a negative count adds. Every other caller only ever
+         passes a positive count looking backward - this is the one call
+         site that runs it the other way on purpose. */
       case 'month':
         return epochDayMonthsAgo(today, -1);
       case 'threeMonths':
