@@ -69,6 +69,9 @@ export interface VoiceBenchmark {
       taken before schema v58, which kept only the figures - a screen with
       one of those in hand draws no take rather than an empty chart. */
   pitchTrack: string | null;
+  /** What recorded it (audio/captureChain.ts, ADR-0061), null on a
+      benchmark taken before schema v65. */
+  captureChain: string | null;
 }
 
 /** A practice take: how a session went with nothing to compare it against

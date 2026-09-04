@@ -61,6 +61,12 @@ export interface NewVoiceBenchmark {
       kept, so nothing downstream could recompute it (ADR-0010's own
       exception, ADR-0059). */
   pitchTrack?: string | null;
+  /** What recorded the take (audio/captureChain.ts, ticket 28, ADR-0061).
+      Optional here for the same reason it is nullable in the column: a
+      caller with no live track to read has nothing to say about the
+      equipment, and a made-up chain would be worse than none. The
+      recording flow always has one. */
+  captureChain?: string | null;
 }
 
 export interface VoiceBenchmarksArea {
@@ -100,6 +106,7 @@ type BenchmarkRow = {
   snr_db: number | null;
   note: string | null;
   pitch_track: string | null;
+  capture_chain: string | null;
 };
 
 const toBenchmark = (row: BenchmarkRow): VoiceBenchmark => ({
@@ -118,12 +125,13 @@ const toBenchmark = (row: BenchmarkRow): VoiceBenchmark => ({
   f2Hz: row.f2_hz,
   snrDb: row.snr_db,
   note: row.note,
-  pitchTrack: row.pitch_track
+  pitchTrack: row.pitch_track,
+  captureChain: row.capture_chain
 });
 
 const BENCHMARK_COLUMNS = `uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
    f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute, f1_hz, f2_hz, snr_db, note,
-   pitch_track`;
+   pitch_track, capture_chain`;
 
 export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileStore): VoiceBenchmarksArea {
   return {
@@ -153,7 +161,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
       const timestamp = now();
       await driver.run(
         `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.epochDay,
@@ -171,6 +179,7 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
           input.snrDb,
           input.note ?? null,
           input.pitchTrack ?? null,
+          input.captureChain ?? null,
           timestamp
         ]
       );

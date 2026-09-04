@@ -28,6 +28,7 @@ import { DEFAULT_PITCH_AXIS, axisFraction } from '../../src/lib/audio/bands.ts';
 import { decodePitchTrack } from '../../src/lib/audio/track.ts';
 import type { PitchFrame } from '../../src/lib/audio/pitch.ts';
 import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '../../src/lib/audio/quality.ts';
+import { captureChainOfStream, openMicrophone } from '../../src/lib/stores/voiceRecording.ts';
 import { installFakeMicrophone } from '../fake-microphone.mjs';
 import { ANALYSIS_SAMPLE_RATE, startTake } from '../../src/lib/stores/voiceBenchmark.ts';
 import VoiceGauge from '../../src/lib/components/VoiceGauge.svelte';
@@ -105,7 +106,7 @@ async function take(kind: 'steady' | 'loud' | 'wobble', seconds: number, checks:
   microphone.stop();
   if (!finished) throw new Error('nothing was captured');
 
-  return { live, frames, liveFrames: frames.length, ...finished };
+  return { live, frames, liveFrames: frames.length, captureChain: session.captureChain, ...finished };
 }
 
 /** A finished benchmark, drawn from its stored track and then from none.
@@ -130,7 +131,36 @@ function drawnTake(pitchTrack: string | null) {
   };
 }
 
+/** The two ways this app opens a microphone, described rather than
+    recorded (phase 8 features ticket 28).
+
+    Against Chromium's own fake device, not the oscillator the takes above
+    use: a stream synthesized out of a `MediaStreamAudioDestinationNode`
+    has no capture settings to report, and what is being proved here is
+    that the three flags are read back off a real track rather than
+    restated from the constraints that were asked for. A device that
+    refuses the unprocessed request and opens anyway is ADR-0061's whole
+    case, and this is the only tier where `getSettings()` exists at all.
+
+    Nothing is recorded: each stream is opened, described and stopped. It
+    runs before the first take, because `installFakeMicrophone` replaces
+    `getUserMedia` for the rest of the page's life and the oscillator it
+    hands back has no capture settings of its own. */
+async function openedChains() {
+  const chains: Record<'unprocessed' | 'processed', string> = { unprocessed: '', processed: '' };
+  for (const unprocessed of [true, false]) {
+    const stream = await openMicrophone(unprocessed);
+    if (typeof stream === 'string') throw new Error(`the microphone refused: ${stream}`);
+    chains[unprocessed ? 'unprocessed' : 'processed'] = await captureChainOfStream(stream);
+    for (const open of stream.getTracks()) open.stop();
+  }
+  return chains;
+}
+
 async function run() {
+  // First, while the real getUserMedia is still in place (see openedChains).
+  const chains = await openedChains();
+
   // A steady take, long enough to clear the gate's length floor twice over.
   const steady = await take('steady', 4, PASSAGE_CHECKS);
   const analysed = analysePassage(steady.samples, ANALYSIS_SAMPLE_RATE, 100);
@@ -145,6 +175,10 @@ async function run() {
   const storedVoiced = (stored ?? []).filter((frame) => frame.hz !== null);
 
   return {
+    /* What a benchmark writes down about the equipment, and what the same
+       microphone looks like under the browser's processing (ticket 28). */
+    captureChain: steady.captureChain,
+    openedChains: chains,
     figure,
     take: drawnTake(analysed.pitchTrack),
     takeWithoutTrack: drawnTake(null),

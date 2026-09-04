@@ -24,7 +24,7 @@
 import { makeLiveGauge, type LiveGauge } from '$lib/audio/live';
 import type { PitchFrame } from '$lib/audio/pitch';
 import type { QualityCheck, QualityReport } from '$lib/audio/quality';
-import { openMicrophone, recordStream, type MicRefusal } from './voiceRecording';
+import { captureChainOfStream, openMicrophone, recordStream, type MicRefusal } from './voiceRecording';
 
 /** Formants under 4 kHz need 8 kHz of bandwidth; 16 kHz is the standard
     analysis rate for this and keeps YIN's lag search short. */
@@ -48,6 +48,11 @@ export interface BenchmarkTake {
 }
 
 export interface TakeSession {
+  /** What this take is being recorded through, read off the track the
+      moment it opened (audio/captureChain.ts, ticket 28). Here rather than
+      on the finished take because it is a fact about the open microphone,
+      and `getSettings()` is only answerable while the track is live. */
+  readonly captureChain: string;
   /** The gate's live reading. */
   read(): QualityReport;
   /** The most recent pitch frames, for the gauge's trace. */
@@ -88,6 +93,11 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
   const stream = await openMicrophone(true);
   if (typeof stream === 'string') return stream;
 
+  /* What actually came back, not what was asked for (ADR-0061). Read here,
+     before anything is recorded, because the track stops answering once
+     the take is over. */
+  const captureChain = await captureChainOfStream(stream);
+
   const recording = recordStream(stream);
   const context = new AudioContext({ sampleRate: ANALYSIS_SAMPLE_RATE });
   const analyser = context.createAnalyser();
@@ -114,6 +124,7 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
   };
 
   return {
+    captureChain,
     read: () => gauge.read(),
     recentFrames: (count) => gauge.recentFrames(count),
     secondsCaptured: () => gauge.secondsCaptured(),

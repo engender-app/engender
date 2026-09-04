@@ -344,7 +344,13 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     // A short stored track (ticket 09), so the fixture proves the column
     // travels rather than only that it exists. Encoded as audio/track.ts
     // writes it, hole included.
-    pitchTrack: '178.5,181.2,,176.9,180.4'
+    pitchTrack: '178.5,181.2,,176.9,180.4',
+    /* And the chain it was recorded through (ticket 28), carrying a real
+       one rather than a null for the same reason: a restored benchmark
+       that lost its chain would rejoin a series it does not belong to, and
+       a fixture with no chain in it could not notice. Written as
+       audio/captureChain.ts encodes it. */
+    captureChain: 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off'
   });
 
   // The import log's only writer is a real commit (ticket 03): run one

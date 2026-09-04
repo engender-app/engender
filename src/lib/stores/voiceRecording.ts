@@ -12,6 +12,7 @@
    No normalize() step: ticket 24 excludes client-side audio effects, so
    the bytes MediaRecorder produced are exactly what gets stored. */
 
+import { captureChainOf, deviceFromUserAgent } from '$lib/audio/captureChain';
 import { chooseFiles } from '$lib/data/fileDialog';
 import { VIDEO_SIZE_CEILING } from '$lib/data/videoNotes/limits';
 import { m } from '$lib/paraglide/messages';
@@ -63,6 +64,52 @@ const UNPROCESSED_AUDIO: MediaTrackConstraints = {
   noiseSuppression: false,
   autoGainControl: false
 };
+
+/** What the platform will say about the hardware, for the chain a
+    benchmark records (audio/captureChain.ts, ticket 28, ADR-0061).
+
+    Client hints rather than the user agent: Chrome 110 reduced the Android
+    user agent string and froze its model token to `Android 10; K` on every
+    phone, so parsing it can no longer tell two phones apart.
+    `getHighEntropyValues(['model'])` still answers with the build model,
+    and both of this app's platforms are Chromium in a secure context
+    (capacitor.config.ts sets `androidScheme: 'https'`). Where the API is
+    missing, or answers with nothing, the user agent's platform token
+    stands in and the microphone's own label carries the difference.
+
+    Not an ambient fingerprinting surface: it is read at the moment a
+    benchmark opens the microphone, stored inside the same encrypted
+    journal as the audio it describes (ADR-0020), and shown to nobody. */
+async function deviceName(): Promise<string> {
+  const hints = navigator.userAgentData;
+  if (hints) {
+    try {
+      const { model } = await hints.getHighEntropyValues(['model']);
+      if (model) return model;
+    } catch {
+      // An unavailable hint is an ordinary outcome, like a track with no
+      // label: the fallback below is a real answer and not an error state.
+    }
+  }
+  return deviceFromUserAgent(navigator.userAgent);
+}
+
+/** The chain a live stream is capturing through: what the hardware is, what
+    the microphone calls itself, and which of the three unprocessed
+    constraints actually came back honoured.
+
+    Here rather than at the call site because this is the module that asked
+    for those constraints (UNPROCESSED_AUDIO) and the only one that should
+    know they are a request. `getSettings()` is the only thing that says
+    what happened, and it answers only while the track is live, so this is
+    read when the microphone opens and never afterwards.
+
+    One audio track, because `openMicrophone` asks for `{ audio: ... }`:
+    there is no choice of which track describes the take. */
+export async function captureChainOfStream(stream: MediaStream): Promise<string> {
+  const [track] = stream.getAudioTracks();
+  return captureChainOf(await deviceName(), track.label, track.getSettings());
+}
 
 /** Opens the microphone, or says why it stayed shut. Refusal is an ordinary
     outcome here rather than an error, the same treatment pickPhotos gives a
