@@ -34,7 +34,8 @@ describe('the unprompted registry', () => {
       'hairRemovalRecoveryEnabled',
       'measurementsNudgeEnabled',
       'wrappedEnabled',
-      'onThisDayEnabled'
+      'onThisDayEnabled',
+      'revisitEnabled'
     ]);
   });
 

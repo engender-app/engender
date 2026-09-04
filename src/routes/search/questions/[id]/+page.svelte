@@ -23,6 +23,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { entryDayGroups } from '$lib/data/recentEntries';
+  import { drawRandomEntry } from '$lib/data/randomDraw';
   import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -54,7 +55,20 @@
     id;
     pages = 1;
     hitPages = 1;
+    drawnIds = new Set();
   });
+
+  /* Random, scoped to this saved question rather than its own control
+     (phase 8 features ticket 08, spec.md: "Random, scoped") - the same
+     mechanism /search's own ad hoc run uses, over this screen's `hits`
+     instead. */
+  let drawnIds = $state<Set<number>>(new Set());
+  function drawRandom() {
+    const draw = drawRandomEntry(hits, drawnIds);
+    if (!draw) return;
+    drawnIds = draw.drawnIds;
+    void goto(`/entry/${draw.entry.id}`);
+  }
 
   const NOTHING_ASKED = { hits: [], total: 0 };
   let search = liveQuery((j) => {
@@ -145,6 +159,12 @@
         <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
 
         {#if hits.length}
+          <!-- A draw from the question currently being asked, not a mode of
+               its own (spec.md's own line) - the same control /search's own
+               ad hoc run offers, over this saved question's `hits`. -->
+          <button class="btn btn-soft search-random" data-search-random onclick={drawRandom}>
+            <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
+          </button>
           {#if hitRows.length}
             <SectionHeading text={m.search_entries_heading()} />
           {/if}

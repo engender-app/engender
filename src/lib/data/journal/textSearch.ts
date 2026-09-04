@@ -515,7 +515,8 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // Its own reason: a saved question's name and query are words about a
   // search, and search returning a hit on the search itself would be the
   // feature answering its own reflection rather than the journal.
-  savedQuestions: 'a name for a search, not a record for search to hand back as a hit'
+  savedQuestions: 'a name for a search, not a record for search to hand back as a hit',
+  revisits: 'no text of its own: an entry link and two days'
 };
 
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;

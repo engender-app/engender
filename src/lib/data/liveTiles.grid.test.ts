@@ -32,6 +32,7 @@ import type {
   DoseSchedule,
   HairRemovalSession,
   Letter,
+  Revisit,
   Procedure,
   RegimenEpisode,
   Tryout,
@@ -87,6 +88,10 @@ const letters: Letter[] = [
   { id: 'letter-2', epochDay: TODAY - 30, text: 'again', unlockEpochDay: TODAY - 1 }
 ];
 
+const dueRevisits: Revisit[] = [
+  { id: 'revisit-1', entryId: 101, entryEpochDay: TODAY - 60, createdEpochDay: TODAY - 61, targetEpochDay: TODAY }
+];
+
 const tryout: Tryout = {
   id: 'tryout-1',
   kind: 'name',
@@ -136,6 +141,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       episodes: [episode],
       procedures: [procedure],
       letters,
+      dueRevisits,
       latestBadEntryId: 42,
       safeSpaceDismissedEntryId: null,
       tryouts: [tryout],
@@ -152,6 +158,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       stopWear: vi.fn(),
       dismissSafeSpace: vi.fn(),
       openLetterDismiss: vi.fn(),
+      dismissRevisit: vi.fn(),
       resumePause: vi.fn(),
       snooze: vi.fn()
     },
@@ -194,6 +201,7 @@ describe('which kinds the grid is for', () => {
         'patch-schedule-tile',
         'pause-active-banner',
         'ready-letter',
+        'revisit',
         'safe-space-nudge',
         'surgery-countdown',
         'voice-benchmark-nudge',
@@ -228,17 +236,24 @@ describe('the order, and the absence of a cap', () => {
     expect(keysOf()).toEqual(ORDER);
   });
 
-  it('caps nothing: eleven qualify and eleven are drawn', () => {
+  it('caps nothing: twelve qualify and twelve are drawn', () => {
     const tiles = composeHomeTiles(input());
-    expect(tiles).toHaveLength(11);
-    expect(new Set(tiles.map((t) => t.key)).size).toBe(11);
+    expect(tiles).toHaveLength(12);
+    expect(new Set(tiles.map((t) => t.key)).size).toBe(12);
   });
 
   it('keeps the order when the ones before a tile drop out', () => {
-    /* Order is the list's, not the reads': with the first five gone the
+    /* Order is the list's, not the reads': with the first six gone the
        remaining six still come out in the same relative order. */
     const enabled = allOn(true);
-    for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown', 'safe-space-nudge', 'ready-letter'] as const) {
+    for (const kind of [
+      'wear-timer',
+      'dose-panel',
+      'surgery-countdown',
+      'safe-space-nudge',
+      'ready-letter',
+      'revisit'
+    ] as const) {
       enabled[kind] = false;
     }
     expect(keysOf({ enabled })).toEqual([
@@ -333,6 +348,36 @@ describe('what each tile says', () => {
     expect(tile.dismiss).toBeUndefined();
   });
 
+  it('the revisit tile names the entry due and deletes the row on dismiss', () => {
+    const actions = { dismissRevisit: vi.fn() };
+    const tile = tileNamed('revisit', { actions })!;
+    expect(tile.tileKey).toBe('revisit');
+    expect(tile.attrs).toEqual({ 'data-revisit-tile': true });
+    expect(tile.href).toBe('/entry/101');
+    expect(tile.value).toBe(`full:${TODAY - 60}`);
+    // One due revisit, so the note names it rather than counting others.
+    expect(tile.note).toBe(m.tile_revisit_single_note());
+    tile.action!.onclick!(CLICK);
+    expect(actions.dismissRevisit).toHaveBeenCalledWith('revisit-1');
+    expect(tile.dismiss).toBeUndefined();
+  });
+
+  it('the revisit tile counts the rest when more than one is due', () => {
+    const tile = tileNamed('revisit', {
+      reads: {
+        dueRevisits: [
+          ...dueRevisits,
+          { id: 'revisit-2', entryId: 102, entryEpochDay: TODAY - 5, createdEpochDay: TODAY - 6, targetEpochDay: TODAY }
+        ]
+      }
+    })!;
+    expect(tile.note).toBe(m.tile_revisit_more({ count: '1' }));
+  });
+
+  it('the revisit tile is absent with nothing due', () => {
+    expect(tileNamed('revisit', { reads: { dueRevisits: [] } })).toBeUndefined();
+  });
+
   it('the active tryout offers a felt-sense entry against the tryout it names', () => {
     const tile = tileNamed('active-tryout-tile')!;
     expect(tile.tileKey).toBe('active-tryout');
@@ -416,11 +461,20 @@ describe('the dismiss controls', () => {
     expect(snooze).toHaveBeenCalledWith(kind);
   });
 
-  it('gives no dismiss to the five that never had one', () => {
-    /* Wear, dose, surgery, safe space and the ready letter each resolve
-       themselves - a running session cannot be hidden while it runs
-       (ADR-0039's amendment), and the letter's dismiss opens a sheet. */
-    for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown', 'safe-space-nudge', 'ready-letter'] as const) {
+  it('gives no dismiss to the six that never had one', () => {
+    /* Wear, dose, surgery, safe space, the ready letter and revisit each
+       resolve themselves - a running session cannot be hidden while it runs
+       (ADR-0039's amendment), the letter's dismiss opens a sheet, and a
+       revisit's own action deletes the row outright rather than snoozing
+       it. */
+    for (const kind of [
+      'wear-timer',
+      'dose-panel',
+      'surgery-countdown',
+      'safe-space-nudge',
+      'ready-letter',
+      'revisit'
+    ] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }
   });
