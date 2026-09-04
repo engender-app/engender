@@ -1586,6 +1586,78 @@ await block('ticket 16 browser tier', 10, async () => {
   else fail('the re-save no longer throws', after.resaveError);
 });
 
+/* --- Ticket 27 (phase 8 features): the metric reference, and that the
+       sentence under a figure lands on that figure's own section. --- */
+await block('ticket 27 browser tier', 7, async () => {
+  const r = await load('/voice-metrics.html', 'voice-metrics-probe');
+  if (r.error) throw new Error(r.error);
+  const { registered, figures, landings, listLink, route, sections, reviewed } = r;
+
+  const listed = figures.map((f) => f.key);
+  if (JSON.stringify(listed) === JSON.stringify(registered))
+    ok(`every registered figure is in the list a take shows (${listed.join(', ')})`);
+  else fail('every registered figure is in the list a take shows', JSON.stringify(listed));
+
+  const blank = figures.filter((f) => f.stated.length === 0);
+  if (blank.length === 0 && listLink?.href === route && listLink.text.length > 0)
+    ok(`the list states six figures and one way in (${listLink.text})`);
+  else fail('the list states six figures and one way in', JSON.stringify({ blank, listLink }));
+
+  /* The claim only a browser can answer: every fragment metricHref builds,
+     resolved against the rendered reference screen and read back through
+     `:target`. The compare view renders two of these against its own
+     labels; nothing but a rendered document can say they land. */
+  const stray = landings.filter((l) => l.landsOn !== l.key);
+  if (stray.length === 0)
+    ok('every figure\'s own fragment lands on its own section of the reference screen');
+  else
+    fail(
+      "every figure's own fragment lands on its own section of the reference screen",
+      JSON.stringify(stray.map((l) => [l.key, l.href, l.landsOn]))
+    );
+
+  const halfExplained = sections.filter((s) => s.fields !== 7);
+  if (sections.length === registered.length && halfExplained.length === 0)
+    ok('all six sections render all seven fields, none omitted');
+  else
+    fail(
+      'all six sections render all seven fields, none omitted',
+      JSON.stringify(sections.map((s) => [s.key, s.fields]))
+    );
+
+  const pitch = sections.find((s) => s.key === 'pitch');
+  const banded = sections.filter((s) => s.bandedLanguages.length > 0).map((s) => s.key);
+  if (
+    pitch?.tier === 'referenced' &&
+    JSON.stringify(banded) === '["pitch"]' &&
+    JSON.stringify(pitch.bandedLanguages) === '["en","pl"]' &&
+    pitch.citations === 2
+  )
+    ok('only the Referenced figure states published ranges, one citation per language');
+  else
+    fail(
+      'only the Referenced figure states published ranges, one citation per language',
+      JSON.stringify({ banded, pitch })
+    );
+
+  /* Read differently rather than merely both rendered: an own-series
+     section says in its own words that no dependable range exists and how
+     far its number travels, which is the whole point of field 7. */
+  const spread = sections.find((s) => s.key === 'spread');
+  if (
+    spread?.tier === 'ownSeries' &&
+    spread.bandedLanguages.length === 0 &&
+    spread.tierText.length > 20 &&
+    spread.tierText !== pitch?.tierText &&
+    spread.typicalText !== pitch?.typicalText
+  )
+    ok('an Own-series section reads differently from the Referenced one, in words');
+  else fail('an Own-series section reads differently from the Referenced one, in words', JSON.stringify(spread));
+
+  if (/\d/.test(reviewed)) ok(`the whole table carries one reviewed-on date (${reviewed})`);
+  else fail('the whole table carries one reviewed-on date', JSON.stringify(reviewed));
+});
+
 await browser.close();
 await server.close();
 
