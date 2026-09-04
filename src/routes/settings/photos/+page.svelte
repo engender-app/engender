@@ -155,7 +155,7 @@
           { value: 'browse', label: m.ph_tab_browse() },
           { value: 'compare', label: m.ph_tab_compare() }
         ]}
-        value={comparing ? 'compare' : 'browse'}
+        value={comparing && pair ? 'compare' : 'browse'}
         onChange={(v) => setComparing(v === 'compare')}
         compact
         key="photos-tab"
@@ -164,6 +164,13 @@
     <ReadGate read={photosQuery} variant="block" count={2}>
       {#snippet rows()}
         {#if comparing && !pair}
+          <!-- Reachable when a live update drops one of the two anchors
+               while the full compare view is open (code review, ticket 11):
+               `comparing` survives the fall back to this grid, but this
+               branch never draws the compare view, so the segmented control
+               above reads its value off `comparing && pair` rather than
+               `comparing` alone - otherwise it would say "Compare" over a
+               screen showing the grid and this very reset notice. -->
           <p class="muted small" style="margin-bottom:var(--space-2)">{m.ph_compare_reset()}</p>
         {/if}
         <p class="muted small" style="margin-bottom:var(--space-4)">
