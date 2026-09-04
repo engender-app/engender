@@ -264,7 +264,7 @@ export interface ArchiveTallyEvent {
 export interface ArchiveSideEffect {
   id: string;
   name: string;
-  severity: number;
+  severity: number | null;
   epochDay: number;
 }
 

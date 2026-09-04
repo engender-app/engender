@@ -362,6 +362,18 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
   ]);
 });
 
+test('a side effect left blank survives an export/import round trip as null, not zero or three', async () => {
+  const source = await device();
+  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000 });
+
+  const target = await device();
+  await target.journal.archive.merge(await exported(source.journal));
+
+  const [effect] = await target.journal.sideEffects.getSideEffects();
+  assert.equal(effect.name, 'brain fog');
+  assert.equal(effect.severity, null);
+});
+
 test('a restored dose resolves its episode from its own timestamp, having carried no episode link', async () => {
   const source = await populated();
   const target = await device();

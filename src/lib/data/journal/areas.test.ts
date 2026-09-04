@@ -648,6 +648,14 @@ test('a side effect round-trips with no episode reference, ordered by day', asyn
   assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100 });
 });
 
+test('severity round-trips as null when left blank, sorting and reading like any other side effect', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100 });
+
+  const [effect] = await journal.sideEffects.getSideEffects();
+  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100 });
+});
+
 test('a range read returns only the days it was asked for', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
