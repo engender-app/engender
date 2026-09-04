@@ -68,6 +68,7 @@ const ROUTES = [
   'settings/tryouts/[id]',
   'settings/presentations',
   'settings/eras',
+  'settings/words',
   // Practice
   'settings/voice',
   /* The More hub's `voice` row (icon 'mic') targets this route, not
@@ -112,8 +113,8 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 33 of them', () => {
-  it('is the count SCREENS.md gives, plus the seven added since', () => {
+describe('all 34 of them', () => {
+  it('is the count SCREENS.md gives, plus the eight added since', () => {
     /* 26 when this list was written, 27 since deepening ticket 07 added
        /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
        /settings/eras and the notifications view, then 30 through 32 as
@@ -121,13 +122,14 @@ describe('all 33 of them', () => {
        /settings/entry-templates - deepening ticket 17, phase 6 ticket 07
        and features ticket 11 had each added one without ever landing it
        here. Both 28 and 29 arrived on their own branch and each thought it
-       was the 28th, which is what this line is for: SCREENS.md is six
+       was the 28th, which is what this line is for: SCREENS.md is eight
        tickets behind either way - see the note above the list - and
-       correcting it is still nobody's ticket. Then 33 with features
-       ticket 27's metric reference, which is the first route here that was
-       never a hub row and never will be. */
-    expect(ROUTES.length).toBe(33);
-    expect(new Set(ROUTES).size).toBe(33);
+       correcting it is still nobody's ticket. Then 33 and 34 as features
+       tickets 14 and 27 landed on the same day: 14's /settings/words,
+       built on the kit from the start, and 27's metric reference, the
+       first route here that was never a hub row and never will be. */
+    expect(ROUTES.length).toBe(34);
+    expect(new Set(ROUTES).size).toBe(34);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
