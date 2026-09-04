@@ -125,6 +125,17 @@
       max: number;
       name: string;
       formatValue: (value: number) => string;
+      /** Whether this line is placed against the first one's scale rather
+          than its own. False for two metrics, which is what the two ranges
+          above are for; true where the pair is one range with two ends -
+          the top and the bottom of a pitch band, say (charts/ownSeries.ts).
+
+          What it changes is the value gutter. The gutter goes when two
+          lines are placed against two ranges, because printing one of the
+          two beside both lines would have the other read against numbers
+          that are not its own; with one range there is no such problem and
+          the ends of the scale are the ends of both lines. */
+      sharedScale?: boolean;
       /** A second stripe of the active flag, so a palette switch recolours
           both lines. Colour is never the only thing telling them apart: the
           second line is dashed and the legend under the plot repeats the
@@ -163,6 +174,9 @@
      supposed to share is not drawn. There is no honest way to place it, and
      a second line spread across the wrong dates is worse than one line. */
   let overlaid = $derived(overlay !== undefined && overlay.values.length === points.length);
+  /* Whether the plot has one scale on it, whatever the number of lines -
+     which is the question the value gutter is really asking. */
+  let oneScale = $derived(!overlaid || overlay!.sharedScale === true);
 
   const HEIGHT = 132;
   /* Room for the ring on the latest reading and for the stroke at the top
@@ -388,6 +402,7 @@
   <div
     class="kit-area"
     class:has-overlay={overlaid}
+    class:no-gutter={!oneScale}
     data-chart="area"
     role="img"
     aria-label={ariaLabel}
@@ -408,8 +423,12 @@
          where each sits inside its own range, so a gutter here would be one
          of the two ranges printed beside both lines, and the other line
          would be read against numbers that are not its own. The scrub
-         readout says both values in their own units instead. -->
-    {#if !overlaid}
+         readout says both values in their own units instead.
+
+         It stays for a pair placed against one range, though - the two ends
+         of one band are the case that rule was not written for, and the
+         ends of the scale are the ends of both lines. -->
+    {#if oneScale}
       <div
         class="kit-area-scale"
         data-chart-scale
@@ -652,3 +671,17 @@
 {:else}
   <p class="kit-chart-empty">{m.not_enough_data()}</p>
 {/if}
+
+<style>
+  /* Whether the plot leaves a column for the value gutter, which is a
+     question about the gutter and not about how many lines are up: a pair
+     of lines placed against one range keeps its numbers (see `oneScale`),
+     and a pair against two ranges has none to print. `.kit-area`'s own
+     two-column grid is in kit.css with the rest of this chart; only the
+     collapsed state is here, because a new single-consumer class in a
+     shared sheet fails scripts/check-screens-classes.mjs and every class
+     of this one's kind has exactly one consumer by construction. */
+  .kit-area.no-gutter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+</style>

@@ -21,13 +21,38 @@
    it - and it says so with `sameChain` rather than by looking like a take
    whose vowel step was skipped. */
 
-import { sameCaptureChain } from './captureChain';
+import { captureChainBreak, type ChainBreak } from './captureChain';
 
-export interface BenchmarkForDelta {
+/** What decides whether two takes can be read together at all: the words
+    they read and the equipment that recorded them. Its own type because two
+    callers want the question and neither wants the figures - the pair delta
+    below, and the own-series trend (charts/ownSeries.ts). */
+export interface ComparableTake {
   passageKey: string;
   /** What recorded it (audio/captureChain.ts). Null on a benchmark from
       before ADR-0061, which is a chain nothing knows. */
   captureChain: string | null;
+}
+
+/** Why two takes are not one series, or null where they are.
+
+    Passage first, where both changed at once: two passages leave nothing to
+    compare - a rate over 98 English words and over 82 Polish ones are
+    different numbers - while a change of phone leaves each figure meaning
+    what it meant and only takes the join away (ADR-0060, ADR-0061). Naming
+    the narrower reason would understate what happened.
+
+    One function rather than a check per caller, which is ADR-0061's own
+    instruction about the chain gate: it lives beside `acousticDelta` so a
+    caller cannot compare across chains by forgetting to look. */
+export type SeriesBreak = ChainBreak | 'passage';
+
+export function comparabilityBreak(from: ComparableTake, to: ComparableTake): SeriesBreak | null {
+  if (from.passageKey !== to.passageKey) return 'passage';
+  return captureChainBreak(from.captureChain, to.captureChain);
+}
+
+export interface BenchmarkForDelta extends ComparableTake {
   f0MedianHz: number;
   f1Hz: number | null;
   f2Hz: number | null;
@@ -57,8 +82,12 @@ export interface AcousticDelta {
     the delta as what changed since the earlier take. Null when the two
     passages differ - see the header. */
 export function acousticDelta(from: BenchmarkForDelta, to: BenchmarkForDelta): AcousticDelta | null {
-  if (from.passageKey !== to.passageKey) return null;
-  const sameChain = sameCaptureChain(from.captureChain, to.captureChain);
+  /* The same gate the own series draws its breaks from: a passage change
+     leaves nothing to compute, and anything narrower is a chain change,
+     which takes the resonance figures and leaves the rest. */
+  const gap = comparabilityBreak(from, to);
+  if (gap === 'passage') return null;
+  const sameChain = gap === null;
   return {
     f0DeltaHz: to.f0MedianHz - from.f0MedianHz,
     f0DeltaSemitones: 12 * Math.log2(to.f0MedianHz / from.f0MedianHz),

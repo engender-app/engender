@@ -108,3 +108,35 @@ export function captureChainOf(device: string, label: string, settings: CaptureS
 export function sameCaptureChain(a: string | null, b: string | null): boolean {
   return a !== null && b !== null && a === b;
 }
+
+/** Why two chains are not one, for the sentence that breaks an own series
+    (phase 8 features ticket 29).
+
+    `device` covers the microphone as well as the phone, because a headset
+    plugged into one handset is as much a change of equipment as a second
+    handset: what the person did is swap what the sound went through, and
+    the app cannot say which of the two parts mattered. `processing` is the
+    same equipment that stopped granting unprocessed capture, or started
+    reporting nothing about a constraint - the take is still a take, and
+    it is not on the same chain.
+
+    `unrecorded` is either side having no chain at all, and it names no
+    equipment on purpose: a row from before ADR-0061 is not evidence of one
+    phone or of two, so the only honest sentence is that the app does not
+    know what recorded it. Null where the two match, which is the caller's
+    signal that the series carries on. */
+export type ChainBreak = 'device' | 'processing' | 'unrecorded';
+
+export function captureChainBreak(a: string | null, b: string | null): ChainBreak | null {
+  if (a === null || b === null) return 'unrecorded';
+  if (sameCaptureChain(a, b)) return null;
+  return equipmentOf(a) === equipmentOf(b) ? 'processing' : 'device';
+}
+
+/** The device and the microphone, which is everything in the chain but the
+    three constraint tokens. Read off the string rather than kept in a
+    second column: one string is what travels through the column and the
+    archive, and this is the only question anybody asks of its parts. */
+function equipmentOf(chain: string): string {
+  return chain.split(SEPARATOR).slice(0, 2).join(SEPARATOR);
+}

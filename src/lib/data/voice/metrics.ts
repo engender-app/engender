@@ -83,6 +83,24 @@ const ENTRIES = [
 
 export type VoiceMetricKey = (typeof ENTRIES)[number]['key'];
 
+/** The keys of the figures that carry no band and are read against the
+    person's own earlier takes (CONTEXT: "Own-series figure").
+
+    Off the entries' own tiers rather than written out as a second list, so
+    a figure that gains or loses its band arrives in every surface built on
+    this at once. Ticket 29's trend table is keyed by it, which is what
+    makes a seventh Own-series figure a typecheck failure there instead of a
+    figure with no trend. */
+export type OwnSeriesMetricKey = Extract<(typeof ENTRIES)[number], { tier: 'ownSeries' }>['key'];
+
+export interface OwnSeriesMetric extends VoiceMetric {
+  key: OwnSeriesMetricKey;
+}
+
+export const OWN_SERIES_METRICS: readonly OwnSeriesMetric[] = ENTRIES.filter(
+  (entry): entry is Extract<(typeof ENTRIES)[number], { tier: 'ownSeries' }> => entry.tier === 'ownSeries'
+);
+
 /** What a reader gets: one type whose `bandLanguages` is a plain list,
     rather than the union of six literal shapes ENTRIES has. The key stays
     narrow through that widening, which is what lets metricLabels.ts index
