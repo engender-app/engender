@@ -342,25 +342,29 @@
      as a hub row, because a place you can go and check what is waiting is a
      place that accumulates what you have not done.
 
-     Only from Home, and only on the first arrival: somebody who opened the
-     app on a notification, a deep link or an Android launch route asked for
-     something specific, and a return surface is not allowed to take that
-     over. `openedReturn` holds within this page load so a second navigation
-     back to Home does not reopen a screen the person just left.
+     Only from Home: somebody who opened the app on a notification, a deep
+     link or an Android launch route asked for something specific, and a
+     return surface is not allowed to take that over.
 
-     `readWhatIsWaiting` stops at one bounded read on almost every boot -
-     the gap is eighteen `MAX`es and nothing else runs unless it clears
-     three weeks - so the ordinary case costs one query and no navigation.
-     The screen then reads the same function again, which is deliberate: one
-     read path, so the gate and the screen cannot disagree about whether
-     this was a return. */
-  let openedReturn = false;
+     What stops it opening twice is the preference and nothing else. The
+     surface stamps `comingBackSeenSince` as it draws, so this has an answer
+     before the person could have left it, and a flag latching the decision
+     for the page load would only add a second guard that disagrees - it
+     also has to be wrong for a demo build, where the journal underneath can
+     be replaced without a reload.
+
+     So this does re-read on every arrival at Home, and what makes that
+     affordable is `readWhatIsWaiting`'s own shape: it stops at one bounded
+     read - the gap, eighteen `MAX`es - unless three weeks have passed, which
+     is the same read AreaFinish already makes on eight screens. The
+     `path` check runs again after the await, because a slow read must not
+     pull somebody off a screen they navigated to in the meantime. */
   $effect(() => {
     if (!isReadyState(bootState) || locked || !prefs.onboarded) return;
-    if (path !== '/' || openedReturn) return;
-    openedReturn = true;
+    if (path !== '/') return;
     void readWhatIsWaiting(journal, todayEpochDay()).then((waiting) => {
       if (!waiting || prefs.comingBackSeenSince === waiting.sinceEpochDay) return;
+      if (page.url.pathname !== '/') return;
       goto('/coming-back');
     });
   });

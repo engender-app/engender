@@ -147,14 +147,24 @@
   >
   <!-- Ticket 05: the one state neither jump above can produce, because both
        stop on today and the return surface only exists after three weeks of
-       nothing. Lands on /coming-back rather than Home, since the shell's own
-       gate would take a reviewer there a moment later anyway. -->
+       nothing. Lands on Home rather than on /coming-back, because being
+       taken there is the feature - the shell's own gate is what a reviewer
+       is here to see.
+
+       A reload rather than the `goto` its two neighbours use, and the reason
+       is the gate rather than the seed. It runs when somebody arrives at
+       Home, so replacing the journal underneath a page that is *already* on
+       Home leaves it with nothing to react to; the other two jumps get away
+       with `goto` because what they feed is live queries, which their own
+       writes invalidate. A state jump that wants a boot is also the honest
+       shape here: this one is pretending the app was opened after five weeks
+       away. -->
   <button
     class="demo-btn"
     data-fill-coming-back
     onclick={async () => {
       await resetDemoComingBack();
-      goto('/coming-back');
+      location.assign('/');
     }}>Five weeks away</button
   >
   <div class="demo-jump">

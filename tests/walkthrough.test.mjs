@@ -3874,6 +3874,89 @@ try {
   ok('a written key opens a journal whose PIN is gone, is refused when mistyped, and owes a new access mode before the app comes back');
 } catch (e) { fail('the recovery key at the gate', e); }
 
+/* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
+
+   Last in the file rather than next to the fill-every-feature step it is
+   nominally "after", and for a hard reason: the jump it needs replaces the
+   journal with one that stops five weeks ago, and every flow between here
+   and there reads the journal fill-every-feature left. A five-week-stale
+   journal has an empty "recent" everywhere, so running this in the middle
+   would fail forty flows for the wrong reason. Nothing after it reads the
+   journal at all.
+
+   Handles and never wording (ADR-0029). What is asserted is the two things
+   only a real navigation can answer: that the shell opens the surface by
+   itself when somebody lands on Home after a gap, and that having met it
+   once is what stops it opening again - which is the whole of "a moment, not a place" and is a
+   preference, a redirect and a screen agreeing across a reload. */
+try {
+  await fresh('/');
+  /* The jump reboots onto Home and the shell's gate is what takes it from
+     there, which is the half of this feature no unit test can reach. The
+     wait is generous because the tap seeds a whole journal first. */
+  await page.click('[data-fill-coming-back]');
+  await page.waitForURL('**/coming-back', { timeout: 60000 });
+  await booted();
+
+  // All five kinds, because each one is read off a different area.
+  for (const kind of ['letter', 'milestone', 'era', 'wear-session', 'dose']) {
+    await page.waitForSelector(`[data-coming-back-item="${kind}"]`);
+  }
+
+  /* Exactly one dose row. Twelve slots passed unlogged in that gap and the
+     surface asks about one of them; a second row here would be the bill the
+     whole ticket is against, and it is the kind of regression a screenshot
+     would not catch. */
+  if ((await page.locator('[data-coming-back-item="dose"]').count()) !== 1) {
+    throw new Error('the return surface asks about more than one dose slot');
+  }
+
+  /* Closing the running wear session: the end day is picked, never assumed,
+     so the confirm is refused until the field has one. */
+  await page.locator('[data-coming-back-item="wear-session"] .kit-row-main').click();
+  await page.waitForSelector('[data-coming-back-wear-confirm]');
+  if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
+    throw new Error('the wear session could be closed without naming the day it ended');
+  }
+  const endedOn = await page.evaluate(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 20);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  await fillDate(page, '#coming-back-wear-end', endedOn);
+  await page.locator('[data-coming-back-wear-confirm]').click();
+  /* The row goes because the session stopped running, not because the screen
+     hid it: the read re-runs on the write and getRunningSession answers with
+     nothing. Asserted on the state after the write rather than on the sheet
+     closing, which is transient. */
+  await page.waitForSelector('[data-coming-back-item="wear-session"]', { state: 'detached' });
+
+  /* Backfilling one item asks nothing about any other: the dose row is still
+     exactly where it was, unanswered, after a wear session was closed. */
+  if ((await page.locator('[data-coming-back-item="dose"]').count()) !== 1) {
+    throw new Error('closing the wear session changed what the surface asks about doses');
+  }
+
+  // And a no takes the row away without writing anything.
+  await page.locator('[data-coming-back-decline="dose"]').click();
+  await page.waitForSelector('[data-coming-back-item="dose"]', { state: 'detached' });
+
+  /* The moment is over. Home is where a return is noticed, so this is the
+     navigation that would open it again if the gap had not been marked met -
+     and the surface has to stay closed with the very rows that opened it
+     still waiting, since a letter and a milestone were never answered. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForTimeout(1200);
+  if (!page.url().endsWith('/')) {
+    throw new Error(`the return surface opened a second time for the same gap (${page.url()})`);
+  }
+
+  ok('coming back after five weeks opens the return surface once, backfills one item at a time, and does not open again for the same gap');
+} catch (e) {
+  fail('coming back', e);
+}
+
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
 const failures = finish('ALL FLOWS PASS');
