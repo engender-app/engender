@@ -945,6 +945,7 @@
   "disguise_preview_android": "tak aplikacja wygląda w launcherze",
   "disguise_preview_web": "tak wygląda karta przeglądarki",
   "disguise_installed_note": "Jeśli aplikacja jest już zainstalowana, nazwa i ikona na ekranie głównym zmienią się, gdy przeglądarka je odświeży. Robi to w swoim tempie, więc może to chwilę potrwać.",
+  "disguise_android_gap_note": "Android nadal pokazuje prawdziwą nazwę aplikacji w Ustawieniach, na ekranie informacji o aplikacji i w wyborze widżetów.",
   "decoy_search": "Szukaj w notatkach",
   "decoy_note_groceries_title": "Zakupy",
   "decoy_note_groceries_body": "mleko, jajka, płatki, kawa, coś na obiad",
