@@ -1560,6 +1560,33 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     );
 });
 
+// --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
+await block('phase 8 audit ticket 03 mic teardown', 3, async () => {
+  const r = await load('/mic-teardown.html', 'mic-teardown-probe');
+  if (r.error) throw new Error(r.error);
+  const { teardown, throwingRecorder } = r;
+
+  if (teardown.streamOpened && teardown.trackStates.every((s) => s === 'ended'))
+    ok('a screen destroyed while the microphone is still opening leaves no track running');
+  else
+    fail(
+      'a screen destroyed while the microphone is still opening leaves no track running',
+      JSON.stringify(teardown)
+    );
+
+  if (teardown.intervalsArmed === 0)
+    ok('and arms no poll interval for a take nobody is on screen for any more');
+  else fail('no poll interval is armed for a take nobody is on screen for', `${teardown.intervalsArmed} armed`);
+
+  if (throwingRecorder.threw && throwingRecorder.trackStates.every((s) => s === 'ended'))
+    ok("a recorder that throws on stop() (already inactive) still leaves its tracks stopped");
+  else
+    fail(
+      "a recorder that throws on stop() still leaves its tracks stopped",
+      JSON.stringify(throwingRecorder)
+    );
+});
+
 // --- Ticket 16 (phase 8 deepening): the draft mirror's stale-removal repro,
 //     and that clearing it on save (EntryEditor.svelte's fix) closes it.
 await block('ticket 16 browser tier', 10, async () => {

@@ -71,6 +71,10 @@
 
   let session: TakeSession | null = null;
   let poll: ReturnType<typeof setInterval> | null = null;
+  /** Live only across the microphone-opening await, so `onDestroy` can abort
+      it if the screen goes before `start()` returns (voiceBenchmark.ts's
+      `startTake`, ticket AU-03). */
+  let opening: AbortController | null = null;
 
   let role = $derived(roleAt(activeFlag.roles, 0));
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
@@ -106,7 +110,13 @@
   }
 
   async function start() {
-    const opened = await startTake(PASSAGE_CHECKS);
+    const controller = new AbortController();
+    opening = controller;
+    const opened = await startTake(PASSAGE_CHECKS, controller.signal);
+    if (opening === controller) opening = null;
+    // The screen went away while the microphone was opening: startTake has
+    // already stopped whatever it opened, so there is nothing left to do.
+    if (opened === null) return;
     if (typeof opened === 'string') {
       if (refusal) askedAgain = true;
       refusal = opened;
@@ -169,6 +179,7 @@
 
   onDestroy(() => {
     stopPolling();
+    opening?.abort();
     void session?.discard();
     session = null;
   });

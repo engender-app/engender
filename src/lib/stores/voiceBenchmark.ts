@@ -86,8 +86,18 @@ export async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
 
 /** Opens the microphone and starts a take, or says why it could not. The
     refusal is returned rather than announced: the recording screen holds a
-    state for it, which is what the ticket's denied-permission case asks for. */
-export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSession | MicRefusal> {
+    state for it, which is what the ticket's denied-permission case asks for.
+
+    `signal` covers the two awaits below - opening the microphone and reading
+    its chain - which is the window in which the screen that asked for this
+    take can be gone before either resolves (a tab switch mid-permission-
+    prompt, most often). Aborting there stops the tracks this function
+    already opened and returns null instead of a session nothing will ever
+    read; both call sites hang their own `AbortController` on `onDestroy`. */
+export async function startTake(
+  checks: readonly QualityCheck[],
+  signal?: AbortSignal
+): Promise<TakeSession | MicRefusal | null> {
   // Unprocessed: a benchmark measures the microphone's own answer, not the
   // browser's cleaned-up version of it (voiceRecording.ts's UNPROCESSED_AUDIO).
   const stream = await openMicrophone(true);
@@ -97,6 +107,11 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
      before anything is recorded, because the track stops answering once
      the take is over. */
   const captureChain = await captureChainOfStream(stream);
+
+  if (signal?.aborted) {
+    for (const track of stream.getTracks()) track.stop();
+    return null;
+  }
 
   const recording = recordStream(stream);
   const context = new AudioContext({ sampleRate: ANALYSIS_SAMPLE_RATE });
@@ -130,15 +145,22 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
     secondsCaptured: () => gauge.secondsCaptured(),
 
     async finish() {
-      const bytes = await recording.stop();
-      await close();
+      let bytes: Uint8Array | null;
+      try {
+        bytes = await recording.stop();
+      } finally {
+        await close();
+      }
       if (!bytes) return null;
       return { bytes, samples: await decodeTake(bytes) };
     },
 
     async discard() {
-      await recording.stop();
-      await close();
+      try {
+        await recording.stop();
+      } finally {
+        await close();
+      }
     }
   };
 }
