@@ -61,6 +61,7 @@
   import {
     dateInputValueFromEpochDay,
     epochDayFromDateInputValueOrToday,
+    startOfDayTimestamp,
     todayEpochDay
   } from '$lib/data/epochDay';
   import {
@@ -159,11 +160,13 @@
       (!doseIsTopical || doseDraft.applicationSite !== '')
   );
 
-  /** Noon on the slot's day. A dose event's timestamp is load-bearing
-      (types.ts) and nobody remembers the hour five weeks later, so the
-      middle of the day is the one choice that does not read as a claim
-      about when it was taken. */
-  const slotTimestamp = (epochDay: number) => new Date(epochDay * 86_400_000).setHours(12, 0, 0, 0);
+  /** Noon on the slot's day, local. A dose event's timestamp is load-bearing
+      (types.ts) and nobody remembers the hour five weeks later, so the middle
+      of the day is the one choice that does not read as a claim about when it
+      was taken. Off `startOfDayTimestamp`, never off `epochDay * 86_400_000`,
+      which is midnight UTC and lands on the day before in half the world
+      (ADR-0001). */
+  const slotTimestamp = (epochDay: number) => startOfDayTimestamp(epochDay) + 12 * 3_600_000;
 
   /* Built into the union's own arms rather than one object with every field:
       `DoseEventInput` refuses a dose carrying a site its route has no place
@@ -278,7 +281,16 @@
             {:else if item.kind === 'wear-session'}
               <!-- 'stop' is the glyph the wear tile's own control already
                    carries, so the gesture this row opens is one the person
-                   has met before. -->
+                   has met before.
+
+                   The no is an unmarked x here, which is the shape
+                   AreaFinish.svelte deliberately refused - and the reason
+                   splits the two rather than contradicting either. There the
+                   x would have spent a decision the app never asks again, so
+                   the no had to be a labelled row. Here the x means exactly
+                   what it means on every notice in the app: I have read this,
+                   take it off my screen. Nothing is stored, and the same row
+                   is here again on the next return if it is still waiting. -->
               <ListRow
                 key="coming-back-wear"
                 data-coming-back-item="wear-session"
