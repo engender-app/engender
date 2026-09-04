@@ -92,6 +92,14 @@
   }
 
   let hasAccessSecret = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));
+
+  const SITE_URL = 'https://gender-diary.barankiewicz.dev/';
+  let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
+
+  /* Ticket ux/06: ships disabled - an empty URL is what makes the row below
+     render as "coming soon" rather than a live link. Setting this to the
+     real Ko-fi URL is the whole follow-up; no markup changes with it. */
+  const KOFI_URL = '';
 </script>
 
 <div class="screen">
@@ -439,6 +447,20 @@
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
   </ListCard>
+
+  <!-- Its own row, not folded into the About sheet (ticket ux/06): an ask
+       for support reads differently from a licence notice. -->
+  <ListCard>
+    <ListRow
+      key="kofi"
+      icon="heart"
+      title={m.kofi_row()}
+      subtitle={KOFI_URL ? m.kofi_row_sub() : m.kofi_coming_soon()}
+      static={!KOFI_URL}
+      {...(KOFI_URL ? { href: KOFI_URL, target: '_blank', rel: 'noreferrer' } : {})}
+    />
+  </ListCard>
+
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
     <span translate="no">{m.app_name()}</span> · {m.footer_note()}
   </p>
@@ -557,13 +579,22 @@
   <Sheet bind:open={aboutSheet} title={m.about()}>
     <h3>{m.about()}</h3>
     <div class="stack-3">
-      <p class="small">
-        <span translate="no">{m.app_name()}</span>
-        <span class="muted">· {m.version()} <span translate="no" data-app-version>{__APP_VERSION__}</span></span>
-      </p>
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <img src="/icons/icon.svg" alt="" width="48" height="48" />
+        <p class="small" style="margin:0">
+          <span translate="no">{m.app_name()}</span>
+          <span class="muted">· {m.version()} <span translate="no" data-app-version>{__APP_VERSION__}</span></span>
+        </p>
+      </div>
       <p class="small">{m.about_license()}</p>
       <p class="small">
         <strong>{m.about_no_network_title()}</strong> {m.about_no_network_body()}
+      </p>
+      <p class="small">{m.about_attribution()}</p>
+      <p class="small">
+        <a class="section-aside" href={SITE_URL} target="_blank" rel="noreferrer">{m.about_site_link()}</a>
+        ·
+        <a class="section-aside" href={guideUrl} target="_blank" rel="noreferrer">{m.about_guide_link()}</a>
       </p>
     </div>
   </Sheet>
