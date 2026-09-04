@@ -120,7 +120,14 @@
     width: calc(var(--bar-share) * 1%);
     background: var(--dist-fill, var(--role-draw));
     /* Carries from one dataset's shares to the next, the way a bar carries
-       its width: a range change is a re-tween, not a redraw. */
+       its width: a range change is a re-tween, not a redraw.
+
+       Width, which is a layout property, and Impeccable's detector says so.
+       Kept deliberately, same as .kit-bar-mark's width and .kit-dist-mark's
+       height: five segments have to add up to the track, and a transform
+       scales one over its neighbour instead of pushing it along. The cost
+       is a layout pass on five 26px boxes when the range changes, which is
+       not the shape that thrashes. */
     transition-property: width;
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
@@ -147,12 +154,14 @@
     transition-timing-function: var(--ease-out);
   }
 
-  /* Which way the scale runs. */
+  /* Which way the scale runs. Further off the bar than the percentages
+     are: those belong to the segments above them and this names the scale,
+     which at one shared gap read as a third row of loose text. */
   .kit-ordered-ends {
     display: flex;
     justify-content: space-between;
     gap: var(--space-2);
-    margin: var(--space-1) 0 0;
+    margin: var(--space-2) 0 0;
     font-size: var(--text-xs);
     color: var(--text-2);
   }
