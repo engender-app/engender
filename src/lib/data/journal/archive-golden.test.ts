@@ -73,6 +73,7 @@ const SECTIONS = [
   'tallyEvents',
   'counterevidenceSnapshots',
   'letters',
+  'voicePracticeTakes',
   'roadmapChecks',
   'roadmapGoals',
   'regimenEpisodes',

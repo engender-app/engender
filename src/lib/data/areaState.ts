@@ -88,11 +88,17 @@ export const FINISHABLE_AREAS = [
      photographs together, and finishing that practice finishes both. */
   'hairStages',
   'hairPhotos',
-  /* The only voice section there is (`payload.ts`). A voice memo belongs to
-     an entry and travels inside `entries`, so the memos are entry content
-     rather than a series of their own and there is nothing else here to
-     name. */
-  'voiceBenchmarks'
+  /* Two sections, one hub row, the same shape hairStages/hairPhotos give:
+     a benchmark and a practice take are both dated records of the same
+     practice of tracking a voice, so declaring that practice done finishes
+     both together (phase 8 features ticket 10). Unlike a letter's seal,
+     a practice take's own seal is not its whole lifecycle - it opens and
+     then just sits there, same as any other measurement - so the letters
+     exclusion below does not apply here. A voice memo belongs to an entry
+     and travels inside `entries`, so the memos are entry content rather
+     than a series of their own and there is nothing else here to name. */
+  'voiceBenchmarks',
+  'voicePracticeTakes'
 ] as const satisfies readonly ArchiveSectionName[];
 
 export type FinishableArea = (typeof FINISHABLE_AREAS)[number];
