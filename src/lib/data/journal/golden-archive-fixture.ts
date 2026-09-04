@@ -360,7 +360,11 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
        that lost its chain would rejoin a series it does not belong to, and
        a fixture with no chain in it could not notice. Written as
        audio/captureChain.ts encodes it. */
-    captureChain: 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off'
+    captureChain: 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off',
+    // And the corner-vowel factor (ticket 30), carrying a real number for
+    // the same reason the chain does: a fixture that only ever saw null
+    // could not tell a lost column from an unmeasured one.
+    resonanceScale: 0.97
   });
 
   // The import log's only writer is a real commit (ticket 03): run one

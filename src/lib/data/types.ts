@@ -72,6 +72,10 @@ export interface VoiceBenchmark {
   /** What recorded it (audio/captureChain.ts, ADR-0061), null on a
       benchmark taken before schema v65. */
   captureChain: string | null;
+  /** The corner-vowel scaling factor (audio/vowelScale.ts, phase 8 features
+      ticket 30), null on a benchmark taken before schema v66 and on one that
+      held fewer than two of the three vowels. */
+  resonanceScale: number | null;
 }
 
 /** A practice take: how a session went with nothing to compare it against

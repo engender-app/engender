@@ -1384,9 +1384,9 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
     ok('a day past the cap shows five rows and one way to the rest');
   else fail('a day past the cap shows five rows and one way to the rest', JSON.stringify(maximal));
 
-  /* The count on that row is what is hidden, not what exists: 23 rows, 5
-     shown, so 18 more. */
-  if (maximal.moreLabel && maximal.moreLabel.includes('18'))
+  /* The count on that row is what is hidden, not what exists: 24 rows, 5
+     shown, so 19 more. */
+  if (maximal.moreLabel && maximal.moreLabel.includes('19'))
     ok('the overflow row counts what is hidden rather than what the day holds');
   else fail('the overflow row counts what is hidden rather than what the day holds', String(maximal.moreLabel));
 
@@ -1400,8 +1400,8 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
       keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : []
     };
   });
-  if (opened.open && opened.rows === 23) ok('the overflow opens a sheet holding the whole list, all 23 rows');
-  else fail('the overflow opens a sheet holding the whole list, all 23 rows', JSON.stringify(opened));
+  if (opened.open && opened.rows === 24) ok('the overflow opens a sheet holding the whole list, all 24 rows');
+  else fail('the overflow opens a sheet holding the whole list, all 24 rows', JSON.stringify(opened));
 
   /* Photographs collapse and records do not, checked on the full list now
      that the card only carries the first five: three hair photos are one row,
@@ -1623,8 +1623,8 @@ await block('ticket 27 browser tier', 7, async () => {
 
   const blank = figures.filter((f) => f.stated.length === 0);
   if (blank.length === 0 && listLink?.href === route && listLink.text.length > 0)
-    ok(`the list states six figures and one way in (${listLink.text})`);
-  else fail('the list states six figures and one way in', JSON.stringify({ blank, listLink }));
+    ok(`the list states seven figures and one way in (${listLink.text})`);
+  else fail('the list states seven figures and one way in', JSON.stringify({ blank, listLink }));
 
   /* The claim only a browser can answer: every fragment metricHref builds,
      resolved against the rendered reference screen and read back through
@@ -1641,10 +1641,10 @@ await block('ticket 27 browser tier', 7, async () => {
 
   const halfExplained = sections.filter((s) => s.fields !== 7);
   if (sections.length === registered.length && halfExplained.length === 0)
-    ok('all six sections render all seven fields, none omitted');
+    ok('all seven sections render all seven fields, none omitted');
   else
     fail(
-      'all six sections render all seven fields, none omitted',
+      'all seven sections render all seven fields, none omitted',
       JSON.stringify(sections.map((s) => [s.key, s.fields]))
     );
 
@@ -1727,8 +1727,8 @@ await block('ticket 29 browser tier', 6, async () => {
      arithmetic: the pitch figure next door draws bands out of this same
      kit, so what stops one appearing here is the markup. */
   const banded = registered.filter((key) => figures[key].bandLike > 0);
-  if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the five');
-  else fail('no band, target region or heat ramp is drawn on any of the five', JSON.stringify(banded));
+  if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the six');
+  else fail('no band, target region or heat ramp is drawn on any of the six', JSON.stringify(banded));
 
   /* Native units, on the plot itself rather than under a finger: every
      plot has to carry the ends of its own scale, written in the figure's
@@ -1740,7 +1740,10 @@ await block('ticket 29 browser tier', 6, async () => {
     spread: /semitone/,
     rate: /words/,
     resonance: /Hz/,
-    room: /dB/
+    room: /dB/,
+    // The factor's own unit is the × it is written with, which is what
+    // tells it apart from a bare 0-to-1 axis with no unit on it at all.
+    scale: /×/
   };
   const wrongUnit = registered.filter((key) => {
     const f = figures[key];

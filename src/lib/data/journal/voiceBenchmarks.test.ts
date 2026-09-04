@@ -305,3 +305,35 @@ test('a benchmark stores the chain it was recorded through, and null when there 
   assert.equal(withChain.captureChain, chain);
   assert.equal(without.captureChain, null);
 });
+
+/* Ticket 30: the row keeps the corner-vowel factor where it was fitted, and
+   null where fewer than two vowels cleared the gate. */
+test('a benchmark stores its corner-vowel scale, and null when there was none to fit', async () => {
+  const { journal } = await journalWithFiles();
+
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20303,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null,
+    resonanceScale: 0.94
+  });
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20304,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+
+  const [withScale, without] = await journal.voiceBenchmarks.getBenchmarks();
+  assert.equal(withScale.resonanceScale, 0.94);
+  assert.equal(without.resonanceScale, null);
+});

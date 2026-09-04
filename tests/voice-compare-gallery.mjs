@@ -70,9 +70,10 @@ async function shoot(page, name) {
   shots.push(name);
 }
 
-/** One full benchmark, through the real flow: passage, then the held
-    vowel, then save. Lands back on /settings/voice, the flow's own
-    destination. */
+/** One full benchmark, through the real flow: passage, then the first held
+    vowel, the other two skipped (ticket 30 - this gallery is of the
+    compare surface, not of the recording flow's own three-note shape),
+    then save. Lands back on /settings/voice, the flow's own destination. */
 async function recordOneBenchmark(page) {
   await page.goto(`${base}/settings/voice?tab=record`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-vb-record]');
@@ -81,6 +82,10 @@ async function recordOneBenchmark(page) {
   await page.locator('[data-vb-stop]').click();
   await page.waitForSelector('[data-vb-skip]', { timeout: 15000 });
   await page.locator('[data-vb-record]').click();
+  await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await page.locator('[data-vb-skip]').click();
+  await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await page.locator('[data-vb-skip]').click();
   await page.waitForSelector('[data-vb-save]', { timeout: 20000 });
   await page.waitForTimeout(300);
   await page.locator('[data-vb-save]').click();
