@@ -676,6 +676,12 @@ export interface ArchiveMedicationStock {
   recordedEpochDay: number;
   reminderEverCreated: boolean;
   reminderDismissed: boolean;
+  /** Ticket 13's "what is open, and until when". Absent on an archive
+      written before this ticket, which is what the flat table's own
+      `whenAbsent: null` (archiveSections.ts) is for. */
+  openedEpochDay: number | null;
+  inUseWindowDays: number | null;
+  inUseEndEpochDay: number | null;
 }
 
 /** A wear session as it travels (phase 5 ticket 04). No reminder-handoff

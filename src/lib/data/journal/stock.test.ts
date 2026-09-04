@@ -65,9 +65,93 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
       unit: 'vials',
       recordedEpochDay: 19000,
       reminderEverCreated: false,
-      reminderDismissed: false
+      reminderDismissed: false,
+      openedEpochDay: null,
+      inUseWindowDays: null,
+      inUseEndEpochDay: null
     }
   ]);
+});
+
+test('an opened date and an in-use window round-trip, stored as typed', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    openedEpochDay: 19002,
+    inUseWindowDays: 28
+  });
+
+  const [entry] = await journal.stock.getEntries();
+  assert.equal(entry.openedEpochDay, 19002);
+  assert.equal(entry.inUseWindowDays, 28);
+  assert.equal(entry.inUseEndEpochDay, null);
+});
+
+test('an opened date and an explicit end date round-trip, stored as typed', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    openedEpochDay: 19002,
+    inUseEndEpochDay: 19030
+  });
+
+  const [entry] = await journal.stock.getEntries();
+  assert.equal(entry.openedEpochDay, 19002);
+  assert.equal(entry.inUseWindowDays, null);
+  assert.equal(entry.inUseEndEpochDay, 19030);
+});
+
+test('a fresh count carries the opened date and window forward when the editor resubmits them', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    openedEpochDay: 19002,
+    inUseWindowDays: 28
+  });
+
+  const second = await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 30,
+    unit: 'vials',
+    recordedEpochDay: 19010,
+    openedEpochDay: 19002,
+    inUseWindowDays: 28
+  });
+
+  assert.equal(second, first);
+  const [entry] = await journal.stock.getEntries();
+  assert.equal(entry.quantity, 30);
+  assert.equal(entry.openedEpochDay, 19002);
+  assert.equal(entry.inUseWindowDays, 28);
+});
+
+test('an opened date and in-use window do not change the run-out projection', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol');
+  await journal.stock.upsertEntry({
+    drug: 'estradiol',
+    quantity: 10,
+    unit: 'pills',
+    recordedEpochDay: 19000,
+    openedEpochDay: 19000,
+    inUseWindowDays: 5
+  });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.doses.upsertDose({ timestamp: at(19002), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  const [row] = await journal.stock.getProjections(19002);
+
+  assert.equal(row.projection.remaining, 8);
+  assert.equal(row.projection.runOutEpochDay, 19014);
 });
 
 test('a second entry for the same drug replaces the first rather than adding a row', async () => {

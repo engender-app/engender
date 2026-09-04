@@ -7,6 +7,7 @@
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '../dates';
 import { RUN_OUT_LEAD_DAYS, type StockProjection } from '../stockProjection';
+import { inUseWindowEndEpochDay, isPastInUseWindow, type InUseWindow } from '../inUseWindow';
 
 /** "N unit left" - the one sentence for a remaining count, in mg, vials,
     pills or whatever the entry's own unit says. Also stands alone: the
@@ -37,4 +38,36 @@ export function stockRunOutLabel(projection: StockProjection, asOfEpochDay: numb
   const date = fmtDay(runOutEpochDay, { day: 'numeric', month: 'short', year: 'numeric' });
   const text = runOutEpochDay - asOfEpochDay <= RUN_OUT_LEAD_DAYS ? m.stock_run_out_soon({ date }) : m.stock_run_out({ date });
   return { text, warn };
+}
+
+const fmtWindowDay = (epochDay: number): string => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** "Opened {date}" - null when no opened date was typed, the same way a
+    falsy line is one ListRow's subtitle does not have. */
+export function stockOpenedLabel(openedEpochDay: number | null): string | null {
+  return openedEpochDay === null ? null : m.stock_opened_line({ date: fmtWindowDay(openedEpochDay) });
+}
+
+/** The in-use window's own line, plain either side of it (ticket 13: no
+    adjective for a container past its window, unlike stockRunOutLabel's
+    `warn`). Null when nothing was typed to project from. */
+export function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | null {
+  const end = inUseWindowEndEpochDay(window);
+  if (end === null) return null;
+  const date = fmtWindowDay(end);
+  return isPastInUseWindow(window, asOfEpochDay) ? m.stock_window_past({ date }) : m.stock_window_until({ date });
+}
+
+/** Opened and its window folded into one row line rather than two - the
+    same "·" join `dlb_tag_counts`/`exposure_dose_total_sub` already use to
+    chain two facts, and one fewer line for a row that already carries the
+    stock projection's own three. Null when no opened date was typed. */
+export function stockOpenedWindowLine(
+  entry: { openedEpochDay: number | null; inUseWindowDays: number | null; inUseEndEpochDay: number | null },
+  asOfEpochDay: number
+): string | null {
+  if (entry.openedEpochDay === null) return null;
+  const opened = stockOpenedLabel(entry.openedEpochDay)!;
+  const window = stockWindowLabel({ ...entry, openedEpochDay: entry.openedEpochDay }, asOfEpochDay);
+  return window === null ? opened : `${opened} · ${window}`;
 }
