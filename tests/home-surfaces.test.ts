@@ -28,6 +28,7 @@ import { describe, expect, it } from 'vitest';
 import { HOME_AREA_ROLE } from '../src/lib/theme/roles';
 import { LIVE_TILE_ORDER } from '../src/lib/data/liveTiles';
 import { UNPROMPTED_KINDS } from '../src/lib/unprompted/registry';
+import { HUB_ROWS } from '../src/lib/data/hubRows';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -114,7 +115,7 @@ describe('what spec 08 took off Home', () => {
   it('offers no doubt card, and the More hub has the row instead', () => {
     expect(home).not.toContain("from '$lib/components/DoubtCard.svelte'");
     expect(markup).not.toContain('<DoubtCard');
-    expect(read('src/routes/more/+page.svelte')).toContain("href: '/doubt'");
+    expect(HUB_ROWS.map((row) => row.href)).toContain('/doubt');
   });
 
   it('draws no hrt onset nudge or effects tile on Home (ticket 49: lives in quick add)', () => {

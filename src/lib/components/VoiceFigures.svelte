@@ -19,8 +19,8 @@
      them.
 
      Its own component rather than markup in the flow for the ordinary
-     reason - the flow owns a microphone, a two-step take and a quality
-     gate, and none of that is needed to state six numbers - and for one
+     reason - the flow owns a microphone, a multi-step take and a quality
+     gate, and none of that is needed to state these numbers - and for one
      specific one: the figure names come off the same registry keys the
      reference screen builds its sections from (data/voice/metrics.ts), so
      a name cannot be renamed on one surface and not the other.
@@ -42,6 +42,7 @@
     figures,
     formants,
     snrDb,
+    resonanceScale,
     role
   }: {
     figures: PassageFigures;
@@ -50,6 +51,10 @@
     formants: Formants | null;
     /** Null where there was no vowel take to measure the room from. */
     snrDb: number | null;
+    /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30).
+        Null under two usable held vowels, the same as a benchmark that
+        skipped them or held only "ah". */
+    resonanceScale: number | null;
     /** The area's own stripe. It is what the sentences are underlined in,
         so a link reads as pressable without turning blue. */
     role?: Role;
@@ -62,7 +67,7 @@
 </script>
 
 <!-- One row: the figure's name and the figure. `value` is a snippet
-     because the six are six different shapes - a frequency with a note
+     because the seven are seven different shapes - a frequency with a note
      beside it, a range, a count of semitones - and only their
      surroundings are shared. -->
 {#snippet row(key: VoiceMetricKey, value: Snippet)}
@@ -111,6 +116,15 @@
     {/if}
   {/snippet}
   {@render row('room', roomValue)}
+
+  {#snippet scaleValue()}
+    {#if resonanceScale === null}
+      <span class="vf-aside">{m.vb_not_measured()}</span>
+    {:else}
+      {m.vb_scale_value({ value: figure(resonanceScale, 2) })}
+    {/if}
+  {/snippet}
+  {@render row('scale', scaleValue)}
 </dl>
 
 <!-- The one way in. Outside the list rather than as a last row of it: it

@@ -33,14 +33,15 @@ test('every metric carries a unique key', () => {
   expect(new Set(keys).size).toBe(keys.length);
 });
 
-test('the six figures a benchmark reports are the six explained', () => {
+test('the seven figures a benchmark reports are the seven explained', () => {
   expect(VOICE_METRICS.map((metric) => metric.key)).toEqual([
     'pitch',
     'span',
     'spread',
     'rate',
     'resonance',
-    'room'
+    'room',
+    'scale'
   ]);
 });
 
@@ -130,10 +131,11 @@ test('a prose map missing one metric does not typecheck', () => {
     span: '',
     rate: '',
     resonance: '',
-    room: ''
+    room: '',
+    scale: ''
   };
 
-  expect(Object.keys(shortened)).toHaveLength(5);
+  expect(Object.keys(shortened)).toHaveLength(6);
 });
 
 test('the review date is a plain ISO day', () => {

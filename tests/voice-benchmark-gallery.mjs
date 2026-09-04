@@ -122,7 +122,13 @@ for (const theme of THEMES) {
     await page.waitForTimeout(1800);
     await shoot(page, `vb-5-vowel-recording-trans-${theme}`);
 
-    // 6. The summary, after the vowel lands.
+    // 6. The summary, after the first vowel lands. The other two held
+    //    vowels (ticket 30) are skipped here: this gallery is of the
+    //    passage/vowel/summary shape, not of all three notes in a row.
+    await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+    await page.locator('[data-vb-skip]').click();
+    await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+    await page.locator('[data-vb-skip]').click();
     await page.waitForSelector('[data-vb-save]', { timeout: 20000 });
     await page.waitForTimeout(300);
     await shoot(page, `vb-6-summary-trans-${theme}`);

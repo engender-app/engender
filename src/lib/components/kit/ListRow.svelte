@@ -3,9 +3,12 @@
      a chevron.
 
      The subtitle is optional because subtitles are earned, not standard
-     (DIRECTION.md 3b): the More hub's 22 rows carry titles alone, and the
-     one that keeps a subtitle is the link into Settings, where "Settings"
-     alone does not say what is behind it.
+     (DIRECTION.md 3b). Plenty of rows have nothing to put there. The More
+     hub used to be the example of that and is now the example of earning
+     it: every one of its rows carries a second line, either a reading of
+     when its area was last written to or a short line about what is behind
+     it (phase 8 UX ticket 02, and the spec's user story 13 - "each row to
+     tell me what is behind it, so that navigating is also reading").
 
      Renders as a link where it navigates and as a button where it acts, so
      a destination is a destination to the keyboard and to the screen reader

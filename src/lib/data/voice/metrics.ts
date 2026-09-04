@@ -78,7 +78,12 @@ const ENTRIES = [
   { key: 'spread', tier: 'ownSeries', bandLanguages: [] },
   { key: 'rate', tier: 'ownSeries', bandLanguages: [] },
   { key: 'resonance', tier: 'ownSeries', bandLanguages: [] },
-  { key: 'room', tier: 'ownSeries', bandLanguages: [] }
+  { key: 'room', tier: 'ownSeries', bandLanguages: [] },
+  /* The corner-vowel scaling factor (phase 8 features ticket 30). Fitted
+     across the two extra held vowels alongside the one `resonance` already
+     reads, so it carries no band for the same reason: it is built from the
+     same two formants the only Polish sex-split data finds no difference in. */
+  { key: 'scale', tier: 'ownSeries', bandLanguages: [] }
 ] as const satisfies readonly VoiceMetricShape[];
 
 export type VoiceMetricKey = (typeof ENTRIES)[number]['key'];
