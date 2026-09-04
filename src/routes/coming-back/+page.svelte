@@ -503,13 +503,7 @@
   {#if wearDraft}
     <h3>{WEAR_OFFER.copy.title()}</h3>
     <p class="muted small coming-back-sheet-body">{m.coming_back_wear_sheet_body()}</p>
-    <!-- The hint names why the button below is refused. Both sheets here
-         open with a disabled primary, which no other sheet in the app does -
-         everywhere else the save is disabled only after somebody has cleared
-         a field - so the reason has to be on screen rather than inferred
-         from a greyed button. Field's own inline hint form (ticket 10), not
-         a paragraph. -->
-    <Field label={m.coming_back_wear_end_label()} hint={m.coming_back_wear_end_hint()} id="coming-back-wear-end">
+    <Field label={m.coming_back_wear_end_label()} id="coming-back-wear-end">
       {#snippet children(id)}
         <DatePicker
           name="coming-back-wear-end"
@@ -520,6 +514,19 @@
         />
       {/snippet}
     </Field>
+    <!-- Why the button below is refused. Both sheets here open with a
+         disabled primary, which no other sheet in the app does - everywhere
+         else the save is disabled only after somebody has cleared a field -
+         so the reason has to be on screen rather than inferred from a greyed
+         button.
+
+         A paragraph rather than Field's own `hint` prop, which is the pattern
+         `regimen_end_hint` and ticket 13's stock-opened field both use:
+         Field's non-legend branch compiles `{label}{#if hint} <span>` with
+         the space dropped, so the label rendered as "The day it came
+         offneeded before this can be closed". Not fixed in Field itself -
+         131 call sites, and the mechanism is unconfirmed. -->
+    <p class="muted small coming-back-field-hint">{m.coming_back_wear_end_hint()}</p>
     <div class="stack-3 coming-back-sheet-actions">
       <button class="btn btn-primary" data-coming-back-wear-confirm disabled={!wearCanSave} onclick={confirmWear}>
         <span>{WEAR_OFFER.copy.confirm()}</span>
@@ -546,6 +553,13 @@
 
   .coming-back-sheet-actions {
     margin-top: var(--space-4);
+  }
+
+  /* Pulled up under the field it belongs to, the same offset the two other
+     screens using this pattern set inline. Here rather than inline because
+     a screen with a style block has somewhere to put it. */
+  .coming-back-field-hint {
+    margin: calc(-1 * var(--space-2)) 0 var(--space-3);
   }
 
   .coming-back-amount {
