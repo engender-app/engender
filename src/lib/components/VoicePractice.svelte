@@ -35,6 +35,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ANALYSIS_SAMPLE_RATE, startTake, type TakeSession } from '$lib/stores/voiceBenchmark';
   import type { MicRefusal } from '$lib/stores/voiceRecording';
+  import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
@@ -54,6 +55,13 @@
       here is working towards a longer hold, so the bar says "this counts as
       speaking" and stops. */
   const TARGET_SECONDS = 1.5;
+  /** The ordinary use of this tab runs five to ten minutes, and nothing
+      bounded a single take before this (phase 8 audit issue 04) - the poll
+      re-reads everything captured so far, so an open-ended one eventually
+      costs more than its own period. Two minutes stays comfortably inside
+      that period even before ticket 05 makes the poll itself cheap, and
+      cuts off only the excess of an ordinary session, not the practising. */
+  const PRACTISE_CEILING_SECONDS = 120;
 
   let running = $state(false);
   let refusal = $state<MicRefusal | null>(null);
@@ -133,6 +141,10 @@
       if (!session) return;
       reading = session.read();
       frames = session.recentFrames(TRACE_FRAMES);
+      if (session.secondsCaptured() >= PRACTISE_CEILING_SECONDS) {
+        toast(m.vb_ceiling_stopped());
+        void stop();
+      }
     }, READING_MS);
   }
 
@@ -233,6 +245,7 @@
         />
       {:else}
         <p class="muted small">{m.vb_practise_idle()}</p>
+        <p class="muted small">{m.vb_practise_ceiling_hint()}</p>
       {/if}
     </div>
 

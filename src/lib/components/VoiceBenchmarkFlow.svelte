@@ -69,6 +69,12 @@
       microphone left open, and the vowel step ends itself once it has what
       it needs anyway. */
   const VOWEL_CEILING_SECONDS = 10;
+  /** A passage is read once through; a person's own passage is a free
+      textarea with no length cap, so nothing bounds how long that read runs
+      without this (phase 8 audit issue 04). Two minutes stays comfortably
+      inside the poll's own period even before ticket 05 makes that poll
+      itself cheap. */
+  const PASSAGE_CEILING_SECONDS = 120;
   const READING_MS = 100;
   /** Two seconds of trace on screen, at the tracker's 10 ms frame. */
   const TRACE_FRAMES = 200;
@@ -247,6 +253,9 @@
       if (step === 'vowel') {
         const held = reading.longestVoicedSeconds >= VOWEL_SECONDS;
         if (held || session.secondsCaptured() >= VOWEL_CEILING_SECONDS) void stop();
+      } else if (step === 'passage' && session.secondsCaptured() >= PASSAGE_CEILING_SECONDS) {
+        toast(m.vb_ceiling_stopped());
+        void stop();
       }
     }, READING_MS);
   }
@@ -479,6 +488,7 @@
              way of a take in progress. It goes when the flow starts. -->
         {#if phase === 'idle'}
           <p class="muted small vb-hint">{m.vb_lead()}</p>
+          <p class="muted small vb-hint">{m.vb_passage_ceiling_hint()}</p>
           {@render distance()}
         {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
