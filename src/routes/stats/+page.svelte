@@ -1,29 +1,52 @@
 <script lang="ts">
-  /* The Stats hub, rebuilt on the chart kit (phase 5 UX ticket 23).
+  /* The Stats hub: an index of the person's own data (phase 8 UX ticket 03,
+     ADR-0056), on the chart kit phase 5's ticket 23 built.
 
-     What it used to be: one white card per metric, each holding the same
-     sparkline, then five more cards and four "here is a screen" links. On a
-     journal with three active dimensions that is four identical charts
-     stacked before anything else is said, which is the specific failure
-     DIRECTION.md's decision 2b exists to prevent.
+     What it was before this: nine of the journal's sixty-four tables and
+     three link-outs. Twelve areas own a chart on their own screen and this
+     one had no idea those charts existed, so somebody using most of the app
+     got a slice of their data and no word about the rest. At the same time
+     five of its own panels rendered for somebody who had never used the
+     feature they described - a zero-length bar per ticked scale, five mood
+     columns labelled zero, an empty values sheet, and two folds explaining
+     the dosing interval to a person who had never logged a dose.
 
-     The shape now is four chart kinds and a list. One area chart with a
-     picker for which scale it plots, so the number of charts stops growing
-     with the number of dimensions; horizontal bars for where each scale sat
-     over the period; an ordered proportional strip for how the days fall
-     across the mood scale (ADR-0058, which is why that one is not a ring);
-     a second bar set for the tags, whose bars open the entries behind them.
-     Then the patterns, and a list card into the six deeper screens.
+     Two blocks now, and one emptiness rule across both.
 
-     Two disclaimers survive as paragraphs under their cards, which looks
-     like the explanatory-paragraph habit DIRECTION.md's chart rules refuse
-     and is its opposite: `insights_note` says which tags were left out and
-     `custom_interval_sub` says that folding a history by an interval does
-     not mean a cycle exists. A finding is the app telling you what a
-     reading means; these are the app declining to.
+     The top block is the reads nothing else can do, because they cross
+     areas: day by day with a second scale on the plot, where each scale sat,
+     how the days fall across the mood scale, what gets written about, which
+     tags move a scale, what shows up together, the highest days on the
+     person's own euphoria reading, the constellation, and the two folds. It
+     renders whatever the journal holds and says "not enough data" where it
+     holds too little, because it is the tab's own content and somebody
+     arriving on day two should see what the tab becomes.
+
+     The block below it is one row per area the person actually uses, in the
+     More hub's four groups in the More hub's order. A row appears where the
+     area has ever been written and never otherwise, decided in
+     `$lib/data/statsAreas.ts` over one `getLastWrites` call. Rows and no
+     charts (Alicja, on the rendered screen): every one of these areas owns
+     its chart on its own screen, the wear trend included, and a second
+     drawing here is a second thing to keep in agreement for a reading you
+     get by tapping through.
+
+     One floor, an existing constant and not restated: a summary panel needs
+     `WRAPPED_ENTRY_FLOOR` entries in range, and the two folds want the same
+     five as positions of their own all-history output. ADR-0056's other
+     floor, `MIN_PLOT_POSITIONS`, went off this screen with the area charts
+     and still governs the trends on the screens that own them.
+
+     One disclaimer still hangs under its card rather than inside it, and it
+     is the explanatory-paragraph habit's opposite: `insights_note` says
+     which tags were left out. A finding is the app telling you what a
+     reading means; that is the app declining to. The two folds' own lines
+     moved inside their cards, where they are gated on the read that draws
+     the chart.
 
      `/recap` is gone (spec 07). Its two links here reach the wrapped for
      the same periods, and its arbitrary range is a wrapped of its own. */
+  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtDuration, fmtMonthName } from '$lib/data/dates';
   import {
@@ -65,6 +88,12 @@
   import { plotPoints, type ConstellationPoint } from '$lib/data/constellationData';
   import type { CorrelationCard } from '$lib/data/correlationCards';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import Donut from '$lib/components/kit/Donut.svelte';
+  import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
+  import { rankHighestDays } from '$lib/data/highestDays';
+  import { cardsInGroup, statsAreaCards, STATS_AREA_GROUPS, type StatsAreaCard } from '$lib/data/statsAreas';
+  import { statsAreaName } from '$lib/data/vocabulary/statsAreaLabels';
+  import type { Part } from '$lib/charts/parts';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
   /** How many entries the sheet behind a tag insight lists. */
@@ -92,6 +121,21 @@
      ramp (ADR-0025), the one colour system here that is not the flag's, and
      a stripe on that card would put two scales on one surface. */
   const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
+
+  /* The index's four groups take the four stripes the More hub gives the
+     same four groups, in the same order - `roleAt(roles, i)` over the group's
+     own index, which is the hub's own line. Somebody who has learned that
+     Body is the first stripe on one screen finds it the first stripe on the
+     other, and the two surfaces recolour together on a palette switch. */
+  const groupRole = (group: (typeof STATS_AREA_GROUPS)[number]) =>
+    roleAt(activeFlag.roles, STATS_AREA_GROUPS.indexOf(group));
+
+  const GROUP_NAME: Record<(typeof STATS_AREA_GROUPS)[number], () => string> = {
+    body: m.hub_group_body,
+    health: m.hub_group_health,
+    transition: m.hub_group_transition,
+    practice: m.hub_group_practice
+  };
 
   let range = $state(30);
 
@@ -343,6 +387,105 @@
   );
   let customIntervalPattern = $derived(customIntervalQuery.rows);
 
+  /* ---------------------------------------------------------------------
+     The recap, for two things at once (ADR-0056).
+
+     `entryCount` is the floor every summary panel on this screen is held to
+     - WRAPPED_ENTRY_FLOOR, the same bar a retrospective clears before the
+     app offers one - and `topTags` is the donut's whole data source. One
+     read answers both, which is why the screen pays for a recap rather than
+     counting entries itself: nothing here folds a figure the module that
+     owns it does not already produce (ADR-0010). */
+  let recapQuery = liveQuery((j) => j.stats.recap(from, today));
+  let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
+  /* Under the floor and while the read is in flight both read as "not
+     enough", and the difference is carried by the skeleton the ReadGate
+     draws rather than by a second empty state. */
+  let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);
+
+  /* Share by tag, the donut's first consumer anywhere in the tree - the case
+     ADR-0058 named when it minted the form and left unbuilt. Tags have no
+     order, so a ring is the right drawing and the ordered strip beside it
+     would be inventing a sequence. The ring's own module caps, sorts and
+     gathers the remainder; nothing about that is decided here.
+
+     `tagShare` and not the recap's `topTags`, which is what this drew first
+     and was wrong: that read ends `LIMIT 3`, and a parts-of-a-whole form
+     computes each share against the sum of what it is handed, so three tags
+     came out drawn as a full circle with every share inflated and the
+     remainder slice unreachable. Capping is the ring's job and it can only
+     do it over the whole. */
+  let tagShareQuery = liveList((j) => j.stats.tagShare(from, today));
+  let tagParts = $derived<Part[]>(
+    tagShareQuery.rows.map((tag) => ({
+      key: tag.id,
+      name: vocabulary.tag(tag.id)?.label ?? tag.id,
+      amount: tag.count
+    }))
+  );
+  /* The whole the ring is a ring of: tag uses, not entries. An entry carrying
+     two tags is one entry and two uses, so the centre has to count what the
+     arcs add up to or the hole disagrees with the ring around it. */
+  let tagUses = $derived(tagParts.reduce((sum, part) => sum + part.amount, 0));
+
+  /* The highest days on the person's own euphoria reading (phase 8 features
+     ticket 20), which shipped its ranking and left the panel here.
+
+     `rankHighestDays` rather than `highestDays`: the async half asks the day
+     assembler for each ranked day, which is ten days times nineteen areas of
+     bounded reads, and every one of those answers is already a tap away
+     behind the row. So the panel ranks what `seriesQuery` fetched for the
+     range - no read of its own at all - and the row opens the day.
+
+     Gated on the dimension being one the person keeps. Nothing falls back to
+     mood: naming which scale a "high day" is measured on is the module's own
+     decision and there is no second scale it means. */
+  const HIGHEST_METRIC = 'euphoria_dysphoria';
+  let euphoriaScale = $derived(metrics.find((mt) => mt.key === HIGHEST_METRIC));
+  let highestRows = $derived<BarRow[]>(
+    euphoriaScale
+      ? rankHighestDays(today, seriesFor(HIGHEST_METRIC)).map((point) => ({
+          key: String(point.day),
+          name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
+          note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
+          value: fmtNativeValue(HIGHEST_METRIC, point.value),
+          amount:
+            (point.value - euphoriaScale.min) / Math.max(euphoriaScale.max - euphoriaScale.min, 1)
+        }))
+      : []
+  );
+
+  /* ---------------------------------------------------------------------
+     The area index (ADR-0056).
+
+     One query answers for every area at once - `lastWrite.ts` assembles its
+     nineteen bounded reads concurrently, which is the whole reason that seam
+     exists - and the area record says which of them the person has hidden or
+     finished. A row with nothing written never reaches the DOM, so an area
+     somebody does not use costs this screen nothing beyond its slot in a
+     `Record` that was already fetched. */
+  let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
+  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
+  let areaCards = $derived(
+    lastWritesQuery.value && areaStatesQuery.value
+      ? statsAreaCards(lastWritesQuery.value, areaStatesQuery.value)
+      : []
+  );
+  /* What a row says under its title: the day it ended where the person has
+     said it ended, and the last thing written there otherwise. Never a gap,
+     never a nudge - the hub is where an area that has gone quiet gets asked
+     about. */
+  const areaLine = (card: StatsAreaCard) =>
+    card.finishedEpochDay !== null
+      ? m.area_finish_done_title({
+          date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+        })
+      : m.stats_area_last({
+          date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+        });
+
+  const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
+
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
   const occurrenceLabel = (card: CorrelationCard) =>
@@ -382,10 +525,37 @@
 
   /* A position on a cycle is not a day, so the two pattern charts label
      their ends with the position rather than with a date, and they are
-     already one point per position - there is nothing to bucket. */
+     already one point per position - there is nothing to bucket.
+
+     The axis is the position too, and it was missing (Alicja, on the shots):
+     both folds drew a value gutter and no ends at all, so the one thing the
+     picture is keyed on went unnamed. `interval_day_n` is what the two aria
+     labels have always said out loud - "day {from} to day {to}" - now
+     written on the chart as well, and the scrub reads the same words as the
+     ends it sits between. Not `range_days`, which is the segmented control's
+     compact form and rendered "1d" where this wants "Day 1". */
   const positionPoints = (pattern: { position: number; value: number }[]) =>
     pattern.map((p) => ({ x: p.position, y: p.value }));
-  const positionLabel = (point: { x: number }) => m.range_days({ days: String(point.x) });
+  const positionLabel = (point: { x: number }) => m.interval_day_n({ n: String(point.x) });
+  const positionEnds = (pattern: { position: number }[]) => ({
+    from: m.interval_day_n({ n: String(pattern[0].position) }),
+    to: m.interval_day_n({ n: String(pattern[pattern.length - 1].position) })
+  });
+
+  /* What a fold has to hold before it is drawn.
+
+     Not the range floor the summary panels use, which is what these two were
+     wrongly behind: the card says it reads the whole journal and the gate was
+     counting entries in the last thirty days, so a long dose history with a
+     quiet month hid both cards. And not the bare trend floor either - two
+     positions is one straight segment, which is what this drew for somebody
+     with a couple of entries and is the empty-chart complaint this whole
+     ticket opens with.
+
+     `WRAPPED_ENTRY_FLOOR` positions of the fold's own all-history output:
+     five places inside the interval that carry a reading. An existing
+     constant, applied to the thing the card actually draws. */
+  const foldDrawable = (pattern: readonly unknown[]) => pattern.length >= WRAPPED_ENTRY_FLOOR;
 
   /* The day-by-day chart fits the card, so what changes with the range is
      how coarsely it reads: 30 days day by day, a year week by week
@@ -543,6 +713,13 @@
     </p>
   {/if}
 
+  <!-- The reads nothing else in the app can do, because they cross areas
+       (ADR-0056). This block renders whatever the journal holds and says so
+       when it holds too little: it is the tab's own content, and somebody
+       arriving on day two should see what the tab becomes rather than a
+       blank page. The index below it is the opposite rule. -->
+  <SectionHeading text={m.stats_group_cross()} />
+
   <!-- One chart for every scale, with the picker choosing which. The choice
        is the stored metric preference, the same one Home's week strip and
        the calendar's month grid shade by, so the app is showing one scale at
@@ -589,13 +766,13 @@
           : m.values_title({ name: shown.name })}
       />
       {#if compared && !comparedHasReadings}
-        <p class="stats-note">{m.stats_compare_empty()}</p>
+        <p class="stats-inline-note">{m.stats_compare_empty()}</p>
       {/if}
       <!-- The second scale, offered rather than presented: a comparison is a
            question somebody has to have first, so until they ask there is a
            line of text here and no second control on the card. Nothing to
            offer at all where the journal holds one scale. -->
-      {#if metrics.length > 1}
+      {#if metrics.length > 1 && plotted.points.length}
         <!-- The offer and the picker it becomes, in one row that does not
              move. The constellation's own axis row, because it is the same
              kind of control in the same place: one setting for the picture
@@ -636,19 +813,30 @@
        ends of the scale are and the marks carry the shape; this is the one
        place an exact number for a given day can be read, and it is also the
        path a screen reader takes through the series. -->
-  <button class="stats-open" data-values-open onclick={() => (valueSheet = true)}>
-    {m.stats_values_open()}
-  </button>
+  <!-- Only where there is something behind it. An "All values" link opening
+       an empty sheet was one of the five panels this screen rendered for
+       somebody who had logged nothing (ADR-0056). -->
+  {#if valueRows.length}
+    <button class="stats-open" data-values-open onclick={() => (valueSheet = true)}>
+      {m.stats_values_open()}
+    </button>
+  {/if}
 
   <ChartCard
     heading={m.stats_scales_now()}
     kind="scales"
     role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
   >
-    {#if seriesQuery.loading}
+    {#if seriesQuery.loading || recapQuery.loading}
       <Skeleton variant="line" count={3} />
+    {:else if enoughEntries}
+      <BarRows rows={scaleRows} measure="track" />
     {:else}
-      <BarRows rows={scaleRows} />
+      <!-- A zero-length bar per ticked scale was what this drew for somebody
+           who had never logged one. The floor is WRAPPED_ENTRY_FLOOR, the
+           bar a retrospective already clears, and it is a summary panel
+           (ADR-0056). -->
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
     {/if}
   </ChartCard>
 
@@ -711,10 +899,32 @@
   {/if}
 
   <ChartCard heading={m.stats_mood_days()} kind="mood-days">
-    {#if seriesQuery.loading}
+    {#if seriesQuery.loading || recapQuery.loading}
       <Skeleton variant="block" />
-    {:else}
+    {:else if enoughEntries}
       <OrderedStrip steps={moodSteps} />
+    {:else}
+      <!-- Five columns labelled zero was the other half of the same bug. -->
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+    {/if}
+  </ChartCard>
+
+  <!-- Share by tag, and the donut's first consumer anywhere (ADR-0058 minted
+       the form and named this case). No role: the ring carries the card's
+       stripe through its own tint ladder, and a second stripe on the frame
+       would be a colour the arcs are already spending. -->
+  <ChartCard heading={m.stats_tag_share()} kind="tag-share" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+    {#if recapQuery.loading || tagShareQuery.loading}
+      <Skeleton variant="block" />
+    {:else if enoughEntries && tagParts.length}
+      <Donut
+        parts={tagParts}
+        restName={m.stats_tag_share_rest()}
+        total={String(tagUses)}
+        note={m.stats_tag_share_note()}
+      />
+    {:else}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
     {/if}
   </ChartCard>
 
@@ -731,10 +941,15 @@
         <ChartEmpty>{m.insights_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
+    <!-- Inside the card, under the bars it qualifies. It used to hang below
+         the card, where a `margin-top` of 8 collapsed under the card's own 24
+         and left the sentence sitting 24px under its bars and 16px above the
+         next card - reading as a preamble to the wrong chart, after six rows
+         had already been taken at face value. -->
+    {#if insightRows.length}
+      <p class="stats-inline-note">{m.insights_note()}</p>
+    {/if}
   </ChartCard>
-  {#if insightRows.length}
-    <p class="stats-note">{m.insights_note()}</p>
-  {/if}
 
   <!-- The correlation cards, as bars. They were rows of three stacked lines
        each - a name, "tends to appear with higher Mood on the same day", and
@@ -759,6 +974,33 @@
     </ReadGate>
   </ChartCard>
 
+  <!-- The highest days on the person's own euphoria reading (phase 8
+       features ticket 20, which shipped the ranking and left the panel to
+       this screen). Bar rows and not a list, because the reading somebody
+       wants off ten high days is how far apart they were, and ten numbers in
+       a column do not say that. Each row opens its day, which is where the
+       rest of what happened already lives.
+
+       Absent entirely where the person does not keep that scale: there is no
+       fallback to mood, and inventing one would be the app deciding which
+       number a high day is measured on. -->
+  {#if euphoriaScale}
+    <ChartCard
+      heading={m.stats_highest_days()}
+      kind="highest-days"
+      role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+    >
+      {#if seriesQuery.loading || recapQuery.loading}
+        <Skeleton variant="line" count={3} />
+      {:else if enoughEntries && highestRows.length}
+        <BarRows rows={highestRows} measure="track" onPick={(key) => goto(`/day/${key}`)} />
+        <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
+      {:else}
+        <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+      {/if}
+    </ChartCard>
+  {/if}
+
   <ChartCard
     heading={m.interval_mood_title()}
     kind="interval-mood"
@@ -766,28 +1008,39 @@
   >
     <ReadGate read={intervalMoodQuery} variant="block" count={3}>
       {#snippet rows()}
-        <AreaChart
-          points={positionPoints(intervalMoodPattern)}
-          min={1}
-          max={5}
-          formatValue={(v) => v.toFixed(1)}
-          scrubLabel={positionLabel}
-          ariaLabel={m.interval_mood_chart_aria({
-            count: String(intervalMoodPattern.length),
-            from: String(intervalMoodPattern[0].position),
-            to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-          })}
-        />
+        {#if foldDrawable(intervalMoodPattern)}
+          <!-- Inside the card and above the plot, which is the point
+               (ADR-0056). It used to hang under the card and print whether or
+               not anything was drawn, so somebody who had never logged a dose
+               read about where their days fall across the dosing interval.
+               ChartCard takes no prop for a paragraph and still does not; this
+               is body content, drawn beside the chart it belongs to and gated
+               on the same read. -->
+          <p class="stats-inline-note">{m.stats_all_history()}</p>
+          {@const ends = positionEnds(intervalMoodPattern)}
+          <AreaChart
+            points={positionPoints(intervalMoodPattern)}
+            min={1}
+            max={5}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => v.toFixed(1)}
+            scrubLabel={positionLabel}
+            ariaLabel={m.interval_mood_chart_aria({
+              count: String(intervalMoodPattern.length),
+              from: String(intervalMoodPattern[0].position),
+              to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+        {/if}
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
   </ChartCard>
-  {#if intervalMoodPattern.length}
-    <p class="stats-note">{m.interval_mood_sub()}</p>
-  {/if}
-
   <!-- The interval length is this chart's one control, so it sits on the
        heading's line where the metric picker sits on the chart above rather
        than as a labelled field in a card of its own. -->
@@ -809,28 +1062,65 @@
     {/snippet}
     <ReadGate read={customIntervalQuery} variant="block" count={3}>
       {#snippet rows(customIntervalPattern)}
-        <AreaChart
-          points={positionPoints(customIntervalPattern)}
-          min={1}
-          max={5}
-          formatValue={(v) => v.toFixed(1)}
-          scrubLabel={positionLabel}
-          ariaLabel={m.custom_interval_chart_aria({
-            days: String(safeCustomIntervalLength),
-            count: String(customIntervalPattern.length),
-            from: String(customIntervalPattern[0].position),
-            to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-          })}
-        />
+        {#if foldDrawable(customIntervalPattern)}
+          <p class="stats-inline-note">{m.stats_all_history()}</p>
+          {@const ends = positionEnds(customIntervalPattern)}
+          <AreaChart
+            points={positionPoints(customIntervalPattern)}
+            min={1}
+            max={5}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => v.toFixed(1)}
+            scrubLabel={positionLabel}
+            ariaLabel={m.custom_interval_chart_aria({
+              days: String(safeCustomIntervalLength),
+              count: String(customIntervalPattern.length),
+              from: String(customIntervalPattern[0].position),
+              to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
+        {/if}
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
   </ChartCard>
-  {#if customIntervalPattern.length}
-    <p class="stats-note">{m.custom_interval_sub()}</p>
-  {/if}
+  <!-- The area index (ADR-0056). One row per area the person actually uses,
+       in the More hub's own four groups in the More hub's own order, so
+       somebody learns one organising idea rather than two.
+
+       A row appears where the area has ever been written and is not hidden,
+       decided once in `statsAreas.ts` over one `getLastWrites` call. An area
+       nobody uses is not in the DOM at all - no row, no heading, no footer
+       offering it. Discovery stays the hub's job, and somebody who has never
+       logged a dose is not told the app could have charted one.
+
+       Rows and no charts, which is Alicja's call on the rendered screen:
+       every one of these areas owns its chart on its own screen, and a
+       second drawing of it here is a second thing to keep in agreement for
+       the sake of a preview nobody asked to read twice. The wear trend lives
+       on the wear screen. What this block is for is knowing which parts of
+       your own life the app is holding, and getting to them. -->
+  {#each STATS_AREA_GROUPS as group (group)}
+    {#if groupCards(group).length}
+      <SectionHeading text={GROUP_NAME[group]()} />
+      <ListCard role={groupRole(group)}>
+        {#each groupCards(group) as card (card.panel.key)}
+          <ListRow
+            key={card.panel.key}
+            icon={card.panel.icon}
+            title={statsAreaName(card.panel.key)}
+            subtitle={areaLine(card)}
+            href={card.panel.href}
+          />
+        {/each}
+      </ListCard>
+    {/if}
+  {/each}
 
   <!-- The six deeper screens as one list rather than six cards. Four
        same-size icon-plus-heading-plus-text tiles were what the slop audit
@@ -856,13 +1146,6 @@
       href="/body-map"
     />
     <ListRow
-      key="tally"
-      icon="columns"
-      title={m.tally_trend_title()}
-      subtitle={m.tally_trend_sub()}
-      href="/tally"
-    />
-    <ListRow
       key="compare"
       icon="shuffle"
       title={m.compare_title()}
@@ -886,7 +1169,7 @@
     title={compared ? m.values_two_title({ first: shown.name, second: compared.name }) : shown.name}
     onClose={() => (valueSheet = false)}
   >
-    <BarRows rows={valueRows} />
+    <BarRows rows={valueRows} measure="track" />
     <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
       <span>{m.done()}</span>
     </button>
@@ -943,6 +1226,30 @@
      still has to leave its label room. */
   .stats-axis :global(.kit-chart-pick) {
     max-width: 74%;
+  }
+
+  /* A line of context inside a chart card, above or below the plot: which
+     analyte is drawn, that a fold reads the whole journal, which tags were
+     left out, the day a stream ended.
+
+     Inside the card because it belongs to that chart and is gated on the same
+     read. `.stats-note` used to hang these under the card instead, and the
+     spacing gave the game away: its `margin-top` of 8 collapsed under the
+     card's own 24, so a sentence sat 24px below the chart it qualified and
+     16px above the next one, reading as a preamble to the wrong card. The
+     class is gone and its three consumers are in here.
+
+     ChartCard still takes no prop for a paragraph and does not need one; this
+     is body content, which is what its `children` slot is for. */
+  .stats-inline-note {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-body);
+    color: var(--text-2);
+  }
+
+  .stats-inline-note:first-child {
+    margin: 0 0 var(--space-3);
   }
 
   /* The offer of a second scale (phase 6 ticket 12), in the row the picker
