@@ -3913,7 +3913,7 @@ try {
 
   /* Closing the running wear session: the end day is picked, never assumed,
      so the confirm is refused until the field has one. */
-  await page.locator('[data-coming-back-item="wear-session"] .kit-row-main').click();
+  await page.locator('[data-row-main="coming-back-wear"]').click();
   await page.waitForSelector('[data-coming-back-wear-confirm]');
   if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
     throw new Error('the wear session could be closed without naming the day it ended');
