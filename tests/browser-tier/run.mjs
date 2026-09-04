@@ -1681,6 +1681,95 @@ await block('ticket 27 browser tier', 7, async () => {
   else fail('the whole table carries one reviewed-on date', JSON.stringify(reviewed));
 });
 
+/* --- Ticket 29 (phase 8 features): the own-series trends, and that a
+       change of capture chain arrives as a break with a reason in it. --- */
+await block('ticket 29 browser tier', 6, async () => {
+  const r = await load('/voice-own-series.html', 'voice-own-series-probe');
+  if (r.error) throw new Error(r.error);
+  const { offered, registered, figures, single, neverMeasured } = r;
+
+  if (JSON.stringify(offered) === JSON.stringify(registered))
+    ok(`the card offers every Own-series figure and nothing else (${offered.join(', ')})`);
+  else fail('the card offers every Own-series figure and nothing else', JSON.stringify(offered));
+
+  /* Five takes, three on one phone and two on another. What only a render
+     can say: the history came out as two runs with a plot for each, every
+     plot carrying a line, and what sits between them is words rather than
+     a dotted join.
+
+     A figure written as two numbers on two scales draws a plot per line
+     rather than two lines on one, so its count is twice the runs - the
+     resonances are the case, and the reason is that a pair placed against
+     two ranges loses the value gutter and would leave the card with no
+     hertz on it at all. */
+  const perLine = { resonance: 2 };
+  const drewBoth = registered.filter((key) => {
+    const f = figures[key];
+    return f.plots === 2 * (perLine[key] ?? 1) && f.lines.every((count) => count >= 1);
+  });
+  if (drewBoth.length === registered.length)
+    ok('every figure draws the history as two runs, every plot with a line on it');
+  else
+    fail(
+      'every figure draws the history as two runs, every plot with a line on it',
+      JSON.stringify(registered.map((key) => [key, figures[key].plots, figures[key].lines]))
+    );
+
+  const named = registered.filter((key) => {
+    const [gap, ...rest] = figures[key].breaks;
+    return rest.length === 0 && gap?.reason === 'device' && gap.text.length > 40;
+  });
+  if (named.length === registered.length)
+    ok(`the break between them names the phone as the reason ("${figures[registered[0]].breaks[0].text.slice(0, 48)}...")`);
+  else fail('the break between them names the phone as the reason', JSON.stringify(registered.map((key) => [key, figures[key].breaks])));
+
+  /* ADR-0060's negative, checked on the rendered card rather than in the
+     arithmetic: the pitch figure next door draws bands out of this same
+     kit, so what stops one appearing here is the markup. */
+  const banded = registered.filter((key) => figures[key].bandLike > 0);
+  if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the five');
+  else fail('no band, target region or heat ramp is drawn on any of the five', JSON.stringify(banded));
+
+  /* Native units, on the plot itself rather than under a finger: every
+     plot has to carry the ends of its own scale, written in the figure's
+     own unit (ADR-0012). A scrub readout would not do - a card that says
+     nothing until it is touched is the axis-free strip ticket 09 already
+     rejected. */
+  const units = {
+    span: /Hz/,
+    spread: /semitone/,
+    rate: /words/,
+    resonance: /Hz/,
+    room: /dB/
+  };
+  const wrongUnit = registered.filter((key) => {
+    const f = figures[key];
+    const printed = f.gutters.join(' ');
+    /* A gutter per plot, not one on the card: what would fail here is a
+       plot placed against a range whose numbers are printed somewhere
+       else, or nowhere. */
+    return !units[key].test(printed) || /\b0\.\d\b/.test(printed) || f.gutters.length !== f.plots;
+  });
+  if (wrongUnit.length === 0)
+    ok(`every plot prints its own unit down its own side and no 0-to-1 axis (${figures.span.gutters[0]}; ${figures.resonance.gutters[0]})`);
+  else
+    fail(
+      'every plot prints its own unit down its own side and no 0-to-1 axis',
+      JSON.stringify(registered.map((key) => [key, figures[key].plots, figures[key].gutters]))
+    );
+
+  /* The two ends of the journal: one benchmark, and a figure nothing has
+     ever measured. Both have to say which of the two they are rather than
+     drawing an empty box. */
+  if (single.plots === 0 && single.empty.length > 10 && neverMeasured.plots === 0 && neverMeasured.empty.length > 10 && single.empty !== neverMeasured.empty)
+    ok('one benchmark and a figure never measured read as two different empty cards');
+  else
+    fail(
+      'one benchmark and a figure never measured read as two different empty cards',
+      JSON.stringify({ single: [single.plots, single.empty], neverMeasured: [neverMeasured.plots, neverMeasured.empty] })
+    );
+});
+
 await browser.close();
 await server.close();
 
