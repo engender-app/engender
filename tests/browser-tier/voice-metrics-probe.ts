@@ -58,7 +58,7 @@ const FIGURES = {
 
 try {
   /* The figure list wears the stripe of whichever area it sits in, so it
-     is handed one here too: the underlines under its six sentences are
+     is handed one here too: the underlines under its seven sentences are
      drawn in it, and a shot of this panel with no role would be reviewed
      in a colour the app never shows (theme/roles.ts reads the palette off
      the document, which this page sets). */
@@ -68,6 +68,7 @@ try {
       figures: FIGURES,
       formants: { f1Hz: 620, f2Hz: 1180 },
       snrDb: 24,
+      resonanceScale: 0.96,
       role: roleAt(readFlagRoles(), 0)
     }
   });
