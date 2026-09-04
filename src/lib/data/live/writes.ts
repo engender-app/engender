@@ -291,6 +291,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       entriesWithTag: HYDRATED_ENTRY,
       counterevidencePool: HYDRATED_ENTRY,
       latestBadMomentEntry: HYDRATED_ENTRY,
+      // The id alone, so no hydration: the qualifying clause still joins the
+      // tag tables, and nothing else is read back. Its other arm reads an
+      // entry's own body-region intensities, which are announced under
+      // 'entry' rather than 'bodyRegion' (the note beside that name above),
+      // so the list is these two and not three.
+      latestBadMomentEntryId: ['entry', 'tag'],
       searchEntries: HYDRATED_ENTRY,
       // A count, so no hydration: the search clause itself joins the tag
       // tables, and nothing else is read back.
@@ -457,6 +463,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getMeasurements: ['measurement'],
       getSeries: ['measurement'],
       getMeasurementsInRange: ['measurement'],
+      countAll: ['measurement'],
       getMeasurementTypes: ['measurementType'],
       lastWriteEpochDay: ['measurement']
     }
@@ -576,6 +583,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getSessions: ['hairRemoval'],
       getSessionsOnDay: ['hairRemoval'],
+      latestSession: ['hairRemoval'],
       getPhotos: ['hairRemoval'],
       lastWriteEpochDay: ['hairRemoval']
     }
@@ -664,6 +672,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // one record it hangs off.
     reads: {
       forTryout: ['feltSense', 'tryout'],
+      // Keyed by the tryout's own uuid, so the owner table is joined the way
+      // `forTryout` joins it.
+      latestDaysForTryouts: ['feltSense', 'tryout'],
       forMilestone: ['feltSense', 'milestone'],
       // Both owners' names travel on a day's rows, so both tables are read.
       onDay: ['feltSense', 'tryout', 'milestone'],
@@ -673,7 +684,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   letters: classify<Journal['letters']>()({
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
-    reads: { getLetters: ['letter'], getLetter: ['letter'] }
+    reads: { getLetters: ['letter'], getLetterSeals: ['letter'], getLetter: ['letter'] }
   }),
   roadmap: classify<Journal['roadmap']>()({
     writes: {

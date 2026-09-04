@@ -102,3 +102,48 @@ test('deleting a milestone takes its felt-sense history with it', async () => {
   const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM felt_sense');
   assert.equal(rows[0].n, 0);
 });
+
+test('the latest felt-sense day for several tryouts comes back in one read, absent when a tryout has none', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const withEntries = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+  const withNone = await journal.tryouts.upsertTryout({
+    kind: 'pronouns',
+    label: 'they/them',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+  const notAskedAbout = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Sam',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+  await journal.feltSense.add({ tryoutId: withEntries }, { epochDay: 100, mood: 2 });
+  await journal.feltSense.add({ tryoutId: withEntries }, { epochDay: 130, mood: 4 });
+  await journal.feltSense.add({ tryoutId: withEntries }, { epochDay: 120, mood: 3 });
+  await journal.feltSense.add({ tryoutId: notAskedAbout }, { epochDay: 200, mood: 5 });
+
+  const latest = await journal.feltSense.latestDaysForTryouts([withEntries, withNone]);
+
+  assert.deepEqual([...latest], [[withEntries, 130]]);
+});
+
+test('asking for no tryouts answers an empty map, and a milestone entry never lands in it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const tryoutId = await journal.tryouts.upsertTryout({
+    kind: 'name',
+    label: 'Alex',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: 100 });
+  await journal.feltSense.add({ milestoneId }, { epochDay: 150, mood: 5 });
+
+  assert.equal((await journal.feltSense.latestDaysForTryouts([])).size, 0);
+  assert.equal((await journal.feltSense.latestDaysForTryouts([tryoutId])).size, 0);
+});

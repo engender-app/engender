@@ -1222,6 +1222,19 @@ try {
       'a narrowed query still re-runs for the table it does watch',
       live.narrowed.error ?? `still ${live.narrowed.afterEntry} run(s)`
     );
+
+  /* Phase 8 audit ticket 13: Home's batched felt-sense read is fed the ids a
+     live list beside it holds, so it depends on that list as well as on its
+     own tables. Both halves have to reach it. */
+  if (live.feltSense.runsAfterTryout > live.feltSense.runsBefore && live.feltSense.latestDay === live.feltSense.expectedDay)
+    ok('a batched read fed a live list re-runs for the list it reads and for the table it asks');
+  else
+    fail(
+      'a batched read fed a live list re-runs for the list it reads and for the table it asks',
+      live.feltSense.error ??
+        `${live.feltSense.runsBefore} run(s) before the tryout, ${live.feltSense.runsAfterTryout} after, ` +
+          `latest day ${live.feltSense.latestDay} rather than ${live.feltSense.expectedDay}`
+    );
 } catch (e) {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
@@ -1238,22 +1251,6 @@ try {
 
   if (live.seeding.seededRuns === 1) ok('the same read, seeded with its own table list, settles at one run');
   else fail('the same read, seeded with its own table list, settles at one run', `${live.seeding.seededRuns} run(s)`);
-
-  if (live.seeding.unseededFeltSenseRuns === 2)
-    ok("Home's unseeded per-tryout felt-sense read settles at two runs");
-  else
-    fail(
-      "Home's unseeded per-tryout felt-sense read settles at two runs",
-      `${live.seeding.unseededFeltSenseRuns} run(s)`
-    );
-
-  if (live.seeding.seededFeltSenseRuns === 1)
-    ok('the same read, seeded with TRYOUT_FELT_SENSE_TABLES, settles at one run');
-  else
-    fail(
-      'the same read, seeded with TRYOUT_FELT_SENSE_TABLES, settles at one run',
-      `${live.seeding.seededFeltSenseRuns} run(s)`
-    );
 
   if (live.seeding.compareRuns === 1)
     ok("/compare's recap-then-dayAverages shape settles at one run unseeded, since dayAverages reads no table recap doesn't");

@@ -1,6 +1,6 @@
 /* Home's live-tile grid, as one read (phase 8 deepening ticket 07).
 
-   The thirteen queries behind the eleven tiles, the preference each tile
+   The seventeen queries behind the eleven tiles, the preference each tile
    answers to, its snooze, and the writes its controls make. What comes out
    is the ordered list Home draws and nothing else - the composition, the
    order and the eleven tiles' own content are liveTiles.ts's, which is a
@@ -13,7 +13,18 @@
 
    Eight of these reads render nothing themselves. They existed on the route
    only to be arguments to a `shouldShow*` predicate whose answer the markup
-   read, which is what kept the query and the rule from ever meeting. */
+   read, which is what kept the query and the rule from ever meeting.
+
+   Every read here asks for the fact its tile draws (phase 8 audit ticket
+   13). Six of them used to ask for a list and reduce it: every voice
+   benchmark with its pitch track for one `MAX(epoch_day)`, every
+   measurement ever stored for a count and a day, every letter with its body
+   for three ids, the whole hair-removal table for its newest row, a
+   hydrated bad-moment entry for its id, and one felt-sense query per active
+   tryout. More subscriptions than that shape, and a small fraction of the
+   bytes: seventeen narrow reads cost less to cross the worker boundary than
+   sixteen wide ones, which is what this architecture actually pays for
+   (tests/long-journal, `mount-home`). */
 
 import { liveList, liveQuery, journal } from './live/journal.svelte';
 import { prefs } from './prefs/store.svelte';
@@ -25,7 +36,6 @@ import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
 import {
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
-  TRYOUT_FELT_SENSE_TABLES,
   composeHomeTiles,
   type HomeTile,
   type LiveTileKind
@@ -76,51 +86,35 @@ export function homeTiles(
   const runningWear = liveQuery((j) => j.wearSessions.getRunningSession());
   const episodes = liveList((j) => j.regimen.getEpisodes());
   const procedures = liveList((j) => j.procedures.getProcedures());
-  const letters = liveList((j) => j.letters.getLetters(100));
+  const letters = liveList((j) => j.letters.getLetterSeals(100));
   const dueRevisits = liveList((j) => j.revisits.getDueRevisits(todayEpochDay));
-  const latestBadEntry = liveQuery((j) => j.entries.latestBadMomentEntry());
+  const latestBadEntryId = liveQuery((j) => j.entries.latestBadMomentEntryId());
   const tryouts = liveList((j) => j.tryouts.getTryouts());
-  /* The felt-sense read is per tryout and the tile needs the latest day of
-     each, so it is one query answering a map rather than one query per
-     tryout: the tile is deciding between them, and a screen cannot ask a
-     variable number of questions.
-
-     Seeded with TRYOUT_FELT_SENSE_TABLES: 'feltSense' is read from inside
-     the loop below, past the tryout list's own `await`, so an unseeded
-     query would discover it a re-run late on every mount (phase 8 audit
-     ticket 14). */
-  const tryoutFeltSense = liveQuery(async (j) => {
-    const rows = await j.tryouts.getTryouts();
-    const latest = new Map<string, number | null>();
-    for (const tryout of rows) {
-      if (spanCoversDay(tryout, todayEpochDay)) {
-        const entries = await j.feltSense.forTryout(tryout.id);
-        latest.set(tryout.id, entries.length > 0 ? entries[0].epochDay : null);
-      }
-    }
-    return latest;
-  }, TRYOUT_FELT_SENSE_TABLES);
+  /* One statement for every active tryout at once, fed the list the line
+     above already holds rather than reading it again. `tryouts.rows` is read
+     synchronously, before the call, which is what makes this re-run when a
+     tryout is added, ended or removed (journal.svelte.ts: reads after an
+     await are invisible). */
+  const tryoutFeltSense = liveQuery((j) =>
+    j.feltSense.latestDaysForTryouts(
+      tryouts.rows.filter((tryout) => spanCoversDay(tryout, todayEpochDay)).map((tryout) => tryout.id)
+    )
+  );
   const schedules = liveList((j) => j.doses.getSchedules());
   const dosePauses = liveList((j) => j.doses.getPauses());
   const todayDoses = liveList((j) => j.doses.getDoses(todayEpochDay, todayEpochDay));
-  const voiceBenchmarks = liveList((j) => j.voiceBenchmarks.getBenchmarks());
+  const latestBenchmarkDay = liveQuery((j) => j.voiceBenchmarks.lastWriteEpochDay(todayEpochDay));
   const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
   /* Which areas are hidden or finished (phase 8 features ticket 04). One
      query for the whole grid rather than one per tile: the cascade is a
      property of the grid, and `unpromptedQuiet` is what spends this. */
   const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
-  const hairRemoval = liveList((j) => j.hairRemoval.getSessions());
-  /* Counted and reduced in the query rather than on the way out: the nudge
-     wants how many there are and the latest day, and holding every
-     measurement in a derived to answer that would be a list nothing draws. */
-  const measurements = liveQuery(async (j) => {
-    const all = await j.measurements.getMeasurementsInRange(0, 999999);
-    let latestDay: number | null = null;
-    for (const measurement of all) {
-      if (latestDay == null || measurement.epochDay > latestDay) latestDay = measurement.epochDay;
-    }
-    return { count: all.length, latestDay };
-  });
+  const latestHairRemoval = liveQuery((j) => j.hairRemoval.latestSession(todayEpochDay));
+  /* Two scalars asked as two scalars. The nudge wants how many measurements
+     there are and the latest day, and the read used to fetch every
+     measurement ever stored to reduce to exactly that. */
+  const measurementCount = liveQuery((j) => j.measurements.countAll());
+  const latestMeasurementDay = liveQuery((j) => j.measurements.lastWriteEpochDay(todayEpochDay));
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();
@@ -162,17 +156,17 @@ export function homeTiles(
         procedures: procedures.rows,
         letters: letters.rows,
         dueRevisits: dueRevisits.rows,
-        latestBadEntryId: latestBadEntry.value?.id,
+        latestBadEntryId: latestBadEntryId.value,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
         tryouts: tryouts.rows,
         latestFeltSenseByTryoutId: tryoutFeltSense.value ?? new Map(),
         schedules: schedules.rows,
         dosePauses: dosePauses.rows,
         todayDoses: todayDoses.rows,
-        voiceBenchmarks: voiceBenchmarks.rows,
+        latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
         journalingPauses: journalingPauses.rows,
-        hairRemovalSessions: hairRemoval.rows,
-        measurements: measurements.value ?? { count: 0, latestDay: null }
+        latestHairRemovalSession: latestHairRemoval.value ?? null,
+        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null }
       },
       actions: {
         stopWear: (session) => {

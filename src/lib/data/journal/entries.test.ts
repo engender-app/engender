@@ -847,6 +847,30 @@ test('latestBadMomentEntry identifies bad moments and returns newest entry (tick
   assert.equal(found?.id, badBodyId);
 });
 
+test('the id-only bad-moment read answers the same entry, without hydrating it', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  assert.equal(await journal.entries.latestBadMomentEntryId(), undefined);
+
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1000, mood: 3, tags: ['e-happy'] });
+  assert.equal(await journal.entries.latestBadMomentEntryId(), undefined);
+
+  const badTagId = await journal.entries.upsertEntry({
+    epochDay: 102,
+    timestamp: 3000,
+    mood: 3,
+    tags: ['g-soc-dys']
+  });
+  assert.equal(await journal.entries.latestBadMomentEntryId(), badTagId);
+  assert.equal((await journal.entries.latestBadMomentEntry())?.id, badTagId);
+
+  // The tag list the caller may narrow with reaches both reads the same way.
+  assert.equal(await journal.entries.latestBadMomentEntryId([]), undefined);
+
+  await journal.entries.deleteEntry(badTagId);
+  assert.equal(await journal.entries.latestBadMomentEntryId(), undefined);
+});
+
 test('upsertEntry commits contextual sub-records atomically across models', async () => {
   const { journal } = await journalWithBuiltIns();
 

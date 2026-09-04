@@ -1067,6 +1067,46 @@ test('hair-removal sessions update by id, throw on unknown ids and delete idempo
   assert.deepEqual(await journal.hairRemoval.getSessions(), []);
 });
 
+test('the latest hair-removal session comes back as one row, ignoring a day after today', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.hairRemoval.latestSession(300), null);
+
+  await journal.hairRemoval.upsertSession({ epochDay: 100, area: 'legs', method: 'laser', painRating: 2, cost: '', provider: '' });
+  const newest = await journal.hairRemoval.upsertSession({
+    epochDay: 200,
+    area: 'chin',
+    method: 'electrolysis',
+    painRating: 4,
+    cost: '',
+    provider: ''
+  });
+  await journal.hairRemoval.upsertSession({ epochDay: 900, area: 'legs', method: 'laser', painRating: 1, cost: '', provider: '' });
+
+  const latest = await journal.hairRemoval.latestSession(300);
+  assert.equal(latest?.id, newest);
+  assert.equal(latest?.area, 'chin');
+});
+
+test('two hair-removal sessions on the newest day answer with the one written first', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.hairRemoval.upsertSession({ epochDay: 200, area: 'legs', method: 'laser', painRating: 2, cost: '', provider: '' });
+  await journal.hairRemoval.upsertSession({ epochDay: 200, area: 'chin', method: 'laser', painRating: 2, cost: '', provider: '' });
+
+  assert.equal((await journal.hairRemoval.latestSession(300))?.id, first);
+});
+
+test('measurements count themselves without reading a row back', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.measurements.countAll(), 0);
+
+  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
+  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
+  assert.equal(await journal.measurements.countAll(), 2);
+
+  await journal.measurements.deleteMeasurement(id);
+  assert.equal(await journal.measurements.countAll(), 1);
+});
+
 test('an area outside the closed vocabulary is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(

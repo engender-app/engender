@@ -127,7 +127,7 @@ describe('Home ready-letter live tile rendering and behavior', () => {
      surface on the route rather than a control on the tile. */
   it('gating derives on preference, unread letters query, and snooze state', () => {
     const tiles = read('src/lib/data/liveTiles.svelte.ts');
-    expect(tiles).toContain('j.letters.getLetters(100)');
+    expect(tiles).toContain('j.letters.getLetterSeals(100)');
     // The letter keeps its own storage key rather than liveTilesSnooze's.
     expect(tiles).toContain('isLetterSnoozed(nowMs)');
     expect(read('src/lib/data/liveTiles.ts')).toContain('unreadUnlockedLetters(reads.letters, today)');
