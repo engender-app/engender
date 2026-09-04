@@ -264,6 +264,23 @@ export interface StatsArea {
       (ticket 17). A day nothing was logged under this presentation on is
       simply absent, not a day of the chart it filters out. */
   presentationDays(presentationId: string, fromEpochDay: number, toEpochDay: number): Promise<number[]>;
+  /** How many entries in the range carry each tag, largest first, both ends
+      inclusive (phase 8 UX ticket 03, ADR-0058).
+
+      **Every** tag, uncapped, which is the whole reason this exists beside
+      `recap()`'s `topTags` rather than reusing it. That one ends `LIMIT 3`,
+      which is right for a retrospective naming a few tags and wrong for a
+      ring: a parts-of-a-whole form computes each share against the sum of
+      what it is handed, so a top three drawn as a full circle inflates every
+      share and can never show the remainder ADR-0058 requires. Capping is the
+      ring's own job (`charts/parts.ts`), and it can only do it over the whole.
+
+      An entry carrying two tags counts once under each, so the total is tag
+      uses rather than entries - which is what a share by tag is a share of.
+      Hidden tags are left out, the same rule `tagInsights` follows: a hidden
+      tag is out of every place a person picks things (CONTEXT: Hidden), and a
+      slice of the ring is a place it would be back. */
+  tagShare(fromEpochDay: number, toEpochDay: number): Promise<{ id: string; count: number }[]>;
 }
 
 /** One body-region reading, as the day that stood out is judged and drawn.
@@ -542,6 +559,19 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         [fromEpochDay, toEpochDay]
       );
       return rows.map((r) => ({ region: r.region, entryId: r.entry_id, epochDay: r.epoch_day, value: r.value }));
+    },
+
+    async tagShare(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ id: string; entries: number }>(
+        `SELECT COALESCE(t.key, t.uuid) AS id, COUNT(*) AS entries
+         FROM entry e
+         JOIN entry_tag et ON et.entry_id = e.id
+         JOIN tag t ON t.id = et.tag_id
+         WHERE e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL AND t.hidden = 0
+         GROUP BY t.id ORDER BY entries DESC, id`,
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map((r) => ({ id: r.id, count: r.entries }));
     },
 
     async presentationDays(presentationId, fromEpochDay, toEpochDay) {

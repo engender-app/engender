@@ -28,9 +28,29 @@ describe('the two folds say they read the whole journal, and only when they draw
 
   it('puts it inside the custom fold too', () => {
     expect(stats).toMatch(
-      /\{#snippet rows\(customIntervalPattern\)\}\s*<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
+      /\{#snippet rows\(customIntervalPattern\)\}\s*\{#if foldDrawable\(customIntervalPattern\)\}\s*<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
     );
     expect(stats).toContain('let customIntervalPattern = $derived(customIntervalQuery.rows);');
+  });
+
+  /* Both folds say they read the whole journal, so neither may be gated on a
+     count of the range above them - which is what they were, and it hid both
+     cards for a long dose history with a quiet month. The floor is
+     WRAPPED_ENTRY_FLOOR positions of the fold's own all-history output. */
+  it('gates each fold on its own output, not on the range', () => {
+    expect(stats).toMatch(
+      /const foldDrawable = \(pattern[^)]*\) => pattern\.length >= WRAPPED_ENTRY_FLOOR;/
+    );
+    expect(stats.match(/\{#if foldDrawable\(/g)).toHaveLength(2);
+  });
+
+  /* Alicja, on the rendered screen: an interval fold is keyed on a position
+     and drew a value gutter with no ends at all, so the one thing the picture
+     is keyed on went unnamed. */
+  it('names both ends of each fold axis', () => {
+    expect(stats.match(/\{@const ends = positionEnds\(/g)).toHaveLength(2);
+    expect(stats.match(/from=\{ends\.from\}\s*to=\{ends\.to\}/g)).toHaveLength(2);
+    expect(stats).toContain("m.interval_day_n({ n: String(point.x) })");
   });
 
   it('leaves no ungated paragraph explaining a chart nobody has data for', () => {
@@ -50,15 +70,15 @@ describe('the two folds say they read the whole journal, and only when they draw
 describe('the summary panels wait for the floor', () => {
   /* WRAPPED_ENTRY_FLOOR, read off the module that owns it rather than
      written here as a 5 - ADR-0056's "no new magic numbers". */
-  it('reads both floors from the modules that own them', () => {
+  it('reads its floor from the module that owns it', () => {
     expect(stats).toContain("import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped'");
-    expect(stats).toContain("import { MIN_PLOT_POSITIONS } from '$lib/charts/annotations'");
     expect(stats).toContain('let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);');
-    expect(stats).toMatch(/const drawable = \(points[^)]*\) => points\.length >= MIN_PLOT_POSITIONS;/);
+    // No literal 5 anywhere: ADR-0056's "no new magic numbers".
+    expect(stats).not.toMatch(/>= 5\b/);
   });
 
   it('draws no scale bars under the floor', () => {
-    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<BarRows rows=\{scaleRows\} scale="track" \/>/);
+    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<BarRows rows=\{scaleRows\} measure="track" \/>/);
   });
 
   it('draws no mood strip under the floor', () => {
@@ -72,12 +92,8 @@ describe('the summary panels wait for the floor', () => {
      all sat near the top. */
   it('asks for the track where the bar is an absolute position', () => {
     for (const rows of ['scaleRows', 'highestRows', 'valueRows']) {
-      expect(stats).toMatch(new RegExp(`<BarRows rows=\\{${rows}\\}[^>]*scale="track"`));
+      expect(stats).toMatch(new RegExp(`<BarRows rows=\\{${rows}\\}[^>]*measure="track"`));
     }
-  });
-
-  it('keeps the two folds behind the summary floor as well as their own read', () => {
-    expect(stats.match(/\{#if !enoughEntries\}\s*<ChartEmpty>/g)?.length).toBe(2);
   });
 
   it('stops offering a second scale on a chart with no first one', () => {
@@ -90,7 +106,7 @@ describe('the summary panels wait for the floor', () => {
 
   it('draws the highest days only where that scale is kept and the floor is cleared', () => {
     expect(stats).toMatch(/\{#if euphoriaScale\}/);
-    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows rows=\{highestRows\} scale="track"/);
+    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows rows=\{highestRows\} measure="track"/);
   });
 });
 
@@ -105,18 +121,20 @@ describe('the area index', () => {
     expect(stats).toMatch(/\{#if groupCards\(group\)\.length\}\s*<SectionHeading text=\{GROUP_NAME\[group\]\(\)\}/);
   });
 
-  it('asks for a trend area read only where that card exists', () => {
-    for (const [flag, call] of [
-      ['showsMeasurements', 'j.measurements.getMeasurementsInRange(from, today)'],
-      ['showsLabs', 'j.labs.getMostRecentAnalyte()'],
-      ['showsWear', 'j.stats.wearTimeTrend(from, today)']
-    ]) {
-      expect(stats).toContain(`${flag} ? ${call} : Promise.resolve(`);
-    }
+  /* Alicja's call on the rendered screen: no graphs in this block. Every one
+     of these areas owns its chart on its own screen, and a second drawing
+     here is a second thing to keep in agreement. The index is rows, and each
+     row is the way to the screen that draws the real one. */
+  it('draws no chart in the index, only rows into the owning screens', () => {
+    const index = stats.slice(stats.indexOf('{#each STATS_AREA_GROUPS as group'));
+    expect(index).not.toContain('<AreaChart');
+    expect(index).not.toContain('<ChartCard');
+    expect(index).toMatch(/<ListRow[\s\S]{0,200}href=\{card\.panel\.href\}/);
   });
 
-  it('sends a card to the screen that owns the chart rather than redrawing it', () => {
-    expect(stats).toMatch(/<a class="stats-area-open" href=\{card\.panel\.href\}/);
-    expect(stats).toMatch(/<ListRow[\s\S]{0,200}href=\{card\.panel\.href\}/);
+  it('asks for no per-area read at all', () => {
+    for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'wearTimeTrend', 'tallyTrend']) {
+      expect(stats).not.toContain(call);
+    }
   });
 });
