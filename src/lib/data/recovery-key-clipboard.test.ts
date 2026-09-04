@@ -59,8 +59,15 @@ test('a failing copy is not swallowed, since the screen tells the person it did 
   );
 });
 
-/* The interval is a number in one place and a word in the catalogues, which
-   cannot be typechecked against each other. Both say a minute. */
-test('the interval is the minute both catalogues promise', () => {
+/* The interval is a number here and a word in the catalogues, and nothing
+   typechecks one against the other. This is what notices when one of the
+   three moves without the other two. */
+test('the interval is the minute both catalogues promise', async () => {
+  const { readFileSync } = await import('node:fs');
+  const root = new URL('../../../', import.meta.url);
+  const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
+
   expect(RECOVERY_KEY_CLIPBOARD_CLEAR_MS).toBe(60_000);
+  expect(JSON.parse(read('messages/en.json')).rk_copy_clears_android).toContain('a minute');
+  expect(JSON.parse(read('messages/pl.json')).rk_copy_clears_android).toContain('po minucie');
 });

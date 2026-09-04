@@ -4,11 +4,13 @@ import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.SystemClock;
+import android.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -30,8 +32,8 @@ import java.security.NoSuchAlgorithmException;
  * clipboard API, which is why this exists at all:
  *
  * <ul>
- *   <li>the clip is marked sensitive, which keeps the value out of the
- *       keyboard's history and out of the paste preview;</li>
+ *   <li>the clip is marked sensitive, which asks the keyboard to keep the
+ *       value out of its history and out of the paste preview;</li>
  *   <li>the clipboard is cleared again after the interval the caller states,
  *       and the screen's copy names that interval so the person knows how
  *       long they have to paste.</li>
@@ -40,9 +42,19 @@ import java.security.NoSuchAlgorithmException;
  * The clear refuses to wipe something the person copied afterwards, so it
  * only fires while the clipboard still holds what we put there. What is kept
  * to decide that is a SHA-256 of the value rather than the value: once
- * setPrimaryClip has returned, nothing in this process holds the characters,
- * so a heap dump taken while the timer is still running has nothing in it to
- * find. Nothing here is logged, and there is no read method - see the plugin.
+ * setPrimaryClip has returned, nothing in this process and nothing on this
+ * disk holds the characters, so neither a heap dump taken while the timer is
+ * still running nor the preference file below has anything in it to find.
+ * Nothing here is logged, and there is no read method - see the plugin.
+ *
+ * That pending clear is written down rather than held in memory, and the
+ * reason is the ordinary path rather than a corner case: the person copies
+ * the key, leaves for their password manager, and Android is free to kill
+ * this process while they are gone. A clear that lived only in a static
+ * field would die with it and leave the key on the clipboard for good, while
+ * the screen's copy promises it goes. So the record outlives the process,
+ * and the plugin asks again when the app is next loaded as well as at every
+ * resume.
  *
  * Everything below runs on the main thread: the plugin marshals the copy
  * there (clipboard writes off it crash on some OEMs), the delayed clear is
@@ -56,8 +68,9 @@ public final class SensitiveClipboard {
      * ClipDescription.EXTRA_IS_SENSITIVE is API 33. It is a compile-time
      * String constant, so javac inlines its value here and no older device
      * ever looks the field up; Gboard honoured the same string before the
-     * constant was public, and a device that honours neither is no worse off
-     * than it was.
+     * constant was public, and a device whose keyboard honours neither is no
+     * worse off than it was - which is why the screen's copy says the flag is
+     * asked for rather than that the history is empty.
      */
     private static final String EXTRA_IS_SENSITIVE = ClipDescription.EXTRA_IS_SENSITIVE;
 
@@ -67,12 +80,19 @@ public final class SensitiveClipboard {
      */
     private static final String NO_LABEL = "";
 
-    /** SHA-256 of what we last put on the clipboard, or null if nothing is
-        owed a clear. */
-    private static byte[] pendingDigest;
+    /** Named rather than private for the same reason as QuickExitPlugin.PREFS:
+        the reset's test has to name the file it claims to have cleared. */
+    public static final String PREFS = "gender-diary-sensitive-clipboard";
 
-    /** When that clear is due, on the uptime clock the handler posts against. */
-    private static long clearDueAt;
+    /** SHA-256 of what we last put on the clipboard, base64. */
+    private static final String KEY_DIGEST = "digest";
+
+    /** When the clear is due, on the clock that keeps counting while the
+        phone sleeps. uptimeMillis - which is what postDelayed counts in -
+        stops during deep sleep, so a phone left in a pocket would hold the
+        key well past the minute the copy promises. The posted callback is
+        still the ordinary trigger; this is what decides whether it is time. */
+    private static final String KEY_DUE_AT = "dueAtRealtime";
 
     private static Runnable armedClear;
 
@@ -88,8 +108,11 @@ public final class SensitiveClipboard {
 
         clipboard.setPrimaryClip(sensitiveClip(value));
 
-        pendingDigest = digest(value);
-        clearDueAt = SystemClock.uptimeMillis() + clearAfterMs;
+        prefs(context)
+            .edit()
+            .putString(KEY_DIGEST, Base64.encodeToString(digest(value), Base64.NO_WRAP))
+            .putLong(KEY_DUE_AT, SystemClock.elapsedRealtime() + clearAfterMs)
+            .apply();
 
         Handler handler = new Handler(Looper.getMainLooper());
         if (armedClear != null) handler.removeCallbacks(armedClear);
@@ -100,17 +123,18 @@ public final class SensitiveClipboard {
 
     /**
      * Clears the clipboard if the interval is up and it still holds what
-     * {@link #copy} put there. Called by the timer and again whenever the app
-     * is resumed, because the timer can fire at a moment when the answer
-     * cannot be had: from Android 10 the clipboard is readable only by an app
-     * that has focus, so a timer that fires while the person is in their
-     * password manager reads nothing and has to wait until they are back.
-     * That is the ordinary path, not a corner case - pasting the key
-     * elsewhere is what Copy is for.
+     * {@link #copy} put there. Called by the timer, when the plugin loads,
+     * and again whenever the app is resumed, because the timer can fire at a
+     * moment when the answer cannot be had: from Android 10 the clipboard is
+     * readable only by an app that has focus, so a timer that fires while the
+     * person is in their password manager reads nothing and has to wait until
+     * they are back. That is the ordinary path, not a corner case - pasting
+     * the key elsewhere is what Copy is for.
      */
     public static void clearIfDue(Context context) {
-        if (pendingDigest == null) return;
-        if (SystemClock.uptimeMillis() < clearDueAt) return;
+        String digest = prefs(context).getString(KEY_DIGEST, null);
+        if (digest == null) return;
+        if (SystemClock.elapsedRealtime() < prefs(context).getLong(KEY_DUE_AT, 0)) return;
 
         ClipboardManager clipboard = clipboardOf(context);
         ClipData clip = clipboard.getPrimaryClip();
@@ -122,11 +146,10 @@ public final class SensitiveClipboard {
             return;
         }
 
-        CharSequence onClipboard =
-            clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
-        if (!isWhatWeCopied(pendingDigest, onClipboard)) {
+        CharSequence onClipboard = clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
+        if (!isWhatWeCopied(Base64.decode(digest, Base64.NO_WRAP), onClipboard)) {
             // Somebody has copied something since. It is not ours to clear.
-            forget();
+            forget(context);
             return;
         }
 
@@ -137,7 +160,7 @@ public final class SensitiveClipboard {
             // closest thing, and it replaces the key either way.
             clipboard.setPrimaryClip(sensitiveClip(""));
         }
-        forget();
+        forget(context);
     }
 
     /** Whether what is on the clipboard is the string {@code digest} was
@@ -158,15 +181,20 @@ public final class SensitiveClipboard {
         }
     }
 
-    /** Drops the pending clear. Also the teardown the instrumentation test
-        needs, so one test's timer cannot fire during the next. */
-    static void forget() {
-        pendingDigest = null;
-        clearDueAt = 0;
+    /** Drops the pending clear, having done it or found it was not ours. */
+    static void forget(Context context) {
+        prefs(context).edit().clear().apply();
         if (armedClear != null) {
             new Handler(Looper.getMainLooper()).removeCallbacks(armedClear);
             armedClear = null;
         }
+    }
+
+    /** The reset path (ADR-0014). What is here is a digest of something that
+        may still be on the clipboard, which is not the journal but is a
+        record the reset claims to have left nothing of. */
+    public static void wipe(Context context) {
+        prefs(context).edit().clear().commit();
     }
 
     private static ClipData sensitiveClip(String value) {
@@ -182,5 +210,9 @@ public final class SensitiveClipboard {
             (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboard == null) throw new IllegalStateException("this device has no clipboard");
         return clipboard;
+    }
+
+    private static SharedPreferences prefs(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 }

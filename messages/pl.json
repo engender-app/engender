@@ -2799,7 +2799,7 @@
   "rk_shown_body": "To jedyny raz, kiedy widać te znaki. Nie są nigdzie zapisane, jest tylko zapieczętowana kopia klucza dziennika, więc nie da się pokazać ich ponownie. Jeśli je zgubisz, zostaje nowy klucz, a nie ten sam.",
   "rk_shown_where": "Poza tym urządzeniem: na papierze albo w menedżerze haseł na innym. Nie na zdjęciu i nie w notatce w tym telefonie.",
   "rk_copy": "Kopiuj",
-  "rk_copy_clears_android": "Kopiowanie nie zostawia klucza w historii schowka klawiatury. Aplikacja czyści schowek po minucie, a jeśli w tym czasie z niej wyjdziesz, zaraz po powrocie. Tego, co skopiujesz później, nie rusza.",
+  "rk_copy_clears_android": "Kopiowanie prosi klawiaturę, żeby nie zapisywała klucza w historii schowka. Aplikacja czyści schowek po minucie, a jeśli w tym czasie z niej wyjdziesz, zaraz po powrocie. Tego, co skopiujesz później, nie rusza.",
   "rk_copied": "Skopiowano.",
   "rk_print": "Drukuj",
   "rk_done": "Mam to zapisane",

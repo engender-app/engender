@@ -20,6 +20,7 @@ import java.security.KeyStore;
 import javax.crypto.KeyGenerator;
 
 import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
+import dev.barankiewicz.genderdiary.clipboard.SensitiveClipboard;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderPayloadStore;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
@@ -47,6 +48,7 @@ public class DeviceStoresTest {
     private static final String REMINDERS_PREFS = ReminderScheduler.PREFS;
     private static final String AUTO_EXPORT_PREFS = AutoExportPlugin.PREFS;
     private static final String QUICK_EXIT_PREFS = QuickExitPlugin.PREFS;
+    private static final String SENSITIVE_CLIPBOARD_PREFS = SensitiveClipboard.PREFS;
     private static final String PASSWORD_ALIAS = AutoExportPlugin.PASSWORD_ALIAS;
     private static final String REMINDERS_ALIAS = ReminderPayloadStore.ALIAS;
 
@@ -69,12 +71,14 @@ public class DeviceStoresTest {
         write(AUTO_EXPORT_PREFS, "destinationLabel", "Journal backups");
         write(AUTO_EXPORT_PREFS, "passwordCiphertext", "not-really-a-ciphertext");
         write(QUICK_EXIT_PREFS, "enabled", "true");
+        write(SENSITIVE_CLIPBOARD_PREFS, "digest", "bm90LXJlYWxseS1hLWRpZ2VzdA==");
 
         wipe();
 
         assertEmpty("the reminder titles are still here", REMINDERS_PREFS);
         assertEmpty("the backup destination is still here", AUTO_EXPORT_PREFS);
         assertEmpty("the quick-exit preference is still here", QUICK_EXIT_PREFS);
+        assertEmpty("the pending clipboard clear is still here", SENSITIVE_CLIPBOARD_PREFS);
     }
 
     @Test
