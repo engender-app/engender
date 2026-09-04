@@ -120,18 +120,24 @@ function rms(samples: Float32Array, from: number, length: number): number {
     lag range, its cumulative mean normalization (which is what makes one
     fixed threshold work across loudness), and parabolic interpolation around
     the chosen lag, which is where the sub-sample accuracy the +/-1 Hz
-    criterion needs comes from. */
+    criterion needs comes from.
+
+    `difference` and `normalized` are the caller's buffers, sized `maxTau + 1`
+    and reused frame to frame - both are fully overwritten between minTau and
+    maxTau before this reads them back, so a scratch buffer from a previous
+    frame is never seen. */
 function frameF0(
   samples: Float32Array,
   from: number,
   windowLength: number,
   minTau: number,
   maxTau: number,
-  sampleRate: number
+  sampleRate: number,
+  difference: Float64Array,
+  normalized: Float64Array
 ): number | null {
   if (rms(samples, from, windowLength + maxTau) < SILENCE_RMS) return null;
 
-  const difference = new Float64Array(maxTau + 1);
   for (let tau = minTau; tau <= maxTau; tau++) {
     let sum = 0;
     for (let i = 0; i < windowLength; i++) {
@@ -141,7 +147,6 @@ function frameF0(
     difference[tau] = sum;
   }
 
-  const normalized = new Float64Array(maxTau + 1);
   let running = 0;
   for (let tau = minTau; tau <= maxTau; tau++) {
     running += difference[tau];
@@ -171,36 +176,49 @@ function frameF0(
 
 export function trackPitch(samples: Float32Array, sampleRate: number): PitchTrack {
   const { windowLength, maxTau, minTau, hop, hopSeconds } = frameGeometry(sampleRate);
+  const difference = new Float64Array(maxTau + 1);
+  const normalized = new Float64Array(maxTau + 1);
   const frames: PitchFrame[] = [];
   for (let from = 0; from + windowLength + maxTau <= samples.length; from += hop) {
     frames.push({
       atSeconds: from / sampleRate,
-      hz: frameF0(samples, from, windowLength, minTau, maxTau, sampleRate)
+      hz: frameF0(samples, from, windowLength, minTau, maxTau, sampleRate, difference, normalized)
     });
   }
   return summarizeFrames(frames, hopSeconds);
 }
 
 /** One frame's F0 at a given offset, for a caller holding its own frame grid
-    (live.ts). The geometry comes from `frameGeometry`, which is what keeps
-    that caller's frames on the same grid as this module's own. */
-export function pitchAt(samples: Float32Array, from: number, sampleRate: number): number | null {
-  const { windowLength, maxTau, minTau } = frameGeometry(sampleRate);
+    (live.ts). `geometry` and the two scratch buffers are the caller's to hold
+    across every frame of a take - computing them here, once per frame, was
+    the per-frame allocation this module used to make on the live gauge's
+    behalf. */
+export function pitchAt(
+  samples: Float32Array,
+  from: number,
+  sampleRate: number,
+  geometry: FrameGeometry,
+  difference: Float64Array,
+  normalized: Float64Array
+): number | null {
+  const { windowLength, maxTau, minTau } = geometry;
   if (from + windowLength + maxTau > samples.length) return null;
-  return frameF0(samples, from, windowLength, minTau, maxTau, sampleRate);
+  return frameF0(samples, from, windowLength, minTau, maxTau, sampleRate, difference, normalized);
+}
+
+export interface FrameGeometry {
+  windowLength: number;
+  maxTau: number;
+  minTau: number;
+  hop: number;
+  hopSeconds: number;
 }
 
 /** How the frame grid is laid out at a given rate. Exported for the live
     gauge (live.ts), which feeds this module a take in pieces and needs to
     know how much of each piece is still waiting for the samples that come
     after it. */
-export function frameGeometry(sampleRate: number): {
-  windowLength: number;
-  maxTau: number;
-  minTau: number;
-  hop: number;
-  hopSeconds: number;
-} {
+export function frameGeometry(sampleRate: number): FrameGeometry {
   const maxTau = Math.floor(sampleRate / MIN_F0_HZ);
   return {
     maxTau,

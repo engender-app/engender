@@ -33,7 +33,12 @@ export interface LiveGauge {
 }
 
 export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[]): LiveGauge {
-  const { windowLength, maxTau, hop, hopSeconds } = frameGeometry(sampleRate);
+  const geometry = frameGeometry(sampleRate);
+  const { windowLength, maxTau, hop, hopSeconds } = geometry;
+  // pitchAt's own scratch, held here rather than allocated per frame - the
+  // frame geometry the per-frame path used to rebuild on every call.
+  const difference = new Float64Array(maxTau + 1);
+  const normalized = new Float64Array(maxTau + 1);
   const frames: PitchFrame[] = [];
 
   // Grown by doubling rather than sized for a fixed ceiling: the passage step
@@ -60,7 +65,10 @@ export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[
       // A frame needs the samples after it as well as under it, so this stops
       // short of the end and picks the rest up on a later push.
       for (; nextFrameAt + windowLength + maxTau <= length; nextFrameAt += hop) {
-        frames.push({ atSeconds: nextFrameAt / sampleRate, hz: pitchAt(samples, nextFrameAt, sampleRate) });
+        frames.push({
+          atSeconds: nextFrameAt / sampleRate,
+          hz: pitchAt(samples, nextFrameAt, sampleRate, geometry, difference, normalized)
+        });
       }
     },
 
