@@ -1400,9 +1400,22 @@ try {
   if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
 
   /* Colour Home by one of the ticked scales first, so unticking it below
-     has something to strand. */
+     has something to strand.
+
+     One entry first, because the onboarding flows above leave the journal
+     empty and Home's week strip - the picker's own heading - waits for the
+     first entry (phase 8 UX ticket 01). Written here rather than by a demo
+     reset, which would put the preferences back and undo the tick this flow
+     just made. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-mood="4"]').click();
+  await page.locator('[data-save]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
+  await page.waitForSelector('[data-chart-picker="home-metric"]');
   await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
   await page.waitForFunction(
     () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
@@ -1431,6 +1444,7 @@ try {
      would visibly disagree. */
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
+  await page.waitForSelector('[data-chart-picker="home-metric"]');
   const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
   if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
   ok('settings scales sheet ticks through to the editor, empty included');
