@@ -65,3 +65,17 @@ test('deleting a letter is idempotent', async () => {
 
   assert.deepEqual(await journal.letters.getLetters(10), []);
 });
+
+test('a letter seal carries the days and the id, and never the body', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const earlier = await journal.letters.addLetter({ epochDay: 100, text: 'dear future me', unlockEpochDay: 200 });
+  const later = await journal.letters.addLetter({ epochDay: 102, text: 'one more for the road', unlockEpochDay: 400 });
+
+  const seals = await journal.letters.getLetterSeals(10);
+
+  assert.deepEqual(seals, [
+    { id: later, epochDay: 102, unlockEpochDay: 400 },
+    { id: earlier, epochDay: 100, unlockEpochDay: 200 }
+  ]);
+  assert.equal((await journal.letters.getLetterSeals(1)).length, 1);
+});

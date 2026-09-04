@@ -44,6 +44,7 @@ import { unreadUnlockedLetters } from './letterStatus';
 import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/registry';
 import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
+import type { LetterSeal } from './journal/letters';
 
 export interface ActiveTryoutTileResult {
   tryout: Tryout;
@@ -52,7 +53,10 @@ export interface ActiveTryoutTileResult {
 
 export function shouldShowActiveTryoutTile(params: {
   tryouts: readonly Tryout[];
-  latestFeltSenseByTryoutId: Map<string, number | null>;
+  /** A tryout with no felt-sense history is absent, which reads the same as
+      one whose latest day is unknown: both fall back to its start day
+      (feltSense.ts states the convention). */
+  latestFeltSenseByTryoutId: ReadonlyMap<string, number>;
   todayEpochDay: number;
   enabled: boolean;
   snoozed: boolean;
@@ -160,21 +164,18 @@ export interface VoiceBenchmarkNudgeResult {
    - and is what stops the tile being an advert for a feature nobody has
    started. The flow is reached from the More hub until then. */
 export function shouldShowVoiceBenchmarkNudge(params: {
-  benchmarks: readonly { epochDay: number }[];
+  /** The day of the newest benchmark at or before today, or null when there
+      is none - one bounded `MAX`, not a table reduced here (lastWrite.ts). */
+  latestBenchmarkEpochDay: number | null;
   todayEpochDay: number;
   enabled: boolean;
   snoozed: boolean;
 }): VoiceBenchmarkNudgeResult | null {
   if (!params.enabled || params.snoozed) return null;
 
-  if (params.benchmarks.length === 0) return null;
+  if (params.latestBenchmarkEpochDay == null) return null;
 
-  let latestDay = params.benchmarks[0].epochDay;
-  for (const benchmark of params.benchmarks) {
-    if (benchmark.epochDay > latestDay) latestDay = benchmark.epochDay;
-  }
-
-  const daysElapsed = params.todayEpochDay - latestDay;
+  const daysElapsed = params.todayEpochDay - params.latestBenchmarkEpochDay;
   if (daysElapsed > 14) {
     return { daysElapsed };
   }
@@ -210,23 +211,20 @@ export interface HairRemovalRecoveryResult {
 }
 
 export function shouldShowHairRemovalRecovery(params: {
-  sessions: readonly HairRemovalSession[];
+  /** The newest session at or before today, which is the read's own job to
+      find (hairRemoval.ts): the tile needs one row, not the table. */
+  latestSession: HairRemovalSession | null;
   todayEpochDay: number;
   enabled: boolean;
   snoozed: boolean;
 }): HairRemovalRecoveryResult | null {
   if (!params.enabled || params.snoozed) return null;
-  if (params.sessions.length === 0) return null;
+  if (!params.latestSession) return null;
 
-  let latestSession = params.sessions[0];
-  for (const s of params.sessions) {
-    if (s.epochDay > latestSession.epochDay) latestSession = s;
-  }
-
-  const daysSince = params.todayEpochDay - latestSession.epochDay;
+  const daysSince = params.todayEpochDay - params.latestSession.epochDay;
   // 48 hours following session = today (0) or yesterday (1)
   if (daysSince >= 0 && daysSince < 2) {
-    return { session: latestSession, daysSince };
+    return { session: params.latestSession, daysSince };
   }
 
   return null;
@@ -453,7 +451,7 @@ export interface HomeTileReads {
   runningWear: WearSession | null;
   episodes: readonly RegimenEpisode[];
   procedures: readonly Procedure[];
-  letters: Letter[];
+  letters: LetterSeal[];
   dueRevisits: Revisit[];
   latestBadEntryId: number | null | undefined;
   /** `prefs.safeSpaceNudgeDismissedEntryId` - a preference rather than a
@@ -461,13 +459,13 @@ export interface HomeTileReads {
       the first. */
   safeSpaceDismissedEntryId: number | null | undefined;
   tryouts: readonly Tryout[];
-  latestFeltSenseByTryoutId: Map<string, number | null>;
+  latestFeltSenseByTryoutId: ReadonlyMap<string, number>;
   schedules: readonly DoseSchedule[];
   dosePauses: readonly DosePause[];
   todayDoses: readonly DoseEvent[];
-  voiceBenchmarks: readonly { epochDay: number }[];
+  latestBenchmarkEpochDay: number | null;
   journalingPauses: readonly JournalingPause[];
-  hairRemovalSessions: readonly HairRemovalSession[];
+  latestHairRemovalSession: HairRemovalSession | null;
   measurements: { count: number; latestDay: number | null };
 }
 
@@ -759,7 +757,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
     'voice-benchmark-nudge': (gate) => {
       const qualifying = shouldShowVoiceBenchmarkNudge({
-        benchmarks: reads.voiceBenchmarks,
+        latestBenchmarkEpochDay: reads.latestBenchmarkEpochDay,
         todayEpochDay: today,
         enabled: gate.enabled,
         snoozed: gate.snoozed
@@ -815,7 +813,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
     'hair-removal-recovery': (gate) => {
       const qualifying = shouldShowHairRemovalRecovery({
-        sessions: reads.hairRemovalSessions,
+        latestSession: reads.latestHairRemovalSession,
         todayEpochDay: today,
         enabled: gate.enabled,
         snoozed: gate.snoozed

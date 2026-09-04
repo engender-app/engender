@@ -12,6 +12,11 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Letter } from '../types';
 import { mintUuid, now } from './support';
 
+/** A letter with its seal and nothing else - what letterStatus.ts's rules
+    are written over, and all a surface offering an unlocked letter needs
+    before the person opens it. */
+export type LetterSeal = Omit<Letter, 'text'>;
+
 export interface LetterInput {
   epochDay: number;
   text: string;
@@ -21,6 +26,12 @@ export interface LetterInput {
 export interface LettersArea {
   /** Newest first. */
   getLetters(limit: number): Promise<Letter[]>;
+  /** The same page without the bodies: what a surface deciding which
+      letters are unlocked and unread needs (letterStatus.ts), which is the
+      two days and the id and never a word of the text. Its own read rather
+      than a flag on `getLetters`, so a caller cannot end up holding sixty
+      sealed letters' contents to answer a question about their dates. */
+  getLetterSeals(limit: number): Promise<LetterSeal[]>;
   /** One letter by id, or null when there is no such row - the read a
       deep link into a single letter takes, which cannot work from the
       newest-first page above (phase 5 deepening ticket 13). */
@@ -50,6 +61,18 @@ export function makeLettersArea(driver: SqliteDriver): LettersArea {
         [limit]
       );
       return rows.map(toLetter);
+    },
+
+    async getLetterSeals(limit) {
+      const rows = await driver.query<Omit<LetterRow, 'text'>>(
+        'SELECT uuid, epoch_day, unlock_epoch_day FROM letter ORDER BY epoch_day DESC, id DESC LIMIT ?',
+        [limit]
+      );
+      return rows.map((row) => ({
+        id: row.uuid,
+        epochDay: row.epoch_day,
+        unlockEpochDay: row.unlock_epoch_day
+      }));
     },
 
     async getLetter(id) {
