@@ -236,6 +236,31 @@ async function run() {
   flushSync();
   await new Promise((resolve) => setTimeout(resolve, 200));
 
+  /* /compare's sideStats (routes/compare/+page.svelte): `recap` is called
+     synchronously as this closure's own first statement, so its declared
+     tables - including 'dimension' - are registered before `dayAverages`
+     runs past the `Promise.all` await, and `dayAverages` (writes.ts)
+     declares no table `recap` doesn't already. No seed needed, left as a
+     comment there rather than a change - this settles the claim with a
+     real run count instead of a trace, and stands as the regression guard
+     the by-hand reasoning alone cannot be: if a future edit ever widens
+     `dayAverages`'s tables past `recap`'s, this starts failing. */
+  let compareRuns = 0;
+  let compareQuery: LiveQuery<number>;
+
+  $effect.root(() => {
+    compareQuery = liveQuery(async (j) => {
+      const recap = await j.stats.recap(TODAY - 30, TODAY);
+      const series = await j.stats.dayAverages('mood', TODAY - 30, TODAY);
+      compareRuns += 1;
+      return recap.entryCount + series.length;
+    });
+  });
+
+  await until(() => compareQuery.value !== undefined, 'the compare-shaped query to settle');
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
   publish({
     projection: { runsBefore: projectionRunsBefore, runsAfter: projectionRuns, error: projectionError },
     narrowed: {
@@ -244,7 +269,7 @@ async function run() {
       afterEntry: recapRuns,
       error: recapError
     },
-    seeding: { unseededRuns, seededRuns, unseededFeltSenseRuns, seededFeltSenseRuns }
+    seeding: { unseededRuns, seededRuns, unseededFeltSenseRuns, seededFeltSenseRuns, compareRuns }
   });
 }
 
