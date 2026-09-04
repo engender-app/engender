@@ -27,15 +27,25 @@
      stopped a course of treatment for a hard reason should not find that out
      from a page they are about to hand a doctor.
 
+     Three sentences, where docs/ui-copy.md puts an explanation at two. That
+     file's own exception is for the screens where "the sentence must be
+     exactly as final as the behaviour" and where "three or four sentences
+     there beat a short sentence that leaves something out". Printing a line
+     onto a document meant for a doctor is that case, so the rule is being
+     used rather than missed.
+
      ## The offer
 
      An area with something in it and nothing added for half a year may be
      offered. It is a registered offer (`offers.ts`) rather than a fifth
      hand-wiring of one, and its yes opens the same sheet - pre-filled with
      the day of the last write, since that is the honest guess at when the
-     practice stopped - so there is one confirmation and one write. Its no is
-     kept forever in `areaFinishOfferDeclined`, so the question is asked at
-     most once per area for the life of the journal.
+     practice stopped - so there is one confirmation and one write, and both
+     go through `answerOffer`. Its words are the registry's too, the way every
+     other offer's screen reads them, so the list stays auditable as copy. Its
+     no is kept forever in `areaFinishOfferDeclined`, per section rather than
+     per row, so the question is asked at most once per area for the life of
+     the journal and a later regroup cannot un-say it.
 
      ## Motion
 
@@ -49,7 +59,13 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { AREA_GROUPS, groupFinishedOn, groupLastWrite, shouldOfferFinish, type AreaGroupKey } from '$lib/data/areaGroups';
+  import {
+    AREA_GROUPS,
+    groupFinishedOn,
+    groupLastWrite,
+    shouldOfferFinish,
+    type AreaGroupKey
+  } from '$lib/data/areaGroups';
   import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
   import { OFFERS, answerOffer, type FinishedArea } from '$lib/data/offers';
   import { fmtDay } from '$lib/data/dates';
@@ -78,18 +94,15 @@
   let states = $derived(statesQuery.value ?? {});
   let finishedOn = $derived(groupFinishedOn(group, states));
 
-  /* Only asked for while the area could still be offered: the read behind the
-     offer is eighteen bounded MAXes (lastWrite.ts) and an area somebody has
-     already answered about has nothing to do with it. */
-  let lastWritesQuery = liveQuery((j) =>
-    finishedOn === null && !prefs.areaFinishOfferDeclined.includes(group)
-      ? j.lastWrite.getLastWrites(today)
-      : Promise.resolve(null)
-  );
+  /* Asked unconditionally rather than behind a gate of its own. A gate would
+     have had to restate two of `shouldOfferFinish`'s four conditions here,
+     which is one predicate in two places and a drift waiting to happen; the
+     read itself is eighteen bounded MAXes (lastWrite.ts) and runs once per
+     visit to one of eight screens. */
+  let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
 
   let offering = $derived(
-    lastWritesQuery.value !== null &&
-      lastWritesQuery.value !== undefined &&
+    lastWritesQuery.value !== undefined &&
       shouldOfferFinish(group, {
         states,
         lastWrites: lastWritesQuery.value,
@@ -101,47 +114,46 @@
 
   let sheetOpen = $state(false);
   let dateInput = $state(dateInputValueFromEpochDay(today));
-  /* Whether the open sheet is answering the offer or is the person's own
-     gesture. The write is the same call either way; what differs is that one
-     of the two is an offer being answered and has to go through
-     `answerOffer`, which is ADR-0045's single path from an offer to a
-     write. */
-  let fromOffer = $state(false);
 
+  /** The control's own way in: today, which is the day somebody deciding now
+      is deciding about, and editable. */
   function openFinish() {
-    fromOffer = false;
     dateInput = dateInputValueFromEpochDay(today);
     sheetOpen = true;
   }
 
   /* The offer's yes. Pre-filled with the day of the last write rather than
-     with today, because that is when the practice actually stopped as far as
-     the journal knows - and it stays editable, since the person may have
+     with today, because six months have passed and today is not when the
+     practice stopped - and it stays editable, since the person may have
      carried on somewhere the app never saw. */
   function acceptOffer() {
-    fromOffer = true;
     dateInput = dateInputValueFromEpochDay(lastWrite ?? today);
     sheetOpen = true;
   }
 
-  /** The offer's no, kept for good. */
+  /** The offer's no, kept for good, and written per section rather than per
+      row (ADR-0052: a stored key is never a hub row). */
   function declineOffer() {
-    if (prefs.areaFinishOfferDeclined.includes(group)) return;
-    prefs.areaFinishOfferDeclined = [...prefs.areaFinishOfferDeclined, group];
+    const unrecorded = AREA_GROUPS[group].filter((area) => !prefs.areaFinishOfferDeclined.includes(area));
+    if (unrecorded.length === 0) return;
+    prefs.areaFinishOfferDeclined = [...prefs.areaFinishOfferDeclined, ...unrecorded];
   }
 
   /* Closed before the write, the same order the roadmap's own offer keeps: a
-     second tap finds no open sheet rather than a second write in flight. */
+     second tap finds no open sheet rather than a second write in flight.
+
+     Through `answerOffer` whichever moment opened the sheet, because the sheet
+     *is* the confirmation either way and ADR-0045's rule is that the write
+     happens on one path. A second call straight to `setAreasFinished` here
+     would be the "trigger that wanted to write directly" offers.ts's own
+     header exists to refuse. */
   async function confirmFinish() {
     const subject: FinishedArea = {
       areas: AREA_GROUPS[group],
       epochDay: epochDayFromDateInputValueOrToday(dateInput)
     };
-    const wasOffer = fromOffer;
     sheetOpen = false;
-    fromOffer = false;
-    if (wasOffer) await answerOffer(OFFER, subject, 'confirm', journal);
-    else await journal.areaStates.setAreasFinished(subject.areas, subject.epochDay);
+    await answerOffer(OFFER, subject, 'confirm', journal);
   }
 
   /** Un-finishing: the same call with null, and no date to pick. */
@@ -157,9 +169,9 @@
       data-area-finish-offer
       icon="clock"
       role={roleAt(activeFlag.roles, 0)}
-      title={m.area_finish_offer_title()}
+      title={OFFER.copy.title()}
       text={m.area_finish_offer_body({ date: dayLong(lastWrite) })}
-      action={{ label: m.area_finish_offer_action(), onclick: acceptOffer }}
+      action={{ label: OFFER.copy.confirm(), onclick: acceptOffer }}
     />
   {/if}
 
@@ -204,7 +216,7 @@
           key="area-finish-decline"
           data-area-finish-decline
           icon="x"
-          title={m.area_finish_offer_dismiss()}
+          title={OFFER.copy.decline()}
           subtitle={m.area_finish_offer_dismiss_sub()}
           chevron={false}
           onclick={declineOffer}
@@ -235,7 +247,7 @@
   </Field>
   <div class="stack-3 area-finish-actions">
     <button class="btn btn-primary" data-area-finish-confirm onclick={confirmFinish}>
-      <span>{m.area_finish_confirm()}</span>
+      <span>{OFFER.copy.confirm()}</span>
     </button>
     <button class="btn btn-ghost" onclick={() => (sheetOpen = false)}>
       <span>{m.area_finish_cancel()}</span>

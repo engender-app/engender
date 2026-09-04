@@ -118,25 +118,45 @@ export function groupLastWrite(
 
 /** How long an area has to go unwritten before the app asks about it once.
 
-    Half a year, and chosen against the cadences the app already knows rather
-    than picked for roundness. Electrolysis runs every four to six weeks, a
-    measurement every month or two, a wear session most weeks, a benchmark
-    when somebody remembers. Six months of silence is past all of them by a
-    wide margin, so a hard autumn does not reach it.
+    Half a year. The number itself is a judgement rather than a measurement:
+    the one cadence the tree actually pins is the measurements nudge's, which
+    speaks up after 30 days (`liveTiles.ts`), and 180 is six times that. The
+    rest is plausibility - electrolysis runs on a four-to-six-week course, a
+    wear session is a most-weeks thing, a benchmark happens when somebody
+    remembers - so what the window buys is that no ordinary gap and no hard
+    season comes near it.
 
-    The window is only half of why this is not a nag. The offer is made on the
-    area's own screen, which somebody reached on purpose, never on Home and
-    never as a notification; and a no is kept forever, so the question is
-    asked at most once per area for the life of the journal. */
+    What actually keeps this from being a nag is structural, and it is not
+    the number. The offer is made on the area's own screen, which somebody
+    reached on purpose, never on Home and never as a notification; and a no
+    is kept forever, so the question is asked at most once per area for the
+    life of the journal. If the number turns out to be wrong, it is wrong by
+    asking a little early or a little late, once. */
 export const FINISH_SUGGESTION_QUIET_DAYS = 180;
 
 export interface FinishOfferInput {
   states: AreaStates;
   /** From `journal/lastWrite.ts`, which is where the fact lives. */
   lastWrites: Partial<Record<FinishableArea, number | null>>;
-  /** The groups already answered no, kept in `areaFinishOfferDeclined`. */
+  /** The areas already answered no, kept in `areaFinishOfferDeclined` as
+      section names rather than as group keys (ADR-0052: a stored key must
+      not be a hub row). `readonly string[]` because that is the preference's
+      own type, and a value this build does not recognise simply matches no
+      section. */
   declined: readonly string[];
   todayEpochDay: number;
+}
+
+/** Whether the person has already said no about this group.
+
+    True when **any** of its sections carries the no, not all of them. A
+    decline writes every section at once so the two agree today; they can only
+    disagree if a later build regroups the rows, and there the safe reading is
+    that an area somebody said no about stays said-no-about. Re-asking is the
+    failure this whole preference exists to prevent, and a group reading as
+    un-declined because it grew a new section would be exactly that. */
+export function groupDeclined(key: AreaGroupKey, declined: readonly string[]): boolean {
+  return AREA_GROUPS[key].some((area) => declined.includes(area));
 }
 
 /** Whether this group's screen should offer to mark it finished (ADR-0045:
@@ -149,7 +169,7 @@ export interface FinishOfferInput {
     something in it to have stopped, and the last of it is a whole window
     back. */
 export function shouldOfferFinish(key: AreaGroupKey, input: FinishOfferInput): boolean {
-  if (input.declined.includes(key)) return false;
+  if (groupDeclined(key, input.declined)) return false;
   if (AREA_GROUPS[key].some((area) => areaQuiet(area, input.states, input.todayEpochDay))) return false;
 
   const lastWrite = groupLastWrite(key, input.lastWrites);

@@ -343,7 +343,18 @@
      the one prompt on this screen that belongs to a finishable area, so it is
      the one that goes quiet when that area does. Read against today rather
      than against `day`: an area somebody is done with is done with now, and a
-     backdated entry is not a way back into a prompt they switched off. */
+     backdated entry is not a way back into a prompt they switched off.
+
+     `areaQuiet` by hand rather than `unpromptedQuiet`, which is the seam the
+     tiles and the notifications go through. This screen's four contextual
+     cards are not in `unprompted/registry.ts` at all - they are their own
+     `entry*Enabled` preferences, and a registry whose two views draw live
+     tiles and notifications has no row shape for a chip inside the editor.
+     So the gate is named here, and `EntryEditor.gates.test.ts` pins that this
+     is the only card on this screen belonging to an area that can be
+     finished, which is what keeps the hand-wiring honest. Folding the
+     editor's cards into that registry would give the next one the cascade for
+     free and is worth its own ticket. */
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
   let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, todayEpochDay()));
 

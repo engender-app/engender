@@ -66,4 +66,16 @@ describe('where the finish control is mounted', () => {
     expect(covered.length).toBe(9);
     expect(new Set(covered).size).toBe(9);
   });
+
+  it('names groups the More hub already has rows for', () => {
+    /* `areaLabels.ts` claims each group's name is the hub row's own, and
+       `AreaGroupKey` is written out by hand beside a hub whose rows a data
+       module cannot import (the hub is the UX spec's, and it is a route).
+       This is the only thing that catches the two drifting apart. */
+    const hub = readFileSync(`${root}/src/routes/more/+page.svelte`, 'utf8');
+
+    for (const key of AREA_GROUP_KEYS) {
+      expect(hub, key).toContain(`key: '${key}'`);
+    }
+  });
 });

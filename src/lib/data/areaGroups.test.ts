@@ -5,6 +5,7 @@ import {
   AREA_GROUP_KEYS,
   FINISH_SUGGESTION_QUIET_DAYS,
   finishedGroups,
+  groupDeclined,
   groupFinishedOn,
   groupLastWrite,
   shouldOfferFinish
@@ -106,12 +107,47 @@ test('a no is taken permanently', () => {
   const input = {
     states: {},
     lastWrites: { measurements: 19000 },
+    // The section name, which is what the preference stores - never the hub
+    // row key (ADR-0052).
     declined: ['measurements'],
     todayEpochDay: TODAY
   };
 
   assert.equal(shouldOfferFinish('measurements', input), false);
   assert.equal(shouldOfferFinish('measurements', { ...input, todayEpochDay: TODAY + 3650 }), false);
+});
+
+test('a no is stored against sections, so a row key alone declines nothing', () => {
+  /* The row key and the section name happen to be the same string for six of
+     the eight groups, so this uses one of the two where they differ. A build
+     that stored rows would pass on 'sizes' and this is what catches it. */
+  assert.deepEqual([...AREA_GROUPS.sizes], ['sizeRecords']);
+
+  assert.equal(groupDeclined('sizes', ['sizeRecords']), true);
+  assert.equal(groupDeclined('sizes', ['sizes']), false);
+  assert.equal(
+    shouldOfferFinish('sizes', {
+      states: {},
+      lastWrites: { sizeRecords: 19000 },
+      declined: ['sizes'],
+      todayEpochDay: TODAY
+    }),
+    true,
+    'a stored hub row is not a stored area'
+  );
+});
+
+test('a group fronting two areas reads as declined from either of them', () => {
+  /* Declining writes both, so the two agree today. They can only disagree
+     after a regroup, and there the safe answer is still "no": re-asking is
+     the failure the preference exists to prevent. */
+  assert.equal(groupDeclined('hair-progress', ['hairStages', 'hairPhotos']), true);
+  assert.equal(groupDeclined('hair-progress', ['hairStages']), true);
+  assert.equal(groupDeclined('hair-progress', []), false);
+});
+
+test('a key this build has never heard of declines nothing', () => {
+  assert.equal(groupDeclined('measurements', ['somethingElse']), false);
 });
 
 test('an area that is already quiet is not asked about', () => {
