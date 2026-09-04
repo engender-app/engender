@@ -174,7 +174,12 @@
     font-weight: var(--weight-bold);
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    color: var(--role-mark-in, var(--text-2));
+    /* `--role-ink`, not `--role-mark`: this is small text somebody reads,
+       not a chart line or an icon, and only the ink variant is held to
+       4.5:1 (kit.css's own [data-kit-role] comment) - the mark variant
+       stays closer to the flag and answers to 3:1, which a date somebody
+       actually reads should not settle for. */
+    color: var(--role-ink, var(--text-2));
   }
 
   .margin-note-text {
