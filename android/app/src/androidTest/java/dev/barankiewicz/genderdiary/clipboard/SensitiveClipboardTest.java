@@ -1,12 +1,15 @@
 package dev.barankiewicz.genderdiary.clipboard;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;
+import android.content.SharedPreferences;
 import android.content.Context;
 import android.os.PersistableBundle;
 
@@ -47,7 +50,7 @@ public class SensitiveClipboardTest {
 
     @After
     public void tearDown() {
-        onMainThread(SensitiveClipboard::forget);
+        onMainThread(() -> SensitiveClipboard.forget(context));
         onMainThread(() -> clipboard().setPrimaryClip(ClipData.newPlainText("", "")));
     }
 
@@ -93,6 +96,32 @@ public class SensitiveClipboardTest {
             onMainThread(() -> SensitiveClipboard.clearIfDue(context));
 
             assertEquals("an address, hers", textOnClipboard());
+        }
+    }
+
+    /* The pending clear is written down rather than held in a field, because
+       Android may kill this process while the person is pasting the key
+       somewhere else. What a new process reads is asserted here directly: a
+       digest of the key and a deadline, and nothing that a stolen copy of the
+       preference file could turn back into the characters. */
+    @Test
+    public void writesThePendingClearDownWhereANewProcessWillFindIt() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            copyTheKey();
+
+            SharedPreferences prefs =
+                context.getSharedPreferences(SensitiveClipboard.PREFS, Context.MODE_PRIVATE);
+            String digest = prefs.getString("digest", null);
+            assertNotNull("nothing was written down, so a killed process forgets the clear", digest);
+            assertFalse("the key itself is in the preference file", digest.contains(KEY));
+            assertTrue("no deadline was written down", prefs.getLong("dueAtRealtime", 0) > 0);
+
+            /* And what a new process does with it: clearIfDue is what the
+               plugin calls at load, with no field left over from the copy. */
+            assertTrue(awaitClipboardWithout(KEY));
+            assertNull("the record outlived the clear it asked for", prefs.getString("digest", null));
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
         }
     }
 

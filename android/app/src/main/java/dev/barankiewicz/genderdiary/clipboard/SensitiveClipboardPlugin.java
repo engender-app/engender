@@ -55,6 +55,19 @@ public class SensitiveClipboardPlugin extends Plugin {
     }
 
     /**
+     * A clear can be owed by a process that no longer exists: Android is free
+     * to kill this app while the person is in their password manager with the
+     * key on the clipboard. The record of it outlives the process, so the
+     * first thing a new one does is ask whether the clipboard is still
+     * holding it.
+     */
+    @Override
+    public void load() {
+        super.load();
+        SensitiveClipboard.clearIfDue(getContext());
+    }
+
+    /**
      * The clear is due at a moment this app may not be in front of, and from
      * Android 10 an app without focus cannot read the clipboard to find out
      * whether what it is about to wipe is still its own. Coming back is when
