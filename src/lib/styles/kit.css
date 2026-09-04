@@ -848,8 +848,7 @@ a.kit-entry:active {
    pair. Home's bound-to-today tiles take the whole width because that is
    their weight (phase 8 UX ticket 01); the two-up default above is what a
    pair of destinations gets. */
-.kit-tiles[data-rows],
-.kit-tiles[data-live-tile-grid][data-rows] {
+.kit-tiles[data-rows] {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -869,10 +868,13 @@ a.kit-entry:active {
   grid-column: 1 / -1;
 }
 
-/* `data-tight`: opt-in for a pair whose notes are short enough - one or two
-   words each, like Safe Space's "Consecutive days" / "In your history"
-   (ticket 14, Alicja's review) - that the 390px floor's protection is
-   overcautious for. The 200% zoom danger above is still honoured: it stacks
+/* `data-tight`: opt-in for a pair the 390px floor's protection is
+   overcautious for. Two of them so far. Safe Space's stats, whose notes are
+   one or two words each (ticket 14, Alicja's review). And Home's look back,
+   where the reason is the pair rather than the notes: wrapped and on this
+   day are the same offer over two spans, so side by side they read as one
+   thing to glance at and stacked they were two cards each stating a number
+   (phase 8 UX ticket 01, Alicja's review). The 200% zoom danger above is still honoured: it stacks
    at 300px rather than never, which still covers the ~195px effective
    viewport that zoom produces on a 390px-floor phone. Opt in per instance;
    the default above stays the floor for any pair that has not confirmed its
@@ -996,8 +998,7 @@ a.kit-entry:active {
    The value steps down from --text-3xl to --text-xl for the same reason:
    at display size on one line it outweighs the title it is meant to be the
    reading for. It keeps --role-mark and so keeps answering the 3:1 floor. */
-.kit-tile[data-weight='row'],
-.kit-tile.is-split[data-weight='row'] {
+.kit-tile[data-weight='row'] {
   min-height: 0;
   padding: var(--space-3) var(--space-4);
 }

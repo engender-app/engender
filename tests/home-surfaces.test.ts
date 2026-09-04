@@ -159,8 +159,9 @@ describe('what spec 08 took off Home', () => {
     /* ADR-0029: the handle is the kind's own key, so an added tile cannot
        arrive without one and none of them can be renamed by a copy edit. */
     expect(markup).toContain('data-live-tile={tile.key}');
-    // Three blocks since the weights landed, each keyed on the same field.
-    expect((markup.match(/as tile \(tile\.key\)\}/g) ?? []).length).toBe(3);
+    // Two blocks since the weights landed - the tile grids and the quiet
+    // list - each keyed on the same field.
+    expect((markup.match(/as tile \(tile\.key\)\}/g) ?? []).length).toBe(2);
     for (const kind of LIVE_TILE_ORDER) expect(UNPROMPTED_KINDS).toContain(kind);
   });
 
@@ -172,7 +173,7 @@ describe('what spec 08 took off Home', () => {
        rows and the cards - and the rule is written the same way in both,
        over what is on screen rather than over one grid's own length. */
     const rules = markup.match(/transition:tileSlide=\{\{[^}]*\}\}/g) ?? [];
-    expect(rules.length, 'one per grid, not one per tile').toBe(2);
+    expect(rules.length, 'said once for every weight, not once per tile').toBe(1);
     for (const rule of rules) expect(rule).toBe('transition:tileSlide={{ enabled: shownTiles.length > 1 }}');
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
   });
@@ -184,12 +185,14 @@ describe('what spec 08 took off Home', () => {
        three weights rather than twelve tiles differing only by hue. */
     expect(home).toContain("from '$lib/data/liveTiles'");
     expect(home).toContain('splitHomeTiles(liveTiles.tiles)');
-    expect(home).toMatch(/tile\.tier === 'moment'/);
-    expect(home).toMatch(/tile\.tier === 'today'/);
+    /* One table saying what a tier is drawn as, so a tier cannot be given a
+       weight in one place and a shape in another. A row, a card, and - for
+       dormant, which is not a tile at all - a row of a list. */
+    expect(home).toMatch(/tier: 'today', weight: 'row', rows: true/);
+    expect(home).toMatch(/tier: 'moment', weight: 'card'/);
     expect(home).toMatch(/tile\.tier === 'dormant'/);
-    // A row, a card, a line - and the rows take the grid's whole width.
-    expect(markup).toContain('weight="row"');
-    expect(markup).toContain('data-rows');
+    expect(markup).toContain('weight={block.weight}');
+    expect(markup).toContain('data-rows={block.rows}');
     expect(markup).toMatch(/<ListRow[\s\S]*?data-live-tile=\{tile\.key\}/);
   });
 
@@ -214,6 +217,23 @@ describe('what spec 08 took off Home', () => {
     // `{#if entryCount && ...}` is the absence at zero, and the `&&` is what
     // also holds the line back until the count has answered.
     expect(markup).toMatch(/\{#if entryCount && journalBoundsQuery\.value\}/);
+  });
+
+  it('offers somewhere to start until the journal has five entries, then stops on its own', () => {
+    /* Alicja, 2026-09-04. Day one has nothing on it once the placeholders
+       are gone, and "write an entry" says nothing about what the app
+       becomes. Five rather than one, so it is still there when somebody
+       comes back to read it; nothing to dismiss, because it leaves. */
+    expect(home).toContain('const GETTING_STARTED_UNTIL = 5');
+    expect(home).toMatch(/entryCount != null && entryCount < GETTING_STARTED_UNTIL/);
+    expect(markup).toContain('data-getting-started');
+    // Every row goes somewhere, and the last hands the inventory to the hub.
+    const rows = home.match(/const GETTING_STARTED = \[[\s\S]*?\];/)?.[0];
+    expect(rows, 'the offers are one list').toBeDefined();
+    expect((rows.match(/href: '/g) ?? []).length).toBe(5);
+    expect(rows).toContain("href: '/more'");
+    // Nothing here may be a dismissable nudge: it is not one of the tiles.
+    expect(markup).not.toMatch(/data-getting-started[\s\S]{0,400}dismiss/);
   });
 
   it('makes day one wait for the first entry, on a count rather than on a guess', () => {

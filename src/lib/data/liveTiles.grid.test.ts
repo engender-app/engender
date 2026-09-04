@@ -259,7 +259,7 @@ describe('the tier every kind is in', () => {
      Home draws it as three weights so the difference is legible without
      reading either tile. */
 
-  it('puts every kind in exactly one of the three bands', () => {
+  it('puts every kind in one of the three bands, and these are the bands', () => {
     const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
     for (const kind of LIVE_TILE_ORDER) byTier[LIVE_TILE_TIER[kind]].push(kind);
 
@@ -277,7 +277,6 @@ describe('the tier every kind is in', () => {
       'voice-benchmark-nudge',
       'measurements-nudge'
     ]);
-    expect(byTier.today.length + byTier.moment.length + byTier.dormant.length).toBe(LIVE_TILE_ORDER.length);
   });
 
   it('carries the tier on the tile, which is what Home draws the weight from', () => {

@@ -117,10 +117,21 @@
   let tilesExpanded = $state(false);
   let tileSplit = $derived(splitHomeTiles(liveTiles.tiles));
   let shownTiles = $derived(tilesExpanded ? liveTiles.tiles : tileSplit.shown);
-  /* The tiers are contiguous in the order, so filtering them apart keeps
-     each block's own order and needs no second sort. */
-  let cardTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
-  let rowTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
+  /* What each tier is drawn as. `LIVE_TILE_TIER` says which band a kind is
+     in and this says what a band looks like, which is the half that belongs
+     to a screen: the same three tiers on another surface could be drawn
+     three other ways. Written as one table rather than three filters and
+     two near-identical grids, so a tier cannot be given a weight in one
+     place and a shape in another.
+
+     The tiers are contiguous in the order, so filtering by them keeps each
+     block's own order and needs no second sort. Dormant is not here: it is
+     not a tile at all but a row of a list, which is the whole of what the
+     quiet weight means. */
+  const TILE_BLOCKS = [
+    { tier: 'today', weight: 'row', rows: true },
+    { tier: 'moment', weight: 'card', rows: undefined }
+  ] as const;
   let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
   const FOLD_NAMES = 2;
   let foldLabel = $derived.by(() => {
@@ -142,6 +153,32 @@
   let journalBoundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let entryCount = $derived(entryCountQuery.value);
   let hasEntries = $derived(entryCount == null ? null : entryCount > 0);
+
+  /* Getting started (Alicja, 2026-09-04). Day one is a screen with nothing
+     on it once the placeholders are gone, and "write an entry" is the only
+     thing it asks for - which is right as the first move and says nothing
+     about what the app turns into once there is something in it.
+
+     Five entries rather than one, because a section that vanished the
+     moment somebody logged a mood would be gone before they came back to
+     read it (Alicja, 2026-09-04). It leaves on its own and there is nothing
+     to dismiss: a row that has to be shut is a row that outstayed itself.
+
+     The list is written here rather than read off the hub's own area
+     registry. Not every area belongs in it - this is four openings that pay
+     off later, not an inventory - and the hub is being rewritten by another
+     ticket, so a shared list would be a merge conflict standing in for a
+     decision neither ticket made. The last row hands the inventory question
+     to the hub, which is whose it is. */
+  const GETTING_STARTED_UNTIL = 5;
+  let showGettingStarted = $derived(entryCount != null && entryCount < GETTING_STARTED_UNTIL);
+  const GETTING_STARTED = [
+    { key: 'milestones', icon: 'flag', href: '/settings/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
+    { key: 'regimen', icon: 'flask', href: '/settings/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
+    { key: 'letters', icon: 'clock', href: '/settings/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
+    { key: 'photos', icon: 'camera', href: '/settings/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
+    { key: 'more', icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
+  ];
 
   /* Which stripe each area of the screen takes is HOME_AREA_ROLE's
      ($lib/theme/roles.ts, where the reason the week strip is out of
@@ -438,60 +475,39 @@
        the kit and tested for. -->
   {#if shownTiles.length > 0 || tileSplit.folded.length > 0}
     <div class="home-tiles" transition:disclose>
-      {#if rowTiles.length > 0}
-        <TileGrid
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-          flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-          data-live-tile-grid
-          data-rows
-        >
-          {#each rowTiles as tile (tile.key)}
-            <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
-              <Tile
-                key={tile.tileKey}
-                weight="row"
-                title={tile.title}
-                value={tile.value}
-                note={tile.note}
-                href={tile.href}
-                action={tile.action}
-                dismiss={tile.dismiss}
-                {...tile.attrs}
-                data-live-tile={tile.key}
-              />
-            </div>
-          {/each}
-        </TileGrid>
-      {/if}
-
-      {#if cardTiles.length > 0}
-        <TileGrid
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-          flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-          data-live-tile-grid
-        >
-          <!-- One slide rule for all of them. It used to be two: seven tiles
-               asked whether they had a sibling and four asked whether one of
-               the original five was showing, so a journal with only the wear
-               and measurements tiles slid one in and left the other to
-               appear (deepening ticket 07). -->
-          {#each cardTiles as tile (tile.key)}
-            <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
-              <Tile
-                key={tile.tileKey}
-                title={tile.title}
-                value={tile.value}
-                note={tile.note}
-                href={tile.href}
-                action={tile.action}
-                dismiss={tile.dismiss}
-                {...tile.attrs}
-                data-live-tile={tile.key}
-              />
-            </div>
-          {/each}
-        </TileGrid>
-      {/if}
+      {#each TILE_BLOCKS as block (block.tier)}
+        {@const tiles = shownTiles.filter((tile) => tile.tier === block.tier)}
+        {#if tiles.length > 0}
+          <TileGrid
+            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+            flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+            data-live-tile-grid
+            data-rows={block.rows}
+          >
+            <!-- One slide rule for every tile on screen. It used to be two:
+                 seven tiles asked whether they had a sibling and four asked
+                 whether one of the original five was showing, so a journal
+                 with only the wear and measurements tiles slid one in and
+                 left the other to appear (deepening ticket 07). -->
+            {#each tiles as tile (tile.key)}
+              <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
+                <Tile
+                  key={tile.tileKey}
+                  weight={block.weight}
+                  title={tile.title}
+                  value={tile.value}
+                  note={tile.note}
+                  href={tile.href}
+                  action={tile.action}
+                  dismiss={tile.dismiss}
+                  {...tile.attrs}
+                  data-live-tile={tile.key}
+                />
+              </div>
+            {/each}
+          </TileGrid>
+        {/if}
+      {/each}
 
       <!-- The quiet weight. A dormant nudge keeps neither its action nor its
            dismiss: the whole line taps through to the screen its action
@@ -539,11 +555,19 @@
 
        The whole grid waits for the first entry (phase 8 UX ticket 01):
        there is nothing to look back on, and a zero-height grid was one of
-       the four unfinished things day one used to show. -->
+       the four unfinished things day one used to show.
+
+       `data-tight` keeps the pair on one line at the 390px floor rather
+       than stacking (Alicja, 2026-09-04). The two of them are the same
+       offer looked at over two spans, so they read as a pair or as one
+       thing; stacked, they were two cards saying a number each. A lone
+       survivor still takes the whole row, which the grid already
+       handles. -->
   {#if hasEntries}
     <TileGrid
       role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
       flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+      data-tight
     >
       {#if prefs.wrappedEnabled}
         <WrappedHomeCard />
@@ -655,6 +679,35 @@
       {/snippet}
     </ReadGate>
   </div>
+
+  <!-- Getting started, until the journal has five entries in it. It sits
+       under the entries rather than over them: the first move is writing
+       something, and this is what to do next, not what to do instead.
+
+       It takes the live tiles' stripe. Nothing else claims that colour
+       while it is on screen - a journal this young has no tile qualifying -
+       and both are the same kind of thing: somewhere on Home that asks to
+       be acted on rather than read. -->
+  {#if showGettingStarted}
+    <!-- The handle rides the wrapper: ListCard takes a role and its children
+         and nothing else, and widening a kit surface to pass one screen's
+         walkthrough handle through would be the wrong file to change. -->
+    <div transition:disclose data-getting-started>
+      <SectionHeading text={m.home_start_title()} />
+      <p class="home-start-intro">{m.home_start_intro()}</p>
+      <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+        {#each GETTING_STARTED as offer (offer.key)}
+          <ListRow
+            key={offer.key}
+            icon={offer.icon}
+            href={offer.href}
+            title={offer.title()}
+            subtitle={offer.sub()}
+          />
+        {/each}
+      </ListCard>
+    </div>
+  {/if}
 
   <Sheet
     open={dimsPromptEntryId !== null}
@@ -1040,6 +1093,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* The line under the Getting started heading. A heading owns no space
+     below itself here (the rule above), so this carries its own seam down
+     to the card. */
+  .home-start-intro {
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--text-2);
   }
 
   /* Tier 3: the skeleton crossfades into the day cards. Both children sit in
