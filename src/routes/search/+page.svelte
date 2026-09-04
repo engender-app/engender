@@ -381,7 +381,7 @@
     <!-- A draw from the question currently being asked, not a mode of its
          own (spec.md's own line) - absent with nothing asked, which
          `hits.length` already says without a second `hasCriteria` check. -->
-    <button class="btn btn-soft" data-search-random onclick={drawRandom}>
+    <button class="btn btn-soft search-random" data-search-random onclick={drawRandom}>
       <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
     </button>
   {/if}
