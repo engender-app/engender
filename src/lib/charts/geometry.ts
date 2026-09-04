@@ -193,12 +193,31 @@ export function share(value: number, max: number): number {
   return (value / max) * 100;
 }
 
-export interface PaddedSeries {
-  points: Point[];
+export interface PaddedRange {
   min: number;
   max: number;
+}
+
+export interface PaddedSeries extends PaddedRange {
+  points: Point[];
   from: number;
   to: number;
+}
+
+/** The two ends of a scale to draw a set of readings against, padded off
+    the readings themselves - see paddedSeries below for why, which is the
+    caller this was pulled out of (phase 8 features ticket 29 wanted the
+    same pad over a set of values with no positions attached).
+
+    Null on nothing to scale. One reading is a scale, unlike one *point*,
+    which is not a series: a lone mark still has to be placed somewhere on
+    a card, and `minPad` is what puts it in the middle of one. */
+export function paddedRange(values: readonly number[], minPad: number): PaddedRange | null {
+  if (values.length === 0) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const pad = (max - min) * 0.2 || minPad;
+  return { min: min - pad, max: max + pad };
 }
 
 /** A series of readings with a scale to draw it against, or null when
@@ -217,11 +236,8 @@ export interface PaddedSeries {
     the chart, down to how two readings on one day settle. */
 export function paddedSeries(points: Point[], minPad: number): PaddedSeries | null {
   if (points.length < 2) return null;
-  const values = points.map((p) => p.y);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const pad = (max - min) * 0.2 || minPad;
-  return { points, min: min - pad, max: max + pad, from: points[0].x, to: points[points.length - 1].x };
+  const range = paddedRange(points.map((p) => p.y), minPad)!;
+  return { points, ...range, from: points[0].x, to: points[points.length - 1].x };
 }
 
 /** Three decimals is finer than a device pixel at any chart size the app
