@@ -26,7 +26,7 @@
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
-  import { comfortBand } from '$lib/audio/bands';
+  import { bandLanguageIsGuessed, bandLanguageOf, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import { noteName } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
@@ -102,6 +102,11 @@
       as well as on the finished take: the point of it is to be visible
       while somebody is speaking. */
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
+  /* Whose typical ranges belong on the figure: the language of the passage
+     being read, not the app's (ADR-0059). A passage of somebody's own words
+     carries no language, so the app's is a guess and the caption says so. */
+  let bandLanguage = $derived(bandLanguageOf(passageKey, getLocale()));
+  let bandLanguageGuessed = $derived(bandLanguageIsGuessed(passageKey));
   let targetSeconds = $derived(step === 'vowel' ? VOWEL_SECONDS : PASSAGE_TARGET_SECONDS);
 
   /** The gate's own findings, in words, and only ever about the recording. */
@@ -336,6 +341,8 @@
           data-vb-take
           {role}
           {comfort}
+          language={bandLanguage}
+          languageGuessed={bandLanguageGuessed}
           pitchTrack={passageTake.pitchTrack}
           medianHz={figures.f0MedianHz}
           p10Hz={figures.f0P10Hz}
@@ -381,6 +388,8 @@
           data-vb-gauge
           {role}
           {comfort}
+          language={bandLanguage}
+          languageGuessed={bandLanguageGuessed}
           {frames}
           report={reading}
           {targetSeconds}
@@ -406,6 +415,8 @@
           data-vb-gauge
           {role}
           {comfort}
+          language={bandLanguage}
+          languageGuessed={bandLanguageGuessed}
           {frames}
           report={reading}
           {targetSeconds}

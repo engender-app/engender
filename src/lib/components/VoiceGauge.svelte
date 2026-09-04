@@ -61,7 +61,7 @@
   import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
-  import { pitchAxis } from '$lib/audio/bands';
+  import { pitchAxis, type BandLanguage } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -74,6 +74,8 @@
     label,
     advice,
     comfort = null,
+    language,
+    languageGuessed = false,
     role,
     compact = false,
     ...rest
@@ -87,6 +89,9 @@
     advice: string[];
     /** The person's own comfort band, when they have set one. */
     comfort?: { lowHz: number; highHz: number } | null;
+    /** Whose figures the bands are (bands.ts's `bandLanguageOf`). */
+    language: BandLanguage;
+    languageGuessed?: boolean;
     role?: Role;
     /** The passage step's form: the same figure at a third the height,
         sitting on the action bar under a screenful of text somebody is busy
@@ -151,6 +156,8 @@
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
     {hzLabel}
+    {language}
+    {languageGuessed}
   >
     {#snippet underPlot()}
       <div class="vg-run" aria-hidden="true">

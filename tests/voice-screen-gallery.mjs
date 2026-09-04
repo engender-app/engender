@@ -199,6 +199,32 @@ for (const theme of THEMES) {
   await moving.close();
 }
 
+/* 12. The Polish passage, which is why the bands are per language at all.
+   An ordinary Polish cis man reads a passage near 163 Hz, so the English
+   figures would have put him inside the band labelled cis woman
+   (ADR-0059). Switching the app's language switches the built-in passage,
+   which is what the bands key off. */
+for (const theme of THEMES) {
+  const page = await openPage();
+  await dress(page, 'trans', theme);
+  await settle(page, '/settings');
+  await page.locator('[data-segment="pl"]').click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start',
+    null,
+    { timeout: 8000 }
+  );
+  await settle(page, '/settings/voice');
+  await page.locator('[data-vb-record]').click();
+  await page.waitForTimeout(2600);
+  await page.locator('[data-vb-stop]').click();
+  await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await page.locator('[data-vb-record]').click();
+  await page.waitForTimeout(1800);
+  await shoot(page, `vs-12-polish-bands-${theme}`);
+  await page.close();
+}
+
 await app.httpServer.close();
 await browser.close();
 console.log(`${shots.length} shots in ${outDir}`);

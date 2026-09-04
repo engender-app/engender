@@ -15,23 +15,51 @@
      all: ADR-0059 permits the bands only with their figures, their source
      and their caveat, and tests/voice-figure-surfaces.test.ts holds any
      caller that passes `captionShared` to also import this. */
-  import { REFERENCE_BANDS } from '$lib/audio/bands';
-  import { bandLabel, caveatText, hzLabel, sourceText } from '$lib/components/pitchBandCopy';
+  import { referenceBands, type BandLanguage } from '$lib/audio/bands';
+  import {
+    bandLabel,
+    caveatText,
+    guessedLanguageText,
+    hzLabel,
+    sourceText
+  } from '$lib/components/pitchBandCopy';
+
+  let {
+    language,
+    languageGuessed = false
+  }: {
+    /** Whose figures are drawn: the language of the passage being read
+        (bands.ts's `bandLanguageOf`), not the app's. */
+    language: BandLanguage;
+    /** True for a passage of somebody's own words, where the language above
+        is the app's guess. The caption says so rather than letting a guess
+        read as a fact. */
+    languageGuessed?: boolean;
+  } = $props();
+
+  let bands = $derived(referenceBands(language));
 </script>
 
 <div class="pbc">
   <ul class="pbc-legend">
-    {#each REFERENCE_BANDS as band (band.key)}
+    {#each bands as band (band.key)}
       <li data-pitch-band={band.key}>
-        <span class="pbc-swatch" class:is-overlap={band.key === 'overlap'} aria-hidden="true"></span>
+        <span
+          class="pbc-swatch"
+          class:is-between={band.key === 'between'}
+          aria-hidden="true"
+        ></span>
         <span class="pbc-text">
-          {bandLabel(band.key)}
+          {bandLabel(band)}
           <span class="pbc-figures">{hzLabel(band.lowHz)}-{hzLabel(band.highHz)}</span>
         </span>
       </li>
     {/each}
   </ul>
-  <p class="pbc-note" data-pitch-source>{sourceText()}</p>
+  <p class="pbc-note" data-pitch-source>{sourceText(language)}</p>
+  {#if languageGuessed}
+    <p class="pbc-note" data-pitch-guessed>{guessedLanguageText()}</p>
+  {/if}
   <p class="pbc-note" data-pitch-caveat>{caveatText()}</p>
 </div>
 
@@ -66,10 +94,12 @@
     background: color-mix(in oklab, var(--role-c) 18%, transparent);
   }
 
-  /* Two of those on top of each other, with the band's own two edges: the
-     same arithmetic the figure draws the overlap by. */
-  .pbc-swatch.is-overlap {
-    background: color-mix(in oklab, var(--role-c) 33%, transparent);
+  /* Half a range's wash, bounded by the two ranges' own facing edges: the
+     region between them holds fewer speakers than either, so it reads as
+     less than they do rather than more. A denser middle band is the target
+     zone ADR-0012 forbids. */
+  .pbc-swatch.is-between {
+    background: color-mix(in oklab, var(--role-c) 9%, transparent);
     border-top: 1px solid color-mix(in oklab, var(--role-c) 30%, transparent);
     border-bottom: 1px solid color-mix(in oklab, var(--role-c) 30%, transparent);
     border-radius: 0;
