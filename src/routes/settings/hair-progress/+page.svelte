@@ -39,6 +39,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   /* Two areas, two stripes: the staging and the photographs. The notices
      that talk about the app rather than about the journal take no role at
@@ -319,6 +320,9 @@
       </div>
     {/if}
   </Sheet>
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="hair-progress" />
 
   <RecordSheet
     record={stageRecord}

@@ -59,6 +59,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   type Kind = 'recordings' | 'benchmarks';
   type Anchor = DatedRecording | VoiceBenchmark;
@@ -366,6 +367,9 @@
       {/snippet}
     </ReadGate>
   {/if}
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <AreaFinish group="voice" />
 
   <ConfirmDeleteSheet
     open={deleteTarget !== null}

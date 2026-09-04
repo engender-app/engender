@@ -104,6 +104,10 @@ export function homeTiles(
   const todayDoses = liveList((j) => j.doses.getDoses(todayEpochDay, todayEpochDay));
   const voiceBenchmarks = liveList((j) => j.voiceBenchmarks.getBenchmarks());
   const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
+  /* Which areas are hidden or finished (phase 8 features ticket 04). One
+     query for the whole grid rather than one per tile: the cascade is a
+     property of the grid, and `unpromptedQuiet` is what spends this. */
+  const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
   const hairRemoval = liveList((j) => j.hairRemoval.getSessions());
   /* Counted and reduced in the query rather than on the way out: the nudge
      wants how many there are and the latest day, and holding every
@@ -150,6 +154,7 @@ export function homeTiles(
       nowMs: nowTick,
       enabled: gates.enabled,
       snoozed: gates.snoozed,
+      areaStates: areaStates.value ?? {},
       reads: {
         runningWear: runningWear.value ?? null,
         episodes: episodes.rows,

@@ -694,7 +694,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   chartAnnotations: classify<Journal['chartAnnotations']>()({
     writes: {},
     reads: {
-      getAnnotations: ['milestone', 'regimen', 'dose', 'journalingPause', 'tryout', 'procedure', 'era'],
+      /* 'areaState' since phase 8 features ticket 04: the day a stream
+         ended draws beside the seven kinds above. */
+      getAnnotations: ['milestone', 'regimen', 'dose', 'journalingPause', 'tryout', 'procedure', 'era', 'areaState'],
       /* The hormone curve's own markers (phase 8 features ticket 15), which
          are a separate read for the reason the header there gives. 'entry'
          is the body-region readings and 'tally' the counters, both judged

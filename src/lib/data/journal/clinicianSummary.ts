@@ -29,8 +29,10 @@
    never what any one of them means. */
 
 import type { TableName } from '../live/writes';
+import { finishedGroups, type AreaGroupKey } from '../areaGroups';
 import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
 import { spanOverlapsRange } from '../span';
+import type { AreaStatesArea } from './areaStates';
 import type { ChecklistsArea } from './checklists';
 import type { DosesArea } from './doses';
 import type { ExposureArea, ExposureCounters } from './exposure';
@@ -55,6 +57,15 @@ export interface ClinicianSummaryProcedure extends Procedure {
   photoEpochDays: number[];
 }
 
+/** A stream the person has said they are done with, and the day they said it
+    ended (phase 8 features ticket 04, ADR-0052). Named by hub row rather than
+    by archive section, because that is what the reader recognises and because
+    hair progress is two sections finished together. */
+export interface ClinicianSummaryFinishedArea {
+  key: AreaGroupKey;
+  epochDay: number;
+}
+
 export interface ClinicianSummary {
   regimenEpisodes: ClinicianSummaryEpisode[];
   doses: DoseEvent[];
@@ -68,6 +79,13 @@ export interface ClinicianSummary {
       right now - not range-filtered like the sections above it, since the
       list has no date of its own to filter by. */
   appointmentPrepItems: ChecklistItem[];
+  /** Which streams have ended and when (phase 8 features ticket 04). A
+      stopped treatment then reads as a decision with a date rather than as
+      missing data, which is the difference between a chart a clinician can
+      interpret and one they cannot. Not range-filtered, for the reason
+      `procedures` is not: a course that ended before the window is exactly
+      what explains a flat stretch inside it. */
+  finishedAreas: ClinicianSummaryFinishedArea[];
 }
 
 export type ClinicianSummarySectionKey = keyof ClinicianSummary;
@@ -77,6 +95,7 @@ export type ClinicianSummarySectionKey = keyof ClinicianSummary;
     rather than five parameters, because every section is handed all of them
     and the section that registers next will want a sixth. */
 export interface ClinicianSummaryAreas {
+  areaStates: AreaStatesArea;
   regimen: RegimenArea;
   doses: DosesArea;
   labs: LabsArea;
@@ -209,6 +228,14 @@ const SECTIONS = [
     tables: ['procedure', 'checklist'],
     read: readProcedures
   }),
+  section({
+    key: 'finishedAreas',
+    tables: ['areaState'],
+    read: async ({ areaStates }) => finishedGroups(await areaStates.getAreaStates())
+  }),
+  /* Last but one. The prep list stays the final page (ticket 11), and this
+     belongs beside the clinical sections it explains rather than after the
+     questions somebody wrote for the appointment. */
   section({ key: 'appointmentPrepItems', tables: ['checklist'], read: readAppointmentPrepItems })
 ] as const;
 

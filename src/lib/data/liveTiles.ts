@@ -41,7 +41,8 @@ import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
 import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/registry';
-import { SURFACE_ROWS } from '../unprompted/registry';
+import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
+import type { AreaStates } from './areaState';
 
 export interface ActiveTryoutTileResult {
   tryout: Tryout;
@@ -441,6 +442,11 @@ export interface HomeTilesInput {
   nowMs: number;
   enabled: Record<LiveTileKind, boolean>;
   snoozed: Record<LiveTileKind, boolean>;
+  /** Which areas are hidden or finished (phase 8 features ticket 04). The
+      grid takes the states rather than a third resolved `Record`, because
+      which tile belongs to which area is the unprompted registry's to say
+      and `unpromptedQuiet` is where that is read. */
+  areaStates: AreaStates;
   reads: HomeTileReads;
   actions: HomeTileActions;
   format: HomeTileFormat;
@@ -769,12 +775,19 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
     Nothing is dropped: the count Home used to hand-roll as eleven ternaries
     is `tiles.length`, and there is no cap here for the same reason there is
     no priority - a cap is a policy, and this ticket moved the grid without
-    changing what it shows. */
+    changing what it shows.
+
+    A tile whose area is hidden or finished never reaches its builder (phase 8
+    features ticket 04). Folded into `enabled` rather than added as a third
+    field on the gate, because the two say the same thing to a builder - do
+    not show - and the four builders with no predicate to pass a gate to would
+    otherwise each need a second check. */
 export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const builders = buildersFor(input);
   const tiles: HomeTile[] = [];
   for (const kind of LIVE_TILE_ORDER) {
-    const tile = builders[kind]({ enabled: input.enabled[kind], snoozed: input.snoozed[kind] });
+    const quiet = unpromptedQuiet(kind, input.areaStates, input.todayEpochDay);
+    const tile = builders[kind]({ enabled: input.enabled[kind] && !quiet, snoozed: input.snoozed[kind] });
     if (tile) tiles.push(tile);
   }
   return tiles;

@@ -2886,5 +2886,25 @@
         "nPlural=other": "{n} zdjęć i notatek głosowych"
       }
     }
-  ]
+  ],
+  "chart_annotation_finished_area": "zakończone",
+  "area_finish_row_title": "Oznacz jako zakończone",
+  "area_finish_row_sub": "Kiedy już tego nie prowadzisz.",
+  "area_finish_done_title": "Zakończone {date}",
+  "area_finish_done_sub": "Wszystko, co tu zapisano, nadal tu jest.",
+  "area_finish_undo": "Wróć do tego",
+  "area_finish_sheet_title": "Oznacz jako zakończone",
+  "area_finish_sheet_body": "Wszystko, co tu zapisano, zostaje na miejscu. Wykresy to zachowają, wyszukiwarka nadal to znajdzie, a dzień zakończenia pojawi się na wykresach, które go obejmują, i w podsumowaniu dla lekarza. Ucichną tylko podpowiedzi i kafelki, a wrócić do tego możesz w każdej chwili.",
+  "area_finish_date_label": "Dzień zakończenia",
+  "area_finish_confirm": "Oznacz jako zakończone",
+  "area_finish_cancel": "Jeszcze nie",
+  "area_finish_offer_title": "Nadal to prowadzisz?",
+  "area_finish_offer_body": "Ostatni zapis tutaj jest z {date}. Jeśli to już koniec, możesz to zaznaczyć.",
+  "area_finish_offer_dismiss": "Nie, prowadzę to dalej",
+  "clinician_summary_section_finished_areas": "Co zostało zakończone",
+  "clinician_summary_finished_areas_empty": "Nic nie jest oznaczone jako zakończone.",
+  "clinician_summary_part_finished_areas": "Co zostało zakończone",
+  "area_finish_table_area": "Nazwa",
+  "area_finish_table_ended": "Zakończono",
+  "area_finish_offer_dismiss_sub": "Aplikacja nie zapyta o to ponownie."
 }

@@ -15,6 +15,7 @@
     vehicleLabel
   } from '$lib/data/vocabulary/doseLabels';
   import { cycleEventKindName, severityName } from '$lib/data/vocabulary/labels';
+  import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
@@ -49,7 +50,8 @@
       !dossier.sideEffects &&
       !dossier.cycleEvents &&
       !dossier.appointmentPrep &&
-      !dossier.procedures
+      !dossier.procedures &&
+      !dossier.finishedAreas
   );
 </script>
 
@@ -509,6 +511,40 @@
           </tbody>
         </table>
       </div>
+    </section>
+  {/if}
+
+  <!-- 9. Tracking that ended (phase 8 features ticket 04). A stopped stream
+       reads as a decision with a date rather than as missing data, which is
+       what the flat stretch on the charts above needs explaining with. -->
+  {#if dossier.finishedAreas}
+    <section class="dossier-section" data-dossier-section="finishedAreas">
+      <div class="dossier-section-header">
+        <h2 class="dossier-section-title">{m.clinician_summary_section_finished_areas()}</h2>
+      </div>
+
+      {#if dossier.finishedAreas.length}
+        <div class="dossier-table-wrap">
+          <table class="dossier-table">
+            <thead>
+              <tr>
+                <th>{m.area_finish_table_area()}</th>
+                <th>{m.area_finish_table_ended()}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each dossier.finishedAreas as area (area.key)}
+                <tr>
+                  <td><strong>{areaGroupName(area.key)}</strong></td>
+                  <td class="num">{dayShort(area.epochDay)}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {:else}
+        <p class="dossier-empty-note">{m.clinician_summary_finished_areas_empty()}</p>
+      {/if}
     </section>
   {/if}
 

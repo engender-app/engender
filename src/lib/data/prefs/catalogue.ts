@@ -309,6 +309,30 @@ export interface PreferenceValues {
   /** Whether ticking a roadmap goal prompts to record it as a milestone
       on the timeline (phase 5 deepening ticket 10, ADR-0045). */
   roadmapMilestoneSyncEnabled: boolean;
+  /** The areas whose finish offer has been answered no (phase 8 features
+      ticket 04, ADR-0045). `ArchiveSectionName`s - the same key space
+      `area_state` rows use.
+
+      An offer that keeps coming back is a nag, and the rule this ticket
+      holds itself to is that it asks once per area for the life of the
+      journal. That needs the no kept somewhere, and it cannot be a column:
+      `area_state` is deepening ticket 13's and holds what the person said
+      about an area, while this holds what the app has already asked.
+
+      Section names and **not** the hub row keys a person actually meets,
+      which is ADR-0052's own rule about stored keys applied to a stored
+      preference: a row renamed, regrouped or split this afternoon would
+      otherwise quietly change which area a stored no refers to. The rows are
+      resolved to sections by `areaGroups.ts`, which is also where a group
+      reads as declined when any of its sections is.
+
+      A list rather than a boolean per area, so a section added later needs
+      no migration and no entry here. Portable, like `cycleTrackingEnabled`
+      and for the same reason: it says something about this person and their
+      journal rather than about this installation, and a restore that started
+      asking again about eight areas would be the app forgetting an answer
+      somebody gave. */
+  areaFinishOfferDeclined: string[];
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -382,7 +406,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lastBackupAt: null,
   backupNoticeDismissed: false,
   lastVerifiedAt: null,
-  roadmapMilestoneSyncEnabled: true
+  roadmapMilestoneSyncEnabled: true,
+  areaFinishOfferDeclined: []
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -404,7 +429,8 @@ export const PORTABLE_KEYS = [
   'streakGoalTargetDays',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
-  'cycleTrackingEnabled'
+  'cycleTrackingEnabled',
+  'areaFinishOfferDeclined'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
