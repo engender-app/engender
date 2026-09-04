@@ -38,7 +38,7 @@ const port = server.config.server.port;
 const browser = await launchChromium();
 const page = await (await browser.newContext()).newPage();
 page.on('console', (message) => {
-  if (message.type() === 'error' || message.text().startsWith('BREAKDOWN')) console.log('  browser:', message.text());
+  if (message.type() === 'error') console.log('  browser error:', message.text());
 });
 
 /* The browser tier converged on forwarding pageerror (tests/browser-tier/
