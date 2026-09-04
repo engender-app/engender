@@ -72,14 +72,19 @@ describe("kit.css's cross-block spacing", () => {
     // kit.css is imported after it and matched at the same specificity. It
     // lives here now, beside the rule it is an exception to, so the cascade
     // can't quietly take it back.
-    const note = /:is\(\.stats-note, \.wrapped-note\)\s*\+[^{]*\{\s*margin-top: var\(--space-4\)/;
+    //
+    // `.stats-note` was the other half of this pair until phase 8 UX ticket
+    // 03. Its three consumers moved inside the cards they qualify, because
+    // hanging a sentence below a card is where the gap has to be argued for
+    // at all: a note's own margin-top collapses under the card's, and the
+    // sentence ends up nearer the next chart than the one it is about.
+    const note = /\.wrapped-note\s*\+[^{]*\{\s*margin-top: var\(--space-4\)/;
     expect(kit).toMatch(note);
   });
 
   it('keeps notes out of the control rule that would overrule them', () => {
     const control = /:is\(\.segmented,[^)]*\)\s*\n?\s*\+ :is\(\[data-kit-surface\]/.exec(kit);
     expect(control).not.toBeNull();
-    expect(control![0]).not.toContain('.stats-note');
     expect(control![0]).not.toContain('.wrapped-note');
   });
 

@@ -62,7 +62,6 @@ starred-photo-unstar
 stats-caption
 stats-interval
 stats-interval-input
-stats-note
 stats-open
 value-row
 video-note-player
