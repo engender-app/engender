@@ -88,7 +88,7 @@ for (const theme of ['light', 'dark']) {
 
   /* With a site tapped, since the confirm is refused until one is - the
      enabled button is the state worth looking at. */
-  await page.locator('[data-site="thigh-left"]').click();
+  await page.locator('[data-site="thigh-left"]').first().click();
   await page.waitForTimeout(300);
   await shoot('04-dose-sheet-answered', true);
 
