@@ -39,11 +39,11 @@
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import VoiceGauge from '$lib/components/VoiceGauge.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -102,6 +102,8 @@
       as well as on the finished take: the point of it is to be visible
       while somebody is speaking. */
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
+  /** The voice's longest unbroken run so far, as the gate counts it. */
+  let heldSeconds = $derived((reading?.longestVoicedSeconds ?? 0).toFixed(1));
   /* Whose typical ranges belong on the figure: the language of the passage
      being read, not the app's (ADR-0059). A passage of somebody's own words
      carries no language, so the app's is a guess and the caption says so. */
@@ -159,16 +161,6 @@
     reading = null;
     frames = [];
     phase = 'recording';
-
-    /* Back to the top of the step. Tapping Record scrolls the button it was
-       on into view, and now that the figure is a full graph below the
-       passage that left the screen 636px down - with the passage somebody
-       is supposed to be reading off the top of it. Measured at 390x844:
-       the step is 1480px of content during a take, so what fits together is
-       the passage and the field, with the legend and the citation a short
-       scroll below (they are both on screen before the take starts, which
-       is when a citation is read). */
-    document.querySelector('main.app-main')?.scrollTo({ top: 0 });
 
     poll = setInterval(() => {
       if (!session) return;
@@ -371,7 +363,7 @@
       </button>
     </div>
   {:else}
-    <div class="screen-part vb-body">
+    <div class="screen-part vb-body" {...roleAttrs(role)}>
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
 
       {#if step === 'passage'}
@@ -392,35 +384,24 @@
         <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
       {/if}
 
-      <!-- Two steps, two instruments, and each says which it is.
+      <!-- No live figure in this flow at all (Alicja, 2026-09-04: "for a
+           benchmark, its enough to get a graph right after finishing it").
+           A benchmark is a measurement, and its picture is the take drawn
+           on the summary from the track that was just stored. Watching a
+           curve while making one is what the practise tab is for.
 
-           Reading always gets the full graph: absolute hertz, the passage
-           language's bands, the comfort band, the caption (Alicja,
-           2026-09-04, twice - "no way to tell what it measures at all", and
-           "when reading the passage we should always show the full graph").
-           It is there before the take starts too, so the bands are on
-           screen while somebody decides to begin rather than appearing
-           under them once it is too late to look.
-
-           The held note gets semitones around the note itself and no bands,
-           because that step's task is keeping one pitch rather than
-           reaching one, and a flat line is the whole answer. That is the
-           one place the relative axis this ticket took the gauge off is the
-           right instrument. -->
-      {#if step === 'passage' || phase === 'recording' || phase === 'retry'}
-        <VoiceGauge
-          data-vb-gauge
-          {role}
-          {comfort}
-          reading={step === 'vowel' ? 'steadiness' : 'pitch'}
-          language={bands.language}
-          languageGuessed={bands.guessed}
-          {frames}
-          report={reading}
-          {targetSeconds}
-          label={step === 'vowel' ? m.vb_gauge_label_steady() : m.vb_gauge_label_passage()}
-          advice={phase === 'retry' ? retryAdvice : liveAdvice}
-        />
+           What a take shows while it runs is what the gate is measuring, in
+           words: how long the voice has been going, and anything to do
+           differently about the room or the level. Those sentences were
+           inside the figure before, and they are the half that carried it
+           under either reduced-motion path. -->
+      {#if phase === 'recording' || phase === 'retry'}
+        <div class="vb-live" data-vb-live>
+          <span class="vb-live-held">{m.vb_gauge_run({ seconds: heldSeconds })}</span>
+          <p class="vb-live-advice" aria-live="polite">
+            {(phase === 'retry' ? retryAdvice : liveAdvice).join(' ')}
+          </p>
+        </div>
       {/if}
 
       {#if phase === 'retry'}
@@ -533,6 +514,32 @@
   .vb-aside {
     color: var(--muted);
     font-weight: var(--weight-regular);
+  }
+
+  /* What a take shows while it runs, now that no figure does. The held
+     figure and the advice sit together as one readout rather than as two
+     stray lines. */
+  .vb-live {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-top: var(--space-4);
+  }
+
+  .vb-live-held {
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    color: var(--role-ink);
+  }
+
+  .vb-live-advice {
+    margin: 0;
+    /* One line of room kept whether or not there is anything to say, so
+       nothing jumps up the screen the moment a check clears. */
+    min-height: calc(var(--text-sm) * 1.5);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--muted);
   }
 
   .vb-take {
