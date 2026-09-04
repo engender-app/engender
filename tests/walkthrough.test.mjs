@@ -4124,7 +4124,19 @@ try {
   }
   /* This screen's arrival is the same kind of instead-of-the-route moment
      as a mid-session lock (flow 18), and quick add is the same
-     layout-level sibling there too (phase 8 audit ticket 08). */
+     layout-level sibling there too (phase 8 audit ticket 08) - the layout
+     clears the same flag here for the same reason lockNow() does.
+
+     What this check cannot do is provoke the bug: `recoveryUnlock.used`
+     only turns true from a gate that renders before AppNav exists
+     (needsPassphrase/needsAuthentication/needsDeviceRecovery are all
+     chromeless, so there is no `[data-nav-fab]` to open the fan from), and
+     the same dispatch that sets it also flips `bootState` to `ready` - so
+     this screen's own precondition is true from the instant it could ever
+     be checked, before a fan could have been opened. Unlike flow 18's
+     check, reverting the layout's clear would not fail this one; it is
+     belt-and-suspenders for a path the boot state machine does not
+     currently allow the fan to reach at all. */
   if (await page.locator('[data-fan]').count()) {
     throw new Error('the quick-add fan is floating over the post-recovery access-mode screen');
   }
