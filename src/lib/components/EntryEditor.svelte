@@ -2,7 +2,12 @@
   import { onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import {
+    todayEpochDay,
+    epochDayMonthsAgo,
+    epochDayFromDateInputValue,
+    dateInputValueFromEpochDay
+  } from '$lib/data/epochDay';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
@@ -46,6 +51,7 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
@@ -146,6 +152,51 @@
     const next = !starred;
     await journal.entries.setEntryStarred(existing.id, next);
     starred = next;
+  }
+
+  /* A day chosen to see this entry again (phase 8 features ticket 08,
+     ADR-0045). Its own live query rather than folded into `loaded`: a
+     revisit is a separate record, and reading it only while the sheet is
+     open would show a stale "not set" state the moment somebody reopens it
+     after setting one on another device. */
+  let revisitOpen = $state(false);
+  let revisitQuery = liveQuery((j) =>
+    entryId != null ? j.revisits.getRevisitForEntry(entryId) : Promise.resolve(null)
+  );
+  let revisit = $derived(revisitQuery.value);
+  let revisitDateInput = $state('');
+
+  const revisitPresetDay = (preset: 'week' | 'month' | 'threeMonths' | 'year'): number => {
+    const today = todayEpochDay();
+    switch (preset) {
+      case 'week':
+        return today + 7;
+      case 'month':
+        return epochDayMonthsAgo(today, -1);
+      case 'threeMonths':
+        return epochDayMonthsAgo(today, -3);
+      case 'year':
+        return epochDayMonthsAgo(today, -12);
+    }
+  };
+
+  async function setRevisit(targetEpochDay: number) {
+    if (entryId == null) return;
+    await journal.revisits.setRevisit({ entryId, createdEpochDay: todayEpochDay(), targetEpochDay });
+    revisitDateInput = '';
+    revisitOpen = false;
+  }
+
+  async function setRevisitFromInput() {
+    const targetEpochDay = epochDayFromDateInputValue(revisitDateInput);
+    if (targetEpochDay == null) return;
+    await setRevisit(targetEpochDay);
+  }
+
+  async function cancelRevisit() {
+    if (!revisit) return;
+    await journal.revisits.deleteRevisit(revisit.id);
+    revisitOpen = false;
   }
 
   /* Same reasoning as toggleStarred above, but for one stored photo: the
@@ -621,6 +672,22 @@
         >
           <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
         </button>
+        <button
+          class="icon-btn press"
+          aria-label={m.revisit_open_aria()}
+          aria-pressed={!!revisit}
+          data-revisit-open
+          onclick={() => (revisitOpen = true)}
+        >
+          <!-- Recoloured rather than filled: components.css's `is-starred`
+               fills the whole shape, which reads fine for a star's single
+               closed path but turns a clock's circle-plus-hand into an
+               unreadable solid disc, the hand's stroke lost against its
+               own fill. `.revisit-set` below is `.photo-star.is-starred`'s
+               own recolour-not-fill answer to the same problem, applied to
+               this icon instead of a wrapping button. -->
+          <Icon name="clock" size={20} cls={revisit ? 'revisit-set' : ''} />
+        </button>
         <button class="icon-btn press" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
           <Icon name="trash" size={20} />
         </button>
@@ -1083,6 +1150,46 @@
     </div>
   </Sheet>
 
+  <Sheet bind:open={revisitOpen} title={m.revisit_sheet_title()}>
+    <SectionHeading text={m.revisit_sheet_title()} />
+    {#if revisit}
+      <p class="editor-hint">
+        {m.revisit_current_label({ date: fmtDay(revisit.targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+      </p>
+      <SectionHeading text={m.revisit_change()} />
+    {:else}
+      <p class="editor-hint">{m.revisit_sheet_hint()}</p>
+    {/if}
+    <ListCard {role}>
+      <ListRow key="week" title={m.revisit_preset_week()} chevron={false} onclick={() => setRevisit(revisitPresetDay('week'))} />
+      <ListRow key="month" title={m.revisit_preset_month()} chevron={false} onclick={() => setRevisit(revisitPresetDay('month'))} />
+      <ListRow
+        key="three-months"
+        title={m.revisit_preset_3_months()}
+        chevron={false}
+        onclick={() => setRevisit(revisitPresetDay('threeMonths'))}
+      />
+      <ListRow key="year" title={m.revisit_preset_year()} chevron={false} onclick={() => setRevisit(revisitPresetDay('year'))} />
+    </ListCard>
+    <p class="revisit-or-label">{m.revisit_pick_date_label()}</p>
+    <div class="revisit-date-row">
+      <DatePicker
+        id="revisit-date"
+        name="revisit-date"
+        min={dateInputValueFromEpochDay(todayEpochDay() + 1)}
+        ariaLabel={m.revisit_pick_date_label()}
+        bind:value={revisitDateInput}
+        data-revisit-date
+      />
+      <button class="btn btn-soft" disabled={!revisitDateInput} data-revisit-set onclick={setRevisitFromInput}>
+        <span>{m.revisit_set_confirm()}</span>
+      </button>
+    </div>
+    {#if revisit}
+      <button class="btn btn-ghost" data-revisit-cancel onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
+    {/if}
+  </Sheet>
+
   <Sheet bind:open={effectSheetOpen} title={m.entry_hrt_effects_sheet_title()}>
     <SectionHeading text={m.entry_hrt_effects_sheet_title()} />
     <ListCard {role}>
@@ -1144,6 +1251,18 @@
   /* Under a slider rather than under a heading: it belongs to the control
      above it, so it closes up against it. */
   .editor-hint-tight { margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
+
+  /* The free-choice date, under the presets rather than a fifth row among
+     them - "sensible offered options and a free choice behind them", the
+     ticket's own phrase. */
+  .revisit-or-label {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    margin: var(--space-3) 0 var(--space-2);
+  }
+  .revisit-date-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .revisit-date-row :global(input) { flex: 1; }
+  :global(.icon.revisit-set) { color: var(--accent); }
 
   .editor-note {
     width: 100%;

@@ -82,6 +82,7 @@ export function homeTiles(
   const episodes = liveList((j) => j.regimen.getEpisodes());
   const procedures = liveList((j) => j.procedures.getProcedures());
   const letters = liveList((j) => j.letters.getLetters(100));
+  const dueRevisits = liveList((j) => j.revisits.getDueRevisits(todayEpochDay));
   const latestBadEntry = liveQuery((j) => j.entries.latestBadMomentEntry());
   const tryouts = liveList((j) => j.tryouts.getTryouts());
   /* The felt-sense read is per tryout and the tile needs the latest day of
@@ -160,6 +161,7 @@ export function homeTiles(
         episodes: episodes.rows,
         procedures: procedures.rows,
         letters: letters.rows,
+        dueRevisits: dueRevisits.rows,
         latestBadEntryId: latestBadEntry.value?.id,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
         tryouts: tryouts.rows,
@@ -185,6 +187,7 @@ export function homeTiles(
           prefs.safeSpaceNudgeDismissedEntryId = entryId;
         },
         openLetterDismiss: handlers.onLetterDismiss,
+        dismissRevisit: (id) => void journal.revisits.deleteRevisit(id),
         resumePause: (pauseId, startEpochDay) => void resumePause(pauseId, startEpochDay),
         snooze
       },

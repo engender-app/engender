@@ -167,6 +167,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   importLog: 'this device’s bookkeeping about where an import came from',
   areaStates: 'the record of which areas are finished, which cannot itself be one of them',
   savedQuestions: 'a saved shortcut into search, not a practice that runs and can stop',
+  revisits: "sealed and then met on its target day is a revisit's whole lifecycle, not a practice that stops",
   dimensions: 'reference data, not a series (CONTEXT: "Reference data")',
   presets: 'reference data, not a series (CONTEXT: "Reference data")',
   tagGroups: 'reference data, not a series (CONTEXT: "Reference data")',

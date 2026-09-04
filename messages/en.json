@@ -2920,5 +2920,22 @@
   "saved_question_delete_aria": "Delete this saved question",
   "saved_question_no_results": "Nothing matches this question yet.",
   "saved_question_gone_title": "This saved question is gone",
-  "saved_question_gone_body": "It may have been renamed or deleted on another device."
+  "saved_question_gone_body": "It may have been renamed or deleted on another device.",
+  "tile_revisit_title": "Revisit",
+  "tile_revisit_sub": "Shows when the day you chose to see an entry again arrives.",
+  "tile_revisit_single_note": "An entry to read again",
+  "tile_revisit_more": "+{count} more",
+  "revisit_open_aria": "Revisit this entry",
+  "revisit_sheet_title": "See this again",
+  "revisit_sheet_hint": "Choose a day, and this entry will be waiting for you then.",
+  "revisit_current_label": "Set for {date}",
+  "revisit_preset_week": "In a week",
+  "revisit_preset_month": "In a month",
+  "revisit_preset_3_months": "In 3 months",
+  "revisit_preset_year": "In a year",
+  "revisit_pick_date_label": "Or choose a date",
+  "revisit_set_confirm": "Set",
+  "revisit_change": "Change the day",
+  "revisit_cancel": "Cancel this revisit",
+  "random_draw_label": "Random entry"
 }

@@ -624,6 +624,9 @@ const CARRIED: Record<string, string[]> = {
     'enabled',
     'auto_source'
   ],
+  // entry_id travels as the entry's own uuid, the way procedure_id does
+  // above (ADR-0002) - migrations.ts v61 has the reasoning.
+  revisit: ['uuid', 'entry_id', 'entry_epoch_day', 'created_epoch_day', 'target_epoch_day'],
   /* The dosing context travels: a device importing this cannot re-derive it,
      because the dose log it was measured against is not the one being
      imported into (ticket 03). */

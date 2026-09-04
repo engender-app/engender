@@ -395,7 +395,8 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // date belongs on a dated surface is a chart annotation beside the regimen
   // changes and pauses (chartAnnotations.ts), not a record in a day's list.
   areaStates: 'a statement about the practice of tracking, not a record of a day',
-  savedQuestions: 'a name for a search, not a record of a day it belongs to'
+  savedQuestions: 'a name for a search, not a record of a day it belongs to',
+  revisits: 'a schedule: sealed until the day chosen to see the entry again'
 };
 
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;

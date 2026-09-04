@@ -2970,5 +2970,22 @@
   "saved_question_delete_aria": "Usuń to zapisane pytanie",
   "saved_question_no_results": "Nic jeszcze nie odpowiada temu pytaniu.",
   "saved_question_gone_title": "Tego zapisanego pytania już nie ma",
-  "saved_question_gone_body": "Mogło zostać zmienione albo usunięte na innym urządzeniu."
+  "saved_question_gone_body": "Mogło zostać zmienione albo usunięte na innym urządzeniu.",
+  "tile_revisit_title": "Powrót do wpisu",
+  "tile_revisit_sub": "Pokazuje się, gdy nadchodzi dzień wybrany na ponowne przeczytanie wpisu.",
+  "tile_revisit_single_note": "Wpis do ponownego przeczytania",
+  "tile_revisit_more": "+{count} kolejne",
+  "revisit_open_aria": "Zaplanuj powrót do tego wpisu",
+  "revisit_sheet_title": "Zobacz to ponownie",
+  "revisit_sheet_hint": "Wybierz dzień, a ten wpis będzie na ciebie czekał.",
+  "revisit_current_label": "Ustawiono na {date}",
+  "revisit_preset_week": "Za tydzień",
+  "revisit_preset_month": "Za miesiąc",
+  "revisit_preset_3_months": "Za 3 miesiące",
+  "revisit_preset_year": "Za rok",
+  "revisit_pick_date_label": "Lub wybierz datę",
+  "revisit_set_confirm": "Ustaw",
+  "revisit_change": "Zmień dzień",
+  "revisit_cancel": "Anuluj powrót do wpisu",
+  "random_draw_label": "Losowy wpis"
 }
