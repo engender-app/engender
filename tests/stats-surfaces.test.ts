@@ -90,6 +90,6 @@ describe('the area index', () => {
 
   it('sends a card to the screen that owns the chart rather than redrawing it', () => {
     expect(stats).toMatch(/<a class="stats-area-open" href=\{card\.panel\.href\}/);
-    expect(stats).toMatch(/href=\{card\.panel\.href\}\s*\/>/);
+    expect(stats).toMatch(/<ListRow[\s\S]{0,200}href=\{card\.panel\.href\}/);
   });
 });

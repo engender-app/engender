@@ -122,17 +122,16 @@
      a stripe on that card would put two scales on one surface. */
   const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
 
-  /* The area index's four groups take four consecutive stripes, so a person
-     scrolling past them reads the flag once rather than reading the same
-     stripe four times. They start one along from the cross-area block's own,
-     which keeps the two halves of the screen distinguishable on a palette
-     with few roles - `roleAt` wraps, so on trans's three the groups run
-     1, 2, 0, 1 and no two adjacent headings collide. */
+  /* The index's four groups take the four stripes the More hub gives the
+     same four groups, in the same order - `roleAt(roles, i)` over the group's
+     own index, which is the hub's own line. Somebody who has learned that
+     Body is the first stripe on one screen finds it the first stripe on the
+     other, and the two surfaces recolour together on a palette switch. */
   const GROUP_ROLE: Record<(typeof STATS_AREA_GROUPS)[number], number> = {
-    body: 1,
-    health: 2,
-    transition: 3,
-    practice: 4
+    body: 0,
+    health: 1,
+    transition: 2,
+    practice: 3
   };
 
   const GROUP_NAME: Record<(typeof STATS_AREA_GROUPS)[number], () => string> = {
@@ -530,14 +529,26 @@
   let tallyCorrectQuery = liveList((j) =>
     showsTally ? j.stats.tallyTrend('correctly_gendered', from, today) : Promise.resolve([])
   );
-  let tallyAligned = $derived(
-    alignSeries(
-      atGrain(tallyCorrectQuery.rows.map((p) => ({ x: p.day, y: p.value })), range).points,
-      atGrain(tallyMisgenderedQuery.rows.map((p) => ({ x: p.day, y: p.value })), range).points
-    )
+  let tallyCorrectPoints = $derived(
+    atGrain(tallyCorrectQuery.rows.map((p) => ({ x: p.day, y: p.value })), range).points
   );
+  let tallyMisgenderedPoints = $derived(
+    atGrain(tallyMisgenderedQuery.rows.map((p) => ({ x: p.day, y: p.value })), range).points
+  );
+  let tallyAligned = $derived(alignSeries(tallyCorrectPoints, tallyMisgenderedPoints));
   let tallyMax = $derived(
     Math.max(1, ...tallyAligned.map((row) => Math.max(row.a ?? 0, row.b ?? 0)))
+  );
+  /* Both kinds have to be drawable, not the union of their positions. One
+     day of each aligns to two positions and clears a naive floor, and what
+     comes out is two dots at opposite corners under a legend naming two
+     lines that are not there - which is what this card drew the first time
+     it was screenshot. Where either kind is short the card falls back to its
+     row rather than dropping the other kind, because a Tally card showing
+     only the good half would be the tab choosing what somebody should read. */
+  let tallyDrawable = $derived(
+    tallyCorrectPoints.length >= MIN_PLOT_POSITIONS &&
+      tallyMisgenderedPoints.length >= MIN_PLOT_POSITIONS
   );
 
   /* A trend card draws only where there is a line to draw: two plotted
@@ -555,11 +566,36 @@
       ? m.area_finish_done_title({ date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })
       : m.stats_area_last({ date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) });
 
+  /* Which of the trend cards actually has a line to draw in this range.
+
+     The reason this is decided here and not in the registry: a measurement
+     goes in monthly and a lab result quarterly, so at the default thirty
+     days most of these have one point or none, and a card declaring itself
+     a trend would draw an empty plot with a heading over it. That is the
+     same failure the whole rethink is about, one level down - a chart shown
+     for something there is nothing to chart.
+
+     So the preview kind in the registry is the best form a card can take,
+     and the range decides whether it gets it. Under the floor it falls back
+     to the row, which still says the true thing: this area exists, here is
+     when you last wrote in it, here is the way in. Nothing on this screen is
+     ever an empty plot. */
+  let drawableAreas = $derived(
+    new Set(
+      [
+        measurementPreview && drawable(measurementPreview.points) ? 'measurements' : null,
+        labPreview && drawable(labPreview.points) ? 'labs' : null,
+        drawable(wearPoints) ? 'wear' : null,
+        tallyDrawable ? 'tally' : null
+      ].filter((key): key is string => key !== null)
+    )
+  );
+
   const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
   const trendCards = (group: (typeof STATS_AREA_GROUPS)[number]) =>
-    groupCards(group).filter((card) => card.panel.preview === 'trend');
+    groupCards(group).filter((card) => drawableAreas.has(card.panel.key));
   const rowCards = (group: (typeof STATS_AREA_GROUPS)[number]) =>
-    groupCards(group).filter((card) => card.panel.preview === 'row');
+    groupCards(group).filter((card) => !drawableAreas.has(card.panel.key));
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
@@ -1166,8 +1202,6 @@
                 ariaLabel={measurementPreview.name}
               />
               <p class="stats-inline-note">{measurementPreview.name}</p>
-            {:else}
-              <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
             {/if}
           {:else if card.panel.key === 'labs'}
             {#if labPreview && drawable(labPreview.points)}
@@ -1184,8 +1218,6 @@
                 ariaLabel={labPreview.name}
               />
               <p class="stats-inline-note">{labPreview.name}</p>
-            {:else}
-              <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
             {/if}
           {:else if card.panel.key === 'wear'}
             {#if drawable(wearPoints)}
@@ -1201,11 +1233,9 @@
                 scrubLabel={grainLabel(plot.grain)}
                 ariaLabel={m.wear_session_trend_title()}
               />
-            {:else}
-              <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
             {/if}
           {:else if card.panel.key === 'tally'}
-            {#if tallyAligned.length >= MIN_PLOT_POSITIONS}
+            {#if tallyDrawable}
               <AreaChart
                 points={tallyAligned.map((row) => ({ x: row.x, y: row.a }))}
                 min={0}
@@ -1224,8 +1254,6 @@
                 formatValue={(v) => String(Math.round(v))}
                 ariaLabel={m.tally_trend_title()}
               />
-            {:else}
-              <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
             {/if}
           {/if}
           {#if card.finishedEpochDay !== null}
