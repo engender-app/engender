@@ -31,6 +31,7 @@
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { VOICE_METRICS, VOICE_METRICS_REVIEWED_ON } from '$lib/data/voice/metrics';
   import { metricName } from '$lib/data/voice/metricLabels';
+  import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -52,9 +53,9 @@
          each figure is its own area of this screen, and the stripe is what
          makes an arrival from a link land somewhere that looks like a
          place rather than in the middle of a document. -->
-    <section id={metric.key} class="vm-metric">
+    <section id={metric.key} class="vm-metric" {...roleAttrs(roleAt(activeFlag.roles, i))}>
       <SectionHeading text={metricName(metric.key)} />
-      <VoiceMetricSection {metric} role={roleAt(activeFlag.roles, i)} />
+      <VoiceMetricSection {metric} />
     </section>
   {/each}
 

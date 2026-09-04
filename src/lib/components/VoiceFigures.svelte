@@ -32,11 +32,14 @@
   import type { Formants } from '$lib/audio/resonance';
   import { metricHref, type VoiceMetricKey } from '$lib/data/voice/metrics';
   import { metricLine, metricName } from '$lib/data/voice/metricLabels';
+  import { roleAttrs } from '$lib/components/kit/role';
+  import type { Role } from '$lib/theme/roles';
 
   let {
     figures,
     formants,
-    snrDb
+    snrDb,
+    role
   }: {
     figures: PassageFigures;
     /** Null where the vowel step was skipped or measured nothing, which a
@@ -44,6 +47,9 @@
     formants: Formants | null;
     /** Null where there was no vowel take to measure the room from. */
     snrDb: number | null;
+    /** The area's own stripe. It is what the sentences are underlined in,
+        so a link reads as pressable without turning blue. */
+    role?: Role;
   } = $props();
 
   /** A figure as the screen states it: a fixed number of places, as text.
@@ -69,7 +75,7 @@
   </div>
 {/snippet}
 
-<dl class="vf kit-panel">
+<dl class="vf kit-panel" {...roleAttrs(role)}>
   {#snippet pitchValue()}
     {m.vb_hz({ value: figure(figures.f0MedianHz) })}
     <span class="vf-aside">{noteName(figures.f0MedianHz)}</span>
@@ -156,20 +162,39 @@
   }
 
   /* The whole sentence is the link, because the sentence is what says
-     where it goes. Underlined only on the words, not the block: this is
-     prose that happens to be pressable, not a button. */
+     where it goes. Dotted rather than solid, in the area's own stripe: six
+     solidly underlined sentences in one panel read as a page of links, and
+     a dotted underline is already the convention for "there is an
+     explanation behind this". Never colour alone - the underline is what
+     carries it for anybody who cannot see the tint. */
+  /* A one-line sentence is about 20px of text and this app's touch floor
+     is Android's 48dp, so the anchor takes 15px of padding on each side
+     and gives it straight back as negative margin: the hit area clears the
+     floor while the sentence stays exactly where the layout put it. The
+     row gap is 16px, so two neighbouring sentences still cannot be
+     mistaken for each other. */
   .vf-line a {
+    display: inline-block;
+    padding-block: 15px;
+    margin-block: -15px;
     color: var(--muted);
     font-size: var(--text-xs);
     line-height: 1.5;
-    text-decoration: underline;
-    text-decoration-color: color-mix(in oklab, var(--role-c) 55%, transparent);
+    text-decoration: underline dotted;
+    /* --role-mark rather than --role-c: an underline is a mark, and the
+       mark token is the version of the stripe corrected to hold 3:1
+       (kit/role.ts). The raw stripe is a pale blue on half the palettes
+       and disappears at 1px. */
+    text-decoration-color: color-mix(in oklab, var(--role-mark) 65%, transparent);
     text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
+    text-underline-offset: 3px;
   }
 
   .vf-line a:hover {
     color: var(--role-ink);
-    text-decoration-color: var(--role-c);
+    text-decoration: underline solid;
+    text-decoration-color: var(--role-mark);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
   }
 </style>

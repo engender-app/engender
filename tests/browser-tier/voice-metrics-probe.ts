@@ -33,6 +33,7 @@ import '$lib/styles/components.css';
 import '$lib/styles/screens.css';
 import '$lib/motion/press.css';
 import { VOICE_METRICS } from '$lib/data/voice/metrics';
+import { readFlagRoles, roleAt } from '$lib/theme/roles';
 import VoiceFigures from '$lib/components/VoiceFigures.svelte';
 import MetricReference from '../../src/routes/settings/voice/metrics/+page.svelte';
 import { publish } from '../probe-handshake.mjs';
@@ -50,9 +51,19 @@ const FIGURES = {
 };
 
 try {
+  /* The figure list wears the stripe of whichever area it sits in, so it
+     is handed one here too: the underlines under its six sentences are
+     drawn in it, and a shot of this panel with no role would be reviewed
+     in a colour the app never shows (theme/roles.ts reads the palette off
+     the document, which this page sets). */
   mount(VoiceFigures, {
     target: document.querySelector('#figures')!,
-    props: { figures: FIGURES, formants: { f1Hz: 620, f2Hz: 1180 }, snrDb: 24 }
+    props: {
+      figures: FIGURES,
+      formants: { f1Hz: 620, f2Hz: 1180 },
+      snrDb: 24,
+      role: roleAt(readFlagRoles(), 0)
+    }
   });
   mount(MetricReference, { target: document.querySelector('#reference')! });
 
