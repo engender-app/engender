@@ -3,6 +3,7 @@ package dev.barankiewicz.genderdiary.reset;
 import android.content.Context;
 
 import dev.barankiewicz.genderdiary.backup.AutoExportPlugin;
+import dev.barankiewicz.genderdiary.clipboard.SensitiveClipboard;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 
@@ -33,7 +34,7 @@ public final class DeviceStores {
      * as a reset the person is told went through.
      *
      * <p>Every one of them literally: a store that throws no longer takes
-     * the stores after it down with it. Two of the three can fail now that
+     * the stores after it down with it. Two of the four can fail now that
      * the reminder payload has a Keystore alias of its own (phase 5 security
      * ticket 02), and the first one to throw used to be the last one that
      * ran - so a keystore that would not delete an alias left the backup
@@ -43,7 +44,12 @@ public final class DeviceStores {
      */
     public static void wipe(Context context) throws Exception {
         Exception failure = null;
-        for (Store store : new Store[] {ReminderScheduler::wipe, AutoExportPlugin::wipe, QuickExitPlugin::wipe}) {
+        for (Store store : new Store[] {
+            ReminderScheduler::wipe,
+            AutoExportPlugin::wipe,
+            QuickExitPlugin::wipe,
+            SensitiveClipboard::wipe
+        }) {
             try {
                 store.wipe(context);
             } catch (Exception e) {
@@ -54,7 +60,7 @@ public final class DeviceStores {
         if (failure != null) throw failure;
     }
 
-    /** What each of the three above is, from here: one call that clears one
+    /** What each of the four above is, from here: one call that clears one
         store and says so by throwing. */
     private interface Store {
         void wipe(Context context) throws Exception;

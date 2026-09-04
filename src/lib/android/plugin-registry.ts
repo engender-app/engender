@@ -12,6 +12,7 @@ export const androidPluginOwners = {
   quickExit: 'lock/quick-exit-bridge',
   deviceReset: 'data/android-device-reset-bridge',
   print: 'print/android-bridge',
+  sensitiveClipboard: 'data/recovery-key-clipboard-bridge',
   // Official @capacitor/app plugin, not one of ours - imported directly
   // from that package rather than through registerAndroidPlugin() below,
   // but still asserted at startup like every other required plugin
@@ -38,6 +39,7 @@ export const androidPluginRegistry = [
   { name: 'QuickExit', owner: androidPluginOwners.quickExit },
   { name: 'DeviceReset', owner: androidPluginOwners.deviceReset },
   { name: 'Print', owner: androidPluginOwners.print },
+  { name: 'SensitiveClipboard', owner: androidPluginOwners.sensitiveClipboard },
   { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 

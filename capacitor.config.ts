@@ -40,6 +40,25 @@ const config: CapacitorConfig = {
        API 26 emulator, whose WebView is Chrome 69. */
     errorPath: 'webview-too-old.html'
   },
+  /* Every plugin call's arguments are logged, in full, before the call runs:
+     Bridge.callPluginMethod hands `call.getData().toString()` to
+     Logger.verbose, and Logger's only gate is this setting, whose default
+     ("debug") means "log whenever the build is debuggable". Release builds
+     are not, so nothing shipped ever logged any of it - but the road those
+     arguments travel is the same road the journal's raw data key takes on
+     every open (SqlitePlugin's `hexKey`), and the archive password, and
+     every value written to every row, and since phase 8 audit ticket 09 the
+     recovery key. A debug build on a phone put all of that in logcat, where
+     anything with the READ_LOGS permission or an adb cable could read it.
+
+     "none" turns Capacitor's own logging off in every build instead of only
+     in the ones that ship. What it costs is that JS console output no longer
+     reaches logcat either, since Capacitor routes onConsoleMessage through
+     the same Logger: a debug build still answers the WebView's devtools
+     socket over adb, which is where a console message is worth reading
+     anyway. Our own plugins never call Logger, so nothing else here goes
+     quiet. */
+  loggingBehavior: 'none',
   /* Left unset, `cap sync` writes res/xml/config.xml with a wildcard
      <access origin="*" />, a Cordova-compat leftover no plugin here reads
      (phase 5 security ticket 07, G-07). Empty skips the tag instead of
