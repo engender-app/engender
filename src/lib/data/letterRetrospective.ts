@@ -85,6 +85,12 @@ export function safeSpaceLetters(letters: Letter[], todayEpochDay: number): Lett
     );
 }
 
+/** How much of a letter a list row may carry. Past what two lines can show
+    at any width the app renders at, so the code cut below and the row's own
+    CSS clamp never disagree about what is visible. It lives here rather than
+    on the card, next to the reasoning that depends on it. */
+export const LETTER_OPENING_LIMIT = 200;
+
 /** What a list row may carry of a letter: its opening, flattened to one
     run of text and cut to `limit` characters on a word boundary, with an
     ellipsis where the cut happened (phase 8 features ticket 21).
@@ -94,8 +100,7 @@ export function safeSpaceLetters(letters: Letter[], todayEpochDay: number): Lett
     the whole letter as the link's name. On Safe Space that is three letters
     read out in full before the person has chosen one of them. The clamp
     stays, because it is what makes the visible cut land at the row's real
-    width; this is the cut underneath it, and `limit` is set well past what
-    two lines can show so the two never disagree about what is visible.
+    width; this is the cut underneath it.
 
     The flattening is not a compromise either: a row sets its text with
     `white-space: normal`, so a letter's paragraph breaks are already

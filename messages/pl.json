@@ -2040,10 +2040,10 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "Jeszcze {count} list",
-        "countPlural=few": "Jeszcze {count} listy",
-        "countPlural=many": "Jeszcze {count} listów",
-        "countPlural=other": "Jeszcze {count} listów"
+        "countPlural=one": "Zobacz pozostały list",
+        "countPlural=few": "Zobacz pozostałe {count} listy",
+        "countPlural=many": "Zobacz pozostałe {count} listów",
+        "countPlural=other": "Zobacz pozostałe {count} listów"
       }
     }
   ],

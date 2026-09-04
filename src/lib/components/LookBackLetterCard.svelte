@@ -28,12 +28,12 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import type { Letter } from '$lib/data/types';
-  import { letterOpening, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
+  import {
+    letterOpening,
+    LETTER_OPENING_LIMIT,
+    type RetrospectiveLetter
+  } from '$lib/data/letterRetrospective';
   import ListRow from './kit/ListRow.svelte';
-
-  /** Past what two lines can show at any width the app renders at, so the
-      code cut and the CSS clamp never disagree about what is visible. */
-  const OPENING_LIMIT = 200;
 
   let {
     letter,
@@ -52,7 +52,7 @@
       ? m.look_back_letter_written({ date: fmtDay(letter.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })
       : m.look_back_letter_opened({ date: fmtDay(letter.unlockEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })
   );
-  let opening = $derived(letterOpening(letter.text, OPENING_LIMIT));
+  let opening = $derived(letterOpening(letter.text, LETTER_OPENING_LIMIT));
 </script>
 
 <ListRow
