@@ -1623,8 +1623,8 @@ await block('ticket 27 browser tier', 7, async () => {
 
   const blank = figures.filter((f) => f.stated.length === 0);
   if (blank.length === 0 && listLink?.href === route && listLink.text.length > 0)
-    ok(`the list states six figures and one way in (${listLink.text})`);
-  else fail('the list states six figures and one way in', JSON.stringify({ blank, listLink }));
+    ok(`the list states seven figures and one way in (${listLink.text})`);
+  else fail('the list states seven figures and one way in', JSON.stringify({ blank, listLink }));
 
   /* The claim only a browser can answer: every fragment metricHref builds,
      resolved against the rendered reference screen and read back through
@@ -1641,10 +1641,10 @@ await block('ticket 27 browser tier', 7, async () => {
 
   const halfExplained = sections.filter((s) => s.fields !== 7);
   if (sections.length === registered.length && halfExplained.length === 0)
-    ok('all six sections render all seven fields, none omitted');
+    ok('all seven sections render all seven fields, none omitted');
   else
     fail(
-      'all six sections render all seven fields, none omitted',
+      'all seven sections render all seven fields, none omitted',
       JSON.stringify(sections.map((s) => [s.key, s.fields]))
     );
 

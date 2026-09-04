@@ -2571,8 +2571,8 @@ try {
   await page.goto(BASE + '/settings/voice/metrics', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
-  if (explained !== 6) {
-    throw new Error(`the metric reference explains ${explained} figures, not six`);
+  if (explained !== 7) {
+    throw new Error(`the metric reference explains ${explained} figures, not seven`);
   }
   const fields = await page.locator('[data-metric="room"] [data-metric-field]').count();
   if (fields !== 7) {

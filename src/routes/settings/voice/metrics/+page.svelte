@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The metric reference: what each of a benchmark's six figures is
+  /* The metric reference: what each of a benchmark's figures is
      (phase 8 features ticket 27, ADR-0060).
 
      Reference data, like `/settings/resources`: the table is compiled in,
@@ -48,7 +48,7 @@
 <div class="screen">
   <ScreenHeader title={m.vm_title()} back="/settings/voice" subtitle={m.vm_intro()} />
 
-  <!-- The one fact that belongs to all six figures rather than to any of
+  <!-- The one fact that belongs to every figure rather than to any of
        them, which is why it sits above the sections instead of inside one
        (ticket 28, ADR-0061). Stated and not prescribed: the recording flow
        is where a person is told what to do about it, and this screen
@@ -56,10 +56,10 @@
   <p class="muted small" data-metrics-distance>{m.vm_distance()}</p>
 
   {#each VOICE_METRICS as metric, i (metric.key)}
-    <!-- The anchor a figure's line links to. Six sections, six stripes:
-         each figure is its own area of this screen, and the stripe is what
-         makes an arrival from a link land somewhere that looks like a
-         place rather than in the middle of a document. -->
+    <!-- The anchor a figure's line links to. One section per figure, each
+         its own stripe: the stripe is what makes an arrival from a link
+         land somewhere that looks like a place rather than in the middle
+         of a document. -->
     <section id={metric.key} class="vm-metric" {...roleAttrs(roleAt(activeFlag.roles, i))}>
       <SectionHeading text={metricName(metric.key)} />
       <VoiceMetricSection {metric} />

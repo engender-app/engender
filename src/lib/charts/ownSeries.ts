@@ -1,7 +1,7 @@
 /* One Own-series figure across the benchmarks that can be read together
    (phase 8 features ticket 29, ADR-0060, ADR-0061).
 
-   Five of the six figures a benchmark reports carry no published range and
+   Six of the seven figures a benchmark reports carry no published range and
    nothing to compare against except the person's own earlier takes
    (CONTEXT: "Own-series figure"). Ticket 27 says that in words on the
    reference screen. This is the half that makes the honest answer useful:

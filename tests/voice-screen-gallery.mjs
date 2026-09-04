@@ -84,18 +84,39 @@ async function shoot(page, name) {
       if (getComputedStyle(el).position !== 'static') el.style.position = 'static';
     }
   });
-  await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true });
+  /* Neither `fullPage: true` nor an element shot of [data-app-root] reaches
+     past the viewport in this app: the document itself never scrolls, and
+     the scroller is `main#app-main` ([data-app-scroll-region]) one level
+     in. So the viewport is grown to the scroller's full height and shrunk
+     back once the shot is taken, which keeps the layout the 390px one and
+     makes only the height unreal (found on ticket F21, 2026-09-04 - it
+     shipped six clipped screenshots before the fix). */
+  const tall = await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    if (!region) return window.innerHeight;
+    return Math.min(window.innerHeight + (region.scrollHeight - region.clientHeight) + 40, 8000);
+  });
+  await page.setViewportSize({ width: 390, height: tall });
+  await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
   shots.push(name);
 }
 
 /** One whole benchmark through the real flow, left on the summary so the
-    drawn take can be photographed before it is saved. */
+    drawn take can be photographed before it is saved. Records the first
+    held note - "ah" - and skips the other two (ticket 30): a benchmark
+    with one vowel is still a valid benchmark, and this helper exists to
+    populate the compare tab quickly rather than to exercise every step. */
 async function recordToSummary(page) {
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(2600);
   await page.locator('[data-vb-stop]').click();
   await page.waitForSelector('[data-vb-skip]', { timeout: 15000 });
   await page.locator('[data-vb-record]').click();
+  await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await page.locator('[data-vb-skip]').click();
+  await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await page.locator('[data-vb-skip]').click();
   await page.waitForSelector('[data-vb-save]', { timeout: 20000 });
   await page.waitForTimeout(400);
 }
@@ -115,15 +136,25 @@ for (const theme of THEMES) {
   await page.waitForTimeout(2600);
   await shoot(page, `vs-2-reading-${theme}`);
 
-  // 3. The held note, where the figure is the thing on the screen: the
-  //    absolute axis, the two ranges, the hatched overlap.
+  // 3. The first held note - "ah" - where the figure is the thing on the
+  //    screen: the absolute axis, the two ranges, the hatched overlap.
   await page.locator('[data-vb-stop]').click();
   await page.waitForSelector('[data-vb-skip]', { timeout: 15000 });
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(1800);
   await shoot(page, `vs-3-vowel-steadiness-${theme}`);
 
-  // 4. The summary: six figures, then the take drawn from its own track.
+  // 3b. Two more held vowels since ticket 30, each its own screen with its
+  //     own hint and progress line ("Note 2 of 3"). This one is "ee";
+  //     "oo" follows the same shape and is skipped rather than shot again.
+  await page.waitForSelector('[data-vb-record]', { timeout: 20000 });
+  await page.waitForTimeout(300);
+  await shoot(page, `vs-3b-vowel-two-${theme}`);
+  await page.locator('[data-vb-skip]').click();
+  await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await page.locator('[data-vb-skip]').click();
+
+  // 4. The summary: seven figures, then the take drawn from its own track.
   await page.waitForSelector('[data-vb-save]', { timeout: 20000 });
   await page.waitForTimeout(400);
   await shoot(page, `vs-4-summary-with-take-${theme}`);
@@ -193,6 +224,10 @@ for (const theme of THEMES) {
   await moving.locator('[data-vb-record]').click();
   await moving.waitForTimeout(3200);
   await moving.locator('[data-vb-stop]').click();
+  await moving.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await moving.locator('[data-vb-skip]').click();
+  await moving.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+  await moving.locator('[data-vb-skip]').click();
   await moving.waitForSelector('[data-vb-skip]', { timeout: 20000 });
   await moving.locator('[data-vb-skip]').click();
   await moving.waitForSelector('[data-vb-save]', { timeout: 20000 });

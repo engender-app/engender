@@ -200,7 +200,7 @@ describe('what a first-run journal sees', () => {
         'settings/entry-templates',
         'settings/clinician-summary',
         'settings/exposure',
-        /* The metric reference explains a fixed table of six figures
+        /* The metric reference explains a fixed table of seven figures
            compiled into the bundle (data/voice/metrics.ts), so it has no
            empty state for the same reason the bundled directory has
            none. */
@@ -249,7 +249,7 @@ describe('what the worker is still fetching', () => {
         'settings/notifications',
         'settings/presentations',
         'settings/entry-templates',
-        // Reads no journal at all: six figures explained, and not one of
+        // Reads no journal at all: seven figures explained, and not one of
         // the person's own numbers anywhere on it (ADR-0060).
         'settings/voice/metrics'
       ].includes(route)
