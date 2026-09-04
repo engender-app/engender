@@ -1829,7 +1829,7 @@
   "rem_allow_notifications": "Włącz powiadomienia",
   "rem_allow_exact_alarms": "Włącz dokładne alarmy",
   "rem_hide_titles_title": "Ukryj wrażliwe tytuły",
-  "rem_hide_titles_sub": "każde powiadomienie pokazuje ogólny tytuł i nie pokazuje treści",
+  "rem_hide_titles_sub": "Domyślnie włączone: przypomnienie albo codzienne pytanie pokazuje tylko nazwę kanału, nawet na ekranie blokady. Wyłącz to, a prawdziwy tytuł pokaże się i tam.",
   "prov_reminder_stock": "Nadąża za twoim zapasem: {drug}.",
   "prov_reminder_takeover_hint": "Po zapisaniu zmiany przypomnienie staje się twoje na stałe.",
   "prov_view_stock": "Zobacz zapas",
