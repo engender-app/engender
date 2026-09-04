@@ -401,8 +401,21 @@
 
     <Field label={m.dose_amount_label()} id="coming-back-dose-amount">
       {#snippet children(id)}
+        <!-- `.input` on both, which is where the app's border, background
+             and 48px floor live (components.css). Written without it first,
+             and the two bare inputs came out 21px tall with a native spinner
+             on one and the unit field clipped off the right edge of the
+             sheet - 378px of intrinsic width in a 350px row.
+
+             Deliberately not the dose log's own `.dose-amount` box, which is
+             a single bordered shell the two fields sit inside, sized to
+             their content. That is fifty lines of measured CSS for a
+             screen whose sheet is mostly this field; here the amount is one
+             of four things being confirmed, and the ordinary input the rest
+             of the app uses is the right weight. -->
         <div class="coming-back-amount">
           <input
+            class="input coming-back-amount-num"
             type="number"
             inputmode="decimal"
             {id}
@@ -411,6 +424,7 @@
             bind:value={doseDraft!.dose}
           />
           <input
+            class="input coming-back-amount-unit"
             name="coming-back-dose-unit"
             aria-label={m.dose_unit_label()}
             placeholder={m.dose_unit_placeholder()}
@@ -537,5 +551,27 @@
   .coming-back-amount {
     display: flex;
     gap: var(--space-2);
+  }
+
+  /* `min-width: 0` because `.input` is `width: 100%` and a flex item's
+     automatic minimum is its content width - without it the pair overflows
+     the row rather than sharing it. The unit is the narrower of the two:
+     "mg" against "4.5". */
+  .coming-back-amount-num {
+    flex: 2 1 0;
+    min-width: 0;
+  }
+
+  .coming-back-amount-unit {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* A mouse affordance on a control that declares inputmode="decimal", and
+     the same removal the dose log makes for the same reason. */
+  .coming-back-amount-num::-webkit-outer-spin-button,
+  .coming-back-amount-num::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
   }
 </style>
