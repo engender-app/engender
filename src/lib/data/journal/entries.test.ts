@@ -657,6 +657,17 @@ test('setEntryStarred toggles the flag and throws on an unknown id', async () =>
   await assert.rejects(journal.entries.setEntryStarred(999, true), /unknown entry/);
 });
 
+test('noteEntries reads epoch day, note and presentation, skipping blank notes and trashed entries', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'a good day' });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: '' });
+  const trashed = await journal.entries.upsertEntry({ epochDay: 102, mood: 2, note: 'gone' });
+  await journal.entries.deleteEntry(trashed);
+
+  const rows = await journal.entries.noteEntries();
+  assert.deepEqual(rows, [{ epochDay: 100, note: 'a good day', presentationId: null }]);
+});
+
 test('starring alone cannot rescue an otherwise-empty entry (CONTEXT: "Entry")', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'leaving' });

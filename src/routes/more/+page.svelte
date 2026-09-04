@@ -8,14 +8,16 @@
      (ticket 20) are the replacement; this ticket is the one that spends
      them here.
 
-     DIRECTION.md 3b: subtitles are earned, not standard. These 24 rows
+     DIRECTION.md 3b: subtitles are earned, not standard. These 25 rows
      carry titles alone (deepening ticket 04 dropped the unused `subtitle`
      field and its dead catalogue keys) except the trailing Settings row,
      where "Settings" alone does not say what is behind it.
 
      Every row's icon/title/href/group membership is unchanged, per this
      ticket's own scope line: a redesign changes the container, not what
-     each row says. */
+     each row says. Phase 8 features ticket 14 added the 25th, `words`,
+     to the Transition group beside `presentations` and `eras` - it groups
+     note text by exactly those two things. */
   import { m } from '$lib/paraglide/messages';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -65,6 +67,7 @@
     { key: 'tryouts', icon: 'tag', title: () => m.tryout_title(), href: '/settings/tryouts' },
     { key: 'presentations', icon: 'palette', title: () => m.presentations_title(), href: '/settings/presentations' },
     { key: 'eras', icon: 'columns', title: () => m.eras_title(), href: '/settings/eras' },
+    { key: 'words', icon: 'note', title: () => m.words_title(), href: '/settings/words' },
   ];
 
   const PRACTICE_ROWS: HubRow[] = [

@@ -294,7 +294,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       trashedEntries: HYDRATED_ENTRY,
       // A bare `MAX(epoch_day)`, not the hydrated shape: nothing here reads
       // a tag, a photo, a recording or a video note.
-      lastWriteEpochDay: ['entry']
+      lastWriteEpochDay: ['entry'],
+      // Note, day and presentation only - the word-frequency fold's own
+      // read (phase 8 features ticket 14), not the hydrated shape.
+      noteEntries: ['entry']
     }
   }),
   tags: classify<Journal['tags']>()({
