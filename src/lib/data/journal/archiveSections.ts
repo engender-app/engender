@@ -893,7 +893,11 @@ const SECTIONS = [
       /* `capture_chain` the same way, one ticket later (ticket 28,
          ADR-0061): an archive written before it carries no chain, and
          neither does a benchmark from before schema v65. */
-      capture_chain: { field: 'captureChain', whenAbsent: null }
+      capture_chain: { field: 'captureChain', whenAbsent: null },
+      /* `resonance_scale` the same way again (ticket 30): an archive
+         written before it carries no factor, and neither does a benchmark
+         from before schema v66 or one that held fewer than two vowels. */
+      resonance_scale: { field: 'resonanceScale', whenAbsent: null }
     }
   }),
   /* The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort

@@ -56,7 +56,8 @@ const NAME: Record<VoiceMetricKey, Message> = {
   spread: m.vb_spread,
   rate: m.vb_rate,
   resonance: m.vb_resonance,
-  room: m.vb_room
+  room: m.vb_room,
+  scale: m.vb_scale
 };
 
 /** Field 1: what it measures, in one plain sentence. */
@@ -66,7 +67,8 @@ const MEASURES: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_measures,
   rate: m.vm_rate_measures,
   resonance: m.vm_resonance_measures,
-  room: m.vm_room_measures
+  room: m.vm_room_measures,
+  scale: m.vm_scale_measures
 };
 
 /** Field 2: how this app measures it. */
@@ -76,7 +78,8 @@ const HOW: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_how,
   rate: m.vm_rate_how,
   resonance: m.vm_resonance_how,
-  room: m.vm_room_how
+  room: m.vm_room_how,
+  scale: m.vm_scale_how
 };
 
 /** Field 3: what is physically known to change it. General mechanism only,
@@ -88,7 +91,8 @@ const CHANGES: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_changes,
   rate: m.vm_rate_changes,
   resonance: m.vm_resonance_changes,
-  room: m.vm_room_changes
+  room: m.vm_room_changes,
+  scale: m.vm_scale_changes
 };
 
 /** Field 4: how well studied it is as a cue to how a listener genders a
@@ -100,7 +104,8 @@ const STUDIED: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_studied,
   rate: m.vm_rate_studied,
   resonance: m.vm_resonance_studied,
-  room: m.vm_room_studied
+  room: m.vm_room_studied,
+  scale: m.vm_scale_studied
 };
 
 /** Field 5: the typical cis figures with their population, language and
@@ -114,7 +119,8 @@ const TYPICAL: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_typical,
   rate: m.vm_rate_typical,
   resonance: m.vm_resonance_typical,
-  room: m.vm_room_typical
+  room: m.vm_room_typical,
+  scale: m.vm_scale_typical
 };
 
 /** Field 6: what it cannot tell you. */
@@ -124,7 +130,8 @@ const CANNOT: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_cannot,
   rate: m.vm_rate_cannot,
   resonance: m.vm_resonance_cannot,
-  room: m.vm_room_cannot
+  room: m.vm_room_cannot,
+  scale: m.vm_scale_cannot
 };
 
 /** Field 7: which tier it is in, said in ordinary words. */
@@ -134,7 +141,8 @@ const TIER: Record<VoiceMetricKey, Message> = {
   spread: m.vm_spread_tier,
   rate: m.vm_rate_tier,
   resonance: m.vm_resonance_tier,
-  room: m.vm_room_tier
+  room: m.vm_room_tier,
+  scale: m.vm_scale_tier
 };
 
 /** Whose figures a band is, named for the passage rather than for the
