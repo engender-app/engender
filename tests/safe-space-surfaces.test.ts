@@ -84,18 +84,39 @@ describe('the three more sources ticket 14 adds', () => {
     expect(doubt).toMatch(/LETTER_LIMIT\s*=\s*\d+/);
     expect(doubt).toContain('unlockedLetters.length > LETTER_LIMIT');
     expect(markup).toContain('<LookBackLetterCard');
-    expect(markup).toMatch(/<ListRow[^>]*key="all-letters"[\s\S]*?href="\/settings\/letters"/);
+    // Under the card, not a last row in it: a row there wore the letters'
+    // own disc and chevron and read as a fourth letter.
+    expect(markup).toMatch(/<\/ListCard>[\s\S]*?<a[^>]*data-all-letters[^>]*href="\/settings\/letters"/);
+    expect(markup).toContain('m.safe_space_letters_all({ count: unlockedLetters.length - LETTER_LIMIT })');
     // Its own card, not one more row inside the counterevidence list.
     expect(markup).toMatch(/<ListCard[\s\S]*?<LookBackLetterCard/);
   });
 
-  it('shows a letter as a preview that links to the whole thing, never as text this screen truncates itself', () => {
-    // The tap target is the letter's own screen; the row's own two-line
-    // clamp is the kit's, and nothing here slices the text to fake one.
+  it('leads a Safe Space letter row with the letter, not with its date', () => {
+    expect(markup).toMatch(/<LookBackLetterCard[^>]*lead="text"/);
+
+    // The other two surfaces keep the retrospective's own framing, where the
+    // date is why the letter is there at all.
+    expect(read('src/routes/on-this-day/+page.svelte')).not.toContain('lead=');
+    expect(read('src/lib/components/WrappedYear.svelte')).not.toContain('lead=');
+
+    const kit = read('src/lib/styles/kit.css');
+    expect(kit).toContain("[data-list-row='letter-preview'][data-lead='text'] .kit-row-title");
+    expect(kit).toContain("[data-list-row='letter-preview'][data-lead='date'] .kit-row-sub");
+  });
+
+  it('shows a letter as a preview that links to the whole thing, and cuts that preview in code as well as in CSS', () => {
+    // The tap target is the letter's own screen, and the screen itself does
+    // no cutting: the card asks letterOpening for it, so what a row
+    // announces is what a row draws rather than the whole letter.
     const letterBlock = markup.match(/{#each letters[\s\S]*?{\/each}/)?.[0] ?? '';
     expect(letterBlock).toContain('<LookBackLetterCard');
     expect(letterBlock).not.toMatch(/\.slice\(|substring|\u2026/);
-    expect(read('src/lib/components/LookBackLetterCard.svelte')).toContain('href={`/settings/letters/${letter.id}`}');
+
+    const card = read('src/lib/components/LookBackLetterCard.svelte');
+    expect(card).toContain('href={`/settings/letters/${letter.id}`}');
+    expect(card).toContain('letterOpening(letter.text, OPENING_LIMIT)');
+    expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
   });
 
   it('reads starred photos and caps how many it shows', () => {
