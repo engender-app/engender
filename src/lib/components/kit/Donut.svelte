@@ -152,6 +152,11 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    /* Only bites once the two have wrapped, which is a 320px card: the
+       legend grows to fill the row otherwise, so there is no slack to
+       centre. Wrapped, it puts the ring over the middle of the legend
+       instead of against the card's left edge. */
+    justify-content: center;
     gap: var(--space-4);
   }
 
@@ -270,11 +275,18 @@
     background: color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface-2));
   }
 
+  /* Two lines, clamped rather than cut at one, the same way a list row's
+     subtitle is. A tag is the person's own word and half a card is not much
+     room for it - "Voice practice" is already at the edge in English and
+     Polish runs longer. The percentage beside it keeps its place either
+     way, which is what the row is aligned on. */
   .kit-donut-name {
     font-size: var(--text-sm);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .kit-donut-share {

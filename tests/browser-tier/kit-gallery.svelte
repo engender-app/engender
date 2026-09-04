@@ -400,14 +400,16 @@
   <!-- Nine parts against a cap of five, so the remainder and the smallest
        arc the ring will ever draw are both on screen. The last named part
        is under one percent, which is the case the legend refuses to print
-       as a zero. -->
+       as a zero. Its name is also the long one: a tag is whatever the
+       person typed, so the legend has to clamp rather than sit at one line
+       and cut. -->
   <ChartCard heading="Share by tag, capped" kind="donut-capped" role={roleAt(roles, 0)}>
     <Donut
       parts={[
         { key: 'a', name: 'Getting dressed', amount: 120 },
         { key: 'b', name: 'Work', amount: 64 },
         { key: 'c', name: 'Friends', amount: 40 },
-        { key: 'd', name: 'Appointments', amount: 1 },
+        { key: 'd', name: 'Appointments and paperwork', amount: 1 },
         { key: 'e', name: 'Voice practice', amount: 1 },
         { key: 'f', name: 'Family', amount: 1 },
         { key: 'g', name: 'Travel', amount: 1 },
