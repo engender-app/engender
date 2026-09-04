@@ -112,15 +112,10 @@ const LABS_ANALYTE = 'Estradiol';
     two unit series rather than one. */
 const MEASUREMENT_TYPE = 'waist';
 
-/** What Home's letter tile pages, its recent-days strip takes, and the
-    upper end of the range its measurement nudge asks for - the literals
-    `+page.svelte` and `liveTiles.svelte.ts` pass today.
-    `MEASUREMENTS_RANGE_END` is a bound in name only, and reading like that
-    here is the point: the audit's first finding is a screen asking for
-    every measurement ever stored to compute two numbers. */
+/** What Home's letter tile pages and its recent-days strip takes - the
+    literals `+page.svelte` and `liveTiles.svelte.ts` pass today. */
 const HOME_LETTER_PAGE = 100;
 const HOME_RECENT_DAYS = 5;
-const MEASUREMENTS_RANGE_END = 999999;
 
 /** The metric Home's week strip and the stats cards are drawn on when
     nobody has picked another, which is what a mount reads. Mood, the one
@@ -223,13 +218,6 @@ export async function measureLongJournal(
     const { result: measured, recording } = await recorder.record(operation);
     const ms = performance.now() - startedAt;
     held.push(measured.result);
-    if (true) {
-      const rows = [...recording.statements].sort((a, b) => b.bytes - a.bytes).slice(0, 12);
-      console.log(
-        `BREAKDOWN ${name}: ` +
-          rows.map((s) => `${s.bytes}B ${s.sql.replace(/\s+/g, ' ').slice(0, 90)}`).join('\n   ')
-      );
-    }
     measurements.push({
       name,
       what,
@@ -756,46 +744,46 @@ export async function measureLongJournal(
   const dimensionKeys = (await journal.dimensions.getDimensions()).map((dimension) => dimension.key);
 
   await mount('mount-home', 'Home, every read its tiles, panels and cards fire on arrival', async () => {
-    /* Sixteen live queries from `homeTiles()`, five the route holds itself,
-       and the three look-back surfaces under it: the wrapped card, the
-       on-this-day card and the week strip. The two cards are gated on
+    /* Seventeen live queries from `homeTiles()`, five the route holds
+       itself, and the three look-back surfaces under it: the wrapped card,
+       the on-this-day card and the week strip. The two cards are gated on
        `wrappedEnabled` and `onThisDayEnabled`, which both ship on, so a
        default install pays for them.
 
-       Two of these grow by a loop rather than by a table, and they are the
-       shape they are on purpose. The felt-sense read re-reads the tryout
-       list and then asks one question per tryout that covers today. The
+       One of these still grows by a loop rather than by a table: the
        on-this-day card asks whether each lookback day clears the good-day
-       bar, one statement per candidate. */
+       bar, one statement per candidate. The felt-sense read used to be the
+       other, and is one statement for every active tryout since phase 8
+       audit ticket 13. */
     const wrappedPeriod = offeredWrappedPeriod(today);
     const lookbackDays = onThisDayCandidates(today);
+    const activeTryoutIds = journal.tryouts
+      .getTryouts()
+      .then((rows) => rows.filter((tryout) => spanCoversDay(tryout, today)).map((tryout) => tryout.id));
 
     const reads = await together({
       runningWear: journal.wearSessions.getRunningSession(),
       episodes: journal.regimen.getEpisodes(),
       procedures: journal.procedures.getProcedures(),
-      letters: journal.letters.getLetters(HOME_LETTER_PAGE),
+      letters: journal.letters.getLetterSeals(HOME_LETTER_PAGE),
       dueRevisits: journal.revisits.getDueRevisits(today),
-      latestBadEntry: journal.entries.latestBadMomentEntry(),
-      tryouts: journal.tryouts.getTryouts(),
-      latestFeltSenseByTryout: (async () => {
-        const rows = await journal.tryouts.getTryouts();
-        const latest = new Map<string, number | null>();
-        for (const tryout of rows) {
-          if (!spanCoversDay(tryout, today)) continue;
-          const entries = await journal.feltSense.forTryout(tryout.id);
-          latest.set(tryout.id, entries.length > 0 ? entries[0].epochDay : null);
-        }
-        return latest;
-      })(),
+      latestBadEntryId: journal.entries.latestBadMomentEntryId(),
+      tryouts: activeTryoutIds,
+      /* Fed the ids the tryout list already answered with, which is what the
+         screen does: `tryouts.rows` is read synchronously before the call
+         (liveTiles.svelte.ts). One statement whatever the number. */
+      latestFeltSenseByTryout: activeTryoutIds.then((ids) =>
+        journal.feltSense.latestDaysForTryouts(ids)
+      ),
       schedules: journal.doses.getSchedules(),
       dosePauses: journal.doses.getPauses(),
       todayDoses: journal.doses.getDoses(today, today),
-      benchmarks: journal.voiceBenchmarks.getBenchmarks(),
+      latestBenchmarkDay: journal.voiceBenchmarks.lastWriteEpochDay(today),
       journalingPauses: journal.journalingPauses.getPauses(),
       areaStates: journal.areaStates.getAreaStates(),
-      hairRemovalSessions: journal.hairRemoval.getSessions(),
-      measurements: journal.measurements.getMeasurementsInRange(0, MEASUREMENTS_RANGE_END),
+      latestHairRemovalSession: journal.hairRemoval.latestSession(today),
+      measurementCount: journal.measurements.countAll(),
+      latestMeasurementDay: journal.measurements.lastWriteEpochDay(today),
       entryCount: journal.entries.countAll(),
       journalBounds: journal.eras.getJournalBounds(),
       debriefState: journal.checklists.getDebriefState(),
@@ -818,8 +806,8 @@ export async function measureLongJournal(
     return {
       result: [reads, wrappedRecap, goodDays],
       detail:
-        `${reads.benchmarks.length} voice benchmarks, ${reads.measurements.length} measurements, ` +
-        `${reads.letters.length} letters, ${reads.latestFeltSenseByTryout.size} tryouts asked one at a time, ` +
+        `newest benchmark ${reads.latestBenchmarkDay ?? 'none'}, ${reads.measurementCount} measurements counted, ` +
+        `${reads.letters.length} letter seals, ${reads.tryouts.length} active tryouts asked at once, ` +
         `${reads.projections.length} stock projections, ${lookbackDays.length} lookback days asked one at a time, ` +
         `${reads.entryCount} entries counted, wrapped recap ${wrappedRecap ? 'read' : 'skipped as muted'}`
     };
