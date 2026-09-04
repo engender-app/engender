@@ -642,6 +642,23 @@ export interface JournalingPause {
   endEpochDay: number | null;
 }
 
+/** A search somebody kept a name for (phase 8 features ticket 06, CONTEXT:
+    "Saved question"). The same shape `EntrySearchFilters` already has, plus
+    the free-text `queryText` and the name it opens under - so building the
+    filters back out of a saved row is a direct read, never a second
+    computation of what a search of it means (see savedQuestionQuery.ts). */
+export interface SavedQuestion {
+  id: string;
+  name: string;
+  queryText: string;
+  tagIds: string[];
+  moods: number[];
+  startEpochDay: number | null;
+  endEpochDay: number | null;
+  hasNote: boolean;
+  hasPhoto: boolean;
+}
+
 /** A named stretch of the person's own timeline (phase 6 ticket 01,
     ADR-0049, CONTEXT: "Era") - "before I knew", "first year", "after I
     moved". Owns a name and two bounds and nothing else: no colour, no mute
