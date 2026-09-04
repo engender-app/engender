@@ -19,6 +19,7 @@
    the runtime half worth having. */
 
 import { describe, expect, it } from 'vitest';
+import { startOfDayTimestamp } from './epochDay.ts';
 import {
   OFFERS,
   OFFER_KEYS,
@@ -33,6 +34,10 @@ import {
     that is not is a `TypeError` and a failing test, which is the point. */
 function recordingJournal() {
   const calls: string[] = [];
+  /** What a wear session was closed with, so the one offer that turns an
+      answer into a figure can be checked on the figure rather than only on
+      having written. */
+  const durations: (number | null)[] = [];
   const journal = {
     milestones: {
       upsertMilestone: async () => {
@@ -62,10 +67,25 @@ function recordingJournal() {
       setAreasFinished: async () => {
         calls.push('areaStates.setAreasFinished');
       }
+    },
+    doses: {
+      upsertDose: async () => {
+        calls.push('doses.upsertDose');
+        return 'dose-1';
+      }
+    },
+    wearSessions: {
+      upsertSession: async (input: { durationMs: number | null }) => {
+        calls.push('wearSessions.upsertSession');
+        durations.push(input.durationMs);
+        return 'wear-1';
+      }
     }
   } as unknown as OfferJournal;
-  return { journal, calls };
+  return { journal, calls, durations };
 }
+
+const START_OF_DAY = startOfDayTimestamp(20000);
 
 /** One subject per offer, in the shape that offer's own trigger produces.
     A table rather than a loop over the registry, because a subject is the
@@ -101,7 +121,19 @@ const SUBJECTS: { [K in OfferKey]: Parameters<(typeof OFFERS)[K]['write']>[1] } 
   /* Two areas, because the one hub row that fronts two finishes both in the
      same call and a subject naming one would let a half-finished row
      through. */
-  'area-finished': { areas: ['hairStages', 'hairPhotos'], epochDay: 20000 }
+  'area-finished': { areas: ['hairStages', 'hairPhotos'], epochDay: 20000 },
+  /* Phase 8 features ticket 05. An oral dose, which is the one arm of
+     `DoseEventInput` that needs no site - the sheet collects a site for
+     every other route, and a subject here that skipped one would not
+     compile. */
+  'returning-dose': {
+    route: 'oral',
+    timestamp: START_OF_DAY,
+    dose: 4,
+    doseUnit: 'mg',
+    drug: 'estradiol valerate'
+  },
+  'returning-wear-session': { sessionId: 'wear-1', startTimestamp: START_OF_DAY, endEpochDay: 20002 }
 };
 
 describe('the in-flow offer registry', () => {
@@ -161,6 +193,20 @@ describe('the confirmation rule (ADR-0045)', () => {
 
     expect(written).toBe(false);
     expect(calls).toEqual([]);
+  });
+
+  it('closes a wear session at the end of the day it was told, never at the start', async () => {
+    /* The one offer whose confirmation is arithmetic rather than a
+       hand-off. A timer left running has no honest end time in it, so the
+       person names a day and the write turns that into a duration - and
+       which end of that day it takes is the whole difference between a
+       session that lasted two days and one that lasted three. The sheet
+       says out loud that it runs to the end of the day; this is what holds
+       it to that. */
+    const { journal, durations } = recordingJournal();
+    await answerOffer(OFFERS['returning-wear-session'], SUBJECTS['returning-wear-session'], 'confirm', journal);
+
+    expect(durations).toEqual([startOfDayTimestamp(20003) - START_OF_DAY]);
   });
 
   it('finds the milestone a roadmap goal already minted, so it is not offered twice', () => {

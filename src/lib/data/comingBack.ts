@@ -63,7 +63,7 @@
 import { epochDayFromTimestamp } from './epochDay';
 import type { DoseScheduleComparison } from './journal/doses';
 import { eraCoversDay } from './eras';
-import type { DoseRoute, Era, Letter, Milestone, WearSession } from './types';
+import type { Era, Letter, Milestone, WearSession } from './types';
 
 /** How long a gap has to be before returning is treated as a return.
 
@@ -113,7 +113,17 @@ export type WaitingItem =
       kind: 'dose';
       slotEpochDay: number;
       episodeId: string;
-      route: DoseRoute;
+      /** The episode's route in its own free-text words, unresolved.
+          `matchDoseRoute` is what turns those into one of the six keys a
+          dose is written with, and it needs the localised route words - so
+          the sheet reads it the same way the dose log's own editor does,
+          and this file stays free of paraglide. */
+      episodeRoute: string;
+      /** The drug in the episode's words, carried for the same reason the
+          dose editor seeds it: a dose logged while one episode is active
+          needs no drug of its own, and having it costs nothing when a
+          second episode starts later. */
+      drug: string;
       /** What the schedule was expecting in that slot, so the offer's sheet
           fills in a figure the person chose rather than one it invented -
           the slot's own amount where the schedule cycles them, and the
@@ -252,7 +262,8 @@ export function whatIsWaiting(input: ComingBackInput): ComingBack | null {
         kind: 'dose',
         slotEpochDay: missed.slot.epochDay,
         episodeId: episode.id,
-        route: episode.route,
+        episodeRoute: episode.route,
+        drug: episode.drug,
         dose: missed.slot.amount?.dose ?? episode.dose,
         doseUnit: missed.slot.amount?.doseUnit ?? episode.doseUnit
       });
