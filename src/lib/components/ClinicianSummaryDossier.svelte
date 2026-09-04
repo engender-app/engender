@@ -514,12 +514,6 @@
     </section>
   {/if}
 
-  {#if isDossierEmpty}
-    <p class="dossier-empty-note">{m.clinician_summary_empty_dossier()}</p>
-  {/if}
-
-  <!-- Clinical Disclaimer -->
-  <p class="dossier-disclaimer">{m.clinician_summary_disclaimer()}</p>
   <!-- 9. Tracking that ended (phase 8 features ticket 04). A stopped stream
        reads as a decision with a date rather than as missing data, which is
        what the flat stretch on the charts above needs explaining with. -->
@@ -553,6 +547,13 @@
       {/if}
     </section>
   {/if}
+
+  {#if isDossierEmpty}
+    <p class="dossier-empty-note">{m.clinician_summary_empty_dossier()}</p>
+  {/if}
+
+  <!-- Clinical Disclaimer -->
+  <p class="dossier-disclaimer">{m.clinician_summary_disclaimer()}</p>
 </div>
 
 <style>

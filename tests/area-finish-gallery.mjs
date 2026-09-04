@@ -64,8 +64,8 @@ for (const theme of ['light', 'dark']) {
         const main = document.querySelector('.app-main');
         if (main) main.scrollTop = main.scrollHeight;
       });
-    /* Twice, because a crossfade holds the leaving node absolutely
-       positioned for a beat and the first measurement is taken against a
+    /* Twice, because the card animates its own height when it gains or
+       loses a row (`resize`) and the first measurement is taken against a
        page that is still settling. */
     await bottom();
     await page.waitForTimeout(400);
@@ -143,8 +143,17 @@ for (const theme of ['light', 'dark']) {
   await page.clock.install({ time: new Date(Date.now() + OFFER_SKIP_DAYS * 86400_000) });
   await settle('/settings/sizes');
   await page.locator('[data-area-finish-offer]').waitFor();
+  /* Both answers have to be in frame together: the whole point of the rework
+     is that the no is a labelled row rather than an unmarked x. */
+  await page.locator('[data-area-finish-decline]').waitFor();
   await toFoot();
   await shoot('07-offer');
+
+  /* ---------- and the no, which the app never takes back ---------- */
+  await page.locator('[data-area-finish-decline]').click();
+  await page.locator('[data-area-finish]').waitFor();
+  await toFoot();
+  await shoot('08-offer-declined');
 
   await page.close();
 }

@@ -17,9 +17,15 @@
 
      The confirmation exists for the reason the photo-section milestone's
      does: the gesture reads as destructive and nothing is destroyed, so the
-     sheet's whole job is to say what actually happens. Records stay, charts
-     keep them, search still finds them, the prompts stop, and this can be
-     undone. It is a primary button and not a danger one for the same reason.
+     sheet's whole job is to say what actually happens. Records stay, search
+     still finds them, the prompts stop, and this can be undone. It is a
+     primary button and not a danger one for the same reason.
+
+     It also names the two consequences that leave this screen, which is the
+     part a shorter sentence would have left out: the day is drawn on every
+     chart covering it and printed in the clinician summary. Somebody who
+     stopped a course of treatment for a hard reason should not find that out
+     from a page they are about to hand a doctor.
 
      ## The offer
 
@@ -33,9 +39,11 @@
 
      ## Motion
 
-     The state swap is a crossfade under `{#key}` (tier 3, change within a
-     screen): the row is the same object saying something different, which is
-     a dissolve rather than a slide. The offer leaves through Notice's own
+     Tier 3, change within a screen, and the verb is a settle rather than a
+     dissolve. The card is one object saying something different at three
+     different moments, not one piece of content replacing another, so it
+     stays mounted and `resize` carries the height from a row to two rows and
+     back (motion/reveal.ts). The offer leaves through Notice's own
      `disclose`, so answering it collapses the space it held instead of
      dropping everything under it a frame. */
   import { m } from '$lib/paraglide/messages';
@@ -52,7 +60,7 @@
   } from '$lib/data/epochDay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { crossfade } from '$lib/motion/reveal';
+  import { resize } from '$lib/motion/reveal';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -152,54 +160,69 @@
       title={m.area_finish_offer_title()}
       text={m.area_finish_offer_body({ date: dayLong(lastWrite) })}
       action={{ label: m.area_finish_offer_action(), onclick: acceptOffer }}
-      dismiss={{ label: m.area_finish_offer_dismiss(), onclick: declineOffer }}
     />
   {/if}
 
-  <!-- The standing row steps aside while the offer is up: the offer's own
-       action opens the same sheet, and two ways to say the same thing one
-       above the other reads as a duplicate rather than as a choice. -->
-  {#key finishedOn === null}
-    {#if finishedOn !== null}
-      <div in:crossfade>
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          <ListRow
-            key="area-finished"
-            data-area-finished
-            icon="flag"
-            title={m.area_finish_done_title({ date: dayLong(finishedOn) })}
-            subtitle={m.area_finish_done_sub()}
-            static
-            chevron={false}
-          />
-          <ListRow
-            key="area-finish-undo"
-            data-area-finish-undo
-            icon="play"
-            title={m.area_finish_undo()}
-            chevron={false}
-            onclick={pickBackUp}
-          />
-        </ListCard>
-      </div>
-    {:else if !offering}
-      <!-- The card itself and not only its row, or an area with the offer up
-           leaves an empty outline sitting under it. -->
-      <div in:crossfade>
-        <ListCard role={roleAt(activeFlag.roles, 0)}>
-          <ListRow
-            key="area-finish"
-            data-area-finish
-            icon="flag"
-            title={m.area_finish_row_title()}
-            subtitle={m.area_finish_row_sub()}
-            chevron={false}
-            onclick={openFinish}
-          />
-        </ListCard>
-      </div>
-    {/if}
-  {/key}
+  <!-- One card, always here, its rows saying whichever of the three things
+       is true. Kept mounted rather than swapped under a `{#key}`: `resize`
+       animates a box that changes size under its own content, which is what
+       this is - a row that becomes two, or a row that says something else.
+       A `{#key}` would have destroyed and rebuilt it, and `crossfade` takes
+       the leaving node out of flow, so the pair would collapse the block to
+       nothing for a beat and then snap, which is the jump `disclose` and
+       `resize` were both written to stop.
+
+       While the offer is up this card carries the offer's *other* answer.
+       Both answers are then labelled rows in the app's own shapes - the
+       notice asks and offers the yes, this is the no - rather than one
+       labelled action and an unmarked x, which is the same glyph that means
+       "hide this, I have read it" on every other notice in the app and would
+       be spending a decision the app never asks about again. -->
+  <div use:resize>
+    <ListCard role={roleAt(activeFlag.roles, 0)}>
+      {#if finishedOn !== null}
+        <ListRow
+          key="area-finished"
+          data-area-finished
+          icon="flag"
+          title={m.area_finish_done_title({ date: dayLong(finishedOn) })}
+          subtitle={m.area_finish_done_sub()}
+          aria-live="polite"
+          static
+          chevron={false}
+        />
+        <ListRow
+          key="area-finish-undo"
+          data-area-finish-undo
+          icon="plus"
+          title={m.area_finish_undo()}
+          chevron={false}
+          onclick={pickBackUp}
+        />
+      {:else if offering}
+        <ListRow
+          key="area-finish-decline"
+          data-area-finish-decline
+          icon="x"
+          title={m.area_finish_offer_dismiss()}
+          subtitle={m.area_finish_offer_dismiss_sub()}
+          chevron={false}
+          onclick={declineOffer}
+        />
+      {:else}
+        <ListRow
+          key="area-finish"
+          data-area-finish
+          icon="flag"
+          title={m.area_finish_row_title()}
+          subtitle={m.area_finish_row_sub()}
+          aria-live="polite"
+          chevron={false}
+          onclick={openFinish}
+        />
+      {/if}
+    </ListCard>
+  </div>
 </div>
 
 <Sheet bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
