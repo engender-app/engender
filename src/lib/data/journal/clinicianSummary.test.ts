@@ -17,6 +17,7 @@ import type { Journal } from './journal.ts';
 /* The areas openJournal hands the summary, taken off an open journal so a
    test can build the same area with a section of its own registered. */
 const areasOf = (journal: Journal) => ({
+  areaStates: journal.areaStates,
   regimen: journal.regimen,
   doses: journal.doses,
   labs: journal.labs,
@@ -126,6 +127,7 @@ test('with nothing logged at all, every field comes back empty rather than throw
     exposure: { doseTotals: [], routeDays: [], regimenDays: [], excludedDoses: 0 },
     sideEffects: [],
     procedures: [],
+    finishedAreas: [],
     appointmentPrepItems: []
   });
 });
@@ -133,7 +135,16 @@ test('with nothing logged at all, every field comes back empty rather than throw
 test('a section is registered for each part of the summary, in the order it prints', async () => {
   assert.deepEqual(
     CLINICIAN_SUMMARY_SECTIONS.map((s) => s.key),
-    ['regimenEpisodes', 'doses', 'labResults', 'exposure', 'sideEffects', 'procedures', 'appointmentPrepItems']
+    [
+      'regimenEpisodes',
+      'doses',
+      'labResults',
+      'exposure',
+      'sideEffects',
+      'procedures',
+      'finishedAreas',
+      'appointmentPrepItems'
+    ]
   );
 });
 
@@ -144,7 +155,15 @@ test('a section is registered for each part of the summary, in the order it prin
    derivation moved out of writes.ts - and it held the derivation to the six
    tables that file used to name by hand, in the order it named them. */
 test('getSummary depends on the tables the registered sections read, and no others', () => {
-  assert.deepEqual(CLINICIAN_SUMMARY_TABLES, ['regimen', 'dose', 'lab', 'sideEffect', 'procedure', 'checklist']);
+  assert.deepEqual(CLINICIAN_SUMMARY_TABLES, [
+    'regimen',
+    'dose',
+    'lab',
+    'sideEffect',
+    'procedure',
+    'checklist',
+    'areaState'
+  ]);
 });
 
 test('registering a section is enough for it to reach a generated summary, with no change to the assembly', async () => {
@@ -208,4 +227,37 @@ test("the appointment prep list still prints last, after the procedures section"
   const keys = CLINICIAN_SUMMARY_SECTIONS.map((s) => s.key);
   assert.equal(keys.at(-1), 'appointmentPrepItems', 'ticket 11 asked for it as the summary\'s final page');
   assert.ok(keys.indexOf('procedures') < keys.indexOf('appointmentPrepItems'));
+});
+
+/* Phase 8 features ticket 04: when a stream ended. */
+
+test('the summary says which streams ended and when, whatever the range', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.areaStates.setAreasFinished(['hairRemovalSessions'], 18500);
+
+  // A window that starts long after the day it ended. A course that stopped
+  // before the range is exactly what explains a flat stretch inside it, so
+  // this section is unfiltered like procedures.
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.finishedAreas, [{ key: 'hair-removal', epochDay: 18500 }]);
+});
+
+test('an area that is only hidden says nothing to a clinician', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.areaStates.setAreasHidden(['measurements'], true);
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.finishedAreas, []);
+});
+
+test('un-finishing takes the line back off the page', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.areaStates.setAreasFinished(['measurements'], 19010);
+  await journal.areaStates.setAreasFinished(['measurements'], null);
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.deepEqual(summary.finishedAreas, []);
 });

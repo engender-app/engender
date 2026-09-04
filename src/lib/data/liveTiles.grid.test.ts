@@ -16,6 +16,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { m } from '../paraglide/messages';
 import { startOfDayTimestamp } from './epochDay';
 import { SURFACE_ROWS, UNPROMPTED_KINDS } from '../unprompted/registry';
+import type { AreaStates } from './areaState';
 import {
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
@@ -117,6 +118,7 @@ interface Overrides {
   nowMs?: number;
   enabled?: Record<LiveTileKind, boolean>;
   snoozed?: Record<LiveTileKind, boolean>;
+  areaStates?: AreaStates;
   reads?: Partial<HomeTileReads>;
   actions?: Partial<HomeTileActions>;
   format?: Partial<HomeTileFormat>;
@@ -128,6 +130,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
     nowMs: NOW,
     enabled: allOn(true),
     snoozed: allOn(false),
+    areaStates: {},
     reads: {
       runningWear: wearSession,
       episodes: [episode],
@@ -427,5 +430,28 @@ describe('the dismiss controls', () => {
     const tile = tileNamed('wear-timer', { actions: { stopWear } })!;
     tile.action!.onclick!(CLICK);
     expect(stopWear).toHaveBeenCalledWith(wearSession);
+  });
+
+  /* Phase 8 features ticket 04: the cascade. One decision takes every tile
+     an area owns off the grid, and touches no other tile. */
+
+  it('takes an area\'s tiles off the grid once it is finished', () => {
+    const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1 } };
+
+    expect(tileNamed('wear-timer', { areaStates })).toBeUndefined();
+    expect(tileNamed('measurements-nudge', { areaStates })).toBeDefined();
+  });
+
+  it('takes them off while it is hidden too, and puts them back when it is not', () => {
+    const hidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null } };
+
+    expect(tileNamed('measurements-nudge', { areaStates: hidden })).toBeUndefined();
+    expect(tileNamed('measurements-nudge', { areaStates: {} })).toBeDefined();
+  });
+
+  it('leaves a finish day that has not arrived alone', () => {
+    const later: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY + 1 } };
+
+    expect(tileNamed('wear-timer', { areaStates: later })).toBeDefined();
   });
 });

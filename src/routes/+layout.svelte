@@ -421,7 +421,8 @@
         reminders: journal.reminders,
         entries: journal.entries,
         stock: journal.stock,
-        journalingPauses: journal.journalingPauses
+        journalingPauses: journal.journalingPauses,
+        areaStates: journal.areaStates
       },
       onTablesWritten,
       androidReminders,

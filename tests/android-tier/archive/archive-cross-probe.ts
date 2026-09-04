@@ -208,7 +208,8 @@ function portableWith(marker: string) {
     hairAnchorEpochDay: values.hairAnchorEpochDay,
     cycleTrackingEnabled: values.cycleTrackingEnabled,
     voiceComfortLowHz: values.voiceComfortLowHz,
-    voiceComfortHighHz: values.voiceComfortHighHz
+    voiceComfortHighHz: values.voiceComfortHighHz,
+    areaFinishOfferDeclined: values.areaFinishOfferDeclined
   };
 }
 

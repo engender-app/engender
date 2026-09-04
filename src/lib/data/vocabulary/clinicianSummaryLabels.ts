@@ -22,7 +22,8 @@ const SECTION_TITLE: Record<ClinicianSummarySectionKey, () => string> = {
   exposure: m.exposure_title,
   sideEffects: m.side_effects,
   procedures: m.surgery_journey_title,
-  appointmentPrepItems: m.appointment_prep_title
+  appointmentPrepItems: m.appointment_prep_title,
+  finishedAreas: m.clinician_summary_section_finished_areas
 };
 
 /** What a section prints as its heading. */
@@ -36,7 +37,8 @@ const DOSSIER_PART_NAME: Record<ClinicianDossierInclusionKey, () => string> = {
   sideEffects: m.clinician_summary_part_side_effects,
   cycleEvents: m.clinician_summary_part_cycle_events,
   appointmentPrep: m.clinician_summary_part_appointment_prep,
-  procedures: m.clinician_summary_part_procedures
+  procedures: m.clinician_summary_part_procedures,
+  finishedAreas: m.clinician_summary_part_finished_areas
 };
 
 /** What a dossier section is called in inclusion controls. */
