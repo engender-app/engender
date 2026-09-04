@@ -12,11 +12,13 @@ async function journalWithFiles() {
   return { journal };
 }
 
-/* journal.voice.inJournal (ticket 25): the one query that lists recordings
-   across entries, mirroring photos.inJournal's shape but entry-only, so
-   there is no owner name to carry alongside the date. */
+/* journal.voice.inJournal (ticket 11's memo browser): the one query that
+   lists recordings across entries, mirroring photos.inJournal's shape but
+   entry-only, so there is no owner name to carry alongside the date - and
+   carrying entryId, which photos.inJournal does not, because a memo's way
+   back to what it belongs to is this screen's whole point. */
 
-test('every recording in the journal comes back dated, oldest first', async () => {
+test('every recording in the journal comes back dated, newest first', async () => {
   const { journal } = await journalWithFiles();
   const later = await journal.entries.upsertEntry({
     epochDay: 20100,
@@ -33,8 +35,8 @@ test('every recording in the journal comes back dated, oldest first', async () =
   const second = (await journal.entries.getEntry(later))!.recordings[0];
 
   assert.deepEqual(await journal.voice.inJournal(), [
-    { id: first.id, fileName: first.fileName, epochDay: 20000 },
-    { id: second.id, fileName: second.fileName, epochDay: 20100 }
+    { id: second.id, fileName: second.fileName, epochDay: 20100, entryId: later },
+    { id: first.id, fileName: first.fileName, epochDay: 20000, entryId: earlier }
   ]);
 });
 

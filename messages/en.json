@@ -1596,6 +1596,8 @@
   "hair_removal_method_electrolysis": "Electrolysis",
   "hair_removal_method_other": "Other",
   "ph_compare": "Compare",
+  "ph_tab_browse": "Browse",
+  "ph_tab_compare": "Compare",
   "ph_earlier": "Earlier photo",
   "ph_later": "Later photo",
   "ph_from_entry": "journal entry",
@@ -2894,5 +2896,8 @@
   "clinician_summary_part_finished_areas": "Tracking that ended",
   "area_finish_table_area": "Tracking",
   "area_finish_table_ended": "Ended",
-  "area_finish_offer_dismiss_sub": "The app won't ask about this again."
+  "area_finish_offer_dismiss_sub": "The app won't ask about this again.",
+  "vm_empty_title": "No recordings yet",
+  "vm_empty_body": "Voice memos you record inside an entry gather here, browsable in one place without having to remember which day you made them.",
+  "vm_open_entry_aria": "Open the entry from {date}"
 }

@@ -24,6 +24,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -86,6 +87,23 @@
   function step(which: 'left' | 'right', delta: -1 | 1) {
     selected = stepCompareAnchor(selected, which, delta, photos);
   }
+
+  /* The mode control (ticket 11): a segmented Browse/Compare, matching how
+     the voice screen switches its own tabs, in place of the primary button
+     this used to be. "Compare" only ever takes hold once two photos are
+     picked - same gate the button enforced by only rendering with a pair -
+     so tapping it early is a no-op rather than a jump to a screen with
+     nothing to show. */
+  function setComparing(next: boolean) {
+    if (next) {
+      if (pair) comparing = true;
+      // Else a no-op: nothing is ready to compare yet, and the segmented
+      // control's own value (bound to `comparing`) simply does not move.
+    } else {
+      comparing = false;
+      selected = [];
+    }
+  }
 </script>
 
 <div class="screen">
@@ -124,12 +142,25 @@
     {/if}
 
     <div>
-      <button class="btn btn-soft press" onclick={() => { comparing = false; selected = []; }}>
+      <button class="btn btn-soft press" onclick={() => setComparing(false)}>
         <span>{m.ph_back_to_all()}</span>
       </button>
     </div>
   {:else}
     <ScreenHeader title={m.progress_photos()} back="/more" />
+    <div class="screen-part">
+      <Segmented
+        name={m.progress_photos()}
+        options={[
+          { value: 'browse', label: m.ph_tab_browse() },
+          { value: 'compare', label: m.ph_tab_compare() }
+        ]}
+        value={comparing ? 'compare' : 'browse'}
+        onChange={(v) => setComparing(v === 'compare')}
+        compact
+        key="photos-tab"
+      />
+    </div>
     <ReadGate read={photosQuery} variant="block" count={2}>
       {#snippet rows()}
         {#if comparing && !pair}
@@ -158,13 +189,6 @@
             <Icon name="image" size={20} /><span>{m.pj_open()}</span>
           </a>
         </div>
-        {#if pair}
-          <div class="editor-savebar">
-            <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
-              <Icon name="columns" size={20} /><span>{m.ph_compare()}</span>
-            </button>
-          </div>
-        {/if}
       {/snippet}
       {#snippet empty()}
         <div class="screen-part">

@@ -4,15 +4,15 @@ import {
   orderAnchorsByJourney,
   stepCompareAnchor,
   toComparePair,
-  toggleCompareAnchor
+  toggleCompareAnchor,
+  type DatedAnchor
 } from './compare-state.ts';
-import type { DatedRecording } from '../journal/voiceRecordings.ts';
 
-const recordings = (): DatedRecording[] => [
-  { id: 'r1', fileName: 'r1.webm', epochDay: 20000 },
-  { id: 'r2', fileName: 'r2.webm', epochDay: 20020 },
-  { id: 'r3', fileName: 'r3.webm', epochDay: 20050 },
-  { id: 'r4', fileName: 'r4.webm', epochDay: 20100 }
+const recordings = (): DatedAnchor[] => [
+  { id: 'r1', epochDay: 20000 },
+  { id: 'r2', epochDay: 20020 },
+  { id: 'r3', epochDay: 20050 },
+  { id: 'r4', epochDay: 20100 }
 ];
 
 test('ordering is deterministic by journey chronology, not pick order', () => {

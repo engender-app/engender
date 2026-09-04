@@ -636,7 +636,9 @@ try {
   if ((await photoCells.count()) < 4) throw new Error('not enough photos to exercise both compare controls');
   await photoCells.nth(0).click();
   await photoCells.nth(2).click();
-  await page.locator('[data-compare]').click();
+  // The mode control is a segmented Browse/Compare now (ticket 11), matching
+  // the voice screen's own tabs - not the primary button this used to be.
+  await page.locator('[data-segment="compare"]').click();
   const sides = page.locator('[data-compare-side]');
   const gap = await page.locator('[data-compare-gap]').textContent();
   if ((await sides.count()) !== 2 || !gap?.includes('apart')) throw new Error('compare dates or gap missing');
