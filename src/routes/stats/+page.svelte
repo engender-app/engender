@@ -850,13 +850,13 @@
           : m.values_title({ name: shown.name })}
       />
       {#if compared && !comparedHasReadings}
-        <p class="stats-note">{m.stats_compare_empty()}</p>
+        <p class="stats-inline-note">{m.stats_compare_empty()}</p>
       {/if}
       <!-- The second scale, offered rather than presented: a comparison is a
            question somebody has to have first, so until they ask there is a
            line of text here and no second control on the card. Nothing to
            offer at all where the journal holds one scale. -->
-      {#if metrics.length > 1}
+      {#if metrics.length > 1 && plotted.points.length}
         <!-- The offer and the picker it becomes, in one row that does not
              move. The constellation's own axis row, because it is the same
              kind of control in the same place: one setting for the picture
@@ -914,7 +914,7 @@
     {#if seriesQuery.loading || recapQuery.loading}
       <Skeleton variant="line" count={3} />
     {:else if enoughEntries}
-      <BarRows rows={scaleRows} />
+      <BarRows rows={scaleRows} scale="track" />
     {:else}
       <!-- A zero-length bar per ticked scale was what this drew for somebody
            who had never logged one. The floor is WRAPPED_ENTRY_FLOOR, the
@@ -1025,10 +1025,15 @@
         <ChartEmpty>{m.insights_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
+    <!-- Inside the card, under the bars it qualifies. It used to hang below
+         the card, where a `margin-top` of 8 collapsed under the card's own 24
+         and left the sentence sitting 24px under its bars and 16px above the
+         next card - reading as a preamble to the wrong chart, after six rows
+         had already been taken at face value. -->
+    {#if insightRows.length}
+      <p class="stats-inline-note">{m.insights_note()}</p>
+    {/if}
   </ChartCard>
-  {#if insightRows.length}
-    <p class="stats-note">{m.insights_note()}</p>
-  {/if}
 
   <!-- The correlation cards, as bars. They were rows of three stacked lines
        each - a name, "tends to appear with higher Mood on the same day", and
@@ -1072,8 +1077,8 @@
       {#if seriesQuery.loading || recapQuery.loading}
         <Skeleton variant="line" count={3} />
       {:else if enoughEntries && highestRows.length}
-        <BarRows rows={highestRows} onPick={(key) => goto(`/day/${key}`)} />
-        <p class="stats-note">{m.stats_highest_days_note()}</p>
+        <BarRows rows={highestRows} scale="track" onPick={(key) => goto(`/day/${key}`)} />
+        <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
       {:else}
         <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
       {/if}
@@ -1085,6 +1090,9 @@
     kind="interval-mood"
     role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}
   >
+    {#if !enoughEntries}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+    {:else}
     <ReadGate read={intervalMoodQuery} variant="block" count={3}>
       {#snippet rows()}
         <!-- Inside the card and above the plot, which is the point (ADR-0056).
@@ -1112,6 +1120,7 @@
         <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
+    {/if}
   </ChartCard>
   <!-- The interval length is this chart's one control, so it sits on the
        heading's line where the metric picker sits on the chart above rather
@@ -1132,6 +1141,9 @@
         />
       </span>
     {/snippet}
+    {#if !enoughEntries}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+    {:else}
     <ReadGate read={customIntervalQuery} variant="block" count={3}>
       {#snippet rows(customIntervalPattern)}
         <p class="stats-inline-note">{m.stats_all_history()}</p>
@@ -1153,6 +1165,7 @@
         <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
+    {/if}
   </ChartCard>
   <!-- The area index (ADR-0056). One card per area the person actually uses,
        in the More hub's own four groups in the More hub's own order, so
@@ -1301,13 +1314,6 @@
       href="/body-map"
     />
     <ListRow
-      key="tally"
-      icon="columns"
-      title={m.tally_trend_title()}
-      subtitle={m.tally_trend_sub()}
-      href="/tally"
-    />
-    <ListRow
       key="compare"
       icon="shuffle"
       title={m.compare_title()}
@@ -1331,7 +1337,7 @@
     title={compared ? m.values_two_title({ first: shown.name, second: compared.name }) : shown.name}
     onClose={() => (valueSheet = false)}
   >
-    <BarRows rows={valueRows} />
+    <BarRows rows={valueRows} scale="track" />
     <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
       <span>{m.done()}</span>
     </button>
@@ -1415,11 +1421,18 @@
   }
 
   /* A line of context inside a chart card, above or below the plot: which
-     analyte is drawn, that a fold reads the whole journal, the day a stream
-     ended. Inside the card because it belongs to that chart and is gated on
-     the same read - unlike `.stats-note`, which hangs under a card and says
-     what a chart is leaving out. ChartCard still takes no prop for a
-     paragraph; this is body content, which is what its `children` slot is. */
+     analyte is drawn, that a fold reads the whole journal, which tags were
+     left out, the day a stream ended.
+
+     Inside the card because it belongs to that chart and is gated on the same
+     read. `.stats-note` used to hang these under the card instead, and the
+     spacing gave the game away: its `margin-top` of 8 collapsed under the
+     card's own 24, so a sentence sat 24px below the chart it qualified and
+     16px above the next one, reading as a preamble to the wrong card. The
+     class is gone and its three consumers are in here.
+
+     ChartCard still takes no prop for a paragraph and does not need one; this
+     is body content, which is what its `children` slot is for. */
   .stats-inline-note {
     margin: var(--space-2) 0 0;
     font-size: var(--text-sm);

@@ -37,6 +37,14 @@ describe('the two folds say they read the whole journal, and only when they draw
     expect(stats).not.toContain('m.interval_mood_sub()');
     expect(stats).not.toContain('m.custom_interval_sub()');
   });
+
+  /* `.stats-note` hung a sentence under the card it qualified, where its
+     margin-top of 8 collapsed under the card's own 24 and left it reading as
+     a preamble to the next chart. All three consumers are inside their cards
+     now and the class is gone from both stylesheets. */
+  it('hangs no note outside the card it belongs to', () => {
+    expect(stats).not.toMatch(/class="stats-note"/);
+  });
 });
 
 describe('the summary panels wait for the floor', () => {
@@ -50,11 +58,30 @@ describe('the summary panels wait for the floor', () => {
   });
 
   it('draws no scale bars under the floor', () => {
-    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<BarRows rows=\{scaleRows\} \/>/);
+    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<BarRows rows=\{scaleRows\} scale="track" \/>/);
   });
 
   it('draws no mood strip under the floor', () => {
     expect(stats).toMatch(/\{:else if enoughEntries\}\s*<OrderedStrip steps=\{moodSteps\} \/>/);
+  });
+
+  /* Three cards hand BarRows a position between 0 and 1 in something's own
+     range, and the primitive re-normalised all three against their own
+     longest bar until this ticket gave it a `scale`. A journal whose scales
+     all sat near the bottom drew the same near-full wall as one whose scales
+     all sat near the top. */
+  it('asks for the track where the bar is an absolute position', () => {
+    for (const rows of ['scaleRows', 'highestRows', 'valueRows']) {
+      expect(stats).toMatch(new RegExp(`<BarRows rows=\\{${rows}\\}[^>]*scale="track"`));
+    }
+  });
+
+  it('keeps the two folds behind the summary floor as well as their own read', () => {
+    expect(stats.match(/\{#if !enoughEntries\}\s*<ChartEmpty>/g)?.length).toBe(2);
+  });
+
+  it('stops offering a second scale on a chart with no first one', () => {
+    expect(stats).toContain('{#if metrics.length > 1 && plotted.points.length}');
   });
 
   it('offers the values sheet only where there are values', () => {
@@ -63,7 +90,7 @@ describe('the summary panels wait for the floor', () => {
 
   it('draws the highest days only where that scale is kept and the floor is cleared', () => {
     expect(stats).toMatch(/\{#if euphoriaScale\}/);
-    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows rows=\{highestRows\}/);
+    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows rows=\{highestRows\} scale="track"/);
   });
 });
 

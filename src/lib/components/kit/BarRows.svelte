@@ -32,15 +32,37 @@
 
   let {
     rows,
-    onPick
+    onPick,
+    scale = 'leader'
   }: {
     rows: BarRow[];
     /** What the row's key opens, where a row goes anywhere. Omitted, the
         bars are a drawing and nothing in them is pressable. */
     onPick?: (key: string) => void;
+    /** What the track's full length means.
+
+        `leader` measures every bar against the longest one in the set, which
+        is right where `amount` is a magnitude with no ceiling of its own: how
+        far a tag moved a scale, how many entries carried it. The longest
+        thing fills the track and the rest are read against it.
+
+        `track` measures each bar against the track itself, for callers whose
+        `amount` is already a position between 0 and 1 in something's own
+        range. Three of those existed before this prop did and all three were
+        silently re-normalised: the scale bars say "where the average lands
+        inside that metric's own range", the values sheet says "where the day
+        sits in the metric's own range", and the highest days are a position
+        on the person's own scale. A journal whose three scales all sat near
+        the bottom drew the same near-full wall as one whose scales all sat
+        near the top, because the longest of three short bars is still the
+        longest. The absolute reading was computed correctly at every one of
+        those call sites and thrown away here.
+
+        Default is `leader`, so nothing that did not ask moves. */
+    scale?: 'leader' | 'track';
   } = $props();
 
-  let top = $derived(Math.max(0, ...rows.map((r) => r.amount)));
+  let top = $derived(scale === 'track' ? 1 : Math.max(0, ...rows.map((r) => r.amount)));
 </script>
 
 {#snippet bar(row: BarRow)}
@@ -56,7 +78,7 @@
   <div class="kit-bar-track">
     <span
       class="kit-bar-mark"
-      class:is-leader={row.amount === top && top > 0}
+      class:is-leader={scale === 'leader' && row.amount === top && top > 0}
       style={`--bar-share: ${share(row.amount, top)}`}
     ></span>
   </div>
