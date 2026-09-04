@@ -888,7 +888,17 @@ export async function measureLongJournal(
        boot takes and is worth counting on its own. What is waiting is then
        asked about a gap chosen here rather than found, so this one figure
        is a screen's cost on a fixture that cannot produce the screen: a
-       season away, which is the absence it was built for. */
+       season away, which is the absence it was built for.
+
+       This budget cannot see phase 8 audit ticket 14's fix (a wasted
+       second run of `readWhatIsWaiting` when the live query watching it
+       discovered its tables late): calling these functions directly, as
+       this harness does everywhere, never goes through `liveQuery` at all,
+       so the doubled round trip that bug cost in the browser was never
+       reflected in this number to begin with, and there is nothing here
+       for that ticket to halve. Its fix is proved instead in
+       tests/browser-tier/live-reads-probe.svelte.ts, the layer that
+       actually runs the reactive `query()` machinery. */
     const gap = await readReturnGap(journal, today);
     const since = today - RETURN_GAP_DAYS;
     const waiting = await readWhatIsWaiting(journal, today, since);

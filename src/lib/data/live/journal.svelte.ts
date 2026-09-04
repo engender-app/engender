@@ -174,10 +174,22 @@ export interface LiveList<T> {
     goes stale, but a round trip is spent for nothing and the synchronous form
     is the one to write.
 
+    `seed`, when given, is what a closure whose first operation sits past an
+    await already knows it depends on: those tables are subscribed to from the
+    first run, so the run that would otherwise "discover" them late costs
+    nothing (phase 8 audit ticket 14). Unlike `liveQueryWatchingOnly` below,
+    seeding never stops normal discovery - a table the closure reads that
+    is not in `seed` is still picked up the ordinary way, one re-run late.
+    Pass it from a registry constant, never a hand-written list: the risk
+    `liveQueryWatchingOnly` warns about is a table list going stale, and a
+    seed that is wrong only costs the round trip it was meant to save rather
+    than showing stale data, but it should still track what the closure
+    actually reads.
+
     Must be called while a component is initialising, like any `$effect`: the
     query lives and dies with the component that asked for it. */
-export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T> {
-  return query(null, run);
+export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: TableName[]): LiveQuery<T> {
+  return query(null, run, seed ?? null);
 }
 
 /** `liveQuery` for a read that answers with a list: the same query, seen
@@ -187,9 +199,9 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>): LiveQuery<T
     A read that answers `undefined` - the checklist screens ask for a list
     that may not have been made yet - is no rows, the same as one that has
     not answered at all. That is the one default this owns, and it is why no
-    screen writes `?? []` any more. */
-export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>): LiveList<T> {
-  return listOf(query(null, run));
+    screen writes `?? []` any more. `seed` is `liveQuery`'s own. */
+export function liveList<T>(run: (journal: Journal) => Promise<T[] | undefined>, seed?: TableName[]): LiveList<T> {
+  return listOf(query(null, run, seed ?? null));
 }
 
 /** The list inside a wider answer, gated like any other list.
@@ -251,10 +263,14 @@ export function liveQueryWatchingOnly<T>(
   tables: TableName[],
   run: (journal: Journal) => Promise<T>
 ): LiveQuery<T> {
-  return query(tables, run);
+  return query(tables, run, null);
 }
 
-function query<T>(narrowedTo: TableName[] | null, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
+function query<T>(
+  narrowedTo: TableName[] | null,
+  run: (journal: Journal) => Promise<T>,
+  seed: TableName[] | null
+): LiveQuery<T> {
   let state = $state<ReadState<T>>(pending<T>());
   /* Only the newest run may write the result. Without this a fast re-run that
      overtakes a slow one - a search where "co" outruns "c" - would leave the
@@ -267,7 +283,7 @@ function query<T>(narrowedTo: TableName[] | null, run: (journal: Journal) => Pro
      is empty, a sheet that is closed - keeps the dependencies of the branch it
      took before, which is what makes an unwatched write impossible rather than
      merely unlikely. */
-  const dependencies = new Set<TableName>(narrowedTo ?? []);
+  const dependencies = new Set<TableName>(narrowedTo ?? seed ?? []);
   /* Bumped when a dependency turns up outside the synchronous part of a run,
      where reading its version cannot register with the effect. Reading this
      inside the effect is what makes the late discovery re-subscribe. */

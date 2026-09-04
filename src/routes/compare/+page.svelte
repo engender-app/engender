@@ -145,6 +145,12 @@
   let periodA = $derived(aMode === 'era' ? periodFromEra(aEraId) : periodFromRange(aStart, aEnd));
   let periodB = $derived(bMode === 'era' ? periodFromEra(bEraId) : periodFromRange(bStart, bEnd));
 
+  /* `recap` is called first and synchronously, so `liveQuery` already
+     declares its tables ('entry', 'dimension' among them) before this
+     function's first `await` - `dayAverages` below reads no table `recap`
+     doesn't already, so it costs nothing to discover after. No seed needed
+     here (phase 8 audit ticket 14; the coming-back screen and Home's
+     felt-sense read, whose own late reads do add a new table, take one). */
   async function sideStats(j: Journal, period: Period): Promise<ComparisonSideStats> {
     const recap = await j.stats.recap(period.start, period.end);
     const dims = vocabulary.activeDimensions;

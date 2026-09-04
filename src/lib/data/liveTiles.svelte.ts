@@ -25,6 +25,7 @@ import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
 import {
   LIVE_TILE_ORDER,
   LIVE_TILE_PREF_KEY,
+  TRYOUT_FELT_SENSE_TABLES,
   composeHomeTiles,
   type HomeTile,
   type LiveTileKind
@@ -82,7 +83,12 @@ export function homeTiles(
   /* The felt-sense read is per tryout and the tile needs the latest day of
      each, so it is one query answering a map rather than one query per
      tryout: the tile is deciding between them, and a screen cannot ask a
-     variable number of questions. */
+     variable number of questions.
+
+     Seeded with TRYOUT_FELT_SENSE_TABLES: 'feltSense' is read from inside
+     the loop below, past the tryout list's own `await`, so an unseeded
+     query would discover it a re-run late on every mount (phase 8 audit
+     ticket 14). */
   const tryoutFeltSense = liveQuery(async (j) => {
     const rows = await j.tryouts.getTryouts();
     const latest = new Map<string, number | null>();
@@ -93,7 +99,7 @@ export function homeTiles(
       }
     }
     return latest;
-  });
+  }, TRYOUT_FELT_SENSE_TABLES);
   const schedules = liveList((j) => j.doses.getSchedules());
   const dosePauses = liveList((j) => j.doses.getPauses());
   const todayDoses = liveList((j) => j.doses.getDoses(todayEpochDay, todayEpochDay));
