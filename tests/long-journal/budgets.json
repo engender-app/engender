@@ -100,8 +100,8 @@
     },
     "archive-snapshot": {
       "what": "Archive export, reading the journal out",
-      "baselineMs": 200,
-      "budgetMs": 1000,
+      "baselineMs": 163,
+      "budgetMs": 815,
       "targetMs": 5000
     },
     "archive-pack": {

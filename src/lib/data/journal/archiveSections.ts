@@ -1080,19 +1080,25 @@ export function discardStatements(sections: readonly ArchiveSection[] = ARCHIVE_
     .flatMap((s) => s.discard);
 }
 
-/** Every section's rows, in wire order. */
+/** Every section's rows, in wire order. Concurrent: a read has no rowid to
+    resolve against another section, unlike the apply below, so nothing
+    forces the sections to wait on each other. */
 export async function readArchiveJournal(
   reading: SectionRead,
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
 ): Promise<ArchiveJournal> {
+  const rows = await Promise.all(sections.map((s) => s.read(reading)));
   const journal: Record<string, unknown[]> = {};
-  for (const s of sections) journal[s.name] = await s.read(reading);
+  sections.forEach((s, index) => (journal[s.name] = rows[index]));
   return journal as unknown as ArchiveJournal;
 }
 
 /** Every section written back, each one after whatever it depends on.
     Sequential and inside the caller's transaction: the later sections
-    resolve rowids the earlier ones produced. */
+    resolve rowids the earlier ones produced, which is true only of a write.
+    A read has nothing to resolve - every section's rows travel by their own
+    natural key, never by rowid - so readArchiveJournal above runs the same
+    sections concurrently instead. */
 export async function applyArchiveJournal(
   restoring: Restoring,
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
