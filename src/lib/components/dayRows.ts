@@ -131,7 +131,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'mic',
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
       subtitle: m.day_voice_benchmark(),
-      href: '/settings/voice'
+      href: '/settings/voice?tab=compare'
     })),
 
   measurements: (day) =>

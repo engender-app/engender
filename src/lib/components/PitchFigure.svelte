@@ -1,0 +1,495 @@
+<script lang="ts">
+  /* Pitch on an absolute axis: the field every voice picture in this app is
+     drawn on (phase 8 features ticket 09, ADR-0059).
+
+     One field, two subjects. The live gauge (VoiceGauge.svelte) hands it a
+     trace that is still arriving and the gate's own readings; a finished
+     take (VoiceTake.svelte) hands it a stored track, the span the row keeps
+     and its median. Neither owns the geometry, because two components
+     deciding independently where 165 Hz sits is two axes that drift.
+
+     **The field is the voice; the frame is the recording.** Everything
+     inside the plot is pitch - the bands, the trace, the span, the comfort
+     bracket. The two things that are about the recording rather than about
+     the voice live on the frame instead: the top edge thickens as the level
+     approaches full scale, the bottom edge thickens as the room gets loud.
+     They used to be a line and a rising fill *inside* the plot, which was
+     defensible while the axis was relative and nothing else was drawn on
+     it. On an absolute axis a room level is not a pitch, and a fill rising
+     through the man band would be a mark in a place where its position
+     means something it does not mean.
+
+     **The world is filled; what is yours is drawn.** The two reference
+     ranges are washes with no edge - ambient, cited, nothing to act on. The
+     take's own span is a dashed outline with no fill and the median a solid
+     line, and the comfort band is a bracket at the right edge. So a glance
+     separates the two kinds of claim before any of the captions are read:
+     a citation is a region, a decision is line work.
+
+     **The middle band is drawn at less than either range, never more.**
+     On sourced per-language figures the two ranges do not meet, so what
+     sits between them is a gap: fewer speakers are there than in either
+     range, and the fill says so at half a range's wash. A denser middle
+     band would be the target zone ADR-0012 forbids, and the bare line two
+     touching blocks would leave reads as a pass mark just as loudly, which
+     is why the region is drawn at all. Where two ranges do coincide the
+     same code draws the intersection, and the caption changes with it
+     (bands.ts's `middleBand`).
+
+     Two earlier builds of this band are worth not repeating. It was hatched
+     first, on the reasoning that a denser region reads as a target: at the
+     390px floor the band was eight pixels tall and vertical hairlines in
+     eight pixels are a comb. Then it was the two washes overlapping, which
+     only existed because the English man band had been widened past its
+     source to manufacture an intersection - the per-language figures
+     retired both the widening and the overlap.
+
+     Nothing here is a verdict on a voice. There is one hue, the section's
+     own flag stripe; no band is louder than another; nothing is red, green,
+     or on a scale between them; and no mark says which way anything should
+     go (PRODUCT.md's "No judgment encoded anywhere", and ADR-0012 as
+     ADR-0059 narrows it).
+
+     **Two axes, because the two steps ask different questions.** With a
+     language it draws absolute hertz with that language's bands behind it,
+     which is what somebody reading a passage is watching. With `language`
+     null it draws whatever axis the caller hands it and labels the ticks in
+     the caller's unit, and it draws no bands - which is what somebody
+     holding one note is watching, since the task there is keeping a pitch
+     rather than reaching one and a flat line is the whole answer.
+
+     Both carry their scale in the gutter. There was briefly a third form -
+     a 44px strip with no gutter and no bands on the action bar - and it
+     drew a pitch trace nothing could be read off, which is the relative
+     gauge this ticket exists to replace, in miniature (Alicja, 2026-09-04:
+     "no way to tell what it measures at all"). A figure either carries its
+     scale or is not drawn.
+
+     Motion: tier 3. Data moves, the container does not, and only transform
+     and opacity are animated - the two frame edges scale, so the app's
+     duration clamp turns every reading into an instant cut under either
+     reduced-motion path. The trace is redrawn rather than transitioned. */
+  import type { Snippet } from 'svelte';
+  import type { PitchFrame } from '$lib/audio/pitch';
+  import {
+    axisFraction,
+    bandEdges,
+    referenceBands,
+    spreadLabels,
+    type BandLanguage,
+    type PitchAxis
+  } from '$lib/audio/bands';
+  import type { Role } from '$lib/theme/roles';
+  import { roleAttrs } from '$lib/components/kit/role';
+  import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
+
+  let {
+    axis,
+    trace,
+    traceWeight = 2.5,
+    span = null,
+    medianHz = null,
+    comfort = null,
+    gate = null,
+    ticks,
+    tickLabel,
+    language,
+    languageGuessed = false,
+    underPlot,
+    captionShared = false,
+    role,
+    ...rest
+  }: {
+    axis: PitchAxis;
+    /** The pitch to draw, oldest first. A null `hz` is a gap in the line
+        rather than a leap across it, live or stored. */
+    trace: readonly PitchFrame[];
+    /** How heavily the trace is drawn. The live gauge spends this on the
+        gate's steadiness reading; a stored take has one weight. */
+    traceWeight?: number;
+    /** The take's own p10-p90, as the row keeps it. */
+    span?: { lowHz: number; highHz: number } | null;
+    medianHz?: number | null;
+    /** The person's own comfort band. No default anywhere behind it. */
+    comfort?: { lowHz: number; highHz: number } | null;
+    /** What the recording conditions are doing, when something is being
+        recorded. Null for a take that is already finished. */
+    gate?: { roomFraction: number; roofWeight: number; clipping: boolean } | null;
+    /** Which frequencies get a number in the gutter. Omitted with a
+        language, where the band edges are the only values on the axis that
+        mean anything and the figure knows them. */
+    ticks?: readonly number[];
+    /** How a tick is written, in the caller's locale and the caller's unit:
+        hertz where the axis is absolute, signed semitones where it is a
+        take's own note. */
+    tickLabel: (hz: number) => string;
+    /** Whose figures the bands are: the language of the passage being read,
+        not the app's (bands.ts's `bandLanguageOf`). Pitch differs by
+        language by more than it differs by gender within one, so a band
+        drawn for the wrong population is worse than no band.
+
+        Null draws no bands and, with them, no caption: a figure measuring a
+        take against its own note cites nothing, so there is nothing for a
+        source line to name. That is the only way to reach a bandless
+        figure, which is what keeps ADR-0059's "never without its citation"
+        rule from having a hole in it. */
+    language: BandLanguage | null;
+    /** True where that language is a guess, which the caption says. */
+    languageGuessed?: boolean;
+    /** True when whoever embedded this figure is rendering one
+        PitchBandsCaption for it and its neighbour instead: two takes side
+        by side would otherwise carry the same three paragraphs twice, in
+        half the width. It is the only way to leave the caption off a figure
+        that draws the bands, and not a way to leave it off altogether -
+        ADR-0059 permits the bands only with their figures, their source and
+        their caveat, and voice-figure-surfaces.test.ts holds every caller
+        that sets this to also import the caption. */
+    captionShared?: boolean;
+    /** A mark that belongs to the field rather than to the page: the live
+        gauge's run bar. It goes between the plot and the legend, because a
+        bar sitting under three lines of citation reads as unrelated to the
+        picture it is about. */
+    underPlot?: Snippet;
+    role?: Role;
+    [attribute: string]: unknown;
+  } = $props();
+
+  /* The drawing box. A viewBox rather than pixels so the field is the width
+     of whatever holds it, down to the 390px floor and up; every stroke in
+     here carries vector-effect="non-scaling-stroke", so a weight stays the
+     weight it was authored at however far the box has been stretched. */
+  const WIDTH = 300;
+  const HEIGHT = 100;
+
+  /** Where a frequency lands in the box: the axis is log2 in Hz
+      (audio/bands.ts), and this is the only place that turns its 0-to-1
+      into a y. */
+  const y = (hz: number) => (1 - axisFraction(hz, axis)) * HEIGHT;
+
+  let bands = $derived(
+    language === null
+      ? []
+      : referenceBands(language).map((band) => ({
+          key: band.key,
+          top: y(band.highHz),
+          height: y(band.lowHz) - y(band.highHz)
+        }))
+  );
+
+  let middle = $derived(bands.find((band) => band.key === 'between'));
+
+  /** How much room one gutter number needs, in the box's own units. At the
+      field's own height a --text-xs line is about nine of them. */
+  const LABEL_GAP = 9;
+
+  /** The frequencies worth a number in the gutter: the band edges, which
+      are the only values on this axis that mean anything. They get no
+      gridline of their own - each one is already the edge of a wash, and a
+      line on top of it would be furniture competing with the trace.
+
+      The number is nudged off its own frequency where two of them would
+      collide (bands.ts's spreadLabels): 165 and 180 Hz are six per cent of
+      the axis apart, and at the 390px floor that is two numbers in the same
+      eight pixels. */
+  let edges = $derived.by(() => {
+    const hzs =
+      language === null ? [...(ticks ?? [])].sort((a, b) => b - a).reverse() : bandEdges(language);
+    const exact = hzs.map((hz) => y(hz));
+    const nudged = spreadLabels(exact, LABEL_GAP, HEIGHT);
+    return hzs.map((hz, index) => ({ hz, y: nudged[index] }));
+  });
+
+  /** The trace, as one polyline per unbroken voiced run. */
+  let runs = $derived.by(() => {
+    if (trace.length === 0) return [];
+    const step = trace.length > 1 ? WIDTH / (trace.length - 1) : WIDTH;
+    const segments: string[] = [];
+    let current: string[] = [];
+
+    trace.forEach((frame, index) => {
+      if (frame.hz === null) {
+        if (current.length > 1) segments.push(current.join(' '));
+        current = [];
+        return;
+      }
+      current.push(`${(index * step).toFixed(1)},${y(frame.hz).toFixed(1)}`);
+    });
+    if (current.length > 1) segments.push(current.join(' '));
+    return segments;
+  });
+
+  /* The comfort bracket's spine, inset from the right edge by its own tick
+     length so the ticks have somewhere to go. */
+  const BRACKET_TICK = 8;
+  const BRACKET_X = WIDTH - BRACKET_TICK - 6;
+</script>
+
+<div class="pf" class:is-clipping={gate?.clipping} {...roleAttrs(role)} {...rest}>
+  <div class="pf-plot">
+    <!-- The gutter is HTML rather than SVG text: the box is stretched to
+         whatever width it lands in, and stretched type is the one thing a
+         non-uniform viewBox cannot be forgiven for. -->
+    <div class="pf-gutter" aria-hidden="true">
+      {#each edges as edge (edge.hz)}
+        <span class="pf-tick" style="top: {edge.y}%">{tickLabel(edge.hz)}</span>
+      {/each}
+    </div>
+
+    <div class="pf-field">
+      <svg
+        class="pf-svg"
+        viewBox="0 0 {WIDTH} {HEIGHT}"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <!-- Both typical ranges, each a wash in the hue over whatever is
+             behind it. Over transparency rather than mixed into the ground,
+             so that where two of them coincide the shared strip comes out
+             at twice one wash by arithmetic rather than by a third colour
+             somebody picked. -->
+        {#each bands as band (band.key)}
+          {#if band.key !== 'between'}
+            <rect class="pf-band" x="0" y={band.top} width={WIDTH} height={band.height} />
+          {/if}
+        {/each}
+
+        {#if middle}
+          <!-- The region between the two ranges, which on sourced figures
+               is a gap rather than an intersection: fewer speakers sit here
+               than in either range, so it is drawn at half a range's wash
+               and never more. Its two bounds are the ranges' own facing
+               edges, and they are what stop it reading as the line where
+               two blocks touch. -->
+          <g data-pitch-middle>
+            <rect class="pf-middle" x="0" y={middle.top} width={WIDTH} height={middle.height} />
+            {#each [middle.top, middle.top + middle.height] as at (at)}
+              <line class="pf-middle-edge" x1="0" y1={at} x2={WIDTH} y2={at} vector-effect="non-scaling-stroke" />
+            {/each}
+          </g>
+        {/if}
+
+        {#if span}
+          <!-- The take's own span: p10 to p90 and not minimum to maximum,
+               which is what the row stores and why (audio/pitch.ts). Drawn
+               as its two edges, so it reads as a measurement of this take
+               rather than as another region of the world. -->
+          {#each [span.highHz, span.lowHz] as edge (edge)}
+            <line
+              class="pf-span"
+              data-pitch-span
+              x1="0"
+              y1={y(edge)}
+              x2={WIDTH}
+              y2={y(edge)}
+              vector-effect="non-scaling-stroke"
+            />
+          {/each}
+        {/if}
+
+        {#if medianHz !== null}
+          <line
+            class="pf-median"
+            data-pitch-median
+            x1="0"
+            y1={y(medianHz)}
+            x2={WIDTH}
+            y2={y(medianHz)}
+            vector-effect="non-scaling-stroke"
+          />
+        {/if}
+
+        {#each runs as points, index (index)}
+          <polyline
+            class="pf-trace"
+            data-pitch-trace
+            {points}
+            stroke-width={traceWeight}
+            vector-effect="non-scaling-stroke"
+          />
+        {/each}
+
+        {#if comfort}
+          <!-- A bracket rather than a band: the person's own comfort range
+               is a decision, and the reference ranges are citations. Same
+               hue, different kind of mark. -->
+          <g class="pf-comfort" data-pitch-comfort>
+            <line
+              x1={BRACKET_X}
+              y1={y(comfort.highHz)}
+              x2={BRACKET_X}
+              y2={y(comfort.lowHz)}
+              vector-effect="non-scaling-stroke"
+            />
+            {#each [comfort.highHz, comfort.lowHz] as end (end)}
+              <line
+                x1={BRACKET_X}
+                y1={y(end)}
+                x2={BRACKET_X + BRACKET_TICK}
+                y2={y(end)}
+                vector-effect="non-scaling-stroke"
+              />
+            {/each}
+          </g>
+        {/if}
+      </svg>
+
+      <!-- The frame: the level pressing on the ceiling, and the room
+           crowding from below. Scaled rather than resized, so the duration
+           clamp can flatten both to a cut. -->
+      <span class="pf-roof" style="--pf-roof: {gate?.roofWeight ?? 1}"></span>
+      <span class="pf-room" style="--pf-room: {gate?.roomFraction ?? 0}"></span>
+    </div>
+  </div>
+
+  {#if underPlot}{@render underPlot()}{/if}
+
+  {#if language !== null && !captionShared}
+    <PitchBandsCaption {language} {languageGuessed} />
+  {/if}
+</div>
+
+<style>
+  .pf {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .pf-plot {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  /* The numbers beside the gridlines. A fixed width rather than a fitted
+     one, so the field's left edge does not move between a three-digit and a
+     two-digit label. */
+  .pf-gutter {
+    position: relative;
+    flex: 0 0 auto;
+    width: 3.4em;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+
+  .pf-tick {
+    position: absolute;
+    right: 0;
+    transform: translateY(-50%);
+    white-space: nowrap;
+  }
+
+  .pf-field {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 148px;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-input);
+    overflow: hidden;
+  }
+
+  .pf-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Pressing into the ceiling: the field sits 2px lower once the take is
+       clipping, which is the only movement in here that is not a number
+       changing. */
+    transform: translateY(0);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .pf.is-clipping .pf-svg {
+    transform: translateY(2px);
+  }
+
+  /* Over transparency rather than mixed into the ground, for two reasons:
+     the overlap then falls out of the arithmetic instead of being a colour
+     somebody picked, and a wash mixed into --bg is very nearly --surface on
+     a dark theme, which is how the first build drew three bands nobody
+     could see. */
+  .pf-band {
+    fill: color-mix(in oklab, var(--role-c) 18%, transparent);
+  }
+
+  .pf-middle {
+    fill: color-mix(in oklab, var(--role-c) 9%, transparent);
+  }
+
+  .pf-middle-edge {
+    stroke: color-mix(in oklab, var(--role-c) 30%, transparent);
+    stroke-width: 1;
+  }
+
+  .pf-trace {
+    fill: none;
+    /* --role-draw, the flag's own stripe: a drawn mark takes the band
+       undiluted, and the contrast-corrected version is for text and for a
+       glyph on a tint of itself (kit.css). */
+    stroke: var(--role-draw);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The take's own two statements, in the hue's text weight rather than its
+     stripe: they are closer to a written figure than to a drawn line, and
+     the trace has to stay the loudest thing in the field.
+
+     Four marks can land within a few pixels of each other - a voice at
+     191 Hz puts its median, its span and the overlap's top edge inside one
+     small stretch of the axis - so they are separated by weight as well as
+     by kind: the trace at 2.5px in the stripe undiluted, the median at 2px
+     in ink, the span at 1px dashed in ink, the band edges at 1px in 30% of
+     the hue. Read down that ladder and the crowded case still resolves. */
+  .pf-span {
+    stroke: var(--role-ink);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+  }
+
+  .pf-median {
+    stroke: var(--role-ink);
+    stroke-width: 2;
+  }
+
+  .pf-comfort line {
+    stroke: var(--role-ink);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+
+  .pf-roof,
+  .pf-room {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--outline);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  /* The level. Hairline while there is headroom, four times that once the
+     take is against the rails. */
+  .pf-roof {
+    top: 0;
+    transform-origin: top center;
+    transform: scaleY(var(--pf-roof, 1));
+  }
+
+  .pf.is-clipping .pf-roof {
+    background: var(--role-draw);
+  }
+
+  /* The room, crowding up from the floor. Full at 0 dB and gone by 24, so a
+     take about to fail the gate's 15 dB shows the frame already well into
+     the field. */
+  .pf-room {
+    bottom: 0;
+    transform-origin: bottom center;
+    transform: scaleY(calc(1 + var(--pf-room, 0) * 11));
+  }
+
+</style>

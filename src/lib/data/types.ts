@@ -64,6 +64,11 @@ export interface VoiceBenchmark {
   f2Hz: number | null;
   snrDb: number | null;
   note: string | null;
+  /** The passage's pitch over time, downsampled and encoded by
+      audio/track.ts (phase 8 features ticket 09). Null on every benchmark
+      taken before schema v58, which kept only the figures - a screen with
+      one of those in hand draws no take rather than an empty chart. */
+  pitchTrack: string | null;
 }
 
 /** A short in-app video recording belonging to exactly one entry (phase 5

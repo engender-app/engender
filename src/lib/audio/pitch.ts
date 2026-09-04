@@ -11,6 +11,12 @@
    span, a spread in semitones, a note name. No comparison to a range, no
    label, no direction of travel (PRODUCT.md:109). The number is the answer.
 
+   **One exception, and it is not this module's.** ADR-0059 narrowed that
+   rule for the voice screen's pitch graph, which draws two cited
+   speaking-pitch ranges behind the trace. The bands live in bands.ts with
+   their source and their caveat; nothing here knows about them, and this
+   module still reports a frequency and stops.
+
    **Why the span is percentiles and not a filter.** The tenth and ninetieth
    percentiles of the voiced frames are the reported span, and the frames
    outside them are still in the median. Vocal fry at the end of a sentence,
