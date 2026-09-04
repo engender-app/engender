@@ -126,7 +126,6 @@
       }
     }
   ],
-  "streak_row": "dni z rzędu",
   "backup_stale_title": "Ostatnia kopia zapasowa: {days} dni temu",
   "backup_stale_body": "Twój dziennik istnieje tylko na tym urządzeniu.",
   "backup_now": "Zrób kopię teraz",
@@ -448,6 +447,23 @@
         "nPlural=few": "{n} dni",
         "nPlural=many": "{n} dni",
         "nPlural=other": "{n} dni"
+      }
+    }
+  ],
+  "n_entries": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} wpis",
+        "nPlural=few": "{n} wpisy",
+        "nPlural=many": "{n} wpisów",
+        "nPlural=other": "{n} wpisów"
       }
     }
   ],
@@ -1855,7 +1871,6 @@
   "compare_mode_era": "Era",
   "compare_pick_era": "Wybierz erę",
   "compare_entries_label": "Liczba wpisów",
-  "compare_streak_label": "Najdłuższa seria",
   "stats_range_group": "Zakres",
   "insight_row_sub": "wpisy: {count} · śr. {with} z tagiem · {without} bez",
   "chart_aria": "Wykres liniowy, punkty: {count}, od {from} do {to}",
@@ -1908,6 +1923,7 @@
   "mood_none": "bez nastroju",
   "entry_mood_aria": "nastrój: {name}",
   "entry_day_count": "{count} tego dnia",
+  "entry_no_note": "Brak notatki",
   "tags_group_aria": "tagi: {group}",
   "notif_title": "Kafelki i powiadomienia",
   "notif_sub": "Co ekran główny może sam pokazać, i co może trafić na telefon.",
@@ -1977,10 +1993,9 @@
   "tile_voice_benchmark_action": "Nagraj próbkę",
   "tile_voice_benchmark_days_ago": "{days} dni od ostatniej próbki",
   "tile_pause_active_title": "Pauza w dzienniku",
-  "tile_pause_active_sub": "Zastępuje licznik serii informacją o ochronie podczas pauzy.",
-  "tile_pause_until_date": "Pauza do {date} · Seria chroniona",
-  "tile_pause_ongoing": "Pauza w dzienniku · Seria chroniona",
-  "streak_protected": "Seria chroniona",
+  "tile_pause_active_sub": "Pokazuje przerwę na ekranie głównym, dopóki trwa.",
+  "tile_pause_until_date": "Przerwa do {date}",
+  "tile_pause_ongoing": "Przerwa w pisaniu",
   "tile_hair_removal_title": "Regeneracja po zabiegu",
   "tile_hair_removal_sub": "Pokazuje wskazówki pielęgnacyjne po laserze lub elektrolizie.",
   "tile_hair_removal_guidance": "Nawilżaj skórę i chroń ją przed słońcem.",
@@ -2028,7 +2043,6 @@
   "wrapped_muted_title": "Nic stąd nie wraca",
   "wrapped_muted_body": "Ten okres obejmuje erę, którą trzymasz z dala od przywracania.",
   "wrapped_stat_entries": "Wpisy",
-  "wrapped_stat_streak": "Najdłuższa seria",
   "wrapped_stat_mood": "Średni nastrój",
   "wrapped_mood_arc": "Nastrój dzień po dniu",
   "wrapped_scale_arc": "Skala, która ruszyła się najbardziej",
@@ -2086,8 +2100,6 @@
   "safe_space_breathing_hold": "Zatrzymaj",
   "safe_space_breathing_exhale": "Wydech",
   "safe_space_stats_title": "Z twojego dziennika",
-  "safe_space_stat_streak_title": "Zapisane dni",
-  "safe_space_stat_streak_note": "Kolejne dni",
   "safe_space_stat_evidence_title": "Dobre chwile",
   "safe_space_stat_evidence_note": "W twojej historii",
   "safe_space_counterevidence_title": "Z twojej historii",
@@ -2228,18 +2240,6 @@
   "look_back_letter_opened": "Otwarto {date}",
   "letters_gone_title": "Tego listu już nie ma",
   "letters_gone_body": "Być może został usunięty. Pozostałe listy są na ekranie listów.",
-  "streak_goal_title": "Cel serii",
-  "streak_goal_row_sub": "Łagodny cel i kilka spokojnych osiągnięć",
-  "streak_goal_intro": "Wybierz, przez ile dni z rzędu chcesz pisać. Zapomniany dzień niczego nie przekreśla, a dopisanie wpisu do przerwy naprawia serię tak samo, jak wszędzie w tej aplikacji.",
-  "streak_goal_enable": "Ustaw cel",
-  "streak_goal_enable_sub": "Domyślnie wyłączone. Włącz, jeśli taki cel Ci się przyda - nie bo tak powinno być.",
-  "streak_goal_habit_journaling": "Regularność zapisów",
-  "streak_goal_target_label": "Cel",
-  "streak_goal_progress_met": "Cel osiągnięty: {days}.",
-  "streak_goal_progress_current": "{current} z {target} dni",
-  "streak_goal_gap_note": "Przerwa to po prostu przerwa. Nigdy nie liczy się jako zerwana seria.",
-  "streak_goal_achievements_title": "Osiągnięcia",
-  "streak_goal_achievements_intro": "Raz zdobyte, zostają na stałe - nawet po przerwie w zapisach.",
   "journey_anchor_field_label": "Punkt odniesienia",
   "journey_anchor_field_hint": "Statystyki i podsumowania liczą czas trwania od kamienia milowego, przy którym to jest włączone. Wyłącz, żeby zostawić to bez ustalonego początku.",
   "journey_anchor_row_badge": "Liczone od tego miejsca",
@@ -2683,9 +2683,9 @@
   "surgery_milestone_confirm_hint": "Utworzy to trwały wpis na Twojej osi czasu z datą tej operacji.",
   "journaling_pause_title": "Przerwa w pisaniu",
   "journaling_pause_row_sub": "świadoma przerwa, cicha, dopóki trwa",
-  "journaling_pause_intro": "Przerwa to świadoma decyzja, nie zapominanie. Pytanie dnia i licznik serii milczą, dopóki trwa, a powrót nigdy nie wygląda jak zerwana seria.",
+  "journaling_pause_intro": "Przerwa to świadoma decyzja, nie zapominanie. Pytanie dnia milczy, dopóki trwa, a ekran główny mówi, że nie ma czego nadrabiać.",
   "journaling_pause_running_since": "Przerwa trwa od {day}",
-  "journaling_pause_running_hint": "Pytanie dnia i seria milczą, aż zakończysz przerwę.",
+  "journaling_pause_running_hint": "Pytanie dnia milczy, aż zakończysz przerwę.",
   "journaling_pause_resume": "Wróć do pisania",
   "journaling_pause_start_label": "Od",
   "journaling_pause_end_label": "Do",
@@ -2729,7 +2729,6 @@
   "stats_all_history": "Czyta cały dziennik, nie zakres powyżej.",
   "interval_day_n": "Dzień {n}",
   "stats_area_last": "Ostatni wpis: {date}",
-  "wrapped_stat_streak_ever": "Rekord",
   "wrapped_cadence_range": "Zakres",
   "wrapped_range_title": "Dowolny zakres",
   "scales_none_ticked": "Nic nie zaznaczono",
@@ -3229,5 +3228,23 @@
   "coming_back_wear_decline": "Zostaw włączoną",
   "coming_back_dose_saved": "Zapisano na {date}.",
   "coming_back_wear_saved": "Zamknięto na {date}.",
-  "coming_back_wear_end_hint": "Aplikacja potrzebuje tego, żeby zamknąć sesję."
+  "coming_back_wear_end_hint": "Aplikacja potrzebuje tego, żeby zamknąć sesję.",
+  "home_count_since": "{entries} od {date}",
+  "home_tiles_more": "{names} i jeszcze {count}",
+  "home_tiles_fewer": "Pokaż mniej",
+  "safe_space_stat_written_title": "Zapisane wpisy",
+  "safe_space_stat_written_note": "W całym dzienniku",
+  "tile_pause_value": "Nie ma czego nadrabiać",
+  "home_start_title": "Na początek",
+  "home_start_intro": "Kilka rzeczy, które warto ustawić wcześnie. Wszystkie poczekają, jeśli wolisz po prostu pisać.",
+  "home_start_milestones_title": "Zaznacz ważną datę",
+  "home_start_milestones_sub": "Dzień coming outu, początek terapii, rozprawa.",
+  "home_start_regimen_title": "Dodaj swój schemat leczenia",
+  "home_start_regimen_sub": "Jeśli go masz. Dawki, harmonogram i zapas idą za nim.",
+  "home_start_letters_title": "Napisz do siebie z przyszłości",
+  "home_start_letters_sub": "Zapieczętowane do dnia, który wybierzesz.",
+  "home_start_photos_title": "Zacznij oś zdjęć",
+  "home_start_photos_sub": "Jedno zdjęcie teraz to pierwsze z serii.",
+  "home_start_more_title": "Cała reszta",
+  "home_start_more_sub": "Pełna lista tego, co ta aplikacja może dla Ciebie prowadzić."
 }

@@ -269,7 +269,6 @@
       <ListRow key="notifications" icon="zap" title={m.notif_title()} subtitle={m.notif_sub()} href="/settings/notifications" />
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
-      <ListRow key="streak-goal" icon="sparkle" title={m.streak_goal_title()} subtitle={m.streak_goal_row_sub()} href="/settings/streak-goal" />
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
     </ListCard>
 
@@ -599,3 +598,21 @@
     </div>
   </Sheet>
 </div>
+
+<style>
+  /* Moved out of screens.css by phase 8 UX ticket 01: deleting the
+     streak-goal screen left this screen its only consumer, and the ratchet's
+     rule is that a class one file reads belongs in that file's own block,
+     where an unused rule is a compiler warning rather than dead text. */
+  .pref-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .pref-row:last-child {
+    margin-bottom: 0;
+  }
+</style>

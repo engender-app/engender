@@ -5,7 +5,7 @@
    copies differed by one token nothing named. This module hoists the
    arithmetic only - the four modules keep their own types, their own
    wrappers where a domain name reads better at the call site, and their own
-   headers, because ADR-0032's live invariant is which computation reads
+   headers, because ADR-0055's live invariant is which computation reads
    which pause, not the row shape, and a merged type would make that
    distinction unenforceable.
 

@@ -98,6 +98,7 @@ async function take(kind: 'steady' | 'loud' | 'wobble', seconds: number, checks:
   const microphone = installFakeMicrophone(kind);
   const session = await startTake(checks);
   if (typeof session === 'string') throw new Error(`the microphone refused: ${session}`);
+  if (session === null) throw new Error('the take was cancelled with no signal passed');
 
   await delay(seconds * 1000);
   const live = session.read();

@@ -30,7 +30,9 @@
    not less. Leaving every calendar day in the denominator - counting a
    pause exactly like a run of skipped doses, both zero-consumption days
    that pull the average down - is what pushes the date later, which is
-   the direction box 3 asks for. */
+   the direction box 3 asks for. The decision behind this paragraph is
+   ADR-0055, which restates it from ADR-0032; the streak half of that older
+   one is gone. */
 
 import { epochDayFromTimestamp } from './epochDay';
 import { attributeDrug } from './regimenEpisode';

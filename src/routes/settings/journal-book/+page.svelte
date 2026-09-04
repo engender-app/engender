@@ -72,7 +72,7 @@
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* Ticket 16's card, given the three counts the recap seam already
+  /* Ticket 16's card, given the two counts the recap seam already
      produces for this range. Palette art comes with the page rather than
      as a fourth switch: the opening page is one choice, and a card with the
      art off and nothing else to turn on would be a blank sheet. */
@@ -82,7 +82,6 @@
           paletteArt: true,
           stats: [
             { label: m.wrapped_stat_entries(), value: String(book.opening.entryCount) },
-            { label: m.wrapped_stat_streak(), value: String(book.opening.bestStreak) },
             { label: m.milestones(), value: String(book.opening.milestoneCount) }
           ]
         }

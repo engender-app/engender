@@ -1003,3 +1003,26 @@ test('upsertEntry rolls back completely if any secondary validation or insert th
   assert.equal(estradiolStock?.quantity, 30);
 });
 
+
+test('the whole-journal count counts every untrashed entry, however many days they fall on', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.entries.countAll(), 0, 'an empty journal counts none');
+
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 2 });
+  await journal.entries.upsertEntry({ epochDay: 140, mood: 3 });
+
+  assert.equal(await journal.entries.countAll(), 3, 'entries, not the days they fall on');
+});
+
+test('a trashed entry leaves the whole-journal count, and comes back to it restored', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4 });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 4 });
+
+  await journal.entries.deleteEntry(id);
+  assert.equal(await journal.entries.countAll(), 1);
+
+  await journal.entries.restoreEntry(id);
+  assert.equal(await journal.entries.countAll(), 2);
+});

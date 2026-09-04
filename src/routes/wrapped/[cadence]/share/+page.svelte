@@ -54,13 +54,12 @@
   let ready = $derived(prefs.wrappedEnabled && recap && recap.entryCount >= WRAPPED_ENTRY_FLOOR);
 
   let selection = $state<WrappedShareSelection>({ ...WRAPPED_SHARE_NOTHING_SELECTED });
-  let nothingPicked = $derived(!selection.counts && !selection.streak && !selection.paletteArt);
+  let nothingPicked = $derived(!selection.counts && !selection.paletteArt);
   let content = $derived(
     recap
       ? wrappedShareContent(
           selection,
-          { label: m.wrapped_stat_entries(), value: String(recap.entryCount) },
-          { label: m.wrapped_stat_streak(), value: m.n_days({ n: recap.bestStreak }) }
+          { label: m.wrapped_stat_entries(), value: String(recap.entryCount) }
         )
       : { stats: [], paletteArt: false }
   );
@@ -140,15 +139,6 @@
             checked={selection.counts}
             label={m.wrapped_stat_entries()}
             onChange={(v) => (selection = { ...selection, counts: v })}
-          />
-        {/snippet}
-      </ListRow>
-      <ListRow key="share-streak" title={m.wrapped_stat_streak()} chevron={false}>
-        {#snippet trailing()}
-          <Switch
-            checked={selection.streak}
-            label={m.wrapped_stat_streak()}
-            onChange={(v) => (selection = { ...selection, streak: v })}
           />
         {/snippet}
       </ListRow>

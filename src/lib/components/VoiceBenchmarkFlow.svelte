@@ -100,6 +100,10 @@
   let saving = $state(false);
 
   let session: TakeSession | null = null;
+  /** Live only across the microphone-opening await, so `onDestroy` can abort
+      it if the screen goes before `start()` returns (voiceBenchmark.ts's
+      `startTake`, ticket AU-03). */
+  let opening: AbortController | null = null;
   let reading = $state<QualityReport | null>(null);
   let frames = $state<readonly PitchFrame[]>([]);
   let failed = $state<QualityCheck[]>([]);
@@ -213,7 +217,13 @@
   }
 
   async function start(checks: readonly QualityCheck[]) {
-    const opened = await startTake(checks);
+    const controller = new AbortController();
+    opening = controller;
+    const opened = await startTake(checks, controller.signal);
+    if (opening === controller) opening = null;
+    // The screen went away while the microphone was opening: startTake has
+    // already stopped whatever it opened, so there is nothing left to do.
+    if (opened === null) return;
     if (typeof opened === 'string') {
       if (refusal) askedAgain = true;
       refusal = opened;
@@ -364,7 +374,9 @@
   onDestroy(() => {
     stopPolling();
     // Leaving mid-take closes the microphone rather than leaving it open
-    // behind a screen nobody is on.
+    // behind a screen nobody is on - and leaving mid-open, before `session`
+    // is even assigned, is the same thing one await earlier (ticket AU-03).
+    opening?.abort();
     void session?.discard();
     session = null;
   });

@@ -18,6 +18,20 @@
      link. Presentational where it is not, because a day card printed into
      the journal book has nowhere to go.
 
+     An entry with no note says so rather than showing nothing. Every other
+     line here is absent when it has nothing to say, and this one is the
+     exception because the note is the field the row is read for: a gap
+     where it should be reads as a row that failed to load, and the eye
+     spends a moment on it either way (Alicja, 2026-09-04). It carries its
+     own handle rather than `data-entry-note`, which names the note itself -
+     a placeholder answering to that would make every noteless row match a
+     selector that means "this entry has words in it".
+
+     The one string this component reaches for. Everything else arrives
+     resolved - tags as labels, marks as icon names - because which tags
+     exist is the journal's business; this sentence is about the row's own
+     shape and has no caller better placed to write it.
+
      Under the note sits what the entry carries besides its words: the tags
      it was filed under, and a mark for a photo, a recording or a video. An
      entry list that shows only the note makes an entry that is a photo and
@@ -39,6 +53,7 @@
      - this only says which row was tapped, and only while it has somewhere
      to go. */
   import type { Snippet } from 'svelte';
+  import { m } from '$lib/paraglide/messages';
   import Icon from '../Icon.svelte';
   import MoodFace from '../MoodFace.svelte';
   import { entryContainerName, opensHere, openEntryContainer } from '$lib/motion/container.svelte';
@@ -108,7 +123,11 @@
     {#if presentation}
       <span class="kit-entry-presentation" data-entry-presentation style="color: {presentation.color}">{presentation.name}</span>
     {/if}
-    {#if note}<p class="kit-entry-note" class:is-full={!clampNote} data-entry-note>{note}</p>{/if}
+    {#if note}
+      <p class="kit-entry-note" class:is-full={!clampNote} data-entry-note>{note}</p>
+    {:else}
+      <p class="kit-entry-note is-absent" data-entry-no-note>{m.entry_no_note()}</p>
+    {/if}
     {#if tags?.length || marks?.length}
       <span class="kit-entry-meta">
         {#each marks ?? [] as mark (mark)}<Icon name={mark} size={16} />{/each}
@@ -149,6 +168,16 @@
 {/if}
 
 <style>
+  /* No note. Italic, and nothing else: it reads as the row saying something
+     about itself rather than as words somebody wrote. It keeps the note's
+     own --text-2 rather than stepping quieter, because it is still text
+     somebody reads and the palette contrast test holds --text-2 to the
+     4.5:1 floor across all 8 palettes - a paler grey invented here would
+     answer to nothing. */
+  .kit-entry-note.is-absent {
+    font-style: italic;
+  }
+
   /* A run of entries meant to be read rather than scanned (phase 8 features
      ticket 06): the same row, the whole note. */
   .kit-entry-note.is-full {

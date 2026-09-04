@@ -148,7 +148,7 @@ export interface PreferenceValues {
       ADR-0059). Null is the shipped state and stays it: the reference bands
       on that figure are a citation, and this one is a decision nobody but
       the person can make, so there is no default and no table behind it.
-      Both are set and cleared together, the way streakGoal's pair is.
+      Both are set and cleared together.
       Portable, like every other preference that is about the person rather
       than about this installation (ADR-0003). */
   voiceComfortLowHz: number | null;
@@ -281,19 +281,9 @@ export interface PreferenceValues {
       they ask for rather than a thing that happens to them. Not portable -
       it says how one device draws a chart, not anything about the journal. */
   hormoneCurveFitToOwnLabs: boolean;
-  /** The habit a streak goal (phase 4 features ticket 20) is set against,
-      or null when no goal is set. Mirrors streakGoal.ts's
-      `StreakGoalHabit` as an inline literal rather than importing it - this
-      file stays import-free so both tiers and the pre-database boot path
-      can read it. */
-  streakGoalHabit: 'journaling' | null;
-  /** The target streak length, in days, for `streakGoalHabit`. Null exactly
-      when `streakGoalHabit` is null - the two are set and cleared together. */
-  streakGoalTargetDays: number | null;
   /** The milestone id that durations, stats ranges and wrapped figures are
       measured from (phase 5 ticket 25), or null when none is chosen - a
-      resting state the app never nags about, the same way an unset
-      `streakGoalHabit` is never a bug to fix. Mirrors `activeScales`: one
+      resting state the app never nags about. Mirrors `activeScales`: one
       global choice rather than a per-surface one, so wrapped and a stats
       range cannot disagree about how long the person has been on their own
       journey. A milestone this install no longer has resolves to unset
@@ -438,8 +428,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hairPhotoProtocolDismissed: false,
   hairAnchorEpochDay: null,
   hormoneCurveFitToOwnLabs: false,
-  streakGoalHabit: null,
-  streakGoalTargetDays: null,
   journeyAnchorMilestoneId: null,
   cycleTrackingEnabled: false,
   autoExportEnabled: false,
@@ -467,8 +455,6 @@ export const PORTABLE_KEYS = [
   'checkInAffirmationsEnabled',
   'preferredLabUnits',
   'measurementUnit',
-  'streakGoalHabit',
-  'streakGoalTargetDays',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
   'cycleTrackingEnabled',

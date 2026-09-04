@@ -10,15 +10,14 @@
    answering "the metric's average" with mood, with mood x 20, and with mood
    x 20 again from three different functions.
 
-   Ranges arrive as two epoch days rather than a length in days, and the
-   streak takes today as an argument: the journal never reads the clock for
-   a domain answer, so every case here is a plain deterministic fixture.
+   Ranges arrive as two epoch days rather than a length in days: the journal
+   never reads the clock for a domain answer, so every case here is a plain
+   deterministic fixture.
 
    Nothing is stored. A recap is recomputed from entries, tags, milestones
    and dimension values every time it is opened (ADR-0010). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
-import { isPausedOn } from '../journalingPause';
 import type { ConstellationReading } from '../constellationData';
 import { normalize } from '../metricRange';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -104,9 +103,6 @@ export interface Recap {
   entryCount: number;
   /** 1 to 5, or null when nothing in the range carried a mood. */
   averageMood: number | null;
-  /** The longest run of consecutive days with an entry inside the range -
-      not the run ending today, which is what `streak()` answers. */
-  bestStreak: number;
   topTags: { id: string; count: number }[];
   milestones: RecapMilestone[];
   biggestDimensionChange: DimensionChange | null;
@@ -172,16 +168,6 @@ export interface StatsArea {
       are left out: the list is something to act on, and a hidden tag is out
       of every place a user picks things (CONTEXT: Hidden). */
   tagInsights(metric: string, fromEpochDay: number, toEpochDay: number): Promise<TagInsight[]>;
-  /** The run of consecutive days ending today or yesterday on which at
-      least one entry exists (CONTEXT: Streak). Today counts as unbroken
-      until today is over, and backdating into a gap repairs the run. */
-  streak(todayEpochDay: number): Promise<number>;
-  /** The longest run in the journal's whole history (CONTEXT: Best streak),
-      not just the one ending today - a goal's gentle achievements (phase 4
-      features ticket 20) read this rather than `streak()` so that a badge
-      earned once stays earned through a later gap. Entries dated in the
-      future are excluded, the same rule `streak()` applies. */
-  bestStreakEver(todayEpochDay: number): Promise<number>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
   /** One point per day a body region (bodyMap.ts) carried an intensity on
       the named axis in the range, oldest first, both ends inclusive - the
@@ -448,21 +434,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     }));
   };
 
-  const bestStreakIn = async (fromEpochDay: number, toEpochDay: number): Promise<number> => {
-    /* Gaps and islands: number the days in order and group by day - rn.
-       Consecutive days share that difference, a gap starts a new group, so
-       the largest group is the longest run. */
-    const rows = await driver.query<{ n: number }>(
-      `WITH days AS (
-             SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day BETWEEN ? AND ? AND trashed_at IS NULL
-           ),
-            numbered AS (SELECT day, ROW_NUMBER() OVER (ORDER BY day) AS rn FROM days)
-       SELECT COUNT(*) AS n FROM numbered GROUP BY day - rn ORDER BY n DESC LIMIT 1`,
-      [fromEpochDay, toEpochDay]
-    );
-    return rows[0]?.n ?? 0;
-  };
-
   return {
     async dayAverages(metric, fromEpochDay, toEpochDay) {
       return averageByDay(metricValues(metric), fromEpochDay, toEpochDay);
@@ -661,53 +632,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       }));
     },
 
-    async streak(todayEpochDay) {
-      /* Amended for the journaling pause (phase 5 ticket 21, CONTEXT:
-         "Streak"): a day inside a pause range is neither a gap nor a
-         logged day, so it bridges the run without extending its count.
-         `bestStreakEver`/`recap`'s bestStreakIn deliberately keeps the
-         original entry-only gaps-and-islands query below - CONTEXT.md's
-         "Best streak" is a different question, about the range being
-         looked at rather than the run ending today, and ticket 21's own
-         acceptance criteria name only Streak's computation.
-
-         An open pause has no end day, so it cannot be expanded into rows
-         with a fixed-width SQL query without a bound; walking backwards in
-         plain code instead is also what makes "entry, or entry-or-paused"
-         easy to keep straight, so this reads two small tables once and
-         walks the same way `doseSchedule.ts`'s pure functions do. The walk
-         is bounded by the streak's own length, exactly like the SQL
-         version it replaces. */
-      const entryRows = await driver.query<{ day: number }>(
-        'SELECT DISTINCT epoch_day AS day FROM entry WHERE epoch_day <= ? AND trashed_at IS NULL',
-        [todayEpochDay]
-      );
-      const pauseRows = await driver.query<{ start_epoch_day: number; end_epoch_day: number | null }>(
-        'SELECT start_epoch_day, end_epoch_day FROM journaling_pause WHERE start_epoch_day <= ?',
-        [todayEpochDay]
-      );
-      const entryDays = new Set(entryRows.map((r) => r.day));
-      const pauses = pauseRows.map((r) => ({ startEpochDay: r.start_epoch_day, endEpochDay: r.end_epoch_day }));
-
-      let day = todayEpochDay;
-      if (!entryDays.has(day) && !isPausedOn(pauses, day)) day -= 1;
-      if (!entryDays.has(day) && !isPausedOn(pauses, day)) return 0;
-
-      let count = 0;
-      while (entryDays.has(day) || isPausedOn(pauses, day)) {
-        if (entryDays.has(day)) count++;
-        day -= 1;
-      }
-      return count;
-    },
-
-    async bestStreakEver(todayEpochDay) {
-      // The same gaps-and-islands query bestStreakIn runs for a recap's
-      // range, just with no lower bound - "ever" is "every day up to
-      // today", not a second streak-counting rule to keep in step with it.
-      return bestStreakIn(Number.MIN_SAFE_INTEGER, todayEpochDay);
-    },
-
     async recap(fromEpochDay, toEpochDay) {
       const range = [fromEpochDay, toEpochDay];
 
@@ -828,7 +752,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return {
         entryCount: totals[0].entry_count,
         averageMood: totals[0].average_mood,
-        bestStreak: await bestStreakIn(fromEpochDay, toEpochDay),
         topTags: topTagRows.map((t) => ({ id: t.id, count: t.entries })),
         milestones: milestoneRows.map((r) => ({ id: r.id, name: r.name, epochDay: r.epoch_day })),
         biggestDimensionChange,

@@ -58,7 +58,6 @@
   } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { isPausedOn } from '$lib/data/journalingPause';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import { nativeValue, signedValue, spreadNote, tagInsightRows } from '$lib/data/wrappedDisplay';
@@ -160,19 +159,11 @@
   let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
   let shown = $derived(metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0]);
 
-  let streakQuery = liveQuery((j) => j.stats.streak(today));
-  let streak = $derived(streakQuery.value ?? 0);
-
-  /* The streak line goes quiet while a pause covers today, the same rule
-     Home's does (phase 5 features ticket 21): it is a nudge, and a frozen
-     number with nothing to explain it is worse than no number. */
-  let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
   /* What was happening around these readings (ticket 23). One query for the
      screen, and only the values chart draws it: the interval-mood chart
      below plots a position in the dosing interval rather than a date, so a
      day has nowhere to sit on it. */
   let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
-  let pausedToday = $derived(isPausedOn(pausesQuery.rows, today));
 
   /* One query for every metric on screen rather than one per chart: the
      day-by-day chart plots one at a time but the bars card needs all of
@@ -366,8 +357,8 @@
      target or a verdict: both say only where days fell.
 
      Both read across the journal's whole history rather than the segmented
-     range above (the same Number.MIN_SAFE_INTEGER convention stats.ts's
-     bestStreakEver uses for "ever"), not just the visible window: an
+     range above (Number.MIN_SAFE_INTEGER as the lower bound, which is what
+     "ever" means on an epoch-day column), not just the visible window: an
      injection interval is commonly 14-28 days, so a completed one rarely
      recurs three times inside even the 90-day preset. */
   let intervalMoodQuery = liveList((j) =>
@@ -701,15 +692,14 @@
     key="stats-range"
   />
 
-  <!-- The two facts that used to be a card each: how long since the day the
-       journey is anchored on, and the run of days ending today. A plain line
-       rather than two accent numbers on two surfaces, which is the template
-       the slop audit took off Home. -->
-  {#if anchorDuration || (streak > 1 && !pausedToday)}
+  <!-- The journey anchor, which used to be a card: how long since the day
+       the journey is anchored on, as a plain line rather than an accent
+       number on a surface of its own - the template the slop audit took off
+       Home. The run of days ending today sat beside it until phase 8 UX
+       ticket 01 deleted the streak. -->
+  {#if anchorDuration}
     <p class="stats-caption" data-stats-caption>
-      {#if anchorDuration}{m.journey_anchor_since({ name: anchor?.name ?? '' })}: {anchorDuration}{/if}
-      {#if anchorDuration && streak > 1 && !pausedToday}<span aria-hidden="true"> · </span>{/if}
-      {#if streak > 1 && !pausedToday}{streak} {m.streak_row()}{/if}
+      {m.journey_anchor_since({ name: anchor?.name ?? '' })}: {anchorDuration}
     </p>
   {/if}
 

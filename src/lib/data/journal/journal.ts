@@ -175,10 +175,9 @@ export interface Journal {
       history above this seam rather than owning a link to one. */
   cycleEvents: CycleEventsArea;
   /** A declared, dated break from journaling (phase 5 ticket 21, CONTEXT:
-      "Streak" - amended). No episode reference, the same reason cycleEvents
-      has none. `stats.streak()` reads its rows directly to decide which
-      days inside a pause do not count as a gap; this area owns only the
-      rows themselves. */
+      "Journaling pause"). No episode reference, the same reason cycleEvents
+      has none. This area owns the rows; who reads them - Home's pause tile,
+      the check-in suppression, the chart's pause band - is elsewhere. */
   journalingPauses: JournalingPausesArea;
   /** A search somebody kept a name for (phase 8 features ticket 06, CONTEXT:
       "Saved question"). Rows only - what a saved question is asked as lives

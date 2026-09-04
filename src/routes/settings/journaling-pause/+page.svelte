@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The journaling pause (phase 5 ticket 21, CONTEXT: "Streak" - amended).
+  /* The journaling pause (phase 5 ticket 21, CONTEXT: "Journaling pause").
      A pause is journal-wide, not per-episode, so it gets its own settings
      screen rather than living beside a regimen episode the way Dose pause
      does - there is no episode to attach it to. Ending a running pause is

@@ -224,6 +224,15 @@ export interface EntriesArea {
       query with fifty. An aggregate, so it transfers one row however many
       match. */
   countSearchMatches(query: string, matchingTagIds: string[], filters?: EntrySearchFilters): Promise<number>;
+  /** How many untrashed entries the journal holds, over all of its history
+      (phase 8 UX ticket 01). Home's count line, and Safe Space's body of
+      work.
+
+      Its own narrow read rather than a field on the recap: a recap pays for
+      six queries including two window functions and is scoped to a range,
+      and this is one `COUNT(*)` over the one table. Entries rather than the
+      days they fall on - a day carrying three of them is three. */
+  countAll(): Promise<number>;
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
@@ -1172,6 +1181,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         id
       ]);
       assertChanged(result, `entry: ${id}`);
+    },
+
+    async countAll() {
+      const rows = await driver.query<{ n: number }>(
+        'SELECT COUNT(*) AS n FROM entry WHERE trashed_at IS NULL'
+      );
+      return rows[0].n;
     },
 
     async lastWriteEpochDay(todayEpochDay) {

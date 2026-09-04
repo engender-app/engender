@@ -18,7 +18,7 @@
 
    Invalidation is per table rather than global because the alternative is
    visibly wasteful: saving one lab result would re-run the stats charts, the
-   streak, Home's entry list and whatever search is on screen. A table version
+   Home's entry list and whatever search is on screen. A table version
    is one integer and the scoping falls out of it.
 
    The mirrored half - reference data read synchronously - is

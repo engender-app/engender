@@ -1400,9 +1400,22 @@ try {
   if (drawn !== 4) throw new Error('the editor drew ' + drawn + ' scales for four ticked');
 
   /* Colour Home by one of the ticked scales first, so unticking it below
-     has something to strand. */
+     has something to strand.
+
+     One entry first, because the onboarding flows above leave the journal
+     empty and Home's week strip - the picker's own heading - waits for the
+     first entry (phase 8 UX ticket 01). Written here rather than by a demo
+     reset, which would put the preferences back and undo the tick this flow
+     just made. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-mood="4"]').click();
+  await page.locator('[data-save]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
+  await page.waitForSelector('[data-chart-picker="home-metric"]');
   await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
   await page.waitForFunction(
     () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
@@ -1431,6 +1444,7 @@ try {
      would visibly disagree. */
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await booted();
+  await page.waitForSelector('[data-chart-picker="home-metric"]');
   const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
   if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
   ok('settings scales sheet ticks through to the editor, empty included');
@@ -2308,13 +2322,17 @@ try {
   ok('a custom goal appends to its track and ticks through the same tri-state a bundled goal does');
 } catch (e) { fail('transition roadmap custom goal', e); }
 
-/* 26. the journaling pause (phase 5 ticket 21): Home's streak line goes
-   quiet while a pause covers today, and resuming brings it straight back
-   rather than waiting a day - the exact bug an inclusive end day would
-   cause if `resumeToday()` used today instead of yesterday as the end. */
+/* 26. the journaling pause (phase 5 ticket 21): declaring one puts its tile
+   on Home while it covers today, and resuming takes it off straight away
+   rather than a day later - the exact bug an inclusive end day would cause
+   if `resumeToday()` used today instead of yesterday as the end.
+
+   It was Home's streak line that went quiet here until phase 8 UX ticket 01
+   deleted the streak. The tile says the same thing and is what is left. */
 try {
   await fresh('/');
-  await page.waitForSelector('[data-home-streak]');
+  if (await page.locator('[data-pause-active-tile]').count())
+    throw new Error('the pause tile shows with no pause declared');
 
   await page.goto(BASE + '/settings/journaling-pause', { waitUntil: 'networkidle' });
   await page.locator('[data-new-pause]').click();
@@ -2322,15 +2340,16 @@ try {
   await page.waitForSelector('[data-resume-pause]');
 
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  if (await page.locator('[data-home-streak]').count()) throw new Error('the streak line still shows while a pause covers today');
+  await page.waitForSelector('[data-pause-active-tile]');
 
   await page.goto(BASE + '/settings/journaling-pause', { waitUntil: 'networkidle' });
   await page.locator('[data-resume-pause]').click();
   await page.waitForSelector('[data-new-pause]');
 
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-home-streak]');
-  ok('the streak line quiets while a journaling pause covers today, and resuming brings it back the same day');
+  if (await page.locator('[data-pause-active-tile]').count())
+    throw new Error('the pause tile still shows the day the pause was resumed');
+  ok('a journaling pause puts its tile on Home while it covers today, and resuming takes it off the same day');
 } catch (e) { fail('journaling pause', e); }
 
 /* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
@@ -2471,7 +2490,7 @@ try {
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
-    '/settings/streak-goal', '/settings/journaling-pause', '/settings/photos',
+    '/settings/journaling-pause', '/settings/photos',
     '/settings/measurements', '/settings/sizes', '/settings/hair-progress',
     '/settings/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
     '/settings/cycle-events', '/settings/side-effects', '/settings/surgery',

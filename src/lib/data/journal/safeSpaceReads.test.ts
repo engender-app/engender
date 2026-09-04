@@ -3,8 +3,8 @@
 
    ADR-0037 made opening this screen write nothing, and ticket 52 built the
    dashboard on that promise. This ticket adds three more reads (letters,
-   starred photos, and later a voice benchmark) beside the pool, the
-   streak, the day averages and the snapshot history the screen already
+   starred photos, and later a voice benchmark) beside the pool, the entry
+   count, the day averages and the snapshot history the screen already
    read - every one of them a place a future edit could slip in a write
    without the screen itself changing shape. So the contract is pinned
    here at the driver, on every read `src/routes/doubt/+page.svelte`
@@ -48,7 +48,7 @@ test('opening Safe Space performs zero writes, across the pool, stats, snapshots
   counting.resetRoundTrips();
 
   await reading.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT);
-  await reading.stats.streak(TODAY);
+  await reading.entries.countAll();
   await reading.stats.dayAverages('mood', TODAY - TIMELINE_DAYS + 1, TODAY);
   await reading.doubtJournal.getSnapshots(HISTORY_LIMIT);
   await reading.letters.getLetters(LETTER_LOOKBACK);
