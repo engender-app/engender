@@ -281,6 +281,26 @@ test('android_metadata is parsed as JSON inside JSON, which is where an unsniffa
   assert.match(entryOn(result, '2026-01-15').recordings[0].fileName, /\.3gp$/);
 });
 
+test('an audio asset whose android_metadata names an extension outside the recordings allowlist is named as skipped', async () => {
+  const assets = (daylioPayload().assets as Record<string, unknown>[]).map((asset) =>
+    asset.type === 2
+      ? { ...asset, android_metadata: JSON.stringify({ Name: 'AUD_0001.exe', LastModified: 1, Duration: 900 }) }
+      : asset
+  );
+  // Bytes that name no container, same as the doubly-encoded-metadata test
+  // above: the extension can only come from `sourceName`, and `.exe` is
+  // exactly the shape the old regex accepted and voiceRecordings/mime.ts's
+  // allowlist does not - a recording this app could never play.
+  const files = daylioAssetFiles().map((file) =>
+    file.name.includes(AUDIO_CHECKSUM) ? { ...file, bytes: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) } : file
+  );
+
+  const result = await preview(withCollection('assets', assets), files);
+  assert.deepEqual(entryOn(result, '2026-01-15').recordings, []);
+  assert.equal(result.audioCount, 0);
+  assert.deepEqual(result.skipped.find((skip) => skip.kind === 'assets'), { kind: 'assets', count: 1 });
+});
+
 test('an audio asset whose type is in neither its bytes nor its metadata is named as skipped', async () => {
   const assets = (daylioPayload().assets as Record<string, unknown>[]).map((asset) =>
     asset.type === 2 ? { ...asset, android_metadata: 'not json at all' } : asset
