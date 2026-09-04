@@ -284,11 +284,18 @@ export const OFFERS = {
      the no is kept forever in `areaFinishOfferDeclined` - which is this
      offer's own version of ADR-0045's second half, the same way the roadmap
      reads `roadmapGoalKey` and the surgery hub reads its linked milestone.
-     The threshold itself is `areaGroups.ts`'s FINISH_SUGGESTION_QUIET_DAYS. */
+     The threshold itself is `areaGroups.ts`'s FINISH_SUGGESTION_QUIET_DAYS.
+
+     It is also the one entry whose sheet a person can open without being
+     offered anything, from the control at the foot of the same screen. That
+     does not make it two offers: the sentence, the record and the write are
+     the same, and only what opened the sheet differs. What it does mean is
+     that `write` below is reached on a path no automatic trigger started,
+     which is fine - ADR-0045 constrains triggers, not people. */
   'area-finished': {
     key: 'area-finished',
     trigger:
-      'an area with at least one write, none of them inside FINISH_SUGGESTION_QUIET_DAYS, not already hidden or finished, and never declined before',
+      "the offer: an area with at least one write, none of them inside FINISH_SUGGESTION_QUIET_DAYS, not already hidden or finished, and never declined before. The same sheet is also opened by hand from the area's own screen, and confirming it reaches this write through the same call - one path to the record rather than a second one beside the registry",
     offers: 'areaStates',
     copy: {
       title: () => m.area_finish_offer_title(),

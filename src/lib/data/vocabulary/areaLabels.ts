@@ -25,16 +25,14 @@ const GROUP_NAME: Record<AreaGroupKey, () => string> = {
   voice: m.vb_title
 };
 
-/** Whether a string is a group this build knows. An `area_state` row travels,
-    so a key can arrive from a newer build through an archive; a name is asked
-    for by key in a couple of places that would otherwise have to trust one. */
-export function isAreaGroupKey(key: string): key is AreaGroupKey {
-  return key in AREA_GROUPS;
-}
+/** What a group is called.
 
-/** What a group is called. An unknown key keeps itself rather than
+    Takes a `string` rather than an `AreaGroupKey` because one of its two
+    callers cannot offer one: a chart annotation's `name` is a plain string
+    (charts/annotations.ts), since that field also carries a milestone's name
+    and an episode's drug. An unrecognised value keeps itself rather than
     disappearing, the same way an imported body region does on the hormone
     curve. */
 export function areaGroupName(key: string): string {
-  return isAreaGroupKey(key) ? GROUP_NAME[key]() : key;
+  return key in AREA_GROUPS ? GROUP_NAME[key as AreaGroupKey]() : key;
 }
