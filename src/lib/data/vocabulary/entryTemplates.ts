@@ -13,6 +13,16 @@
 import { ENTRY_TEMPLATES } from './builtins';
 import type { EntryTemplate } from '../types';
 
+/** Most built-ins seed visible; the appointment debrief is the one
+    exception (builtins.ts's own comment says why) - read as a type guard
+    rather than widening every other `ENTRY_TEMPLATES` entry with
+    `hidden: false` just to satisfy one that needs `true`. Shared by the
+    pure rule below and reconcile.ts's SQL insert (ticket 25), so the two
+    can't drift the way they did before this ticket. */
+export function builtInTemplateHidden(t: (typeof ENTRY_TEMPLATES)[number]): boolean {
+  return 'hidden' in t ? t.hidden : false;
+}
+
 function builtInEntryTemplate(
   key: string,
   tags: readonly string[],
@@ -31,14 +41,28 @@ function builtInEntryTemplate(
   };
 }
 
+/** What a built-in template shows once wording is joined in (ticket 25,
+    "the editable-name question", answer 2): the person's own words once
+    they have typed any, the resolved label only for what reconcile still
+    left seeded blank. Kept here, pure, so the fallback direction is
+    provable without vocabulary.ts's paraglide dependency in the loop; that
+    module calls this after doing its own key-to-label lookup. Name and
+    note scaffold take the same rule, since they are edited on the same
+    sheet and it would be strange for one to stick and not the other. */
+export function resolveBuiltInWording(
+  stored: { name: string; noteScaffold: string },
+  label: { name: string; noteScaffold: string }
+): { name: string; noteScaffold: string } {
+  return {
+    name: stored.name !== '' ? stored.name : label.name,
+    noteScaffold: stored.noteScaffold !== '' ? stored.noteScaffold : label.noteScaffold
+  };
+}
+
 export function withBuiltInEntryTemplates(existing: EntryTemplate[]): EntryTemplate[] {
   const present = new Set(existing.map((t) => t.id));
   const missing = ENTRY_TEMPLATES.filter((t) => !present.has(t.key)).map((t) =>
-    // Most built-ins seed visible; the appointment debrief is the one
-    // exception (builtins.ts's own comment says why) - read as a type
-    // guard rather than widening every other entry with `hidden: false`
-    // just to satisfy one that needs `true`.
-    builtInEntryTemplate(t.key, t.tags, t.dims, 'hidden' in t ? t.hidden : false)
+    builtInEntryTemplate(t.key, t.tags, t.dims, builtInTemplateHidden(t))
   );
   return [...existing, ...missing];
 }

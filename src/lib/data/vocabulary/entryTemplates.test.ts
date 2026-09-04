@@ -6,7 +6,12 @@
    out and asserting it absent, which would only restate `filter`. */
 
 import { test, expect } from 'vitest';
-import { withBuiltInEntryTemplates, applyEntryTemplateToDraft, debriefOfferVisible } from './entryTemplates.ts';
+import {
+  withBuiltInEntryTemplates,
+  applyEntryTemplateToDraft,
+  debriefOfferVisible,
+  resolveBuiltInWording
+} from './entryTemplates.ts';
 import type { DebriefOfferState } from './entryTemplates.ts';
 import type { EntryTemplate } from '../types.ts';
 
@@ -61,6 +66,33 @@ test('a built-in missing from the store is restored without touching an edited o
   // The rule can fail: dropping the edited row from the fixture set and
   // reconciling an empty store must produce the built-in, unedited.
   expect(withBuiltInEntryTemplates([])[0]).not.toEqual(edited);
+});
+
+test('a built-in still seeded blank shows the resolved label (ticket 25)', () => {
+  const resolved = resolveBuiltInWording(
+    { name: '', noteScaffold: '' },
+    { name: 'Euphoria day', noteScaffold: 'How did it feel?' }
+  );
+
+  expect(resolved).toEqual({ name: 'Euphoria day', noteScaffold: 'How did it feel?' });
+});
+
+test('a built-in the person renamed keeps their words, not the label (ticket 25)', () => {
+  const resolved = resolveBuiltInWording(
+    { name: 'My own name', noteScaffold: 'My own scaffold' },
+    { name: 'Euphoria day', noteScaffold: 'How did it feel?' }
+  );
+
+  expect(resolved).toEqual({ name: 'My own name', noteScaffold: 'My own scaffold' });
+});
+
+test('name and note scaffold fall back independently (ticket 25)', () => {
+  const resolved = resolveBuiltInWording(
+    { name: 'My own name', noteScaffold: '' },
+    { name: 'Euphoria day', noteScaffold: 'How did it feel?' }
+  );
+
+  expect(resolved).toEqual({ name: 'My own name', noteScaffold: 'How did it feel?' });
 });
 
 test('a custom template survives seeding and is never duplicated', () => {
