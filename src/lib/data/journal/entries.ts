@@ -908,16 +908,27 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     },
 
     async entriesWithTag(tagId, limit) {
-      // COALESCE(key, uuid) is a tag's domain id (ADR-0002), the same rule
-      // searchEntries and the tag insights match on.
+      // Resolved first so the second query can join on tag_id directly:
+      // matching COALESCE(key, uuid) = ? inline left the planner no usable
+      // index on tag, so it reversed the join and scanned entry through
+      // idx_entry_trashed_at instead - visiting every untrashed entry on
+      // the stats screen's tag-insight query (phase 8 audit ticket 18).
+      // Not rowidWhere (support.ts): an unknown tag has to mean "no
+      // entries" here, not a thrown error - this is a read.
+      const tagRows = await driver.query<{ id: number }>('SELECT id FROM tag WHERE key = ? OR uuid = ?', [
+        tagId,
+        tagId
+      ]);
+      const tagPk = tagRows[0]?.id;
+      if (tagPk == null) return [];
+
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
-         JOIN tag t ON t.id = et.tag_id
-         WHERE COALESCE(t.key, t.uuid) = ? AND e.trashed_at IS NULL
+         WHERE et.tag_id = ? AND e.trashed_at IS NULL
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [tagId, limit]
+        [tagPk, limit]
       );
       return hydrate(rows);
     },
