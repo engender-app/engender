@@ -96,7 +96,8 @@ test('a reconcile over an existing journal leaves a person-set entry template hi
   await journal.reconcileBuiltIns();
 
   db.raw.exec("UPDATE entry_template SET hidden = 0 WHERE key = 'appointment_debrief'");
-  db.raw.exec("DELETE FROM entry_template WHERE key = 'euphoria_day'");
+  db.raw.exec("UPDATE entry_template SET hidden = 1 WHERE key = 'euphoria_day'");
+  db.raw.exec("DELETE FROM entry_template WHERE key = 'dysphoria_day'");
   await journal.reconcileBuiltIns();
 
   const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
@@ -104,7 +105,12 @@ test('a reconcile over an existing journal leaves a person-set entry template hi
   };
   assert.equal(debrief.hidden, 0, 'a debrief the person showed stays shown');
 
-  const restored = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
+  const ordinaryHidden = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
+    hidden: number;
+  };
+  assert.equal(ordinaryHidden.hidden, 1, 'an ordinary template the person hid stays hidden');
+
+  const restored = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'dysphoria_day'").get() as {
     hidden: number;
   };
   assert.equal(restored.hidden, 0, 'a restored built-in gets its own seed default');
