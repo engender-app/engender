@@ -1727,8 +1727,8 @@ await block('ticket 29 browser tier', 6, async () => {
      arithmetic: the pitch figure next door draws bands out of this same
      kit, so what stops one appearing here is the markup. */
   const banded = registered.filter((key) => figures[key].bandLike > 0);
-  if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the five');
-  else fail('no band, target region or heat ramp is drawn on any of the five', JSON.stringify(banded));
+  if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the six');
+  else fail('no band, target region or heat ramp is drawn on any of the six', JSON.stringify(banded));
 
   /* Native units, on the plot itself rather than under a finger: every
      plot has to carry the ends of its own scale, written in the figure's
@@ -1740,7 +1740,10 @@ await block('ticket 29 browser tier', 6, async () => {
     spread: /semitone/,
     rate: /words/,
     resonance: /Hz/,
-    room: /dB/
+    room: /dB/,
+    // The factor's own unit is the × it is written with, which is what
+    // tells it apart from a bare 0-to-1 axis with no unit on it at all.
+    scale: /×/
   };
   const wrongUnit = registered.filter((key) => {
     const f = figures[key];
