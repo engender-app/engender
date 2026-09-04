@@ -1919,6 +1919,22 @@ CREATE TABLE voice_practice_take (
 CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day);
 `;
 
+const SCHEMA_V60 = `
+CREATE TABLE saved_question (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  query_text TEXT NOT NULL DEFAULT '',
+  tag_ids TEXT NOT NULL DEFAULT '',
+  moods TEXT NOT NULL DEFAULT '',
+  start_epoch_day INTEGER,
+  end_epoch_day INTEGER,
+  has_note INTEGER NOT NULL DEFAULT 0,
+  has_photo INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -1978,5 +1994,6 @@ export const migrations: Migration[] = [
   { version: 56, sql: SCHEMA_V56 },
   { version: 57, sql: SCHEMA_V57 },
   { version: 58, sql: SCHEMA_V58 },
-  { version: 59, sql: SCHEMA_V59 }
+  { version: 59, sql: SCHEMA_V59 },
+  { version: 60, sql: SCHEMA_V60 }
 ];

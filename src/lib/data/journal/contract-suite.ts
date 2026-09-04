@@ -184,6 +184,84 @@ export async function runJournalContract(
     for (const id of ids) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
+  /* Ticket 06's own acceptance criterion: a saved question is one table
+     over this same FTS index, never a second search path. Proven by running
+     the identical filters twice - once as the ad hoc call `/search` makes,
+     once read back off a row this suite just wrote - rather than by
+     inspecting savedQuestions.ts's source, which a driver-tier suite has no
+     way to do anyway. The comma-joined tag/mood columns are what a native
+     driver could bind differently than node:sqlite, so the round trip
+     belongs here rather than in a pure Node test. */
+  await r.section('a saved question answers exactly like the ad hoc search it was saved from', async () => {
+    const group = await journal.tags.addGroup('saved-question-contract-test');
+    const tag = await journal.tags.addTag(group.key, 'therapy');
+    const day = 20100;
+    const matchId = await journal.entries.upsertEntry({
+      epochDay: day,
+      mood: 4,
+      note: 'a good therapy session',
+      tags: [tag.id]
+    });
+    const wrongMoodId = await journal.entries.upsertEntry({
+      epochDay: day,
+      mood: 2,
+      note: 'a good therapy session',
+      tags: [tag.id]
+    });
+    const outsideRangeId = await journal.entries.upsertEntry({
+      epochDay: day - 100,
+      mood: 4,
+      note: 'a good therapy session',
+      tags: [tag.id]
+    });
+
+    const queryText = 'session';
+    const filters = {
+      tagIds: [tag.id],
+      moods: [4],
+      startEpochDay: day - 1,
+      endEpochDay: day + 1,
+      hasNote: true,
+      hasPhoto: false
+    };
+
+    const adHocHits = (await journal.entries.searchEntries(queryText, [], filters)).map((e) => e.id);
+    const adHocTotal = await journal.entries.countSearchMatches(queryText, [], filters);
+    r.equal('the ad hoc filters narrow to the one entry inside all of them', adHocHits, [matchId]);
+
+    const savedId = await journal.savedQuestions.upsertSavedQuestion({
+      name: 'Good sessions',
+      queryText,
+      tagIds: filters.tagIds,
+      moods: filters.moods,
+      startEpochDay: filters.startEpochDay,
+      endEpochDay: filters.endEpochDay,
+      hasNote: filters.hasNote,
+      hasPhoto: filters.hasPhoto
+    });
+    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
+    r.equal('the saved row round-trips its comma-joined columns back into arrays', saved?.tagIds, filters.tagIds);
+    r.equal('and its 0/1 columns back into booleans', [saved?.hasNote, saved?.hasPhoto], [true, false]);
+
+    if (saved) {
+      const savedFilters = {
+        tagIds: saved.tagIds,
+        moods: saved.moods,
+        startEpochDay: saved.startEpochDay,
+        endEpochDay: saved.endEpochDay,
+        hasNote: saved.hasNote,
+        hasPhoto: saved.hasPhoto
+      };
+      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
+      const savedTotal = await journal.entries.countSearchMatches(saved.queryText, [], savedFilters);
+      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
+      r.equal("and its total equals the ad hoc search's total", savedTotal, adHocTotal);
+    }
+
+    for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
+    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+  });
+
   /* The fold is shared code, so this cannot differ between tiers - but a
      platform that mangled the source encoding would show up here rather than
      as a confusing search miss above. */

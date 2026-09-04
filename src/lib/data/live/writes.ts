@@ -198,7 +198,12 @@ export const TABLE_NAMES = [
      speaks about: a hub row reading every area's state at once would have to
      re-run on a write to any of nineteen tables, and hiding an area has not
      touched a single record in it. */
-  'areaState'
+  'areaState',
+  /* A saved question (phase 8 features ticket 06). Its own name rather than
+     folded into any of the search-adjacent tables: no other read here
+     depends on a saved question's row, and saving or renaming one changes
+     nothing a search itself returns. */
+  'savedQuestion'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -476,6 +481,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   journalingPauses: classify<Journal['journalingPauses']>()({
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
     reads: { getPauses: ['journalingPause'] }
+  }),
+  savedQuestions: classify<Journal['savedQuestions']>()({
+    writes: { upsertSavedQuestion: ['savedQuestion'], deleteSavedQuestion: ['savedQuestion'] },
+    reads: { getSavedQuestions: ['savedQuestion'] }
   }),
   eras: classify<Journal['eras']>()({
     writes: { upsertEra: ['era'], deleteEra: ['era'] },
