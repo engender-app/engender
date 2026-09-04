@@ -40,6 +40,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
+  import VoicingRibbon from '$lib/components/VoicingRibbon.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -105,6 +106,20 @@
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
   /** The voice's longest unbroken run so far, as the gate counts it. */
   let heldSeconds = $derived((reading?.longestVoicedSeconds ?? 0).toFixed(1));
+
+  /** The sentence beside the ribbon, in priority order: what to do
+      differently if the gate has found something, otherwise that nothing
+      is arriving yet, otherwise nothing at all.
+
+      Silence is reported in words as well as drawn, so somebody who cannot
+      see the ribbon gets the same answer - the contract the figure this
+      replaced was held to. It clears the moment a voice arrives rather
+      than lingering. */
+  let liveLine = $derived.by(() => {
+    if (phase === 'retry') return retryAdvice.join(' ');
+    if (liveAdvice.length > 0) return liveAdvice.join(' ');
+    return frames.some((frame) => frame.hz !== null) ? '' : m.vb_hearing_silent();
+  });
   /* Whose typical ranges belong on the figure: the language of the passage
      being read, not the app's (ADR-0059). A passage of somebody's own words
      carries no language, so the app's is a guess and the caption says so. */
@@ -418,11 +433,18 @@
           advice={phase === 'retry' ? retryAdvice : liveAdvice}
         />
       {:else if phase === 'recording' || phase === 'retry'}
+        <!-- One rail of the last two seconds: filled where the tracker
+             found a voice, gaps for the breaths and the commas, empty when
+             nothing is arriving. Presence has no magnitude, which is what
+             lets it say "this is working" in 6px where a pitch figure
+             needed 148 and a gutter. -->
         <div class="vb-live" data-vb-live>
-          <span class="vb-live-held">{m.vb_gauge_run({ seconds: heldSeconds })}</span>
-          <p class="vb-live-advice" aria-live="polite">
-            {(phase === 'retry' ? retryAdvice : liveAdvice).join(' ')}
-          </p>
+          <div class="vb-live-top">
+            <span class="vb-live-label">{m.vb_hearing_label()}</span>
+            <span class="vb-live-held">{m.vb_gauge_run({ seconds: heldSeconds })}</span>
+          </div>
+          <VoicingRibbon data-vb-hearing {frames} label={m.vb_hearing_label()} />
+          <p class="vb-live-advice" aria-live="polite">{liveLine}</p>
         </div>
       {/if}
 
@@ -544,8 +566,20 @@
   .vb-live {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-2);
     margin-top: var(--space-4);
+  }
+
+  .vb-live-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .vb-live-label {
+    font-size: var(--text-sm);
+    color: var(--muted);
   }
 
   .vb-live-held {
