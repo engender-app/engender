@@ -20,6 +20,14 @@ export function hzLabel(hz: number): string {
   return m.vb_hz({ value: String(Math.round(hz)) });
 }
 
+/** A band's two ends, as the summary writes any pair of frequencies. The
+    reference screen states the published ranges in words rather than
+    drawing them, and it states them the way every other range in this app
+    is stated. */
+export function hzRangeLabel(band: PitchBand): string {
+  return m.vb_hz_range({ low: String(Math.round(band.lowHz)), high: String(Math.round(band.highHz)) });
+}
+
 /** What a band is called. The middle one has two names, because a gap
     between two ranges and an intersection of them say opposite things
     about the same picture (bands.ts's `middleBand`). */
