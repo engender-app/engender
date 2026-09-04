@@ -29,21 +29,49 @@
    demonstrated directly, at the bottom, against a small fixture rather than
    by mutating the real declaration.
 
-   Reads get the read half's own rule: every classified read this sweep can
-   invoke is driven the same way and must touch nothing.
+   What check 2 still cannot catch: an operation that spuriously declares a
+   coarse name it never touches, where some *other* legitimate operation
+   also declares that name and genuinely writes it. The union only asks
+   whether every declared table is hit by *someone* - it never asks whether
+   *this* operation was the one that needed to declare it. `archive.replace`
+   and `discardEverything` are the extreme case of the same gap: driven for
+   real, their SQL wipes nearly every content table, so either one alone
+   would "satisfy" check 2 for almost any coarse name regardless of whether
+   its own mapping is right. WIPES_THE_JOURNAL excludes both from check 2's
+   owners for exactly that reason - a proof that touches everything proves
+   nothing about one thing - while they still count fully for check 1 and
+   for write coverage. Closing that broader gap would mean equality per
+   operation, which is exactly the check this file
+   deliberately does not make, for the coarse-name reason above. It is a
+   real, narrower blind spot than "exactly", left open on purpose rather
+   than left unmentioned.
 
-   Not every classified write is driven. `archive.replace`, `archive.merge`,
-   `discardEverything` and the six `commit*Import` operations declare every
-   coarse name that exists - "a Replace touches everything by definition",
-   writes.ts's own comment on `archive` says - which is a ceiling stated on
-   purpose, not a literal account of one call's SQL, the same reason
-   `reconcile.ts` announces its three tables for a run that finds nothing to
-   do. Comparing them against one execution's SQL would fail on every run
-   whose archive happens not to touch some table, which is not a
-   misclassification - it is what the declaration is for. They are named in
-   WRITE_OPT_OUTS instead, with that reason, and reconcileBuiltIns is driven
-   for real by running it on a database nothing has reconciled yet, which is
-   the one state where its SQL does touch everything it declares. */
+   Reads get the read half's own rule: every classified read this sweep can
+   invoke is driven the same way and must touch nothing. Reads sit under
+   READ_OPT_OUTS the same way writes do, and a coverage check below holds
+   the read half to the same standard the write half's coverage check does.
+
+   Not every classified write is driven. `reconcile.ts`'s own comment says
+   reconciling "usually finds nothing to do, and announcing these tables for
+   a no-op is cheaper than asking it to report what it actually changed" -
+   so reconcileBuiltIns is driven on a database nothing has reconciled yet,
+   the one state where its SQL does touch everything it declares, rather
+   than opted out. `archive.replace`, `archive.merge`, `discardEverything`
+   and three of the six `commit*Import` operations (Daylio CSV, Track &
+   Graph, Pixels) are driven the same way `writes.test.ts` already drives
+   them - an in-memory snapshot, or an inline CSV/JSON payload, no external
+   file required - even though their own declaration is the same "every
+   table, by design" ceiling `archive`'s own comment states ("a Replace
+   touches everything by definition"). Declaring a ceiling is not a reason
+   to skip driving an operation that costs nothing to drive; it only matters
+   for what check 1 can prove about it, and check 1's subset test is
+   automatically satisfied by a maximal declaration regardless - the value
+   in driving these for real is what they contribute to check 2's per-table
+   union, `commitDaylioImport` being the cheapest real writer of
+   'importLog' among them. Only the three formats that parse an actual
+   archive container - a `.daylio` backup zip, a `.ttbackup` zip, a Day One
+   export zip - are named in WRITE_OPT_OUTS, because this sweep has no
+   fixture for one. */
 
 import assert from 'node:assert/strict';
 import { beforeAll, describe, test } from 'vitest';
@@ -59,24 +87,32 @@ const bytes = (text: string): Uint8Array => new Uint8Array([...text].map((c) => 
 const photo = (seed: string) => ({ full: bytes(`full ${seed}`), thumb: bytes(`thumb ${seed}`) });
 
 /** Every write this sweep does not drive, with the reason - see the header.
-    Keyed `area.operation`, or bare for the two journal-wide operations. */
+    Keyed `area.operation`. Only the three import formats that parse a real
+    archive container (a `.daylio` backup, a `.ttbackup` zip, a Day One
+    export zip) are here: `archive.replace`, `archive.merge`,
+    `commitDaylioImport`, `commitTrackAndGraphImport`, `commitPixelsImport`
+    and `discardEverything` all declare every table by design too, but
+    `writes.test.ts` already drives every one of those with nothing more
+    than an in-memory snapshot or an inline CSV/JSON payload, so this file
+    does the same below rather than opting out of what is genuinely
+    drivable. */
 const WRITE_OPT_OUTS: Record<string, string> = {
-  'archive.replace':
-    "declares every table by design (writes.ts: \"a Replace touches everything by definition\"), not what one call's SQL happens to touch",
-  'archive.merge': 'the same declared ceiling as archive.replace, for the same reason',
-  'archive.commitDaylioImport': 'the same declared ceiling as archive.replace, for the same reason',
-  'archive.commitDaylioBackupImport':
-    'the same declared ceiling as archive.replace, and needs a real .daylio backup file to drive',
-  'archive.commitTransTracksImport':
-    'the same declared ceiling as archive.replace, and needs a real .ttbackup zip to drive',
-  'archive.commitDayOneImport':
-    'the same declared ceiling as archive.replace, and needs a real Day One export zip to drive',
-  'archive.commitTrackAndGraphImport': 'the same declared ceiling as archive.replace, for the same reason',
-  'archive.commitPixelsImport':
-    'the same declared ceiling as archive.replace, and needs a real Pixels backup file to drive',
-  discardEverything:
-    "declares every table by design, the same reason archive.replace does (its own docstring: \"the same thing a Replace import does\")"
+  'archive.commitDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
+  'archive.commitTransTracksImport': 'parses a real .ttbackup zip, which this sweep has no fixture for',
+  'archive.commitDayOneImport': 'parses a real Day One export zip, which this sweep has no fixture for'
 };
+
+/** The read half's own opt-outs, same reason and same shape: the three
+    preview reads for the archive containers WRITE_OPT_OUTS names above. */
+const READ_OPT_OUTS: Record<string, string> = {
+  'archive.previewDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
+  'archive.previewTransTracksImport': 'parses a real .ttbackup zip, which this sweep has no fixture for',
+  'archive.previewDayOneImport': 'parses a real Day One export zip, which this sweep has no fixture for'
+};
+
+/** The two driven operations whose SQL wipes the journal for real - see
+    the per-coarse-name union check below for why they're excluded there. */
+const WIPES_THE_JOURNAL = new Set(['archive.replace', 'discardEverything']);
 
 interface Driven {
   key: string;
@@ -97,20 +133,28 @@ let recording: RecordingDriver;
     `writes.ts` actually classifies, not from what this file remembered to
     drive. */
 let declaredBy: Map<string, readonly TableName[]>;
+/** Every classified read's key, built the same way `declaredBy` is, so the
+    read half's coverage check works from what `writes.ts` actually
+    classifies too. */
+let declaredReadsBy: Set<string>;
 
-async function drive(area: string, operation: string, run: () => Promise<unknown>): Promise<unknown> {
+async function drive<T>(area: string, operation: string, run: () => Promise<T>): Promise<T> {
   const { result, recording: rec } = await recording.record(run);
   driven.push({ key: `${area}.${operation}`, coarse: tablesWrittenBy(area, operation), wrote: rec.wrote });
   return result;
 }
 
-async function driveWide(operation: (typeof JOURNAL_WIDE)[number], tables: TableName[], run: () => Promise<unknown>) {
+async function driveWide<T>(
+  operation: (typeof JOURNAL_WIDE)[number],
+  tables: TableName[],
+  run: () => Promise<T>
+): Promise<T> {
   const { result, recording: rec } = await recording.record(run);
   driven.push({ key: operation, coarse: tables, wrote: rec.wrote });
   return result;
 }
 
-async function driveRead(area: string, operation: string, run: () => Promise<unknown>): Promise<unknown> {
+async function driveRead<T>(area: string, operation: string, run: () => Promise<T>): Promise<T> {
   const { result, recording: rec } = await recording.record(run);
   readWrote.push({ key: `${area}.${operation}`, wrote: rec.wrote });
   return result;
@@ -120,6 +164,7 @@ beforeAll(async () => {
   driven = [];
   readWrote = [];
   declaredBy = new Map();
+  declaredReadsBy = new Set();
   const { journal: throwaway } = await (await import('../journal/test-support.ts')).journalWithBuiltIns();
   for (const operation of JOURNAL_WIDE) {
     declaredBy.set(operation, operation === 'reconcileBuiltIns' ? RECONCILE_TABLES : [...TABLE_NAMES]);
@@ -130,7 +175,8 @@ beforeAll(async () => {
       try {
         declaredBy.set(`${areaName}.${operation}`, tablesWrittenBy(areaName, operation));
       } catch {
-        // a classified read, not a write - nothing to record here.
+        tablesReadBy(areaName, operation); // throws its own message if this is neither
+        declaredReadsBy.add(`${areaName}.${operation}`);
       }
     }
   }
@@ -566,7 +612,9 @@ beforeAll(async () => {
   await drive('revisits', 'setRevisit', () =>
     journal.revisits.setRevisit({ entryId, createdEpochDay: 20000, targetEpochDay: 20100 })
   );
-  const revisitForEntry = await journal.revisits.getRevisitForEntry(entryId);
+  const revisitForEntry = await driveRead('revisits', 'getRevisitForEntry', () =>
+    journal.revisits.getRevisitForEntry(entryId)
+  );
   await drive('revisits', 'deleteRevisit', () => journal.revisits.deleteRevisit(revisitForEntry!.id));
 
   // --- marginNotes ------------------------------------------------------
@@ -689,7 +737,9 @@ beforeAll(async () => {
   await drive('checklists', 'reorder', () =>
     journal.checklists.reorder(ownedChecklist!.id, [...ownedChecklist!.items.map((i) => i.id), ownedItem.id].slice(-2))
   );
-  await drive('checklists', 'createChecklist', () => journal.checklists.createChecklist({ kind: 'test-owner', id: 'owner-2' }));
+  await drive('checklists', 'createChecklist', () =>
+    journal.checklists.createChecklist({ kind: 'test-owner', id: 'owner-2' })
+  );
   const standaloneItem = (await drive('checklists', 'addToStandaloneChecklist', () =>
     journal.checklists.addToStandaloneChecklist('ask about spironolactone dose')
   )) as { id: string };
@@ -770,13 +820,10 @@ beforeAll(async () => {
   )) as { id: string };
   await drive('roadmap', 'setCustomGoalStatus', () => journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked'));
 
-  // Everything created above stays for the read half.
-  void [
-    label(entryId, secondEntryId, milestoneId, secondMilestoneId, labId, measurementId, sizeRecordId, taperSessionId,
-      reminderId, tallyId, episodeId, doseId, stockId, sideEffectId, cycleEventId, journalingPauseId,
-      savedQuestionId, marginNoteId, wearSessionId, hairStageId, hairRemovalId, procedureId, checklistItem,
-      comfortItemId, tryoutId, letterId, template, benchmarkId, takeId)
-  ];
+  // These ids are never read back below; kept only because they exist -
+  // suppresses "declared but never read" without pretending they matter.
+  void [labId, measurementId, sizeRecordId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
+    journalingPauseId, savedQuestionId, wearSessionId, hairStageId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
   // Every classified read this file can drive with no more setup than the
@@ -860,6 +907,7 @@ beforeAll(async () => {
   await driveRead('cycleEvents', 'lastWriteEpochDay', () => journal.cycleEvents.lastWriteEpochDay(20000));
   await driveRead('journalingPauses', 'getPauses', () => journal.journalingPauses.getPauses());
   await driveRead('savedQuestions', 'getSavedQuestions', () => journal.savedQuestions.getSavedQuestions());
+  await driveRead('revisits', 'getDueRevisits', () => journal.revisits.getDueRevisits(20200));
   await driveRead('marginNotes', 'forEntries', () => journal.marginNotes.forEntries([entryId]));
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
@@ -962,11 +1010,49 @@ beforeAll(async () => {
   );
   await driveRead('archive', 'snapshot', () => journal.archive.snapshot());
   await driveRead('archive', 'importLog', () => journal.archive.importLog());
-}, 30_000);
 
-function label(...ids: unknown[]): unknown[] {
-  return ids;
-}
+  // --- archive writes, and discardEverything - both driven at the very
+  // end, since replace and discardEverything wipe the journal every read
+  // above already depended on (see the header for why these are driven at
+  // all rather than opted out). ---
+  const mergeSnapshot = await journal.archive.snapshot();
+  await drive('archive', 'merge', () =>
+    journal.archive.merge({ journal: mergeSnapshot.journal, files: (async function* () {})() })
+  );
+
+  const daylioPreview = await driveRead('archive', 'previewDaylioImport', () =>
+    journal.archive.previewDaylioImport(
+      'full_date,date,weekday,time,mood,activities,note_title,note\n2026-01-15,January 15,Thursday,07:15,Rad,,,from Daylio',
+      { tagLabels: () => [] }
+    )
+  );
+  await drive('archive', 'commitDaylioImport', () => journal.archive.commitDaylioImport(daylioPreview));
+
+  const trackAndGraphPreview = await driveRead('archive', 'previewTrackAndGraphImport', () =>
+    journal.archive.previewTrackAndGraphImport(
+      ['FeatureName,Timestamp,Value', 'Weight,2022-09-14T21:30:41.432+01:00,72.5'].join('\r\n')
+    )
+  );
+  await drive('archive', 'commitTrackAndGraphImport', () =>
+    journal.archive.commitTrackAndGraphImport(trackAndGraphPreview)
+  );
+
+  const pixelsPreview = await driveRead('archive', 'previewPixelsImport', () =>
+    journal.archive.previewPixelsImport(
+      new TextEncoder().encode(
+        JSON.stringify([{ date: '2026-9-1', type: 'MOOD', scores: [3], notes: 'from Pixels', tags: [] }])
+      )
+    )
+  );
+  await drive('archive', 'commitPixelsImport', () => journal.archive.commitPixelsImport(pixelsPreview));
+
+  const replaceSnapshot = await journal.archive.snapshot();
+  await drive('archive', 'replace', () =>
+    journal.archive.replace({ journal: replaceSnapshot.journal, files: (async function* () {})() })
+  );
+
+  await driveWide('discardEverything', [...TABLE_NAMES], () => journal.discardEverything());
+}, 30_000);
 
 describe('every classified write announces exactly the tables its SQL touched', () => {
   test('every classified write is either driven here or opted out with a reason', () => {
@@ -986,19 +1072,25 @@ describe('every classified write announces exactly the tables its SQL touched', 
   test('every table a coarse name declares is actually written by some operation that declares it', () => {
     for (const name of TABLE_NAMES) {
       const declaringKeys = [...declaredBy.entries()].filter(([, tables]) => tables.includes(name)).map(([key]) => key);
-      // A name only ever declared by opted-out operations (importLog: only
-      // archive's commit*Import writes it, and all of those are opted out
-      // above) has nothing driven to check it against - skip rather than
-      // fail on a gap this file already named a reason for.
+      // A name only ever declared by opted-out operations has nothing
+      // driven to check it against - skip rather than fail on a gap this
+      // file already named a reason for.
       if (declaringKeys.length > 0 && declaringKeys.every((key) => key in WRITE_OPT_OUTS)) continue;
 
-      const owners = driven.filter((d) => d.coarse.includes(name));
+      // archive.replace and discardEverything wipe the whole journal for
+      // real, so their observed writes span nearly every content table -
+      // which would let either one alone "satisfy" this check for any
+      // coarse name, telling this test nothing about whether *that* name's
+      // mapping is right. They still count for check 1 and for coverage;
+      // only the per-table union below excludes them, the same reason a
+      // proof that touches everything proves nothing about one thing.
+      const owners = driven.filter((d) => d.coarse.includes(name) && !WIPES_THE_JOURNAL.has(d.key));
       const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => SQL_TABLES[name].includes(table)));
       assert.deepEqual(
         [...hit].sort(),
         [...SQL_TABLES[name]].sort(),
-        `SQL_TABLES['${name}'] claims ${JSON.stringify(SQL_TABLES[name])}, but only ${JSON.stringify([...hit])} is ever written by an operation that declares '${name}'` +
-          (owners.length === 0 ? ' (no driven operation declares it at all)' : '')
+        `SQL_TABLES['${name}'] claims ${JSON.stringify(SQL_TABLES[name])}, but only ${JSON.stringify([...hit])} is ever written (outside a full wipe) by an operation that declares '${name}'` +
+          (owners.length === 0 ? ' (no driven, non-wiping operation declares it at all)' : '')
       );
     }
   });
@@ -1017,6 +1109,12 @@ test('every read this sweep drove is one writes.ts actually classifies as a read
   }
 });
 
+test('every classified read is either driven here or opted out with a reason', () => {
+  const drivenKeys = new Set(readWrote.map((d) => d.key));
+  const missing = [...declaredReadsBy].filter((key) => !drivenKeys.has(key) && !(key in READ_OPT_OUTS));
+  assert.deepEqual(missing, [], `driven nor opted out: ${missing.join(', ')}`);
+});
+
 describe('the two checks above can actually fail', () => {
   test('a table removed from a declaration a write really touches fails the per-operation check', () => {
     const entry = driven.find((d) => d.key === 'entries.upsertEntry')!;
@@ -1031,7 +1129,7 @@ describe('the two checks above can actually fail', () => {
 
   test('a table nothing writes, added to a declaration, fails the per-coarse-name union check', () => {
     const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'photo'] };
-    const owners = driven.filter((d) => d.coarse.includes('tally'));
+    const owners = driven.filter((d) => d.coarse.includes('tally') && !WIPES_THE_JOURNAL.has(d.key));
     const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.tally.includes(table)));
     assert.notDeepEqual([...hit].sort(), [...padded.tally].sort());
   });

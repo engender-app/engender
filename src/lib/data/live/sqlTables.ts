@@ -84,6 +84,8 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
     checked by name in sqlTables.test.ts against a freshly migrated
     database, so a table this repo adds and forgets to place fails there
     rather than nowhere. */
+const FTS5_SHADOW_TABLE_REASON = "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it";
+
 export const UNMAPPED_TABLES: Record<string, string> = {
   // Preferences (ADR-0009): its own store, outside the journal's write
   // registry - nothing in writes.ts classifies a pref write or read.
@@ -93,8 +95,8 @@ export const UNMAPPED_TABLES: Record<string, string> = {
   // FTS5's shadow tables for entry_fts: SQLite manages these itself whenever
   // app SQL touches the virtual table entry_fts, and app SQL never names
   // them directly - a driver that only reads SQL text can never see one.
-  entry_fts_data: "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it",
-  entry_fts_idx: "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it",
-  entry_fts_docsize: "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it",
-  entry_fts_config: "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it"
+  entry_fts_data: FTS5_SHADOW_TABLE_REASON,
+  entry_fts_idx: FTS5_SHADOW_TABLE_REASON,
+  entry_fts_docsize: FTS5_SHADOW_TABLE_REASON,
+  entry_fts_config: FTS5_SHADOW_TABLE_REASON
 };
