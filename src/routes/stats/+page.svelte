@@ -22,18 +22,20 @@
      holds too little, because it is the tab's own content and somebody
      arriving on day two should see what the tab becomes.
 
-     The block below it is one card per area the person actually uses, in the
-     More hub's four groups in the More hub's order. A card appears where the
+     The block below it is one row per area the person actually uses, in the
+     More hub's four groups in the More hub's order. A row appears where the
      area has ever been written and never otherwise, decided in
-     `$lib/data/statsAreas.ts` over one `getLastWrites` call. A card previews
-     and does not redraw: a trend card makes the same read its own screen
-     makes, and everything that screen does beyond drawing a line - the
-     pickers, the annotations, the presentation chip, the editing - is
-     reached by going there.
+     `$lib/data/statsAreas.ts` over one `getLastWrites` call. Rows and no
+     charts (Alicja, on the rendered screen): every one of these areas owns
+     its chart on its own screen, the wear trend included, and a second
+     drawing here is a second thing to keep in agreement for a reading you
+     get by tapping through.
 
-     Two floors, both existing constants and neither restated: a trend needs
-     `MIN_PLOT_POSITIONS` plotted positions, a summary needs
-     `WRAPPED_ENTRY_FLOOR` entries in range.
+     One floor, an existing constant and not restated: a summary panel needs
+     `WRAPPED_ENTRY_FLOOR` entries in range, and the two folds want the same
+     five as positions of their own all-history output. ADR-0056's other
+     floor, `MIN_PLOT_POSITIONS`, went off this screen with the area charts
+     and still governs the trends on the screens that own them.
 
      One disclaimer still hangs under its card rather than inside it, and it
      is the explanatory-paragraph habit's opposite: `insights_note` says
@@ -87,9 +89,7 @@
   import type { CorrelationCard } from '$lib/data/correlationCards';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Donut from '$lib/components/kit/Donut.svelte';
-  import Icon from '$lib/components/Icon.svelte';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { MIN_PLOT_POSITIONS } from '$lib/charts/annotations';
   import { rankHighestDays } from '$lib/data/highestDays';
   import { cardsInGroup, statsAreaCards, STATS_AREA_GROUPS, type StatsAreaCard } from '$lib/data/statsAreas';
   import { statsAreaName } from '$lib/data/vocabulary/statsAreaLabels';
@@ -127,12 +127,8 @@
      own index, which is the hub's own line. Somebody who has learned that
      Body is the first stripe on one screen finds it the first stripe on the
      other, and the two surfaces recolour together on a palette switch. */
-  const GROUP_ROLE: Record<(typeof STATS_AREA_GROUPS)[number], number> = {
-    body: 0,
-    health: 1,
-    transition: 2,
-    practice: 3
-  };
+  const groupRole = (group: (typeof STATS_AREA_GROUPS)[number]) =>
+    roleAt(activeFlag.roles, STATS_AREA_GROUPS.indexOf(group));
 
   const GROUP_NAME: Record<(typeof STATS_AREA_GROUPS)[number], () => string> = {
     body: m.hub_group_body,
@@ -411,14 +407,26 @@
      ADR-0058 named when it minted the form and left unbuilt. Tags have no
      order, so a ring is the right drawing and the ordered strip beside it
      would be inventing a sequence. The ring's own module caps, sorts and
-     gathers the remainder; nothing about that is decided here. */
+     gathers the remainder; nothing about that is decided here.
+
+     `tagShare` and not the recap's `topTags`, which is what this drew first
+     and was wrong: that read ends `LIMIT 3`, and a parts-of-a-whole form
+     computes each share against the sum of what it is handed, so three tags
+     came out drawn as a full circle with every share inflated and the
+     remainder slice unreachable. Capping is the ring's job and it can only
+     do it over the whole. */
+  let tagShareQuery = liveList((j) => j.stats.tagShare(from, today));
   let tagParts = $derived<Part[]>(
-    (recapQuery.value?.topTags ?? []).map((tag) => ({
+    tagShareQuery.rows.map((tag) => ({
       key: tag.id,
       name: vocabulary.tag(tag.id)?.label ?? tag.id,
       amount: tag.count
     }))
   );
+  /* The whole the ring is a ring of: tag uses, not entries. An entry carrying
+     two tags is one entry and two uses, so the centre has to count what the
+     arcs add up to or the hole disagrees with the ring around it. */
+  let tagUses = $derived(tagParts.reduce((sum, part) => sum + part.amount, 0));
 
   /* The highest days on the person's own euphoria reading (phase 8 features
      ticket 20), which shipped its ranking and left the panel here.
@@ -463,139 +471,20 @@
       ? statsAreaCards(lastWritesQuery.value, areaStatesQuery.value)
       : []
   );
-  const shows = (key: string) => areaCards.some((card) => card.panel.key === key);
-  let showsMeasurements = $derived(shows('measurements'));
-  let showsLabs = $derived(shows('labs'));
-  let showsWear = $derived(shows('wear'));
-  let showsTally = $derived(shows('tally'));
-
-  /* A trend card's series comes back from the read its own screen makes, so
-     the two cannot disagree, and it is not asked for at all until the card
-     exists. `Promise.resolve` on the closed arm is the constellation's own
-     shape: a query that is declared once and answers nothing. */
-  let areaMeasurementsQuery = liveList((j) =>
-    showsMeasurements ? j.measurements.getMeasurementsInRange(from, today) : Promise.resolve([])
-  );
-  /* The most recently written type, and its most recently written unit.
-     Grouping by unit is the measurements screen's own correctness rule -
-     centimetres and inches must not become one line - and the newest row
-     picks which of them is drawn rather than a preference this screen would
-     have to store. */
-  let measurementPreview = $derived.by(() => {
-    const rows = areaMeasurementsQuery.rows;
-    if (rows.length === 0) return null;
-    const newest = rows.reduce((best, row) => (row.epochDay >= best.epochDay ? row : best));
-    const kept = rows.filter((row) => row.type === newest.type && row.unit === newest.unit);
-    return {
-      name: vocabulary.measurementTypeName(newest.type),
-      unit: newest.unit,
-      points: kept.map((row) => ({ x: row.epochDay, y: row.value })).sort((a, b) => a.x - b.x)
-    };
-  });
-
-  let labAnalyteQuery = liveQuery((j) =>
-    showsLabs ? j.labs.getMostRecentAnalyte() : Promise.resolve(null)
-  );
-  let labAnalyte = $derived(labAnalyteQuery.value ?? null);
-  let labSeriesQuery = liveList((j) => {
-    const analyte = labAnalyte;
-    return analyte ? j.labs.getSeries(analyte) : Promise.resolve([]);
-  });
-  /* One unit's results, inside the range the picker names. A lab series is
-     split by unit for the same reason a measurement series is, and the first
-     one back is the oldest, which is the one the labs screen draws first. */
-  let labPreview = $derived.by(() => {
-    const series = labSeriesQuery.rows[0];
-    if (!series || !labAnalyte) return null;
-    const kept = series.results.filter((r) => r.epochDay >= from && r.epochDay <= today);
-    return {
-      name: labAnalyte,
-      unit: series.unit,
-      points: kept.map((r) => ({ x: r.epochDay, y: r.value })).sort((a, b) => a.x - b.x)
-    };
-  });
-
-  let wearTrendQuery = liveList((j) =>
-    showsWear ? j.stats.wearTimeTrend(from, today) : Promise.resolve([])
-  );
-  let wearPoints = $derived(wearTrendQuery.rows.map((p) => ({ x: p.day, y: p.value })));
-
-  /* Both tally kinds, as two lines on one plot - the same two reads the
-     tally screen makes. Drawing one would be this tab choosing which of the
-     two somebody should be looking at. */
-  let tallyMisgenderedQuery = liveList((j) =>
-    showsTally ? j.stats.tallyTrend('misgendered', from, today) : Promise.resolve([])
-  );
-  let tallyCorrectQuery = liveList((j) =>
-    showsTally ? j.stats.tallyTrend('correctly_gendered', from, today) : Promise.resolve([])
-  );
-  let tallyCorrectPoints = $derived(
-    atGrain(tallyCorrectQuery.rows.map((p) => ({ x: p.day, y: p.value })), range).points
-  );
-  let tallyMisgenderedPoints = $derived(
-    atGrain(tallyMisgenderedQuery.rows.map((p) => ({ x: p.day, y: p.value })), range).points
-  );
-  let tallyAligned = $derived(alignSeries(tallyCorrectPoints, tallyMisgenderedPoints));
-  let tallyMax = $derived(
-    Math.max(1, ...tallyAligned.map((row) => Math.max(row.a ?? 0, row.b ?? 0)))
-  );
-  /* Both kinds have to be drawable, not the union of their positions. One
-     day of each aligns to two positions and clears a naive floor, and what
-     comes out is two dots at opposite corners under a legend naming two
-     lines that are not there - which is what this card drew the first time
-     it was screenshot. Where either kind is short the card falls back to its
-     row rather than dropping the other kind, because a Tally card showing
-     only the good half would be the tab choosing what somebody should read. */
-  let tallyDrawable = $derived(
-    tallyCorrectPoints.length >= MIN_PLOT_POSITIONS &&
-      tallyMisgenderedPoints.length >= MIN_PLOT_POSITIONS
-  );
-
-  /* A trend card draws only where there is a line to draw: two plotted
-     positions, `MIN_PLOT_POSITIONS` from the annotations module, which is
-     the floor ADR-0056 holds every trend on this screen to. One point is not
-     a line, and drawing it as one claims a direction the data has not got. */
-  const drawable = (points: { x: number; y: number }[]) => points.length >= MIN_PLOT_POSITIONS;
-
-  /* What a row-preview card says under its title: the day it ended where the
-     person has said it ended, and the last thing written there otherwise.
-     Never a gap, never a nudge - the hub is where an area that has gone
-     quiet gets asked about. */
+  /* What a row says under its title: the day it ended where the person has
+     said it ended, and the last thing written there otherwise. Never a gap,
+     never a nudge - the hub is where an area that has gone quiet gets asked
+     about. */
   const areaLine = (card: StatsAreaCard) =>
     card.finishedEpochDay !== null
-      ? m.area_finish_done_title({ date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })
-      : m.stats_area_last({ date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) });
-
-  /* Which of the trend cards actually has a line to draw in this range.
-
-     The reason this is decided here and not in the registry: a measurement
-     goes in monthly and a lab result quarterly, so at the default thirty
-     days most of these have one point or none, and a card declaring itself
-     a trend would draw an empty plot with a heading over it. That is the
-     same failure the whole rethink is about, one level down - a chart shown
-     for something there is nothing to chart.
-
-     So the preview kind in the registry is the best form a card can take,
-     and the range decides whether it gets it. Under the floor it falls back
-     to the row, which still says the true thing: this area exists, here is
-     when you last wrote in it, here is the way in. Nothing on this screen is
-     ever an empty plot. */
-  let drawableAreas = $derived(
-    new Set(
-      [
-        measurementPreview && drawable(measurementPreview.points) ? 'measurements' : null,
-        labPreview && drawable(labPreview.points) ? 'labs' : null,
-        drawable(wearPoints) ? 'wear' : null,
-        tallyDrawable ? 'tally' : null
-      ].filter((key): key is string => key !== null)
-    )
-  );
+      ? m.area_finish_done_title({
+          date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+        })
+      : m.stats_area_last({
+          date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+        });
 
   const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
-  const trendCards = (group: (typeof STATS_AREA_GROUPS)[number]) =>
-    groupCards(group).filter((card) => drawableAreas.has(card.panel.key));
-  const rowCards = (group: (typeof STATS_AREA_GROUPS)[number]) =>
-    groupCards(group).filter((card) => !drawableAreas.has(card.panel.key));
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
@@ -636,10 +525,37 @@
 
   /* A position on a cycle is not a day, so the two pattern charts label
      their ends with the position rather than with a date, and they are
-     already one point per position - there is nothing to bucket. */
+     already one point per position - there is nothing to bucket.
+
+     The axis is the position too, and it was missing (Alicja, on the shots):
+     both folds drew a value gutter and no ends at all, so the one thing the
+     picture is keyed on went unnamed. `interval_day_n` is what the two aria
+     labels have always said out loud - "day {from} to day {to}" - now
+     written on the chart as well, and the scrub reads the same words as the
+     ends it sits between. Not `range_days`, which is the segmented control's
+     compact form and rendered "1d" where this wants "Day 1". */
   const positionPoints = (pattern: { position: number; value: number }[]) =>
     pattern.map((p) => ({ x: p.position, y: p.value }));
-  const positionLabel = (point: { x: number }) => m.range_days({ days: String(point.x) });
+  const positionLabel = (point: { x: number }) => m.interval_day_n({ n: String(point.x) });
+  const positionEnds = (pattern: { position: number }[]) => ({
+    from: m.interval_day_n({ n: String(pattern[0].position) }),
+    to: m.interval_day_n({ n: String(pattern[pattern.length - 1].position) })
+  });
+
+  /* What a fold has to hold before it is drawn.
+
+     Not the range floor the summary panels use, which is what these two were
+     wrongly behind: the card says it reads the whole journal and the gate was
+     counting entries in the last thirty days, so a long dose history with a
+     quiet month hid both cards. And not the bare trend floor either - two
+     positions is one straight segment, which is what this drew for somebody
+     with a couple of entries and is the empty-chart complaint this whole
+     ticket opens with.
+
+     `WRAPPED_ENTRY_FLOOR` positions of the fold's own all-history output:
+     five places inside the interval that carry a reading. An existing
+     constant, applied to the thing the card actually draws. */
+  const foldDrawable = (pattern: readonly unknown[]) => pattern.length >= WRAPPED_ENTRY_FLOOR;
 
   /* The day-by-day chart fits the card, so what changes with the range is
      how coarsely it reads: 30 days day by day, a year week by week
@@ -914,7 +830,7 @@
     {#if seriesQuery.loading || recapQuery.loading}
       <Skeleton variant="line" count={3} />
     {:else if enoughEntries}
-      <BarRows rows={scaleRows} scale="track" />
+      <BarRows rows={scaleRows} measure="track" />
     {:else}
       <!-- A zero-length bar per ticked scale was what this drew for somebody
            who had never logged one. The floor is WRAPPED_ENTRY_FLOOR, the
@@ -998,13 +914,13 @@
        stripe through its own tint ladder, and a second stripe on the frame
        would be a colour the arcs are already spending. -->
   <ChartCard heading={m.stats_tag_share()} kind="tag-share" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    {#if recapQuery.loading}
+    {#if recapQuery.loading || tagShareQuery.loading}
       <Skeleton variant="block" />
     {:else if enoughEntries && tagParts.length}
       <Donut
         parts={tagParts}
         restName={m.stats_tag_share_rest()}
-        total={String(entryCount)}
+        total={String(tagUses)}
         note={m.stats_tag_share_note()}
       />
     {:else}
@@ -1077,7 +993,7 @@
       {#if seriesQuery.loading || recapQuery.loading}
         <Skeleton variant="line" count={3} />
       {:else if enoughEntries && highestRows.length}
-        <BarRows rows={highestRows} scale="track" onPick={(key) => goto(`/day/${key}`)} />
+        <BarRows rows={highestRows} measure="track" onPick={(key) => goto(`/day/${key}`)} />
         <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
       {:else}
         <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
@@ -1090,37 +1006,40 @@
     kind="interval-mood"
     role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}
   >
-    {#if !enoughEntries}
-      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
-    {:else}
     <ReadGate read={intervalMoodQuery} variant="block" count={3}>
       {#snippet rows()}
-        <!-- Inside the card and above the plot, which is the point (ADR-0056).
-             It used to hang under the card and print whether or not anything
-             was drawn, so somebody who had never logged a dose read about
-             where their days fall across the dosing interval. The card card
-             takes no prop for a paragraph and still does not; this is body
-             content, drawn beside the chart it belongs to and gated on the
-             same read. -->
-        <p class="stats-inline-note">{m.stats_all_history()}</p>
-        <AreaChart
-          points={positionPoints(intervalMoodPattern)}
-          min={1}
-          max={5}
-          formatValue={(v) => v.toFixed(1)}
-          scrubLabel={positionLabel}
-          ariaLabel={m.interval_mood_chart_aria({
-            count: String(intervalMoodPattern.length),
-            from: String(intervalMoodPattern[0].position),
-            to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-          })}
-        />
+        {#if foldDrawable(intervalMoodPattern)}
+          <!-- Inside the card and above the plot, which is the point
+               (ADR-0056). It used to hang under the card and print whether or
+               not anything was drawn, so somebody who had never logged a dose
+               read about where their days fall across the dosing interval.
+               ChartCard takes no prop for a paragraph and still does not; this
+               is body content, drawn beside the chart it belongs to and gated
+               on the same read. -->
+          <p class="stats-inline-note">{m.stats_all_history()}</p>
+          {@const ends = positionEnds(intervalMoodPattern)}
+          <AreaChart
+            points={positionPoints(intervalMoodPattern)}
+            min={1}
+            max={5}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => v.toFixed(1)}
+            scrubLabel={positionLabel}
+            ariaLabel={m.interval_mood_chart_aria({
+              count: String(intervalMoodPattern.length),
+              from: String(intervalMoodPattern[0].position),
+              to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+        {/if}
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
-    {/if}
   </ChartCard>
   <!-- The interval length is this chart's one control, so it sits on the
        heading's line where the metric picker sits on the chart above rather
@@ -1141,152 +1060,65 @@
         />
       </span>
     {/snippet}
-    {#if !enoughEntries}
-      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
-    {:else}
     <ReadGate read={customIntervalQuery} variant="block" count={3}>
       {#snippet rows(customIntervalPattern)}
-        <p class="stats-inline-note">{m.stats_all_history()}</p>
-        <AreaChart
-          points={positionPoints(customIntervalPattern)}
-          min={1}
-          max={5}
-          formatValue={(v) => v.toFixed(1)}
-          scrubLabel={positionLabel}
-          ariaLabel={m.custom_interval_chart_aria({
-            days: String(safeCustomIntervalLength),
-            count: String(customIntervalPattern.length),
-            from: String(customIntervalPattern[0].position),
-            to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-          })}
-        />
+        {#if foldDrawable(customIntervalPattern)}
+          <p class="stats-inline-note">{m.stats_all_history()}</p>
+          {@const ends = positionEnds(customIntervalPattern)}
+          <AreaChart
+            points={positionPoints(customIntervalPattern)}
+            min={1}
+            max={5}
+            from={ends.from}
+            to={ends.to}
+            formatValue={(v) => v.toFixed(1)}
+            scrubLabel={positionLabel}
+            ariaLabel={m.custom_interval_chart_aria({
+              days: String(safeCustomIntervalLength),
+              count: String(customIntervalPattern.length),
+              from: String(customIntervalPattern[0].position),
+              to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+            })}
+          />
+        {:else}
+          <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
+        {/if}
       {/snippet}
       {#snippet empty()}
         <ChartEmpty>{m.custom_interval_empty()}</ChartEmpty>
       {/snippet}
     </ReadGate>
-    {/if}
   </ChartCard>
-  <!-- The area index (ADR-0056). One card per area the person actually uses,
+  <!-- The area index (ADR-0056). One row per area the person actually uses,
        in the More hub's own four groups in the More hub's own order, so
        somebody learns one organising idea rather than two.
 
-       A card appears where the area has ever been written and is not hidden,
+       A row appears where the area has ever been written and is not hidden,
        decided once in `statsAreas.ts` over one `getLastWrites` call. An area
-       nobody uses is not in the DOM at all - no card, no heading, no footer
+       nobody uses is not in the DOM at all - no row, no heading, no footer
        offering it. Discovery stays the hub's job, and somebody who has never
        logged a dose is not told the app could have charted one.
 
-       A card previews; it does not redraw. Twelve areas own a chart on their
-       own screen and copying those here would give two implementations to
-       keep in agreement, so a trend card makes the same read its screen
-       makes, in the same component, and hands over the screen's own pickers,
-       annotations and editing by sending you there. -->
+       Rows and no charts, which is Alicja's call on the rendered screen:
+       every one of these areas owns its chart on its own screen, and a
+       second drawing of it here is a second thing to keep in agreement for
+       the sake of a preview nobody asked to read twice. The wear trend lives
+       on the wear screen. What this block is for is knowing which parts of
+       your own life the app is holding, and getting to them. -->
   {#each STATS_AREA_GROUPS as group (group)}
     {#if groupCards(group).length}
       <SectionHeading text={GROUP_NAME[group]()} />
-      {#each trendCards(group) as card (card.panel.key)}
-        <ChartCard
-          heading={statsAreaName(card.panel.key)}
-          kind="area-{card.panel.key}"
-          role={roleAt(activeFlag.roles, GROUP_ROLE[group])}
-        >
-          {#snippet control()}
-            <!-- The way in, on the heading's line where a chart card holds
-                 its one control. The card is a preview; this is the screen
-                 that owns the whole thing. -->
-            <a class="stats-area-open" href={card.panel.href} data-area-open={card.panel.key}>
-              {m.stats_area_open()}
-              <Icon name="chevronRight" />
-            </a>
-          {/snippet}
-          {#if card.panel.key === 'measurements'}
-            {#if measurementPreview && drawable(measurementPreview.points)}
-              {@const plot = atGrain(measurementPreview.points, range)}
-              <AreaChart
-                points={plot.points}
-                min={Math.min(...measurementPreview.points.map((p) => p.y))}
-                max={Math.max(...measurementPreview.points.map((p) => p.y))}
-                name={measurementPreview.name}
-                from={fmtDay(from, { day: 'numeric', month: 'short' })}
-                to={fmtDay(today, { day: 'numeric', month: 'short' })}
-                formatValue={(v) => `${Math.round(v * 10) / 10} ${measurementPreview.unit}`}
-                scrubLabel={grainLabel(plot.grain)}
-                ariaLabel={measurementPreview.name}
-              />
-              <p class="stats-inline-note">{measurementPreview.name}</p>
-            {/if}
-          {:else if card.panel.key === 'labs'}
-            {#if labPreview && drawable(labPreview.points)}
-              {@const plot = atGrain(labPreview.points, range)}
-              <AreaChart
-                points={plot.points}
-                min={Math.min(...labPreview.points.map((p) => p.y))}
-                max={Math.max(...labPreview.points.map((p) => p.y))}
-                name={labPreview.name}
-                from={fmtDay(from, { day: 'numeric', month: 'short' })}
-                to={fmtDay(today, { day: 'numeric', month: 'short' })}
-                formatValue={(v) => `${Math.round(v * 10) / 10} ${labPreview.unit}`}
-                scrubLabel={grainLabel(plot.grain)}
-                ariaLabel={labPreview.name}
-              />
-              <p class="stats-inline-note">{labPreview.name}</p>
-            {/if}
-          {:else if card.panel.key === 'wear'}
-            {#if drawable(wearPoints)}
-              {@const plot = atGrain(wearPoints, range)}
-              <AreaChart
-                points={plot.points}
-                min={0}
-                max={Math.max(1, ...wearPoints.map((p) => p.y))}
-                from={fmtDay(from, { day: 'numeric', month: 'short' })}
-                to={fmtDay(today, { day: 'numeric', month: 'short' })}
-                name={m.wear_session_trend_wear_legend()}
-                formatValue={(v) => String(Math.round(v * 10) / 10)}
-                scrubLabel={grainLabel(plot.grain)}
-                ariaLabel={m.wear_session_trend_title()}
-              />
-            {/if}
-          {:else if card.panel.key === 'tally'}
-            {#if tallyDrawable}
-              <AreaChart
-                points={tallyAligned.map((row) => ({ x: row.x, y: row.a }))}
-                min={0}
-                max={tallyMax}
-                name={m.tally_correctly_gendered()}
-                overlay={{
-                  values: tallyAligned.map((row) => row.b),
-                  min: 0,
-                  max: tallyMax,
-                  name: m.tally_misgendered(),
-                  formatValue: (v) => String(Math.round(v)),
-                  role: roleAt(activeFlag.roles, GROUP_ROLE[group] + 1)
-                }}
-                from={fmtDay(from, { day: 'numeric', month: 'short' })}
-                to={fmtDay(today, { day: 'numeric', month: 'short' })}
-                formatValue={(v) => String(Math.round(v))}
-                ariaLabel={m.tally_trend_title()}
-              />
-            {/if}
-          {/if}
-          {#if card.finishedEpochDay !== null}
-            <p class="stats-inline-note">{areaLine(card)}</p>
-          {/if}
-        </ChartCard>
-      {/each}
-      {#if rowCards(group).length}
-        <ListCard role={roleAt(activeFlag.roles, GROUP_ROLE[group])}>
-          {#each rowCards(group) as card (card.panel.key)}
-            <ListRow
-              key={card.panel.key}
-              icon={card.panel.icon}
-              title={statsAreaName(card.panel.key)}
-              subtitle={areaLine(card)}
-              href={card.panel.href}
-            />
-          {/each}
-        </ListCard>
-      {/if}
+      <ListCard role={groupRole(group)}>
+        {#each groupCards(group) as card (card.panel.key)}
+          <ListRow
+            key={card.panel.key}
+            icon={card.panel.icon}
+            title={statsAreaName(card.panel.key)}
+            subtitle={areaLine(card)}
+            href={card.panel.href}
+          />
+        {/each}
+      </ListCard>
     {/if}
   {/each}
 
@@ -1337,7 +1169,7 @@
     title={compared ? m.values_two_title({ first: shown.name, second: compared.name }) : shown.name}
     onClose={() => (valueSheet = false)}
   >
-    <BarRows rows={valueRows} scale="track" />
+    <BarRows rows={valueRows} measure="track" />
     <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
       <span>{m.done()}</span>
     </button>
@@ -1394,30 +1226,6 @@
      still has to leave its label room. */
   .stats-axis :global(.kit-chart-pick) {
     max-width: 74%;
-  }
-
-  /* The way into the screen a preview card is a preview of (ADR-0056), in
-     the chart card's own control slot on the heading's line - the same place
-     the day-by-day card holds its metric picker. A link and not a button,
-     because it goes somewhere, and at the touch floor like every other
-     control on this screen. The chevron says which kind of thing it is
-     without a second word. */
-  .stats-area-open {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: var(--touch-target);
-    padding-inline-start: var(--space-2);
-    color: var(--accent-ink);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .stats-area-open :global(svg) {
-    width: 1em;
-    height: 1em;
   }
 
   /* A line of context inside a chart card, above or below the plot: which

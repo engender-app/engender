@@ -33,13 +33,13 @@
   let {
     rows,
     onPick,
-    scale = 'leader'
+    measure = 'leader'
   }: {
     rows: BarRow[];
     /** What the row's key opens, where a row goes anywhere. Omitted, the
         bars are a drawing and nothing in them is pressable. */
     onPick?: (key: string) => void;
-    /** What the track's full length means.
+    /** What the track's full length is measured against.
 
         `leader` measures every bar against the longest one in the set, which
         is right where `amount` is a magnitude with no ceiling of its own: how
@@ -58,11 +58,13 @@
         longest. The absolute reading was computed correctly at every one of
         those call sites and thrown away here.
 
-        Default is `leader`, so nothing that did not ask moves. */
-    scale?: 'leader' | 'track';
+        Named `measure` and not `scale`: a scale is this app's own word for a
+        gender dimension (docs/ui-copy.md), and `scale="track"` on a card of
+        scale bars read as though it took one. */
+    measure?: 'leader' | 'track';
   } = $props();
 
-  let top = $derived(scale === 'track' ? 1 : Math.max(0, ...rows.map((r) => r.amount)));
+  let top = $derived(measure === 'track' ? 1 : Math.max(0, ...rows.map((r) => r.amount)));
 </script>
 
 {#snippet bar(row: BarRow)}
@@ -78,7 +80,7 @@
   <div class="kit-bar-track">
     <span
       class="kit-bar-mark"
-      class:is-leader={scale === 'leader' && row.amount === top && top > 0}
+      class:is-leader={measure === 'leader' && row.amount === top && top > 0}
       style={`--bar-share: ${share(row.amount, top)}`}
     ></span>
   </div>

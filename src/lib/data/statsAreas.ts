@@ -38,17 +38,19 @@
               area: its records are there and its card belongs
      href     the screen that owns the full chart
      icon     the hub row's own icon, so the two surfaces agree
-     preview  'trend' where the owning screen's own read yields a day series
-              this card can draw in the same component, 'row' otherwise
 
    No wording here: this file is Node-tier safe and imports no paraglide
    (ADR-0016). The names live in `vocabulary/statsAreaLabels.ts`, the same
    split `areaLabels.ts` and `clinicianSummaryLabels.ts` keep.
 
-   No reads here either. A trend card's series comes back from the module that
-   owns it - the labs screen's `getSeries`, the wear screen's `wearTimeTrend`
-   - so this tab introduces no figure its owning screen does not already show
-   (ADR-0010), and if that chart changes the card changes with it. */
+   No reads here either, and no chart. The index draws a row per area and
+   sends you to the screen that owns the drawing (Alicja, on the rendered
+   screen: no graphs in this block, and the wear trend belongs on the wear
+   tab). An earlier pass gave four of these areas a preview chart and it was
+   the wrong trade - a second drawing of somebody's own data, to keep in
+   agreement with the first, for a reading they get by tapping through. What
+   the row owes is the fact the last-write seam already has: this area exists,
+   here is when you last wrote in it. */
 
 import { areaHidden, type AreaStates, type HideableArea } from './areaState';
 import { groupFinishedOn, type AreaGroupKey } from './areaGroups';
@@ -59,9 +61,6 @@ export type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
 
 export const STATS_AREA_GROUPS = ['body', 'health', 'transition', 'practice'] as const satisfies readonly StatsAreaGroup[];
 
-/** How a card previews what is behind it. */
-export type StatsAreaPreview = 'trend' | 'row';
-
 export interface StatsAreaPanel {
   key: string;
   group: StatsAreaGroup;
@@ -70,13 +69,21 @@ export interface StatsAreaPanel {
   finishes: AreaGroupKey | null;
   href: string;
   icon: string;
-  preview: StatsAreaPreview;
 }
 
 /** Keeps the declaration site honest: `covers` has to name real last-write
-    areas, and the key is checked against the panel list below rather than
-    against a second type. */
-function panel<Key extends string>(declared: StatsAreaPanel & { key: Key }) {
+    areas, and both it and the key stay literal on the way out.
+
+    `Covers` is a `const` parameter and that is the whole load-bearing part,
+    the same reason `day.ts`'s own `section` declares one. Written as a plain
+    `readonly LastWriteKey[]` it widens to every key, which makes `Covered`
+    below the whole union, `Exclude` empty, and `STATS_AREA_OPT_OUTS` accept
+    anything at all - a compile-time check that silently checks nothing while
+    looking exactly like a working one. Proved by deleting a panel and
+    watching the opt-out record demand its areas. */
+function panel<Key extends string, const Covers extends readonly LastWriteKey[]>(
+  declared: Omit<StatsAreaPanel, 'key' | 'covers'> & { key: Key; covers: Covers }
+) {
   return declared;
 }
 
@@ -88,11 +95,7 @@ const PANELS = [
     hides: 'measurements',
     finishes: 'measurements',
     href: '/settings/measurements',
-    icon: 'ruler',
-    /* `getMeasurementsInRange` is a bounded read the photo-compare view
-       already makes, so the card draws the most recently written type's
-       series out of rows it fetched once rather than asking per type. */
-    preview: 'trend'
+    icon: 'ruler'
   }),
   panel({
     key: 'sizes',
@@ -101,10 +104,7 @@ const PANELS = [
     hides: 'sizeRecords',
     finishes: 'sizes',
     href: '/settings/sizes',
-    icon: 'package',
-    /* A size is a garment label, not a number on a scale: 'M' does not sit
-       between 'S' and 'L' by any distance the app knows. */
-    preview: 'row'
+    icon: 'package'
   }),
   panel({
     key: 'hair-progress',
@@ -113,8 +113,7 @@ const PANELS = [
     hides: 'hairStages',
     finishes: 'hair-progress',
     href: '/settings/hair-progress',
-    icon: 'comb',
-    preview: 'row'
+    icon: 'comb'
   }),
   panel({
     key: 'hair-removal',
@@ -123,8 +122,7 @@ const PANELS = [
     hides: 'hairRemovalSessions',
     finishes: 'hair-removal',
     href: '/settings/hair-removal',
-    icon: 'shuffle',
-    preview: 'row'
+    icon: 'shuffle'
   }),
   panel({
     key: 'care',
@@ -133,11 +131,7 @@ const PANELS = [
     hides: 'doseEvents',
     finishes: null,
     href: '/care',
-    icon: 'timeline',
-    /* A dose is drawn on the hormone curve, which is a fitted model over a
-       regimen rather than a day series (hormoneCurve.ts). Nothing this card
-       could plot would be the chart /care sends you to. */
-    preview: 'row'
+    icon: 'timeline'
   }),
   panel({
     key: 'labs',
@@ -148,8 +142,7 @@ const PANELS = [
     href: '/settings/labs',
     /* Not `flask`, which the hub already spends on dilation and which would
        sit two rows away in the same card. */
-    icon: 'curve',
-    preview: 'trend'
+    icon: 'curve'
   }),
   panel({
     key: 'cycle-events',
@@ -160,8 +153,7 @@ const PANELS = [
     hides: null,
     finishes: null,
     href: '/settings/cycle-events',
-    icon: 'calendar',
-    preview: 'row'
+    icon: 'calendar'
   }),
   panel({
     key: 'side-effects',
@@ -170,8 +162,7 @@ const PANELS = [
     hides: 'sideEffects',
     finishes: 'side-effects',
     href: '/settings/side-effects',
-    icon: 'zap',
-    preview: 'row'
+    icon: 'zap'
   }),
   panel({
     key: 'surgery',
@@ -180,8 +171,7 @@ const PANELS = [
     hides: 'procedures',
     finishes: null,
     href: '/settings/surgery',
-    icon: 'flag',
-    preview: 'row'
+    icon: 'flag'
   }),
   panel({
     key: 'dilation',
@@ -190,12 +180,7 @@ const PANELS = [
     hides: 'taperSessions',
     finishes: 'dilation',
     href: '/settings/dilation',
-    icon: 'flask',
-    /* The dilation chart is keyed to the surgery day and re-keyed onto a
-       position rather than a date (ticket 16), so the stats range picker
-       says nothing about it. A preview over this screen's range would be a
-       different chart, which is the second implementation ADR-0056 refuses. */
-    preview: 'row'
+    icon: 'flask'
   }),
   panel({
     key: 'milestones',
@@ -204,8 +189,7 @@ const PANELS = [
     hides: 'milestones',
     finishes: null,
     href: '/settings/milestones',
-    icon: 'flag',
-    preview: 'row'
+    icon: 'flag'
   }),
   panel({
     key: 'tryouts',
@@ -214,8 +198,7 @@ const PANELS = [
     hides: 'tryouts',
     finishes: null,
     href: '/settings/tryouts',
-    icon: 'tag',
-    preview: 'row'
+    icon: 'tag'
   }),
   panel({
     key: 'voice-benchmark',
@@ -228,13 +211,7 @@ const PANELS = [
     hides: 'voiceBenchmarks',
     finishes: 'voice',
     href: '/settings/voice',
-    icon: 'mic',
-    /* The benchmark trend's range is however long there have been
-       benchmarks - they land months apart, and its own screen says so. Drawn
-       against thirty days it is nearly always one point or none, and drawn
-       against all history it would be the one card on the screen quietly
-       ignoring the picker above it. */
-    preview: 'row'
+    icon: 'mic'
   }),
   panel({
     key: 'wear',
@@ -243,8 +220,7 @@ const PANELS = [
     hides: 'wearSessions',
     finishes: 'wear',
     href: '/settings/wear',
-    icon: 'clock',
-    preview: 'trend'
+    icon: 'clock'
   }),
   panel({
     key: 'effects',
@@ -253,8 +229,7 @@ const PANELS = [
     hides: 'personalEffects',
     finishes: 'effects',
     href: '/settings/effects',
-    icon: 'sparkle',
-    preview: 'row'
+    icon: 'sparkle'
   }),
   panel({
     key: 'tally',
@@ -263,11 +238,7 @@ const PANELS = [
     hides: 'tallyEvents',
     finishes: null,
     href: '/tally',
-    icon: 'columns',
-    /* Both kinds, as two lines on one plot - the same two reads the tally
-       screen makes. Drawing only one would be the tab choosing which of the
-       two somebody should be looking at. */
-    preview: 'trend'
+    icon: 'columns'
   })
 ] as const;
 
@@ -276,7 +247,10 @@ const PANELS = [
     a card added without a name is a typecheck failure. */
 export type StatsAreaKey = (typeof PANELS)[number]['key'];
 
-export const STATS_AREA_PANELS: readonly StatsAreaPanel[] = PANELS;
+/** The panels, with their keys still literal. Typed `readonly
+    StatsAreaPanel[]` they came out as `key: string`, so a screen comparing
+    against a misspelled key compiled and matched nothing. */
+export const STATS_AREA_PANELS: readonly (StatsAreaPanel & { key: StatsAreaKey })[] = PANELS;
 
 /** Every written area that deliberately has **no** card, and why - the full
     `Record` over whatever `PANELS` above does not cover, the shape
@@ -300,7 +274,7 @@ export const STATS_AREA_OPT_OUTS: Record<Exclude<LastWriteKey, Covered>, string>
 /** One card the screen will draw: the panel, and the two dated facts the
     seams supply about it. */
 export interface StatsAreaCard {
-  panel: StatsAreaPanel;
+  panel: StatsAreaPanel & { key: StatsAreaKey };
   /** The most recent write anywhere in the row, which is never null here -
       a row with nothing written has no card. */
   lastWriteEpochDay: number;
