@@ -405,6 +405,12 @@
 /* Not infinite scroll (SCREENS.md): a page is asked for, and the control
    that asks says how many are coming. */
 .search-more { width: 100%; margin-top: var(--space-4); }
+/* `.btn` carries no margin of its own (components.css) - a caller supplies
+   it. Save and Random sit as bare siblings on both search screens, so this
+   is what keeps Random off the button above it and off the day cards below
+   it: matches `.search-count`'s own space-3-both-sides shape rather than
+   inventing a second value. */
+.search-random { margin: var(--space-3) 0; }
 .search-filter-label {
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
