@@ -62,9 +62,10 @@
     const q = question;
     const limit = PAGE * pages;
     const matchingTagIds = tagIdsMatching(q.queryText, vocabulary.tags);
+    const filters = entrySearchFiltersOf(q);
     return Promise.all([
-      j.entries.searchEntries(q.queryText, matchingTagIds, entrySearchFiltersOf(q), limit),
-      j.entries.countSearchMatches(q.queryText, matchingTagIds, entrySearchFiltersOf(q))
+      j.entries.searchEntries(q.queryText, matchingTagIds, filters, limit),
+      j.entries.countSearchMatches(q.queryText, matchingTagIds, filters)
     ]).then(([hits, total]) => ({ hits, total }));
   });
 
