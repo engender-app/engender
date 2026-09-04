@@ -151,11 +151,16 @@ export function recordStream(stream: MediaStream): ActiveRecording {
 
   return {
     async stop() {
-      recorder.stop();
-      await stopped;
-      // Closes the mic indicator the OS/browser shows while a stream is
-      // live - stopping the recorder alone leaves the track open.
-      for (const track of stream.getTracks()) track.stop();
+      try {
+        recorder.stop();
+        await stopped;
+      } finally {
+        // Closes the mic indicator the OS/browser shows while a stream is
+        // live - stopping the recorder alone leaves the track open. In a
+        // `finally` so a recorder already inactive (the capture device
+        // vanished mid-take) throwing here still lets the tracks go.
+        for (const track of stream.getTracks()) track.stop();
+      }
       if (chunks.length === 0) return null;
       return new Uint8Array(await new Blob(chunks, { type: RECORDING_MIME_TYPE }).arrayBuffer());
     }
