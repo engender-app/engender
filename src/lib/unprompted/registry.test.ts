@@ -6,7 +6,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { PREFERENCE_DEFAULTS, type PreferenceKey } from '../data/prefs/catalogue.ts';
-import { NOTIFICATION_ROWS, SURFACE_ROWS, UNPROMPTED_ROWS, unregisteredKinds } from './registry.ts';
+import {
+  NOTIFICATION_ROWS,
+  SURFACE_ROWS,
+  UNPROMPTED_ROWS,
+  unpromptedQuiet,
+  unregisteredKinds
+} from './registry.ts';
+import type { AreaStates } from '../data/areaState.ts';
 
 const surfaceKeys = SURFACE_ROWS.map((row) => row.surface!.prefKey);
 const notifyKeys = NOTIFICATION_ROWS.map((row) => row.notify!.prefKey);
@@ -145,6 +152,50 @@ describe('the notifications view (ticket 04)', () => {
     // surfaces view - which is the whole reason `surface` is optional.
     for (const key of ['reminders', 'check-in', 'wear-elapsed', 'export-failure']) {
       expect(NOTIFICATION_ROWS.find((row) => row.key === key)?.surface, key).toBeUndefined();
+    }
+  });
+
+  /* Phase 8 features ticket 04: the cascade. An area that is hidden or
+     finished takes its tiles and its notifications with it, and this is the
+     list that says which are whose. */
+
+  it('names an area for the five kinds that belong to one, and none for the rest', () => {
+    const withArea = UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [row.key, row.area]);
+
+    expect(withArea).toEqual([
+      ['wear-timer', 'wearSessions'],
+      ['voice-benchmark-nudge', 'voiceBenchmarks'],
+      ['hair-removal-recovery', 'hairRemovalSessions'],
+      ['measurements-nudge', 'measurements'],
+      ['wear-elapsed', 'wearSessions']
+    ]);
+  });
+
+  it('silences a kind when its area is finished, and leaves the others talking', () => {
+    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900 } };
+
+    expect(unpromptedQuiet('measurements-nudge', states, 20000)).toBe(true);
+    expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(false);
+    expect(unpromptedQuiet('ready-letter', states, 20000)).toBe(false);
+  });
+
+  it('silences both kinds an area owns, the notification as well as the tile', () => {
+    const states: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null } };
+
+    expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(true);
+    expect(unpromptedQuiet('wear-elapsed', states, 20000)).toBe(true);
+  });
+
+  it('says nothing about a kind that belongs to no area, whatever the states hold', () => {
+    const everything: AreaStates = Object.fromEntries(
+      UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [
+        row.area,
+        { hidden: true, finishedEpochDay: null }
+      ])
+    );
+
+    for (const row of UNPROMPTED_ROWS.filter((r) => r.area === null)) {
+      expect(unpromptedQuiet(row.key, everything, 20000), row.key).toBe(false);
     }
   });
 });

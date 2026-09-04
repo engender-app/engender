@@ -66,6 +66,7 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
   import VoiceTake from '$lib/components/VoiceTake.svelte';
+  import AreaFinish from '$lib/components/AreaFinish.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
@@ -380,6 +381,13 @@
       </ReadGate>
     {/if}
   {/if}
+
+  <!-- Saying you are done with this area (phase 8 features ticket 04).
+       Kept at screen level, where that ticket put it, rather than moved on
+       to one of the three tabs this ticket added: which tab a screen-level
+       control belongs on is a question about ticket 04's control and not
+       about this merge. Worth revisiting now that the screen has tabs. -->
+  <AreaFinish group="voice" />
 
   <ConfirmDeleteSheet
     open={deleteTarget !== null}

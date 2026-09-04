@@ -13,6 +13,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
+import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
 import type { ChartAnnotation, ChartAnnotationKind } from '$lib/charts/annotations';
 
 /** What each kind of thing is called, for a record that carries no name of
@@ -41,7 +42,11 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   tallyMisgendered: m.chart_annotation_tally_misgendered,
   tallyCorrectlyGendered: m.chart_annotation_tally_correctly_gendered,
   bodyRegionDysphoria: m.chart_annotation_region_dysphoria,
-  bodyRegionEuphoria: m.chart_annotation_region_euphoria
+  bodyRegionEuphoria: m.chart_annotation_region_euphoria,
+  /* Phase 8 features ticket 04. "finished", never "completed" or "done" -
+     nothing here is an achievement and a stream that restarts was not
+     completed (CONTEXT: "Finished"). */
+  finishedArea: m.chart_annotation_finished_area
 };
 
 function kindWord(kind: ChartAnnotationKind): string {
@@ -58,9 +63,24 @@ function kindWord(kind: ChartAnnotationKind): string {
     surgery" and looked like a bug in the query rather than two marks that
     mean different things. */
 export function annotationName(annotation: ChartAnnotation): string {
-  const name = annotation.name?.trim();
+  const name = recordName(annotation);
   if (!name) return kindWord(annotation.kind);
   return annotation.kind === 'recovery' ? m.chart_annotation_recovery_of({ name }) : name;
+}
+
+/** What the record calls itself, with the one kind whose `name` is a key
+    rather than a name resolved here (phase 8 features ticket 04).
+
+    A finished area's `name` is its group key, because journal/chartAnnotations.ts
+    is Node-tier and cannot reach paraglide (ADR-0016). The hormone curve
+    resolves its body-region keys on the screen instead; that works there
+    because exactly one screen draws those markers, and this kind reaches
+    every chart that opted into annotations at all. Five screens each keeping
+    their own lookup is the second list this file exists not to need. */
+function recordName(annotation: ChartAnnotation): string | undefined {
+  const name = annotation.name?.trim();
+  if (!name) return undefined;
+  return annotation.kind === 'finishedArea' ? areaGroupName(name) : name;
 }
 
 /** The long form, for the readout and for the list a screen reader takes.
@@ -68,7 +88,7 @@ export function annotationName(annotation: ChartAnnotation): string {
     belongs to is visible from the mark on a chart and is not visible at all
     to somebody reading the list instead. */
 export function annotationLabel(annotation: ChartAnnotation): string {
-  const name = annotation.name?.trim();
+  const name = recordName(annotation);
   const word = kindWord(annotation.kind);
   return name ? m.chart_annotation_named({ name, kind: word }) : word;
 }
