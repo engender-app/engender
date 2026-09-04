@@ -2692,7 +2692,7 @@ try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="practice"]', { timeout: 8000 });
 
-  ok('the More hub reads its own data: a line where there is a write, a written line where there is no stream, nothing where nothing was written, and a finished area moving out of its group and back');
+  ok('the More hub reads its own data: a reading where there is a write, what is behind the row where there is no stream and where nothing is written yet, and a finished area moving out of its group and back');
 } catch (e) {
   fail('the hub reads its own data', e);
 }
