@@ -55,12 +55,12 @@
   let recentCycleEvents = $derived([...cycleEvents].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({
-    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '3' }),
+    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '' }),
     fromRecord: (effect) => ({
       id: effect.id,
       date: dateInputValueFromEpochDay(effect.epochDay),
       name: effect.name,
-      severity: String(effect.severity)
+      severity: effect.severity === null ? '' : String(effect.severity)
     }),
     async upsert(draft) {
       const name = draft.name.trim();
@@ -68,7 +68,7 @@
       await journal.sideEffects.upsertSideEffect({
         id: draft.id,
         name,
-        severity: Number(draft.severity),
+        severity: draft.severity === '' ? null : Number(draft.severity),
         epochDay: epochDayFromDateInputValueOrToday(draft.date)
       });
     },
@@ -99,12 +99,14 @@
       <div class="screen-part">
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each [...effects].reverse() as effect (effect.id)}
+            {@const severity = severityName(effect.severity)}
+            {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
             <ListRow
               key={effect.id}
               data-side-effect={effect.id}
               icon="zap"
               title={effect.name}
-              subtitle={`${fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })} · ${severityName(effect.severity)}`}
+              subtitle={severity ? `${day} · ${severity}` : day}
               chevron={false}
               onclick={() => record.openEditor(effect)}
             />
@@ -190,7 +192,7 @@
         {#snippet children()}
           <Segmented
             name={m.side_effect_severity_label()}
-            options={SEVERITIES.map((v) => ({ value: String(v), label: severityName(v) }))}
+            options={SEVERITIES.map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))}
             value={editor.severity}
             onChange={(v) => (editor.severity = v)}
           />

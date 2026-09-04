@@ -57,6 +57,11 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('cycleEventKindName(event.kind)');
   });
 
+  it('renders a side effect left blank as "not specified", never a bare severity of null', () => {
+    expect(dossierComponent).toContain('effect.severity === null');
+    expect(dossierComponent).toContain('m.clinician_summary_not_set()');
+  });
+
   it('renders appointment prep consultation questions', () => {
     expect(dossierComponent).toContain('{#if dossier.appointmentPrep}');
     expect(dossierComponent).toContain('data-dossier-section="appointmentPrep"');

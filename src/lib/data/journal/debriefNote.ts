@@ -27,7 +27,10 @@ export interface DebriefListItem {
 export function debriefListItems(labs: LabResult[], sideEffects: SideEffect[]): DebriefListItem[] {
   const items: DebriefListItem[] = [
     ...labs.map((lab) => ({ epochDay: lab.epochDay, text: `${lab.analyte} ${lab.value} ${lab.unit}`.trim() })),
-    ...sideEffects.map((effect) => ({ epochDay: effect.epochDay, text: `${effect.name} (${effect.severity}/5)` }))
+    ...sideEffects.map((effect) => ({
+      epochDay: effect.epochDay,
+      text: effect.severity === null ? effect.name : `${effect.name} (${effect.severity}/5)`
+    }))
   ];
   return items.sort((a, b) => a.epochDay - b.epochDay);
 }

@@ -364,7 +364,13 @@
                 <tr>
                   <td class="num">{dayShort(effect.epochDay)}</td>
                   <td><strong>{effect.name}</strong></td>
-                  <td>{severityName(effect.severity)} ({effect.severity}/5)</td>
+                  <td>
+                    {#if effect.severity === null}
+                      {m.clinician_summary_not_set()}
+                    {:else}
+                      {severityName(effect.severity)} ({effect.severity}/5)
+                    {/if}
+                  </td>
                 </tr>
               {/each}
             </tbody>
