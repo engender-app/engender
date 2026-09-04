@@ -53,7 +53,7 @@
    photoPicking.ts already draws for every other photo-writing area and
    transtracks.ts/daylioBackup.ts already draw for this one. */
 
-import { strFromU8, unzipSync } from 'fflate';
+import { strFromU8 } from 'fflate';
 import { md5 } from 'hash-wasm';
 import { epochDayFromLocalDate } from '../epochDay';
 import { photoFileName } from '../photos/names';
@@ -62,6 +62,7 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { mintUuid } from '../journal/support';
 import type { DaylioNaming } from './daylio';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
+import { openZip, type ZipReader } from './zipReader';
 
 export interface DayOnePreview {
   /** Net additions, not the raw entry count - candidates already excluded
@@ -123,28 +124,6 @@ interface DayOneExportFile {
   entries?: DayOneRawEntry[];
 }
 
-/** Every entry name the zip carries, decompressing none of them: the
-    filter is called once per entry and always says no, which walks the
-    central directory and stops there (daylioBackup.ts's own idiom). */
-function zipNames(file: Uint8Array): string[] {
-  const names: string[] = [];
-  unzipSync(file, {
-    filter: (entry) => {
-      names.push(entry.name);
-      return false;
-    }
-  });
-  return names;
-}
-
-/** One entry's bytes, or null when the zip has no such member.
-    Decompresses that member alone, which is what keeps a preview off
-    every photo an entry did not ask for. */
-function zipRead(file: Uint8Array, name: string): Uint8Array | null {
-  const found = unzipSync(file, { filter: (entry) => entry.name === name });
-  return Object.values(found)[0] ?? null;
-}
-
 /** The one top-level `<journal>.json` a Day One zip carries -
     `photos/`, `videos/`, `audios/` and `pdfs/` are folders, so anything
     with a `/` in its name is never the payload. */
@@ -160,9 +139,10 @@ function findJournalEntryName(names: readonly string[]): string | null {
     well-formed. */
 export function detectDayOne(bytes: Uint8Array): boolean {
   try {
-    const journalName = findJournalEntryName(zipNames(bytes));
+    const reader = openZip(bytes);
+    const journalName = findJournalEntryName(reader.names());
     if (!journalName) return false;
-    const raw = zipRead(bytes, journalName);
+    const raw = reader.read(journalName);
     if (!raw) return false;
     const parsed = JSON.parse(strFromU8(raw)) as DayOneExportFile;
     return typeof parsed.metadata?.version === 'string' && Array.isArray(parsed.entries);
@@ -278,11 +258,11 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
     needs, applied to the full photo too, since either can go missing from
     a real export the same way. */
 async function resolveDayOnePhoto(
-  zipBytes: Uint8Array,
+  reader: ZipReader,
   photo: DayOneRawPhoto
 ): Promise<{ id: string; fileName: string; raw: Uint8Array } | null> {
   if (!photo.md5 || !photo.type) return null;
-  const raw = zipRead(zipBytes, `photos/${photo.md5}.${photo.type}`);
+  const raw = reader.read(`photos/${photo.md5}.${photo.type}`);
   if (!raw) return null;
 
   const digest = await md5(raw);
@@ -297,13 +277,13 @@ export async function dayonePreview(
   existing: ArchiveJournal,
   naming: DaylioNaming
 ): Promise<DayOnePreview> {
-  const names = zipNames(zipBytes);
-  const journalName = findJournalEntryName(names);
+  const reader = openZip(zipBytes);
+  const journalName = findJournalEntryName(reader.names());
   if (!journalName) throw new DayOneImportError('has no top-level journal JSON file');
 
   let parsed: DayOneExportFile;
   try {
-    const raw = zipRead(zipBytes, journalName);
+    const raw = reader.read(journalName);
     if (!raw) throw new DayOneImportError('has no top-level journal JSON file');
     parsed = JSON.parse(strFromU8(raw)) as DayOneExportFile;
   } catch (cause) {
@@ -344,7 +324,7 @@ export async function dayonePreview(
 
     const photoRows: { id: string; fileName: string; starred: boolean }[] = [];
     for (const photo of raw.photos ?? []) {
-      const resolved = await resolveDayOnePhoto(zipBytes, photo);
+      const resolved = await resolveDayOnePhoto(reader, photo);
       if (!resolved) {
         unresolvedPhotoCount += 1;
         continue;

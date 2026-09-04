@@ -61,7 +61,7 @@ import type {
   ArchiveTag,
   ArchiveTagGroup
 } from './payload';
-import { unzipSync } from 'fflate';
+import { openZip, ZipTooLargeError, type ZipReader } from './zipReader';
 
 /** Why a backup could not be read, for a screen that words its own
     message from it - the same split normalize.ts's UnsupportedImageError
@@ -203,27 +203,22 @@ const flag = (value: unknown): boolean => value === true;
     under neither, depending on which form the caller happened to hold. */
 const zipName = (name: string): string => name.replace(/^\/+/, '');
 
-/** Every entry name in the archive, decompressing none of them: the
-    filter is called once per entry and always says no, which walks the
-    central directory and stops there. */
-function zipNames(file: Uint8Array): string[] {
-  const names: string[] = [];
-  unzipSync(file, {
-    filter: (entry) => {
-      names.push(zipName(entry.name));
-      return false;
-    }
-  });
-  return names;
+/** Every entry name in the archive, normalised, decompressing none of
+    them: `names()`'s own filter always says no, which walks the central
+    directory and stops there. */
+function zipNames(reader: ZipReader): string[] {
+  return reader.names().map(zipName);
 }
 
 /** One entry's bytes, or null when the archive has no such entry. Named
-    after normalisation, so the caller passes the form `zipNames` returned.
-    Decompresses that member alone, which is what keeps a preview off the
-    500 photos it is not reading. */
-function zipRead(file: Uint8Array, name: string): Uint8Array | null {
-  const found = unzipSync(file, { filter: (entry) => zipName(entry.name) === name });
-  return Object.values(found)[0] ?? null;
+    after normalisation, so the caller passes the form `zipNames` returned -
+    Daylio's own leading-slash form has to be tried too, since the reader
+    matches names literally. Decompresses that member alone, and only up
+    to the shared reader's ceiling, which is what keeps a preview off the
+    500 photos it is not reading, and off a member declaring more than
+    this app will hold in memory at once. */
+function zipRead(reader: ZipReader, name: string): Uint8Array | null {
+  return reader.read(name) ?? reader.read(`/${name}`);
 }
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:
@@ -234,7 +229,7 @@ function zipRead(file: Uint8Array, name: string): Uint8Array | null {
     decompresses nothing - only the directory of names is read. */
 export function detectDaylioBackup(file: Uint8Array): boolean {
   try {
-    return zipNames(file).includes(BACKUP_MEMBER);
+    return zipNames(openZip(file)).includes(BACKUP_MEMBER);
   } catch {
     return false;
   }
@@ -243,14 +238,19 @@ export function detectDaylioBackup(file: Uint8Array): boolean {
 /* ---- the container --------------------------------------------------- */
 
 /** The decoded payload, with the app-lock PIN removed before anything
-    else in this file can see it. */
-function openBackup(file: Uint8Array): { payload: Record_; names: Set<string> } {
+    else in this file can see it. `reader` travels with it: every asset
+    read for this same file has to go through the one reader, so the
+    ceiling's running total covers the whole backup rather than resetting
+    per member. */
+function openBackup(file: Uint8Array): { payload: Record_; names: Set<string>; reader: ZipReader } {
+  const reader = openZip(file);
   let names: Set<string>;
   let member: Uint8Array | null;
   try {
-    names = new Set(zipNames(file));
-    member = names.has(BACKUP_MEMBER) ? zipRead(file, BACKUP_MEMBER) : null;
+    names = new Set(zipNames(reader));
+    member = names.has(BACKUP_MEMBER) ? zipRead(reader, BACKUP_MEMBER) : null;
   } catch (cause) {
+    if (cause instanceof ZipTooLargeError) throw cause;
     throw new DaylioBackupError('unreadable', 'is not a zip file');
   }
 
@@ -282,7 +282,7 @@ function openBackup(file: Uint8Array): { payload: Record_; names: Set<string> } 
   delete parsed.pin;
   delete parsed.pinMode;
 
-  return { payload: parsed, names };
+  return { payload: parsed, names, reader };
 }
 
 /* ---- identity -------------------------------------------------------- */
@@ -408,7 +408,7 @@ export async function daylioBackupPreview(
   existing: ArchiveJournal,
   naming: DaylioNaming
 ): Promise<DaylioBackupPreview> {
-  const { payload, names: zipEntries } = openBackup(file);
+  const { payload, names: zipEntries, reader } = openBackup(file);
 
   const platform = str((isRecord(payload.metadata) ? payload.metadata : {}).platform);
   if (platform !== 'android') {
@@ -449,7 +449,7 @@ export async function daylioBackupPreview(
   }
 
   const readAsset = async (id: number): Promise<Uint8Array> => {
-    const bytes = zipRead(file, assetPaths.get(id)!);
+    const bytes = zipRead(reader, assetPaths.get(id)!);
     if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };
