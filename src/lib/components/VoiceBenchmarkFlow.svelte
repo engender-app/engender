@@ -9,11 +9,19 @@
      a finished benchmark to whoever embedded it instead of navigating, and
      the screen's own header is the screen's.
 
-     Two takes in one sitting: the passage read out, then one note held. They
-     are separate steps because they fail separately - a vowel spoiled by a
-     door slamming is one tap to redo, and re-reading four hundred words to
-     fix three seconds is the thing this flow exists to avoid. So a failed
-     vowel comes back to the vowel, and the passage stays where it is.
+     Two takes in one sitting: the passage read out, then three notes held -
+     "ah", "ee" and "oo" (phase 8 features ticket 30), each its own step
+     because they fail separately - a vowel spoiled by a door slamming is one
+     tap to redo, and re-reading four hundred words to fix three seconds is
+     the thing this flow exists to avoid. So a failed vowel comes back to the
+     vowel, and the passage stays where it is.
+
+     The three vowels feed audio/vowelScale.ts's own factor, fitted across
+     whichever came back with a usable pair - the reason for three rather
+     than one is in that module's header. "ah" is still the vowel the row's
+     own resonance/room figures come from (ticket 15's storage seam, kept
+     unchanged); "ee" and "oo" pass through the same analysis only to feed
+     the factor and are never themselves stored.
 
      Nothing on this screen reads anything into a voice (PRODUCT.md:109).
      The figures are stated in their own units and the advice is always about
@@ -30,6 +38,7 @@
   import type { PitchFrame } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, VOWEL_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
   import type { Formants } from '$lib/audio/resonance';
+  import { fitFormantScale, type VowelFormants, type VowelLabel } from '$lib/audio/vowelScale';
   import { journal } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -67,8 +76,21 @@
   type Step = 'passage' | 'vowel' | 'summary';
   type Phase = 'idle' | 'recording' | 'analysing' | 'retry';
 
+  /** The three held vowels, in the order the flow asks for them. "ah" is
+      first because it is the one whose take the row still stores whole
+      (ticket 15); "ee" and "oo" only ever feed the scaling factor. */
+  const VOWEL_ORDER: readonly VowelLabel[] = ['a', 'i', 'u'];
+  const VOWEL_HINTS: Record<VowelLabel, () => string> = {
+    a: m.vb_vowel_hint,
+    i: m.vb_vowel_hint_i,
+    u: m.vb_vowel_hint_u
+  };
+
   let step = $state<Step>('passage');
   let phase = $state<Phase>('idle');
+  /** Which of the three held vowels the flow is asking for right now. */
+  let vowelIndex = $state(0);
+  let vowelKey = $derived(VOWEL_ORDER[vowelIndex]);
   let refusal = $state<MicRefusal | null>(null);
   /* Whether asking has already been tried once. Android stops offering the
      dialog after a refusal it treats as final, and a button that silently
@@ -98,7 +120,23 @@
     snrDb: number;
     captureChain: string;
   } | null>(null);
+  /** "ee" and "oo": formants only, and only ever to feed the scaling
+      factor below - neither vowel's bytes are kept (see the header). Null
+      for a vowel skipped or not yet reached, the same as for a vowel that
+      cleared the gate and still found no resonance to measure. */
+  let extraVowelFormants = $state<Record<'i' | 'u', Formants | null>>({ i: null, u: null });
   let note = $state('');
+
+  /** The corner-vowel scaling factor, fitted across whichever of the three
+      held vowels came back with a usable pair (audio/vowelScale.ts, ticket
+      30). Null the same way the function itself is: fewer than two. */
+  let resonanceScale = $derived.by(() => {
+    const readings: VowelFormants[] = [];
+    if (vowelTake?.formants) readings.push({ vowel: 'a', formants: vowelTake.formants });
+    if (extraVowelFormants.i) readings.push({ vowel: 'i', formants: extraVowelFormants.i });
+    if (extraVowelFormants.u) readings.push({ vowel: 'u', formants: extraVowelFormants.u });
+    return fitFormantScale(readings);
+  });
 
   /* The passage: whatever the person reads from, and the key their series is
      filed under (CONTEXT: "Benchmark passage"). */
@@ -230,6 +268,7 @@
         captureChain: active.captureChain
       };
       step = 'vowel';
+      vowelIndex = 0;
       phase = 'idle';
       return;
     }
@@ -240,20 +279,37 @@
       phase = 'retry';
       return;
     }
-    vowelTake = {
-      bytes: take.bytes,
-      formants: analysed.formants,
-      snrDb: analysed.quality.snrDb,
-      captureChain: active.captureChain
-    };
-    step = 'summary';
-    phase = 'idle';
+    const key = vowelKey;
+    if (key === 'a') {
+      vowelTake = {
+        bytes: take.bytes,
+        formants: analysed.formants,
+        snrDb: analysed.quality.snrDb,
+        captureChain: active.captureChain
+      };
+    } else {
+      extraVowelFormants = { ...extraVowelFormants, [key]: analysed.formants };
+    }
+    advanceVowel();
+  }
+
+  /** Past the vowel just recorded or skipped: the next of the three, or the
+      summary once all three have had their turn. */
+  function advanceVowel() {
+    if (vowelIndex < VOWEL_ORDER.length - 1) {
+      vowelIndex += 1;
+      phase = 'idle';
+    } else {
+      step = 'summary';
+      phase = 'idle';
+    }
   }
 
   function skipVowel() {
-    vowelTake = null;
-    step = 'summary';
-    phase = 'idle';
+    const key = vowelKey;
+    if (key === 'a') vowelTake = null;
+    else extraVowelFormants = { ...extraVowelFormants, [key]: null };
+    advanceVowel();
   }
 
   async function save() {
@@ -280,7 +336,8 @@
            somebody plugged a headset in between them, this is the chain
            that makes the resonance refuse rather than the one that would
            let it through. */
-        captureChain: vowelTake?.captureChain ?? passageTake.captureChain
+        captureChain: vowelTake?.captureChain ?? passageTake.captureChain,
+        resonanceScale
       });
       toast(m.vb_saved());
       onSaved();
@@ -340,7 +397,7 @@
     {@const figures = passageTake.figures}
     <div class="screen-part vb-body">
       <SectionHeading text={m.vb_measured()} />
-      <!-- Six figures, each with the sentence that says what it is and
+      <!-- Seven figures, each with the sentence that says what it is and
            links into its own reference section (ticket 27). The list was
            markup here until then; what the flow keeps is the take. -->
       <VoiceFigures
@@ -348,6 +405,7 @@
         {figures}
         formants={vowelTake?.formants ?? null}
         snrDb={vowelTake ? vowelTake.snrDb : null}
+        {resonanceScale}
       />
 
       <!-- The picture the numbers came from (ticket 09). It sits under the
@@ -382,6 +440,14 @@
   {:else}
     <div class="screen-part vb-body" {...roleAttrs(role)}>
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
+      {#if step === 'vowel'}
+        <!-- Which of the three this is, said once in words rather than left
+             to be inferred from a step that repeats itself with a different
+             sound each time (ticket 30). -->
+        <p class="muted small vb-hint">
+          {m.vb_vowel_progress({ index: vowelIndex + 1, total: VOWEL_ORDER.length })}
+        </p>
+      {/if}
 
       <!-- Mouth-to-microphone distance is the largest thing a person
            controls in the whole of this measurement, and no API can read
@@ -411,8 +477,8 @@
       {:else if phase !== 'recording'}
         <!-- What to do, until it is being done: during the take the gauge is
              saying it, and the instruction is taking up the room the gauge
-             needs. -->
-        <p class="muted small vb-hint">{m.vb_vowel_hint()}</p>
+             needs. Which sound follows the step this is (VOWEL_HINTS). -->
+        <p class="muted small vb-hint">{VOWEL_HINTS[vowelKey]()}</p>
         {@render distance()}
       {/if}
 
