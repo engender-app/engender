@@ -3130,7 +3130,7 @@
   "coming_back_wear_saved": "Closed on {date}.",
   "coming_back_wear_end_hint": "The app needs this before it can close the session.",
   "home_count_since": "{entries} since {date}",
-  "home_tiles_more": "{count} more",
+  "home_tiles_more": "{names} and {count} more",
   "home_tiles_fewer": "Show fewer",
   "safe_space_stat_written_title": "Entries written",
   "safe_space_stat_written_note": "In your whole journal",

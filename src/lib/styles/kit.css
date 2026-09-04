@@ -844,6 +844,15 @@ a.kit-entry:active {
   min-width: 0;
 }
 
+/* `data-rows`: one column, for a grid whose tiles are rows rather than a
+   pair. Home's bound-to-today tiles take the whole width because that is
+   their weight (phase 8 UX ticket 01); the two-up default above is what a
+   pair of destinations gets. */
+.kit-tiles[data-rows],
+.kit-tiles[data-live-tile-grid][data-rows] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* One tile is not half a pair. Where a grid's two destinations are each
    gated on their own - Home's look back, where wrapped and on-this-day
    qualify independently - the lone survivor sat in the left column with a
@@ -977,6 +986,52 @@ a.kit-entry:active {
   height: 36px;
   padding: 0;
   border-radius: var(--radius-pill);
+}
+
+/* The row weight. A card stacks title, value and note down the tile; a row
+   reads along one line, so its value sits beside its title and only the note
+   goes underneath. Shorter, because a row that keeps a card's 108px is a card
+   that has been stretched.
+
+   The value steps down from --text-3xl to --text-xl for the same reason:
+   at display size on one line it outweighs the title it is meant to be the
+   reading for. It keeps --role-mark and so keeps answering the 3:1 floor. */
+.kit-tile[data-weight='row'],
+.kit-tile.is-split[data-weight='row'] {
+  min-height: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.kit-tile[data-weight='row'] .kit-tile-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+}
+
+.kit-tile[data-weight='row'] .kit-tile-value {
+  font-size: var(--text-xl);
+  justify-self: end;
+}
+
+/* The note runs under both of them rather than under the title alone. */
+.kit-tile[data-weight='row'] .kit-tile-note {
+  grid-column: 1 / -1;
+}
+
+/* A row with no value has nothing in the second column, so the title takes
+   the width instead of sitting in a narrow first one. */
+.kit-tile[data-weight='row'] .kit-tile-main:not(:has(.kit-tile-value)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* No flag bar on a row: the bar is drawn under a card's value as a block of
+   the flag, and under a value that is now sharing a line it reads as an
+   underline on a number. */
+.kit-tiles[style*='--flag-fill'] .kit-tile[data-weight='row'] .kit-tile-value::after,
+.kit-tiles[style*='--flag-fill'] .kit-tile[data-weight='row'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
+  content: none;
 }
 
 .kit-tile-title {
