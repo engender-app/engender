@@ -5,10 +5,11 @@
 
    TransTracks carries real identity - Photo and Milestone are both keyed by
    a stable `UUID.randomUUID()` that round-trips through the app's own
-   export/import - so unlike Daylio there is no content-derived uuid to
-   mint. Reusing the source file's own id is what makes a repeated import a
-   no-op (ADR-0002), the same guarantee a derived hash gives Daylio for
-   different reasons.
+   export/import - so a well-formed id is reused as-is (ADR-0002), which is
+   what makes a repeated import a no-op. A hostile or corrupt file's id is
+   not trusted with that shape unchecked, though: resolvePhotoId falls back
+   to a uuid derived from the id string itself, the same guarantee a
+   derived hash gives Daylio for different reasons.
 
    The container is a real zip: `data.json` at the root, JPEGs under
    `photos/`, deflate-compressed by Android's ZipOutputStream default. This
@@ -20,6 +21,7 @@ import { strFromU8 } from 'fflate';
 import { startOfDayTimestamp } from '../epochDay';
 import { emptyArchiveJournal } from '../journal/archiveSections';
 import { photoFileName } from '../photos/names';
+import { contentUuid } from '../journal/support';
 import type { ArchiveEntry, ArchiveJournal, ArchiveMilestone, ArchivePhoto } from './payload';
 import { openZip, type ZipReader } from './zipReader';
 
@@ -126,6 +128,20 @@ function requireEpochDay(value: unknown, index: number, kind: string): number {
   return value;
 }
 
+const PHOTO_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** TransTracks' own uuid when `raw.id` actually is one - the real identity this
+    format normally carries (ADR-0002) - or a uuid derived from that same string
+    otherwise, so a hostile or corrupt id can neither choose the stored photo
+    file's name (photos/names.ts's photoFileName is an opaque `${uuid}.jpg`) nor
+    land unvalidated in the uuid column. Derived rather than minted: minting
+    would break "importing the same file twice is a no-op", since a second
+    import's `existingEntries.has(id)` check has to land on the same id the
+    first import used. */
+async function resolvePhotoId(rawId: string): Promise<string> {
+  return PHOTO_UUID_PATTERN.test(rawId) ? rawId.toLowerCase() : contentUuid(['transtracks-photo', rawId]);
+}
+
 export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJournal): Promise<TransTracksPreview> {
   const reader = openZip(bytes);
   const payload = readDataJson(reader);
@@ -171,8 +187,8 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
   const newRawPhotos = new Map<string, Uint8Array>();
   let referencedFileNames = 0;
 
-  rawPhotos.forEach((raw, index) => {
-    const id = requireString(raw.id, 'id', index, 'photo');
+  for (const [index, raw] of rawPhotos.entries()) {
+    const rawId = requireString(raw.id, 'id', index, 'photo');
     const epochDay = requireEpochDay(raw.epochDay, index, 'photo');
     const sourceFileName = requireString(raw.fileName, 'fileName', index, 'photo');
     referencedFileNames += 1;
@@ -181,7 +197,9 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
     if (!zipBytes || zipBytes.length === 0) {
       throw new TransTracksBackupError(`photo ${index} names ${sourceFileName}, which is missing from the zip`);
     }
-    if (existingEntries.has(id)) return;
+
+    const id = await resolvePhotoId(rawId);
+    if (existingEntries.has(id)) continue;
 
     const fileName = photoFileName(id);
     const photo: ArchivePhoto = { id, fileName, starred: false };
@@ -201,7 +219,7 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
       presentationId: null
     });
     newRawPhotos.set(fileName, zipBytes);
-  });
+  }
 
   const orphanedPhotoCount = reader.names().filter((name) => {
     if (!name.startsWith('photos/') || name.endsWith('/')) return false;
