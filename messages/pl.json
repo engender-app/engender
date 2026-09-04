@@ -1674,7 +1674,7 @@
   "vc_own_never_measured": "Żaden wzorzec jeszcze tego nie zmierzył.",
   "vc_own_break_device": "Pod tą linią jest inny telefon. To, co zmiana mikrofonu robi z tymi liczbami, wyglądałoby jak zmiana głosu, więc seria zaczyna się od nowa.",
   "vc_own_break_processing": "Pod tą linią ten sam telefon, ale już bez nieprzetworzonego dźwięku. Już samo to przesuwa te liczby, więc seria zaczyna się od nowa.",
-  "vc_own_break_unrecorded": "Aplikacja nie zapisała, na czym powstały wzorce po jednej stronie tej linii, więc nie połączy obu części w jedną serię.",
+  "vc_own_break_unrecorded": "Aplikacja nie zapisała, na czym powstały wzorce po co najmniej jednej stronie tej linii, więc nie może uznać ich za jedną serię.",
   "vc_own_break_passage": "Pod tą linią jest inny tekst. Inne słowa to inne liczby, więc seria zaczyna się od nowa.",
   "vc_own_span_high": "Góra pasma",
   "vc_own_span_low": "Dół pasma",

@@ -9,19 +9,15 @@
 
    **The series breaks rather than joining.** Two takes are readable
    together only if they were read from the same passage and recorded
-   through the same capture chain, which is `acousticDelta`'s pair of gates
-   restated over a whole history instead of over two takes. So what comes
-   out is not one line with holes in it but a list of runs, each a stretch
-   the app is willing to join, and a reason per gap for the screen to say
-   out loud. A person who changes phone loses the comparison, which is a
-   real cost and the honest one: the alternative is a line that reads as
-   their voice changing on the day they bought a handset.
-
-   Passage before chain, where both changed at once. Two passages leave
-   nothing to compare at all - a rate measured over 98 English words and
-   over 82 Polish ones are different numbers - while a change of phone
-   leaves the figure meaning what it meant and only takes the join away.
-   Naming the narrower reason would understate what happened.
+   through the same capture chain, which is `comparabilityBreak`'s question
+   asked along a whole history instead of about one pair - the same gate
+   `acousticDelta` computes behind, so the trend and the pair delta cannot
+   disagree about which takes go together. What comes out is not one line
+   with holes in it but a list of runs, each a stretch the app is willing
+   to join, and a reason per gap for the screen to say out loud. A person
+   who changes phone loses the comparison, which is a real cost and the
+   honest one: the alternative is a line that reads as their voice changing
+   on the day they bought a handset.
 
    No band, no target region and no normalising: what a figure means here
    is a number in the unit it was measured in, and ADR-0060 is explicit
@@ -35,22 +31,21 @@
    failure here rather than a figure with no trend. */
 
 import { paddedRange, type PaddedRange, type Sample, type SeriesPoint } from './geometry';
-import { captureChainBreak, type ChainBreak } from '../audio/captureChain';
+import { comparabilityBreak, type ComparableTake, type SeriesBreak } from '../audio/benchmarkDelta';
 import type { OwnSeriesMetricKey } from '../data/voice/metrics';
 
-/** Why two neighbouring benchmarks are not one series. The three chain
-    breaks (audio/captureChain.ts), plus the passage, which breaks a series
-    the way changing phone does (CONTEXT: "Capture chain"). */
-export type SeriesBreak = ChainBreak | 'passage';
+export type { SeriesBreak };
 
 /** What a trend needs of a benchmark: when it was, what makes it
     comparable, and the figures themselves. Its own interface rather than
     `VoiceBenchmark`, the way `BenchmarkForDelta` is: nothing here reads a
-    file name, a note or a stored pitch track. */
-export interface BenchmarkForSeries {
+    file name, a note or a stored pitch track.
+
+    The comparability half is `ComparableTake`, shared with the pair delta,
+    so the question "can these two be read together" has one answer and one
+    type behind it (audio/benchmarkDelta.ts). */
+export interface BenchmarkForSeries extends ComparableTake {
   epochDay: number;
-  passageKey: string;
-  captureChain: string | null;
   f0P10Hz: number;
   f0P90Hz: number;
   semitoneSd: number;
@@ -156,8 +151,7 @@ export function ownSeries(benchmarks: readonly BenchmarkForSeries[], key: OwnSer
     second === null ? null : shared ? scale : paddedRange(numbers(second), figure.minPad);
 
   return {
-    runs: runsOf(benchmarks, first, second),
-    breaks: breaksOf(benchmarks),
+    ...splitRuns(benchmarks, first, second),
     scale,
     secondScale,
     secondScaleShared: second !== null && shared,
@@ -168,34 +162,24 @@ export function ownSeries(benchmarks: readonly BenchmarkForSeries[], key: OwnSer
 const numbers = (samples: readonly Sample[]): number[] =>
   samples.filter((sample): sample is number => sample !== null);
 
-/** Why the series stops between each neighbouring pair, for the pairs where
-    it does. */
-function breaksOf(benchmarks: readonly BenchmarkForSeries[]): SeriesBreak[] {
-  const breaks: SeriesBreak[] = [];
-  for (let i = 1; i < benchmarks.length; i++) {
-    const gap = breakBetween(benchmarks[i - 1], benchmarks[i]);
-    if (gap) breaks.push(gap);
-  }
-  return breaks;
-}
-
-function breakBetween(from: BenchmarkForSeries, to: BenchmarkForSeries): SeriesBreak | null {
-  if (from.passageKey !== to.passageKey) return 'passage';
-  return captureChainBreak(from.captureChain, to.captureChain);
-}
-
-function runsOf(
+/** The runs and the reasons between them, in one walk down the history: a
+    break is what ends a run, so counting them separately would leave
+    `breaks.length === runs.length - 1` as an invariant nobody enforces -
+    and the screen indexes `breaks[i - 1]` against the run it drew. */
+function splitRuns(
   benchmarks: readonly BenchmarkForSeries[],
   first: readonly Sample[],
   second: readonly Sample[] | null
-): OwnSeriesRun[] {
+): { runs: OwnSeriesRun[]; breaks: SeriesBreak[] } {
   const runs: OwnSeriesRun[] = [];
+  const breaks: SeriesBreak[] = [];
   benchmarks.forEach((benchmark, i) => {
-    const carriesOn = i > 0 && breakBetween(benchmarks[i - 1], benchmark) === null;
-    if (!carriesOn) runs.push({ points: [], second: second === null ? null : [] });
+    const gap = i === 0 ? null : comparabilityBreak(benchmarks[i - 1], benchmark);
+    if (gap) breaks.push(gap);
+    if (i === 0 || gap) runs.push({ points: [], second: second === null ? null : [] });
     const run = runs[runs.length - 1];
     run.points.push({ x: benchmark.epochDay, y: first[i] });
     if (second !== null) run.second!.push(second[i]);
   });
-  return runs;
+  return { runs, breaks };
 }

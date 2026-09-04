@@ -235,8 +235,8 @@ export function paddedRange(values: readonly number[], minPad: number): PaddedRa
     over a query result whose order is also the order of the list beside
     the chart, down to how two readings on one day settle. */
 export function paddedSeries(points: Point[], minPad: number): PaddedSeries | null {
-  if (points.length < 2) return null;
-  const range = paddedRange(points.map((p) => p.y), minPad)!;
+  const range = points.length < 2 ? null : paddedRange(points.map((p) => p.y), minPad);
+  if (range === null) return null;
   return { points, ...range, from: points[0].x, to: points[points.length - 1].x };
 }
 
