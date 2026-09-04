@@ -56,7 +56,7 @@ function take(epochDay: number, chain: string | null, over: Partial<BenchmarkFor
     semitoneSd: 2.4 + epochDay / 400,
     wordsPerMinute: 138 + epochDay / 30,
     f1Hz: 620 + epochDay / 8,
-    f2Hz: 1740 + epochDay / 3,
+    f2Hz: 1740 + Math.sin(epochDay / 40) * 70,
     snrDb: 22 + epochDay / 60,
     ...over
   };
