@@ -2479,7 +2479,7 @@ try {
     '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
     '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/presentations',
     '/settings/eras',
-    '/settings/voice', '/settings/wear', '/settings/effects', '/settings/resources',
+    '/settings/voice', '/settings/wear', '/settings/personal-effects', '/settings/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
@@ -2622,6 +2622,79 @@ try {
   ok('every More-hub area shows real content once "Fill every feature" has run, not just its empty state');
 } catch (e) {
   fail('fill every feature', e);
+}
+
+/* The hub reading its own data (phase 8 UX ticket 02).
+
+   Directly after "Fill every feature", because that is what puts a write in
+   most areas - a hub row's line is a read of the journal and there is nothing
+   to read on the persona alone.
+
+   Three kinds of line, and the third is the one only a real journal can show.
+   A row whose areas hold a write states when. A row that fronts no dated
+   stream states what is behind it instead, whatever the journal holds. And a
+   reading row with nothing written yet states the same thing - walked on the
+   voice benchmark, since neither demo seed writes one (the note above this
+   block's own voice step says so) while "Fill every feature" writes something
+   in every other reading row.
+
+   Handles, never wording or structure (ADR-0029). Each row carries
+   `data-hub-line` naming which kind it drew, so the three are told apart by
+   that rather than by the copy, which a rewording would let pass for free, or
+   by the kit's `.kit-row-sub` class, which is structure. */
+try {
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="measurements"][data-hub-line="last"]', { timeout: 8000 });
+
+  if ((await page.locator('[data-list-row="care"][data-hub-line="no-stream"]').count()) === 0) {
+    throw new Error('the care row states nothing about what is behind it');
+  }
+  if ((await page.locator('[data-list-row="voice-benchmark"][data-hub-line="not-yet"]').count()) === 0) {
+    throw new Error('a reading row with nothing written in it does not say what is behind it');
+  }
+
+  // Photos and voice memos live together now, and Body keeps the rest.
+  const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
+    rows.map((row) => row.getAttribute('data-list-row'))
+  );
+  if (mediaRows.join(',') !== 'photos,voice') {
+    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and voice memos`);
+  }
+
+  /* An area declared finished leaves its group for the finished set, keeps
+     its screen, and comes back when the person picks it up again. Walked
+     through the control on the area's own screen rather than by writing an
+     `area_state` row, because the whole claim is that the two surfaces
+     agree. */
+  await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
+  await page.locator('[data-area-finish]').click();
+  await page.waitForSelector('[data-area-finish-confirm]', { timeout: 8000 });
+  await page.locator('[data-area-finish-confirm]').click();
+  await page.waitForSelector('[data-area-finished]', { timeout: 8000 });
+
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="finished"]', { timeout: 8000 });
+  if ((await page.locator('[data-list-row="wear"][data-hub-section="practice"]').count()) !== 0) {
+    throw new Error('the finished row is drawn in two places at once');
+  }
+  if ((await page.locator('[data-list-row="wear"][data-hub-line="finished"]').count()) === 0) {
+    throw new Error('a finished row does not say when it ended');
+  }
+  // Still one tap away, and the screen behind it still works.
+  await page.locator('[data-list-row="wear"]').click();
+  await page.waitForURL('**/settings/wear');
+  await page.waitForSelector('[data-area-finished]', { timeout: 8000 });
+
+  // Put it back, so nothing after this walks a hub with a finished area in it.
+  await page.locator('[data-area-finish-undo]').click();
+  await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="practice"]', { timeout: 8000 });
+
+  ok('the More hub reads its own data: a reading where there is a write, what is behind the row where there is no stream and where nothing is written yet, and a finished area moving out of its group and back');
+} catch (e) {
+  fail('the hub reads its own data', e);
 }
 
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
@@ -3402,7 +3475,7 @@ try {
   /* The personal effects onset nudge (phase 5 ticket 49).
      Absent on a fresh journal with no regimen. Once an active regimen
      episode with a literature onset window is added, opening the fan shows
-     the effects row; tapping it navigates to /settings/effects and closes
+     the effects row; tapping it navigates to /settings/personal-effects and closes
      the fan. When the anchor is moved past the onset window (>12 months),
      the row is absent again. */
   const localIso = (daysAgo = 0) => {
@@ -3435,7 +3508,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
   await page.locator('[data-choose="effects"]').click();
-  await page.waitForFunction(() => window.location.pathname === '/settings/effects', null, { timeout: 8000 });
+  await page.waitForFunction(() => window.location.pathname === '/settings/personal-effects', null, { timeout: 8000 });
   if ((await page.locator('[data-fan]').count()) > 0) {
     throw new Error('the fan remained open after tapping effects');
   }
@@ -3457,7 +3530,7 @@ try {
   }
   await page.locator('[data-quick-add]').click();
 
-  ok('quick add: personal effects nudge appears only during onset window and navigates to /settings/effects');
+  ok('quick add: personal effects nudge appears only during onset window and navigates to /settings/personal-effects');
 } catch (e) { fail('quick add effects nudge', e); }
 
 

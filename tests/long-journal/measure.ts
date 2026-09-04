@@ -603,6 +603,37 @@ export async function measureLongJournal(
     };
   });
 
+  /* --- phase 8 UX ticket 02 -----------------------------------------------
+
+     The More hub, which is the screen this measurement was taken for rather
+     than against: the ticket's own instruction is that eighteen live lines on
+     one navigation surface has to fit what this benchmark measures, and that
+     the number is recorded before the screen is written.
+
+     Two reads, concurrently, which is what the hub issues on mount: every
+     registered area's last write in one assembled call (lastWrite.ts - one
+     bounded MAX per area, nineteen of them), and the area record that decides
+     which rows are hidden and which have been finished. The third read the
+     hub makes is the regimen episode list ADR-0043's cycle gate gets its
+     answer from, which is not new to this ticket and is measured nowhere
+     because it is one small unindexed table read.
+
+     Deliberately not eighteen `liveQuery` calls, and this is where that shows:
+     what a row's line costs is a share of one number here, so a row added to
+     the hub costs another MAX inside this measurement rather than another
+     round trip through the worker queue. */
+  await measure('hub-last-writes', 'More hub, the last write in every area plus the area record', async () => {
+    const [lastWrites, states] = await Promise.all([
+      journal.lastWrite.getLastWrites(today),
+      journal.areaStates.getAreaStates()
+    ]);
+    const written = Object.values(lastWrites).filter((day) => day !== null).length;
+    return {
+      result: [lastWrites, states],
+      detail: `${Object.keys(lastWrites).length} areas asked, ${written} with a write, ${Object.keys(states).length} area rows`
+    };
+  });
+
   // --- write paths -------------------------------------------------------
   // Ordered after the read measurements so they cannot move read baselines.
   const saveDims: Record<string, number> = {};
