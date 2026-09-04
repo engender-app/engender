@@ -21,11 +21,10 @@
    at that rate and the stored file is decoded back to it. The recording
    itself is untouched - the bytes are whatever MediaRecorder produced. */
 
-import { captureChainOf } from '$lib/audio/captureChain';
 import { makeLiveGauge, type LiveGauge } from '$lib/audio/live';
 import type { PitchFrame } from '$lib/audio/pitch';
 import type { QualityCheck, QualityReport } from '$lib/audio/quality';
-import { openMicrophone, recordStream, type MicRefusal } from './voiceRecording';
+import { captureChainOfStream, openMicrophone, recordStream, type MicRefusal } from './voiceRecording';
 
 /** Formants under 4 kHz need 8 kHz of bandwidth; 16 kHz is the standard
     analysis rate for this and keeps YIN's lag search short. */
@@ -94,16 +93,10 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
   const stream = await openMicrophone(true);
   if (typeof stream === 'string') return stream;
 
-  /* What actually came back, not what was asked for (ADR-0061). The
-     constraints above are a request a device offering only the processed
-     path is free to refuse, and `getSettings()` is the only thing that
-     says which happened. Read here, before anything is recorded, because
-     the track stops answering once the take is over.
-
-     One audio track: `openMicrophone` asks for `{ audio: ... }`, so there
-     is a single track and no choice of which one describes the take. */
-  const [track] = stream.getAudioTracks();
-  const captureChain = captureChainOf(track.label, track.getSettings(), navigator.userAgent);
+  /* What actually came back, not what was asked for (ADR-0061). Read here,
+     before anything is recorded, because the track stops answering once
+     the take is over. */
+  const captureChain = await captureChainOfStream(stream);
 
   const recording = recordStream(stream);
   const context = new AudioContext({ sampleRate: ANALYSIS_SAMPLE_RATE });

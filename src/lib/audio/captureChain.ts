@@ -27,9 +27,10 @@
    the same call `pitch_track` makes for a comma-separated track over a BLOB
    of floats.
 
-   Pure, and node-tested: the DOM types are read at the one call site that
-   has a live track (stores/voiceBenchmark.ts), and what arrives here is
-   three booleans, a label and a user agent string. */
+   Pure, and node-tested. What reads a live microphone is
+   `captureChainOfStream` in stores/voiceRecording.ts, which is also where
+   the model comes from; what arrives here is a device name, a label and
+   three booleans. */
 
 /** The three constraints `UNPROCESSED_AUDIO` asks for, as the track says
     they were actually applied. `undefined` is a real answer and not an
@@ -47,16 +48,21 @@ const UNKNOWN = 'unknown';
 
 const SEPARATOR = ' | ';
 
-/** The phone, as its own browser names it. An Android WebView's user agent
-    carries the build model (`Linux; Android 16; Pixel 10a Build/...`), which
-    is the one place either of this app's platforms says what hardware it is
-    running on - `getSettings()` has no model in it, and a Capacitor device
-    plugin would be a dependency for one string.
+/** The fallback name for the equipment, off the user agent's platform.
 
-    Off Android there is no model to read, so the platform token stands in.
-    It is stable across browser versions, which is what a chain key needs:
-    the version lives outside the parentheses. */
-function deviceModel(userAgent: string): string {
+    A fallback and not the answer: Chrome reduced the Android user agent in
+    version 110, freezing the model token to `Android 10; K` on every
+    phone, so this cannot tell two phones apart and is not asked to. The
+    model proper comes from client hints
+    (`captureChainOfStream` in stores/voiceRecording.ts) and this is what
+    stands in where they are unavailable - a desktop browser reading
+    `X11; Linux x86_64`, or anything that answers nothing at all.
+
+    The Android arm is kept for the same reason: a WebView old enough to
+    predate the reduction still carries a real model, and reading it costs
+    one regex. What either arm returns is coarse, which is why the
+    microphone's own label travels beside it. */
+export function deviceFromUserAgent(userAgent: string): string {
   const android = /\bAndroid\s+[^;)]+;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\s*\)/.exec(userAgent);
   if (android) return clean(android[1]);
   const platform = /\(([^)]*)\)/.exec(userAgent);
@@ -77,18 +83,18 @@ const applied = (setting: boolean | undefined): string =>
 
 /** The chain one take was recorded through, as it is stored.
 
-    `label` and `settings` come off the take's own audio track; `userAgent`
-    is `navigator.userAgent`. Fixed field order and one token per
-    constraint, so two takes made through the same equipment produce the
-    same string character for character and equality is the whole
-    comparison. */
-export function captureChainOf(label: string, settings: CaptureSettings, userAgent: string): string {
+    `device` is the phone, resolved by the caller that can ask the platform
+    for it; `label` and `settings` come off the take's own audio track.
+    Fixed field order and one token per constraint, so two takes made
+    through the same equipment produce the same string character for
+    character and equality is the whole comparison. */
+export function captureChainOf(device: string, label: string, settings: CaptureSettings): string {
   const processing = [
     `ec=${applied(settings.echoCancellation)}`,
     `ns=${applied(settings.noiseSuppression)}`,
     `agc=${applied(settings.autoGainControl)}`
   ].join(' ');
-  return [deviceModel(userAgent), clean(label), processing].join(SEPARATOR);
+  return [clean(device), clean(label), processing].join(SEPARATOR);
 }
 
 /** Whether two takes were recorded through one chain, which is what the
