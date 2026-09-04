@@ -108,8 +108,9 @@ for (const theme of THEMES) {
   await settle(page, '/settings/voice');
   await shoot(page, `vs-1-record-idle-${theme}`);
 
-  // 2. Reading it: the words, and the gate's own reading in words. No
-  //    curve, because a benchmark's picture comes after it.
+  // 2. Reading it: the passage, and one rail of the last two seconds
+  //    showing where a voice was found. No curve - a benchmark's picture
+  //    comes after it - but not silence about whether it is working.
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(2600);
   await shoot(page, `vs-2-reading-${theme}`);
