@@ -886,7 +886,11 @@ const SECTIONS = [
          does, and one of its own: archives written before ticket 09 do not
          carry the field, and neither does a benchmark taken before schema
          v58 that is still in the journal. Both restore as no track. */
-      pitch_track: { field: 'pitchTrack', whenAbsent: null }
+      pitch_track: { field: 'pitchTrack', whenAbsent: null },
+      /* `capture_chain` the same way, one ticket later (ticket 28,
+         ADR-0061): an archive written before it carries no chain, and
+         neither does a benchmark from before schema v64. */
+      capture_chain: { field: 'captureChain', whenAbsent: null }
     }
   }),
   /* The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort

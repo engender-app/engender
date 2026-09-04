@@ -2023,6 +2023,31 @@ ALTER TABLE side_effect_v63 RENAME TO side_effect;
 CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
 `;
 
+/* What recorded a benchmark (phase 8 features ticket 28, ADR-0061). The
+   phone the take was made on and whether the three unprocessed constraints
+   the recording flow asks for were actually honoured, as one string
+   (audio/captureChain.ts).
+
+   Nullable, and null on every benchmark taken before this version: nothing
+   was recorded about the equipment then, and two unknowns are not evidence
+   of one phone, so the device-sensitive figures decline to compare those
+   rather than guessing that they match.
+
+   One column rather than a model and three flags, because nothing ever asks
+   about a part of a chain - the only question is whether two takes share
+   one, which is string equality. TEXT, and readable at the sqlite prompt,
+   the same call `pitch_track` makes.
+
+   Sample rate is deliberately not in it: `ANALYSIS_SAMPLE_RATE` is a
+   constant in this codebase, so a column for it would never vary and would
+   imply a variability that does not exist. Neither is mouth-to-microphone
+   distance, which is the largest controllable in the literature and cannot
+   be read from any API - it ships as an instruction in the recording flow,
+   because a number the app cannot verify would be a stored guess. */
+const SCHEMA_V64 = `
+ALTER TABLE voice_benchmark ADD COLUMN capture_chain TEXT;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2086,5 +2111,6 @@ export const migrations: Migration[] = [
   { version: 60, sql: SCHEMA_V60 },
   { version: 61, sql: SCHEMA_V61 },
   { version: 62, sql: SCHEMA_V62 },
-  { version: 63, sql: SCHEMA_V63 }
+  { version: 63, sql: SCHEMA_V63 },
+  { version: 64, sql: SCHEMA_V64 }
 ];

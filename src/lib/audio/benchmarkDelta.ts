@@ -10,10 +10,24 @@
    passage (CONTEXT: "Benchmark passage") - a rate and a pitch measured over
    different words are different numbers, not a trend. That gate lives here
    rather than in the page, so a caller cannot compute a delta across
-   passages by forgetting to check first. */
+   passages by forgetting to check first.
+
+   The second gate is the capture chain, and it is narrower (phase 8
+   features ticket 28, ADR-0061). A change of passage leaves nothing to
+   compare; a change of phone leaves the pitch figures intact and takes the
+   resonance ones away, because mean F0 shows no significant effect of
+   recording device while smartphone formants failed test-retest outright.
+   So a delta across chains is not null, it is a delta with no resonance in
+   it - and it says so with `sameChain` rather than by looking like a take
+   whose vowel step was skipped. */
+
+import { sameCaptureChain } from './captureChain';
 
 export interface BenchmarkForDelta {
   passageKey: string;
+  /** What recorded it (audio/captureChain.ts). Null on a benchmark from
+      before ADR-0061, which is a chain nothing knows. */
+  captureChain: string | null;
   f0MedianHz: number;
   f1Hz: number | null;
   f2Hz: number | null;
@@ -26,10 +40,16 @@ export interface AcousticDelta {
       +12 semitones by definition; halving it is -12. */
   f0DeltaSemitones: number;
   /** null when either take has no resonance figures (the vowel step was
-      skipped or never cleared the gate) - not zero, which would say the
-      resonance held steady when it was never measured at all. */
+      skipped or never cleared the gate), and null across two capture
+      chains - not zero, which would say the resonance held steady when it
+      was never measured at all, or was measured on another microphone. */
   f1DeltaHz: number | null;
   f2DeltaHz: number | null;
+  /** Whether both takes came through one capture chain. What separates a
+      resonance the app declines to compare from one it never had: a caller
+      with a null `f1DeltaHz` and no way to tell those apart would have to
+      say "not measured" about a figure that was measured. */
+  sameChain: boolean;
 }
 
 /** `from` compared to `to`: every figure is `to`'s minus `from`'s, so a
@@ -38,10 +58,12 @@ export interface AcousticDelta {
     passages differ - see the header. */
 export function acousticDelta(from: BenchmarkForDelta, to: BenchmarkForDelta): AcousticDelta | null {
   if (from.passageKey !== to.passageKey) return null;
+  const sameChain = sameCaptureChain(from.captureChain, to.captureChain);
   return {
     f0DeltaHz: to.f0MedianHz - from.f0MedianHz,
     f0DeltaSemitones: 12 * Math.log2(to.f0MedianHz / from.f0MedianHz),
-    f1DeltaHz: from.f1Hz !== null && to.f1Hz !== null ? to.f1Hz - from.f1Hz : null,
-    f2DeltaHz: from.f2Hz !== null && to.f2Hz !== null ? to.f2Hz - from.f2Hz : null
+    f1DeltaHz: sameChain && from.f1Hz !== null && to.f1Hz !== null ? to.f1Hz - from.f1Hz : null,
+    f2DeltaHz: sameChain && from.f2Hz !== null && to.f2Hz !== null ? to.f2Hz - from.f2Hz : null,
+    sameChain
   };
 }

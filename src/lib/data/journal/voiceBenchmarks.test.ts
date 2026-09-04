@@ -272,3 +272,36 @@ test('a benchmark saved without a track reads back with none', async () => {
   const [saved] = await journal.voiceBenchmarks.getBenchmarks();
   assert.equal(saved.pitchTrack, null);
 });
+
+/* Ticket 28: the row says what recorded it, so nothing downstream has to
+   guess whether two takes share a microphone. */
+test('a benchmark stores the chain it was recorded through, and null when there was none to read', async () => {
+  const { journal } = await journalWithFiles();
+  const chain = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
+
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20300,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null,
+    captureChain: chain
+  });
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20301,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+
+  const [withChain, without] = await journal.voiceBenchmarks.getBenchmarks();
+  assert.equal(withChain.captureChain, chain);
+  assert.equal(without.captureChain, null);
+});
