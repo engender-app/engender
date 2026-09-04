@@ -21,6 +21,7 @@
    at that rate and the stored file is decoded back to it. The recording
    itself is untouched - the bytes are whatever MediaRecorder produced. */
 
+import { captureChainOf } from '$lib/audio/captureChain';
 import { makeLiveGauge, type LiveGauge } from '$lib/audio/live';
 import type { PitchFrame } from '$lib/audio/pitch';
 import type { QualityCheck, QualityReport } from '$lib/audio/quality';
@@ -48,6 +49,11 @@ export interface BenchmarkTake {
 }
 
 export interface TakeSession {
+  /** What this take is being recorded through, read off the track the
+      moment it opened (audio/captureChain.ts, ticket 28). Here rather than
+      on the finished take because it is a fact about the open microphone,
+      and `getSettings()` is only answerable while the track is live. */
+  readonly captureChain: string;
   /** The gate's live reading. */
   read(): QualityReport;
   /** The most recent pitch frames, for the gauge's trace. */
@@ -88,6 +94,17 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
   const stream = await openMicrophone(true);
   if (typeof stream === 'string') return stream;
 
+  /* What actually came back, not what was asked for (ADR-0061). The
+     constraints above are a request a device offering only the processed
+     path is free to refuse, and `getSettings()` is the only thing that
+     says which happened. Read here, before anything is recorded, because
+     the track stops answering once the take is over.
+
+     One audio track: `openMicrophone` asks for `{ audio: ... }`, so there
+     is a single track and no choice of which one describes the take. */
+  const [track] = stream.getAudioTracks();
+  const captureChain = captureChainOf(track.label, track.getSettings(), navigator.userAgent);
+
   const recording = recordStream(stream);
   const context = new AudioContext({ sampleRate: ANALYSIS_SAMPLE_RATE });
   const analyser = context.createAnalyser();
@@ -114,6 +131,7 @@ export async function startTake(checks: readonly QualityCheck[]): Promise<TakeSe
   };
 
   return {
+    captureChain,
     read: () => gauge.read(),
     recentFrames: (count) => gauge.recentFrames(count),
     secondsCaptured: () => gauge.secondsCaptured(),

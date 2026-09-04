@@ -48,6 +48,13 @@
 <div class="screen">
   <ScreenHeader title={m.vm_title()} back="/settings/voice" subtitle={m.vm_intro()} />
 
+  <!-- The one fact that belongs to all six figures rather than to any of
+       them, which is why it sits above the sections instead of inside one
+       (ticket 28, ADR-0061). Stated and not prescribed: the recording flow
+       is where a person is told what to do about it, and this screen
+       explains (ADR-0060). -->
+  <p class="muted small" data-metrics-distance>{m.vm_distance()}</p>
+
   {#each VOICE_METRICS as metric, i (metric.key)}
     <!-- The anchor a figure's line links to. Six sections, six stripes:
          each figure is its own area of this screen, and the stripe is what
