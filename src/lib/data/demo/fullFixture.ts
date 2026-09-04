@@ -210,7 +210,18 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter((_, i) => i % 3 === 0);
   for (const [i, type] of effectTypes.entries()) {
-    await journal.personalEffects.upsertMarker({ effect: type.key, firstNoticedEpochDay: estradiolStart + 30 + i * 45 });
+    /* Clamped to the seed's own last day. The unclamped progression runs
+       past it - 30 + 45 * 11 is 495 days into a 500-day run, so the twelfth
+       marker landed 25 days ahead of the fixture's own "today" and wrote a
+       "first noticed" day in the future. Harmless while `today` was the real
+       clock, because every read of it is bounded by today; not harmless once
+       a seed can be anchored earlier (returnGap.ts), where that one row was
+       the newest write in the journal and closed the five-week gap the whole
+       seed exists to create. */
+    await journal.personalEffects.upsertMarker({
+      effect: type.key,
+      firstNoticedEpochDay: Math.min(today, estradiolStart + 30 + i * 45)
+    });
   }
 
   // Wear sessions: a year, irregular, most backfilled with a duration and

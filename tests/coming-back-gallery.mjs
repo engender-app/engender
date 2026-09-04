@@ -81,7 +81,7 @@ for (const theme of ['light', 'dark']) {
 
   /* ---------- the dose slot: the one sheet that collects something, and the
      amount, site and vehicle are what it asks. ---------- */
-  await page.locator('[data-row-main="coming-back-dose"]').click();
+  await page.locator('[data-coming-back-item="dose"] [data-notice-action]').click();
   await page.waitForSelector('[data-coming-back-dose-confirm]');
   await page.waitForTimeout(400);
   await shoot('03-dose-sheet', true);
@@ -97,7 +97,7 @@ for (const theme of ['light', 'dark']) {
 
   /* ---------- the wear session: the one offer that opens with an empty
      field on purpose. ---------- */
-  await page.locator('[data-row-main="coming-back-wear"]').click();
+  await page.locator('[data-coming-back-item="wear-session"] [data-notice-action]').click();
   await page.waitForSelector('[data-coming-back-wear-confirm]');
   await page.waitForTimeout(400);
   await shoot('05-wear-sheet');

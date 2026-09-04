@@ -32,12 +32,29 @@
      and an unlogged slot are housekeeping. Reading the housekeeping first
      would make this a to-do list.
 
-     The first three rows go somewhere - the screen that owns each kind - and
-     write nothing. The last two are registered offers (`offers.ts`), so a
-     confirmation reaches its write through `answerOffer` like every other
-     offer in the app, and each one asks about exactly the item its row is
-     about: logging the dose from one slot says nothing about the slots
-     around it, and closing one session asks about no other.
+     What arrived is a list card of rows, each going to the screen that owns
+     it and writing nothing. What can be tidied is one `Notice` each, and
+     the difference in surface is the whole point: the first pass had all
+     five as rows in two cards, and a design review found that the ordering
+     ADR-0062 calls "the argument" was invisible - a role paints a row's icon
+     disc, not the card behind it, so in dark the two cards were identical
+     and the letter from somebody's past self read as a peer of a binder
+     timer. `Notice` is the app's own shape for "here is something, and here
+     is the one thing you can do about it", which is exactly what an offer
+     is; it carries the flag stripe, a labelled action and a dismiss, and it
+     leaves through its own `disclose` so answering collapses the space it
+     held instead of dropping the page a frame.
+
+     It also fixes what the same review called showing the no and hiding the
+     yes. As rows, the writing action was an unlabelled tap on the row body
+     with an unmarked x beside it - the shape AreaFinish.svelte's own comment
+     argues against. Notice's `action` is the labelled yes.
+
+     Both are registered offers (`offers.ts`), so a confirmation reaches its
+     write through `answerOffer` like every other offer in the app, and each
+     asks about exactly the item it is about: logging the dose from one slot
+     says nothing about the slots around it, and closing one session asks
+     about no other.
 
      A no is local and lives as long as the screen, per ADR-0062: the surface
      is a moment, so a preference recording the decline would be storing an
@@ -72,6 +89,7 @@
   } from '$lib/data/doseSchedule';
   import { ROUTE_OPTIONS, applicationSiteLabel, vehicleLabel } from '$lib/data/vocabulary/doseLabels';
   import type { InjectionVehicle } from '$lib/data/types';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { resize } from '$lib/motion/reveal';
@@ -220,8 +238,15 @@
   async function confirmDose() {
     if (!doseDraft) return;
     const subject = doseSubject(doseDraft);
+    const day = doseDraft.item.slotEpochDay;
     doseDraft = null;
-    await answerOffer(DOSE_OFFER, subject, 'confirm', journal);
+    if (await answerOffer(DOSE_OFFER, subject, 'confirm', journal)) {
+      /* Said out loud, because the only other signal is a notice
+         disappearing. `answerOffer`'s return value is what makes this
+         honest: it is false on a stale confirm, and a screen that toasted
+         regardless would be claiming a write that never happened. */
+      toast(m.coming_back_dose_saved({ date: dayLong(day) }));
+    }
   }
 
   /* ---- the running wear session ---------------------------------------- */
@@ -246,7 +271,9 @@
       endEpochDay: epochDayFromDateInputValueOrToday(wearDraft.end)
     };
     wearDraft = null;
-    await answerOffer(WEAR_OFFER, subject, 'confirm', journal);
+    if (await answerOffer(WEAR_OFFER, subject, 'confirm', journal)) {
+      toast(m.coming_back_wear_saved({ date: dayLong(subject.endEpochDay) }));
+    }
   }
 </script>
 
@@ -254,11 +281,14 @@
 
 <ReadGate read={waitingRows} variant="card" count={3}>
   {#snippet empty()}
+    <!-- A remark rather than a titled notice, which is Notice's own
+         distinction: reached by hand with nothing waiting, a heading here
+         sat directly under the screen's "Waiting for you" and read as a
+         contradiction of it. One sentence, and the way back. -->
     <Notice
       key="coming-back-empty"
       icon="info"
       role={roleAt(activeFlag.roles, 0)}
-      title={m.coming_back_empty_title()}
       text={m.coming_back_empty_body()}
       action={{ label: m.nav_home(), href: '/', primary: true }}
     />
@@ -316,65 +346,38 @@
       {/if}
     </div>
 
-    <!-- The two offers, in a section of their own so the break between them
-         and the rows above is visible rather than only ordered. Its own
-         `screen-part`, which is what stamps the space between the two
-         (ADR-0038: cross-block spacing by attribute, never a margin a screen
-         invents). -->
+    <!-- What can be tidied, one Notice each. Its own `screen-part`, which
+         is what stamps the space above it (ADR-0038: cross-block spacing by
+         attribute, never a margin a screen invents). Role 1 rather than the
+         arrivals' role 0, so the two halves of the screen are two areas the
+         way every other screen's are. -->
     {#if chores.length > 0}
-      <div class="screen-part">
-        <div use:resize>
-          <ListCard role={roleAt(activeFlag.roles, 1)}>
-            {#each chores as item (waitingItemKey(item))}
-              {#if item.kind === 'wear-session'}
-                <!-- 'stop' is the glyph the wear tile's own control already
-                     carries, so the gesture this row opens is one the person
-                     has met before.
-
-                     The no is an unmarked x here, which is the shape
-                     AreaFinish.svelte deliberately refused - and the reason
-                     splits the two rather than contradicting either. There
-                     the x would have spent a decision the app never asks
-                     again, so the no had to be a labelled row. Here it means
-                     what it means on every notice in the app: I have read
-                     this, take it off my screen. Nothing is stored, and the
-                     same row is here again on the next return if it is still
-                     waiting. -->
-                <ListRow
-                  key="coming-back-wear"
-                  data-coming-back-item="wear-session"
-                  icon="stop"
-                  title={m.coming_back_wear_row()}
-                  subtitle={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
-                  chevron={false}
-                  onclick={() => openWear(item)}
-                  action={{
-                    icon: 'x',
-                    label: WEAR_OFFER.copy.decline(),
-                    onclick: () => decline(item),
-                    attrs: { 'data-coming-back-decline': 'wear-session' }
-                  }}
-                />
-              {:else}
-                <ListRow
-                  key="coming-back-dose"
-                  data-coming-back-item="dose"
-                  icon="clock"
-                  title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
-                  subtitle={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
-                  chevron={false}
-                  onclick={() => openDose(item)}
-                  action={{
-                    icon: 'x',
-                    label: DOSE_OFFER.copy.decline(),
-                    onclick: () => decline(item),
-                    attrs: { 'data-coming-back-decline': 'dose' }
-                  }}
-                />
-              {/if}
-            {/each}
-          </ListCard>
-        </div>
+      <div class="screen-part stack-3">
+        {#each chores as item (waitingItemKey(item))}
+          {#if item.kind === 'wear-session'}
+            <Notice
+              key="coming-back-wear"
+              data-coming-back-item="wear-session"
+              icon="clock"
+              role={roleAt(activeFlag.roles, 1)}
+              title={m.coming_back_wear_row()}
+              text={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
+              action={{ label: WEAR_OFFER.copy.confirm(), onclick: () => openWear(item) }}
+              dismiss={{ label: WEAR_OFFER.copy.decline(), onclick: () => decline(item) }}
+            />
+          {:else}
+            <Notice
+              key="coming-back-dose"
+              data-coming-back-item="dose"
+              icon="clock"
+              role={roleAt(activeFlag.roles, 1)}
+              title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
+              text={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
+              action={{ label: DOSE_OFFER.copy.title(), onclick: () => openDose(item) }}
+              dismiss={{ label: DOSE_OFFER.copy.decline(), onclick: () => decline(item) }}
+            />
+          {/if}
+        {/each}
       </div>
     {/if}
 
@@ -486,7 +489,13 @@
   {#if wearDraft}
     <h3>{WEAR_OFFER.copy.title()}</h3>
     <p class="muted small coming-back-sheet-body">{m.coming_back_wear_sheet_body()}</p>
-    <Field label={m.coming_back_wear_end_label()} id="coming-back-wear-end">
+    <!-- The hint names why the button below is refused. Both sheets here
+         open with a disabled primary, which no other sheet in the app does -
+         everywhere else the save is disabled only after somebody has cleared
+         a field - so the reason has to be on screen rather than inferred
+         from a greyed button. Field's own inline hint form (ticket 10), not
+         a paragraph. -->
+    <Field label={m.coming_back_wear_end_label()} hint={m.coming_back_wear_end_hint()} id="coming-back-wear-end">
       {#snippet children(id)}
         <DatePicker
           name="coming-back-wear-end"
