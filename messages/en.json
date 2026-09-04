@@ -2751,6 +2751,7 @@
   "rk_shown_body": "This is the only time it is shown. The characters are not stored anywhere, only a sealed copy of your journal key, so there is no way to show them again. Lose them and the answer is a new key, not this one back.",
   "rk_shown_where": "Somewhere off this device: on paper, or in a password manager on another one. Not a photo, and not a note in this phone.",
   "rk_copy": "Copy",
+  "rk_copy_clears_android": "Copying keeps the key out of the keyboard's clipboard history. The app clears the clipboard a minute later, or when you come back if you left before then, and leaves anything you copied since where it is.",
   "rk_copied": "Copied.",
   "rk_print": "Print",
   "rk_done": "I have written it down",
