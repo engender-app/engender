@@ -292,7 +292,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       counterevidencePool: HYDRATED_ENTRY,
       latestBadMomentEntry: HYDRATED_ENTRY,
       // The id alone, so no hydration: the qualifying clause still joins the
-      // tag and body-region tables, and nothing else is read back.
+      // tag tables, and nothing else is read back. Its other arm reads an
+      // entry's own body-region intensities, which are announced under
+      // 'entry' rather than 'bodyRegion' (the note beside that name above),
+      // so the list is these two and not three.
       latestBadMomentEntryId: ['entry', 'tag'],
       searchEntries: HYDRATED_ENTRY,
       // A count, so no hydration: the search clause itself joins the tag
