@@ -108,10 +108,10 @@ for (const theme of THEMES) {
   await settle(page, '/settings/voice');
   await shoot(page, `vs-1-record-idle-${theme}`);
 
-  // 2. Reading the passage, with the figure riding the action bar.
+  // 2. Reading the passage: the full graph, axis and bands and all.
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(2600);
-  await shoot(page, `vs-2-record-passage-live-${theme}`);
+  await shoot(page, `vs-2-passage-full-graph-${theme}`);
 
   // 3. The held note, where the figure is the thing on the screen: the
   //    absolute axis, the two ranges, the hatched overlap.
@@ -119,7 +119,7 @@ for (const theme of THEMES) {
   await page.waitForSelector('[data-vb-skip]', { timeout: 15000 });
   await page.locator('[data-vb-record]').click();
   await page.waitForTimeout(1800);
-  await shoot(page, `vs-3-record-vowel-live-${theme}`);
+  await shoot(page, `vs-3-vowel-steadiness-${theme}`);
 
   // 4. The summary: six figures, then the take drawn from its own track.
   await page.waitForSelector('[data-vb-save]', { timeout: 20000 });

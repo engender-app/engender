@@ -50,6 +50,21 @@
      go (PRODUCT.md's "No judgment encoded anywhere", and ADR-0012 as
      ADR-0059 narrows it).
 
+     **Two axes, because the two steps ask different questions.** With a
+     language it draws absolute hertz with that language's bands behind it,
+     which is what somebody reading a passage is watching. With `language`
+     null it draws whatever axis the caller hands it and labels the ticks in
+     the caller's unit, and it draws no bands - which is what somebody
+     holding one note is watching, since the task there is keeping a pitch
+     rather than reaching one and a flat line is the whole answer.
+
+     Both carry their scale in the gutter. There was briefly a third form -
+     a 44px strip with no gutter and no bands on the action bar - and it
+     drew a pitch trace nothing could be read off, which is the relative
+     gauge this ticket exists to replace, in miniature (Alicja, 2026-09-04:
+     "no way to tell what it measures at all"). A figure either carries its
+     scale or is not drawn.
+
      Motion: tier 3. Data moves, the container does not, and only transform
      and opacity are animated - the two frame edges scale, so the app's
      duration clamp turns every reading into an instant cut under either
@@ -76,13 +91,13 @@
     medianHz = null,
     comfort = null,
     gate = null,
-    hzLabel,
+    ticks,
+    tickLabel,
     language,
     languageGuessed = false,
     underPlot,
     captionShared = false,
     role,
-    compact = false,
     ...rest
   }: {
     axis: PitchAxis;
@@ -100,13 +115,25 @@
     /** What the recording conditions are doing, when something is being
         recorded. Null for a take that is already finished. */
     gate?: { roomFraction: number; roofWeight: number; clipping: boolean } | null;
-    /** How a frequency is written in the gutter, in the caller's locale. */
-    hzLabel: (hz: number) => string;
+    /** Which frequencies get a number in the gutter. Omitted with a
+        language, where the band edges are the only values on the axis that
+        mean anything and the figure knows them. */
+    ticks?: readonly number[];
+    /** How a tick is written, in the caller's locale and the caller's unit:
+        hertz where the axis is absolute, signed semitones where it is a
+        take's own note. */
+    tickLabel: (hz: number) => string;
     /** Whose figures the bands are: the language of the passage being read,
         not the app's (bands.ts's `bandLanguageOf`). Pitch differs by
         language by more than it differs by gender within one, so a band
-        drawn for the wrong population is worse than no band. */
-    language: BandLanguage;
+        drawn for the wrong population is worse than no band.
+
+        Null draws no bands and, with them, no caption: a figure measuring a
+        take against its own note cites nothing, so there is nothing for a
+        source line to name. That is the only way to reach a bandless
+        figure, which is what keeps ADR-0059's "never without its citation"
+        rule from having a hole in it. */
+    language: BandLanguage | null;
     /** True where that language is a guess, which the caption says. */
     languageGuessed?: boolean;
     /** True when whoever embedded this figure is rendering one
@@ -124,9 +151,6 @@
         picture it is about. */
     underPlot?: Snippet;
     role?: Role;
-    /** The action bar's form: the field alone, at a third the height, under
-        a screenful of text somebody is busy reading. */
-    compact?: boolean;
     [attribute: string]: unknown;
   } = $props();
 
@@ -143,11 +167,13 @@
   const y = (hz: number) => (1 - axisFraction(hz, axis)) * HEIGHT;
 
   let bands = $derived(
-    referenceBands(language).map((band) => ({
-      key: band.key,
-      top: y(band.highHz),
-      height: y(band.lowHz) - y(band.highHz)
-    }))
+    language === null
+      ? []
+      : referenceBands(language).map((band) => ({
+          key: band.key,
+          top: y(band.highHz),
+          height: y(band.lowHz) - y(band.highHz)
+        }))
   );
 
   let middle = $derived(bands.find((band) => band.key === 'between'));
@@ -166,9 +192,10 @@
       the axis apart, and at the 390px floor that is two numbers in the same
       eight pixels. */
   let edges = $derived.by(() => {
-    const hzs = bandEdges(language);
+    const hzs =
+      language === null ? [...(ticks ?? [])].sort((a, b) => b - a).reverse() : bandEdges(language);
     const exact = hzs.map((hz) => y(hz));
-    const nudged = spreadLabels(exact, LABEL_GAP);
+    const nudged = spreadLabels(exact, LABEL_GAP, HEIGHT);
     return hzs.map((hz, index) => ({ hz, y: nudged[index] }));
   });
 
@@ -197,24 +224,16 @@
   const BRACKET_X = WIDTH - BRACKET_TICK - 6;
 </script>
 
-<div
-  class="pf"
-  class:is-clipping={gate?.clipping}
-  class:is-compact={compact}
-  {...roleAttrs(role)}
-  {...rest}
->
+<div class="pf" class:is-clipping={gate?.clipping} {...roleAttrs(role)} {...rest}>
   <div class="pf-plot">
-    {#if !compact}
-      <!-- The gutter is HTML rather than SVG text: the box is stretched to
-           whatever width it lands in, and stretched type is the one thing a
-           non-uniform viewBox cannot be forgiven for. -->
-      <div class="pf-gutter" aria-hidden="true">
-        {#each edges as edge (edge.hz)}
-          <span class="pf-tick" style="top: {edge.y}%">{hzLabel(edge.hz)}</span>
-        {/each}
-      </div>
-    {/if}
+    <!-- The gutter is HTML rather than SVG text: the box is stretched to
+         whatever width it lands in, and stretched type is the one thing a
+         non-uniform viewBox cannot be forgiven for. -->
+    <div class="pf-gutter" aria-hidden="true">
+      {#each edges as edge (edge.hz)}
+        <span class="pf-tick" style="top: {edge.y}%">{tickLabel(edge.hz)}</span>
+      {/each}
+    </div>
 
     <div class="pf-field">
       <svg
@@ -324,7 +343,7 @@
 
   {#if underPlot}{@render underPlot()}{/if}
 
-  {#if !compact && !captionShared}
+  {#if language !== null && !captionShared}
     <PitchBandsCaption {language} {languageGuessed} />
   {/if}
 </div>
@@ -370,10 +389,6 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-input);
     overflow: hidden;
-  }
-
-  .pf.is-compact .pf-field {
-    height: 44px;
   }
 
   .pf-svg {

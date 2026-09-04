@@ -15,14 +15,9 @@
      all: ADR-0059 permits the bands only with their figures, their source
      and their caveat, and tests/voice-figure-surfaces.test.ts holds any
      caller that passes `captionShared` to also import this. */
+  import { m } from '$lib/paraglide/messages';
   import { referenceBands, type BandLanguage } from '$lib/audio/bands';
-  import {
-    bandLabel,
-    caveatText,
-    guessedLanguageText,
-    hzLabel,
-    sourceText
-  } from '$lib/components/pitchBandCopy';
+  import { bandLabel, hzLabel } from '$lib/components/pitchBandCopy';
 
   let {
     language,
@@ -56,11 +51,13 @@
       </li>
     {/each}
   </ul>
-  <p class="pbc-note" data-pitch-source>{sourceText(language)}</p>
+  <p class="pbc-note" data-pitch-source>
+    {language === 'pl' ? m.vb_band_source_pl() : m.vb_band_source_en()}
+  </p>
   {#if languageGuessed}
-    <p class="pbc-note" data-pitch-guessed>{guessedLanguageText()}</p>
+    <p class="pbc-note" data-pitch-guessed>{m.vb_band_guessed()}</p>
   {/if}
-  <p class="pbc-note" data-pitch-caveat>{caveatText()}</p>
+  <p class="pbc-note" data-pitch-caveat>{m.vb_band_caveat()}</p>
 </div>
 
 <style>

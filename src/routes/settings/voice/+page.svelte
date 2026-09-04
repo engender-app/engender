@@ -52,7 +52,7 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
-  import { bandLanguageIsGuessed, bandLanguageOf, comfortBand } from '$lib/audio/bands';
+  import { bandsFor, comfortBand } from '$lib/audio/bands';
   import { acousticDelta } from '$lib/audio/benchmarkDelta';
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -121,13 +121,10 @@
      because a pair is only comparable at all when both were read from the
      same passage, which is benchmarkDelta.ts's own gate - and where they
      were not, the caption still names whose figures the bands are, which is
-     what ADR-0059 asks of it. */
-  let pairLanguage = $derived(
-    pair ? bandLanguageOf(anchors[pair.left].passageKey, getLocale()) : bandLanguageOf('', getLocale())
-  );
-  let pairLanguageGuessed = $derived(
-    pair ? bandLanguageIsGuessed(anchors[pair.left].passageKey) : true
-  );
+     what ADR-0059 asks of it. The no-pair arm is never displayed (the
+     caption renders inside `{#if comparing && pair}`) but is still
+     evaluated, so it has to be something rather than an index into null. */
+  let pairBands = $derived(bandsFor(pair ? anchors[pair.left].passageKey : '', getLocale()));
 
   /* F0 median over every benchmark, oldest first - independent of which two
      are picked to compare. The trend and the pair compare are two different
@@ -199,10 +196,10 @@
   {#if comparing && pair}
     <ScreenHeader title={m.vc_compare()} back={() => (comparing = false)} />
     <p class="compare-gap">{gapLabel}</p>
-    <div class="compare-wrap">
+    <div class="vc-stack">
       {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < anchors.length - 1 }] as side (side.which)}
         {@const benchmark = anchors[side.i]}
-        <div class="compare-side">
+        <div class="vc-take">
           <VoicePlayer fileName={benchmark.passageFileName} />
           <div class="compare-nav">
             <button class="icon-btn" disabled={!side.canPrev}
@@ -218,7 +215,7 @@
             data-vc-take={benchmark.id}
             {comfort}
             captionShared
-            language={bandLanguageOf(benchmark.passageKey, getLocale())}
+            language={bandsFor(benchmark.passageKey, getLocale()).language}
             role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
             pitchTrack={benchmark.pitchTrack}
             medianHz={benchmark.f0MedianHz}
@@ -233,7 +230,7 @@
          the same three paragraphs twice over the two charts they are about
          (PitchBandsCaption.svelte's own note). -->
     <div class="screen-part" {...roleAttrs(roleAt(activeFlag.roles, SECTION_ROLE.trend))}>
-      <PitchBandsCaption language={pairLanguage} languageGuessed={pairLanguageGuessed} />
+      <PitchBandsCaption language={pairBands.language} languageGuessed={pairBands.guessed} />
     </div>
 
     <div class="screen-part vc-delta" data-benchmark-delta>
@@ -398,6 +395,27 @@
 </div>
 
 <style>
+  /* The two takes stack rather than sitting side by side (Alicja,
+     2026-09-04: "in the compare module, it shouldn't be side-by-side - not
+     enough space for that"). Two pitch figures in half of 390px is 160px
+     of plot each, and the gutter numbers alone are 40 of it.
+
+     Its own class rather than a change to `.compare-wrap`, which is the
+     two-up grid the progress-photo comparison uses: two photographs side by
+     side is what that layout is for and it is not this ticket's to move
+     (screens.css's own note on the same conflict). */
+  .vc-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .vc-take {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
   /* Voice benchmark delta (phase 5 deepening ticket 16). Same dt/dd-row
      shape as VoiceBenchmarkFlow.svelte's own .vb-figures, which is scoped to
      that component and out of reach here - two surfaces wanting the same

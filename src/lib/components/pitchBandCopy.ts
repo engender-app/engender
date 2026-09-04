@@ -1,19 +1,19 @@
-/* The words on the pitch figure (phase 8 features ticket 09, ADR-0059).
+/* How a pitch figure's numbers and band names are written (phase 8
+   features ticket 09, ADR-0059).
 
-   Four callers draw the same bands - the live gauge, a finished take, the
-   compare pair's shared caption and the comfort-band editor - and the
-   figure takes its captions as props or reads them here so the geometry
-   stays free of paraglide (the reason audio/bands.ts holds no copy at all,
-   ADR-0016). Passing the same functions from four call sites is how a band
-   ends up called one thing on one tab and something else on the next.
+   Here rather than in audio/bands.ts because that module is pure arithmetic
+   with nothing from paraglide in it (ADR-0016), and here rather than in the
+   components because three of them write the same things: the live gauge
+   and a finished take both label a gutter, and both they and the compare
+   pair's shared caption name the same bands. Three call sites formatting a
+   band name is how one ends up called something else on one tab.
 
-   The source line is per language, because the bands are: an English
-   passage carries Leung and others, a Polish one carries Andreeva and
-   others, and the sentence names the population so the figure says whose
-   figures those are rather than presenting them as universal. */
+   PitchBandsCaption.svelte reads its own sentences straight from paraglide
+   rather than through here - a one-line wrapper over one message with one
+   caller is a worse thing to maintain than the call it replaces. */
 
 import { m } from '$lib/paraglide/messages';
-import type { BandLanguage, MiddleBand, PitchBand } from '$lib/audio/bands';
+import type { MiddleBand, PitchBand } from '$lib/audio/bands';
 
 /** A frequency as this app writes one. */
 export function hzLabel(hz: number): string {
@@ -36,20 +36,11 @@ export function bandLabel(band: PitchBand): string {
   }
 }
 
-/** Where this language's figures come from. */
-export function sourceText(language: BandLanguage): string {
-  return language === 'pl' ? m.vb_band_source_pl() : m.vb_band_source_en();
-}
-
-/** That they are averages, that they follow the passage's language, and
-    that pitch is only part of it. */
-export function caveatText(): string {
-  return m.vb_band_caveat();
-}
-
-/** Said only where the passage is somebody's own words, so the figure
-    admits that the language behind these bands is the app's rather than the
-    passage's (bands.ts's `bandLanguageIsGuessed`). */
-export function guessedLanguageText(): string {
-  return m.vb_band_guessed();
+/** A steadiness tick: how far this line is from the note being held, in
+    semitones, signed so above and below are told apart and 0 carries no
+    sign. Whole numbers, because the ticks are placed one semitone apart. */
+export function semitoneLabel(semitones: number): string {
+  const rounded = Math.round(semitones);
+  if (rounded === 0) return '0';
+  return rounded > 0 ? `+${rounded}` : String(rounded);
 }

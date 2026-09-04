@@ -26,7 +26,7 @@
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
-  import { bandLanguageOf, comfortBand } from '$lib/audio/bands';
+  import { bandsFor, comfortBand } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import { PASSAGE_CHECKS, type QualityCheck, type QualityReport } from '$lib/audio/quality';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -62,10 +62,11 @@
   let role = $derived(roleAt(activeFlag.roles, 0));
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
   /* Practising reads nothing, so there is no passage to take a language
-     from and the app's is a guess at what is being spoken. Marked as one:
-     the bands are per language because pitch is, and a band drawn for the
-     wrong population is worse than no band (ADR-0059). */
-  let bandLanguage = $derived(bandLanguageOf('', getLocale()));
+     from and the app's is a guess at what is being spoken - which is what
+     `bandsFor` returns for an empty key, `guessed` included. The bands are
+     per language because pitch is, and a band drawn for the wrong
+     population is worse than no band (ADR-0059). */
+  let bands = $derived(bandsFor('', getLocale()));
 
   /** The gate's findings, in words, and only ever about the recording. The
       length check is left out of the sentence: on this tab a short stretch
@@ -155,8 +156,8 @@
           data-vp-gauge
           {role}
           {comfort}
-          language={bandLanguage}
-          languageGuessed
+          language={bands.language}
+          languageGuessed={bands.guessed}
           {frames}
           report={reading}
           targetSeconds={TARGET_SECONDS}
@@ -171,11 +172,11 @@
     <div class="editor-savebar">
       {#if running}
         <button class="btn btn-primary" data-vp-stop onclick={stop}>
-          <Icon name="pause" size={20} /><span>{m.vb_practise_stop()}</span>
+          <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
         </button>
       {:else}
         <button class="btn btn-primary" data-vp-start onclick={start}>
-          <Icon name="mic" size={20} /><span>{m.vb_practise_start()}</span>
+          <Icon name="mic" size={20} /><span>{m.vb_record()}</span>
         </button>
       {/if}
     </div>

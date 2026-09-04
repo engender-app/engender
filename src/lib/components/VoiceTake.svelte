@@ -82,7 +82,7 @@
         {trace}
         span={{ lowHz: p10Hz, highHz: p90Hz }}
         {medianHz}
-        {hzLabel}
+        tickLabel={hzLabel}
         {language}
         {languageGuessed}
         {captionShared}
