@@ -61,6 +61,7 @@ const SECTIONS = [
   'cycleEvents',
   'journalingPauses',
   'savedQuestions',
+  'revisits',
   'eras',
   'eraMutes',
   'effectCategories',

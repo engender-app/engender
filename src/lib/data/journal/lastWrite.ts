@@ -277,7 +277,12 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // The record of which areas are hidden or finished; asking it for its own
   // last write answers nothing a consumer of this registry could use.
   areaStates: 'the record of which areas are finished, not itself a stream to ask about',
-  savedQuestions: 'a tool the person built for themselves, not a record of something that happened'
+  savedQuestions: 'a tool the person built for themselves, not a record of something that happened',
+  // A revisit is met on its target day (ADR-0045: the arrival offers and
+  // never mints); asking when one was last set is a second way to meet it
+  // before that day does, the same risk letters' own opt-out above guards
+  // against.
+  revisits: 'sealed until the day chosen to see the entry again'
 };
 
 export const LAST_WRITE_ENTRIES: readonly LastWriteEntry[] = ENTRIES;

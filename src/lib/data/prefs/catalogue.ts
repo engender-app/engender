@@ -111,6 +111,10 @@ export interface PreferenceValues {
       when a time-capsule letter has become readable. Same shape and
       reasoning as `wearTimerEnabled`. */
   readyLetterEnabled: boolean;
+  /** Whether the revisit live tile is ever shown (phase 8 features ticket
+      08, ADR-0045), when a day chosen to see an old entry again has
+      arrived. Same shape and reasoning as `wearTimerEnabled`. */
+  revisitEnabled: boolean;
   /** Whether the surgery-countdown live tile is ever shown (phase 5
       ticket 51), ahead of a scheduled procedure. Same shape and reasoning
       as `wearTimerEnabled`. */
@@ -377,6 +381,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
+  revisitEnabled: true,
   surgeryCountdownEnabled: true,
   safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
@@ -467,6 +472,7 @@ export const DEVICE_LOCAL_KEYS = [
   'wearTimerEnabled',
   'dosePanelEnabled',
   'readyLetterEnabled',
+  'revisitEnabled',
   'surgeryCountdownEnabled',
   'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',

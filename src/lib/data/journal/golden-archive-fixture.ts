@@ -202,6 +202,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     hasNote: true,
     hasPhoto: false
   });
+  await journal.revisits.setRevisit({ entryId: entry, createdEpochDay: 20000, targetEpochDay: 20100 });
 
   /* Three eras, so both open bounds and a closed pair all travel. An absent
      bound is the case a round trip can lose silently by defaulting it to a

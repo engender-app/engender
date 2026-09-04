@@ -74,12 +74,14 @@
      than leaving somebody to infer it from a letter that ignored the mood
      they picked. */
   import { m } from '$lib/paraglide/messages';
+  import { goto } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
+  import { drawRandomEntry } from '$lib/data/randomDraw';
   import { savedQuestionInputOf } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
@@ -186,7 +188,23 @@
     criteria;
     pages = 1;
     hitPages = 1;
+    drawnIds = new Set();
   });
+
+  /* Random, scoped to the question currently being asked rather than its own
+     control (phase 8 features ticket 08, spec.md: "Random, scoped"). The
+     small "which ones have come up already" piece of state the ticket calls
+     for and says is not a stored one - reset above whenever the question
+     changes, and by drawRandomEntry itself once every loaded hit has come
+     up. Draws from `hits`, the run currently on screen, not from `total`:
+     the ticket's own "the result set currently on screen". */
+  let drawnIds = $state<Set<number>>(new Set());
+  function drawRandom() {
+    const draw = drawRandomEntry(hits, drawnIds);
+    if (!draw) return;
+    drawnIds = draw.drawnIds;
+    void goto(`/entry/${draw.entry.id}`);
+  }
 
   /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
      split: a built-in tag stores a key, so the words it was shown under only
@@ -356,6 +374,15 @@
          own line). -->
     <button class="btn btn-soft" data-search-save onclick={() => (savingOpen = true)}>
       <Icon name="bookmark" size={20} /><span>{m.saved_question_save()}</span>
+    </button>
+  {/if}
+
+  {#if hits.length > 0}
+    <!-- A draw from the question currently being asked, not a mode of its
+         own (spec.md's own line) - absent with nothing asked, which
+         `hits.length` already says without a second `hasCriteria` check. -->
+    <button class="btn btn-soft search-random" data-search-random onclick={drawRandom}>
+      <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
     </button>
   {/if}
 

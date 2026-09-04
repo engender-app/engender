@@ -319,6 +319,22 @@ export interface ArchiveSavedQuestion {
   hasPhoto: boolean;
 }
 
+/** A day chosen to see one entry again (phase 8 features ticket 08,
+    ADR-0045). `entryId` is the owning entry's own uuid here, not its local
+    row id: a raw integer FK would need resolving against a rowid that can
+    differ after a restore or merge, and a uuid already survives that trip
+    unresolved - the same plain-text FK shape ArchiveMilestone's
+    `procedureId` already carries. The live-schema `Revisit` type (types.ts)
+    resolves this back to the app-facing numeric entry id; that resolution
+    is revisits.ts's job, not this wire shape's. */
+export interface ArchiveRevisit {
+  id: string;
+  entryId: string;
+  entryEpochDay: number;
+  createdEpochDay: number;
+  targetEpochDay: number;
+}
+
 /** One bundled transition-roadmap goal with a status recorded at all
     (phase 4 ticket 23, widened phase 5 ticket 20 for the tri-state), named
     by its pack and its goal key rather than a uuid - both strings mean the
@@ -736,6 +752,7 @@ export interface ArchiveJournal {
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
   savedQuestions: ArchiveSavedQuestion[];
+  revisits: ArchiveRevisit[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,
