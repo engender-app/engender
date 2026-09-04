@@ -8,7 +8,7 @@
      (ticket 20) are the replacement; this ticket is the one that spends
      them here.
 
-     DIRECTION.md 3b: subtitles are earned, not standard. These 25 rows
+     DIRECTION.md 3b: subtitles are earned, not standard. These 26 rows
      carry titles alone (deepening ticket 04 dropped the unused `subtitle`
      field and its dead catalogue keys) except the trailing Settings row,
      where "Settings" alone does not say what is behind it.
@@ -17,7 +17,9 @@
      ticket's own scope line: a redesign changes the container, not what
      each row says. Phase 8 features ticket 14 added the 25th, `words`,
      to the Transition group beside `presentations` and `eras` - it groups
-     note text by exactly those two things. */
+     note text by exactly those two things. Features ticket 12 added the
+     26th, `dilation`, to the Health group beside `surgery` - the practice
+     a taper schedules. */
   import { m } from '$lib/paraglide/messages';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -56,6 +58,7 @@
     { key: 'cycle-events', icon: 'calendar', title: () => m.cycle_events(), href: '/settings/cycle-events' },
     { key: 'side-effects', icon: 'zap', title: () => m.side_effects(), href: '/settings/side-effects' },
     { key: 'surgery', icon: 'flag', title: () => m.surgery_journey_title(), href: '/settings/surgery' },
+    { key: 'dilation', icon: 'flask', title: () => m.dilation(), href: '/settings/dilation' },
     { key: 'appointment-prep', icon: 'check', title: () => m.appointment_prep_title(), href: '/settings/appointment-prep' },
     { key: 'clinician-summary', icon: 'share', title: () => m.clinician_summary_row(), href: '/settings/clinician-summary' },
   ];

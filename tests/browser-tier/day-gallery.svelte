@@ -66,6 +66,7 @@
     voiceBenchmarks: [],
     measurements: [],
     sizeRecords: [],
+    taperSessions: [],
     sideEffects: [],
     personalEffects: [],
     cycleEvents: [],
@@ -183,6 +184,7 @@
       { id: 'm2', type: 'hips', epochDay: DAY, value: 99, unit: 'cm' }
     ],
     sizeRecords: [{ id: 's1', epochDay: DAY, category: 'bras', size: '70B', brand: 'Triumph', fitNote: '' }],
+    taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],
     sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
     cycleEvents: [{ id: 'c1', kind: 'spotting', epochDay: DAY }],

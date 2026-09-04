@@ -1115,3 +1115,36 @@ export interface BodyRegion {
   builtIn: boolean;
   hidden: boolean;
 }
+
+/** One stretch of a dilation taper (phase 8 features ticket 12, CONTEXT:
+    "Taper"): a session every `everyNDays` days, for `days` days, before the
+    next stage takes over. Typed in from the person's own surgeon's plan,
+    never a default this app ships (out of scope, ticket 12). */
+export interface TaperStage {
+  everyNDays: number;
+  days: number;
+}
+
+/** The dilation schedule the person has typed in (ticket 12). One per
+    journal: `startEpochDay` is when the stage sequence begins, which is
+    usually a few days after `surgeryEpochDay` rather than the same day -
+    the two are kept apart because the chart's axis (day since surgery) and
+    the schedule's own clock (day since the taper started) answer different
+    questions. Editable in place, because a surgeon changes the plan; the
+    expansion to expected sessions is pure arithmetic over this and today
+    (taperSchedule.ts) and is never itself stored (ADR-0010). */
+export interface Taper {
+  id: string;
+  surgeryEpochDay: number;
+  startEpochDay: number;
+  stages: TaperStage[];
+}
+
+/** One dilation session actually done (ticket 12). Nothing required beyond
+    the day it took place - this is a logging surface, not an adherence
+    tool, and a session with nothing to add still counts. */
+export interface TaperSession {
+  id: string;
+  epochDay: number;
+  note: string;
+}

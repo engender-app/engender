@@ -383,6 +383,31 @@ const SECTIONS = [
       fit_note: 'fitNote'
     }
   }),
+  /* The dilation taper schedule (ticket 12) - a plan the person typed in,
+     not a record of anything that happened to them, so `travels: 'none'`
+     the same way a dose schedule would if it were archive-registered at
+     all. */
+  flat({
+    name: 'taper',
+    travels: 'none',
+    table: 'taper',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: {
+      uuid: 'id',
+      surgery_epoch_day: 'surgeryEpochDay',
+      start_epoch_day: 'startEpochDay',
+      stages: 'stagesJson'
+    }
+  }),
+  flat({
+    name: 'taperSessions',
+    travels: 'none',
+    table: 'taper_session',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: { uuid: 'id', epoch_day: 'epochDay', note: 'note' }
+  }),
   flat({
     name: 'sideEffects',
     travels: 'none',

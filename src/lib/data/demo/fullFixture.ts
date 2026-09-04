@@ -27,6 +27,7 @@ import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
+import { expectedSessionDays } from '../taperSchedule';
 
 function rng(seed: number) {
   return function () {
@@ -141,6 +142,26 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
       fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
     });
+  }
+
+  // Dilation: a surgery well inside the tracking window, a daily stage
+  // easing to every third day, and most - not all - of the expected
+  // sessions actually logged, so the gap rendering has something real to
+  // show (ticket 12).
+  const surgeryEpochDay = today - 200;
+  const taperStart = surgeryEpochDay + 5;
+  const taper = {
+    surgeryEpochDay,
+    startEpochDay: taperStart,
+    stages: [
+      { everyNDays: 1, days: 14 },
+      { everyNDays: 3, days: 300 }
+    ]
+  };
+  await journal.taper.upsertTaper(taper);
+  for (const day of expectedSessionDays(taper, today)) {
+    if (r() < 0.15) continue;
+    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? 'a bit more resistance today' : '' });
   }
 
   const hairStages = ['1', '2', '2a', '3', '3v', '3a', '4', '4a'];
