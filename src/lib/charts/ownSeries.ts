@@ -86,6 +86,11 @@ export interface OwnSeries {
   /** The second line's scale: the first one's where the two lines are the
       two ends of one range, its own where they are two measures. */
   secondScale: PaddedRange | null;
+  /** Whether the second line is placed against the first one's scale. What
+      the plot needs to decide whether a value gutter can be printed at all
+      (kit/AreaChart.svelte): one range has two ends to print, two ranges
+      have none in common. False where there is no second line. */
+  secondScaleShared: boolean;
   /** How many benchmarks measured this figure at all. What tells "no take
       has measured this" apart from "one take has", which are different
       sentences on an empty card. */
@@ -142,7 +147,7 @@ export function ownSeries(benchmarks: readonly BenchmarkForSeries[], key: OwnSer
      built on the same test, so a card with no line also has no gutter of
      numbers nothing is drawn against. */
   if (readings < 2) {
-    return { runs: [], breaks: [], scale: null, secondScale: null, readings };
+    return { runs: [], breaks: [], scale: null, secondScale: null, secondScaleShared: false, readings };
   }
 
   const shared = figure.second?.scale === 'shared';
@@ -155,6 +160,7 @@ export function ownSeries(benchmarks: readonly BenchmarkForSeries[], key: OwnSer
     breaks: breaksOf(benchmarks),
     scale,
     secondScale,
+    secondScaleShared: second !== null && shared,
     readings
   };
 }
