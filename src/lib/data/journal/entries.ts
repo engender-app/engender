@@ -1185,7 +1185,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
     async noteEntries() {
       const rows = await driver.query<{ epoch_day: number; note: string; presentation_id: string | null }>(
         `SELECT epoch_day, note, presentation_id FROM entry
-         WHERE trashed_at IS NULL AND note != ''`
+         WHERE trashed_at IS NULL AND note IS NOT NULL AND note != ''`
       );
       return rows.map((row) => ({
         epochDay: row.epoch_day,

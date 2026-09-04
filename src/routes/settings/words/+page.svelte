@@ -16,8 +16,7 @@
      reverse. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { eraCoversDay } from '$lib/data/eras';
-  import { noteLanguage, wordFrequency } from '$lib/data/wordFrequency';
+  import { groupByEra, groupByPresentation, noteLanguage, wordFrequency } from '$lib/data/wordFrequency';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -59,13 +58,15 @@
       selectedId = null;
   });
 
-  let filteredEntries = $derived.by(() => {
-    const notes = entriesQuery.rows;
-    if (!selectedId) return notes;
-    if (dimension === 'presentation') return notes.filter((e) => e.presentationId === selectedId);
-    const era = erasQuery.rows.find((e) => e.id === selectedId);
-    return era ? notes.filter((e) => eraCoversDay(era, e.epochDay)) : notes;
-  });
+  // The partition itself is wordFrequency.ts's own tested fold - grouped
+  // by every presentation or era, `null` the bucket for one carrying none.
+  // "All" is never that bucket (there is no "no presentation"/"no era"
+  // filter option, see above): it is the unfiltered list, read straight
+  // off the query rather than out of the grouping.
+  let grouped = $derived(
+    dimension === 'presentation' ? groupByPresentation(entriesQuery.rows) : groupByEra(entriesQuery.rows, erasQuery.rows)
+  );
+  let filteredEntries = $derived(selectedId ? (grouped.get(selectedId) ?? []) : entriesQuery.rows);
 
   let frequencies = $derived(wordFrequency(filteredEntries).slice(0, WORD_LIMIT));
   let hasPolish = $derived(filteredEntries.some((e) => noteLanguage(e.note) === 'pl'));
