@@ -3,9 +3,10 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
-import { drawUpperBound, labTimingFor, type LabDraw } from '../labTiming';
+import { drawUpperBound, labTimingFor, selectTimingDose, type CandidateDose, type LabDraw } from '../labTiming';
 import { assertChanged, mintUuid, now } from './support';
 import { normalizeUnit } from '../labs/units';
+import type { RegimenArea } from './regimen';
 
 /** The analytes offered before any result exists. Lowercase scientific
     names shown as-is, like every stored analyte. Order is cosmetic - it
@@ -150,7 +151,7 @@ const timingColumns = (timing: LabTiming | null): [string | null, number | null,
     : [timing.route, timing.hoursSinceDose, null];
 };
 
-export function makeLabsArea(driver: SqliteDriver): LabsArea {
+export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsArea {
   const usedAnalytes = async (): Promise<string[]> => {
     const rows = await driver.query<{ analyte: string }>('SELECT DISTINCT analyte FROM lab_result ORDER BY analyte');
     return rows.map((r) => r.analyte);
@@ -164,26 +165,39 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
     return rows.map(toLabResult);
   };
 
-  /** The draw's dosing context, measured now against the dose log as it
-      stands now. Reads `dose_event` from inside the labs area on purpose:
-      every path that creates a lab result then gets a context without
-      knowing it needs one, where a caller-supplied figure would go missing
-      the first time someone added a second creation path (the OCR import is
-      already the second).
+  /** The draw's dosing context, measured now against the dose log and
+      regimen episode history as they stand now. Reads `dose_event` from
+      inside the labs area on purpose: every path that creates a lab result
+      then gets a context without knowing it needs one, where a
+      caller-supplied figure would go missing the first time someone added a
+      second creation path (the OCR import is already the second).
 
       A skipped dose is passed over. It is a dose that was expected and not
       taken, so hours since it would be hours since nothing happened; taken
-      and changed both mean something went in. */
-  const deriveTiming = async (draw: LabDraw): Promise<LabTiming | null> => {
-    const rows = await driver.query<{ timestamp: number; route: string }>(
-      `SELECT timestamp, route FROM dose_event
-        WHERE timestamp <= ? AND status <> 'skipped'
-        ORDER BY timestamp DESC, id DESC
-        LIMIT 1`,
-      [drawUpperBound(draw)]
-    );
-    if (rows.length === 0) return null;
-    return labTimingFor(draw, { timestamp: rows[0].timestamp, route: rows[0].route as DoseRoute });
+      and changed both mean something went in.
+
+      Candidates are also filtered to the ones that attribute, through
+      episodes, to the draw analyte's own curve drug (selectTimingDose,
+      hormoneDrug.ts) - a concurrent dose of an unrelated drug is skipped
+      over exactly as if it weren't there, rather than reported as this
+      draw's context (phase 8 features ticket 37). */
+  const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
+    const [rows, episodes] = await Promise.all([
+      driver.query<{ timestamp: number; route: string; drug: string | null }>(
+        `SELECT timestamp, route, drug FROM dose_event
+          WHERE timestamp <= ? AND status <> 'skipped'
+          ORDER BY timestamp DESC, id DESC`,
+        [drawUpperBound(draw)]
+      ),
+      regimen.getEpisodes()
+    ]);
+    const doses: CandidateDose[] = rows.map((row) => ({
+      timestamp: row.timestamp,
+      route: row.route as DoseRoute,
+      drug: row.drug
+    }));
+    const dose = selectTimingDose(analyte, doses, episodes);
+    return dose ? labTimingFor(draw, dose) : null;
   };
 
   return {
@@ -270,7 +284,7 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
 
         const moved = existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime;
         const timing = moved
-          ? timingColumns(await deriveTiming(draw))
+          ? timingColumns(await deriveTiming(draw, input.analyte))
           : ([existing.timing_route, existing.timing_hours, existing.timing_day_of_interval] as const);
 
         const result = await driver.run(
@@ -289,7 +303,7 @@ export function makeLabsArea(driver: SqliteDriver): LabsArea {
         `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, provider, draw_time,
                                  timing_route, timing_hours, timing_day_of_interval, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, input.epochDay, ...fields, draw.drawTime, ...timingColumns(await deriveTiming(draw)), now()]
+        [uuid, input.epochDay, ...fields, draw.drawTime, ...timingColumns(await deriveTiming(draw, input.analyte)), now()]
       );
       return uuid;
     },
