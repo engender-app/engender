@@ -76,6 +76,7 @@
     hairStages: [],
     hairPhotos: [],
     hairRemovalSessions: [],
+    appointments: [],
     procedureRecords: [],
     tryoutPhotos: [],
     documents: []
@@ -212,10 +213,13 @@
     hairRemovalSessions: [
       { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, cost: '250 zł', provider: 'Klinika' }
     ],
+    appointments: [
+      { id: 'ap1', kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null },
+      { id: 'ap2', kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy' }
+    ],
     procedureRecords: [
-      { kind: 'consult', id: 'pc1', procedureId: 'pr1', procedureName: 'Orchiectomy' },
-      { kind: 'recovery-photo', id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() },
-      { kind: 'recovery-photo', id: 'pp2', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() }
+      { id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() },
+      { id: 'pp2', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() }
     ],
     tryoutPhotos: [
       { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }

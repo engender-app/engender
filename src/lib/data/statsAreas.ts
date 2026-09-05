@@ -245,6 +245,10 @@ export const STATS_AREA_OPT_OUTS: Record<Exclude<LastWriteKey, Covered>, string>
      screen that has just charted them six ways, is the index describing
      itself. */
   entries: 'the cross-area block is the entries',
+  /* A visit is a date somebody was given, not a practice with a cadence of
+     their own, so there is no shape here to chart and a count of them would
+     be a figure about how often they can get an appointment. */
+  appointments: 'dates somebody else set; a count of them measures access, not the person',
   /* No screen browses felt sense on its own: a felt-sense history hangs off
      the tryout or the milestone it was logged against, and a card here would
      have nowhere to send anybody. The gap is recorded, not filled. */

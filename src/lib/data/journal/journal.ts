@@ -50,6 +50,7 @@ import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEff
 import { makePhotosArea, type PhotosArea } from './photos';
 import { makePresentationsArea, type PresentationsArea } from './presentations';
 import { makeEntryTemplatesArea, type EntryTemplatesArea } from './entryTemplates';
+import { makeAppointmentsArea, type AppointmentsArea } from './appointments';
 import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
@@ -336,6 +337,12 @@ export interface Journal {
       recovery checklist is an ordinary `checklists` record owned by the
       procedure, hence the dependency between the two below. */
   procedures: ProceduresArea;
+  /** Appointments (phase 8 features ticket 57, ADR-0066, CONTEXT:
+      "Appointment"): a day, a kind the person names, a place, a note, and
+      an optional link to a procedure. A consult is one of these rows with
+      the link filled in, which is why `procedures` above takes this area
+      rather than owning a table of its own. */
+  appointments: AppointmentsArea;
   /** Free-text checklists (phase 5 ticket 05, CONTEXT: "Checklist"),
       standalone or scoped to an owner record by a (kind, id) pair rather
       than a foreign key - no owner table ships with this ticket. Distinct
@@ -391,7 +398,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const stats = makeStatsArea(driver);
   const checklists = makeChecklistsArea(driver);
   const milestones = makeMilestonesArea(driver, files);
-  const procedures = makeProceduresArea(driver, files, checklists, milestones);
+  const appointments = makeAppointmentsArea(driver);
+  const procedures = makeProceduresArea(driver, files, checklists, milestones, appointments);
   const entries = makeEntriesArea(driver, files);
   const doubtJournal = makeDoubtJournalArea(driver);
   const feltSense = makeFeltSenseArea(driver);
@@ -492,6 +500,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       feltSense,
       hairProgress,
       hairRemoval,
+      appointments,
       procedures,
       tryouts,
       documents
@@ -513,6 +522,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       feltSense,
       hairProgress,
       hairRemoval,
+      appointments,
       procedures,
       tryouts,
       documents
@@ -524,6 +534,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     hairProgress,
     hairRemoval,
     procedures,
+    appointments,
     doubtJournal,
     comfortItems,
     areaStates,

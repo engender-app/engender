@@ -163,7 +163,8 @@ test('a section reads only its own day', async () => {
   assert.equal(day.labResults.length, 1);
   assert.equal(day.labResults[0].epochDay, DAY);
   assert.equal(day.tallyEvents.length, 1);
-  assert.equal(day.procedureRecords.length, 2);
+  assert.equal(day.procedureRecords.length, 1);
+  assert.equal(day.appointments.length, 1);
   // The marker is one row per effect that a later date replaces in place,
   // so filling a second day moves it rather than adding one.
   assert.equal(day.personalEffects.length, 0);
@@ -180,11 +181,14 @@ test('a felt-sense row says which tryout it belongs to, and a procedure record w
     [['tryout', 'Robin']]
   );
   assert.deepEqual(
-    day.procedureRecords.map((r) => [r.kind, r.procedureName]).sort(),
-    [
-      ['consult', 'orchiectomy'],
-      ['recovery-photo', 'orchiectomy']
-    ]
+    day.procedureRecords.map((r) => r.procedureName),
+    ['orchiectomy']
+  );
+  // A consult reaches a day as an appointment naming its journey, not as a
+  // second procedure record (ticket 57).
+  assert.deepEqual(
+    day.appointments.map((a) => [a.kind, a.procedureName]),
+    [[null, 'orchiectomy']]
   );
   assert.deepEqual(
     day.tryoutPhotos.map((p) => p.tryoutLabel),
@@ -267,6 +271,7 @@ test('a test may register a section of its own and read it back through the same
       feltSense: journal.feltSense,
       hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
+      appointments: journal.appointments,
       procedures: journal.procedures,
       tryouts: journal.tryouts,
       documents: journal.documents
