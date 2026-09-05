@@ -3335,6 +3335,6 @@
   "document_unsupported_file": "This file isn’t a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.",
   "document_too_large": "That file is too large to store. Up to 25 MB.",
   "document_picker_failed": "Couldn’t open the file picker.",
-  "document_export": "Save to your device",
+  "document_export": "Share or save",
   "document_export_hint": "This copies the file out of the app’s encryption."
 }
