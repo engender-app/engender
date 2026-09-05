@@ -1745,8 +1745,6 @@
   "photo_heic": "This looks like a HEIC photo, which this app can’t read yet. Convert it to JPEG first, or set your camera to save photos as JPEG.",
   "photo_not_an_image": "This file isn’t an image this app can read. Try a JPEG or PNG.",
   "rem_add_aria": "Add a reminder",
-  "rem_web_title": "Reminders need the Android app",
-  "rem_web_body": "Browsers cannot fire scheduled notifications reliably while the app is closed. Install the Android app to get medication and check-in reminders.",
   "rem_web_note": "Your data syncs nowhere, and an encrypted export is how it moves to the Android app safely.",
   "checkin_title": "Daily check-in",
   "checkin_sub": "“How are you today?” · skipped on days you already logged",
