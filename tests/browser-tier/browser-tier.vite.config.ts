@@ -94,11 +94,23 @@ export default defineConfig({
   resolve: {
     alias: {
       $lib: resolve(import.meta.dirname, '../../src/lib'),
-      /* SvelteKit's own module, which this tier has no router to provide:
-         see app-state-stub.ts. Without it the kit gallery does not mount,
-         because a real kit component imports it. */
-      '$app/state': resolve(import.meta.dirname, 'app-state-stub.ts')
+      /* SvelteKit's own modules, which this tier has no router to provide:
+         see app-state-stub.ts and app-navigation-stub.ts. Without the first
+         the kit gallery does not mount, because a real kit component imports
+         it; without the second no whole screen does, because a screen
+         navigates. */
+      '$app/state': resolve(import.meta.dirname, 'app-state-stub.ts'),
+      '$app/navigation': resolve(import.meta.dirname, 'app-navigation-stub.ts')
     }
+  },
+  /* The two literals vite.config.ts replaces in the app's own build. The
+     entry editor reaches the boot store for the journal's data key, and that
+     module reads both - a build flag left undefined is a ReferenceError at
+     module scope, not a missing feature. Never a demo here: a fixture states
+     its own journal. */
+  define: {
+    __DEMO__: JSON.stringify(false),
+    __APP_VERSION__: JSON.stringify('0.0.0-browser-tier')
   },
   // Same exclusion the app's own config needs (ticket 09): pre-bundling
   // would inline the sqlite3mc wasm module in a way that breaks its own

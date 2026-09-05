@@ -2,7 +2,7 @@
    so the surfaces are judged against the real tokens rather than against a
    copy of them. The fonts come from the app's static directory, which this
    tier's vite config serves as its public directory for exactly this. */
-import { mount } from 'svelte';
+import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
 import '$lib/theme/palettes.css';
@@ -16,5 +16,4 @@ import '$lib/styles/kit.css';
 import '$lib/motion/press.css';
 import Gallery from './kit-gallery.svelte';
 
-mount(Gallery, { target: document.querySelector('#kit')! });
-document.body.setAttribute('data-kit-ready', '');
+publishFixture('kit', () => mountInto(Gallery, {}, document.querySelector('#kit')!));
