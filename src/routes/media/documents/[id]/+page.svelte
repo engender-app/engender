@@ -188,6 +188,12 @@
     max-width: 100%;
     max-height: 44vh;
     border-radius: var(--radius-md);
+    /* A scan of white paper on a light background has no edge of its own -
+       in the light theme the sheet and the screen behind it are within a
+       few percent of each other and the page floats. The app separates
+       surfaces with a line rather than a shadow (kit.css bans box-shadow),
+       so the sheet gets the same line every other surface has. */
+    border: 1px solid var(--outline);
   }
 
   .doc-page-image {

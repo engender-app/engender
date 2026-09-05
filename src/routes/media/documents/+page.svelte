@@ -31,6 +31,7 @@
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { pickPhotos } from '$lib/stores/photoPicking';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -63,6 +64,13 @@
         picked
       );
       picked = null;
+    } catch (error) {
+      /* A full disk or an unwritable store. The sheet stays open with the
+         bytes and the typed title still in it, so the person can try again
+         without picking the file a second time - and the toast says what
+         happened rather than leaving a button that did nothing. */
+      console.error('a document could not be filed', error);
+      toast(m.document_save_failed());
     } finally {
       saving = false;
     }
