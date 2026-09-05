@@ -5,12 +5,14 @@ import {
   RETURN_GAP_DAYS,
   WAITING_PER_KIND,
   lastWriteDay,
+  medianWriteGap,
   returnGap,
   waitingItemKey,
   whatIsWaiting
 } from './comingBack.ts';
 import { adherence, expectedSlots } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
+import { persona } from './demo/persona.ts';
 import type { DoseEvent, DoseSchedule, RegimenEpisode } from './types.ts';
 
 const TODAY = 20000;
@@ -99,6 +101,104 @@ test('a date somebody put on the calendar does not close the gap it sits in', ()
   }
   // And an ordinary area, which is a record of something that happened, does.
   assert.equal(returnGap({ entries: AWAY, measurements: TODAY - 4 }, TODAY), null);
+});
+
+test('a journal with too little history has no median, so the floor governs alone', () => {
+  assert.equal(medianWriteGap({ entries: TODAY - 5, doseEvents: TODAY - 40 }, TODAY), null);
+  assert.equal(medianWriteGap({}, TODAY), null);
+  // Same floor a brand-new journal gets today: no median moves the threshold.
+  assert.equal(returnGap({ entries: TODAY - 5, doseEvents: TODAY - 40 }, TODAY), null);
+});
+
+test("a planned day doesn't count as a write for the median, the same reason it doesn't close a gap", () => {
+  const written = {
+    entries: TODAY - 10,
+    doseEvents: TODAY - 45,
+    measurements: TODAY - 90,
+    sideEffects: TODAY - 135,
+    labResults: TODAY - 180
+  };
+  const withPlanned = { ...written, milestones: TODAY - 2, procedures: TODAY - 1 };
+
+  assert.equal(medianWriteGap(withPlanned, TODAY), medianWriteGap(written, TODAY));
+});
+
+/** A journal's whole history, shaped around whichever day its newest write
+    falls on - so testing a few different gaps means sliding one fixture
+    rather than rebuilding it, and the newest write stays `since` no matter
+    which day it lands on. */
+function journalEndingOn(since: number, gaps: readonly number[]) {
+  const areas = ['entries', 'doseEvents', 'measurements', 'sideEffects', 'labResults'] as const;
+  let day = since;
+  const lastWrites: Record<string, number> = {};
+  areas.forEach((area, index) => {
+    lastWrites[area] = day;
+    day -= gaps[index] ?? gaps[gaps.length - 1];
+  });
+  return lastWrites;
+}
+
+test('a daily-ish journal has a small median gap, and its return threshold stays the unchanged floor', () => {
+  const daily = journalEndingOn(TODAY - 1, [2, 2, 2, 3]);
+
+  const median = medianWriteGap(daily, TODAY);
+  assert.ok(median !== null && median < 7, `expected a sub-week median, got ${median}`);
+
+  const stillAway = TODAY - (RETURN_GAP_DAYS - 1);
+  assert.equal(returnGap(journalEndingOn(stillAway, [2, 2, 2, 3]), TODAY), null);
+  const exactly = TODAY - RETURN_GAP_DAYS;
+  assert.equal(returnGap(journalEndingOn(exactly, [2, 2, 2, 3]), TODAY), exactly);
+});
+
+test('a sparse, event-shaped journal has a wide median gap, and its threshold scales past three weeks', () => {
+  const sparse = journalEndingOn(TODAY - 10, [35, 35, 35, 35]);
+
+  const median = medianWriteGap(sparse, TODAY);
+  assert.equal(median, 35);
+
+  // A gap that would trip the plain three-week floor does not, for this journal.
+  const stillAway = TODAY - RETURN_GAP_DAYS;
+  assert.equal(returnGap(journalEndingOn(stillAway, [35, 35, 35, 35]), TODAY), null);
+  // But a gap that clears the scaled threshold (1.5 * 35 = 52.5) still does.
+  const gone = TODAY - 53;
+  assert.equal(returnGap(journalEndingOn(gone, [35, 35, 35, 35]), TODAY), gone);
+});
+
+test('the median only looks back roughly a year, so an old write from a dormant area does not widen it', () => {
+  const recent = {
+    entries: TODAY - 5,
+    doseEvents: TODAY - 12,
+    measurements: TODAY - 19,
+    sideEffects: TODAY - 26,
+    labResults: TODAY - 33
+  };
+  assert.equal(medianWriteGap(recent, TODAY), 7);
+
+  const withAncientOutlier = { ...recent, personalEffects: TODAY - 400 };
+  assert.equal(medianWriteGap(withAncientOutlier, TODAY), 7);
+});
+
+test("the demo persona's own journal is fitted against it too: near-daily entries, but few enough distinct areas that the median stays null and the floor governs, unchanged", () => {
+  /* Alice (demo/persona.ts) writes an entry almost every day, but the
+     last-write registry only ever sees three of her areas touched at all:
+     milestones is excluded as planned, and the persona has no dose log, no
+     measurements, no wear sessions - "the demo seeds tags, entries,
+     milestones, reminders and labs, and nothing else" (persona.ts). Three
+     distinct areas is short of a median's five, so this real journal's own
+     rhythm is unknowable from the registry alone, and RETURN_GAP_DAYS keeps
+     governing by itself - the "unchanged from today" acceptance criterion,
+     reached through the "not enough history" path rather than a small
+     median, which is worth fitting against and stating rather than
+     assuming. */
+  const alice = persona(TODAY);
+  const aliceLastWrites = {
+    entries: Math.max(...alice.entries.map((entry) => entry.epochDay)),
+    labResults: Math.max(...alice.labResults.map((lab) => lab.epochDay)),
+    tallyEvents: Math.max(...alice.tallyEvents.map((tally) => tally.epochDay))
+  };
+
+  assert.equal(medianWriteGap(aliceLastWrites, TODAY), null);
+  assert.equal(returnGap(aliceLastWrites, TODAY), null);
 });
 
 test('a gap with nothing waiting in it draws nothing', () => {
