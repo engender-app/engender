@@ -31,7 +31,7 @@ describe('what a filter tap on the word list re-runs', () => {
   });
 
   it('counts and reads the Polish caveat off the analysis rather than the notes', () => {
-    expect(words).toMatch(/\$derived\(countWords\(filteredEntries\)/);
+    expect(words).toMatch(/\$derived\(countWords\(filteredEntries, ignoredWords\)/);
     expect(words).toMatch(/filteredEntries\.some\(\(e\) => e\.language === 'pl'\)/);
     expect(words).not.toContain('noteLanguage');
   });

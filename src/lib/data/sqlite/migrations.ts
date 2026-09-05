@@ -2180,6 +2180,32 @@ const SCHEMA_V70 = `
 ALTER TABLE regimen_episode ADD COLUMN end_reason TEXT;
 `;
 
+/* v71: the word-frequency ignore list (phase 8 features ticket 48,
+   ADR-0003). Numbered v71 rather than v70: ticket 43's regimen-episode
+   end_reason column landed on main first and took v70, so this was
+   renumbered here rather than fought over during the merge.
+
+   wordFrequency.ts's own stopword lists only ever choose between English and
+   Polish - a third language, or a name, has nowhere to go and inflates the
+   count as if it were content. This is the person's own list of words to
+   drop from every future read, on top of whichever stopword list already
+   applied, for exactly that gap.
+
+   `word` is the identity, the same shape `era_mute` gives a natural-key
+   membership table: presence is the whole of the state, so unignoring
+   deletes the row rather than storing a false. Case-folded the same way
+   `tokenize()` folds a note before counting, so "Kraków" and "kraków" are
+   one entry. No `created_at`: a row is only ever inserted or deleted, never
+   edited in place, so `updated_at` already says everything `created_at`
+   would - the shape every other flat table here already carries. */
+const SCHEMA_V71 = `
+CREATE TABLE word_frequency_ignore (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  word       TEXT NOT NULL UNIQUE,
+  updated_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2250,5 +2276,6 @@ export const migrations: Migration[] = [
   { version: 67, sql: SCHEMA_V67 },
   { version: 68, sql: SCHEMA_V68 },
   { version: 69, sql: SCHEMA_V69 },
-  { version: 70, sql: SCHEMA_V70 }
+  { version: 70, sql: SCHEMA_V70 },
+  { version: 71, sql: SCHEMA_V71 }
 ];
