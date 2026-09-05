@@ -1224,11 +1224,14 @@ export interface TaperSession {
     `epochDay` is the day the paper is *from*, not the day it was scanned in,
     which is what makes a shoebox of prints from 1994 importable.
 
-    `fileName` is the same opaque `<uuid>.jpg` a photo carries
-    (photos/names.ts) - an image document goes through the existing
-    normalisation, so it has a derived thumbnail beside it like any other
-    photo. ADR-0065's link to a goal, milestone, procedure or episode is
-    ticket 56's and is not part of this shape yet. */
+    `fileName` is opaque either way, but not one shape: an image document
+    goes through the existing normalisation and carries the same `<uuid>.jpg`
+    a photo does (photos/names.ts), with a derived thumbnail beside it like
+    any other photo; a PDF cannot be normalised and is stored as it arrived,
+    as `<uuid>.pdf` with no thumbnail (ticket 53, ADR-0065) -
+    `isPdfDocument`/`documentFilesOf` (journal/documents.ts) are what tell
+    the two apart from the name alone. ADR-0065's link to a goal, milestone,
+    procedure or episode is ticket 56's and is not part of this shape yet. */
 export interface JournalDocument {
   id: string;
   epochDay: number;

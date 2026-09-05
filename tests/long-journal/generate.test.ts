@@ -92,6 +92,21 @@ test('it writes all five kinds of content the measurements read', async () => {
   expect(first.fileName).toBeTruthy();
 });
 
+/* Phase 8 features ticket 53: this fixture had never carried a document of
+   either kind until now, so the archive's file manifest had never seen
+   tens of megabytes of one un-normalisable file. */
+test('it writes documents, one image and several PDFs sized in whole megabytes', async () => {
+  const { journal, summary } = await generate({ seed: 1 });
+
+  expect(summary.documents).toBeGreaterThan(1);
+  const documents = await journal.documents.getDocuments();
+  expect(documents).toHaveLength(summary.documents);
+
+  const pdfDocuments = documents.filter((d) => d.fileName.endsWith('.pdf'));
+  expect(pdfDocuments.length).toBeGreaterThan(0);
+  expect(documents.length - pdfDocuments.length).toBe(1);
+});
+
 test('the journal spans exactly the days it was asked for, and ends where it was told', async () => {
   const { journal, summary } = await generate({ seed: 2, days: 400 });
 
@@ -249,6 +264,7 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'commonWordEntries',
       'cycleEvents',
       'daysWithEntries',
+      'documents',
       'doseEvents',
       'additionalDoseEvents',
       'entries',

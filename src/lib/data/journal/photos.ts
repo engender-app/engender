@@ -24,6 +24,7 @@ import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import { watchJournalWrites } from '../journal-busy';
 import type { PhotoFileStore } from '../photos/photo-file-store';
+import { documentFilesOf } from './documents';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 /** A photo that has been through normalize() (ADR-0008/0015): JPEG bytes,
@@ -198,7 +199,10 @@ export async function photosByMilestone(
    filesOf(): that helper's `thumbFileName()` only rewrites a `.jpg`
    suffix (names.ts), so calling it on a `.webm` name would leave it
    unchanged and add the same name to the referenced set twice for no
-   reason.
+   reason. A document's file is read through `documentFilesOf()` instead of
+   `filesOf()` directly for the same reason (ticket 53): an image document
+   has the derived thumbnail beside it, but a PDF document does not, and
+   `documentFilesOf()` is what tells the two apart by their own extension.
 
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
@@ -256,11 +260,13 @@ async function sweepUnreferencedFiles(
       ...hairPhotoRows,
       ...hairRemovalPhotoRows,
       ...procedurePhotoRows,
-      ...tryoutPhotoRows,
-      // A document's image went through the same normalisation, so it has
-      // the derived thumbnail beside it (phase 8 features ticket 52).
-      ...documentRows
+      ...tryoutPhotoRows
     ].flatMap((row) => filesOf(row.file_path)),
+    // An image document went through the same normalisation as a photo, so
+    // it has the derived thumbnail beside it; a PDF document has no such
+    // thumbnail (phase 8 features ticket 53) - documentFilesOf() is what
+    // tells the two apart, the same way filesOf() alone cannot.
+    ...documentRows.flatMap((row) => documentFilesOf(row.file_path)),
     ...recordingRows.map((row) => row.file_path),
     // Neither a recording nor a video note has a thumbnail sibling, so
     // filesOf() would only ever invent a name no row references.
