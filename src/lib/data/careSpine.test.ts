@@ -340,6 +340,19 @@ test('a dose from an earlier episode of the same drug still counts as the last o
   assert.equal(facts.lastDoseEpochDay, TODAY - 60);
 });
 
+/* The one edge the drug-name scoping reads differently to the whole-log
+   scan it replaced: a dose logged before any episode covered it at all
+   (nothing running yet, or an episode later deleted from under it). The
+   old, unfiltered read counted it regardless; attributeDrug has nothing to
+   attribute it to and drops it. A deliberate, documented narrowing
+   (ticket 38's Decisions), not an oversight - a dose with no regimen
+   covering it has nothing to say about that regimen's rail. */
+test('a dose predating any episode does not count as that episode’s last one', () => {
+  const solo = episode({ startEpochDay: TODAY - 10 });
+  const facts = scheduleDoseFacts(solo, [solo], null, [dose(TODAY - 20)], [], TODAY);
+  assert.equal(facts.lastDoseEpochDay, null, 'the dose predates the only episode there is, so it attributes to nothing');
+});
+
 test("a concurrent unrelated schedule's dose does not become this episode's last dose", () => {
   const curve = episode({ id: 'ep-curve', drug: 'estradiol' });
   const other = episode({ id: 'ep-other', drug: 'sertraline', dose: 50, doseUnit: 'mg', route: 'oral' });
