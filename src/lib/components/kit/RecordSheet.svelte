@@ -47,8 +47,10 @@
         (recordHandles.ts). */
     handle: string;
     /** The editor sheet's title while adding. Omit this and the four props
-        below for a record with no editor. */
-    newTitle?: string;
+        below for a record with no editor. Reads the draft, for the same
+        reason `editTitle` does: a wear session's kind is picked inside the
+        sheet, so what a new one is called changes while it is open. */
+    newTitle?: string | ((draft: TDraft) => string);
     /** And while editing. A screen whose editing state is not one thing -
         a wear session can be running - reads the draft for it, the shape
         `confirm.question` and `canSave` already take. */
@@ -92,11 +94,11 @@
 {#if fields}
   <Sheet
     open={draft !== null}
-    title={draft ? (draft.id ? wording(editTitle, draft) : newTitle) : newTitle}
+    title={draft ? wording(draft.id ? editTitle : newTitle, draft) : undefined}
     onClose={() => (record.editor = null)}
   >
     {#if draft}
-      <h3>{draft.id ? wording(editTitle, draft) : newTitle}</h3>
+      <h3>{wording(draft.id ? editTitle : newTitle, draft)}</h3>
       {@render fields(draft)}
       <div class="stack-3">
         {#if primary}

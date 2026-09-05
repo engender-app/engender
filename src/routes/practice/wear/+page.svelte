@@ -297,13 +297,23 @@
   let trendRegionOptions = $derived(
     vocabulary.bodyRegions.filter((r) => TREND_REGIONS.includes(r.id)).map((r) => ({ value: r.id, label: r.name }))
   );
-  /* Null until the person picks: the default is the last kind's own region
-     and follows it, and a `$state` seeded with one would have to be told
-     apart from a deliberate pick of the same value. Picking anything at all
-     stops it following, for any kind, which is the free override the ticket
-     keeps. */
+  /* The kind's own region, or the first one still offered if the person has
+     turned that region off in their body-region vocabulary - the same
+     fallback this had before there were kinds, since a picker with nothing
+     selected reads as broken either way. */
+  let defaultRegion = $derived(
+    trendRegionOptions.some((r) => r.value === WEAR_KIND_REGION[latestKind])
+      ? WEAR_KIND_REGION[latestKind]
+      : (trendRegionOptions[0]?.value ?? WEAR_KIND_REGION[latestKind])
+  );
+  /* Null until the person picks, rather than a `$state` seeded with the
+     default: seeded, a deliberate pick of the region the default already
+     names would be indistinguishable from not having picked, and the
+     selection would start following the kind again on the next save.
+     Picking anything at all stops it following, for any kind, which is the
+     override the ticket keeps free. */
   let pickedRegion = $state<string | null>(null);
-  let trendRegion = $derived(pickedRegion ?? WEAR_KIND_REGION[latestKind]);
+  let trendRegion = $derived(pickedRegion ?? defaultRegion);
   $effect(() => {
     if (pickedRegion !== null && !trendRegionOptions.some((r) => r.value === pickedRegion)) {
       pickedRegion = null;
@@ -532,7 +542,7 @@
   <RecordSheet
     {record}
     handle="wear-session"
-    newTitle={wearNewSheetTitle(latestKind)}
+    newTitle={(draft) => wearNewSheetTitle(draft.kind)}
     editTitle={(draft) => (draft.isRunning ? wearRunningSheetTitle(draft.kind) : wearEditSheetTitle(draft.kind))}
     deleteLabel={m.wear_session_delete()}
     confirm={{
@@ -602,17 +612,22 @@
            never gated by the duration cue's toggle: these are about method
            rather than duration, and each block names where it comes from
            the way the voice screen's pitch bands do (ADR-0059). -->
-      {#key editor.kind}
-        <div class="wear-facts" data-wear-facts={editor.kind}>
-          <p class="wear-facts-title">{m.wear_facts_title()}</p>
-          <ul class="muted small wear-facts-list">
-            {#each wearSafetyFacts(editor.kind).facts as fact (fact)}
-              <li>{fact}</li>
-            {/each}
-          </ul>
-          <p class="muted small">{wearSafetyFacts(editor.kind).source}</p>
-        </div>
-      {/key}
+      <!-- One slot that travels between the three sets rather than snapping
+           to a new height, the same pairing the range control above uses:
+           `resize` on the box, `crossfade` on the block leaving it. -->
+      <div use:resize>
+        {#key editor.kind}
+          <div class="wear-facts" data-wear-facts={editor.kind} out:crossfade>
+            <p class="wear-facts-title">{m.wear_facts_title()}</p>
+            <ul class="muted small wear-facts-list">
+              {#each wearSafetyFacts(editor.kind).facts as fact (fact)}
+                <li>{fact}</li>
+              {/each}
+            </ul>
+            <p class="muted small">{wearSafetyFacts(editor.kind).source}</p>
+          </div>
+        {/key}
+      </div>
 
       {#if !isWeb}
         <Field label={m.wear_session_reminder_toggle()} legend spread>
