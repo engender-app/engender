@@ -9,7 +9,7 @@ import {
   earliestEpisode,
   nearestActiveEpisode
 } from './regimenEpisode.ts';
-import type { DoseEvent, DoseSchedule } from './types.ts';
+import type { DoseEvent, DosePause, DoseSchedule } from './types.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (
@@ -291,4 +291,16 @@ test('nearestActiveEpisode is null when neither active episode has a schedule to
   const e1 = episode('e1', 100, null, 'estradiol');
   const e2 = episode('e2', 100, null, 'spiro');
   assert.equal(nearestActiveEpisode([e1, e2], [e1, e2], [], [], [], 200, 30), null);
+});
+
+test("nearestActiveEpisode scopes a pause to its own episode - one episode's pause does not blank out another's slot", () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  const e2 = episode('e2', 100, null, 'spiro');
+  const episodes = [e1, e2];
+  const schedules = [daily('e1'), daily('e2')];
+  const e1PausedToday: DosePause = { id: 'p1', episodeId: 'e1', startEpochDay: 200, endEpochDay: 200, reason: 'planned' };
+  /* e1's own today is paused, so its nearest open slot is tomorrow (distance
+     1) - e2's today is untouched by a pause that isn't its own, so it stays
+     open (distance 0) and wins outright, not a tie. */
+  assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [e1PausedToday], [], 200, 30), e2);
 });

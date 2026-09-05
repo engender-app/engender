@@ -85,6 +85,13 @@
       whole history because both reads are per-day and a journal years deep
       has no screen that shows all of it at once. */
   const WINDOW_DAYS = 90;
+  /** How far nearestActiveEpisode may search either side of today for a
+      schedule's nearest open slot (ticket 40) - a different question from
+      WINDOW_DAYS above (how much history the log and comparison show), not
+      the same number reused: it happens to share WINDOW_DAYS's value only
+      because `doses` below is fetched for that window, and a wider search
+      would find a "nearest" slot the page has no doses to check against. */
+  const NEAREST_SLOT_RADIUS_DAYS = WINDOW_DAYS;
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
@@ -142,7 +149,7 @@
       to ask, same as before this ticket for the tied and no-schedule
       cases. */
   let activeEpisode = $derived(
-    nearestActiveEpisode(episodes, activeEpisodes, schedules, pauses, doses, today, WINDOW_DAYS)
+    nearestActiveEpisode(episodes, activeEpisodes, schedules, pauses, doses, today, NEAREST_SLOT_RADIUS_DAYS)
   );
   /** The drugs to choose between when logging a new dose while more than
       one episode is active - empty whenever activeEpisode already answers

@@ -183,8 +183,12 @@ export function earliestEpisode(episodes: readonly RegimenEpisode[]): RegimenEpi
 
     `episodes` is the full list, needed only so a dose can be attributed to
     the one active episode it names (attributeDose above) - each episode's
-    own doses are picked out here rather than by the caller, the same split
-    getComparison already makes before calling adherence. */
+    own doses and pauses are picked out here rather than by the caller, the
+    same split getComparison already makes before calling adherence: a
+    `DosePause` is scoped to one episode (`episodeId`), and adherence's own
+    pause check carries no episode filter, so handing it every episode's
+    pauses at once would let one episode's break blank out another's slot
+    on the same day. */
 export function nearestActiveEpisode(
   episodes: readonly RegimenEpisode[],
   active: readonly RegimenEpisode[],
@@ -200,9 +204,10 @@ export function nearestActiveEpisode(
     const schedule = schedules.find((s) => s.episodeId === ep.id);
     if (!schedule) return { episode: ep, distance: null as number | null };
     const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === ep.id);
+    const episodePauses = pauses.filter((pause) => pause.episodeId === ep.id);
     return {
       episode: ep,
-      distance: nearestOpenSlotDistance(schedule, ep.startEpochDay, episodeDoses, pauses, todayEpochDay, maxRadiusDays)
+      distance: nearestOpenSlotDistance(schedule, ep.startEpochDay, episodeDoses, episodePauses, todayEpochDay, maxRadiusDays)
     };
   });
 
