@@ -135,6 +135,15 @@ test('a concurrent second hormone still counts when it names the same curve drug
   assert.deepEqual(selectTimingDose('estradiol', doses, episodes), doses[0]);
 });
 
+test('the same holds for testosterone - a concurrent estradiol dose never supplies its timing', () => {
+  const episodes = [episode({ drug: 'testosterone' }), episode({ id: 'e2', drug: 'estradiol' })];
+  const doses = [
+    dose({ timestamp: at(DAY, '07:00'), drug: 'estradiol' }),
+    dose({ timestamp: at(DAY - 1, '20:00'), drug: 'testosterone cypionate' })
+  ];
+  assert.deepEqual(selectTimingDose('testosterone', doses, episodes), doses[1]);
+});
+
 test('no dose of the right drug at all yields null, same as no dose whatsoever', () => {
   const episodes = [episode({ drug: 'sertraline' })];
   const doses = [dose({ timestamp: at(DAY, '07:00'), drug: 'sertraline' })];
