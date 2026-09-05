@@ -2857,12 +2857,15 @@ try {
     throw new Error('a reading row with nothing written in it does not say what is behind it');
   }
 
-  // Photos and voice memos live together now, and Body keeps the rest.
+  // Photos, voice memos and documents live together now, and Body keeps the
+  // rest. Documents joined in phase 8 features ticket 52.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,voice') {
-    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and voice memos`);
+  if (mediaRows.join(',') !== 'photos,voice,documents') {
+    throw new Error(
+      `the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, voice memos and documents`
+    );
   }
 
   /* An area declared finished leaves its group for the finished set, keeps
@@ -3981,6 +3984,63 @@ try {
 
   ok('one screen over one registry: notify column absent on web, Home column still whole');
 } catch (e) { fail('the unprompted registry view', e); }
+
+/* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
+   opened and thrown away.
+
+   The whole of that path is UI - a file chooser, a sheet, a list row, a
+   detail screen and a confirm - so nothing below the screens can prove it,
+   which is what this flow is for. The page itself is drawn on a canvas and
+   handed to the real input, so it goes through normalizePhoto and the
+   encrypted store the way a scan would. */
+try {
+  await fresh('/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  const page1994 = await labSlipImage(['CITY HOSPITAL', 'Diagnosis, 1994']);
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: 'scan_0142.png', mimeType: 'image/png', buffer: page1994 })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+
+  /* Refused with no title, which is the whole of what makes a document
+     findable again: search matches the title and nothing else. */
+  if (!(await page.locator('[data-save-document]').isDisabled())) {
+    throw new Error('a document with no title can be saved');
+  }
+
+  await page.locator('#document-title').fill('Diagnosis, 1994');
+  // Years before this journal's own first entry, which is the case the
+  // editable date exists for.
+  await fillDate(page, '#document-day', '1994-06-30');
+  await page.locator('[data-save-document]').click();
+  await page.waitForSelector('[data-list-row]');
+
+  const row = page.locator('[data-list-row]').first();
+  if (!(await row.textContent()).includes('1994')) {
+    throw new Error(`the row does not carry the day on the paper: ${await row.textContent()}`);
+  }
+  await row.click();
+  await page.waitForSelector('.doc-page-image', { timeout: 15000 });
+
+  /* The page is drawn here and nowhere else (ADR-0065), so the list it came
+     from must not have had one on it. */
+  await page.goBack({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row]');
+  if (await page.locator('[data-list-row] img').count()) {
+    throw new Error('the documents list is drawing a page image');
+  }
+
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForSelector('[data-delete-document]');
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
+} catch (e) { fail('a place for paper', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
