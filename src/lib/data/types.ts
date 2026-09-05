@@ -745,8 +745,18 @@ export interface CycleEvent {
    is a separate row this area manages by an auto_source marker
    (wearSessions.ts), the same handoff medication_stock's run-out prompt
    uses. */
+/* Which practice the session was (phase 8 features ticket 50, ADR-0064).
+   Closed to three and staying closed: each one carries its own wording and
+   its own safety facts, so a fourth value would be a set of strings nobody
+   wrote rather than a row the app could still draw. */
+export type WearKind = 'binder' | 'tucking' | 'compression';
+
 export interface WearSession {
   id: string;
+  /** Set at creation, never blank (schema v71): every user-facing string
+      about this session, and whether it can carry a duration cue at all,
+      is picked by it. */
+  kind: WearKind;
   /** The one load-bearing timestamp, the same rule DoseEvent's carries
       (CONTEXT: "Dose event timestamp"): when the session actually started. */
   startTimestamp: number;

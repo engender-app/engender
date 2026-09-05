@@ -2857,8 +2857,23 @@ try {
 try {
   await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-wear-running]', { timeout: 8000 });
+
+  /* Ticket 50, ADR-0064: fullFixture's running session is a binder one nine
+     hours in, so the cue is showing on the card above the list. Asserted
+     before the click, because stopping it is what takes both away. */
+  await page.waitForSelector('[data-wear-duration-cue]', { timeout: 8000 });
+
   await page.locator('[data-wear-running]').click();
   await page.waitForSelector('[data-stop-wear-session]');
+
+  /* The safety facts are the sheet's, for whichever kind the picker is on,
+     and every kind has a set. Nothing about them is conditional on the cue:
+     they follow the picker with no session saved and no eight hours run. */
+  await page.waitForSelector('[data-wear-facts="binder"]');
+  for (const kind of ['tucking', 'compression', 'binder']) {
+    await page.locator(`[data-segmented="wear-kind"] [data-segment="${kind}"]`).click();
+    await page.waitForSelector(`[data-wear-facts="${kind}"]`);
+  }
 
   if (await page.getByRole('switch', { name: 'Remind me' }).count()) {
     throw new Error('a reminder toggle rendered on a build with no Android platform behind it');
@@ -2871,6 +2886,11 @@ try {
   // A real read of the journal, not the sheet closing - stopRunning's write
   // is what takes this session out of getRunningSession's answer.
   await page.waitForSelector('[data-wear-running]', { state: 'detached' });
+  // And the cue goes with it: it is a running session's marker, never a
+  // verdict left on a finished one.
+  if ((await page.locator('[data-wear-duration-cue]').count()) !== 0) {
+    throw new Error('the duration cue outlived the session it was about');
+  }
 
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-list-row]', { hasText: 'wear session' }).count()) === 0) { // text-under-test: same provenance-line handle the reminders-list block below matches

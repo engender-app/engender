@@ -28,6 +28,7 @@ import { m } from '$lib/paraglide/messages';
 import { DAY_SECTION_KEYS, type DayRecords, type DaySectionKey } from '$lib/data/journal/day';
 import { isGradedScale } from '$lib/data/hairStageScales';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
+import { wearKindLabel } from '$lib/data/vocabulary/wearLabels';
 import type { Photo } from '$lib/data/types';
 import {
   cycleEventKindName,
@@ -219,7 +220,9 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
            a clock says nothing about what was worn for it, and this is the
            only record on a day whose title is a bare number. What the person
            wrote comes first where they wrote anything. */
-        subtitle: session.note || m.wear_log(),
+        // The kind rather than the screen's name (ticket 50): a day row is
+        // about one session, and a session is always one of the three.
+        subtitle: session.note || wearKindLabel(session.kind),
         href: '/practice/wear'
       };
     }),
