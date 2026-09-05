@@ -246,6 +246,18 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
     wrote something" are different questions. */
 export const PLANNED_AREAS = ['milestones', 'procedures'] as const;
 
+/** The registry with `PLANNED_AREAS` dropped - what both the gap itself and
+    its own median are measured over, since a planned day is not a moment
+    somebody wrote something either way. Shared so the two callers below
+    apply one rule rather than two copies of the same filter. */
+function writtenAreas(
+  lastWrites: Partial<Record<string, number | null>>
+): Partial<Record<string, number | null>> {
+  return Object.fromEntries(
+    Object.entries(lastWrites).filter(([area]) => !PLANNED_AREAS.includes(area as never))
+  );
+}
+
 /** How far back the median looks for a write to count (phase 8 features
     ticket 45). "Roughly the last year": long enough to see a person's own
     rhythm rather than one recent cluster, short enough that an area touched
@@ -282,13 +294,11 @@ export function medianWriteGap(
   lastWrites: Partial<Record<string, number | null>>,
   todayEpochDay: number
 ): number | null {
-  const written = Object.entries(lastWrites).filter(
-    ([area]) => !PLANNED_AREAS.includes(area as never)
-  );
   const cutoff = todayEpochDay - MEDIAN_GAP_WINDOW_DAYS;
-  const days = [...new Set(written.map(([, day]) => day).filter((day): day is number => day !== null && day !== undefined && day > cutoff))].sort(
-    (a, b) => a - b
+  const recentDays = Object.values(writtenAreas(lastWrites)).filter(
+    (day): day is number => day !== null && day !== undefined && day > cutoff
   );
+  const days = [...new Set(recentDays)].sort((a, b) => a - b);
   if (days.length < MIN_WRITE_DAYS_FOR_MEDIAN) return null;
 
   const gaps = days.slice(1).map((day, index) => day - days[index]).sort((a, b) => a - b);

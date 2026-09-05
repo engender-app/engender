@@ -12,6 +12,7 @@ import {
 } from './comingBack.ts';
 import { adherence, expectedSlots } from './doseSchedule.ts';
 import { startOfDayTimestamp } from './epochDay.ts';
+import { persona } from './demo/persona.ts';
 import type { DoseEvent, DoseSchedule, RegimenEpisode } from './types.ts';
 
 const TODAY = 20000;
@@ -169,11 +170,35 @@ test('the median only looks back roughly a year, so an old write from a dormant 
     doseEvents: TODAY - 12,
     measurements: TODAY - 19,
     sideEffects: TODAY - 26,
-    milestones: TODAY - 33
+    labResults: TODAY - 33
   };
-  const withAncientOutlier = { ...recent, labResults: TODAY - 400 };
+  assert.equal(medianWriteGap(recent, TODAY), 7);
 
-  assert.equal(medianWriteGap(withAncientOutlier, TODAY), medianWriteGap(recent, TODAY));
+  const withAncientOutlier = { ...recent, personalEffects: TODAY - 400 };
+  assert.equal(medianWriteGap(withAncientOutlier, TODAY), 7);
+});
+
+test("the demo persona's own journal is fitted against it too: near-daily entries, but few enough distinct areas that the median stays null and the floor governs, unchanged", () => {
+  /* Alice (demo/persona.ts) writes an entry almost every day, but the
+     last-write registry only ever sees three of her areas touched at all:
+     milestones is excluded as planned, and the persona has no dose log, no
+     measurements, no wear sessions - "the demo seeds tags, entries,
+     milestones, reminders and labs, and nothing else" (persona.ts). Three
+     distinct areas is short of a median's five, so this real journal's own
+     rhythm is unknowable from the registry alone, and RETURN_GAP_DAYS keeps
+     governing by itself - the "unchanged from today" acceptance criterion,
+     reached through the "not enough history" path rather than a small
+     median, which is worth fitting against and stating rather than
+     assuming. */
+  const alice = persona(TODAY);
+  const aliceLastWrites = {
+    entries: Math.max(...alice.entries.map((entry) => entry.epochDay)),
+    labResults: Math.max(...alice.labResults.map((lab) => lab.epochDay)),
+    tallyEvents: Math.max(...alice.tallyEvents.map((tally) => tally.epochDay))
+  };
+
+  assert.equal(medianWriteGap(aliceLastWrites, TODAY), null);
+  assert.equal(returnGap(aliceLastWrites, TODAY), null);
 });
 
 test('a gap with nothing waiting in it draws nothing', () => {
