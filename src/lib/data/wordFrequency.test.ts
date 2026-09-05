@@ -145,6 +145,21 @@ describe('countWords with an ignore set', () => {
     expect(words).toContain('cold');
   });
 
+  it("a third-language note's content words still count normally, only the ignored one removed", () => {
+    // Cyrillic, no Polish diacritic and no hit against either closed-class
+    // list: noteLanguage falls back to 'en', so none of these words fall
+    // out as a stopword - the ticket's own motivating gap (persona 5,
+    // Yuliia). Without an ignore set every content word should count as
+    // normal; naming one in the set should remove only that one.
+    const analysed = analyseNotes([note('Сьогодні було важко, але вже краще')]);
+    const unfiltered = countWords(analysed).map(([w]) => w);
+    expect(unfiltered).toEqual(expect.arrayContaining(['сьогодні', 'було', 'важко', 'краще']));
+
+    const withIgnore = countWords(analysed, new Set(['важко'])).map(([w]) => w);
+    expect(withIgnore).not.toContain('важко');
+    expect(withIgnore).toEqual(expect.arrayContaining(['сьогодні', 'було', 'краще']));
+  });
+
   it('is unaffected by an empty or absent ignore set', () => {
     const analysed = analyseNotes([note('happy day')]);
     expect(countWords(analysed, new Set())).toEqual(countWords(analysed));
