@@ -374,7 +374,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     note: 'plain note'
   });
   await journal.checklists.addToStandaloneChecklist(`question ${word}`);
-  await journal.checklists.setAppointmentDate(DAY);
   await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY });
   const tryoutId = await journal.tryouts.upsertTryout({
     kind: 'name',

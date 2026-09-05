@@ -791,10 +791,13 @@ const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CAR
    to the row), and every other table's own `hidden` column stays carried
    as before - this is scoped to `regimen_episode` alone by the per-table
    CARRIED lists above, not by this flat list. */
-// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08): device-
+// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08) and their
+// appointment-id-keyed successors (migrations.ts v76, ticket 58): device-
 // local bookkeeping for the appointment debrief offer, scoped to `checklist`
-// alone by migrations.ts v54's own comment - never part of what the
-// checklist travels, the same reason `id` and `updated_at` never are.
+// alone - never part of what the checklist travels, the same reason `id`
+// and `updated_at` never are. debrief_dismissed_epoch_day itself is also
+// retained-but-unwritten now (ticket 58 rekeys dismissal to an appointment
+// id), which changes nothing about it belonging on this list.
 const LEFT_BEHIND = [
   'id',
   'updated_at',
@@ -802,7 +805,9 @@ const LEFT_BEHIND = [
   'context',
   'hidden',
   'debrief_entry_id',
-  'debrief_dismissed_epoch_day'
+  'debrief_entry_appointment_id',
+  'debrief_dismissed_epoch_day',
+  'debrief_dismissed_appointment_id'
 ];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {

@@ -2325,6 +2325,34 @@ DROP TABLE procedure_consult;
 CREATE INDEX idx_appointment_procedure ON appointment(procedure_id);
 CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);`;
 
+/* Ticket 58 rekeys the debrief from a date to an appointment id (ADR-0066):
+   both new columns hold a travelling `appointment.uuid`, never the rowid,
+   the same reason `checklist.owner_uuid` does.
+
+   Two id columns rather than one, because there is no longer a single
+   settable "current appointment" whose date-change the app can use as the
+   moment to clear a stale dismissal or entry link (`setAppointmentDate` is
+   retired) - "the most recent past appointment" now moves forward on its
+   own as new appointments are added. Comparing the appointment id a read
+   asks about against the id stored here is what used to be handled by
+   clearing on write; checklists.ts does the comparing now; a
+   `debrief_dismissed`/`debrief_entry` row that answers a since-superseded
+   appointment simply fails the comparison and reads as unset, rather than
+   needing to be cleared at write time.
+
+   `debrief_entry_id` (migrations.ts v56) is untouched: which entry debriefs
+   an appointment does not change shape, only which appointment a stored
+   entry id is read against does.
+
+   `appointment_epoch_day` and `debrief_dismissed_epoch_day` are retained,
+   unwritten from here on (the first travels in archives and older ones
+   must restore; the second never travelled and simply has nothing left to
+   read it), the same "stops being written" treatment the first already
+   had before this ticket. */
+const SCHEMA_V76 = `
+ALTER TABLE checklist ADD COLUMN debrief_entry_appointment_id TEXT;
+ALTER TABLE checklist ADD COLUMN debrief_dismissed_appointment_id TEXT;`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2400,5 +2428,6 @@ export const migrations: Migration[] = [
   { version: 72, sql: SCHEMA_V72 },
   { version: 73, sql: SCHEMA_V73 },
   { version: 74, sql: SCHEMA_V74 },
-  { version: 75, sql: SCHEMA_V75 }
+  { version: 75, sql: SCHEMA_V75 },
+  { version: 76, sql: SCHEMA_V76 }
 ];

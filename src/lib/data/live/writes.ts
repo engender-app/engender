@@ -662,6 +662,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // so a renamed journey redraws them.
     reads: {
       getAppointments: ['appointment', 'procedure'],
+      getAppointment: ['appointment'],
       getKinds: ['appointment'],
       getDayRecords: ['appointment', 'procedure'],
       lastWriteEpochDay: ['appointment'],
@@ -765,7 +766,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
       reorder: ['checklist'],
-      setAppointmentDate: ['checklist'],
       setDebriefDismissed: ['checklist'],
       recordDebriefEntry: ['checklist']
     },
@@ -773,9 +773,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getChecklist: ['checklist'],
       getChecklistByOwner: ['checklist'],
       getStandaloneChecklist: ['checklist'],
-      getAppointmentDate: ['checklist'],
       getDebriefState: ['checklist'],
-      getDebriefDismissedEpochDay: ['checklist'],
       getDebriefEntryId: ['checklist']
     }
   }),

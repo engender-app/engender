@@ -8,6 +8,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
+import { soonestFutureAppointment, mostRecentPastAppointment } from './appointments.ts';
+import type { Appointment } from '../types.ts';
 
 test('an appointment carries a day, a kind, a place and a note, and edits', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -230,4 +232,58 @@ test('the day view and the last write read appointments, linked or not', async (
   assert.equal(await journal.appointments.lastWriteEpochDay(20100), 20005);
   // A day still ahead is not a write that happened.
   assert.equal(await journal.appointments.lastWriteEpochDay(20002), 20000);
+});
+
+test('getAppointment reads one row by id, or undefined for an unknown one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.appointments.upsertAppointment({
+    epochDay: 20100,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: null,
+    note: null
+  });
+
+  assert.deepEqual(await journal.appointments.getAppointment(id), {
+    id,
+    epochDay: 20100,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: null,
+    note: null
+  });
+  assert.equal(await journal.appointments.getAppointment('no-such-appointment'), undefined);
+});
+
+/* soonestFutureAppointment and mostRecentPastAppointment (ticket 58): pure
+   selectors over an already-fetched, oldest-first list (getAppointments's
+   own order), the same shape liveTiles.ts's shouldShow* functions take -
+   already-fetched rows plus today, no clock of their own. Today itself
+   never appears in either list: the prep screen's own comment says an
+   appointment later today is not past yet, and the debrief's existing
+   "strictly past" condition is what this extends. */
+const blank = { procedureId: null, kind: null, place: null, note: null };
+const at = (epochDay: number, id: string): Appointment => ({ ...blank, id, epochDay });
+
+test('soonestFutureAppointment picks the earliest day at or after today, or null', () => {
+  const today = 20100;
+  assert.equal(soonestFutureAppointment([], today), null);
+  assert.equal(
+    soonestFutureAppointment([at(20000, 'past'), at(20050, 'also-past')], today),
+    null
+  );
+  assert.deepEqual(
+    soonestFutureAppointment([at(20000, 'past'), at(20100, 'today'), at(20200, 'later'), at(20150, 'sooner')], today),
+    at(20100, 'today')
+  );
+});
+
+test('mostRecentPastAppointment picks the latest day strictly before today, or null', () => {
+  const today = 20100;
+  assert.equal(mostRecentPastAppointment([], today), null);
+  assert.equal(mostRecentPastAppointment([at(20100, 'today'), at(20200, 'later')], today), null);
+  assert.deepEqual(
+    mostRecentPastAppointment([at(20000, 'oldest'), at(20050, 'middle'), at(20099, 'yesterday')], today),
+    at(20099, 'yesterday')
+  );
 });

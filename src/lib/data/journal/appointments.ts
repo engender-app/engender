@@ -56,6 +56,10 @@ export interface AppointmentsArea {
   /** Every appointment, oldest first. Past and future alike - which end of
       today a row falls on is the screen's question, not this one's. */
   getAppointments(): Promise<Appointment[]>;
+  /** One appointment by id, or undefined - the debrief deep link's own read
+      (EntryEditor.svelte, ticket 58), which arrives with only an id and
+      needs the day it was on to scope its "since then" reads. */
+  getAppointment(id: string): Promise<Appointment | undefined>;
   /** Returns the appointment's id. Updating an unknown id throws, as does
       naming a procedure this journal does not hold (ADR-0053). */
   upsertAppointment(input: AppointmentInput): Promise<string>;
@@ -85,6 +89,52 @@ const trimmed = (value: string | null): string | null => {
   return text ? text : null;
 };
 
+/** The appointment prep screen's own date (ticket 58): the earliest one at
+    or after today, or null. Pure, over an already-fetched, oldest-first
+    list (`getAppointments`'s own order) - a screen's `today` is its own
+    argument, the same shape `liveTiles.ts`'s `shouldShow*` functions take,
+    so this is provable without a driver. Today itself counts as still
+    ahead: an appointment later today has not happened yet. */
+export function soonestFutureAppointment(appointments: Appointment[], todayEpochDay: number): Appointment | null {
+  return appointments.find((appointment) => appointment.epochDay >= todayEpochDay) ?? null;
+}
+
+/** The debrief's and the clinician summary's own appointment (ticket 58,
+    ADR-0066): the latest one strictly before today, or null. Today itself
+    is excluded on purpose - the appointment could still be later today,
+    the same line the debrief offer has always drawn - and only ever the
+    most recent one: back-filling history is entering a record, not living
+    through a visit. */
+export function mostRecentPastAppointment(appointments: Appointment[], todayEpochDay: number): Appointment | null {
+  const past = appointments.filter((appointment) => appointment.epochDay < todayEpochDay);
+  return past.length ? past[past.length - 1] : null;
+}
+
+/** The `appointment`/`procedure` join every `getAppointments`/`getAppointment`
+    row shares, so the two differ only in their `WHERE`, not in what a row
+    means. */
+type AppointmentRow = {
+  uuid: string;
+  epoch_day: number;
+  procedure_uuid: string | null;
+  kind: string | null;
+  place: string | null;
+  note: string | null;
+};
+
+const APPOINTMENT_SELECT = `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
+                a.kind AS kind, a.place AS place, a.note AS note
+           FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id`;
+
+const toAppointment = (row: AppointmentRow): Appointment => ({
+  id: row.uuid,
+  epochDay: row.epoch_day,
+  procedureId: row.procedure_uuid,
+  kind: row.kind,
+  place: row.place,
+  note: row.note
+});
+
 export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
   const procedureRowid = async (procedureId: string | null): Promise<number | null> => {
     if (procedureId === null) return null;
@@ -95,29 +145,14 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
 
   return {
     async getAppointments() {
-      const rows = await driver.query<{
-        uuid: string;
-        epoch_day: number;
-        procedure_uuid: string | null;
-        kind: string | null;
-        place: string | null;
-        note: string | null;
-      }>(
-        `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
-                a.kind AS kind, a.place AS place, a.note AS note
-           FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
-          ORDER BY a.epoch_day, a.id`
-      );
-      return rows.map(
-        (row): Appointment => ({
-          id: row.uuid,
-          epochDay: row.epoch_day,
-          procedureId: row.procedure_uuid,
-          kind: row.kind,
-          place: row.place,
-          note: row.note
-        })
-      );
+      const rows = await driver.query<AppointmentRow>(`${APPOINTMENT_SELECT} ORDER BY a.epoch_day, a.id`);
+      return rows.map(toAppointment);
+    },
+
+    async getAppointment(id) {
+      const rows = await driver.query<AppointmentRow>(`${APPOINTMENT_SELECT} WHERE a.uuid = ?`, [id]);
+      const row = rows[0];
+      return row ? toAppointment(row) : undefined;
     },
 
     async upsertAppointment(input) {
