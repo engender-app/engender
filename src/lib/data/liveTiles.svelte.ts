@@ -157,6 +157,7 @@ export function homeTiles(
         letters: letters.rows,
         dueRevisits: dueRevisits.rows,
         latestBadEntryId: latestBadEntryId.value,
+        wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
         tryouts: tryouts.rows,
         latestFeltSenseByTryoutId: tryoutFeltSense.value ?? new Map(),

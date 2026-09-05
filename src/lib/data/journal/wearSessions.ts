@@ -108,6 +108,17 @@ const SESSION_COLUMNS = 'uuid, kind, start_timestamp, duration_ms, note';
     typecheck failure. */
 export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compression'];
 
+/** Which built-in body region the wear trend compares against by default,
+    per kind (CONTEXT: "Wear session"). Built-in ids only - no new region
+    vocabulary - and a default rather than a rule: the chart card's own
+    region picker overrides it for any kind, exactly as it did before there
+    were kinds. */
+export const WEAR_KIND_REGION: Record<WearKind, string> = {
+  binder: 'chest',
+  tucking: 'genitals',
+  compression: 'hips_waist'
+};
+
 /** How long a running binder session runs before it picks up the duration
     cue (ADR-0064).
 
