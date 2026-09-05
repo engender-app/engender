@@ -66,12 +66,8 @@ for (const theme of THEMES) {
      picker is the only thing changing between the three. */
   await page.locator('[data-wear-running]').click();
   await page.waitForSelector('[data-wear-facts]');
-  for (const [kind, label] of [
-    ['binder', 'Binder'],
-    ['tucking', 'Tucking'],
-    ['compression', 'Compression']
-  ]) {
-    await page.getByRole('radio', { name: label, exact: true }).click();
+  for (const kind of ['binder', 'tucking', 'compression']) {
+    await page.locator(`[data-segmented="wear-kind"] [data-segment="${kind}"]`).click();
     await page.waitForSelector(`[data-wear-facts="${kind}"]`);
     await shot(`wear-sheet-${kind}-${theme}`);
   }

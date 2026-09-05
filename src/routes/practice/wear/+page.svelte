@@ -549,6 +549,7 @@
       <Field label={m.wear_kind_group()} legend>
         {#snippet children()}
           <Segmented
+            key="wear-kind"
             name={m.wear_kind_group()}
             options={kindOptions}
             value={editor.kind}
