@@ -687,6 +687,13 @@ export interface ArchiveMarginNote {
   text: string;
 }
 
+/** A word the person has told the words screen to stop counting (phase 8
+    features ticket 48, ADR-0003). Named by the word itself: nothing else in
+    the journal resolves an id against it. */
+export interface ArchiveWordIgnore {
+  word: string;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -803,6 +810,7 @@ export interface ArchiveJournal {
   savedQuestions: ArchiveSavedQuestion[];
   revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
+  wordIgnore: ArchiveWordIgnore[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,
