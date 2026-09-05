@@ -284,6 +284,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
   await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  await journal.roadmap.setTrackDismissed('medical', true);
 
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',

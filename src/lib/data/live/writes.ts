@@ -147,7 +147,14 @@ export const TABLE_NAMES = [
   'videoNote',
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
-     time, so there is nothing a per-pack name would let a query skip. */
+     time, so there is nothing a per-pack name would let a query skip.
+
+     Track dismissals (phase 8 features ticket 49) share the name rather
+     than taking one of their own, which is the opposite call from
+     'roadmapGoal' below and for the opposite reason: a dismissed track
+     decides which ticks are even shown, so no screen ever reads one
+     without the other, and a separate name would only buy a re-query of
+     four rows. */
   'roadmapCheck',
   /* Custom roadmap goals (phase 5 ticket 20), kept apart from
      'roadmapCheck': a screen reading the custom goals someone added
@@ -690,10 +697,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   roadmap: classify<Journal['roadmap']>()({
     writes: {
       setGoalStatus: ['roadmapCheck'],
+      setTrackDismissed: ['roadmapCheck'],
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal']
     },
-    reads: { getGoalStatuses: ['roadmapCheck'], getCustomGoals: ['roadmapGoal'] }
+    reads: {
+      getGoalStatuses: ['roadmapCheck'],
+      getDismissedTracks: ['roadmapCheck'],
+      getCustomGoals: ['roadmapGoal']
+    }
   }),
   checklists: classify<Journal['checklists']>()({
     writes: {

@@ -1759,6 +1759,73 @@ try {
   await page.waitForSelector('[data-settings-list]');
   if (await page.locator('[data-fan]').count()) throw new Error('unlocking restored the fan');
 
+  /* What quick exit does to where you were (phase 8 features ticket 49 item
+     3), asserted rather than assumed either way.
+
+     The decision this pins down is that the app comes back at the *top* of
+     the screen it was on, not where the person was reading. That falls out
+     of the layout rendering SessionUnlock instead of the route rather than
+     over it - nothing below the gate mounts and no query runs while the app
+     is locked, which is the property worth keeping - and it is the right
+     answer for the gesture besides: quick exit exists because somebody
+     walked in, and re-drawing the exact paragraph that was hidden, a second
+     after the passphrase is typed in front of that person, is the outcome
+     nobody wants. The URL does not move, so the way back is one screen, not
+     a hunt.
+
+     It has to run against a journal that *has* an access secret. One with
+     none takes the overlay path instead - `blanked` over a still-mounted
+     tree - and would keep its scroll position, passing this for exactly the
+     wrong reason. The demo journal is on a passphrase, which is what makes
+     this flow the place for it. */
+  /* The long entry is written here rather than searched for in the demo
+     persona: the onboarding flows above leave this journal near-empty, so
+     anything this step needs to read, it has to have written itself. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-mood="3"]').click();
+  await page.locator('#ed-note').fill(
+    Array.from({ length: 40 }, (_, i) => `Paragraph ${i + 1} of something long enough to have a middle to be in.`).join('\n\n')
+  );
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-entry-card]');
+
+  const reading = page.url();
+  const readingAt = await page.evaluate(async () => {
+    const main = document.querySelector('[data-app-scroll-region]');
+    main.scrollTop = main.scrollHeight;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return main.scrollTop;
+  });
+  if (readingAt === 0) {
+    throw new Error('the entry no longer scrolls, so this flow would pass without testing anything');
+  }
+
+  await page.evaluate(() => {
+    const at = (y) => [1, 2].map((id) => new Touch({ identifier: id, target: document.body, clientX: 100 + id * 20, clientY: y }));
+    window.dispatchEvent(new TouchEvent('touchstart', { touches: at(100) }));
+    window.dispatchEvent(new TouchEvent('touchmove', { touches: at(320) }));
+  });
+  await page.waitForSelector('[data-blank]');
+  await page.locator('[data-blank]').click();
+  await page.waitForSelector('[data-applock]');
+  /* Nothing in the lock path navigates, and this is the half of D5 the app
+     does honour: the way back is the screen you were on. */
+  if (page.url() !== reading) throw new Error(`quick exit moved the URL: ${reading} -> ${page.url()}`);
+  if (await page.locator('[data-entry-card]').count()) {
+    throw new Error('the route is still mounted under the lock screen, so its queries are still running');
+  }
+
+  await sessionPassphrase();
+  await page.waitForSelector('[data-entry-card]');
+  const returnedTo = await page.evaluate(() => document.querySelector('[data-app-scroll-region]').scrollTop);
+  if (returnedTo !== 0) throw new Error('unlocking landed part-way down the screen rather than at its top: ' + returnedTo);
+  if (page.url() !== reading) throw new Error(`unlocking moved the URL: ${reading} -> ${page.url()}`);
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-settings-list]');
+
   /* Two fingers, dispatched rather than driven: page.touchscreen only has
      one. What is under test is the gesture the listeners are looking for,
      not the browser's touch pipeline. */
