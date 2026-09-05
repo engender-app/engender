@@ -3204,9 +3204,9 @@ try {
   await booted();
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-sheet]');
-  // Two regimens run at once in this seed, so which one this dose is has to
-  // be answered before the sheet asks about an injection site at all. The
-  // sheet opens that group itself on exactly this state.
+  // Three regimens run at once in this seed, so which one this dose is has
+  // to be answered before the sheet asks about an injection site at all.
+  // The sheet opens that group itself on exactly this state.
   await page.locator('[data-dose-drug="Estradiol valerate"]').click();
   await page.waitForSelector('button[data-site="thigh-left"]');
   await page.locator('button[data-site="thigh-left"]').scrollIntoViewIfNeeded();

@@ -36,6 +36,22 @@ test('doseDaysFromEvents keys by epoch day and drops skipped doses - one never h
   assert.deepEqual([...days].sort((a, b) => a - b), [DAY_0, DAY_0 + 2]);
 });
 
+/* Phase 8 features ticket 42's regression guard: doseDaysFromEvents must
+   never grow a per-drug read - the source doc's point 7 keeps correlation
+   cards descriptive of dose days in general, not of one drug's mood effect.
+   Same timestamp and status, different drug, same day set is what a filter
+   creeping in would break; checked by temporarily adding
+   `.filter((d) => d.drug === 'Estradiol valerate')` to doseDaysFromEvents
+   and confirming this test fails before taking it back out. */
+test('doseDaysFromEvents does not read drug - a hormone dose and a non-hormone dose count the same day the same way', () => {
+  const hormoneOnly = doseDaysFromEvents([dose(DAY_0, { drug: 'Estradiol valerate' })]);
+  const nonHormoneOnly = doseDaysFromEvents([dose(DAY_0, { drug: 'Sertraline' })]);
+  const noDrugNamed = doseDaysFromEvents([dose(DAY_0, { drug: null })]);
+
+  assert.deepEqual([...hormoneOnly], [...nonHormoneOnly]);
+  assert.deepEqual([...hormoneOnly], [...noDrugNamed]);
+});
+
 test('doseDayInsight splits day averages by dose day and folds multi-entry days back to an entry-weighted average', () => {
   const doseDays = new Set([DAY_0, DAY_0 + 1, DAY_0 + 2]);
   const days = [

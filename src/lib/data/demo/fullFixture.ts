@@ -113,6 +113,40 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     });
   }
 
+  // A non-hormone episode - an SSRI, daily, oral - so every screen this
+  // track touches (labs timing, the care spine, the clinician summary
+  // toggle, quick add's picker) has a real non-hormone branch to render
+  // during a demo, not only a unit test (phase 8 features ticket 42).
+  // resolveCurveDrug returns null for it: neither ester vocabulary names it.
+  const sertralineStart = today - 250;
+  const sertralineEpisodeId = await journal.regimen.upsertEpisode({
+    drug: 'Sertraline',
+    ester: null,
+    dose: 50,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: sertralineStart,
+    endEpochDay: null
+  });
+  await journal.doses.upsertSchedule({
+    episodeId: sertralineEpisodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 50, doseUnit: 'mg' }]
+  });
+  for (let day = sertralineStart; day <= today; day++) {
+    if (r() < 0.08) continue;
+    await journal.doses.upsertDose({
+      timestamp: (day * 24 + 9) * 3_600_000,
+      route: 'oral',
+      dose: 50,
+      doseUnit: 'mg',
+      status: 'taken',
+      drug: 'Sertraline'
+    });
+  }
+
   // Measurements, sizes, hair progress and hair removal: a year each, at
   // an irregular cadence rather than an evenly spaced one - the one shape
   // every chart already handles.
