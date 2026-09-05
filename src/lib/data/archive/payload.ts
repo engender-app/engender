@@ -19,6 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
+import type { EpisodeEndReason } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
@@ -573,6 +574,11 @@ export interface ArchiveRegimenEpisode {
       before this field existed, which restore.ts reads as null the same
       way it already reads any other field a pre-ticket build never wrote. */
   endEpochDay: number | null;
+  /** Why the episode ended (phase 8 features ticket 43). Absent the same way
+      endEpochDay is on an archive from before this field existed, read back
+      as null - no reason recorded, which is exactly what a pre-ticket
+      ended episode has. */
+  endReason: EpisodeEndReason | null;
 }
 
 /* Flat and nullable, the way ArchiveReminder carries its recurrence

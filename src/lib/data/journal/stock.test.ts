@@ -44,7 +44,8 @@ async function episode(journal: Journal, startEpochDay: number, drug: string) {
     route: 'oral',
     interval: 'daily',
     startEpochDay,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 }
 
@@ -450,7 +451,8 @@ test('concurrent episodes naming different drugs leave their doses out of every 
     route: 'oral',
     interval: 'daily',
     startEpochDay: 150,
-    endEpochDay: 179
+    endEpochDay: 179,
+    endReason: null
   });
 
   // Days 150-179 have two episodes for different drugs, so a dose naming
@@ -478,7 +480,8 @@ test('a dose naming its own drug counts even where the episodes are ambiguous', 
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   for (let day = 100; day <= 109; day += 1) {

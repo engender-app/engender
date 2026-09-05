@@ -293,7 +293,8 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertDose({
     timestamp: 1_700_000_000_000,

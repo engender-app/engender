@@ -138,7 +138,8 @@ describe('liveTiles trigger predicates', () => {
       route: 'patch',
       interval: '3.5 days',
       startEpochDay: today - 14,
-      endEpochDay: null
+      endEpochDay: null,
+      endReason: null
     };
 
     const biweeklySchedule: DoseSchedule = {

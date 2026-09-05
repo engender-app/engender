@@ -67,6 +67,28 @@ describe('what happened in a range', () => {
     expect(found.endsInRange).toBe(false);
   });
 
+  /* Ticket 43: the source's end reason travels through unchanged, on both
+     an edge the range actually shows and one it only clips to. Whether the
+     reason is safe to *say* against this particular edge is the wording
+     layer's gate (kit/chartAnnotation.ts), not this function's. */
+  it("carries a regimen episode's end reason through, clipped or not", () => {
+    const [clipped] = annotationsInRange([{ ...regimen('estradiol', 10, 50), endReason: 'pausedForNow' }], {
+      from: 40,
+      to: 45,
+      today: 60
+    });
+    expect(clipped.endsInRange).toBe(false);
+    expect(clipped.endReason).toBe('pausedForNow');
+
+    const [shown] = annotationsInRange([{ ...regimen('estradiol', 10, 50), endReason: 'pausedForNow' }], {
+      from: 40,
+      to: 60,
+      today: 60
+    });
+    expect(shown.endsInRange).toBe(true);
+    expect(shown.endReason).toBe('pausedForNow');
+  });
+
   it('spans a range that is entirely inside a longer episode', () => {
     const [found] = annotationsInRange([regimen('estradiol', 10, 900)], { from: 40, to: 60, today: 60 });
 

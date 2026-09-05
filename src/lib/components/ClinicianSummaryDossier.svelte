@@ -9,6 +9,7 @@
   import { epochDayFromTimestamp, todayEpochDay } from '$lib/data/epochDay';
   import {
     applicationSiteLabel,
+    episodeEndReasonLabel,
     injectionSiteLabel,
     routeLabel,
     statusLabel,
@@ -33,8 +34,14 @@
   const dayShort = (epochDay: number) =>
     fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  const episodeSpan = (ep: RegimenEpisode) =>
-    `${dayShort(ep.startEpochDay)} – ${ep.endEpochDay === null ? m.regimen_ongoing() : dayShort(ep.endEpochDay)}`;
+  const episodeSpan = (ep: RegimenEpisode) => {
+    const range = `${dayShort(ep.startEpochDay)} – ${ep.endEpochDay === null ? m.regimen_ongoing() : dayShort(ep.endEpochDay)}`;
+    // A reason is never set without an end day (ticket 43), so this only
+    // ever fires on a row that already prints a real end date, not "ongoing".
+    return ep.endReason
+      ? m.clinician_summary_regimen_end_reason({ range, reason: episodeEndReasonLabel(ep.endReason) })
+      : range;
+  };
 
   const siteOf = (dose: DoseEvent): string | null => {
     if (isInjectionDose(dose)) return dose.injectionSite ? injectionSiteLabel(dose.injectionSite) : null;

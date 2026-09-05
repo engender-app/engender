@@ -145,7 +145,10 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           kind: 'regimen' as const,
           name: episode.drug,
           startEpochDay: episode.startEpochDay,
-          endEpochDay: episode.endEpochDay
+          endEpochDay: episode.endEpochDay,
+          // Ticket 43: null on every episode still open, and on every one
+          // ended before the ticket shipped.
+          endReason: episode.endReason
         })),
         ...dosePauses.map((pause) => ({
           id: pause.id,

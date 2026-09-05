@@ -18,6 +18,7 @@ const episode = (over: Partial<RegimenEpisode>): RegimenEpisode => ({
   interval: 'weekly',
   startEpochDay: 20000,
   endEpochDay: null,
+  endReason: null,
   ...over
 });
 

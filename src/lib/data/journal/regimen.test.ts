@@ -17,7 +17,8 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   assert.match(id, UUID_PATTERN);
 
@@ -31,7 +32,8 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
-      endEpochDay: null
+      endEpochDay: null,
+      endReason: null
     }
   ]);
 });
@@ -46,7 +48,8 @@ test('episodes read back ordered by start day, ties broken by insertion order', 
     route: 'oral',
     interval: 'daily',
     startEpochDay: 200,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   const earlier = await journal.regimen.upsertEpisode({
     drug: 'estradiol',
@@ -56,7 +59,8 @@ test('episodes read back ordered by start day, ties broken by insertion order', 
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   const ids = (await journal.regimen.getEpisodes()).map((e) => e.id);
@@ -73,7 +77,8 @@ test('updating by id changes the row; an unknown id throws', async () => {
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   await journal.regimen.upsertEpisode({
@@ -85,7 +90,8 @@ test('updating by id changes the row; an unknown id throws', async () => {
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   assert.equal((await journal.regimen.getEpisodes())[0].dose, 3);
 
@@ -99,7 +105,8 @@ test('updating by id changes the row; an unknown id throws', async () => {
       route: 'oral',
       interval: 'daily',
       startEpochDay: 1,
-      endEpochDay: null
+      endEpochDay: null,
+      endReason: null
     }),
     /unknown regimen episode/
   );
@@ -115,7 +122,8 @@ test('a retroactive correction (a past start date) changes what an existing epis
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: 199
+    endEpochDay: 199,
+    endReason: null
   });
   await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',
@@ -125,7 +133,8 @@ test('a retroactive correction (a past start date) changes what an existing epis
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: 200,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   const dayTs = (day: number) => day * 86400000;
@@ -151,7 +160,8 @@ test('a retroactive correction (a past start date) changes what an existing epis
     route: 'patch',
     interval: 'twice weekly',
     startEpochDay: 140,
-    endEpochDay: 199
+    endEpochDay: 199,
+    endReason: null
   });
   await journal.regimen.upsertEpisode({
     id: estradiolId,
@@ -162,7 +172,8 @@ test('a retroactive correction (a past start date) changes what an existing epis
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: 139
+    endEpochDay: 139,
+    endReason: null
   });
 
   const afterCorrection = await journal.regimen.getEpisodes();
@@ -184,13 +195,117 @@ test('endEpisode sets an explicit end day, independent of any other episode star
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   await journal.regimen.endEpisode(id, 150);
   assert.equal((await journal.regimen.getEpisodes())[0].endEpochDay, 150);
 
   await assert.rejects(journal.regimen.endEpisode('nope', 150), /unknown regimen episode/);
+});
+
+/* Ticket 43: one nullable column, set only alongside the end day. */
+test('endEpisode can carry a reason, set at the same time as the end day; ending with no reason stays valid', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null,
+    endReason: null
+  });
+
+  await journal.regimen.endEpisode(id, 150, 'pausedForNow');
+  assert.equal((await journal.regimen.getEpisodes())[0].endReason, 'pausedForNow');
+
+  const secondId = await journal.regimen.upsertEpisode({
+    drug: 'spironolactone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 200,
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.regimen.endEpisode(secondId, 250);
+  const second = (await journal.regimen.getEpisodes()).find((e) => e.id === secondId);
+  assert.equal(second?.endReason, null);
+});
+
+test('a reason is never assignable while endEpochDay is null, through upsertEpisode or through reopening', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null,
+    // A caller passing a reason with no end day gets it dropped, not stored:
+    // meaningless while the episode is still open.
+    endReason: 'decidedToStop'
+  });
+  assert.equal((await journal.regimen.getEpisodes())[0].endReason, null);
+
+  await journal.regimen.endEpisode(id, 150, 'decidedToStop');
+  assert.equal((await journal.regimen.getEpisodes())[0].endReason, 'decidedToStop');
+
+  // Reopening (clearing the end day back to null through a straight edit)
+  // drops whatever reason the episode carried - a reason with no end day is
+  // meaningless, so this is not "editing the reason on its own".
+  await journal.regimen.upsertEpisode({
+    id,
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null,
+    endReason: 'decidedToStop'
+  });
+  assert.equal((await journal.regimen.getEpisodes())[0].endReason, null);
+});
+
+test('a straight edit of an already-ended episode\'s other fields preserves its stored reason', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.regimen.upsertEpisode({
+    drug: 'estradiol',
+    ester: null,
+    dose: 2,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.regimen.endEpisode(id, 150, 'switchedDrugOrRoute');
+
+  await journal.regimen.upsertEpisode({
+    id,
+    drug: 'estradiol',
+    ester: null,
+    dose: 3,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: 150,
+    endReason: 'switchedDrugOrRoute'
+  });
+
+  assert.equal((await journal.regimen.getEpisodes())[0].endReason, 'switchedDrugOrRoute');
 });
 
 test('two episodes for different drugs can both be active on the same day (phase 5 ticket 38)', async () => {
@@ -203,7 +318,8 @@ test('two episodes for different drugs can both be active on the same day (phase
     route: 'oral',
     interval: 'daily',
     startEpochDay: 100,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.regimen.upsertEpisode({
     drug: 'spironolactone',
@@ -213,7 +329,8 @@ test('two episodes for different drugs can both be active on the same day (phase
     route: 'oral',
     interval: 'daily',
     startEpochDay: 200,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   const episodes = await journal.regimen.getEpisodes();
