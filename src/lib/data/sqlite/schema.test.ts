@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 76);
+  assert.equal(db.getUserVersion(), 77);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1152,6 +1152,54 @@ test('v75 turns a consult into an appointment, keeping its procedure and its id'
   assert.equal(left.n, 1);
   const survivor = db.raw.prepare('SELECT uuid FROM appointment').get() as { uuid: string };
   assert.equal(survivor.uuid, 'a-1');
+});
+
+test('v77 gives a document an optional link, and an old row reads back with neither half set', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 76)
+  );
+
+  db.raw.exec(
+    "INSERT INTO document (uuid, epoch_day, title, file_path, updated_at) VALUES ('d-1', 20000, 'Referral', 'f.jpg', 0)"
+  );
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw.prepare('SELECT target_kind, target_id FROM document WHERE uuid = ?').get('d-1') as {
+    target_kind: string | null;
+    target_id: string | null;
+  };
+  assert.equal(row.target_kind, null);
+  assert.equal(row.target_id, null);
+
+  // The pair, not just each column: one set without the other is refused
+  // (ADR-0065's "at most one link", enforced by the schema).
+  assert.throws(() =>
+    db.raw
+      .prepare("UPDATE document SET target_kind = 'milestone' WHERE uuid = 'd-1'")
+      .run()
+  );
+  assert.throws(() => db.raw.prepare("UPDATE document SET target_id = 'm-1' WHERE uuid = 'd-1'").run());
+
+  // A kind outside the closed four is refused too.
+  assert.throws(() =>
+    db.raw
+      .prepare("UPDATE document SET target_kind = 'tryout', target_id = 't-1' WHERE uuid = 'd-1'")
+      .run()
+  );
+
+  // Both together is the one write the CHECK allows.
+  db.raw.exec("UPDATE document SET target_kind = 'milestone', target_id = 'm-1' WHERE uuid = 'd-1'");
+  const linked = db.raw.prepare('SELECT target_kind, target_id FROM document WHERE uuid = ?').get('d-1') as {
+    target_kind: string | null;
+    target_id: string | null;
+  };
+  assert.equal(linked.target_kind, 'milestone');
+  assert.equal(linked.target_id, 'm-1');
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

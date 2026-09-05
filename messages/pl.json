@@ -3386,5 +3386,19 @@
   "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz",
   "document_page_alt": "Kartka: {title}",
   "document_save_failed": "Nie udało się zapisać tego dokumentu. Nic nie zostało zachowane.",
-  "document_edit_failed": "Nie udało się zapisać tej zmiany. Dokument został bez zmian."
+  "document_edit_failed": "Nie udało się zapisać tej zmiany. Dokument został bez zmian.",
+  "document_link_label": "Połączony z",
+  "document_link_none": "Nie połączony z niczym",
+  "document_target_gone": "Połączony z czymś, czego już nie ma",
+  "document_link_change": "Zmień",
+  "document_link_add": "Połącz",
+  "document_link_sheet": "Połącz ten dokument",
+  "document_link_clear": "Usuń powiązanie",
+  "document_linked_here_title": "Powiązane dokumenty",
+  "document_link_kind_milestone": "Kamień milowy",
+  "document_link_kind_procedure": "Operacja",
+  "document_link_kind_episode": "Kuracja",
+  "document_link_kind_goal": "Krok z mapy tranzycji",
+  "roadmap_goal_open_aria": "Otwórz {goal}",
+  "roadmap_goal_milestone_sub": "Kamień milowy tego kroku"
 }
