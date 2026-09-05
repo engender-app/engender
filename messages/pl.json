@@ -2616,7 +2616,7 @@
   "wear_facts_compression_2": "Zacznij od krótkich okresów i wydłużaj je stopniowo.",
   "wear_facts_compression_3": "Zdejmij, jeśli boli.",
   "wear_facts_compression_source": "Ogólne zalecenia dotyczące gorsetów, z Genderkit, które wprost pisze, że wpływ noszenia na zdrowie prawie nie został zbadany.",
-  "wear_session_cue": "Ponad 8 godzin. To często powtarzane zalecenie, nie limit kliniczny.",
+  "wear_session_cue": "Ponad 8 godzin. Zalecenie zwyczajowe, nie kliniczne.",
   "wear_duration_cue_toggle": "Sygnał czasu przy binderze",
   "wear_duration_cue_sub": "Trwająca sesja z binderem zaznacza, kiedy mija 8 godzin. Uwagi o bezpieczeństwie przy sesji zostają tak czy inaczej.",
   "tile_wear_title_binder": "Licznik: binder",
