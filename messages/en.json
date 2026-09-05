@@ -3340,12 +3340,12 @@
   "document_link_sheet": "Link this document",
   "document_link_clear": "Remove the link",
   "document_link_empty_title": "Nothing to link this to yet",
-  "document_link_empty_body": "A document can sit under a milestone, a procedure, a course of medication or a step on your roadmap. Once you have one of those, it turns up here.",
+  "document_link_empty_body": "A document can be filed under a milestone, a procedure, a regimen or a step on your roadmap. When you have one of those, it shows up here.",
   "document_linked_here_title": "Documents linked here",
-  "document_link_kind_milestone": "A milestone",
-  "document_link_kind_procedure": "A procedure",
-  "document_link_kind_episode": "A regimen",
-  "document_link_kind_goal": "A roadmap step",
-  "roadmap_goal_open_aria": "Open {goal}",
+  "document_link_kind_milestone": "Milestone",
+  "document_link_kind_procedure": "Procedure",
+  "document_link_kind_episode": "Regimen",
+  "document_link_kind_goal": "Roadmap step",
+  "roadmap_goal_open_aria": "Open",
   "roadmap_goal_milestone_sub": "This step’s milestone"
 }
