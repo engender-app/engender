@@ -65,7 +65,7 @@ export const PASSAGE_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'to
 /** The vowel is held, so all four apply. */
 export const VOWEL_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort', 'unsteady'];
 
-/** What the gate decides on: four measurements, no verdict. */
+/** What the gate decides on: the measurements, without the verdict. */
 export interface QualitySignals {
   /** Largest absolute sample in the take. */
   peak: number;
@@ -96,23 +96,41 @@ export interface QualityReport extends QualitySignals {
    So the levels go into a fixed histogram of dBFS bins, which is the
    constant-space version of the sorted list, and every rank is read off it.
    dB bins rather than linear ones because the answer is a ratio in dB, so
-   the quantisation is even where the threshold is. At 0.1 dB a bin the two
-   ranks are each off by at most 0.05 dB, against a gate that asks for 15.
+   the quantisation is even where the threshold is.
+
+   **What it costs, stated properly.** Two things could move the answer: the
+   bin a level lands in, and which values the rank picks. The second one is
+   not paid - `rankDb` selects and interpolates exactly as
+   `percentileOfSorted` does over a sorted list, so a nearest-rank shortcut
+   does not add error on top of the bins. That leaves the bins: each rank is
+   off by at most half a bin, and the SNR is a difference of two of them, so
+   at 0.01 dB a bin the reported figure is within 0.01 dB of what the sorted
+   lists answered.
+
+   That is not zero, and at a hard threshold nothing lossy can be. A take
+   whose true SNR sits within 0.01 dB of the 15 dB the gate asks for can come
+   out the other side of it. Against a figure that moves by whole decibels
+   between two takes of the same voice in the same room, a hundredth of one
+   is not a verdict anybody can hold the gate to - but it is the honest
+   bound, and it is what the pinned test in quality.test.ts measures.
 
    A fixed-size random reservoir was the other option and was not taken: it
    would make the same take read differently on two runs, and this number is
    compared against a threshold and then written into a stored benchmark. */
 const LEVEL_FLOOR_DB = -120;
-const LEVEL_BIN_DB = 0.1;
+const LEVEL_BIN_DB = 0.01;
 const LEVEL_BINS = Math.round(-LEVEL_FLOOR_DB / LEVEL_BIN_DB) + 1;
+
+const dbOfBin = (bin: number) => LEVEL_FLOOR_DB + bin * LEVEL_BIN_DB;
 
 interface Levels {
   add(level: number): void;
   readonly count: number;
-  /** Which bin the value at `fraction` of the way up falls in. Bin 0 is the
-      underflow: at or below -120 dBFS, which is digital silence as far as
-      any microphone is concerned. */
-  rankBin(fraction: number): number;
+  /** The level at `fraction` of the way up, in dBFS, interpolated between
+      the two ranks it falls between exactly as `percentileOfSorted` does.
+      `LEVEL_FLOOR_DB` means it landed in the underflow bin, which is digital
+      silence as far as any microphone is concerned. */
+  rankDb(fraction: number): number;
 }
 
 function makeLevels(): Levels {
@@ -129,14 +147,21 @@ function makeLevels(): Levels {
     get count() {
       return count;
     },
-    rankBin(fraction) {
-      const rank = fraction * (count - 1);
+    rankDb(fraction) {
+      const at = fraction * (count - 1);
+      const below = Math.floor(at);
+      // The rank above, except at the very top of the list, where the two
+      // ranks are the same one and the interpolation weighs nothing.
+      const above = Math.min(below + 1, count - 1);
+
       let seen = 0;
+      let lower = -1;
       for (let bin = 0; bin < LEVEL_BINS; bin++) {
         seen += bins[bin];
-        if (seen > rank) return bin;
+        if (lower < 0 && seen > below) lower = bin;
+        if (seen > above) return dbOfBin(lower) + (dbOfBin(bin) - dbOfBin(lower)) * (at - below);
       }
-      return LEVEL_BINS - 1;
+      return dbOfBin(LEVEL_BINS - 1);
     }
   };
 }
@@ -213,28 +238,34 @@ export function runningQualitySignals(hopSeconds: number): RunningQualitySignals
     of a sentence: a held vowel has no quiet part, so a percentile floor would
     divide the voice by itself and report every clean sustained take as noisy.
 
-    Both ranks sit on the same dB grid, so the ratio is the distance between
-    two bins and no logarithm is taken here at all.
+    Both ranks come back in dB already, so the ratio is their difference and
+    no logarithm is taken here at all.
 
     Two ends of the scale, both stated rather than left implicit. A take with
     no voiced frame has no signal to measure and scores zero, which the length
     check is failing it for anyway. A take with too little unvoiced audio to
     call a room has none to measure, and it got that way by being periodic
     from end to end - which is what a clean take with the microphone already
-    running sounds like - so it scores the ceiling. A room that lands in the
+    running sounds like - so it scores the ceiling. A room down in the
     underflow bin scores the ceiling for the same reason: there is nothing
     there to divide by. */
 function signalToNoiseDb(voicedLevels: Levels, roomLevels: Levels): number {
   if (voicedLevels.count === 0) return 0;
   if (roomLevels.count < MIN_ROOM_FRAMES) return MAX_SNR_DB;
-  const floor = roomLevels.rankBin(ROOM_PERCENTILE);
-  if (floor === 0) return MAX_SNR_DB;
-  return Math.min(MAX_SNR_DB, (voicedLevels.rankBin(0.5) - floor) * LEVEL_BIN_DB);
+  const floorDb = roomLevels.rankDb(ROOM_PERCENTILE);
+  if (floorDb <= LEVEL_FLOOR_DB) return MAX_SNR_DB;
+  return Math.min(MAX_SNR_DB, voicedLevels.rankDb(0.5) - floorDb);
 }
 
 /** The same measurements over a take that is already whole - the decoded
     file, which is what a stored benchmark is judged on. The frames come from
-    the tracker; this only has to say how loud each one was. */
+    the tracker; this only has to say how loud each one was.
+
+    `track` has to be `trackPitch`'s own output at this rate, because the hop
+    a frame's level is measured over is read from the geometry rather than
+    from the spacing of the frames handed in. A thinned or resampled track
+    would be measured against the wrong span - `track.ts`'s downsampled one
+    is for drawing, and never comes here. */
 export function takeSignals(
   samples: Float32Array,
   sampleRate: number,
