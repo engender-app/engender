@@ -193,16 +193,17 @@ test('documents linked to one target, newest first, and not the others', async (
 });
 
 /* Ticket 56 asks for the null-out tested per kind, and two of the four kinds
-   have no delete to test: a regimen episode is never deleted (regimen.ts) and
-   a roadmap goal cannot be deleted today (provenance.ts). The two that do -
-   milestones and procedures - are tested where their own areas are
-   (areas.test.ts, procedures.test.ts).
+   have no delete to test. The two that do - milestones and procedures - are
+   tested where their own areas are (areas.test.ts, procedures.test.ts).
 
-   This is the guard for the day that stops being true. It reads the live area
-   objects rather than restating a list, so adding a delete to either area
-   fails here until the document link is nulled the way deleteMilestone and
-   deleteProcedure null it. */
-test('a regimen episode and a roadmap goal still have no delete for a link to dangle from', async () => {
+   A regimen episode is never deleted (regimen.ts) and this pins that, so the
+   day the area grows a delete it fails until the link is nulled the way
+   deleteMilestone and deleteProcedure null it. A roadmap goal is the other
+   one, and is deliberately not pinned here: ticket 69 adds deleteCustomGoal
+   with that same UPDATE in it and carries its own test for it (ADR-0068), so
+   a guard here would only fail on a delete that already does the right
+   thing. */
+test('a regimen episode still has no delete for a document link to dangle from', async () => {
   const { journal } = await device();
   const deletesIn = (area: object) =>
     Object.entries(area)
@@ -213,5 +214,4 @@ test('a regimen episode and a roadmap goal still have no delete for a link to da
   assert.deepEqual(deletesIn(journal.documents), ['deleteDocument']);
 
   assert.deepEqual(deletesIn(journal.regimen), []);
-  assert.deepEqual(deletesIn(journal.roadmap), []);
 });
