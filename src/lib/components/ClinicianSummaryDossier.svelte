@@ -9,6 +9,7 @@
   import { epochDayFromTimestamp, todayEpochDay } from '$lib/data/epochDay';
   import {
     applicationSiteLabel,
+    episodeEndReasonLabel,
     injectionSiteLabel,
     routeLabel,
     statusLabel,
@@ -16,7 +17,6 @@
   } from '$lib/data/vocabulary/doseLabels';
   import { cycleEventKindName, severityName } from '$lib/data/vocabulary/labels';
   import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
-  import { episodeEndReasonLabel } from '$lib/data/vocabulary/doseLabels';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
