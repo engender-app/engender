@@ -39,6 +39,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -439,33 +440,13 @@
     onCancel={milestonePhoto.review.cancel}
   />
 
-  <Sheet
+  <PhotoDayPromptSheet
     open={pendingMilestonePhoto !== null}
-    title={m.photo_day_prompt_title()}
-    onClose={() => resolveMilestonePhotoDay(null)}
-  >
-    {#if pendingMilestonePhoto !== null}
-      <h3>{m.photo_day_prompt_title()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_prompt_hint()}</p>
-      <Field label={m.photo_day_label()} id="milestone-photo-day-prompt">
-        {#snippet children(id)}
-          <DatePicker name="milestone-photo-day-prompt" bind:value={pendingMilestoneDay} {id} />
-        {/snippet}
-      </Field>
-      <div class="stack-3">
-        <button
-          class="btn btn-primary press"
-          data-photo-day-save
-          onclick={() => resolveMilestonePhotoDay(pendingMilestoneDay)}
-        >
-          <span>{m.photo_day_prompt_save()}</span>
-        </button>
-        <button class="btn btn-ghost press" data-photo-day-skip onclick={() => resolveMilestonePhotoDay(null)}>
-          <span>{m.photo_day_prompt_skip()}</span>
-        </button>
-      </div>
-    {/if}
-  </Sheet>
+    bind:day={pendingMilestoneDay}
+    fieldId="milestone-photo-day-prompt"
+    onSave={() => resolveMilestonePhotoDay(pendingMilestoneDay)}
+    onSkip={() => resolveMilestonePhotoDay(null)}
+  />
 
   <FeltSenseOfferSheet
     open={feelingOfferId !== null}

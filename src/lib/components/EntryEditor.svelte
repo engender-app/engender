@@ -39,6 +39,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
   import Field from '$lib/components/kit/Field.svelte';
+  import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -1243,25 +1244,13 @@
     </ListCard>
   </Sheet>
 
-  <Sheet open={dayPromptQueue.length > 0} title={m.photo_day_prompt_title()} onClose={() => resolveDayPrompt(null)}>
-    {#if dayPromptQueue.length > 0}
-      <h3>{m.photo_day_prompt_title()}</h3>
-      <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_prompt_hint()}</p>
-      <Field label={m.photo_day_label()} id="entry-photo-day-prompt">
-        {#snippet children(id)}
-          <DatePicker name="entry-photo-day-prompt" bind:value={dayPromptValue} {id} />
-        {/snippet}
-      </Field>
-      <div class="stack-3">
-        <button class="btn btn-primary press" data-photo-day-save onclick={() => resolveDayPrompt(dayPromptValue)}>
-          <span>{m.photo_day_prompt_save()}</span>
-        </button>
-        <button class="btn btn-ghost press" data-photo-day-skip onclick={() => resolveDayPrompt(null)}>
-          <span>{m.photo_day_prompt_skip()}</span>
-        </button>
-      </div>
-    {/if}
-  </Sheet>
+  <PhotoDayPromptSheet
+    open={dayPromptQueue.length > 0}
+    bind:day={dayPromptValue}
+    fieldId="entry-photo-day-prompt"
+    onSave={() => resolveDayPrompt(dayPromptValue)}
+    onSkip={() => resolveDayPrompt(null)}
+  />
 
   <PhotoAlignmentReview
     photo={entryPhotoReview.photo}
