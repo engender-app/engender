@@ -724,6 +724,8 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // same reason hair_photo above is - `entry_id` travels as the entry's
   // own uuid (ADR-0002).
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
+  // Same shape as voice_recording just above - child of entry, read once
+  // for the file manifest, the same reason hair_photo above is.
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Owns a child (checklist_item) below; unlike a vocabulary table its own
   // row has nothing to UPDATE once created (checklists.ts has no rename or
