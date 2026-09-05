@@ -629,10 +629,7 @@ try {
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
   if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
-  const hint = await page.locator('[data-screen]').innerText();
-  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
-    throw new Error('clearing did not bring back the idle hint');
-  }
+  if (!(await page.locator('[data-notice="search-idle"]').count())) throw new Error('clearing did not bring back the idle hint');
 
   ok('clearing the query clears the results well inside the debounce interval, not after it');
 } catch (e) { fail('clearing search does not wait out the debounce', e); }

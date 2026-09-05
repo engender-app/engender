@@ -80,7 +80,16 @@
      unchanged when nothing this screen actually asks with has changed; the
      effect below only republishes `stableSearch` - what the two closures
      read - when the signature actually moves, the same as /search waiting
-     for the typist to stop before it reads `query`. */
+     for the typist to stop before it reads `query`.
+
+     The `lastSearchSignature` guard is load-bearing, not a redundant check
+     `$derived`'s own memoization already does: this effect reads `question`
+     itself to build `stableSearch`, and a dynamically-tracked dependency
+     read during one run stays tracked into the next. Skip the guard and
+     every run would read `question` unconditionally, which would keep it a
+     tracked dependency forever and re-run this effect on every future
+     unrelated rename - the probe's "ignores an unrelated rename" check is
+     what would catch that regression. */
   let searchSignature = $derived(question ? JSON.stringify([question.queryText, entrySearchFiltersOf(question)]) : null);
   let stableSearch = $state<{ queryText: string; filters: ReturnType<typeof entrySearchFiltersOf> } | null>(null);
   let lastSearchSignature: string | null = null;
