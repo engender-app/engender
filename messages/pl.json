@@ -3395,6 +3395,8 @@
   "document_link_add": "Połącz",
   "document_link_sheet": "Połącz ten dokument",
   "document_link_clear": "Usuń powiązanie",
+  "document_link_empty_title": "Nie ma jeszcze z czym połączyć",
+  "document_link_empty_body": "Dokument może leżeć pod kamieniem milowym, operacją, kuracją albo krokiem z mapy tranzycji. Kiedy będziesz mieć któreś z nich, pojawi się tutaj.",
   "document_linked_here_title": "Powiązane dokumenty",
   "document_link_kind_milestone": "Kamień milowy",
   "document_link_kind_procedure": "Operacja",

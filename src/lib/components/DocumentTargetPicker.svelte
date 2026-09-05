@@ -16,6 +16,7 @@
   import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
   import type { DocumentTarget } from '$lib/data/types';
   import Sheet from './Sheet.svelte';
+  import Notice from './kit/Notice.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
@@ -51,6 +52,10 @@
     ...[...customGoalsQuery.rows].reverse().map((goal) => ({ id: goal.id, label: goal.text }))
   ]);
 
+  let nothingToLinkTo = $derived(
+    milestones.length === 0 && procedures.length === 0 && episodes.length === 0 && goalRows.length === 0
+  );
+
   function pick(target: DocumentTarget) {
     onPick(target);
     onClose();
@@ -62,62 +67,83 @@
 
   {#if current}
     <ListCard>
-      <ListRow key="clear" data-clear-target icon="x" title={m.document_link_clear()} onclick={() => onPick(null)} />
+      <ListRow
+        key="clear"
+        data-clear-target
+        icon="x"
+        title={m.document_link_clear()}
+        onclick={() => {
+          onPick(null);
+          onClose();
+        }}
+      />
     </ListCard>
   {/if}
 
-  <SectionHeading text={m.milestones()} />
-  <ListCard>
-    {#each milestones as milestone (milestone.id)}
-      <ListRow
-        key={milestone.id}
-        data-pick-target={`milestone:${milestone.id}`}
-        icon="sparkle"
-        title={milestone.name}
-        subtitle={dayLabel(milestone.epochDay)}
-        onclick={() => pick({ kind: 'milestone', id: milestone.id })}
-      />
-    {/each}
-  </ListCard>
+  {#if nothingToLinkTo}
+    <Notice icon="documents" title={m.document_link_empty_title()} text={m.document_link_empty_body()} />
+  {/if}
 
-  <SectionHeading text={m.surgery_journey_title()} />
-  <ListCard>
-    {#each procedures as procedure (procedure.id)}
-      <ListRow
-        key={procedure.id}
-        data-pick-target={`procedure:${procedure.id}`}
-        icon="flag"
-        title={procedure.name}
-        subtitle={procedure.surgeryEpochDay !== null ? dayLabel(procedure.surgeryEpochDay) : m.surgery_day_unscheduled()}
-        onclick={() => pick({ kind: 'procedure', id: procedure.id })}
-      />
-    {/each}
-  </ListCard>
+  {#if milestones.length > 0}
+    <SectionHeading text={m.milestones()} />
+    <ListCard>
+      {#each milestones as milestone (milestone.id)}
+        <ListRow
+          key={milestone.id}
+          data-pick-target={`milestone:${milestone.id}`}
+          icon="sparkle"
+          title={milestone.name}
+          subtitle={dayLabel(milestone.epochDay)}
+          onclick={() => pick({ kind: 'milestone', id: milestone.id })}
+        />
+      {/each}
+    </ListCard>
+  {/if}
 
-  <SectionHeading text={m.regimen()} />
-  <ListCard>
-    {#each episodes as episode (episode.id)}
-      <ListRow
-        key={episode.id}
-        data-pick-target={`episode:${episode.id}`}
-        icon="timeline"
-        title={episode.drug}
-        subtitle={dayLabel(episode.startEpochDay)}
-        onclick={() => pick({ kind: 'episode', id: episode.id })}
-      />
-    {/each}
-  </ListCard>
+  {#if procedures.length > 0}
+    <SectionHeading text={m.surgery_journey_title()} />
+    <ListCard>
+      {#each procedures as procedure (procedure.id)}
+        <ListRow
+          key={procedure.id}
+          data-pick-target={`procedure:${procedure.id}`}
+          icon="flag"
+          title={procedure.name}
+          subtitle={procedure.surgeryEpochDay !== null ? dayLabel(procedure.surgeryEpochDay) : m.surgery_day_unscheduled()}
+          onclick={() => pick({ kind: 'procedure', id: procedure.id })}
+        />
+      {/each}
+    </ListCard>
+  {/if}
 
-  <SectionHeading text={m.roadmap_title()} />
-  <ListCard>
-    {#each goalRows as goal (goal.id)}
-      <ListRow
-        key={goal.id}
-        data-pick-target={`goal:${goal.id}`}
-        icon="globe"
-        title={goal.label}
-        onclick={() => pick({ kind: 'goal', id: goal.id })}
-      />
-    {/each}
-  </ListCard>
+  {#if episodes.length > 0}
+    <SectionHeading text={m.regimen()} />
+    <ListCard>
+      {#each episodes as episode (episode.id)}
+        <ListRow
+          key={episode.id}
+          data-pick-target={`episode:${episode.id}`}
+          icon="timeline"
+          title={episode.drug}
+          subtitle={dayLabel(episode.startEpochDay)}
+          onclick={() => pick({ kind: 'episode', id: episode.id })}
+        />
+      {/each}
+    </ListCard>
+  {/if}
+
+  {#if goalRows.length > 0}
+    <SectionHeading text={m.roadmap_title()} />
+    <ListCard>
+      {#each goalRows as goal (goal.id)}
+        <ListRow
+          key={goal.id}
+          data-pick-target={`goal:${goal.id}`}
+          icon="globe"
+          title={goal.label}
+          onclick={() => pick({ kind: 'goal', id: goal.id })}
+        />
+      {/each}
+    </ListCard>
+  {/if}
 </Sheet>
