@@ -369,7 +369,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const reminders = makeRemindersArea(driver);
   const regimen = makeRegimenArea(driver);
   const doses = makeDosesArea(driver, regimen);
-  const labs = makeLabsArea(driver);
+  const labs = makeLabsArea(driver, regimen);
   const exposure = makeExposureArea(doses, regimen);
   const sideEffects = makeSideEffectsArea(driver);
   const dimensions = makeDimensionsArea(driver);
