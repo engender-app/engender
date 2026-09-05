@@ -2290,6 +2290,8 @@
   "clinician_summary_period_label": "Reporting period",
   "clinician_summary_include_title": "Include sections",
   "clinician_summary_include_note": "Choose which sections appear in the printed clinical dossier.",
+  "clinician_summary_drugs_title": "Drugs included",
+  "clinician_summary_drugs_note": "Turn a drug off to leave it out of the regimen, dose log and exposure sections below.",
   "clinician_summary_part_demographics": "Patient profile",
   "clinician_summary_part_regimen": "Regimen and dosage history",
   "clinician_summary_part_exposure": "Cumulative exposure",

@@ -25,6 +25,7 @@
     assembleClinicianDossier,
     CLINICIAN_DOSSIER_INCLUSION_KEYS,
     DEFAULT_CLINICIAN_DOSSIER_INCLUSION,
+    regimenDrugNames,
     type ClinicianDossierInclusion,
     type ClinicianDossierInclusionKey
   } from '$lib/data/export/clinicianSummaryData';
@@ -56,6 +57,19 @@
   let appointmentDateQuery = liveQuery((j) => j.checklists.getAppointmentDate());
   let appointmentDate = $derived(appointmentDateQuery.value ?? null);
 
+  /* Every drug the person has ever logged a regimen episode for (ticket
+     39), unbounded - not scoped to the range below, since the toggle is a
+     device preference set once rather than a per-print control. */
+  let regimenEpisodesQuery = liveQuery((j) => j.regimen.getEpisodes());
+  let drugNames = $derived(regimenDrugNames(regimenEpisodesQuery.value ?? []));
+  let excludedDrugs = $derived(
+    new Set(drugNames.filter((drug) => prefs.clinicianSummaryDrugExcluded[drug]))
+  );
+
+  function toggleDrug(drug: string, included: boolean) {
+    prefs.clinicianSummaryDrugExcluded = { ...prefs.clinicianSummaryDrugExcluded, [drug]: !included };
+  }
+
   /* A shortcut for the two fields below, nothing else: it fills the same
      start/end inputs any other pair of dates fills, so it changes no read
      downstream. Two of clinicianSummary.ts's sections (procedures,
@@ -83,7 +97,8 @@
             name: prefs.name,
             dob: dobInput.trim() || null
           },
-          inclusion
+          inclusion,
+          excludedDrugs
         })
       : Promise.resolve(null)
   );
@@ -167,6 +182,27 @@
       </div>
     </ListCard>
   </div>
+
+  {#if drugNames.length > 0}
+    <div class="no-print" style="margin-bottom:var(--space-4)">
+      <SectionHeading text={m.clinician_summary_drugs_title()} />
+      <p class="muted small" style="margin-bottom:var(--space-2)">{m.clinician_summary_drugs_note()}</p>
+      <ListCard>
+        <div class="inclusion-container" data-dossier-drugs>
+          {#each drugNames as drug (drug)}
+            <div class="spread inclusion-row" data-drug={drug}>
+              <span>{drug}</span>
+              <Switch
+                checked={!excludedDrugs.has(drug)}
+                label={drug}
+                onChange={(v) => toggleDrug(drug, v)}
+              />
+            </div>
+          {/each}
+        </div>
+      </ListCard>
+    </div>
+  {/if}
 
   {#if range}
     <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>

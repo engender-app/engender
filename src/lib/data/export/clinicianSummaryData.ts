@@ -102,6 +102,20 @@ export interface AssembleClinicianDossierParams {
   generatedAtEpochDay?: number;
   demographics?: Partial<PatientDemographics>;
   inclusion?: Partial<ClinicianDossierInclusion>;
+  /** Drugs left out of the regimen, dose-history and exposure sections
+      (phase 8 features ticket 39, ADR-0031) - a printing choice about this
+      visit, not portable journal data (ADR-0003). Defaults to none. */
+  excludedDrugs?: ReadonlySet<string>;
+}
+
+/** Every distinct drug name across every regimen episode the person has
+    ever logged, active or past - what the drug-inclusion toggle on the
+    range sheet lists (phase 8 features ticket 39). Unbounded rather than
+    scoped to whatever range a dossier itself reads for: the toggle is a
+    device preference set once, not a per-print control, so a drug outside
+    today's chosen range still gets a switch. */
+export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] {
+  return [...new Set(episodes.map((episode) => episode.drug))].sort((a, b) => a.localeCompare(b));
 }
 
 /** Assembles all requested sections for the given range into a structured
@@ -118,7 +132,7 @@ export async function assembleClinicianDossier(
   };
 
   // Base summary reads through the ADR-0031 registered clinicianSummary area
-  const summary = await journal.clinicianSummary.getSummary(fromEpochDay, toEpochDay);
+  const summary = await journal.clinicianSummary.getSummary(fromEpochDay, toEpochDay, params.excludedDrugs);
 
   // Demographics: only committed values. An active pronoun tryout is by
   // definition not yet adopted, so it never fills this field - a clinical
