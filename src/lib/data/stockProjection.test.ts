@@ -5,12 +5,15 @@ import {
   depletingStocks,
   isStockDepletingSoon,
   isStockNoticeSnoozed,
+  projectEveryStock,
   projectStock,
   snoozeStockNotice,
   STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS,
-  TRAILING_WINDOW_DAYS
+  TRAILING_WINDOW_DAYS,
+  type DrugDoseCounter,
+  type StockEntry
 } from './stockProjection';
-import { startOfDayTimestamp } from './epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 const DAY_0 = 20000;
@@ -336,3 +339,89 @@ test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', 
   assert.equal(isStockNoticeSnoozed(now, storage), false);
 });
 
+
+/* projectEveryStock, the path the stock area takes (phase 8 audit ticket
+   26). Driven with a counter that answers from an in-memory dose list, so
+   the windowing and the summing get tested without a database, and the
+   figures can be held against projectStock, which counts the same doses the
+   old way. */
+function counterOver(doses: readonly DoseEvent[]): DrugDoseCounter {
+  return async (ranges) => {
+    const byDrug = new Map<string | null, number[]>();
+    for (const one of doses) {
+      if (one.status === 'skipped') continue;
+      const day = epochDayFromTimestamp(one.timestamp);
+      const index = ranges.findIndex((range) => day >= range.fromEpochDay && day <= range.toEpochDay);
+      if (index < 0) continue;
+      const key = one.drug ?? null;
+      const counts = byDrug.get(key) ?? ranges.map(() => 0);
+      counts[index] += 1;
+      byDrug.set(key, counts);
+    }
+    return [...byDrug].map(([drug, countsByRange]) => ({ drug, countsByRange }));
+  };
+}
+
+const ESTRADIOL = episode({ id: 'e', drug: 'estradiol', startEpochDay: DAY_0 });
+const SPIRO = episode({ id: 's', drug: 'spironolactone', startEpochDay: DAY_0 + 50, endEpochDay: DAY_0 + 99 });
+
+test('projectEveryStock agrees with projectStock on every entry', async () => {
+  const episodes = [ESTRADIOL, SPIRO];
+  const doses: DoseEvent[] = [];
+  for (let day = DAY_0; day <= DAY_0 + 160; day += 1) {
+    doses.push(
+      dose(day, {
+        drug: day % 3 === 0 ? 'estradiol' : null,
+        status: day % 17 === 0 ? 'skipped' : 'taken'
+      })
+    );
+  }
+  const entries: StockEntry[] = [
+    { drug: 'estradiol', quantity: 200, unit: 'tablets', recordedEpochDay: DAY_0 },
+    { drug: 'spironolactone', quantity: 40, unit: 'tablets', recordedEpochDay: DAY_0 + 140 }
+  ];
+  const asOf = DAY_0 + 160;
+
+  assert.deepEqual(
+    await projectEveryStock(entries, episodes, asOf, counterOver(doses)),
+    entries.map((entry) => projectStock(entry, doses, episodes, asOf))
+  );
+});
+
+test('projectEveryStock reports a zero rate as a stock that never runs out', async () => {
+  /* A count taken on the day asked about, so the trailing window holds one
+     calendar day, and nothing consumed inside it: a rate of zero rather than
+     null, and therefore no run-out day to project at that pace. */
+  const doses = [dose(DAY_0 + 1), dose(DAY_0 + 2)];
+  const entries: StockEntry[] = [{ drug: 'estradiol', quantity: 30, unit: 'tablets', recordedEpochDay: DAY_0 + 100 }];
+
+  const [projection] = await projectEveryStock(entries, [ESTRADIOL], DAY_0 + 100, counterOver(doses));
+
+  assert.deepEqual(projection, { remaining: 30, dailyRate: 0, runOutEpochDay: null, excludedDoses: 0 });
+  assert.deepEqual(projection, projectStock(entries[0], doses, [ESTRADIOL], DAY_0 + 100));
+});
+
+test('projectEveryStock asks for ranges that tile the window exactly', async () => {
+  const entries: StockEntry[] = [
+    { drug: 'estradiol', quantity: 200, unit: 'tablets', recordedEpochDay: DAY_0 },
+    { drug: 'spironolactone', quantity: 40, unit: 'tablets', recordedEpochDay: DAY_0 + 140 }
+  ];
+
+  let asked: readonly { fromEpochDay: number; toEpochDay: number }[] = [];
+  await projectEveryStock(entries, [ESTRADIOL, SPIRO], DAY_0 + 160, async (ranges) => {
+    asked = ranges;
+    return [];
+  });
+
+  assert.ok(asked.length > 1, 'the window is cut at more than one place');
+  assert.equal(asked[0].fromEpochDay, DAY_0, 'starts at the oldest count');
+  assert.equal(asked[asked.length - 1].toEpochDay, DAY_0 + 160, 'ends on the day asked about');
+  for (const [index, range] of asked.entries()) {
+    assert.ok(range.toEpochDay >= range.fromEpochDay, `range ${index} runs backwards`);
+    if (index > 0) assert.equal(range.fromEpochDay, asked[index - 1].toEpochDay + 1, `gap or overlap at ${index}`);
+  }
+});
+
+test('projectEveryStock answers nothing for no entries', async () => {
+  assert.deepEqual(await projectEveryStock([], [ESTRADIOL], DAY_0, counterOver([])), []);
+});

@@ -651,13 +651,20 @@ export async function measureLongJournal(
     return { result: recordings, detail: `${recordings.length} recordings` };
   });
 
-  // Stock (settings/stock/+page.svelte): getProjections(today) reads doses
-  // from the oldest stock entry forward (stock.ts:109-121), then projects
-  // per stock entry over that whole dose array - O(entries x doses) at
-  // decade scale, the strongest candidate this ticket's survey found. Each
-  // projection also runs attributeDrug (regimenEpisode.ts) once per dose,
-  // which is where the fixture's three regimen episodes' overlap-resolution
-  // path actually gets exercised - the only place in this suite that does.
+  // Stock (settings/stock/+page.svelte): getProjections(today) used to read
+  // every dose from the oldest stock entry forward and reduce three numbers
+  // per entry out of them - O(entries x doses) at decade scale, and 538KB of
+  // Home's mount on this fixture. Phase 8 audit ticket 26 replaced that with
+  // one grouped count per date window (stockProjection.ts's projectEveryStock),
+  // so what this now measures is a handful of counts whatever the log's
+  // length, and mount-home's byte figure below is the ratchet that keeps it
+  // that way.
+  //
+  // It still exercises the fixture's three regimen episodes' overlap
+  // resolution, and is still the only measurement here that does - but once
+  // per attribution span now (drugSpans) rather than once per dose, so this
+  // is no longer the measurement that would notice attributeDrug getting
+  // slower. Nothing here would; that cost is a unit-test concern now.
   await measure('stock-projection', 'stock screen, every drug projected from counts over the dose log', async () => {
     const projections = await journal.stock.getProjections(today);
     const excluded = projections.reduce((n, p) => n + p.projection.excludedDoses, 0);

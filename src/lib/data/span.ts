@@ -23,6 +23,35 @@ export function spanCoversDay(span: { startEpochDay: number | null; endEpochDay:
   return true;
 }
 
+/** `[fromEpochDay, toEpochDay]` cut into gapless, non-overlapping closed
+    ranges at each of `cutDays`, oldest first. Empty for a range that runs
+    backwards. Cuts are deduplicated, sorted, and ignored where they fall
+    outside the range; the first range always starts at `fromEpochDay` and
+    the last always ends at `toEpochDay`, so the ranges cover the whole of
+    it and a day belongs to exactly one.
+
+    Hoisted arithmetic like the two questions above, for the same reason:
+    regimenEpisode.ts's drugSpans cuts a window where attribution changes
+    and stockProjection.ts cuts one where a stock entry's answer changes,
+    and the off-by-one at the seam between two ranges is not worth writing
+    twice. No named range type, per this module's header. */
+export function rangesFromCuts(
+  cutDays: Iterable<number>,
+  fromEpochDay: number,
+  toEpochDay: number
+): { fromEpochDay: number; toEpochDay: number }[] {
+  if (toEpochDay < fromEpochDay) return [];
+
+  const starts = [...new Set([fromEpochDay, ...cutDays])]
+    .filter((day) => day >= fromEpochDay && day <= toEpochDay)
+    .sort((a, b) => a - b);
+
+  return starts.map((start, index) => ({
+    fromEpochDay: start,
+    toEpochDay: index + 1 < starts.length ? starts[index + 1] - 1 : toEpochDay
+  }));
+}
+
 /** Whether `span` overlaps `[fromEpochDay, toEpochDay]` at all - a stretch
     that starts on or before the window ends and ends on or after the window
     starts. */

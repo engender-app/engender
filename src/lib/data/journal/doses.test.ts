@@ -598,3 +598,19 @@ test('countConsumingDosesByDrug answers nothing for no ranges, and zeroes for an
   assert.deepEqual(await journal.doses.countConsumingDosesByDrug([]), []);
   assert.deepEqual(await journal.doses.countConsumingDosesByDrug([{ fromEpochDay: 1, toEpochDay: 9 }]), []);
 });
+
+test('countConsumingDosesByDrug refuses overlapping ranges and backwards ones', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    () =>
+      journal.doses.countConsumingDosesByDrug([
+        { fromEpochDay: 100, toEpochDay: 110 },
+        { fromEpochDay: 105, toEpochDay: 120 }
+      ]),
+    /ranges overlap at day 105/
+  );
+  await assert.rejects(
+    () => journal.doses.countConsumingDosesByDrug([{ fromEpochDay: 110, toEpochDay: 100 }]),
+    /runs backwards/
+  );
+});

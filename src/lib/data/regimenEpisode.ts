@@ -15,7 +15,7 @@
    answer with resolveEpisodeAt alone. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
-import { spanCoversDay } from './span';
+import { rangesFromCuts, spanCoversDay } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** Whether `episode` is in effect on `day`: started on or before it, and
@@ -136,24 +136,18 @@ export function drugSpans(
   fromEpochDay: number,
   toEpochDay: number
 ): DrugSpan[] {
-  if (toEpochDay < fromEpochDay) return [];
+  /* Every day attribution could change on: an episode's first day, and the
+     day after its last. An open episode never stops, so it contributes no
+     end. rangesFromCuts drops the ones outside the window and closes the
+     seams. */
+  const cuts = episodes.flatMap((episode) =>
+    episode.endEpochDay === null ? [episode.startEpochDay] : [episode.startEpochDay, episode.endEpochDay + 1]
+  );
 
-  /* Every day attribution could change on, clamped into the range: an
-     episode's first day, and the day after its last. An open episode never
-     stops, so it contributes no end. */
-  const cuts = new Set<number>([fromEpochDay]);
-  for (const episode of episodes) {
-    for (const day of [episode.startEpochDay, episode.endEpochDay === null ? null : episode.endEpochDay + 1]) {
-      if (day !== null && day > fromEpochDay && day <= toEpochDay) cuts.add(day);
-    }
-  }
-
-  const starts = [...cuts].sort((a, b) => a - b);
-  return starts.map((start, index) => {
-    const end = index + 1 < starts.length ? starts[index + 1] - 1 : toEpochDay;
-    const { drug, ambiguous } = attributeDrug(episodes, { drug: null, timestamp: startOfDayTimestamp(start) });
-    return { fromEpochDay: start, toEpochDay: end, drug, ambiguous };
-  });
+  return rangesFromCuts(cuts, fromEpochDay, toEpochDay).map((range) => ({
+    ...range,
+    ...attributeDrug(episodes, { drug: null, timestamp: startOfDayTimestamp(range.fromEpochDay) })
+  }));
 }
 
 /** The first episode there has ever been - the one HRT overall started

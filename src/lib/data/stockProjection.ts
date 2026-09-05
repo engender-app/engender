@@ -35,7 +35,8 @@
    one is gone. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributeDrug } from './regimenEpisode';
+import { attributeDrug, drugSpans } from './regimenEpisode';
+import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** How many trailing days of the dose log the consumption rate is
@@ -140,6 +141,97 @@ export function projectStockFromCounts(
   if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
   if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
   return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+}
+
+/** How many non-skipped doses carry each stored `drug` value in each of
+    the ranges asked for. Declared structurally rather than imported from
+    the doses area, so this module still depends on nothing below the
+    journal seam: `DosesArea.countConsumingDosesByDrug` satisfies it. */
+export type DrugDoseCounter = (
+  ranges: readonly { fromEpochDay: number; toEpochDay: number }[]
+) => Promise<readonly { drug: string | null; countsByRange: readonly number[] }[]>;
+
+/** Every entry's projection as of `asOfEpochDay`, in the order given,
+    without ever holding a dose.
+
+    `count` is asked one question, over ranges chosen here: the window is
+    cut wherever any entry's answer could change - where a drug-less dose
+    starts attributing differently (`drugSpans`), where a count was taken,
+    and where a trailing rate window opens. Each range therefore sits inside
+    exactly one attribution span, so a range's drug-less doses all belong to
+    the same drug or to none, and each entry's three figures are sums over
+    the ranges from its count day onward.
+
+    Still pure in the sense this module means: no clock and no database, only
+    a function that answers a counting question. What `count` must not be is
+    a source of the attribution rule - it is handed date windows and reports
+    what the `drug` column holds, and the resolving happens here. */
+export async function projectEveryStock(
+  entries: readonly StockEntry[],
+  episodes: readonly RegimenEpisode[],
+  asOfEpochDay: number,
+  count: DrugDoseCounter
+): Promise<StockProjection[]> {
+  if (entries.length === 0) return [];
+
+  const from = Math.min(...entries.map((entry) => entry.recordedEpochDay), asOfEpochDay);
+  const spans = drugSpans(episodes, from, asOfEpochDay);
+  const ranges = rangesFromCuts(
+    [
+      ...spans.map((span) => span.fromEpochDay),
+      ...entries.flatMap((entry) => [entry.recordedEpochDay, trailingWindowStart(entry, asOfEpochDay)])
+    ],
+    from,
+    asOfEpochDay
+  );
+
+  /* Every range starts on a cut, and the spans cover the same window with
+     no gap, so each range does sit inside one - a missing span would mean
+     the two cut sets had come apart, which is this module's own bug and not
+     something to paper over with a zero. */
+  const spanForRange = ranges.map((range) => {
+    const span = spans.find((s) => range.fromEpochDay >= s.fromEpochDay && range.fromEpochDay <= s.toEpochDay);
+    if (!span) throw new Error(`no attribution span covers day ${range.fromEpochDay}`);
+    return span;
+  });
+
+  /* Doses that named a drug are keyed by that name, trimmed the way a drug
+     is matched everywhere else; doses that named none are kept apart,
+     because which drug they count against is the span's answer rather than
+     their own. A falsy `drug` is what attributeDrug treats as naming
+     nothing, so the same test decides it here. */
+  const namedByRange = ranges.map(() => new Map<string, number>());
+  const unnamedByRange = ranges.map(() => 0);
+  for (const row of await count(ranges)) {
+    row.countsByRange.forEach((n, index) => {
+      if (!row.drug) {
+        unnamedByRange[index] += n;
+        return;
+      }
+      const key = row.drug.trim();
+      namedByRange[index].set(key, (namedByRange[index].get(key) ?? 0) + n);
+    });
+  }
+
+  return entries.map((entry) => {
+    const drug = entry.drug.trim();
+    const windowStart = trailingWindowStart(entry, asOfEpochDay);
+    const counts: StockDoseCounts = { consumed: 0, consumedInTrailingWindow: 0, excluded: 0 };
+
+    for (const [index, range] of ranges.entries()) {
+      if (range.fromEpochDay < entry.recordedEpochDay) continue;
+      const span = spanForRange[index];
+      const unnamed = unnamedByRange[index];
+      const attributed =
+        (namedByRange[index].get(drug) ?? 0) + (span.drug !== null && span.drug.trim() === drug ? unnamed : 0);
+
+      counts.consumed += attributed;
+      if (range.fromEpochDay >= windowStart) counts.consumedInTrailingWindow += attributed;
+      if (span.ambiguous) counts.excluded += unnamed;
+    }
+
+    return projectStockFromCounts(entry, counts, asOfEpochDay);
+  });
 }
 
 /** `stock`'s projection as of `asOfEpochDay`, counting the doses itself.
