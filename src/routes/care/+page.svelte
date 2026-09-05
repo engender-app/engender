@@ -26,10 +26,18 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { careSpine, lastLoggedDoseDay, nextExpectedSlot, SPINE_FORWARD_DAYS, type SpineMark, type SpineMarkKind } from '$lib/data/careSpine';
-  import { epochDayFromTimestamp, todayEpochDay } from '$lib/data/epochDay';
+  import {
+    careSpine,
+    chooseRailEpisode,
+    scheduleDoseFacts,
+    SPINE_FORWARD_DAYS,
+    type SpineMark,
+    type SpineMarkKind
+  } from '$lib/data/careSpine';
+  import { startOfDayTimestamp, todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
-  import { attributeDose } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import type { RegimenEpisode } from '$lib/data/types';
   import { depletingStocks } from '$lib/data/stockProjection';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
   import { crossfade } from '$lib/motion/reveal';
@@ -52,15 +60,16 @@
      flags it, so an old dose reads as old rather than as absent. */
   let dosesQuery = liveList((j) => j.doses.getDoses(0, today));
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
-  /* Which episode is in effect, its schedule and its pauses, assembled by
-     the same call the dose log makes (journal/doses.ts) rather than by six
-     reads here. Its window ends today because that is the day the episode
-     question is being asked about. */
-  let comparisonQuery = liveQuery((j) => j.doses.getComparison({ fromEpochDay: today - 1, toEpochDay: today }));
+  /* Every episode's own schedule and pauses, read whole (doses.ts: both are
+     small, one row per episode) rather than through getComparison, which
+     answers "the sole active episode" and gives up the moment a second one
+     is active - the exact case this screen now has to draw (ticket 38). */
+  let schedulesQuery = liveList((j) => j.doses.getSchedules());
+  let pausesQuery = liveList((j) => j.doses.getPauses());
   let stockQuery = liveList((j) => j.stock.getProjections(today));
   let latestLabQuery = liveQuery((j) => j.labs.getLatestResult());
 
-  /* Every one of those five reads has to have answered before the rail means
+  /* Every one of those six reads has to have answered before the rail means
      anything: a spine drawn while the stock query is still out would settle
      without its run-out mark and then jump. The rail is one object rather
      than a list, so this is a Skeleton against a `.loading` of its own rather
@@ -69,14 +78,22 @@
   let loading = $derived(
     dosesQuery.loading ||
       episodesQuery.loading ||
-      comparisonQuery.loading ||
+      schedulesQuery.loading ||
+      pausesQuery.loading ||
       stockQuery.loading ||
       latestLabQuery.loading
   );
 
-  let comparison = $derived(comparisonQuery.value ?? null);
-  let activeEpisode = $derived(comparison && 'activeEpisode' in comparison ? comparison.activeEpisode : null);
-  let severalRegimens = $derived(comparison?.reason === 'multipleEpisodes');
+  /* Which episodes are running today, and which of them draws the rail
+     (careSpine.ts: at most one active episode of any drug is unambiguous;
+     several active picks the curve drug among them, or draws nothing when
+     that too is ambiguous). Renamed nowhere below: `activeEpisode` and
+     `severalRegimens` are still exactly what the header block reads. */
+  let activeEpisodes = $derived(activeEpisodesAt(episodesQuery.rows, startOfDayTimestamp(today)));
+  let railChoice = $derived(chooseRailEpisode(activeEpisodes));
+  let activeEpisode = $derived(railChoice.rail);
+  let severalRegimens = $derived(railChoice.ambiguous);
+  let otherActiveEpisodes = $derived(railChoice.others);
   let latestLab = $derived(latestLabQuery.value ?? null);
 
   /* The soonest run-out inside the rail's forward reach, through the helper
@@ -86,30 +103,30 @@
      mark: the stock row below still states what is left. */
   let runOut = $derived(depletingStocks(stockQuery.rows, today, SPINE_FORWARD_DAYS)[0] ?? null);
 
-  /* Only the doses this episode is responsible for, attributed the way every
-     other screen attributes them, and only from today on: the slots the next
-     one is picked from start today, so nothing earlier can fill one. */
-  let episodeDosesFromToday = $derived(
-    activeEpisode
-      ? dosesQuery.rows.filter(
-          (dose) =>
-            epochDayFromTimestamp(dose.timestamp) >= today &&
-            attributeDose(episodesQuery.rows, dose).episode?.id === activeEpisode.id
-        )
-      : []
+  const scheduleForEpisode = (episode: RegimenEpisode) =>
+    schedulesQuery.rows.find((schedule) => schedule.episodeId === episode.id) ?? null;
+  const pausesForEpisode = (episode: RegimenEpisode) =>
+    pausesQuery.rows.filter((pause) => pause.episodeId === episode.id);
+  const doseFactsFor = (episode: RegimenEpisode) =>
+    scheduleDoseFacts(episode, episodesQuery.rows, scheduleForEpisode(episode), dosesQuery.rows, pausesForEpisode(episode), today);
+
+  let railDoseFacts = $derived(
+    activeEpisode ? doseFactsFor(activeEpisode) : { lastDoseEpochDay: null, nextDoseEpochDay: null }
   );
 
-  let nextSlot = $derived(
-    comparison && comparison.reason === null
-      ? nextExpectedSlot(comparison.schedule, comparison.activeEpisode.startEpochDay, episodeDosesFromToday, comparison.pauses, today)
-      : null
+  /* Every other active episode's own last and next dose, for the row each
+     gets beneath the rail rather than a shared mark folded into it
+     (ticket 38's chosen shape - the curve schedule keeps the rail exactly
+     as it read before, and everything else reads underneath). */
+  let otherScheduleRows = $derived(
+    otherActiveEpisodes.map((episode) => ({ episode, ...doseFactsFor(episode) }))
   );
 
   let spine = $derived(
     careSpine(
       {
-        lastDoseEpochDay: lastLoggedDoseDay(dosesQuery.rows),
-        nextDoseEpochDay: nextSlot?.epochDay ?? null,
+        lastDoseEpochDay: railDoseFacts.lastDoseEpochDay,
+        nextDoseEpochDay: railDoseFacts.nextDoseEpochDay,
         labDrawEpochDay: latestLab?.epochDay ?? null,
         runOutEpochDay: runOut?.projection.runOutEpochDay ?? null
       },
@@ -239,6 +256,28 @@
     </ChartCard>
   {:else}
     <Notice icon="info" key="care-empty" text={m.care_rail_empty()} />
+  {/if}
+
+  {#if !loading && otherScheduleRows.length > 0}
+    <!-- The rail draws one schedule; every other active one - an unrelated
+         daily drug alongside a hormone regimen, say - gets its own row here
+         instead of a second, unlabelled mark of the same kind on the line
+         (ticket 38). -->
+    <SectionHeading text={m.care_group_other_regimens()} />
+    <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
+      {#each otherScheduleRows as row (row.episode.id)}
+        <ListRow
+          key={`other-regimen-${row.episode.id}`}
+          icon="clock"
+          title={row.episode.drug}
+          subtitle={[
+            row.lastDoseEpochDay !== null && m.care_other_last_dose({ when: dayLabel(row.lastDoseEpochDay) }),
+            row.nextDoseEpochDay !== null && m.care_other_next_dose({ when: dayLabel(row.nextDoseEpochDay) })
+          ]}
+          href="/doses"
+        />
+      {/each}
+    </ListCard>
   {/if}
 
   <SectionHeading text={m.care_group_hormones()} />
