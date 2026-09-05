@@ -130,6 +130,15 @@ test('a fresh install has not been onboarded', () => {
   expect(PREFERENCE_DEFAULTS.onboarded).toBe(false);
 });
 
+/* Ticket 46: the persona premise this guards against is a daily nudge
+   arriving unrequested for someone who logs by event, not by day. Nothing
+   in boot or onboarding is meant to flip this - the one place it turns on
+   is a person switching it on themselves (onboarding/+page.svelte) or in
+   settings/reminders. */
+test('a fresh install has the daily check-in off (ticket 46)', () => {
+  expect(PREFERENCE_DEFAULTS.checkInEnabled).toBe(false);
+});
+
 /* Ticket 35 turned the preset into a list of ticked scales, and the default
    is the three the fem+masc preset stood for, in catalogue order: a new
    install offers exactly what it offered before the list replaced the
