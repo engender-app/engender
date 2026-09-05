@@ -24,7 +24,6 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
@@ -32,6 +31,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
+  import { readThumbnail } from '$lib/stores/photoFiles';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
@@ -49,6 +49,44 @@
   let stored = $derived(detail.record);
 
   let confirming = $state(false);
+
+  /* The page, drawn at whatever shape it is rather than through PhotoThumb.
+     That primitive is a fixed square tile with a caption across the bottom,
+     which is right for a grid of photographs and wrong for one sheet of
+     A4: it crops the letterhead off the top and repeats the title that is
+     already in the field below. So the read and the blob's lifetime are
+     here, the same two moves PhotoThumb makes, with the aspect left alone.
+
+     It is the thumbnail rather than the full page. What it is for is
+     recognising which document this is; reading one is ticket 55's viewer,
+     which is also where the zoom lives. */
+  let pageUrl = $state<string | null>(null);
+
+  $effect(() => {
+    const fileName = stored?.fileName;
+    if (!fileName) return;
+
+    let stale = false;
+    let objectUrl: string | null = null;
+    readThumbnail(fileName).then(
+      (bytes) => {
+        if (stale || !bytes) return;
+        objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
+        pageUrl = objectUrl;
+      },
+      // A file written under another key throws out of the store rather
+      // than reading as null, and the empty frame is already what is on
+      // screen - swallowing it here is what keeps it from surfacing as an
+      // unhandled rejection (PhotoThumb.svelte says the same).
+      () => {}
+    );
+
+    return () => {
+      stale = true;
+      pageUrl = null;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  });
 
   async function saveChanges() {
     if (!stored || draft.title.trim() === '') return;
@@ -73,12 +111,13 @@
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <!-- The page itself, at the top of the screen the tap opened. The
-         thumbnail rather than the full image: it is what normalisation
-         already produced (photos/normalize.ts), and a reader big enough to
-         work with is ticket 55's viewer. -->
+    <!-- The page itself, at the top of the screen the tap opened. -->
     <div class="screen-part doc-page">
-      <PhotoThumb photo={stored} size={220} label={stored.title} />
+      {#if pageUrl}
+        <img class="doc-page-image" src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
+      {:else}
+        <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
+      {/if}
     </div>
 
     <div class="editor-section">
@@ -134,9 +173,35 @@
 <style>
   /* The page sits on its own, centred, with nothing drawn around it: a box
      around the one picture on the screen is what DIRECTION.md 2b names as
-     making a screen read as generic. */
+     making a screen read as generic. The corner radius is the sheet's own,
+     which is what stops a photograph of paper reading as a photograph. */
   .doc-page {
     display: flex;
     justify-content: center;
+  }
+
+  /* Capped by height rather than width, because paper is portrait and a
+     sheet scaled to the screen's width would push both fields and the
+     delete off the bottom on a 390px phone. */
+  .doc-page-image,
+  .doc-page-empty {
+    max-width: 100%;
+    max-height: 44vh;
+    border-radius: var(--radius-md);
+  }
+
+  .doc-page-image {
+    width: auto;
+    height: auto;
+  }
+
+  .doc-page-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 160px;
+    height: 220px;
+    color: var(--text-2);
+    background: var(--surface-2);
   }
 </style>
