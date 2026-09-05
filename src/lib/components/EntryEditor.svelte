@@ -1245,6 +1245,7 @@
 
   <Sheet open={dayPromptQueue.length > 0} title={m.photo_day_prompt_title()} onClose={() => resolveDayPrompt(null)}>
     {#if dayPromptQueue.length > 0}
+      <h3>{m.photo_day_prompt_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_prompt_hint()}</p>
       <Field label={m.photo_day_label()} id="entry-photo-day-prompt">
         {#snippet children(id)}

@@ -243,6 +243,7 @@
 
   <Sheet open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
     {#if dayEditorId !== null}
+      <h3>{m.photo_day_edit_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_edit_hint()}</p>
       <Field label={m.photo_day_label()} id="photo-day-edit">
         {#snippet children(id)}
@@ -260,13 +261,28 @@
   /* The day-edit affordance on a browse cell (ticket 47): a sibling of
      .photo-cell rather than a change to it, so export/+page.svelte's own
      .photo-cell button - screens.css's shared class - keeps meaning
-     exactly what it always has there. */
+     exactly what it always has there.
+
+     Sized and lifted the same way .starred-photo-unstar already solves
+     the identical problem (screens.css): a real button here needs the
+     full --touch-target hit area, but a 44px disc would swallow half the
+     104px cell, so the tap target and the visual circle are two
+     differently-sized boxes - the outer button transparent and centred
+     on the corner, the smaller ::before disc carrying the surface fill
+     and the shadow that lifts it off whatever the photo underneath
+     happens to be. */
   .photo-cell-wrap { position: relative; }
   .photo-edit-day {
-    position: absolute; bottom: 6px; left: 6px;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: var(--surface); color: var(--text-1);
-    border: none; cursor: pointer;
+    position: absolute; bottom: -8px; left: -8px;
+    width: var(--touch-target); height: var(--touch-target);
+    border: none; cursor: pointer; background: none; color: var(--text-1);
     display: flex; align-items: center; justify-content: center;
+  }
+  .photo-edit-day :global(.icon) { position: relative; }
+  .photo-edit-day::before {
+    content: '';
+    position: absolute; inset: 0; margin: auto;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface); box-shadow: var(--shadow-1);
   }
 </style>

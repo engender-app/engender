@@ -445,6 +445,7 @@
     onClose={() => resolveMilestonePhotoDay(null)}
   >
     {#if pendingMilestonePhoto !== null}
+      <h3>{m.photo_day_prompt_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_prompt_hint()}</p>
       <Field label={m.photo_day_label()} id="milestone-photo-day-prompt">
         {#snippet children(id)}
