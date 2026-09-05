@@ -255,9 +255,15 @@
       </ListCard>
     </div>
 
-    {#if labsQuery.rows.length}
+    <!-- Both this section and the side effects one below run from the most
+         recent past appointment, not the next one the date row shows, so the
+         heading names that day rather than saying "since then" at a date
+         that is nowhere on screen (ticket 58). Guarded on the appointment
+         itself as well as the rows: the rows can only be non-empty when
+         there is one, and saying so is what lets the heading read its day. -->
+    {#if lastAppointment !== null && labsQuery.rows.length}
       <div class="screen-part">
-        <SectionHeading text={m.appointment_prep_labs_heading()} />
+        <SectionHeading text={m.appointment_prep_labs_heading({ day: dayShort(lastAppointment.epochDay) })} />
         <ListCard role={roleAt(activeFlag.roles, 1)}>
           {#each labsQuery.rows as lab (lab.id)}
             <ListRow
@@ -275,9 +281,9 @@
       </div>
     {/if}
 
-    {#if sideEffectsQuery.rows.length}
+    {#if lastAppointment !== null && sideEffectsQuery.rows.length}
       <div class="screen-part">
-        <SectionHeading text={m.appointment_prep_side_effects_heading()} />
+        <SectionHeading text={m.appointment_prep_side_effects_heading({ day: dayShort(lastAppointment.epochDay) })} />
         <ListCard role={roleAt(activeFlag.roles, 1)}>
           {#each sideEffectsQuery.rows as effect (effect.id)}
             <ListRow

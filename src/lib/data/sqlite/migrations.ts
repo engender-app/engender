@@ -2306,8 +2306,8 @@ ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
    built-in list of endocrinologist, psychologist, surgeon is a picture of a
    medical path the app has no business drawing.
 
-   `checklist.appointment_epoch_day` is untouched here and still written -
-   ticket 58 retires it to a read. */
+   `checklist.appointment_epoch_day` is untouched here and was still
+   written when this migration landed - ticket 58 retires it to a read. */
 const SCHEMA_V75 = `
 CREATE TABLE appointment (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2391,8 +2391,8 @@ CREATE INDEX idx_document_epoch_day ON document(epoch_day);
    `appointment_epoch_day` and `debrief_dismissed_epoch_day` are retained,
    unwritten from here on (the first travels in archives and older ones
    must restore; the second never travelled and simply has nothing left to
-   read it), the same "stops being written" treatment the first already
-   had before this ticket.
+   read it), the same "stops being written" treatment this repo has given
+   every column a ticket takes out of use.
 
    Numbered v77 rather than v76: ticket 52's documents area claimed v76 on
    main while this branch was open, so this renumbered at merge. */

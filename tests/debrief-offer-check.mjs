@@ -42,21 +42,46 @@ try {
   await page.locator('[data-add]').click();
   await page.locator('#appointment-prep-input').fill('ask about labs');
   await page.locator('[data-save-appointment-item]').click();
+  // The row appearing is what says the write landed. Navigating on the click
+  // alone drops it, and every check below then passes for the wrong reason:
+  // an empty prep list produces no offer whatever the appointments say.
+  await page.waitForSelector('[data-appointment-item]');
 
+  // The demo persona already has a past appointment with its debrief written
+  // (ticket 64's seed), so the resting state is a journal whose most recent
+  // past appointment is settled - which is the state that must stay quiet.
   await settle('/');
-  check('no offer with a prep item but no past appointment', (await page.locator('[data-debrief-offer]').count()) === 0);
+  check(
+    'no offer when the most recent past appointment already has its debrief',
+    (await page.locator('[data-debrief-offer]').count()) === 0
+  );
 
   // The prep screen's own date row is a read of the appointment record now
   // (ticket 58) - a past appointment is written on the appointments screen
   // itself, not by driving a date picker on prep.
-  await settle('/health/appointments');
-  await page.locator('[data-add]').click();
-  await page.waitForSelector('#appointment-date');
-  await page.evaluate(() => {
-    document.getElementById('appointment-date')._flatpickr.setDate('2020-01-01', true);
-  });
-  await page.locator('[data-save-appointment]').click();
-  await page.waitForSelector('[data-appointment]');
+  const writeAppointment = async (date) => {
+    await settle('/health/appointments');
+    await page.locator('[data-add]').click();
+    await page.waitForSelector('#appointment-date');
+    await page.evaluate((day) => {
+      document.getElementById('appointment-date')._flatpickr.setDate(day, true);
+    }, date);
+    await page.locator('[data-save-appointment]').click();
+    await page.waitForSelector('[data-appointment]');
+  };
+
+  // Back-filling an old visit offers nothing: only the most recent past
+  // appointment ever does, and the seeded one is still more recent than this.
+  await writeAppointment('2020-01-01');
+  await settle('/');
+  check(
+    'back-filling an older appointment produces no offer',
+    (await page.locator('[data-debrief-offer]').count()) === 0
+  );
+
+  // Yesterday's visit supersedes it, and has no debrief of its own.
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  await writeAppointment(yesterday);
 
   await settle('/');
   const offer = page.locator('[data-debrief-offer]');

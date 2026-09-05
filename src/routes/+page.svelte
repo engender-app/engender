@@ -212,10 +212,7 @@
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let lastAppointmentId = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today)?.id ?? null);
   let debriefStateQuery = liveQuery((j) => j.checklists.getDebriefState(lastAppointmentId));
-  let showDebriefOffer = $derived(
-    !!debriefStateQuery.value &&
-      debriefOfferVisible({ ...debriefStateQuery.value, appointmentId: lastAppointmentId })
-  );
+  let showDebriefOffer = $derived(!!debriefStateQuery.value && debriefOfferVisible(debriefStateQuery.value));
 
   let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
   let isStockNoticeSnoozedState = $state(false);

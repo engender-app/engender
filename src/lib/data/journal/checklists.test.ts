@@ -166,6 +166,7 @@ test('getDebriefState reads everything the offer predicate needs in one call', a
   });
 
   assert.deepEqual(await journal.checklists.getDebriefState(appointmentId), {
+    appointmentId,
     itemCount: 0,
     dismissed: false,
     debriefEntryId: null
@@ -176,6 +177,7 @@ test('getDebriefState reads everything the offer predicate needs in one call', a
   await journal.checklists.recordDebriefEntry(entryId, appointmentId);
 
   assert.deepEqual(await journal.checklists.getDebriefState(appointmentId), {
+    appointmentId,
     itemCount: 1,
     dismissed: false,
     debriefEntryId: entryId
@@ -199,14 +201,10 @@ test('a journal with no most recent past appointment gets no debrief offer', asy
      record. */
   const { journal } = await journalWithBuiltIns();
 
-  const stateWithNoAppointment = async () => ({
-    ...(await journal.checklists.getDebriefState(null)),
-    appointmentId: null as string | null
-  });
-  assert.equal(debriefOfferVisible(await stateWithNoAppointment()), false);
+  assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(null)), false);
 
   await journal.checklists.addToStandaloneChecklist('ask about spironolactone');
-  assert.equal(debriefOfferVisible(await stateWithNoAppointment()), false);
+  assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(null)), false);
 
   // The first appointment written is what arms it.
   const appointmentId = await journal.appointments.upsertAppointment({
@@ -216,10 +214,7 @@ test('a journal with no most recent past appointment gets no debrief offer', asy
     place: null,
     note: null
   });
-  assert.equal(
-    debriefOfferVisible({ ...(await journal.checklists.getDebriefState(appointmentId)), appointmentId }),
-    true
-  );
+  assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(appointmentId)), true);
 });
 
 test('setDebriefDismissed records which appointment the offer was dismissed for', async () => {
@@ -234,6 +229,22 @@ test('setDebriefDismissed records which appointment the offer was dismissed for'
 test('recordDebriefEntry links an entry to the appointment it names', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.checklists.addToStandaloneChecklist('ask about labs');
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
+
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
+});
+
+test('recordDebriefEntry creates the standalone checklist when there is none yet', async () => {
+  /* The link is state about the standalone checklist, so it needs a row to
+     live in, and until ticket 58 the retired `setAppointmentDate` was what
+     created one. Nothing in the app reaches here without a prep question
+     already standing - the offer requires `itemCount > 0` - but the demo
+     seed does (journal-seed.ts), and a silent zero-row UPDATE is the kind
+     of thing that shows up as a persona whose debrief simply isn't there.
+     `setDebriefDismissed`, the other writer of a debrief column, has
+     created on first use all along. */
+  const { journal } = await journalWithBuiltIns();
   const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
   await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
 
