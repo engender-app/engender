@@ -141,7 +141,7 @@
   "cal_jump_month": "Przejdź do miesiąca",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
-  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
+  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy. Dzień z niewielkim oznaczeniem ma coś nadchodzącego; dotknij go, żeby zobaczyć co.",
   "legend_none": "brak wpisu",
   "entries_this_day": [
     {
@@ -1903,6 +1903,7 @@
   "week_cell_no_entry": "{day}: bez wpisu",
   "week_cell_level": "{day}: poziom {level} z 4",
   "heat_cell_none": "{date}, bez wpisów",
+  "heat_cell_coming_up": "{date}, coś nadchodzi",
   "heat_cell_entries": [
     {
       "declarations": [
