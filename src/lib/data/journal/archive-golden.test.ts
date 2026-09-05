@@ -54,6 +54,7 @@ const SECTIONS = [
   'entries',
   'marginNotes',
   'wordIgnore',
+  'documents',
   'milestones',
   'labResults',
   'measurementTypes',

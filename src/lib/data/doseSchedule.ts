@@ -224,6 +224,24 @@ export function pauseCoversDay(pause: DosePause, epochDay: number): boolean {
   return spanCoversDay(pause, epochDay);
 }
 
+/** Whether `schedule` expects a dose on every single day (phase 8 features
+    ticket 61, ADR-0067). A daily schedule puts a mark on every cell a
+    calendar could draw, which is wallpaper rather than information - so
+    `dayAhead.ts` reads this to leave a daily schedule out of the marks it
+    produces, the same way a weekly injection stays in.
+
+    An every-N-days recurrence is daily at `everyNDays <= 1` - one is the
+    literal case, and anything under that describes no rhythm at all
+    (expectedSlots' own reading). A weekdays recurrence is daily once every
+    weekday is picked; nothing else in the app currently offers that
+    combination through the UI, but the schedule's own shape allows it, so
+    this reads the set rather than assuming the sheet stops someone. */
+export function isDailySchedule(schedule: DoseSchedule): boolean {
+  return schedule.recurrence.kind === 'everyNDays'
+    ? schedule.recurrence.everyNDays <= 1
+    : schedule.recurrence.weekdays.length >= 7;
+}
+
 /** How many of `weekdays` fall in the half-open range [anchorEpochDay,
     uptoEpochDay) - a weekday recurrence's own step count, the way an
     every-N-days schedule already has one from dividing by its interval.

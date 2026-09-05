@@ -58,6 +58,7 @@ import type { TableName } from '../live/writes';
 import type { ArchiveSectionName } from './archiveSections';
 import type { AppointmentsArea } from './appointments';
 import type { CycleEventsArea } from './cycleEvents';
+import type { DocumentsArea } from './documents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
 import type { FeltSenseArea } from './feltSense';
@@ -98,6 +99,7 @@ export interface LastWriteAreas {
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
+  documents: DocumentsArea;
 }
 
 /** What every entry's read is given: the areas, and the day nothing may be
@@ -241,6 +243,17 @@ const ENTRIES = [
     key: 'tryouts',
     tables: ['tryout'],
     read: ({ tryouts, todayEpochDay }) => tryouts.lastWriteEpochDay(todayEpochDay)
+  }),
+  /* Documents (phase 8 features ticket 52). Dated by the day the paper is
+     from rather than the day it was filed, so this answers "the newest
+     paper on file" and not "when was one last added" - which is what the
+     return surface wants of it, the same as every other entry here. The
+     hub row above it states what is behind it rather than reporting this
+     reading (hubRows.ts says why). */
+  entry({
+    key: 'documents',
+    tables: ['document'],
+    read: ({ documents, todayEpochDay }) => documents.lastWriteEpochDay(todayEpochDay)
   })
 ] as const;
 

@@ -243,6 +243,7 @@ test('the summary reports the counts a benchmark run prints', async () => {
   const shape: Record<keyof LongJournalSummary, unknown> = summary;
   expect(Object.keys(shape).sort()).toEqual(
     [
+      'appointments',
       'checklistItems',
       'commonWord',
       'commonWordEntries',

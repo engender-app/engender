@@ -227,6 +227,42 @@ describe('the heat map', () => {
     expect(read('src/lib/data/wrappedDisplay.ts')).toMatch(/spreadNote[\s\S]*?nativeValue\(metric/);
   });
 
+  it('reads what is coming up through dayAhead, gated on its own loading', () => {
+    /* Phase 8 features ticket 61, ADR-0067: a fourth query alongside
+       averages/counts/spreads, and the overall `loading` gate waits on it
+       too - otherwise a future day would flash a mark that then vanished,
+       or vice versa, before dayAheadQuery's own read landed. */
+    expect(heatMap).toContain('j.dayAhead.getDayAhead(');
+    expect(heatMap).toMatch(/loading = \$derived\([^)]*dayAheadQuery\.loading/);
+  });
+
+  it('marks only a day strictly after today, never today or the past', () => {
+    /* ADR-0067's own consequence: heat and a mark are mutually exclusive
+       because a day cannot carry both, which holds only if a mark is never
+       offered for a day heat could still claim. */
+    expect(heatMap).toMatch(/hasMark = !loading && epochDay > today && markedDays\.has\(epochDay\)/);
+  });
+
+  it('gives a future day with something coming up its own link and dot, and leaves an empty one alone', () => {
+    const markup = markupOf(heatMap);
+    // A future day with nothing looks exactly as it does today: the plain
+    // <span> branch, never the link.
+    expect(markup).toMatch(/\{:else if c\.hasMark\}[\s\S]*?<a class="cal-day has-mark press"/);
+    expect(markup).toContain('data-hm-cell-mark');
+    expect(markup).toContain('data-hm-cell-mark-dot');
+    // Never a countdown, a due date or a verdict - the mark is a plain dot
+    // with no count, no label beyond "something coming up", and no per-kind
+    // wording drawn on the grid itself.
+    expect(markup).not.toMatch(/c\.hasMark[\s\S]{0,80}kind/);
+  });
+
+  it("says nothing about which kind is coming, and reveals nothing about a letter", () => {
+    // heat_cell_coming_up carries the date alone - never an appointment's
+    // place, a procedure's name or a letter's unlock day beyond the day
+    // itself, which is what "never which letter" means at this seam too.
+    expect(heatMap).toContain('m.heat_cell_coming_up({ date })');
+  });
+
   it('says nothing about a day until it has been told', () => {
     /* An empty result and a month with nothing logged are the same shape, so
        before the read lands every cell would announce "no entries" for a day
@@ -350,7 +386,7 @@ describe('the handles the walkthrough grips', () => {
      nothing fails thirty seconds later with no name for what went. */
   const ON = {
     [SCREENS.calendar]: ['data-cal-month', 'data-cal-step'],
-    'src/lib/components/HeatMap.svelte': ['data-hm-cell-filled'],
+    'src/lib/components/HeatMap.svelte': ['data-hm-cell-filled', 'data-hm-cell-mark'],
     [SCREENS.day]: ['data-add'],
     [SCREENS.search]: [
       'data-filter-toggle',

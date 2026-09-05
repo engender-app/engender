@@ -158,14 +158,28 @@
   );
   let highlightedDays = $derived(new Set(presentationDays.rows));
 
+  /* What is coming up this month (phase 8 features ticket 61, ADR-0067): an
+     appointment, a surgery date, a milestone still ahead, a letter's unlock
+     day, or a dose slot only where the schedule is not daily. A fourth query
+     rather than folded into the three above - it asks a different question
+     entirely, through a different registry, and a day can carry at most one
+     of "logged" or "coming up" (a future day cannot yet have entries), so the
+     two never have to be reconciled against each other. Only the day matters
+     here; which kind it is is the day view's own business once it reads
+     `dayAhead` too (ticket 62) - the grid caps what it draws at one mark
+     regardless of how many kinds land on a day. */
+  let dayAheadQuery = liveList((j) => j.dayAhead.getDayAhead(bounds.first, bounds.last, todayEpochDay()));
+  let markedDays = $derived(new Set(dayAheadQuery.rows.map((mark) => mark.epochDay)));
+
   /* The three reads are one worker round trip, and the grid draws at its full
      size the whole time - a month is 30 cells of known shape, so there is
      nothing for a skeleton to stand in for and nothing to reflow. What does
      have to wait is the claim each cell makes: an empty `counts` result and a
      month with nothing logged look identical, so before the answer arrives
      every cell would tell a screen reader "no entries" for a day that has
-     six. While it is loading a cell says the date and stops there. */
-  let loading = $derived(averages.loading || counts.loading || spreads.loading);
+     six. While it is loading a cell says the date and stops there - and a
+     future day makes no claim about a mark either, the same reason. */
+  let loading = $derived(averages.loading || counts.loading || spreads.loading || dayAheadQuery.loading);
 
   /** Mood is the one metric with faces and a ramp of its own (ADR-0025). */
   let isMood = $derived(vocabulary.activeMetric === 'mood');
@@ -211,6 +225,12 @@
       /** The chosen presentation's own colour, or none for a day it was not
           logged under - absence, not a category (ticket 17, ADR-0048). */
       highlightMark: string | null;
+      /** Something is coming up on this day (phase 8 features ticket 61,
+          ADR-0067) - always false for today or earlier, since heat already
+          owns those and the two may never collide. Capped at whether
+          anything landed here at all: which kind, and how many, is the day
+          view's own business once it reads `dayAhead` too (ticket 62). */
+      hasMark: boolean;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;
@@ -230,6 +250,7 @@
          actually was. */
       const ends = loading ? null : spreadNote(vocabulary.activeMetric, spread);
       const covering = eras.find((e) => eraCoversDay(e.era, epochDay));
+      const hasMark = !loading && epochDay > today && markedDays.has(epochDay);
       out.push({
         day: d,
         epochDay,
@@ -246,10 +267,13 @@
           ? date
           : count
             ? `${m.heat_cell_entries({ date, count })}${ends ? `, ${ends}` : ''}`
-            : m.heat_cell_none({ date }),
+            : hasMark
+              ? m.heat_cell_coming_up({ date })
+              : m.heat_cell_none({ date }),
         eraName: covering?.era.name ?? null,
         eraMark: covering?.role.mark ?? null,
-        highlightMark: highlight && highlightedDays.has(epochDay) ? highlight.role.mark : null
+        highlightMark: highlight && highlightedDays.has(epochDay) ? highlight.role.mark : null,
+        hasMark
       });
     }
     return { startDow, days: out };
@@ -283,6 +307,16 @@
         {@render swatch(c)}
         <span class="cal-num">{c.day}</span>
       </a>
+    {:else if c.hasMark}
+      <!-- A future day with something coming up (ADR-0067): it was not a
+           link before this ticket, because a future day carried nothing to
+           open. It is one now, the same as a logged day, to the same route -
+           `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
+           this cell only says that there is something. -->
+      <a class="cal-day has-mark press" data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+        {@render swatch(c)}
+        <span class="cal-num">{c.day}</span>
+      </a>
     {:else}
       <span class="cal-day" class:is-today={c.isToday} aria-label={c.label}>
         {@render swatch(c)}
@@ -311,6 +345,14 @@
       {#if c.shape?.kind === 'split'}
         <span class="cal-half" data-hm-cell-split style="background:{fillAt(c.shape.first)}"></span>
         <span class="cal-half is-later" style="background:{fillAt(c.shape.last)}"></span>
+      {/if}
+      <!-- Centred rather than a corner dot: a future cell carries no stack,
+           split or face for a corner mark to sit clear of, and the centre is
+           the one place on this cell nothing else ever draws (ADR-0067: heat
+           and a mark are mutually exclusive by construction, so the two
+           channels never have to be told apart on the same swatch). -->
+      {#if c.hasMark}
+        <span class="cal-mark" data-hm-cell-mark-dot></span>
       {/if}
     </span>
     <!-- Over the halves rather than under them, and without discs of their
@@ -516,6 +558,23 @@
     border-radius: 50%;
     border: 1px solid var(--surface);
     z-index: 1;
+  }
+
+  /* What is coming up (phase 8 features ticket 61, ADR-0067): centred rather
+     than in a corner, because a future cell never carries a stack, a split,
+     a face or today's own outline for a corner dot to stay clear of - the
+     centre is the one place nothing else on this cell ever draws. Drawn in
+     the accent, the same colour the app already uses to say "this is where
+     you are, or where you are headed" (today's own ring above), and never a
+     count or a shape: a mark is a day and a kind, never a verdict. */
+  .cal-mark {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
   /* The date sits under the swatch rather than on it: a split cell has two

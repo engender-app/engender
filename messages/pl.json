@@ -141,7 +141,7 @@
   "cal_jump_month": "Przejdź do miesiąca",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
-  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy.",
+  "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy. Dzień z niewielkim oznaczeniem ma coś nadchodzącego; dotknij go, żeby zobaczyć co.",
   "legend_none": "brak wpisu",
   "entries_this_day": [
     {
@@ -249,6 +249,7 @@
   "chart_annotation_journaling_pause": "przerwa w pisaniu",
   "chart_annotation_tryout": "próba",
   "chart_annotation_era": "era",
+  "chart_annotation_appointment": "wizyta",
   "chart_annotation_side_effect": "skutek uboczny",
   "chart_annotation_injection": "zastrzyk",
   "chart_annotation_tally_misgendered": "misgenderowanie, powyżej twojego zakresu",
@@ -1902,6 +1903,7 @@
   "week_cell_no_entry": "{day}: bez wpisu",
   "week_cell_level": "{day}: poziom {level} z 4",
   "heat_cell_none": "{date}, bez wpisów",
+  "heat_cell_coming_up": "{date}, coś nadchodzi",
   "heat_cell_entries": [
     {
       "declarations": [
@@ -3359,5 +3361,30 @@
   "appointments_delete_q": "Usunąć tę wizytę?",
   "appointments_untitled": "Wizyta",
   "appointments_prep_sub": "Co poruszyć na miejscu",
-  "appointments_kind_suggestions": "Rodzaje, których już używasz."
+  "appointments_kind_suggestions": "Rodzaje, których już używasz.",
+  "documents_title": "Dokumenty",
+  "documents_intro": "Papiery, które dostajesz, trzymane tutaj, a nie w folderze z pobranymi plikami. Aplikacja nie czyta z nich nic poza tytułem, który wpiszesz.",
+  "document_add_aria": "Dodaj dokument",
+  "documents_empty_title": "Jeszcze nic tu nie ma",
+  "documents_empty_body": "Zrób zdjęcie kartki, napisz, co to jest i z jakiego jest dnia. Leży zaszyfrowane, tak jak reszta.",
+  "documents_empty_action": "Dodaj dokument",
+  "document_new_sheet": "Nazwij ten dokument",
+  "document_title_label": "Co to jest",
+  "document_title_placeholder": "Opinia psychiatryczna",
+  "document_day_label": "Data na papierze",
+  "document_save": "Zapisz",
+  "document_title": "Dokument",
+  "document_save_changes": "Zapisz zmiany",
+  "document_delete": "Usuń",
+  "document_delete_sheet": "Usuń dokument",
+  "document_delete_q": "Usunąć {title}?",
+  "document_delete_hint": "Zdjęcie kartki zniknie razem z nim. Tego nie da się cofnąć.",
+  "document_missing_title": "Tego dokumentu już nie ma",
+  "document_missing_body": "Został usunięty albo ten odnośnik prowadzi do czegoś, czego tu nigdy nie było.",
+  "document_missing_action": "Wróć do dokumentów",
+  "day_document": "Dokument",
+  "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz",
+  "document_page_alt": "Kartka: {title}",
+  "document_save_failed": "Nie udało się zapisać tego dokumentu. Nic nie zostało zachowane.",
+  "document_edit_failed": "Nie udało się zapisać tej zmiany. Dokument został bez zmian."
 }
