@@ -40,6 +40,21 @@ export interface RoadmapArea {
       is no reorder or move-track UI for a custom goal to feed. */
   addCustomGoal(track: RoadmapTrack, text: string): Promise<CustomRoadmapGoal>;
   setCustomGoalStatus(id: string, status: RoadmapGoalStatus): Promise<void>;
+  /** The person's own words, so they can be changed after the fact
+      (phase 8 features ticket 69, ADR-0068). Throws on an unknown id the
+      way `setCustomGoalStatus` above it does. A milestone this goal minted
+      keeps the name it was given on the day; only its provenance line
+      moves, because that re-resolves through the join on every read. */
+  updateCustomGoalText(id: string, text: string): Promise<void>;
+  /** Idempotent: an id that is not there deletes nothing and is success
+      (ADR-0053). A milestone minted by this goal keeps its link rather
+      than having it nulled - provenance.ts already renders a fallback for
+      a goal key that fails to resolve, and a deleted custom goal is simply
+      a second way to reach it. A document filed against the goal is ticket
+      56's link, and this delete gains the one statement that clears it
+      once that lands. A built-in goal has no counterpart to any of this:
+      there is no row, so there is nothing to delete. */
+  deleteCustomGoal(id: string): Promise<void>;
 
   /** Which tracks the person has said are not their path (phase 8 features
       ticket 49), sorted, so a caller comparing two reads gets the same
@@ -102,6 +117,19 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
         id
       ]);
       assertChanged(result, `custom roadmap goal: ${id}`);
+    },
+
+    async updateCustomGoalText(id, text) {
+      const result = await driver.run('UPDATE roadmap_goal SET text = ?, updated_at = ? WHERE uuid = ?', [
+        text,
+        now(),
+        id
+      ]);
+      assertChanged(result, `custom roadmap goal: ${id}`);
+    },
+
+    async deleteCustomGoal(id) {
+      await driver.run('DELETE FROM roadmap_goal WHERE uuid = ?', [id]);
     },
 
     async getDismissedTracks() {

@@ -131,6 +131,93 @@ test('setting a custom goal that does not exist fails loudly rather than doing n
   await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
 
+/* Editing and deleting a custom goal (phase 8 features ticket 69,
+   ADR-0068). A built-in goal has neither and never will: there is no row
+   to edit and nothing to delete, so everything below is about the kind
+   somebody typed themselves. */
+
+test('a custom goal can be reworded, and keeps its id, its track and its tick', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('social', 'Tell my sster');
+  await journal.roadmap.setCustomGoalStatus(goal.id, 'checked');
+
+  await journal.roadmap.updateCustomGoalText(goal.id, 'Tell my sister');
+
+  assert.deepEqual(await journal.roadmap.getCustomGoals(), [
+    { id: goal.id, track: 'social', text: 'Tell my sister', status: 'checked' }
+  ]);
+});
+
+test('rewording a custom goal that does not exist fails loudly rather than doing nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(() => journal.roadmap.updateCustomGoalText('not-a-real-uuid', 'Anything at all'));
+});
+
+test('deleting a custom goal removes it and leaves the rest in the order they were added', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.roadmap.addCustomGoal('legal', 'Ask the court about remote hearings');
+  const second = await journal.roadmap.addCustomGoal('legal', 'Find a trans-friendly notary');
+  const third = await journal.roadmap.addCustomGoal('social', 'Come out to my book club');
+
+  await journal.roadmap.deleteCustomGoal(second.id);
+
+  assert.deepEqual(
+    (await journal.roadmap.getCustomGoals()).map((g) => g.id),
+    [first.id, third.id]
+  );
+});
+
+test('deleting a custom goal is idempotent, and an id that was never there is success (ADR-0053)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('medical', 'Ask about a second opinion');
+
+  await journal.roadmap.deleteCustomGoal(goal.id);
+  await journal.roadmap.deleteCustomGoal(goal.id);
+  await journal.roadmap.deleteCustomGoal('not-a-real-uuid');
+
+  assert.deepEqual(await journal.roadmap.getCustomGoals(), []);
+});
+
+test('deleting a custom goal leaves the milestone it minted, link and all', async () => {
+  /* ADR-0068 keeps the link rather than nulling it: provenance.ts already
+     renders a fallback for a goal key that fails to resolve, and this is
+     simply a second way to reach it. What goes is the joined text, which
+     is what makes that line fall back. */
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('presentational', 'A haircut I feel like myself in');
+  const milestoneId = await journal.milestones.upsertMilestone({
+    name: 'A haircut I feel like myself in',
+    epochDay: 20500,
+    roadmapGoalKey: goal.id
+  });
+
+  await journal.roadmap.deleteCustomGoal(goal.id);
+
+  const found = (await journal.milestones.getMilestones()).find((one) => one.id === milestoneId);
+  assert.equal(found?.name, 'A haircut I feel like myself in');
+  assert.equal(found?.roadmapGoalKey, goal.id);
+  assert.equal(found?.customRoadmapGoalText, null);
+});
+
+test("rewording a custom goal reaches a minted milestone's provenance, never its own name", async () => {
+  /* Two texts, and only one of them moves. The milestone's name was copied
+     in at mint time and is what the person confirmed that day; the
+     provenance line re-resolves through the join every read. */
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('legal', 'Fille the court application');
+  const milestoneId = await journal.milestones.upsertMilestone({
+    name: 'Fille the court application',
+    epochDay: 20500,
+    roadmapGoalKey: goal.id
+  });
+
+  await journal.roadmap.updateCustomGoalText(goal.id, 'File the court application');
+
+  const found = (await journal.milestones.getMilestones()).find((one) => one.id === milestoneId);
+  assert.equal(found?.name, 'Fille the court application');
+  assert.equal(found?.customRoadmapGoalText, 'File the court application');
+});
+
 /* "Not my path" one grain out (phase 8 features ticket 49 item 5). Presence
    is the whole state here, unlike a goal's tri-state: a track is either
    somebody's path or it is not, and there is no track-level equivalent of
