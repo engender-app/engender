@@ -5,6 +5,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
+import { debriefOfferVisible } from '../vocabulary/entryTemplates.ts';
 
 test('a standalone checklist starts empty with no owner', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -215,6 +216,36 @@ test('getDebriefState reads everything the offer predicate needs in one call', a
     dismissedEpochDay: null,
     debriefEntryId: entryId
   });
+});
+
+test('a journal that has never written an appointment gets no debrief offer', async () => {
+  /* Phase 8 features ticket 49 item 6. Both halves of the gate are already
+     tested apart - `getDebriefState` returns nulls above, and
+     `debriefOfferVisible` answers false to a null date in
+     entryTemplates.test.ts - but nothing joined them, so nothing would
+     notice a read that started defaulting the date to today, or a predicate
+     that stopped checking it. The claim being kept is persona 2's: a
+     clinician-facing surface must not describe someone who has never had a
+     clinician.
+
+     Adding a prep question is deliberately not enough. Somebody can write
+     down what they want to ask long before they have anywhere to ask it,
+     and the offer stays silent until a date is actually on record. */
+  const { journal } = await journalWithBuiltIns();
+  const today = 19900;
+
+  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), false);
+
+  await journal.checklists.addToStandaloneChecklist('ask about spironolactone');
+  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), false);
+
+  // The first appointment written is what arms it, once that day has passed.
+  await journal.checklists.setAppointmentDate(today - 1);
+  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), true);
+
+  // Clearing the date back to "no appointment on record" silences it again.
+  await journal.checklists.setAppointmentDate(null);
+  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), false);
 });
 
 test('setDebriefDismissed records which date the offer was dismissed for', async () => {
