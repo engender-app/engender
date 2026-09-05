@@ -489,14 +489,21 @@
      said it ended, and the last thing written there otherwise. Never a gap,
      never a nudge - the hub is where an area that has gone quiet gets asked
      about. */
-  const areaLine = (card: StatsAreaCard) =>
-    card.finishedEpochDay !== null
-      ? m.area_finish_done_title({
-          date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-        })
-      : m.stats_area_last({
-          date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-        });
+  const areaLine = (card: StatsAreaCard) => {
+    if (card.finishedEpochDay !== null) {
+      return m.area_finish_done_title({
+        date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+      });
+    }
+    if (card.suspendedEpochDay !== null) {
+      return m.area_suspend_done_title({
+        date: fmtDay(card.suspendedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+      });
+    }
+    return m.stats_area_last({
+      date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+    });
+  };
 
   const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
 

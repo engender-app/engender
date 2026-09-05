@@ -90,7 +90,7 @@
 
 import { m } from '../paraglide/messages';
 import { startOfDayTimestamp } from './epochDay';
-import type { FinishableArea } from './areaState';
+import type { FinishableArea, SuspendableArea } from './areaState';
 import type { AreaStatesArea } from './journal/areaStates';
 import type { DoseEventInput, DosesArea } from './journal/doses';
 import type { FeltSenseArea, FeltSenseOwner } from './journal/feltSense';
@@ -110,6 +110,7 @@ export type OfferKey =
   | 'new-milestone-felt-sense'
   | 'milestone-anniversary-felt-sense'
   | 'area-finished'
+  | 'area-suspended'
   | 'returning-dose'
   | 'returning-wear-session';
 
@@ -175,6 +176,14 @@ export interface RoadmapGoalMilestone {
     (areaGroups.ts). */
 export interface FinishedArea {
   areas: readonly FinishableArea[];
+  epochDay: number;
+}
+
+/** What accepting the suspend action writes: `FinishedArea`'s own shape,
+    narrowed to the areas that can carry a suspended day (phase 8 features
+    ticket 51). */
+export interface SuspendedArea {
+  areas: readonly SuspendableArea[];
   epochDay: number;
 }
 
@@ -340,6 +349,28 @@ export const OFFERS = {
     },
     write: async ({ areaStates }: OfferJournal, subject: FinishedArea) => {
       await areaStates.setAreasFinished(subject.areas, subject.epochDay);
+    }
+  },
+
+  /* Phase 8 features ticket 51. Manual only, with no automatic trigger and
+     no declined-forever preference the way `area-finished` has one: nothing
+     about a stopped stream implies a pause the way nothing added for
+     `FINISH_SUGGESTION_QUIET_DAYS` implies a finish, so there is no
+     observation here to suggest from. It is registered anyway, rather than
+     the sheet writing `setAreasSuspended` directly, for the same reason
+     every other write in this file is: one path to the record, and the sheet
+     is the confirmation regardless of what opened it. */
+  'area-suspended': {
+    key: 'area-suspended',
+    trigger: "opened by hand from the area's own screen; no automatic trigger offers this",
+    offers: 'areaStates',
+    copy: {
+      title: () => m.area_suspend_sheet_title(),
+      confirm: () => m.area_suspend_confirm(),
+      decline: () => m.area_suspend_cancel()
+    },
+    write: async ({ areaStates }: OfferJournal, subject: SuspendedArea) => {
+      await areaStates.setAreasSuspended(subject.areas, subject.epochDay);
     }
   },
   /* Phase 8 features ticket 05, ADR-0062. The two the return surface makes,

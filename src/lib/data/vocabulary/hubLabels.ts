@@ -143,5 +143,9 @@ export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number)
       return m.area_finish_done_title({
         date: fmtDay(line.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
       });
+    case 'suspended':
+      return m.area_suspend_done_title({
+        date: fmtDay(line.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+      });
   }
 }

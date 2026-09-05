@@ -629,7 +629,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   areaStates: classify<Journal['areaStates']>()({
     writes: {
       setAreasHidden: ['areaState'],
-      setAreasFinished: ['areaState']
+      setAreasFinished: ['areaState'],
+      setAreasSuspended: ['areaState']
     },
     reads: { getAreaStates: ['areaState'] }
   }),

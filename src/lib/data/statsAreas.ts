@@ -74,7 +74,7 @@
    here is when you last wrote in it. */
 
 import { areasHidden, type AreaStates } from './areaState';
-import { groupFinishedOn, type AreaGroupKey } from './areaGroups';
+import { groupFinishedOn, groupSuspendedOn, type AreaGroupKey } from './areaGroups';
 import { hubRow, rowScreen, type HubRowKey } from './hubRows';
 import type { LastWriteKey } from './journal/lastWrite';
 
@@ -260,6 +260,9 @@ export interface StatsAreaCard {
   lastWriteEpochDay: number;
   /** The day the person said this stream ended, or null while it has not. */
   finishedEpochDay: number | null;
+  /** The day the person paused this stream, or null while it is active or
+      finished (phase 8 features ticket 51). */
+  suspendedEpochDay: number | null;
 }
 
 /** The cards to draw, in declaration order, which is the hub's group order.
@@ -295,7 +298,8 @@ export function statsAreaCards(
     cards.push({
       panel,
       lastWriteEpochDay: latest,
-      finishedEpochDay: panel.finishes === null ? null : groupFinishedOn(panel.finishes, states)
+      finishedEpochDay: panel.finishes === null ? null : groupFinishedOn(panel.finishes, states),
+      suspendedEpochDay: panel.finishes === null ? null : groupSuspendedOn(panel.finishes, states)
     });
   }
   return cards;

@@ -47,7 +47,13 @@
    takes today as an argument. The words are `vocabulary/hubLabels.ts`'s, the
    same split `areaGroups.ts` keeps from `vocabulary/areaLabels.ts`. */
 
-import { FINISH_SUGGESTION_QUIET_DAYS, groupFinishedOn, latestWrite, type AreaGroupKey } from './areaGroups';
+import {
+  FINISH_SUGGESTION_QUIET_DAYS,
+  groupFinishedOn,
+  groupSuspendedOn,
+  latestWrite,
+  type AreaGroupKey
+} from './areaGroups';
 import { areasHidden, type AreaStates } from './areaState';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
@@ -506,7 +512,12 @@ export type HubLine =
       finished-area feature makes its offer from, made on the hub too. */
   | { kind: 'quiet'; epochDay: number; daysAgo: number }
   /** The person has said this one ended, and when. */
-  | { kind: 'finished'; epochDay: number };
+  | { kind: 'finished'; epochDay: number }
+  /** The person has paused this one, and when (phase 8 features ticket 51).
+      Unlike a finished row, a suspended one stays under its own group's
+      heading rather than moving to the finished set - it is not done, and
+      grouping it with what is would say so. */
+  | { kind: 'suspended'; epochDay: number };
 
 /** The one row ADR-0043's positive gate belongs to, named rather than left as
     a literal in the loop below. It is a special case on purpose and there is
@@ -542,10 +553,21 @@ export function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDa
   return day !== null && day <= todayEpochDay ? day : null;
 }
 
+/** The day a row's group was paused, or null while it has not been -
+    `rowFinishedOn`'s own rule, read off `groupSuspendedOn` instead (phase 8
+    features ticket 51). */
+export function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: number): number | null {
+  if (spec.finishes === null) return null;
+  const day = groupSuspendedOn(spec.finishes, states);
+  return day !== null && day <= todayEpochDay ? day : null;
+}
+
 /** What one row says under its title. */
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
+  const suspendedOn = rowSuspendedOn(spec, reading.states, reading.todayEpochDay);
+  if (suspendedOn !== null) return { kind: 'suspended', epochDay: suspendedOn };
   if (spec.line === 'written') return { kind: 'no-stream' };
 
   const epochDay = latestWrite(rowReads(spec), reading.lastWrites);

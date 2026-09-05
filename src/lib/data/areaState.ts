@@ -1,10 +1,10 @@
-/* Whether an area is hidden, and whether the person has said it is finished
-   (ADR-0052, CONTEXT: "Finished").
+/* Whether an area is hidden, whether the person has said it is finished, and
+   whether they have paused it for now (ADR-0052, CONTEXT: "Finished").
 
    Nothing in the app modelled an area ending. Dilation tapers off, the last
    electrolysis session is the last one, a name change happens once - and the
    app's only word for "I am no longer doing this" was stopping, which it
-   renders as absence, which every living tracker reads as a lapse. Two
+   renders as absence, which every living tracker reads as a lapse. Three
    separate things are recorded here instead, per area:
 
      hidden            take this out of the navigation, the way a tag or a
@@ -13,10 +13,23 @@
                        date rather than a flag so `chartAnnotations.ts` can
                        draw it beside a regimen change and a clinician
                        summary can say when a stream stopped
+     suspendedEpochDay the day the person paused the stream, intending to
+                       come back - phase 8 features ticket 51, cut from
+                       ticket 44's finding that hormone tracking (ticket 44's
+                       own motivating case) is not this, but voice practice
+                       and hair removal are. Same shape as finishedEpochDay
+                       and the same reason: a chart can draw the day the
+                       pause started, and a clinician summary can say so
 
-   They are independent. A finished area is not hidden by finishing: the
-   whole point is that a stream you are done with is still readable. Neither
-   deletes anything.
+   Hidden is independent of the other two. Suspended and finished are not: a
+   stream is active, suspended or finished, never two of those at once -
+   `journal/areaStates.ts`'s writers enforce it by clearing whichever of the
+   two the other one is setting. Only `hairRemovalSessions`, `voiceBenchmarks`
+   and `voicePracticeTakes` can carry a suspended day today
+   (`SUSPENDABLE_AREAS` below); the other six finishable areas named no case
+   for it when asked (ticket 51), and stay as they were. A finished area is
+   not hidden by finishing: the whole point is that a stream you are done
+   with is still readable. Neither deletes anything.
 
    The key space is `ArchiveSectionName` and not the More hub's rows
    (ADR-0027). An archive section is already the canonical answer to "does
@@ -41,6 +54,10 @@ export interface AreaState {
   hidden: boolean;
   /** The day the person says this stream ended, or null while it has not. */
   finishedEpochDay: number | null;
+  /** The day the person paused this stream, or null while it is active or
+      finished. Mutually exclusive with `finishedEpochDay` by construction -
+      see `journal/areaStates.ts`. */
+  suspendedEpochDay: number | null;
 }
 
 /** Every area a person can hide, which is every area but one.
@@ -125,6 +142,22 @@ export const FINISHABLE_AREAS = [
 
 export type FinishableArea = (typeof FINISHABLE_AREAS)[number];
 
+/** The finishable areas that can also be paused, not done (phase 8 features
+    ticket 51, ADR-0052 amendment). Cut from ticket 44's own answer: don't
+    build a general `suspended` field speculatively, and let whichever area
+    names a real case propose it against that need. Asked directly, two did -
+    a temporary break from voice practice, and pausing electrolysis or laser
+    for a while - and none of the other seven did, so they are not here. A
+    later ticket naming a case for one of those adds it to this list, the same
+    way `FINISHABLE_AREAS` itself grows one area at a time. */
+export const SUSPENDABLE_AREAS = [
+  'hairRemovalSessions',
+  'voiceBenchmarks',
+  'voicePracticeTakes'
+] as const satisfies readonly FinishableArea[];
+
+export type SuspendableArea = (typeof SUSPENDABLE_AREAS)[number];
+
 type Unfinishable = Exclude<ArchiveSectionName, FinishableArea>;
 
 /** Every area that deliberately **cannot** be finished, and why - a full
@@ -198,6 +231,14 @@ export function areaHidden(area: HideableArea, states: AreaStates): boolean {
   return states[area]?.hidden === true;
 }
 
+/** Whether an area's fields, taken alone, would leave it in the resting
+    state - the same test the storage layer runs to know when to drop a row
+    (`journal/areaStates.ts`). Here so both sides read one function rather
+    than two copies of "hidden = 0 and both days are null" agreeing by luck. */
+export function areaStateResting(state: Pick<AreaState, 'hidden' | 'finishedEpochDay' | 'suspendedEpochDay'>): boolean {
+  return !state.hidden && state.finishedEpochDay === null && state.suspendedEpochDay === null;
+}
+
 /** Whether a surface fronting these areas has gone with them.
 
     Every one of them has to be hidden, and there has to be at least one: a
@@ -216,23 +257,29 @@ export function areasHidden(areas: readonly ArchiveSectionName[], states: AreaSt
   return areas.every((area) => area !== 'cycleEvents' && areaHidden(area, states));
 }
 
-/** Whether an area should stop talking: hidden, or finished on or before
-    today. The one question the prompt-and-tile cascade asks, so a hidden
-    area and a finished one silence prompts and tiles the same way while the
-    per-surface `*Enabled` preferences keep governing the areas that are on.
+/** Whether an area should stop talking: hidden, finished, or suspended, any
+    of them on or before today. The one question the prompt-and-tile cascade
+    asks, so a hidden, finished or suspended area silences prompts and tiles
+    the same way while the per-surface `*Enabled` preferences keep governing
+    the areas that are on.
 
     Nothing to do with quiet hours (`unprompted/quietHours.ts`), which is a
     window in the day and applies to every area at once. The name is the one
     the features spec asked for; the two never appear in the same read, and
     an area that is quiet here is quiet at every hour.
 
-    A finish day is compared against today rather than trusted as a flag for
-    the reason ADR-0049 clamps an open bound at read time: the stored fact is
-    the day the person named, and what follows from it on any given day is
-    read, never stored. This ships the question; the cascade that consumes it
-    is the features spec's, and nothing here silences anything by itself. */
+    A finish or suspend day is compared against today rather than trusted as
+    a flag for the reason ADR-0049 clamps an open bound at read time: the
+    stored fact is the day the person named, and what follows from it on any
+    given day is read, never stored. This ships the question; the cascade
+    that consumes it is the features spec's, and nothing here silences
+    anything by itself. */
 export function areaQuiet(area: HideableArea, states: AreaStates, todayEpochDay: number): boolean {
   const state = states[area];
   if (!state) return false;
-  return state.hidden || (state.finishedEpochDay !== null && state.finishedEpochDay <= todayEpochDay);
+  return (
+    state.hidden ||
+    (state.finishedEpochDay !== null && state.finishedEpochDay <= todayEpochDay) ||
+    (state.suspendedEpochDay !== null && state.suspendedEpochDay <= todayEpochDay)
+  );
 }

@@ -30,7 +30,7 @@ test('hiding an area reads back, and hiding it does not finish it', async () => 
   await journal.areaStates.setAreasHidden(['measurements'], true);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(states.measurements, { hidden: true, finishedEpochDay: null });
+  assert.deepEqual(states.measurements, { hidden: true, finishedEpochDay: null, suspendedEpochDay: null });
   assert.equal(areaHidden('measurements', states), true);
 });
 
@@ -40,8 +40,19 @@ test('one hub row fronting two sections finishes both, in one call', async () =>
   await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19900);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(states.hairStages, { hidden: false, finishedEpochDay: 19900 });
-  assert.deepEqual(states.hairPhotos, { hidden: false, finishedEpochDay: 19900 });
+  assert.deepEqual(states.hairStages, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
+  assert.deepEqual(states.hairPhotos, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
+  assert.equal(await rowCount(db), 2);
+});
+
+test('one hub row fronting two sections suspends both, in one call', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+
+  await journal.areaStates.setAreasSuspended(['voiceBenchmarks', 'voicePracticeTakes'], 19900);
+
+  const states = await journal.areaStates.getAreaStates();
+  assert.deepEqual(states.voiceBenchmarks, { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19900 });
+  assert.deepEqual(states.voicePracticeTakes, { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19900 });
   assert.equal(await rowCount(db), 2);
 });
 
@@ -70,20 +81,22 @@ test('a finished area is not hidden by finishing, and stays readable and searcha
   assert.equal(day.sideEffects.length, 1, 'a finished area still appears in the day view');
 });
 
-test('the two flags are independent in both directions, and un-finishing leaves hiding alone', async () => {
+test('hiding is independent of finishing in both directions, and un-finishing leaves hiding alone', async () => {
   const { journal } = await journalWithBuiltIns();
 
   await journal.areaStates.setAreasHidden(['wearSessions'], true);
   await journal.areaStates.setAreasFinished(['wearSessions'], 19700);
   assert.deepEqual((await journal.areaStates.getAreaStates()).wearSessions, {
     hidden: true,
-    finishedEpochDay: 19700
+    finishedEpochDay: 19700,
+    suspendedEpochDay: null
   });
 
   await journal.areaStates.setAreasFinished(['wearSessions'], null);
   assert.deepEqual((await journal.areaStates.getAreaStates()).wearSessions, {
     hidden: true,
-    finishedEpochDay: null
+    finishedEpochDay: null,
+    suspendedEpochDay: null
   });
 
   await journal.areaStates.setAreasHidden(['wearSessions'], true);
@@ -91,7 +104,46 @@ test('the two flags are independent in both directions, and un-finishing leaves 
   await journal.areaStates.setAreasHidden(['wearSessions'], false);
   assert.deepEqual((await journal.areaStates.getAreaStates()).wearSessions, {
     hidden: false,
-    finishedEpochDay: 19700
+    finishedEpochDay: 19700,
+    suspendedEpochDay: null
+  });
+});
+
+/* Phase 8 features ticket 51: a stream is active, suspended or finished,
+   never two of those at once. Both directions, since a writer clearing the
+   other column wrong in either direction would leave a row this build's own
+   gate (`areaQuiet`) would still read as quiet either way - the kind of bug
+   that hides behind its own safety net. */
+test('finishing a suspended area clears the suspended day, and suspending a finished one clears the finished day', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], 19600);
+  await journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19700);
+  assert.deepEqual((await journal.areaStates.getAreaStates()).hairRemovalSessions, {
+    hidden: false,
+    finishedEpochDay: 19700,
+    suspendedEpochDay: null
+  });
+
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], 19800);
+  assert.deepEqual((await journal.areaStates.getAreaStates()).hairRemovalSessions, {
+    hidden: false,
+    finishedEpochDay: null,
+    suspendedEpochDay: 19800
+  });
+});
+
+test('un-suspending an area leaves hiding and a resting finish day alone, and hiding survives it', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.areaStates.setAreasHidden(['hairRemovalSessions'], true);
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], 19600);
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], null);
+
+  assert.deepEqual((await journal.areaStates.getAreaStates()).hairRemovalSessions, {
+    hidden: true,
+    finishedEpochDay: null,
+    suspendedEpochDay: null
   });
 });
 
@@ -127,6 +179,18 @@ test('an area that goes back to saying nothing keeps no row saying so', async ()
   assert.equal(await rowCount(db), 0);
 });
 
+test('an area suspended and then resumed keeps no row saying so', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], 19500);
+  assert.equal(await rowCount(db), 1);
+
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], null);
+
+  assert.deepEqual(await journal.areaStates.getAreaStates(), {});
+  assert.equal(await rowCount(db), 0);
+});
+
 test('un-finishing an area nobody ever finished writes nothing', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
@@ -136,11 +200,20 @@ test('un-finishing an area nobody ever finished writes nothing', async () => {
   assert.equal(await rowCount(db), 0);
 });
 
+test('un-suspending an area nobody ever suspended writes nothing', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+
+  await journal.areaStates.setAreasSuspended(['voiceBenchmarks'], null);
+
+  assert.equal(await rowCount(db), 0);
+});
+
 test('setting no areas at all writes nothing', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
   await journal.areaStates.setAreasFinished([], 19900);
   await journal.areaStates.setAreasHidden([], true);
+  await journal.areaStates.setAreasSuspended([], 19900);
 
   assert.equal(await rowCount(db), 0);
 });
