@@ -187,6 +187,40 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1200);
   await shoot('04-one-document');
 
+  /* ---------- 05-07: the link (phase 8 features ticket 56). The seeded
+     persona is what the picker needs: "Reset demo state" leaves no
+     procedures and no regimen episodes, so a picker shot taken against it
+     would show one section of four. "Fill every feature" is the jump that
+     puts something under every heading. ---------- */
+  await settle('/');
+  await page.locator('[data-fill-every-feature]').click();
+  await page.waitForURL('**/more');
+  await page.waitForTimeout(1500);
+  await dress();
+
+  await settle('/media/documents');
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForSelector('#document-title');
+  await page.locator('[data-pick-document-target]').click();
+  await page.waitForSelector('[data-pick-target]');
+  await page.waitForTimeout(400);
+  await shootViewport('05-picker');
+
+  /* The goal the ticket was written around: paper arrives for "keep every
+     opinion" long before that step could ever be ticked. */
+  const GOAL = 'pl-medical-keep-opinions';
+  await page.locator(`[data-pick-target="goal:${GOAL}"]`).click();
+  await page.waitForTimeout(800);
+  await shoot('06-document-linked');
+
+  /* ---------- 07: the other end. The goal's own sheet lists what points at
+     it; the goal itself stores nothing. ---------- */
+  await settle('/transition/roadmap');
+  await page.locator(`[data-open-goal="${GOAL}"]`).click();
+  await page.waitForSelector('[data-goal-sheet-status]');
+  await page.waitForTimeout(600);
+  await shootViewport('07-goal-sheet');
+
   await page.close();
 }
 
