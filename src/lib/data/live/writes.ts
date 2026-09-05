@@ -94,12 +94,20 @@ export const TABLE_NAMES = [
      ticket 08): nothing reads one without the other, the same reasoning
      'hairProgress' gives. */
   'hairRemoval',
-  /* One name for a procedure, its consult dates and its recovery photos
-     (phase 5 ticket 07): nothing reads one without the others, the same
-     reasoning 'hairProgress' gives. A procedure's recovery checklist is not
-     in here - that is an ordinary 'checklist' row, and a write to it has to
-     invalidate the appointment prep list's reads too. */
+  /* One name for a procedure and its recovery photos (phase 5 ticket 07):
+     nothing reads one without the other, the same reasoning 'hairProgress'
+     gives. A procedure's recovery checklist is not in here - that is an
+     ordinary 'checklist' row, and a write to it has to invalidate the
+     appointment prep list's reads too. Its consults are not in here either
+     any more; they are 'appointment' rows below. */
   'procedure',
+  /* Appointments (phase 8 features ticket 57). Its own name rather than
+     folded into 'procedure', unlike the consults it grew out of: most
+     appointments belong to no procedure at all, and the appointments screen
+     has to re-read when one is written from the surgery journey - which a
+     name shared with 'procedure' would give in one direction only. The
+     procedure screen's own reads name both. */
+  'appointment',
   /* Counterevidence snapshots (phase 4 ticket 11; the doubt-entry half of
      this screen's writes retired by phase 5 ticket 16). */
   'doubtJournal',
@@ -614,14 +622,20 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   /* deleteProcedure and addChecklistItem write 'checklist' as well as
      'procedure': the recovery checklist is an ordinary checklist row, so a
-     screen watching checklists has to hear about it. */
+     screen watching checklists has to hear about it.
+
+     The consult pair writes 'appointment' rather than 'procedure' (ticket
+     57): it is an appointment row now, and the appointments screen has to
+     hear about one added from the surgery journey. deleteProcedure writes
+     both, because the cascade takes that procedure's appointments with it.
+     Every read that shows a consult names both tables for the same reason. */
   procedures: classify<Journal['procedures']>()({
     writes: {
       upsertProcedure: ['procedure'],
-      deleteProcedure: ['procedure', 'checklist', 'milestone'],
+      deleteProcedure: ['procedure', 'appointment', 'checklist', 'milestone'],
       setNotes: ['procedure'],
-      addConsult: ['procedure'],
-      deleteConsult: ['procedure'],
+      addConsult: ['appointment'],
+      deleteConsult: ['appointment'],
       addPhoto: ['procedure'],
       deletePhoto: ['procedure'],
       addChecklistItem: ['procedure', 'checklist'],
@@ -631,12 +645,27 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // area: the recovery checklist is an ordinary owned Checklist and the
     // procedure row is not read to find it.
     reads: {
-      getProcedures: ['procedure'],
+      getProcedures: ['procedure', 'appointment'],
       getPhotos: ['procedure'],
       getDayRecords: ['procedure'],
       getChecklist: ['checklist'],
       getMilestone: ['milestone'],
-      lastWriteEpochDay: ['procedure']
+      lastWriteEpochDay: ['procedure', 'appointment']
+    }
+  }),
+  appointments: classify<Journal['appointments']>()({
+    writes: {
+      upsertAppointment: ['appointment'],
+      deleteAppointment: ['appointment']
+    },
+    // consultsByProcedure and getDayRecords join `procedure` for its name,
+    // so a renamed journey redraws them.
+    reads: {
+      getAppointments: ['appointment', 'procedure'],
+      getKinds: ['appointment'],
+      getDayRecords: ['appointment', 'procedure'],
+      lastWriteEpochDay: ['appointment'],
+      consultsByProcedure: ['appointment', 'procedure']
     }
   }),
   reminders: classify<Journal['reminders']>()({
@@ -807,7 +836,20 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       /* 'areaState' since phase 8 features ticket 04: the day a stream
          ended draws beside the seven kinds above. */
-      getAnnotations: ['milestone', 'regimen', 'dose', 'journalingPause', 'tryout', 'procedure', 'era', 'areaState'],
+      // 'appointment' because getProcedures reads it for a journey's
+      // consults (ticket 57), not because an appointment draws a mark of
+      // its own - that is ticket 59's.
+      getAnnotations: [
+        'milestone',
+        'regimen',
+        'dose',
+        'journalingPause',
+        'tryout',
+        'procedure',
+        'appointment',
+        'era',
+        'areaState'
+      ],
       /* The hormone curve's own markers (phase 8 features ticket 15), which
          are a separate read for the reason the header there gives. 'entry'
          is the body-region readings and 'tally' the counters, both judged

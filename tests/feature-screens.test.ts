@@ -76,7 +76,13 @@ const REACHED_FROM_INSIDE = [
   'coming-back',
   'settings/stock',
   'settings/exposure',
-  'media/photos/export'
+  'media/photos/export',
+  /* The appointment prep list stopped being a hub row in phase 8 features
+     ticket 57: the row it had is the appointments row now, and prep is
+     reached from that screen. The list itself is untouched - it is a
+     standing list of what to ask, which outlives any one appointment
+     (ADR-0066). */
+  'health/appointment-prep'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -100,7 +106,7 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the eleven screens reached only from inside another', () => {
+  it('is the hub, plus the twelve screens reached only from inside another', () => {
     /* The count that was here covered all 36 routes and had been raised ten
        times since it was written as 26, twice by two branches that each
        thought they were adding the 28th. The hub's own rows no longer need
@@ -110,7 +116,7 @@ describe('every feature screen', () => {
        The eleven below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(11);
+    expect(REACHED_FROM_INSIDE.length).toBe(12);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

@@ -265,10 +265,15 @@ const SECTIONS = [
   }),
   section({
     key: 'procedures',
+    // 'appointment' because a journey prints its consults, which are
+    // appointments pointing at it (ticket 57). The summary's own "since
+    // your last appointment" range is not this section's and still reads
+    // the checklist column until ticket 58 moves it.
+    //
     // The recovery checklist as well as the procedure: an item ticked off on
     // it changes what this section prints, and that checklist is an ordinary
     // `checklists` record owned by the procedure (procedures.ts).
-    tables: ['procedure', 'checklist'],
+    tables: ['procedure', 'appointment', 'checklist'],
     read: readProcedures
   }),
   section({

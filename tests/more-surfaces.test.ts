@@ -105,7 +105,7 @@ describe('every row the hub carries', () => {
     ['side-effects', 'zap', '/health/side-effects', 'health', 'read'],
     ['surgery', 'flag', '/health/surgery', 'health', 'read'],
     ['dilation', 'flask', '/health/dilation', 'health', 'read'],
-    ['appointment-prep', 'check', '/health/appointment-prep', 'health', 'written'],
+    ['appointments', 'check', '/health/appointments', 'health', 'read'],
     ['clinician-summary', 'share', '/health/clinician-summary', 'health', 'written'],
     ['milestones', 'sparkle', '/transition/milestones', 'transition', 'read'],
     ['roadmap', 'globe', '/transition/roadmap', 'transition', 'written'],

@@ -73,6 +73,7 @@ import type {
   WearSession
 } from '../types';
 import type { ArchiveSectionName } from './archiveSections';
+import type { AppointmentsArea, AppointmentDayRecord } from './appointments';
 import type { CycleEventsArea } from './cycleEvents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
@@ -115,6 +116,7 @@ export interface DayRecords {
   hairStages: HairStage[];
   hairPhotos: HairPhoto[];
   hairRemovalSessions: HairRemovalSession[];
+  appointments: AppointmentDayRecord[];
   procedureRecords: ProcedureDayRecord[];
   tryoutPhotos: TryoutPhotoOnDay[];
 }
@@ -142,6 +144,7 @@ export interface DayAreas {
   feltSense: FeltSenseArea;
   hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
+  appointments: AppointmentsArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
 }
@@ -290,12 +293,23 @@ const SECTIONS = [
     tables: ['hairRemoval'],
     read: ({ hairRemoval, epochDay }) => hairRemoval.getSessionsOnDay(epochDay)
   }),
+  /* An appointment happened on a day, which is the whole of what it is
+     (ticket 57). Both cases come through here, the one that belongs to a
+     surgery journey included: `getDayRecords` names the procedure on the
+     row where there is one, so a consult reaches a day once rather than
+     twice, and `procedureRecords` below is the recovery photos alone. */
+  section({
+    key: 'appointments',
+    covers: ['appointments'],
+    tables: ['appointment', 'procedure'],
+    read: ({ appointments, epochDay }) => appointments.getDayRecords(epochDay)
+  }),
   /* The last two cover an area whose own record is a span - a procedure runs
      for months, a tryout for weeks - so what each one registers is the dated
      records that area holds rather than the journey itself. That is the
      "a span or a schedule" rule below applied at the level of a row instead
-     of an area: a consult and a recovery photo happened on a day, the
-     operation they belong to did not. */
+     of an area: a recovery photo happened on a day, the operation it belongs
+     to did not. */
   section({
     key: 'procedureRecords',
     covers: ['procedures'],

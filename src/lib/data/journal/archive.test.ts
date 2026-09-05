@@ -717,11 +717,12 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // episode_id does (ADR-0002). Read once for the file manifest, the same
   // reason hair_photo above is hand-written.
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
-  // Owns two children (procedure_consult, procedure_photo) below.
+  // Owns a child (procedure_photo) below. Its consults are appointments now
+  // and travel in their own section (ticket 57).
   procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes'],
-  // procedure_id travels as the procedure's own uuid on both children, the
-  // way dose_pause's episode_id does (ADR-0002).
-  procedure_consult: ['uuid', 'procedure_id', 'epoch_day'],
+  // procedure_id travels as the procedure's own uuid, the way dose_pause's
+  // episode_id does (ADR-0002) - here and on the child below.
+  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],
   // Read once for the file manifest, the same reason hair_photo above is
   // hand-written.
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],

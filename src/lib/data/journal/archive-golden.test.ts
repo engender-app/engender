@@ -75,6 +75,7 @@ const SECTIONS = [
   'hairPhotos',
   'hairRemovalSessions',
   'procedures',
+  'appointments',
   'reminders',
   'tallyEvents',
   'counterevidenceSnapshots',
