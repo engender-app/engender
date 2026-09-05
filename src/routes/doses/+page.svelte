@@ -28,7 +28,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { activeEpisodesAt, attributeDose } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, attributeDose, nearestActiveEpisode } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -85,6 +85,13 @@
       whole history because both reads are per-day and a journal years deep
       has no screen that shows all of it at once. */
   const WINDOW_DAYS = 90;
+  /** How far nearestActiveEpisode may search either side of today for a
+      schedule's nearest open slot (ticket 40) - a different question from
+      WINDOW_DAYS above (how much history the log and comparison show), not
+      the same number reused: it happens to share WINDOW_DAYS's value only
+      because `doses` below is fetched for that window, and a wider search
+      would find a "nearest" slot the page has no doses to check against. */
+  const NEAREST_SLOT_RADIUS_DAYS = WINDOW_DAYS;
   const today = todayEpochDay();
   const from = today - WINDOW_DAYS;
 
@@ -107,9 +114,16 @@
       rotation site's last use routinely predates the log's 90-day window,
       and "never used" has to mean never, not merely not in that window. */
   let allInjectionDosesQuery = liveList((j) => j.doses.getDoses(0, today));
+  /** Every schedule and pause, for the nearest-slot default below (ticket
+      40) - the same two reads getComparison already makes, only across all
+      episodes rather than the single active one it resolves to. */
+  let schedulesQuery = liveList((j) => j.doses.getSchedules());
+  let pausesQuery = liveList((j) => j.doses.getPauses());
 
   let episodes = $derived(episodesQuery.rows);
   let doses = $derived(dosesQuery.rows);
+  let schedules = $derived(schedulesQuery.rows);
+  let pauses = $derived(pausesQuery.rows);
   let scheduleView = $derived(comparisonQuery.value ?? null);
   let loading = $derived(episodesQuery.loading || dosesQuery.loading);
 
@@ -129,7 +143,14 @@
      schedule view asks its own version of it through getComparison, over the
      range it is comparing rather than over this instant. */
   let activeEpisodes = $derived(activeEpisodesAt(episodes, Date.now()));
-  let activeEpisode = $derived(activeEpisodes.length === 1 ? activeEpisodes[0] : null);
+  /** The episode a new dose should default to (ticket 40): the sole active
+      one, or - with more than one active - whichever schedule's slot sits
+      nearest to now, when that is not a tie. Null leaves the picker below
+      to ask, same as before this ticket for the tied and no-schedule
+      cases. */
+  let activeEpisode = $derived(
+    nearestActiveEpisode(episodes, activeEpisodes, schedules, pauses, doses, today, NEAREST_SLOT_RADIUS_DAYS)
+  );
   /** The drugs to choose between when logging a new dose while more than
       one episode is active - empty whenever activeEpisode already answers
       the question on its own. */
@@ -184,9 +205,14 @@
 
   let editor = $state<Editor | null>(null);
   /** True only for a *new* dose, while it is genuinely ambiguous which of
-      several active episodes it is for - not for editing an old dose,
-      whose own drug (if any) is shown but never forced. */
-  let editorNeedsDrugPick = $derived(editor !== null && !editor.id && activeDrugChoices.length > 1);
+      several active episodes it is for (ticket 40: two schedules tied for
+      nearest, or neither has a schedule to break the tie with) - not for
+      editing an old dose, whose own drug (if any) is shown but never
+      forced, and not merely for having more than one episode active, now
+      that activeEpisode already resolves the common case on its own. */
+  let editorNeedsDrugPick = $derived(
+    editor !== null && !editor.id && activeDrugChoices.length > 1 && activeEpisode === null
+  );
 
   /* Which of the record's three lines is open (phase 5 UX ticket 37).
      One at a time, which is `disclose`'s own cap: a second group open
@@ -280,9 +306,11 @@
       };
       /* A line whose fact the app does not know opens as the fields that
          make one. Those are the two cases that also block the save: an
-         amount nothing seeded, and several active episodes with no drug
-         picked yet. Everything else opens stated and closed. */
-      openGroup = draft.dose === '' || activeDrugChoices.length > 1 ? 'what' : null;
+         amount nothing seeded, and several active episodes tied with no
+         drug picked yet (ticket 40 - activeEpisode already resolves the
+         common case, seeding draft.dose above with it). Everything else
+         opens stated and closed. */
+      openGroup = draft.dose === '' || (activeDrugChoices.length > 1 && activeEpisode === null) ? 'what' : null;
       editor = draft;
       return;
     }

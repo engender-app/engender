@@ -2760,6 +2760,44 @@ try {
   fail('fill every feature', e);
 }
 
+/* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
+   Android bridge, so the web wear editor offers no toggle and no hours
+   field for it - checked against fullFixture's own "Binder check-in"
+   session (still running at this point, the row the reminders-list block
+   right below depends on finding).
+
+   Stopping it here doubles as the regression the ticket's notes call out:
+   reconcileReminder reads undefined as "leave this reminder alone" and null
+   as "delete it", and stopRunning is one of the three call sites that used
+   to send null on every web save regardless of whether a reminder already
+   existed. If that regressed, the row the next block looks for would
+   already be gone. */
+try {
+  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-wear-running]', { timeout: 8000 });
+  await page.locator('[data-wear-running]').click();
+  await page.waitForSelector('[data-stop-wear-session]');
+
+  if (await page.getByRole('switch', { name: 'Remind me' }).count()) {
+    throw new Error('a reminder toggle rendered on a build with no Android platform behind it');
+  }
+  if (await page.locator('#wear-reminder-hours').count()) {
+    throw new Error('a reminder hours field rendered on a build with no Android platform behind it');
+  }
+
+  await page.locator('[data-stop-wear-session]').click();
+  // A real read of the journal, not the sheet closing - stopRunning's write
+  // is what takes this session out of getRunningSession's answer.
+  await page.waitForSelector('[data-wear-running]', { state: 'detached' });
+
+  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-list-row]', { hasText: 'wear session' }).count()) === 0) { // text-under-test: same provenance-line handle the reminders-list block below matches
+    throw new Error('stopping the session on web silently dropped its existing reminder');
+  }
+
+  ok('web wear editor hides the elapsed reminder, and saving does not drop one already set');
+} catch (e) { fail('wear editor reminder field on web', e); }
+
 /* Ticket 31: the web reminders list, once "Fill every feature" guarantees
    it is not empty - rows with no navigation and a delete control, and a
    wear-session's own elapsed reminder (`wear:` autoSource, fullFixture.ts's
