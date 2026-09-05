@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { epochDayFromLocalDate } from './epochDay.ts';
+import { epochDayFromLocalDate, epochDayMonthsAgo } from './epochDay.ts';
 import type { PersonalEffectType, RegimenEpisode } from './types.ts';
 import {
   effectTier,
@@ -18,9 +18,15 @@ const ANCHOR = epochDayFromLocalDate(new Date(2024, 0, 1)); // 2024-01-01
    exist at all. These two stand in for the two journals the gating is about
    - one whose only regimen episode is estradiol, one whose only episode is
    testosterone. */
-type Anchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay'>;
-const ON_E: Anchor = { drug: 'estradiol valerate', startEpochDay: ANCHOR };
-const ON_T: Anchor = { drug: 'testosterone enanthate', startEpochDay: ANCHOR };
+type Anchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>;
+const ON_E: Anchor = { drug: 'estradiol valerate', startEpochDay: ANCHOR, endEpochDay: null };
+const ON_T: Anchor = { drug: 'testosterone enanthate', startEpochDay: ANCHOR, endEpochDay: null };
+
+/** The same anchor, stopped `months` after it started. */
+const endedAfter = (anchor: Anchor, months: number): Anchor => ({
+  ...anchor,
+  endEpochDay: epochDayMonthsAgo(ANCHOR, -months)
+});
 
 /** The band a covered effect definitely has, so an arithmetic test can go
     straight at the numbers without repeating the null check the gating
@@ -218,7 +224,7 @@ test('a drug the app cannot classify gets no band at all, rather than a hedged o
   for (const drug of ['spironolactone', 'cyproterone acetate', 'progesterone', 'blokery', 'Androcur', '']) {
     for (const effect of ALL_TIER_1) {
       assert.equal(literatureCovers(effect, drug), false, `${drug} should not cover ${effect}`);
-      assert.equal(literatureWindowDays(effect, { drug, startEpochDay: ANCHOR }), null);
+      assert.equal(literatureWindowDays(effect, { drug, startEpochDay: ANCHOR, endEpochDay: null }), null);
     }
   }
 });
@@ -366,5 +372,96 @@ test('isHrtOnsetWindowCurrent handles testosterone and unclassified drugs', () =
     endReason: null
   };
   assert.equal(isHrtOnsetWindowCurrent([unclassifiedEpisode], ANCHOR), false);
+});
+
+/* Phase 8 features ticket 49 item 1: the anchoring episode's end day.
+
+   A band is a claim about a body on the hormone the table describes, so it
+   has nothing to say about the days after that hormone stopped. Before this,
+   `literatureWindowDays` read `startEpochDay` alone, and a five-year
+   masculinizing completion band kept drawing years past a stopped regimen
+   with the Endocrine Society printed underneath it. */
+
+test('an open episode draws exactly the bands it always drew', () => {
+  // The regression guard on the clip: `endEpochDay` null is the ordinary
+  // case and nothing about it moves.
+  const open = bandOf('voice_drop', ON_T);
+  assert.equal(open.onset.start, epochDayMonthsAgo(ANCHOR, -6));
+  assert.equal(open.onset.end, epochDayMonthsAgo(ANCHOR, -12));
+  assert.equal(open.completion?.start, epochDayMonthsAgo(ANCHOR, -12));
+  assert.equal(open.completion?.end, epochDayMonthsAgo(ANCHOR, -24));
+});
+
+test('an episode that ended before the onset could begin gets no band at all', () => {
+  // voice_drop's onset opens at 6 months; three months of testosterone is
+  // over before the literature has anything to say, so there is nothing to
+  // report rather than a band whose every day is unreachable.
+  assert.equal(literatureWindowDays('voice_drop', endedAfter(ON_T, 3)), null);
+  assert.equal(literatureWindowDays('voice_drop', endedAfter(ON_T, 5)), null);
+});
+
+test("a band's onset stops at the day the episode ended", () => {
+  const days = bandOf('voice_drop', endedAfter(ON_T, 9));
+  assert.equal(days.onset.start, epochDayMonthsAgo(ANCHOR, -6));
+  assert.equal(days.onset.end, epochDayMonthsAgo(ANCHOR, -9), 'clipped from 12 months to the end day');
+});
+
+test('a completion window entirely past the end day is dropped, not drawn in the past', () => {
+  // Nine months of testosterone: the onset window is real and half-run, and
+  // completion (12-24 months) never started.
+  const days = bandOf('voice_drop', endedAfter(ON_T, 9));
+  assert.equal(days.completion, null);
+});
+
+test('a completion window the episode ran into is clipped at the end day', () => {
+  // breast_development completes at 24-36 months; thirty months of
+  // estradiol reaches into it and stops there.
+  const days = bandOf('breast_development', endedAfter(ON_E, 30));
+  assert.equal(days.completion?.start, epochDayMonthsAgo(ANCHOR, -24));
+  assert.equal(days.completion?.end, epochDayMonthsAgo(ANCHOR, -30));
+});
+
+test('an open-ended completion gains an end when the episode has one', () => {
+  // hair_changes is "more than 36 months", modelled as `end: null`. An
+  // episode that stopped at 48 months bounds it, because the open end was
+  // only ever open for a body still on the hormone.
+  const open = bandOf('hair_changes', ON_E);
+  assert.equal(open.completion?.end, null);
+
+  const stopped = bandOf('hair_changes', endedAfter(ON_E, 48));
+  assert.equal(stopped.completion?.start, epochDayMonthsAgo(ANCHOR, -36));
+  assert.equal(stopped.completion?.end, epochDayMonthsAgo(ANCHOR, -48));
+});
+
+test('an effect the literature gives no ceiling for keeps its absent completion', () => {
+  // skin_softening's completion is null because the literature reports no
+  // ceiling at all - a different thing from a completion the clip removed,
+  // and the clip must not invent one.
+  const days = bandOf('skin_softening', endedAfter(ON_E, 9));
+  assert.equal(days.completion, null);
+  assert.equal(days.onset.end, epochDayMonthsAgo(ANCHOR, -6), 'onset ends at 6 months, before the end day');
+});
+
+test('isHrtOnsetWindowCurrent goes quiet once the anchoring episode has ended', () => {
+  // The quick-add effects prompt asks this. An episode stopped at 3 months
+  // has no live onset window left, even on a day the open-episode version of
+  // the same question would answer true for.
+  const stopped: RegimenEpisode = {
+    id: 'e1',
+    drug: 'estradiol valerate',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: ANCHOR,
+    endEpochDay: epochDayMonthsAgo(ANCHOR, -3),
+    endReason: null
+  };
+  const sixMonthsIn = epochDayMonthsAgo(ANCHOR, -6);
+  assert.equal(isHrtOnsetWindowCurrent([{ ...stopped, endEpochDay: null }], sixMonthsIn), true);
+  assert.equal(isHrtOnsetWindowCurrent([stopped], sixMonthsIn), false);
+  // Still true on a day the episode covered.
+  assert.equal(isHrtOnsetWindowCurrent([stopped], epochDayMonthsAgo(ANCHOR, -2)), true);
 });
 
