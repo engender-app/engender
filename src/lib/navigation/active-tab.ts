@@ -33,8 +33,27 @@ const TAB_ROUTES: TabRoute[] = [
      group (regimen, hormone-curve) and joins that group's tab too
      (ticket 09). The care overview is the same case one step on: it is the
      health group's own row now (deepening ticket 07), and /doses is reached
-     through it. */
-  { key: 'settings', prefixes: ['/settings', '/more', '/doses', '/care'] }
+     through it.
+
+     The five prefixes below joined here in features ticket 33, when the 23
+     hub rows still living at /settings/<slug> moved to their own
+     HubGroupKey-named address - /settings itself stays, since the
+     redirects, /settings/reminders[/...] and the hand-written
+     Appearance/Tracking/Privacy sections all remain there. */
+  {
+    key: 'settings',
+    prefixes: [
+      '/settings',
+      '/more',
+      '/doses',
+      '/care',
+      '/body',
+      '/health',
+      '/transition',
+      '/practice',
+      '/media'
+    ]
+  }
 ];
 
 export function activeTabKey(path: string): string {

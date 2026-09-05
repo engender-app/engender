@@ -316,7 +316,7 @@
                   icon="book"
                   title={m.coming_back_letter_title()}
                   subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
-                  href="/settings/letters"
+                  href="/transition/letters"
                 />
               {:else if item.kind === 'milestone'}
                 <ListRow
@@ -325,7 +325,7 @@
                   icon="flag"
                   title={item.name}
                   subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
-                  href="/settings/milestones"
+                  href="/transition/milestones"
                 />
               {:else}
                 <!-- The era is neither an arrival nor a chore: it is where
@@ -340,7 +340,7 @@
                   subtitle={item.startEpochDay === null
                     ? m.coming_back_era_sub_no_start()
                     : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
-                  href="/settings/eras"
+                  href="/transition/eras"
                 />
               {/if}
             {/each}

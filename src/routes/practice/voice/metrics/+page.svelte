@@ -2,7 +2,7 @@
   /* The metric reference: what each of a benchmark's figures is
      (phase 8 features ticket 27, ADR-0060).
 
-     Reference data, like `/settings/resources`: the table is compiled in,
+     Reference data, like `/practice/resources`: the table is compiled in,
      so there is nothing to wait for and nothing that can be empty. What
      the screen owns is the order, the anchors and the flag stripes; each
      section's seven fields are VoiceMetricSection's.
@@ -46,7 +46,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.vm_title()} back="/settings/voice" subtitle={m.vm_intro()} />
+  <ScreenHeader title={m.vm_title()} back="/practice/voice" subtitle={m.vm_intro()} />
 
   <!-- The one fact that belongs to every figure rather than to any of
        them, which is why it sits above the sections instead of inside one

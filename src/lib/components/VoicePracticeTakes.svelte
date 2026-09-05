@@ -5,7 +5,7 @@
      a second one - `isSealedUntil` is the same predicate `isLetterSealed`
      delegates to now, handed `epochDay + 1` rather than a stored unlock
      day, because that is the only unlock day a take ever has (ADR-0010;
-     types.ts's own note). So this list is modelled on `/settings/letters`'
+     types.ts's own note). So this list is modelled on `/transition/letters`'
      own row: sealed shows the seal and nothing else, open shows what it is
      for. What differs is what "open" shows: a letter's own text, here the
      figures `journal.voicePracticeTakes` stored at save time.

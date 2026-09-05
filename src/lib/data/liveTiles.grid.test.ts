@@ -349,7 +349,7 @@ describe('what each tile says', () => {
     const tile = tileNamed('wear-timer')!;
     expect(tile.tileKey).toBe('wear-timer');
     expect(tile.attrs).toEqual({ 'data-wear-running-tile': true });
-    expect(tile.href).toBe('/settings/wear');
+    expect(tile.href).toBe('/practice/wear');
     // 1h 2m 3s, off the one clock the whole grid reads.
     expect(tile.value).toBe(m.wear_session_duration_hms({ hours: '1', minutes: '2', seconds: '3' }));
     expect(tile.note).toBe(m.wear_session_running_since({ time: `time:${wearSession.startTimestamp}` }));
@@ -373,7 +373,7 @@ describe('what each tile says', () => {
     expect(tile.attrs).toEqual({ 'data-surgery-tile': true });
     expect(tile.value).toBe(m.surgery_day_upcoming({ days: m.n_days({ n: 10 }) }));
     expect(tile.note).toBe('Vaginoplasty');
-    expect(tile.href).toBe('/settings/surgery');
+    expect(tile.href).toBe('/health/surgery');
     expect(tile.action).toBeUndefined();
     expect(tile.dismiss).toBeUndefined();
   });
@@ -397,7 +397,7 @@ describe('what each tile says', () => {
     const tile = tileNamed('ready-letter', { actions })!;
     expect(tile.tileKey).toBe('ready-letter');
     expect(tile.attrs).toEqual({ 'data-letter-tile': true });
-    expect(tile.href).toBe('/settings/letters?read=letter-1');
+    expect(tile.href).toBe('/transition/letters?read=letter-1');
     expect(tile.value).toBe(`full:${TODAY - 40}`);
     // Two unread, so the note counts the other one.
     expect(tile.note).toBe(m.tile_letter_more({ count: '1' }));
@@ -443,8 +443,8 @@ describe('what each tile says', () => {
     expect(tile.attrs).toEqual({ 'data-active-tryout-tile': true });
     expect(tile.value).toBe('Alicja');
     expect(tile.note).toBe(m.tile_active_tryout_note({ days: '10' }));
-    expect(tile.href).toBe('/settings/tryouts/tryout-1');
-    expect(tile.action?.href).toBe('/settings/tryouts/tryout-1?feltSense=1');
+    expect(tile.href).toBe('/transition/tryouts/tryout-1');
+    expect(tile.action?.href).toBe('/transition/tryouts/tryout-1?feltSense=1');
   });
 
   it('the patch schedule names the dose that is due', () => {
@@ -461,8 +461,8 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('voice-benchmark');
     expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': true });
     expect(tile.note).toBe(m.tile_voice_benchmark_days_ago({ days: '20' }));
-    expect(tile.href).toBe('/settings/voice?tab=compare');
-    expect(tile.action?.href).toBe('/settings/voice?tab=record');
+    expect(tile.href).toBe('/practice/voice?tab=compare');
+    expect(tile.action?.href).toBe('/practice/voice?tab=record');
   });
 
   it('the pause banner says when the pause ends and offers to resume it', () => {
@@ -488,7 +488,7 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('hair-removal-recovery');
     expect(tile.attrs).toEqual({ 'data-hair-removal-tile': true });
     expect(tile.value).toBe('area:upper_lip');
-    expect(tile.href).toBe('/settings/hair-removal');
+    expect(tile.href).toBe('/body/hair-removal');
     expect(tile.action).toBeUndefined();
     expect(tile.dismiss).toBeDefined();
   });
@@ -498,8 +498,8 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('measurements-nudge');
     expect(tile.attrs).toEqual({ 'data-measurements-tile': true });
     expect(tile.note).toBe(m.tile_measurements_note({ days: '40' }));
-    expect(tile.href).toBe('/settings/measurements');
-    expect(tile.action?.href).toBe('/settings/measurements');
+    expect(tile.href).toBe('/body/measurements');
+    expect(tile.action?.href).toBe('/body/measurements');
   });
 });
 

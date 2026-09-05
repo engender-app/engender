@@ -43,7 +43,7 @@
      /body-map, both trajectories  a region's dysphoria and euphoria over a
                                    range, same shape as the values chart
      /tally, both counters         days on a date axis
-     /settings/voice, the trend    benchmarks months apart, and a regimen
+     /practice/voice, the trend    benchmarks months apart, and a regimen
                                    episode is the thing they are read against
 
    Taking none:
@@ -62,7 +62,7 @@
      /stats, interval mood         same reason: x is a position in the dosing
                                    interval.
      /settings/exposure            has no chart. Its counters are list rows.
-     /settings/measurements        a time chart, and it would fit - but it is
+     /body/measurements            a time chart, and it would fit - but it is
                                    not in this ticket's screen list, and
                                    wiring it here would be a decision taken
                                    in the wrong ticket. Named so the next

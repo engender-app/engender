@@ -27,7 +27,7 @@ import { expect, test } from 'vitest';
 
 const rootPath = fileURLToPath(new URL('../', import.meta.url));
 
-const SCREEN = 'src/routes/settings/resources/+page.svelte';
+const SCREEN = 'src/routes/practice/resources/+page.svelte';
 const MODULE_DIR = 'src/lib/resources';
 
 function sources(): { path: string; text: string }[] {

@@ -79,7 +79,7 @@ describe('tryout-to-milestone adoption pipeline', () => {
   });
 
   it('tryout detail page includes the Adopt Permanently action and confirmation sheet', () => {
-    const tryoutDetail = read('src/routes/settings/tryouts/[id]/+page.svelte');
+    const tryoutDetail = read('src/routes/transition/tryouts/[id]/+page.svelte');
     expect(tryoutDetail).toContain('data-adopt-tryout');
     expect(tryoutDetail).toContain('AdoptTryoutConfirmationSheet');
     /* The adoption write moved into the offer registry (phase 8 features

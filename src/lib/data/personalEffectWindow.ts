@@ -251,7 +251,7 @@ export function literatureWindowDays(
     built in, and does this file list a window for it", so a key gaining a
     window becomes tier 1 by that fact alone and nothing has to be kept in
     step with it. It lived as three untested lines inside
-    settings/personal-effects/+page.svelte, deciding both which citation prints
+    practice/personal-effects/+page.svelte, deciding both which citation prints
     under an effect and whether a band is offered at all. */
 export function effectTier(effect: { key: PersonalEffectType; builtIn: boolean }): 1 | 2 | 3 {
   if (!effect.builtIn) return 3;

@@ -162,7 +162,7 @@
     arrivingStart = dateInputValueFromEpochDay(day);
     record.openEditor(null);
     arrivingStart = '';
-    void goto('/settings/eras', { replaceState: true, noScroll: true, keepFocus: true });
+    void goto('/transition/eras', { replaceState: true, noScroll: true, keepFocus: true });
   });
 </script>
 

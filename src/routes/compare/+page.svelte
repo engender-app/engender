@@ -99,8 +99,8 @@
   });
 
   /* A tryout or a procedure's "compare this stretch" link hands both sides
-     over as query parameters, the same way `/settings/eras`'s "start an
-     era here" hands a day over (settings/eras/+page.svelte). Consumed once
+     over as query parameters, the same way `/transition/eras`'s "start an
+     era here" hands a day over (transition/eras/+page.svelte). Consumed once
      on arrival and then stripped from the URL, so navigating back into this
      screen later - the tab bar, a bookmark - does not reopen the same two
      sides every time. */

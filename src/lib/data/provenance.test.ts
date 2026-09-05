@@ -51,12 +51,12 @@ test('a hand-written milestone carries no provenance', () => {
 
 test('a milestone linked to a procedure names it and links to the surgery journey screen', () => {
   const origin = resolveMilestoneOrigin(milestone({ procedureId: 'p-1', procedureName: 'Top surgery' }));
-  assert.deepEqual(origin, { text: 'From your surgery journey: Top surgery', href: '/settings/surgery' });
+  assert.deepEqual(origin, { text: 'From your surgery journey: Top surgery', href: '/health/surgery' });
 });
 
 test('a milestone linked to a built-in roadmap goal names the goal and links to the roadmap screen', () => {
   const origin = resolveMilestoneOrigin(milestone({ roadmapGoalKey: 'pl-legal-id-card' }));
-  assert.equal(origin?.href, '/settings/roadmap');
+  assert.equal(origin?.href, '/transition/roadmap');
   assert.ok(origin?.text.startsWith('From your roadmap: '));
 });
 
@@ -64,7 +64,7 @@ test('a milestone linked to a custom roadmap goal reads its own text, not the bu
   const origin = resolveMilestoneOrigin(
     milestone({ roadmapGoalKey: 'custom-goal-uuid', customRoadmapGoalText: 'Tell my sister' })
   );
-  assert.deepEqual(origin, { text: 'From your roadmap: Tell my sister', href: '/settings/roadmap' });
+  assert.deepEqual(origin, { text: 'From your roadmap: Tell my sister', href: '/transition/roadmap' });
 });
 
 test('a roadmap goal key that resolves to nothing degrades to the shared honest fallback, not a dangling reference', () => {
@@ -74,14 +74,14 @@ test('a roadmap goal key that resolves to nothing degrades to the shared honest 
 
 test('a milestone adopted from a tryout names it and links to that tryout', () => {
   const origin = resolveMilestoneOrigin(milestone({ tryoutId: 't-1', tryoutLabel: 'Alicja' }));
-  assert.deepEqual(origin, { text: 'From adopting Alicja', href: '/settings/tryouts/t-1' });
+  assert.deepEqual(origin, { text: 'From adopting Alicja', href: '/transition/tryouts/t-1' });
 });
 
 test('a procedure link takes precedence over a roadmap or tryout link on the same row', () => {
   const origin = resolveMilestoneOrigin(
     milestone({ procedureId: 'p-1', procedureName: 'Top surgery', roadmapGoalKey: 'pl-legal-id-card', tryoutId: 't-1' })
   );
-  assert.equal(origin?.href, '/settings/surgery');
+  assert.equal(origin?.href, '/health/surgery');
 });
 
 test('a reminder nobody has touched has no provenance', () => {
@@ -107,7 +107,7 @@ test('a wear-session reminder is recognised too, not just stock - the same auto_
   assert.deepEqual(origin, {
     text: 'Set from a wear session you logged.',
     hint: "Edit it, and it's yours to manage from here on.",
-    href: '/settings/wear',
+    href: '/practice/wear',
     actionLabel: 'View wear log'
   });
 });

@@ -149,9 +149,9 @@ describe('a card reads its identity off its hub row', () => {
 
   it('points at the screen where the row points at one of its tabs', () => {
     // The one row carrying a query string. The card means the screen.
-    expect(hubRow('voice-benchmark').href).toBe('/settings/voice?tab=record');
+    expect(hubRow('voice-benchmark').href).toBe('/practice/voice?tab=record');
     const card = STATS_AREA_PANELS.find((panel) => panel.key === 'voice-benchmark');
-    expect(card?.href).toBe('/settings/voice');
+    expect(card?.href).toBe('/practice/voice');
   });
 
   it('says why each of the two rowless cards has no row', () => {

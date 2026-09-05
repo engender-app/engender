@@ -41,7 +41,7 @@ import '$lib/motion/press.css';
 import { metricHref, VOICE_METRICS, VOICE_METRICS_ROUTE } from '$lib/data/voice/metrics';
 import { readFlagRoles, roleAt } from '$lib/theme/roles';
 import VoiceFigures from '$lib/components/VoiceFigures.svelte';
-import MetricReference from '../../src/routes/settings/voice/metrics/+page.svelte';
+import MetricReference from '../../src/routes/practice/voice/metrics/+page.svelte';
 import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'voice-metrics-probe';

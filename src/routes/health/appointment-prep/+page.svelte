@@ -259,7 +259,7 @@
           icon="share"
           title={m.clinician_summary_row()}
           subtitle={m.clinician_summary_row_sub()}
-          href="/settings/clinician-summary"
+          href="/health/clinician-summary"
         />
       </ListCard>
     </div>
@@ -294,7 +294,7 @@
               icon="zap"
               title={effect.name}
               subtitle={[severityName(effect.severity), dayShort(effect.epochDay)]}
-              href="/settings/side-effects"
+              href="/health/side-effects"
             />
           {/each}
         </ListCard>

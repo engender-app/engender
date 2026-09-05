@@ -42,7 +42,7 @@
 <div class="screen">
   <ScreenHeader title={m.tryout_title()} back="/more" subtitle={m.tryout_intro()}>
     {#snippet actions()}
-      <a class="icon-btn press" href="/settings/tryouts/new" aria-label={m.tryout_add()}><Icon name="plus" size={22} /></a>
+      <a class="icon-btn press" href="/transition/tryouts/new" aria-label={m.tryout_add()}><Icon name="plus" size={22} /></a>
     {/snippet}
   </ScreenHeader>
 
@@ -57,7 +57,7 @@
               icon="tag"
               title={t.label}
               subtitle={`${tryoutKindName(t.kind)} · ${rangeLabel(t)}`}
-              href="/settings/tryouts/{t.id}"
+              href="/transition/tryouts/{t.id}"
               action={{ icon: 'trash', label: m.tryout_delete_sheet(), onclick: () => record.askToDelete(t) }}
             />
           {/each}
@@ -72,7 +72,7 @@
           role={roleAt(activeFlag.roles, 0)}
           title={m.tryout_none()}
           text={m.tryout_intro()}
-          action={{ label: m.tryout_add(), primary: true, href: '/settings/tryouts/new' }}
+          action={{ label: m.tryout_add(), primary: true, href: '/transition/tryouts/new' }}
         />
       </div>
     {/snippet}

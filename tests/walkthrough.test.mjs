@@ -576,7 +576,7 @@ try {
   await page.waitForSelector('[data-search-hit="milestones"]');
   const milestoneHit = page.locator('[data-search-hit="milestones"]').first();
   const href = await milestoneHit.getAttribute('href');
-  if (href !== '/settings/milestones') throw new Error(`a milestone hit went to ${href}`);
+  if (href !== '/transition/milestones') throw new Error(`a milestone hit went to ${href}`);
   /* The ticket's own condition: a hit says what kind of thing it is. Read as
      "the row states two things" rather than by gripping the kit's own class
      or the label's wording (ADR-0029) - the excerpt on one line, the area it
@@ -777,7 +777,7 @@ try {
   }
   if (!(await page.locator('[data-tl-gap]').count())) throw new Error('the long milestone gap was not compressed');
 
-  await fresh('/settings/photos');
+  await fresh('/media/photos');
   await page.waitForSelector('[data-photo-cell] img');
   const thumbnailSrc = await page.locator('[data-photo-cell] img').first().getAttribute('src');
   if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
@@ -1037,7 +1037,7 @@ try {
 
 /* 9. milestone shuffle */
 try {
-  await fresh('/settings/milestones');
+  await fresh('/transition/milestones');
   /* The templates are a sheet off the header now (phase 5 UX ticket 25):
      the screen opened on a picker for a fifteenth milestone rather than on
      the milestones. The shuffle went with them. */
@@ -2336,7 +2336,7 @@ try {
    Boot's own document, modules and SQLite wasm are all behind it by
    then. */
 try {
-  await fresh('/settings/roadmap');
+  await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
 
   /* The kit's heading, not SectionTitle's: phase 5 UX ticket 25 moved the
@@ -2398,7 +2398,7 @@ try {
    bundled goal checked in this same browser session, since fresh() only
    clears localStorage and never the journal itself. */
 try {
-  await fresh('/settings/roadmap');
+  await fresh('/transition/roadmap');
   await page.waitForSelector('[data-goal]');
 
   const before = await page.locator('[data-goal]').count();
@@ -2606,15 +2606,15 @@ try {
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
-    '/settings/journaling-pause', '/settings/photos',
-    '/settings/measurements', '/settings/sizes', '/settings/hair-progress',
-    '/settings/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
-    '/settings/cycle-events', '/settings/side-effects', '/settings/surgery',
-    '/settings/dilation',
-    '/settings/appointment-prep', '/settings/clinician-summary', '/settings/milestones',
-    '/settings/roadmap', '/settings/letters', '/settings/tryouts', '/settings/presentations',
-    '/settings/eras',
-    '/settings/voice', '/settings/wear', '/settings/personal-effects', '/settings/resources',
+    '/settings/journaling-pause', '/media/photos',
+    '/body/measurements', '/body/sizes', '/body/hair-progress',
+    '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
+    '/health/cycle-events', '/health/side-effects', '/health/surgery',
+    '/health/dilation',
+    '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
+    '/transition/roadmap', '/transition/letters', '/transition/tryouts', '/transition/presentations',
+    '/transition/eras',
+    '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
   ];
   for (const route of SETTINGS_AREA_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
@@ -2636,35 +2636,35 @@ try {
    Notice existing at all is a screen's own claim that it has nothing to
    show. */
 try {
-  await fresh('/settings/measurements'); // any settings route boots the shell before the demo bar is queried
+  await fresh('/body/measurements'); // any settings-area route boots the shell before the demo bar is queried
   await page.click('[data-fill-every-feature]');
   await page.waitForURL('**/more');
   await booted();
 
   const NOT_EMPTY_ROUTES = [
-    ['/settings/measurements', 'measurements-empty'],
-    ['/settings/sizes', 'sizes-empty'],
-    ['/settings/hair-progress', 'hair-stages-empty'],
-    ['/settings/hair-removal', 'hair-removal-empty'],
+    ['/body/measurements', 'measurements-empty'],
+    ['/body/sizes', 'sizes-empty'],
+    ['/body/hair-progress', 'hair-stages-empty'],
+    ['/body/hair-removal', 'hair-removal-empty'],
     ['/settings/labs', 'labs-empty'],
     ['/settings/regimen', 'regimen-empty'],
     ['/settings/hormone-curve', 'curve-empty'],
     ['/doses', 'doses-empty'],
-    ['/settings/cycle-events', 'cycle-events-empty'],
-    ['/settings/side-effects', 'side-effects-empty'],
-    ['/settings/surgery', 'surgery-empty'],
-    ['/settings/dilation', 'dilation-schedule-empty'],
-    ['/settings/appointment-prep', 'appointment-prep-empty'],
-    ['/settings/milestones', 'milestones-empty'],
-    ['/settings/letters', 'letters-empty'],
-    ['/settings/tryouts', 'tryouts-empty'],
-    /* `/settings/voice` was on this list for its memo picker's own
+    ['/health/cycle-events', 'cycle-events-empty'],
+    ['/health/side-effects', 'side-effects-empty'],
+    ['/health/surgery', 'surgery-empty'],
+    ['/health/dilation', 'dilation-schedule-empty'],
+    ['/health/appointment-prep', 'appointment-prep-empty'],
+    ['/transition/milestones', 'milestones-empty'],
+    ['/transition/letters', 'letters-empty'],
+    ['/transition/tryouts', 'tryouts-empty'],
+    /* `/practice/voice` was on this list for its memo picker's own
        `voice-empty` notice. Phase 8 features ticket 09 moved memos off the
        screen (ticket 11 gives them their own) and nothing in either demo
        seed writes a benchmark, so the notice this asserted the absence of
        no longer exists anywhere - which would have made the check pass for
        free rather than fail. The voice screen's own walk is below. */
-    ['/settings/wear', 'wear-empty'],
+    ['/practice/wear', 'wear-empty'],
     ['/settings/stock', 'stock-empty']
   ];
   for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
@@ -2681,7 +2681,7 @@ try {
      for thirty seconds and then blame the screen. The figure itself, with
      its bands, its source and its caveat, is asserted in the browser tier
      against an oscillator (tests/browser-tier/voice-benchmark-probe.ts). */
-  await page.goto(BASE + '/settings/voice', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/voice', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-vb-passage]');
   await page.locator('[data-segment="practise"]').click();
   await page.waitForSelector('[data-comfort-band]');
@@ -2705,7 +2705,7 @@ try {
      say is that the route boots at all - `/doses` sticks at "booting" in a
      production build while every test in the node tier passes - so this
      walks to it by URL and reads what it drew. */
-  await page.goto(BASE + '/settings/voice/metrics', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/voice/metrics', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-metric="pitch"]');
   const explained = await page.locator('[data-metric]').count();
   if (explained !== 7) {
@@ -2728,14 +2728,14 @@ try {
   // Roadmap and effects carry no empty-state Notice of their own (their
   // toggles and tracks always render) - checked instead for a signal that
   // only exists once something is ticked or marked.
-  await page.goto(BASE + '/settings/roadmap', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-status="checked"], [data-status="not-my-path"]').count()) === 0) {
     throw new Error('roadmap has no ticked or not-my-path goal after filling every feature');
   }
 
   // The tryout detail route is reached from the list, not a URL this test
   // would have to invent an id for.
-  await page.goto(BASE + '/settings/tryouts', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/transition/tryouts', { waitUntil: 'networkidle' });
   await page.locator('[data-tryout] a').first().click();
   await page.waitForSelector('[data-screen-header]');
   /* The entries section reads a range keyed off the tryout the route names,
@@ -2801,7 +2801,7 @@ try {
      through the control on the area's own screen rather than by writing an
      `area_state` row, because the whole claim is that the two surfaces
      agree. */
-  await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
   await page.locator('[data-area-finish]').click();
   await page.waitForSelector('[data-area-finish-confirm]', { timeout: 8000 });
@@ -2818,7 +2818,7 @@ try {
   }
   // Still one tap away, and the screen behind it still works.
   await page.locator('[data-list-row="wear"]').click();
-  await page.waitForURL('**/settings/wear');
+  await page.waitForURL('**/practice/wear');
   await page.waitForSelector('[data-area-finished]', { timeout: 8000 });
 
   // Put it back, so nothing after this walks a hub with a finished area in it.
@@ -2957,7 +2957,7 @@ try {
   if (whole === '') {
     throw new Error('the letter opened from Safe Space had no text on it');
   }
-  if (!page.url().includes('/settings/letters/')) {
+  if (!page.url().includes('/transition/letters/')) {
     throw new Error(`a letter row on Safe Space went to ${page.url()} instead of the letter`);
   }
 
@@ -3037,7 +3037,7 @@ try {
      then this one, then 'Alex' (today - 120, closed). Picked by position
      rather than its label, which is arbitrary demo content and not what
      this flow is testing. */
-  await page.goto(BASE + '/settings/tryouts', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/transition/tryouts', { waitUntil: 'networkidle' });
   await page.locator('[data-tryout] a').nth(1).click();
   await page.waitForSelector('[data-screen-header]');
 
@@ -3073,7 +3073,7 @@ try {
   // today - whether there is enough journal before that fixed window
   // depends on the ~50 flows already run against this journal, so both
   // outcomes are legitimate and both are checked.
-  await page.goto(BASE + '/settings/surgery', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
   await page.locator('[data-procedure]').first().click();
   await page.waitForSelector('[data-phase="archived"]');
   const procedureNotice = page.locator('[data-notice="surgery-compare"]');
@@ -3304,7 +3304,7 @@ try {
    and the line is correctly absent. The demo seeds no era of its own, so
    this flow still starts from the empty state and authors both of them. */
 try {
-  await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/transition/eras', { waitUntil: 'networkidle' });
   await booted();
   if ((await page.locator('[data-notice="eras-empty"]').count()) === 0) {
     throw new Error('a journal with no eras should show its empty state');
@@ -3530,7 +3530,7 @@ try {
   if (await page.locator('[data-list-row="cycle-events"]').count()) {
     throw new Error('the cycle row showed in More with no testosterone and no opt-in');
   }
-  await page.goto(BASE + '/settings/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
     throw new Error('side effects named the cycle log with no testosterone and no opt-in');
   }
@@ -3540,7 +3540,7 @@ try {
 
   // The direct URL still answers, records intact - hiding a row never
   // closes a screen (ADR-0043).
-  await page.goto(BASE + '/settings/cycle-events', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/health/cycle-events', { waitUntil: 'networkidle' });
   if ((await page.locator('[data-cycle-event]').count()) === 0) {
     throw new Error('the cycle log lost its records behind the hidden row');
   }
@@ -3555,7 +3555,7 @@ try {
   );
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
-  await page.goto(BASE + '/settings/side-effects', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // Back off, so the next flow starts from the default and the testosterone
@@ -3614,7 +3614,7 @@ try {
   /* The personal effects onset nudge (phase 5 ticket 49).
      Absent on a fresh journal with no regimen. Once an active regimen
      episode with a literature onset window is added, opening the fan shows
-     the effects row; tapping it navigates to /settings/personal-effects and closes
+     the effects row; tapping it navigates to /practice/personal-effects and closes
      the fan. When the anchor is moved past the onset window (>12 months),
      the row is absent again. */
   const localIso = (daysAgo = 0) => {
@@ -3647,7 +3647,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-choose="effects"]', { timeout: 8000 });
   await page.locator('[data-choose="effects"]').click();
-  await page.waitForFunction(() => window.location.pathname === '/settings/personal-effects', null, { timeout: 8000 });
+  await page.waitForFunction(() => window.location.pathname === '/practice/personal-effects', null, { timeout: 8000 });
   if ((await page.locator('[data-fan]').count()) > 0) {
     throw new Error('the fan remained open after tapping effects');
   }
@@ -3669,7 +3669,7 @@ try {
   }
   await page.locator('[data-quick-add]').click();
 
-  ok('quick add: personal effects nudge appears only during onset window and navigates to /settings/personal-effects');
+  ok('quick add: personal effects nudge appears only during onset window and navigates to /practice/personal-effects');
 } catch (e) { fail('quick add effects nudge', e); }
 
 
@@ -3697,7 +3697,7 @@ try {
   await page.locator('[data-choose="wear"]').click();
   await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
 
-  await page.goto(BASE + '/settings/wear', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
   await booted();
   /* [data-skeleton] used to match nothing - Skeleton.svelte only ever wrote
      `class="skeleton"` - so this wait was a no-op from its first tick

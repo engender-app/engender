@@ -506,7 +506,7 @@ const SECTIONS = [
      other and both land. The alternative is dropping an incoming era that
      collides, which loses a name the person gave a stretch of their life
      with nothing on screen to say so. An overlap is visible on
-     /settings/eras and editable there, and every read stays total meanwhile
+     /transition/eras and editable there, and every read stays total meanwhile
      - `eraForDay` answers with the first era covering the day, so a day
      still resolves to at most one. */
   /* Does not travel (ticket 04's own worked case). An era carries a name
