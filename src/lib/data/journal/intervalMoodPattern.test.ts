@@ -105,3 +105,46 @@ test('all history as MIN_SAFE_INTEGER still reaches the dose log, which is dated
 
   assert.deepEqual(pattern, [{ position: 1, value: 4, count: 3 }]);
 });
+
+test('"ever" stops more than two years back, so an old completed interval no longer corroborates a recent one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // Three completed intervals, all more than two years before `today` below -
+  // outside the lookback window this ticket adds.
+  for (const start of [DAY_0, DAY_0 + 14, DAY_0 + 28, DAY_0 + 42]) {
+    await injection(journal, start);
+    await journal.entries.upsertEntry({ epochDay: start, mood: 4 });
+  }
+  // One completed interval close to `today` - on its own, below the floor.
+  const RECENT = DAY_0 + 42 + 800;
+  await injection(journal, RECENT);
+  await injection(journal, RECENT + 14);
+  await journal.entries.upsertEntry({ epochDay: RECENT, mood: 1 });
+  const today = RECENT + 14 + 5;
+
+  const pattern = await journal.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today);
+
+  // Combined with the three old intervals this would clear the floor and
+  // report position 1 at an average of 3.25 - the old intervals are meant
+  // to be out of reach instead.
+  assert.deepEqual(pattern, []);
+});
+
+test('byCustomInterval\'s "ever" stops more than two years back too', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // A multiple of 14, so position 1 falls on it - three days folding to
+  // that position, all more than two years before `today` below.
+  const BASE = 20006;
+  for (const day of [BASE, BASE + 14, BASE + 28]) {
+    await journal.entries.upsertEntry({ epochDay: day, mood: 5 });
+  }
+  // One more multiple of 14, close to `today` - on its own, below the floor.
+  const recentFold = BASE + 14 * 60; // 840 days on from BASE
+  await journal.entries.upsertEntry({ epochDay: recentFold, mood: 1 });
+  const today = recentFold + 5;
+
+  const pattern = await journal.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, 14);
+
+  // Combined with the three old days this would clear the floor - the old
+  // days are meant to be out of reach instead.
+  assert.deepEqual(pattern, []);
+});

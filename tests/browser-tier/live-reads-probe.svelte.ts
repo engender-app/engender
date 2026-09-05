@@ -311,6 +311,56 @@ async function run() {
   const clearedWithoutWaitingTheDebounce = debouncedQuery === '';
   await until(() => debounceRuns > debounceRunsAfterTenKeystrokes, 'the cleared query to reach the counting query');
 
+  /* Phase 8 audit ticket 16: /stats's own custom-interval-length debounce -
+     its own acceptance criterion is "typing a three-digit interval length
+     fires one read rather than three", so this proves a run count over that
+     field's own shape rather than resting on the claim above, which is
+     `/search`'s. The one difference from `/search`'s shape: a length always
+     clamps to a valid number rather than going empty, so there is no
+     cleared-lands-immediately case to prove here, only the run count. */
+  const INTERVAL_DEBOUNCE_PROBE_MS = 60;
+  let typedIntervalLength = $state(28);
+  let debouncedIntervalLength = $state(28);
+  let intervalDebounceRuns = 0;
+  let intervalDebounceQuery: LiveQuery<number>;
+
+  $effect.root(() => {
+    $effect(() => {
+      const length = typedIntervalLength;
+      const timer = setTimeout(() => {
+        debouncedIntervalLength = length;
+      }, INTERVAL_DEBOUNCE_PROBE_MS);
+      return () => clearTimeout(timer);
+    });
+    intervalDebounceQuery = liveQuery(async () => {
+      const length = debouncedIntervalLength;
+      intervalDebounceRuns += 1;
+      return length;
+    });
+  });
+
+  await until(
+    () => intervalDebounceQuery.value !== undefined,
+    'the interval-length debounce-shaped query to settle its first run'
+  );
+  const intervalDebounceRunsBeforeTyping = intervalDebounceRuns;
+
+  // Three digits, each landing well inside the debounce interval of the one
+  // before it - the ticket's own "typing a three-digit interval length" line.
+  const TYPED_LENGTH = 182;
+  for (const soFar of [1, 18, 182]) {
+    typedIntervalLength = soFar;
+    flushSync();
+    await new Promise((resolve) => setTimeout(resolve, INTERVAL_DEBOUNCE_PROBE_MS / 3));
+  }
+  await until(
+    () => debouncedIntervalLength === TYPED_LENGTH,
+    'the debounced interval length to catch up once typing pauses'
+  );
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, INTERVAL_DEBOUNCE_PROBE_MS * 2));
+  const intervalDebounceRunsAfterThreeDigits = intervalDebounceRuns;
+
   /* Phase 8 audit ticket 15: /search/questions/[id]'s own version of the same
      fix. getSavedQuestions() rebuilds every row from scratch on any write to
      saved_question (savedQuestions.ts's toDomain, a new object per row on
@@ -437,6 +487,10 @@ async function run() {
       runsBeforeTyping: debounceRunsBeforeTyping,
       runsAfterTenKeystrokes: debounceRunsAfterTenKeystrokes,
       clearedWithoutWaitingTheDebounce
+    },
+    intervalLengthDebounce: {
+      runsBeforeTyping: intervalDebounceRunsBeforeTyping,
+      runsAfterThreeDigits: intervalDebounceRunsAfterThreeDigits
     },
     savedQuestionStability: {
       unstableRunsBeforeUnrelatedRename,
