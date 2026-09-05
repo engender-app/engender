@@ -130,3 +130,25 @@ test('recording surgery day as a transition milestone links milestone to procedu
   assert.ok(preserved, 'milestone is preserved in timeline');
   assert.equal(preserved.procedureId, null, 'milestone procedure link is cleared');
 });
+
+/* Ticket 56, ADR-0065: the link nulls, the document survives. */
+test('deleting a procedure nulls a document\'s link to it, and the document survives', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+  const bytes = new Uint8Array([1, 2, 3]);
+
+  const id = await journal.procedures.upsertProcedure({ name: 'Top surgery', surgeryEpochDay: 20000 });
+  const documentId = await journal.documents.addDocument(
+    { epochDay: 20000, title: 'Surgical report' },
+    { full: bytes, thumb: bytes }
+  );
+  await journal.documents.setDocumentTarget(documentId, { kind: 'procedure', id });
+
+  await journal.procedures.deleteProcedure(id);
+
+  const document = await journal.documents.getDocument(documentId);
+  assert.ok(document, 'the document survives its target being deleted');
+  assert.equal(document!.targetKind, null);
+  assert.equal(document!.targetId, null);
+});

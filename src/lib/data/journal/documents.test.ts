@@ -129,7 +129,9 @@ test('an update naming an id the journal does not hold throws', async () => {
       id: '7ac0ffee-0000-4000-8000-000000000000',
       epochDay: 20000,
       title: 'Nothing',
-      fileName: 'nothing.jpg'
+      fileName: 'nothing.jpg',
+      targetKind: null,
+      targetId: null
     })
   );
 });
@@ -144,4 +146,48 @@ test('deleting takes the file and its thumbnail with it, and an unknown id chang
 
   await journal.documents.deleteDocument(id);
   await journal.documents.deleteDocument('7ac0ffee-0000-4000-8000-000000000000');
+});
+
+/* Ticket 56, ADR-0065: at most one link, cleared as cheaply as set. */
+test('a document starts with no link, and one can be set and cleared', async () => {
+  const { journal } = await device();
+  const id = await journal.documents.addDocument({ epochDay: 20000, title: 'Referral' }, page());
+
+  const fresh = (await journal.documents.getDocument(id))!;
+  assert.equal(fresh.targetKind, null);
+  assert.equal(fresh.targetId, null);
+
+  await journal.documents.setDocumentTarget(id, { kind: 'milestone', id: 'm-1' });
+  const linked = (await journal.documents.getDocument(id))!;
+  assert.equal(linked.targetKind, 'milestone');
+  assert.equal(linked.targetId, 'm-1');
+
+  await journal.documents.setDocumentTarget(id, null);
+  const cleared = (await journal.documents.getDocument(id))!;
+  assert.equal(cleared.targetKind, null);
+  assert.equal(cleared.targetId, null);
+});
+
+test('setting a target on an unknown document id throws', async () => {
+  const { journal } = await device();
+  await assert.rejects(
+    journal.documents.setDocumentTarget('7ac0ffee-0000-4000-8000-000000000000', { kind: 'procedure', id: 'p-1' })
+  );
+});
+
+test('documents linked to one target, newest first, and not the others', async () => {
+  const { journal } = await device();
+  const older = await journal.documents.addDocument({ epochDay: 8900, title: 'Older opinion' }, page());
+  const newer = await journal.documents.addDocument({ epochDay: 20000, title: 'Newer opinion' }, page());
+  const elsewhere = await journal.documents.addDocument({ epochDay: 19000, title: 'Unrelated' }, page());
+
+  await journal.documents.setDocumentTarget(older, { kind: 'goal', id: 'pl-medical-keep-opinions' });
+  await journal.documents.setDocumentTarget(newer, { kind: 'goal', id: 'pl-medical-keep-opinions' });
+  await journal.documents.setDocumentTarget(elsewhere, { kind: 'milestone', id: 'm-1' });
+
+  const linked = await journal.documents.getDocumentsLinkedTo('goal', 'pl-medical-keep-opinions');
+  assert.deepEqual(
+    linked.map((d) => d.id),
+    [newer, older]
+  );
 });

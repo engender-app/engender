@@ -23,6 +23,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import DocumentTargetPicker from '$lib/components/DocumentTargetPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -30,11 +31,14 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
-  import { journal } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { readThumbnail } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import type { JournalDocument } from '$lib/data/types';
+  import { documentTarget } from '$lib/data/journal/documents';
+  import { POLISH_PACK } from '$lib/data/roadmap';
+  import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
+  import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -50,6 +54,52 @@
   let stored = $derived(detail.record);
 
   let confirming = $state(false);
+
+  /* The target's own name and where to find it (ticket 56, ADR-0065): the
+     document names its target and links to it. Milestone, procedure and
+     episode have no per-record route (RecordSheet/Sheet editors on their
+     own list screens rather than a `[id]` page), so this links to the
+     owning list screen the same way provenance.ts already does for a
+     procedure or a roadmap goal - the person taps the row there. A goal
+     links to its own sheet through the `?goal=` query param ADR-0068 adds. */
+  let target = $derived(stored ? documentTarget(stored) : null);
+
+  let milestonesQuery = liveList((j) => j.milestones.getMilestones());
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let customGoalsQuery = liveList((j) => j.roadmap.getCustomGoals());
+
+  let targetLabel = $derived.by((): { text: string; href: string } | null => {
+    if (!target) return null;
+    if (target.kind === 'milestone') {
+      const milestone = milestonesQuery.rows.find((m) => m.id === target.id);
+      return milestone ? { text: milestone.name, href: '/transition/milestones' } : null;
+    }
+    if (target.kind === 'procedure') {
+      const procedure = proceduresQuery.rows.find((p) => p.id === target.id);
+      return procedure ? { text: procedure.name, href: '/health/surgery' } : null;
+    }
+    if (target.kind === 'episode') {
+      const episode = episodesQuery.rows.find((e) => e.id === target.id);
+      return episode ? { text: episode.drug, href: '/settings/regimen' } : null;
+    }
+    const builtinGoal = POLISH_PACK.goals.find((g) => g.key === target.id);
+    if (builtinGoal) return { text: roadmapGoalTitle(builtinGoal.key), href: `/transition/roadmap?goal=${target.id}` };
+    const customGoal = customGoalsQuery.rows.find((g) => g.id === target.id);
+    return customGoal ? { text: customGoal.text, href: `/transition/roadmap?goal=${target.id}` } : null;
+  });
+
+  let pickingTarget = $state(false);
+
+  async function pickTarget(next: DocumentTarget | null) {
+    if (!stored) return;
+    try {
+      await journal.documents.setDocumentTarget(stored.id, next);
+    } catch (error) {
+      console.error('a document link could not be saved', error);
+      toast(m.document_edit_failed());
+    }
+  }
 
   /* The page, drawn at whatever shape it is rather than through PhotoThumb.
      That primitive is a fixed square tile with a caption across the bottom,
@@ -146,6 +196,31 @@
           <DatePicker name="document-day" bind:value={draft.day} {id} />
         {/snippet}
       </Field>
+      <Field label={m.document_link_label()} legend>
+        {#snippet children()}
+          <div class="kit-row is-static" data-document-link>
+            <span class="kit-row-text">
+              {#if target && targetLabel}
+                <a class="kit-row-title" href={targetLabel.href}>{targetLabel.text}</a>
+              {:else if target}
+                <span class="kit-row-sub">{m.document_target_gone()}</span>
+              {:else}
+                <span class="kit-row-sub">{m.document_link_none()}</span>
+              {/if}
+            </span>
+            <span class="kit-row-trail">
+              <button
+                type="button"
+                class="btn btn-ghost press"
+                data-pick-document-target
+                onclick={() => (pickingTarget = true)}
+              >
+                <span>{target ? m.document_link_change() : m.document_link_add()}</span>
+              </button>
+            </span>
+          </div>
+        {/snippet}
+      </Field>
       <button
         class="btn btn-primary press"
         data-save-document
@@ -182,6 +257,13 @@
     confirmAttrs={{ 'data-confirm-delete-document': '' }}
     onConfirm={deleteDocument}
     onCancel={() => (confirming = false)}
+  />
+
+  <DocumentTargetPicker
+    open={pickingTarget}
+    current={target}
+    onPick={(next) => pickTarget(next)}
+    onClose={() => (pickingTarget = false)}
   />
 </div>
 

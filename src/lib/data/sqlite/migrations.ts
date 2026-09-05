@@ -2369,6 +2369,52 @@ CREATE TABLE document (
 CREATE INDEX idx_document_epoch_day ON document(epoch_day);
 `;
 
+/* v77: a document's optional link (phase 8 features ticket 56, ADR-0065):
+   at most one, to a roadmap goal, a milestone, a procedure or a regimen
+   episode. The same closed pair `checklist.owner_kind`/`owner_uuid` (v10)
+   already uses, both set or both null - except this pair is a fixed set of
+   four kinds rather than an open string, so `target_kind` also carries a
+   CHECK over the four.
+
+   A rebuild rather than two ADD COLUMNs: v13's header gives the reason -
+   SQLite cannot ALTER a table-level CHECK in place, and the pair's CHECK
+   needs both new columns to exist first.
+
+   No foreign key on `target_id`: it names a row in whichever of four
+   different tables `target_kind` says, which a single REFERENCES clause
+   cannot express, and a built-in roadmap goal is not a row at all (it is a
+   pack-and-key string compiled from roadmap.ts, never persisted). So
+   `target_id` is a plain uuid for the other three kinds and either a
+   pack-prefixed key or a custom goal's own uuid for 'goal' - the same
+   duality `milestone.roadmap_goal_key` (v43) already stores in one column.
+
+   The link is nulled by the two deletes that exist for these four kinds -
+   `deleteMilestone`, `deleteProcedure` - the same UPDATE-before-DELETE
+   order those two already use for `milestone.procedure_id`/`tryout_id`.
+   The other two kinds have no delete to null it from: regimen.ts's header
+   states "episodes are never deleted", and provenance.ts's already states
+   "nothing can delete a roadmap goal today" - so a document linked to
+   either can never dangle in practice, the same standing fact that lets
+   a roadmap goal key go un-nulled on milestone. */
+const SCHEMA_V77 = `
+CREATE TABLE document_v77 (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  epoch_day   INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  file_path   TEXT NOT NULL,
+  target_kind TEXT CHECK (target_kind IN ('goal', 'milestone', 'procedure', 'episode')),
+  target_id   TEXT,
+  updated_at  INTEGER NOT NULL,
+  CHECK ((target_kind IS NULL) = (target_id IS NULL))
+);
+INSERT INTO document_v77 (id, uuid, epoch_day, title, file_path, target_kind, target_id, updated_at)
+  SELECT id, uuid, epoch_day, title, file_path, NULL, NULL, updated_at FROM document;
+DROP TABLE document;
+ALTER TABLE document_v77 RENAME TO document;
+CREATE INDEX idx_document_epoch_day ON document(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2445,5 +2491,6 @@ export const migrations: Migration[] = [
   { version: 73, sql: SCHEMA_V73 },
   { version: 74, sql: SCHEMA_V74 },
   { version: 75, sql: SCHEMA_V75 },
-  { version: 76, sql: SCHEMA_V76 }
+  { version: 76, sql: SCHEMA_V76 },
+  { version: 77, sql: SCHEMA_V77 }
 ];
