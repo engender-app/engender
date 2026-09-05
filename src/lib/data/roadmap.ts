@@ -140,3 +140,46 @@ export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 /** One track's goals, in the order the pack lists them. */
 export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: RoadmapTrack): RoadmapGoal<K>[] =>
   pack.goals.filter((goal) => goal.track === track);
+
+/** One track as the screen draws it: the track itself, whether the person
+    has said it is not their path, and the goals left to show. */
+export interface RoadmapSection<K extends string, C> {
+  readonly track: RoadmapTrack;
+  readonly dismissed: boolean;
+  /** Empty for a dismissed track. The stored ticks are untouched - putting
+      a track back brings back exactly what was ticked in it. */
+  readonly goals: readonly RoadmapGoal<K>[];
+  readonly customGoals: readonly C[];
+}
+
+/** The whole roadmap, track by track, with a dismissed track's goals folded
+    away (phase 8 features ticket 49 item 5, CONTEXT: "Roadmap track").
+
+    "Not my path" existed per goal only, so somebody the medical track has
+    nothing to do with had to say so on each of its seven goals in turn.
+    Said once per track it means the same thing one grain out, and it folds
+    the same way `hidden` folds a hub row: the track stays on screen so it
+    can be put back, and nothing inside it prompts. There is nothing further
+    to gate - the milestone offer only fires from a tap on a goal, and a
+    folded goal has nothing to tap.
+
+    Built by walking `ROADMAP_TRACKS` rather than the goals present, which
+    is what makes a fifth track cost nothing here and what
+    roadmap.test.ts's coverage test is able to fail on: a screen listing
+    tracks for itself would be free to miss one, and this is the one list. */
+export function roadmapSections<K extends string, C extends { readonly track: string }>(
+  pack: RoadmapPack<K>,
+  customGoals: readonly C[],
+  dismissedTracks: readonly string[]
+): RoadmapSection<K, C>[] {
+  const dismissed = new Set(dismissedTracks);
+  return ROADMAP_TRACKS.map((track) => {
+    const isDismissed = dismissed.has(track);
+    return {
+      track,
+      dismissed: isDismissed,
+      goals: isDismissed ? [] : goalsInTrack(pack, track),
+      customGoals: isDismissed ? [] : customGoals.filter((goal) => goal.track === track)
+    };
+  });
+}
