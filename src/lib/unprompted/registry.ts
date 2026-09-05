@@ -83,6 +83,7 @@ export type UnpromptedKind =
   | 'pause-active-banner'
   | 'hair-removal-recovery'
   | 'measurements-nudge'
+  | 'appointment-today'
   | 'wrapped'
   | 'on-this-day'
   | 'revisit'
@@ -251,6 +252,14 @@ const ROWS = [
     area: 'measurements',
     title: () => m.tile_measurements_title(),
     surface: { subtitle: () => m.tile_measurements_sub(), prefKey: 'measurementsNudgeEnabled' }
+  },
+  {
+    key: 'appointment-today',
+    // appointments is its own hideable series (hubRows.ts): hiding it takes
+    // this tile with it the same way hiding wearSessions takes wear-timer.
+    area: 'appointments',
+    title: () => m.tile_appointment_title(),
+    surface: { subtitle: () => m.tile_appointment_sub(), prefKey: 'appointmentTodayEnabled' }
   },
   {
     key: 'wrapped',

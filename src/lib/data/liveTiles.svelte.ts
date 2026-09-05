@@ -1,9 +1,9 @@
 /* Home's live-tile grid, as one read (phase 8 deepening ticket 07).
 
-   The seventeen queries behind the eleven tiles, the preference each tile
+   The eighteen queries behind the twelve tiles, the preference each tile
    answers to, its snooze, and the writes its controls make. What comes out
    is the ordered list Home draws and nothing else - the composition, the
-   order and the eleven tiles' own content are liveTiles.ts's, which is a
+   order and the twelve tiles' own content are liveTiles.ts's, which is a
    plain module so the Node tier can test them (ADR-0016, ADR-0017).
 
    A `.svelte.ts` because the reads are runes: `liveQuery`/`liveList` are
@@ -22,7 +22,7 @@
    for three ids, the whole hair-removal table for its newest row, a
    hydrated bad-moment entry for its id, and one felt-sense query per active
    tryout. More subscriptions than that shape, and a small fraction of the
-   bytes: seventeen narrow reads cost less to cross the worker boundary than
+   bytes: eighteen narrow reads cost less to cross the worker boundary than
    sixteen wide ones, which is what this architecture actually pays for
    (tests/long-journal, `mount-home`). */
 
@@ -115,6 +115,7 @@ export function homeTiles(
      measurement ever stored to reduce to exactly that. */
   const measurementCount = liveQuery((j) => j.measurements.countAll());
   const latestMeasurementDay = liveQuery((j) => j.measurements.lastWriteEpochDay(todayEpochDay));
+  const todayAppointments = liveList((j) => j.appointments.getDayRecords(todayEpochDay));
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();
@@ -167,7 +168,8 @@ export function homeTiles(
         latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
         journalingPauses: journalingPauses.rows,
         latestHairRemovalSession: latestHairRemoval.value ?? null,
-        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null }
+        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null },
+        todayAppointments: todayAppointments.rows
       },
       actions: {
         stopWear: (session) => {
