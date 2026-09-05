@@ -14,6 +14,7 @@
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
 import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
+import { episodeEndReasonLabel } from '$lib/data/vocabulary/doseLabels';
 import type { ChartAnnotation, ChartAnnotationKind } from '$lib/charts/annotations';
 
 /** What each kind of thing is called, for a record that carries no name of
@@ -108,11 +109,17 @@ export function annotationLine(annotation: ChartAnnotation): string {
   if (annotation.shape === 'point') {
     return m.chart_annotation_point({ label, day: fmtDay(annotation.fromEpochDay, short) });
   }
-  return m.chart_annotation_span({
+  const span = m.chart_annotation_span({
     label,
     from: fmtDay(annotation.fromEpochDay, short),
     to: fmtDay(annotation.toEpochDay, short)
   });
+  // Ticket 43. Gated on endsInRange, not just on endReason being set: the
+  // edge this line names might be the chart's own boundary rather than the
+  // episode's real end, and a reason attached to the wrong date would be a
+  // false claim about when it happened.
+  if (annotation.kind !== 'regimen' || !annotation.endReason || !annotation.endsInRange) return span;
+  return m.chart_annotation_regimen_end_reason({ span, reason: episodeEndReasonLabel(annotation.endReason) });
 }
 
 /** How many names the caption writes before it stops naming them. Three fits

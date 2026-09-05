@@ -483,7 +483,8 @@ export async function generateLongJournal(
     route: 'oral',
     interval: 'Monday, Wednesday, Friday',
     startEpochDay: regimenStartEpochDay,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertSchedule({
     episodeId,
@@ -522,7 +523,8 @@ export async function generateLongJournal(
     route: 'oral',
     interval: 'daily',
     startEpochDay: secondEpisodeStartEpochDay,
-    endEpochDay: secondEpisodeEndEpochDay
+    endEpochDay: secondEpisodeEndEpochDay,
+    endReason: null
   });
   await journal.doses.upsertSchedule({
     episodeId: secondEpisodeId,
@@ -558,7 +560,8 @@ export async function generateLongJournal(
     route: 'im',
     interval: 'weekly',
     startEpochDay: thirdEpisodeStartEpochDay,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertSchedule({
     episodeId: thirdEpisodeId,

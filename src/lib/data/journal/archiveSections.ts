@@ -742,6 +742,9 @@ const SECTIONS = [
   }),
   // `end_epoch_day` is absent on an archive from before ticket 38 - read as
   // still ongoing, the same as every pre-existing episode's backfill (v40).
+  // `end_reason` is absent the same way on an archive from before ticket 43 -
+  // read as no reason recorded, which is what every episode ended before
+  // this shipped actually has.
   flat({
     name: 'regimenEpisodes',
     travels: 'none',
@@ -757,7 +760,8 @@ const SECTIONS = [
       route: 'route',
       interval: 'interval',
       start_epoch_day: 'startEpochDay',
-      end_epoch_day: { field: 'endEpochDay', whenAbsent: null }
+      end_epoch_day: { field: 'endEpochDay', whenAbsent: null },
+      end_reason: { field: 'endReason', whenAbsent: null }
     }
   }),
   // Carries no episode link: which episode a dose belongs to is resolved

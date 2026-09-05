@@ -130,7 +130,8 @@ test('cycle tracking keeps its own gate: no row here changes what it answers', (
     route: 'im',
     interval: 'weekly',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   };
   const noon = 19500 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000;
 

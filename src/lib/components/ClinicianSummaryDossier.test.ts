@@ -34,6 +34,11 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('m.clinician_summary_dose_history()');
   });
 
+  it('prints an ended episode\'s end reason as a clause on its own date range, when one is set (ticket 43)', () => {
+    expect(dossierComponent).toContain('m.clinician_summary_regimen_end_reason(');
+    expect(dossierComponent).toContain('ep.endReason');
+  });
+
   it('renders cumulative exposure section', () => {
     expect(dossierComponent).toContain('{#if dossier.exposure}');
     expect(dossierComponent).toContain('data-dossier-section="exposure"');

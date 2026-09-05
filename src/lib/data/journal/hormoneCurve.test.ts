@@ -42,6 +42,7 @@ async function episode(journal: Journal, startEpochDay: number, overrides: Parti
     interval: 'every 7 days',
     startEpochDay,
     endEpochDay: null,
+    endReason: null,
     ...overrides
   });
 }
@@ -456,6 +457,7 @@ async function shapeEpisode(
     interval: 'every day',
     startEpochDay,
     endEpochDay: null,
+    endReason: null,
     ...overrides
   });
 }

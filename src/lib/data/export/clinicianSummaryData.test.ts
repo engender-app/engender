@@ -18,7 +18,8 @@ beforeEach(async () => {
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   await journal.doses.upsertDose({
@@ -41,7 +42,8 @@ beforeEach(async () => {
     route: 'oral',
     interval: 'daily',
     startEpochDay: 19050,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   await journal.labs.upsertResult({

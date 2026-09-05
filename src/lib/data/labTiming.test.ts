@@ -108,6 +108,7 @@ const episode = (over: Partial<RegimenEpisode> = {}): RegimenEpisode => ({
   interval: 'daily',
   startEpochDay: DAY - 100,
   endEpochDay: null,
+  endReason: null,
   ...over
 });
 

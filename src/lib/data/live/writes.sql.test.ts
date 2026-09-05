@@ -481,7 +481,8 @@ beforeAll(async () => {
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
-      endEpochDay: null
+      endEpochDay: null,
+      endReason: null
     })
   )) as string;
   const secondEpisodeId = (await drive('regimen', 'upsertEpisode', () =>
@@ -493,7 +494,8 @@ beforeAll(async () => {
       route: 'oral',
       interval: 'daily',
       startEpochDay: 19100,
-      endEpochDay: null
+      endEpochDay: null,
+      endReason: null
     })
   )) as string;
   await drive('regimen', 'endEpisode', () => journal.regimen.endEpisode(secondEpisodeId, 19400));
