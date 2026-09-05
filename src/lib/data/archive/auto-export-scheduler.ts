@@ -9,7 +9,6 @@ import { m } from '$lib/paraglide/messages';
 import { notificationText } from '../../unprompted/notificationText';
 import { quietHoursOf } from '../../unprompted/quietHours';
 import { androidAutoExport } from './android-auto-export-bridge';
-import { isDue, runAndroidAutoExport } from './android-auto-export';
 import { exportFailureNoticeStep } from './failureNotice';
 
 let active = false;
@@ -65,6 +64,11 @@ async function maybeRun() {
   await reportFailure(false, now);
 
   const status = await androidAutoExport.status();
+  /* Dynamic, not a top-of-file import: this drags in the packer and the
+     payload/preference-migration code (135 KB combined with the date
+     picker), which every cold boot paid for even though the check right
+     below is due maybe once a week (phase 8 audit F6). */
+  const { isDue, runAndroidAutoExport } = await import('./android-auto-export');
   if (!isDue(status, now)) return;
 
   running = true;

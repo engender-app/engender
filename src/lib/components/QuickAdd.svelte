@@ -56,7 +56,6 @@
   import { goto } from '$app/navigation';
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
-  import DatePicker from './DatePicker.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { isHrtOnsetWindowCurrent } from '$lib/data/personalEffectWindow';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -665,7 +664,17 @@
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.new_entry_when()}</p>
   <label class="field-label" for="backdate">{m.another_day()}</label>
   <div class="spread" style="margin-top:var(--space-2)">
-    <DatePicker id="backdate" name="backdate" max={dateInputValueFromEpochDay(todayEpochDay())} bind:value={backdate} />
+    <!-- Dynamic, not a top-of-file import: flatpickr is 52 KB nobody needs
+         before the backdate field opens, and a static import here put it in
+         every cold boot's eager preload set, including the passphrase gate
+         (phase 8 audit F6). The placeholder below matches DatePicker's own
+         `class="input"` box so the field does not jump when the chunk lands
+         and swaps it in - keep the two in sync if DatePicker's markup changes. -->
+    {#await import('./DatePicker.svelte')}
+      <input class="input" id="backdate" name="backdate" disabled aria-label={m.another_day()} />
+    {:then { default: DatePicker }}
+      <DatePicker id="backdate" name="backdate" max={dateInputValueFromEpochDay(todayEpochDay())} bind:value={backdate} />
+    {/await}
     <button class="btn btn-soft press" data-choose="date" onclick={chooseDate}>{m.go()}</button>
   </div>
 </Sheet>
