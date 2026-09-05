@@ -2206,6 +2206,46 @@ CREATE TABLE word_frequency_ignore (
 );
 `;
 
+/* v72: the documents area (phase 8 features ticket 52, ADR-0065). A
+   transition generates paper - a psychiatric opinion, a diagnosis, a court
+   ruling, a referral - and the app held none of it, so the alternative was
+   the diagnosis PDF sitting in a phone's Downloads folder that the threat
+   model exists to keep it out of.
+
+   Flat and small on purpose: the day the paper is from, the title the person
+   wrote, and the stored file. No child table, no folder, no tag, no
+   category - ADR-0065's "every filing system grows a taxonomy the person
+   then has to maintain".
+
+   `title` is NOT NULL with no default because a row with no title says
+   nothing: search matches a document by its title and by nothing else
+   (ADR-0065 again - the app never reads a document's contents), so an
+   untitled row would be unfindable by the one handle it has. The import
+   sheet refuses an empty one before it gets here.
+
+   `epoch_day` is its own column rather than inherited from an owner the way
+   `photo`'s day is: a document is dated by when the paper is from, which for
+   a diagnosis from 1994 is nothing to do with when it was scanned in.
+
+   `file_path` holds the same opaque `<uuid>.jpg` a photo row does
+   (photos/names.ts), because an image document goes through the existing
+   normalisation and gets ADR-0015's metadata strip and a thumbnail on the
+   way in. Ticket 53 is what widens it past images.
+
+   The link column ADR-0065 describes - at most one, to a goal, a milestone,
+   a procedure or an episode - is ticket 56's and deliberately not here. */
+const SCHEMA_V72 = `
+CREATE TABLE document (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  title      TEXT NOT NULL,
+  file_path  TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_document_epoch_day ON document(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2277,5 +2317,6 @@ export const migrations: Migration[] = [
   { version: 68, sql: SCHEMA_V68 },
   { version: 69, sql: SCHEMA_V69 },
   { version: 70, sql: SCHEMA_V70 },
-  { version: 71, sql: SCHEMA_V71 }
+  { version: 71, sql: SCHEMA_V71 },
+  { version: 72, sql: SCHEMA_V72 }
 ];
