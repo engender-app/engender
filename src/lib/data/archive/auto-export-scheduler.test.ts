@@ -58,6 +58,7 @@ import { isDue } from './android-auto-export';
 import { startAutoExportScheduler, stopAutoExportScheduler } from './auto-export-scheduler';
 
 const flush = async () => {
+  await vi.advanceTimersByTimeAsync(0);
   for (let i = 0; i < 12; i++) await Promise.resolve();
 };
 
