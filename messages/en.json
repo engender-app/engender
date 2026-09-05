@@ -139,7 +139,7 @@
   "cal_jump_month": "Jump to month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries.",
+  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries. A day ahead with a small mark has something coming up; tap it to see what.",
   "legend_none": "no entry",
   "entries_this_day": [
     {
@@ -1866,6 +1866,7 @@
   "week_cell_no_entry": "{day}: no entry",
   "week_cell_level": "{day}: level {level} of 4",
   "heat_cell_none": "{date}, no entries",
+  "heat_cell_coming_up": "{date}, something coming up",
   "heat_cell_entries": [
     {
       "declarations": [
