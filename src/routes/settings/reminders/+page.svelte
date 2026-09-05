@@ -4,11 +4,15 @@
   import { resolveReminderOrigin } from '$lib/data/provenance';
   import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
   import Switch from '$lib/components/Switch.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
 
@@ -17,6 +21,13 @@
 
   let reminders = liveList((j) => j.reminders.getReminders());
   let status = $state<AndroidReminderStatus>({ notifications: 'not-required', exactAlarms: 'not-required' });
+
+  // Web's one write (ADR-0063): a reminder that can never ring on this
+  // device still needs a cancel path, and this is it.
+  const record = recordEditor<Reminder>({
+    remove: (id) => journal.reminders.deleteReminder(id),
+    findById: (id) => reminders.rows.find((r) => r.id === id)
+  });
 
   async function refreshStatus() {
     if (isWeb) return;
@@ -68,11 +79,42 @@
   </ScreenHeader>
 
   {#if isWeb}
-    <EmptyState
-      title={m.rem_web_title()}
-      text={m.rem_web_body()}
+    <p class="muted small" style="text-align:center">{m.rem_web_list_note()} {m.rem_web_note()}</p>
+
+    {#if reminders.rows.length === 0}
+      <Notice icon="bell" key="reminders-empty" title={m.rem_empty_title()} text={m.rem_empty_body()} />
+    {:else}
+      <ListCard>
+        {#each reminders.rows as r (r.id)}
+          {@const origin = resolveReminderOrigin(r)}
+          <ListRow
+            static
+            key={r.id}
+            data-reminder={r.id}
+            icon={TYPE_ICON[r.type] || 'bell'}
+            title={r.title}
+            subtitle={[`${reminderTypeLabel(r.type)} · ${reminderScheduleLabel(r)}`, origin?.text]}
+            action={{
+              icon: 'trash',
+              label: m.rem_delete_aria({ title: r.title }),
+              onclick: () => record.askToDelete(r)
+            }}
+          />
+        {/each}
+      </ListCard>
+    {/if}
+
+    <RecordSheet
+      {record}
+      handle="reminder"
+      confirm={{
+        title: m.rem_delete_sheet(),
+        question: (reminder) => m.rem_delete_q({ title: reminder.title }),
+        hint: () => m.rem_delete_hint(),
+        confirmLabel: m.rem_delete(),
+        cancelLabel: m.keep_it()
+      }}
     />
-    <p class="muted small" style="text-align:center">{m.rem_web_note()}</p>
   {:else}
     <div class="card checkin-card">
       <div class="spread">
