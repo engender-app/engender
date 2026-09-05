@@ -27,6 +27,13 @@ describe('noteLanguage', () => {
     expect(noteLanguage('')).toBe('en');
     expect(noteLanguage('Marta 2026')).toBe('en');
   });
+
+  // The diacritic test reads the raw note rather than a lowercased copy of
+  // it (phase 8 audit ticket 17), so both cases have to be in the class.
+  it('reads a diacritic in either case', () => {
+    expect(noteLanguage('DZIŚ BYŁO CIĘŻKO')).toBe('pl');
+    expect(noteLanguage('Żal')).toBe('pl');
+  });
 });
 
 describe('wordFrequency', () => {
@@ -157,6 +164,10 @@ describe('reading a note once', () => {
       note('happy again this morning', 'p1')
     ]);
     const grouped = groupByPresentation(analysed);
+    // The rows still carry their `note`, since analysing keeps the row it
+    // read - so the assertion below is that counting declines to look at
+    // text it is holding, not that the text is out of reach.
+    expect(analysed[0].note).toBe('I am happy today');
 
     // Every tap the screen's filter can make: one presentation, the other,
     // then back to the unfiltered list.
