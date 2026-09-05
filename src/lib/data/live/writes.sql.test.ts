@@ -898,6 +898,12 @@ beforeAll(async () => {
   await driveRead('doses', 'getPauses', () => journal.doses.getPauses());
   await driveRead('doses', 'getComparison', () => journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 20000 }));
   await driveRead('doses', 'lastWriteEpochDay', () => journal.doses.lastWriteEpochDay(20000));
+  await driveRead('doses', 'countConsumingDosesByDrug', () =>
+    journal.doses.countConsumingDosesByDrug([
+      { fromEpochDay: 19000, toEpochDay: 19500 },
+      { fromEpochDay: 19501, toEpochDay: 20000 }
+    ])
+  );
   await driveRead('stock', 'getEntries', () => journal.stock.getEntries());
   await driveRead('stock', 'getProjections', () => journal.stock.getProjections(20000));
   await driveRead('exposure', 'getCounters', () => journal.exposure.getCounters(0, 30000));

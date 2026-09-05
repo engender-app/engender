@@ -11,6 +11,7 @@ import type { SqliteDriver } from '../sqlite/driver.ts';
 import type { RemindersArea } from './reminders.ts';
 import { makeStockArea } from './stock.ts';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource.ts';
+import { projectStock } from '../stockProjection.ts';
 
 const DIED = /the process died here/;
 
@@ -396,4 +397,115 @@ test('a death mid-delete cannot leave a reminder for a drug with no stock row', 
   await journal.stock.deleteEntry(stockId);
   assert.deepEqual(await journal.stock.getEntries(), []);
   assert.deepEqual(await journal.reminders.getReminders(), []);
+});
+
+/* Phase 8 audit ticket 26: the projections used to be reduced out of every
+   dose the log held once one count was old. These pin the figures against
+   projectStock, which still counts the doses in JS, so the two ways of
+   arriving at a projection cannot drift. */
+async function assertProjectionsMatchTheDoses(journal: Journal, asOfEpochDay: number, what: string) {
+  const rows = await journal.stock.getProjections(asOfEpochDay);
+  const entries = await journal.stock.getEntries();
+  const episodes = await journal.regimen.getEpisodes();
+  const earliest = Math.min(...entries.map((entry) => entry.recordedEpochDay), asOfEpochDay);
+  const doses = await journal.doses.getDoses(earliest, asOfEpochDay);
+
+  assert.deepEqual(
+    rows.map((row) => row.projection),
+    entries.map((entry) => projectStock(entry, doses, episodes, asOfEpochDay)),
+    what
+  );
+}
+
+test('a years-old count projects the same figures as counting every dose would', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 100, 'estradiol');
+
+  // Daily doses over three years, none of them naming a drug - so every one
+  // resolves through the episode, which is the expensive case.
+  for (let day = 100; day <= 1200; day += 1) {
+    await journal.doses.upsertDose({ timestamp: at(day), route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+  // One count taken at the very start and one taken near the end, the shape
+  // the long-journal fixture is built to provoke.
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 900, unit: 'tablets', recordedEpochDay: 100 });
+  await journal.stock.upsertEntry({ drug: 'spironolactone', quantity: 30, unit: 'tablets', recordedEpochDay: 1190 });
+
+  await assertProjectionsMatchTheDoses(journal, 1200, 'a years-old count and a recent one');
+
+  // The old count has been outrun: 1101 doses against a count of 900.
+  const [estradiol] = (await journal.stock.getProjections(1200)).filter((row) => row.entry.drug === 'estradiol');
+  assert.equal(estradiol.projection.remaining, -201, 'remaining is free to go negative');
+  assert.equal(estradiol.projection.runOutEpochDay, 1200, 'already outrun, so the run-out day is today');
+});
+
+test('concurrent episodes naming different drugs leave their doses out of every count', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 100, 'estradiol');
+  await journal.regimen.upsertEpisode({
+    drug: 'spironolactone',
+    ester: null,
+    dose: 50,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 150,
+    endEpochDay: 179
+  });
+
+  // Days 150-179 have two episodes for different drugs, so a dose naming
+  // nothing there is ambiguous and counts against neither drug.
+  for (let day = 140; day <= 190; day += 1) {
+    await journal.doses.upsertDose({ timestamp: at(day), route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 100, unit: 'tablets', recordedEpochDay: 140 });
+
+  await assertProjectionsMatchTheDoses(journal, 190, 'a stretch of concurrent episodes');
+
+  const [row] = await journal.stock.getProjections(190);
+  assert.equal(row.projection.excludedDoses, 30, 'the thirty ambiguous days are counted and left out');
+  assert.equal(row.projection.remaining, 100 - 21, 'only the unambiguous doses consume the count');
+});
+
+test('a dose naming its own drug counts even where the episodes are ambiguous', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 100, 'estradiol');
+  await journal.regimen.upsertEpisode({
+    drug: 'spironolactone',
+    ester: null,
+    dose: 50,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 100,
+    endEpochDay: null
+  });
+
+  for (let day = 100; day <= 109; day += 1) {
+    await journal.doses.upsertDose({
+      timestamp: at(day),
+      route: 'oral',
+      dose: 2,
+      doseUnit: 'mg',
+      // Trailing space on purpose: a drug is matched trimmed, everywhere.
+      drug: day % 2 === 0 ? 'estradiol ' : null
+    });
+  }
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'tablets', recordedEpochDay: 100 });
+
+  await assertProjectionsMatchTheDoses(journal, 109, 'named doses among ambiguous ones');
+
+  const [row] = await journal.stock.getProjections(109);
+  assert.equal(row.projection.remaining, 5, 'the five named doses count');
+  assert.equal(row.projection.excludedDoses, 5, 'the five unnamed ones are ambiguous');
+});
+
+test('an entry counted after the day asked about consumes nothing and has no rate', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 100, 'estradiol');
+  await journal.doses.upsertDose({ timestamp: at(100), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 20, unit: 'tablets', recordedEpochDay: 300 });
+
+  const [row] = await journal.stock.getProjections(200);
+  assert.deepEqual(row.projection, { remaining: 20, dailyRate: null, runOutEpochDay: null, excludedDoses: 0 });
 });
