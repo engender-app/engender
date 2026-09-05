@@ -696,10 +696,16 @@ export async function generateLongJournal(
     summary.personalEffects++;
   }
 
-  // Wear sessions: a year, irregular, most backfilled with a duration.
+  /* Wear sessions: a year, irregular, most backfilled with a duration, and
+     one of the three kinds off a single draw - a second conditional draw
+     would spend a different count of the seeded sequence depending on the
+     first, and every fixture value generated after this would move with
+     it (ticket 50). */
+  const wearKindFor = (roll: number) => (roll < 0.6 ? 'binder' : roll < 0.8 ? 'tucking' : 'compression');
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.55) continue;
     await journal.wearSessions.upsertSession({
+      kind: wearKindFor(random()),
       startTimestamp: (day * 24 + 8) * 3_600_000,
       durationMs: between(2, 8) * 3_600_000,
       note: random() < 0.2 ? 'a bit tight by the end' : null

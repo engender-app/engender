@@ -2251,6 +2251,29 @@ CREATE TABLE roadmap_track (
 );
 `;
 
+/* v74: which practice a wear session was (phase 8 features ticket 50,
+   ADR-0064). Numbered v74 rather than v71: tickets 48 and 47 took v71 to
+   v73 on main while this branch was open, so this was renumbered at the
+   merge rather than fought over.
+
+   v22 merged binder and tucking into one table with no column telling them
+   apart, so no copy, chart default or duration cue could ever be specific
+   to either; `kind` is that column, closed to three values (`binder`,
+   `tucking`, `compression`) drafted in messages/*.json.
+
+   NOT NULL because a session with no kind has no wording to draw - every
+   user-facing string on that screen is picked by it. SQLite cannot add a
+   NOT NULL column without a default, and the default doubles as the
+   backfill for rows written before this migration: the app is unpublished,
+   so the ticket leaves what an existing row becomes free, and `binder` is
+   the kind the feature shipped named after. No CHECK, the same reasoning
+   v69 and v70 give: the write layer (wearSessions.ts) is the one writer,
+   and a CHECK would refuse to even read back a row arriving from an older
+   archive. */
+const SCHEMA_V74 = `
+ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2324,5 +2347,6 @@ export const migrations: Migration[] = [
   { version: 70, sql: SCHEMA_V70 },
   { version: 71, sql: SCHEMA_V71 },
   { version: 72, sql: SCHEMA_V72 },
-  { version: 73, sql: SCHEMA_V73 }
+  { version: 73, sql: SCHEMA_V73 },
+  { version: 74, sql: SCHEMA_V74 }
 ];

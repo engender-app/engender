@@ -157,6 +157,7 @@ export function homeTiles(
         letters: letters.rows,
         dueRevisits: dueRevisits.rows,
         latestBadEntryId: latestBadEntryId.value,
+        wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
         tryouts: tryouts.rows,
         latestFeltSenseByTryoutId: tryoutFeltSense.value ?? new Map(),
@@ -172,6 +173,7 @@ export function homeTiles(
         stopWear: (session) => {
           void journal.wearSessions.upsertSession({
             id: session.id,
+            kind: session.kind,
             startTimestamp: session.startTimestamp,
             durationMs: Date.now() - session.startTimestamp,
             note: session.note

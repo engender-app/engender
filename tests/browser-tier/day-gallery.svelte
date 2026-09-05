@@ -110,7 +110,7 @@
       }
     ],
     measurements: [{ id: 'm1', type: 'waist', epochDay: DAY, value: 78.5, unit: 'cm' }],
-    wearSessions: [{ id: 'w1', startTimestamp: at(9), durationMs: 5_400_000, note: null }],
+    wearSessions: [{ id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null }],
     tallyEvents: [{ id: 't1', epochDay: DAY, kind: 'correctly_gendered' }]
   };
 
@@ -196,8 +196,8 @@
       { id: 't3', epochDay: DAY, kind: 'misgendered' }
     ],
     wearSessions: [
-      { id: 'w1', startTimestamp: at(9), durationMs: 5_400_000, note: null },
-      { id: 'w2', startTimestamp: at(19), durationMs: null, note: 'still on' }
+      { id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null },
+      { id: 'w2', kind: 'binder', startTimestamp: at(19), durationMs: null, note: 'still on' }
     ],
     feltSense: [
       { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { kind: 'tryout', id: 'ty1', name: 'Robin' } }

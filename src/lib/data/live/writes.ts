@@ -574,7 +574,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       upsertSession: ['wearSession', 'reminder'],
       deleteSession: ['wearSession', 'reminder']
     },
-    reads: { getSessions: ['wearSession'], getRunningSession: ['wearSession'], lastWriteEpochDay: ['wearSession'] }
+    reads: {
+      getSessions: ['wearSession'],
+      getRunningSession: ['wearSession'],
+      latestKind: ['wearSession'],
+      lastWriteEpochDay: ['wearSession']
+    }
   }),
   hairProgress: classify<Journal['hairProgress']>()({
     writes: {

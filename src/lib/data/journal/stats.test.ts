@@ -310,9 +310,9 @@ test('a body-region trend filters by presentation, and partitions the unfiltered
 test('a wear-time trend averages completed sessions per day, in hours', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: 4 * 3600000 });
-  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(100) + 15 * 3600000, durationMs: 2 * 3600000 });
-  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(101) + 9 * 3600000, durationMs: 6 * 3600000 });
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: 4 * 3600000 });
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 15 * 3600000, durationMs: 2 * 3600000 });
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(101) + 9 * 3600000, durationMs: 6 * 3600000 });
 
   assert.deepEqual(await journal.stats.wearTimeTrend(100, 101), [
     { day: 100, value: 3, count: 2 },
@@ -323,7 +323,7 @@ test('a wear-time trend averages completed sessions per day, in hours', async ()
 test('a still-running session has no duration to average and is left out of the trend', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  await journal.wearSessions.upsertSession({ startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: null });
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: null });
 
   assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
 });

@@ -71,6 +71,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { wearReturningRowTitle } from '$lib/data/vocabulary/wearLabels';
   import { readReturnGap, readWhatIsWaiting, WAITING_TABLES } from '$lib/data/comingBackReads';
   import { waitingItemKey, type WaitingItem } from '$lib/data/comingBack';
   import { OFFERS, answerOffer, type ReturningDose, type ReturningWearSession } from '$lib/data/offers';
@@ -270,6 +271,7 @@
     if (!wearDraft) return;
     const subject: ReturningWearSession = {
       sessionId: wearDraft.item.sessionId,
+      wearKind: wearDraft.item.wearKind,
       startTimestamp: wearDraft.item.startTimestamp,
       endEpochDay: epochDayFromDateInputValueOrToday(wearDraft.end)
     };
@@ -363,7 +365,7 @@
               data-coming-back-item="wear-session"
               icon="clock"
               role={roleAt(activeFlag.roles, 1)}
-              title={m.coming_back_wear_row()}
+              title={wearReturningRowTitle(item.wearKind)}
               text={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
               action={{ label: WEAR_OFFER.copy.confirm(), onclick: () => openWear(item) }}
               dismiss={{ label: WEAR_OFFER.copy.decline(), onclick: () => decline(item) }}
