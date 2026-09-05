@@ -2221,6 +2221,51 @@ const SCHEMA_V72 = `
 ALTER TABLE photo ADD COLUMN epoch_day_override INTEGER;
 `;
 
+/* v73: a consult becomes an appointment (phase 8 features ticket 57,
+   ADR-0066). The concept existed on four surfaces and had a row in none: the
+   prep date was a column on the one ownerless checklist, the debrief hung off
+   that same column, the clinician summary used it as a range start, and
+   `procedure_consult` was a genuine dated appointment record reachable only
+   through the procedure that owned it.
+
+   So the consult table grows into the general case rather than acquiring a
+   sibling - two tables for one concept is what a glossary exists to refuse. A
+   consult differs from any other appointment in exactly one way, that it is
+   attached to a procedure, and that is this table's `procedure_id` going
+   nullable rather than a different kind of row.
+
+   The copy, drop, rename shape v37/v38/v63 use, because dropping a column's
+   NOT NULL cannot be done in place. Rowids are carried across unchanged, so
+   `procedure_photo`'s sibling rows and anything holding an appointment's id
+   keep meaning what they meant. `ON DELETE CASCADE` is kept: an appointment
+   that named a procedure still goes with it.
+
+   `kind`, `place` and `note` are all nullable with no default. Nothing ships
+   in either language for `kind` in particular (ADR-0066): its suggestions are
+   the kinds this person has typed before, read off their own rows, because a
+   built-in list of endocrinologist, psychologist, surgeon is a picture of a
+   medical path the app has no business drawing.
+
+   `checklist.appointment_epoch_day` is untouched here and still written -
+   ticket 58 retires it to a read. */
+const SCHEMA_V73 = `
+CREATE TABLE appointment (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid         TEXT NOT NULL UNIQUE,
+  procedure_id INTEGER REFERENCES procedure(id) ON DELETE CASCADE,
+  epoch_day    INTEGER NOT NULL,
+  kind         TEXT,
+  place        TEXT,
+  note         TEXT,
+  updated_at   INTEGER NOT NULL
+);
+INSERT INTO appointment (id, uuid, procedure_id, epoch_day, updated_at)
+  SELECT id, uuid, procedure_id, epoch_day, updated_at FROM procedure_consult;
+DROP TABLE procedure_consult;
+CREATE INDEX idx_appointment_procedure ON appointment(procedure_id);
+CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2293,5 +2338,6 @@ export const migrations: Migration[] = [
   { version: 69, sql: SCHEMA_V69 },
   { version: 70, sql: SCHEMA_V70 },
   { version: 71, sql: SCHEMA_V71 },
-  { version: 72, sql: SCHEMA_V72 }
+  { version: 72, sql: SCHEMA_V72 },
+  { version: 73, sql: SCHEMA_V73 }
 ];
