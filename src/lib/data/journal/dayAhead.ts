@@ -112,6 +112,19 @@ function distinctSorted(days: readonly number[]): number[] {
   return [...new Set(days)].sort((a, b) => a - b);
 }
 
+/** The range asked for, floored at today - null where nothing in it is still
+    ahead. Every read below starts here rather than repeating the floor
+    itself: a fact dated before today is `day.ts`'s question, never this
+    one's, whatever the range asked for reaches back to. */
+function stillAhead({
+  fromEpochDay,
+  toEpochDay,
+  todayEpochDay
+}: Pick<DayAheadReading, 'fromEpochDay' | 'toEpochDay' | 'todayEpochDay'>): { from: number; to: number } | null {
+  const from = Math.max(fromEpochDay, todayEpochDay);
+  return from > toEpochDay ? null : { from, to: toEpochDay };
+}
+
 const SECTIONS = [
   /* An appointment still ahead (ADR-0066's general case, ticket 57).
      `getAppointments()` reads the whole small table the same way the care
@@ -122,12 +135,12 @@ const SECTIONS = [
     key: 'appointment',
     covers: ['appointments'],
     tables: ['appointment'],
-    read: async ({ appointments, fromEpochDay, toEpochDay, todayEpochDay }) => {
-      const from = Math.max(fromEpochDay, todayEpochDay);
-      if (from > toEpochDay) return [];
-      const rows = await appointments.getAppointments();
+    read: async (reading) => {
+      const range = stillAhead(reading);
+      if (!range) return [];
+      const rows = await reading.appointments.getAppointments();
       return distinctSorted(
-        rows.filter((a) => a.epochDay >= from && a.epochDay <= toEpochDay).map((a) => a.epochDay)
+        rows.filter((a) => a.epochDay >= range.from && a.epochDay <= range.to).map((a) => a.epochDay)
       );
     }
   }),
@@ -142,14 +155,14 @@ const SECTIONS = [
     key: 'surgery',
     covers: ['procedures'],
     tables: ['procedure'],
-    read: async ({ procedures, fromEpochDay, toEpochDay, todayEpochDay }) => {
-      const from = Math.max(fromEpochDay, todayEpochDay);
-      if (from > toEpochDay) return [];
-      const rows = await procedures.getProcedures();
+    read: async (reading) => {
+      const range = stillAhead(reading);
+      if (!range) return [];
+      const rows = await reading.procedures.getProcedures();
       return distinctSorted(
         rows
           .filter((p): p is typeof p & { surgeryEpochDay: number } => p.surgeryEpochDay !== null)
-          .filter((p) => p.surgeryEpochDay >= from && p.surgeryEpochDay <= toEpochDay)
+          .filter((p) => p.surgeryEpochDay >= range.from && p.surgeryEpochDay <= range.to)
           .map((p) => p.surgeryEpochDay)
       );
     }
@@ -160,14 +173,14 @@ const SECTIONS = [
     key: 'milestone',
     covers: ['milestones'],
     tables: ['milestone'],
-    read: async ({ milestones, fromEpochDay, toEpochDay, todayEpochDay }) => {
-      const from = Math.max(fromEpochDay, todayEpochDay);
-      if (from > toEpochDay) return [];
-      const rows = await milestones.getMilestones();
+    read: async (reading) => {
+      const range = stillAhead(reading);
+      if (!range) return [];
+      const rows = await reading.milestones.getMilestones();
       return distinctSorted(
         rows
           .filter((m) => m.procedureId === null)
-          .filter((m) => m.epochDay >= from && m.epochDay <= toEpochDay)
+          .filter((m) => m.epochDay >= range.from && m.epochDay <= range.to)
           .map((m) => m.epochDay)
       );
     }
@@ -179,10 +192,10 @@ const SECTIONS = [
     key: 'letterUnlock',
     covers: ['letters'],
     tables: ['letter'],
-    read: async ({ letters, fromEpochDay, toEpochDay, todayEpochDay }) => {
-      const from = Math.max(fromEpochDay, todayEpochDay);
-      if (from > toEpochDay) return [];
-      return letters.getUnlockDaysInRange(from, toEpochDay);
+    read: async (reading) => {
+      const range = stillAhead(reading);
+      if (!range) return [];
+      return reading.letters.getUnlockDaysInRange(range.from, range.to);
     }
   }),
   /* A dose slot, only where the active schedule is not daily (ADR-0067): a
@@ -198,9 +211,10 @@ const SECTIONS = [
     key: 'doseSlot',
     covers: ['doseSchedules'],
     tables: ['regimen', 'dose'],
-    read: async ({ regimen, doses, fromEpochDay, toEpochDay, todayEpochDay }) => {
-      const from = Math.max(fromEpochDay, todayEpochDay);
-      if (from > toEpochDay) return [];
+    read: async (reading) => {
+      const range = stillAhead(reading);
+      if (!range) return [];
+      const { regimen, doses, todayEpochDay } = reading;
       const [episodes, schedules, pauses] = await Promise.all([
         regimen.getEpisodes(),
         doses.getSchedules(),
@@ -212,7 +226,7 @@ const SECTIONS = [
         const schedule = schedules.find((s) => s.episodeId === episode.id);
         if (!schedule || isDailySchedule(schedule)) continue;
         const ownPauses = pauses.filter((p) => p.episodeId === episode.id);
-        for (const slot of expectedSlots(schedule, episode.startEpochDay, from, toEpochDay)) {
+        for (const slot of expectedSlots(schedule, episode.startEpochDay, range.from, range.to)) {
           if (ownPauses.some((pause) => pauseCoversDay(pause, slot.epochDay))) continue;
           days.push(slot.epochDay);
         }
