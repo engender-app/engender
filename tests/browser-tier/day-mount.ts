@@ -8,7 +8,7 @@
    publishes the flag and nothing reads it for itself, so a fixture that
    stamps `data-palette` has to tell the publisher, or every role draws the
    previous palette. */
-import { mount } from 'svelte';
+import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
 import '$lib/theme/palettes.css';
@@ -21,11 +21,11 @@ import '$lib/motion/materials.css';
 import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
 import Gallery from './day-gallery.svelte';
 
-mount(Gallery, { target: document.querySelector('#day')! });
+publishFixture('day', () => {
+  mountInto(Gallery, {}, document.querySelector('#day')!);
 
-/* After every attribute stamp, which the gallery does in an effect. */
-const observer = new MutationObserver(() => refreshActiveFlag());
-observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-palette', 'data-theme'] });
-refreshActiveFlag();
-
-document.body.setAttribute('data-day-ready', '');
+  /* After every attribute stamp, which the gallery does in an effect. */
+  const observer = new MutationObserver(() => refreshActiveFlag());
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-palette', 'data-theme'] });
+  refreshActiveFlag();
+});
