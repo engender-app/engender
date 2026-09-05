@@ -22,10 +22,10 @@
     ['/settings/tags', 'Manage tags'],
     ['/settings/reminders', 'Reminders'],
     ['/settings/reminders/new', 'Reminder editor'],
-    ['/settings/milestones', 'New milestone'],
+    ['/transition/milestones', 'New milestone'],
     ['/settings/dimension', 'Custom dimension'],
     ['/settings/export', 'Export & import'],
-    ['/settings/photos', 'Progress photos'],
+    ['/media/photos', 'Progress photos'],
     ['/settings/labs', 'Lab results'],
     ['/timeline', 'Transition timeline'],
   ];

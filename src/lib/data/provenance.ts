@@ -49,14 +49,14 @@ function builtinGoalTitle(key: string): string | null {
     rather than leaving a dangling reference (ADR-0045). */
 export function resolveMilestoneOrigin(milestone: Milestone): Origin | null {
   if (milestone.procedureId) {
-    return { text: m.prov_from_surgery({ name: milestone.procedureName ?? '' }), href: '/settings/surgery' };
+    return { text: m.prov_from_surgery({ name: milestone.procedureName ?? '' }), href: '/health/surgery' };
   }
   if (milestone.roadmapGoalKey) {
     const title = milestone.customRoadmapGoalText ?? builtinGoalTitle(milestone.roadmapGoalKey);
-    return title ? { text: m.prov_from_roadmap({ goal: title }), href: '/settings/roadmap' } : { text: m.prov_source_gone(), href: null };
+    return title ? { text: m.prov_from_roadmap({ goal: title }), href: '/transition/roadmap' } : { text: m.prov_source_gone(), href: null };
   }
   if (milestone.tryoutId) {
-    return { text: m.prov_from_tryout({ label: milestone.tryoutLabel ?? '' }), href: `/settings/tryouts/${milestone.tryoutId}` };
+    return { text: m.prov_from_tryout({ label: milestone.tryoutLabel ?? '' }), href: `/transition/tryouts/${milestone.tryoutId}` };
   }
   return null;
 }
@@ -82,7 +82,7 @@ export function resolveReminderOrigin(reminder: Reminder): ReminderOrigin | null
     return { text: m.prov_reminder_stock({ drug }), hint, href: '/settings/stock', actionLabel: m.prov_view_stock() };
   }
   if (reminder.autoSource.startsWith(WEAR_PREFIX)) {
-    return { text: m.prov_reminder_wear(), hint, href: '/settings/wear', actionLabel: m.prov_view_wear_log() };
+    return { text: m.prov_reminder_wear(), hint, href: '/practice/wear', actionLabel: m.prov_view_wear_log() };
   }
   // Defensive: stock.ts and wearSessions.ts are the only writers of
   // autoSource today, so this branch is unreached until a third feature

@@ -92,7 +92,7 @@ describe('the letters, photos and voice sources (ticket 14, widened by ticket 21
     expect(markup).toContain('<LookBackLetterCard');
     // Under the card, not a last row in it: a row there wore the letters'
     // own disc and chevron and read as a fourth letter.
-    expect(markup).toMatch(/<\/ListCard>[\s\S]*?<a[^>]*data-all-letters[^>]*href="\/settings\/letters"/);
+    expect(markup).toMatch(/<\/ListCard>[\s\S]*?<a[^>]*data-all-letters[^>]*href="\/transition\/letters"/);
     expect(markup).toMatch(/m\.safe_space_letters_all\(\{\s*count:\s*unlockedLetters\.length - LETTER_LIMIT\s*\}\)/);
     // Its own card, not one more row inside the counterevidence list.
     expect(markup).toMatch(/<ListCard[\s\S]*?<LookBackLetterCard/);
@@ -119,7 +119,7 @@ describe('the letters, photos and voice sources (ticket 14, widened by ticket 21
     expect(letterBlock).toContain('<LookBackLetterCard');
 
     const card = read('src/lib/components/LookBackLetterCard.svelte');
-    expect(card).toContain('href={`/settings/letters/${letter.id}`}');
+    expect(card).toContain('href={`/transition/letters/${letter.id}`}');
     expect(card).toContain('letterOpening(letter.text, LETTER_OPENING_LIMIT)');
     expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
   });
@@ -151,7 +151,7 @@ describe('the support directory panel', () => {
   it('renders as its own ListCard/ListRow panel, not a heading action link, pointing at the existing directory', () => {
     expect(doubt).toContain("from '$lib/components/kit/ListRow.svelte'");
     expect(markup).not.toContain('kit-heading-action');
-    expect(markup).toMatch(/<ListCard[^>]*>\s*<ListRow[\s\S]*?href="\/settings\/resources"/);
+    expect(markup).toMatch(/<ListCard[^>]*>\s*<ListRow[\s\S]*?href="\/practice\/resources"/);
     expect(markup).toContain('title={m.resources_title()}');
     expect(markup).toContain('subtitle={m.resources_row_sub()}');
   });

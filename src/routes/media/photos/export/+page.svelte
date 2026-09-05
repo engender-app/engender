@@ -185,7 +185,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.pj_title()} back="/settings/photos" />
+  <ScreenHeader title={m.pj_title()} back="/media/photos" />
 
   <ReadGate read={photosQuery} variant="block" count={2}>
     {#snippet rows()}

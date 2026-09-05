@@ -153,7 +153,7 @@
           icon="calendar"
           title={m.cycle_events_open_row_title()}
           subtitle={m.cycle_events_open_row_sub()}
-          href="/settings/cycle-events"
+          href="/health/cycle-events"
         />
       </ListCard>
     </div>

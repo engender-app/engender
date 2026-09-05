@@ -6,7 +6,7 @@
 
   /* Offering a felt-sense entry on a milestone (phase 5 ticket 24, CONTEXT:
      "Felt-sense entry") - at its own creation and again on each anniversary
-     showing (MilestoneCard, settings/milestones) - never required, so the
+     showing (MilestoneCard, transition/milestones) - never required, so the
      open/close state stays with whichever screen is offering it, the same
      shape a delete-confirmation sheet already uses there: `onSkip` is what
      resets it, not a bindable `open` this component owns itself.

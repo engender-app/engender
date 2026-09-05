@@ -63,5 +63,5 @@
   icon="book"
   title={lead === 'text' ? opening : label}
   subtitle={lead === 'text' ? label : opening}
-  href={`/settings/letters/${letter.id}`}
+  href={`/transition/letters/${letter.id}`}
 />

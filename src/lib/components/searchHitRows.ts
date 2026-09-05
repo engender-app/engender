@@ -58,9 +58,9 @@ export interface SearchHitRow {
   excerpt: string;
 }
 
-const MILESTONES = '/settings/milestones';
-const SURGERY = '/settings/surgery';
-const TRYOUTS = '/settings/tryouts';
+const MILESTONES = '/transition/milestones';
+const SURGERY = '/health/surgery';
+const TRYOUTS = '/transition/tryouts';
 
 /** How each registered area reads as a row.
 
@@ -73,7 +73,7 @@ const AREA_ROWS: Record<
   SearchAreaKey,
   { icon: string; label: () => string; href: (hit: SearchHit) => string }
 > = {
-  letters: { icon: 'book', label: () => m.letters_title(), href: (hit) => `/settings/letters/${hit.id}` },
+  letters: { icon: 'book', label: () => m.letters_title(), href: (hit) => `/transition/letters/${hit.id}` },
   milestones: { icon: 'flag', label: () => m.milestones(), href: () => MILESTONES },
   procedures: { icon: 'flag', label: () => m.surgery_journey_title(), href: () => SURGERY },
   /* One area, two screens. A question written for an appointment belongs to
@@ -83,9 +83,9 @@ const AREA_ROWS: Record<
   checklistItems: {
     icon: 'check',
     label: () => m.appointment_prep_title(),
-    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/settings/appointment-prep')
+    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? SURGERY : '/health/appointment-prep')
   },
-  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/settings/side-effects' },
+  sideEffects: { icon: 'zap', label: () => m.side_effects(), href: () => '/health/side-effects' },
   /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
      travels with the hit for exactly this (textSearch.ts): with one, the hit
      opens that tryout, which is where its history is read; without one, the
@@ -96,26 +96,26 @@ const AREA_ROWS: Record<
     href: (hit) => (hit.context ? `${TRYOUTS}/${hit.context}` : MILESTONES)
   },
   tryouts: { icon: 'tag', label: () => m.tryout_title(), href: (hit) => `${TRYOUTS}/${hit.id}` },
-  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/settings/presentations' },
-  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
-  roadmapGoals: { icon: 'globe', label: () => m.roadmap_title(), href: () => '/settings/roadmap' },
+  presentations: { icon: 'palette', label: () => m.presentations_title(), href: () => '/transition/presentations' },
+  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/transition/eras' },
+  roadmapGoals: { icon: 'globe', label: () => m.roadmap_title(), href: () => '/transition/roadmap' },
   affirmations: {
     icon: 'sparkle',
     label: () => m.affirmations_row_title(),
     href: () => '/settings/affirmations'
   },
   labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/settings/labs' },
-  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/settings/sizes' },
-  taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/settings/dilation' },
-  wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/settings/wear' },
+  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
+  taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/health/dilation' },
+  wearSessions: { icon: 'clock', label: () => m.wear_log(), href: () => '/practice/wear' },
   // The compare surface rather than the recorder: a hit is a take somebody
   // is looking for, not a new one (dayRows.ts sends a benchmark there too).
-  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/settings/voice?tab=compare' },
-  hairStages: { icon: 'comb', label: () => m.hair_progress(), href: () => '/settings/hair-progress' },
+  voiceBenchmarks: { icon: 'mic', label: () => m.vb_title(), href: () => '/practice/voice?tab=compare' },
+  hairStages: { icon: 'comb', label: () => m.hair_progress(), href: () => '/body/hair-progress' },
   hairRemovalSessions: {
     icon: 'shuffle',
     label: () => m.hair_removal(),
-    href: () => '/settings/hair-removal'
+    href: () => '/body/hair-removal'
   },
   regimenEpisodes: { icon: 'timeline', label: () => m.regimen(), href: () => '/settings/regimen' },
   medicationStock: { icon: 'package', label: () => m.stock_title(), href: () => '/settings/stock' },

@@ -130,7 +130,7 @@
   }
 
   /* The session log. An ordinary recordEditor/RecordSheet pair, the same
-     shape settings/sizes/+page.svelte uses. */
+     shape body/sizes/+page.svelte uses. */
   const session = recordEditor<TaperSession, { id?: string; date: string; note: string }>({
     blank: () => ({ date: dateInputValueFromEpochDay(today), note: '' }),
     fromRecord: (r) => ({ id: r.id, date: dateInputValueFromEpochDay(r.epochDay), note: r.note }),
