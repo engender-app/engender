@@ -3,7 +3,7 @@
    are judged against the real cascade rather than against a subset of it.
    Unlike the kit gallery this does load components.css and screens.css:
    the gates are screens, and the frame being looked at lives in both. */
-import { mountFixture } from './mount.ts';
+import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
 import '$lib/theme/palettes.css';
@@ -15,4 +15,4 @@ import '$lib/motion/press.css';
 import '$lib/motion/materials.css';
 import Gallery from './gates-gallery.svelte';
 
-mountFixture('gates', Gallery);
+publishFixture('gates', () => mountInto(Gallery, {}, document.querySelector('#gates')!));

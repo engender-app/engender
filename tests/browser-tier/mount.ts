@@ -9,14 +9,11 @@
    behind grep tests: there was no way to mount a screen, drive it, and
    answer with a value.
 
-   `mountFixture` is that shape: a component, its props, and a result the
-   driving script reads under the page's own name. A page with nothing to
-   answer (a gallery) omits `result` and gets the ready attribute alone,
-   which is exactly what it stamped before.
-
-   `mountScreen` underneath it is the mount on its own, for a probe that
-   mounts the same screen several times over - one per case - and answers
-   once at the end.
+   `publishFixture` is that shape: whatever the page does, published under
+   the page's own name. A gallery's work is a mount and nothing else, so it
+   answers `undefined` and the driving script gets the ready attribute alone,
+   exactly what it had. A probe's work is a mount, some clicks and a read,
+   and it answers with the read.
 
    Nothing here argues with ADR-0016. That rule keeps the *Node* tier away
    from paraglide; this tier runs the real bundle in a real browser, so a
@@ -24,10 +21,11 @@
 import { mount, unmount, type Component } from 'svelte';
 import { publish } from '../probe-handshake.mjs';
 
-/** Mounts `component` into `target`, which it does not wrap: a gallery's
-    stylesheet is authored against the page's own container, and an extra
-    div between the two would be a difference the fixture invented. */
-export function mountScreen<Props extends Record<string, unknown>>(
+/** Mounts `component` into `target`, which is the caller's to choose and to
+    empty: a gallery hands over the container its own stylesheet is authored
+    against, and a probe that mounts the same screen once per case hands over
+    a fresh element each time. */
+export function mountInto<Props extends Record<string, unknown>>(
   component: Component<Props>,
   props: Props,
   target: Element
@@ -36,32 +34,18 @@ export function mountScreen<Props extends Record<string, unknown>>(
   return { remove: () => unmount(instance, { outro: false }) };
 }
 
-/** Mounts `component` and publishes `result`'s answer under `name`, which
-    `run.mjs`'s `load(path, name)` waits on and reads.
+/** Runs `work` and publishes its answer under `name`, which `run.mjs`'s
+    `load(path, name)` waits on and reads.
 
-    Both the mount and the result are guarded: a component that throws on
-    mount would otherwise never publish at all, and the driving script would
-    read that as an anonymous 30-second timeout rather than as the error it
-    is. */
-export function mountFixture<Props extends Record<string, unknown>>(
-  name: string,
-  component: Component<Props>,
-  options: {
-    props?: Props;
-    /** Defaults to `#${name}`. */
-    target?: string;
-    result?: () => unknown | Promise<unknown>;
-  } = {}
-): void {
-  const selector = options.target ?? `#${name}`;
-  const run = async () => {
-    const target = document.querySelector(selector);
-    if (!target) throw new Error(`no element matches ${selector}`);
-    mountScreen(component, options.props ?? ({} as Props), target);
-    return options.result ? await options.result() : undefined;
-  };
-  run().then(
-    (value) => publish(name, value),
-    (error: unknown) => publish(name, { error: String((error as Error)?.stack ?? error) })
-  );
+    Guarded, which is the point of every page going through here: work that
+    throws - a component that will not mount, a click that never lands -
+    publishes the error, where before it published nothing at all and the
+    driving script read that as an anonymous 30-second timeout. */
+export function publishFixture(name: string, work: () => unknown): void {
+  Promise.resolve()
+    .then(work)
+    .then(
+      (value) => publish(name, value),
+      (error: unknown) => publish(name, { error: String((error as Error)?.stack ?? error) })
+    );
 }

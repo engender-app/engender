@@ -1883,7 +1883,14 @@ await block('ticket 29 browser tier', 6, async () => {
    Everything else in this file drives a module or a gallery; the entry
    editor's template filter is a closure inside the component, so this is
    the only place it can run at all. See entry-editor-probe.ts on why the
-   assertions are on rows in SQLite rather than on the markup. */
+   assertions are on rows in SQLite rather than on the markup.
+
+   What each of the three adds over vocabulary/entryTemplates.test.ts, which
+   already covers the merge rules themselves in the Node tier: the first two
+   are the wiring - that a click on the row reaches the merge, and that what
+   the merge produced survives the save into the tables - and the first is
+   also the third's positive control. The third is the only one of the three
+   testing a rule that lives in the component. */
 await block('phase 8 audit ticket 25 entry editor', 4, async () => {
   const r = await load('/entry-editor.html', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);

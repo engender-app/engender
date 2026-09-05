@@ -5,7 +5,7 @@
    while the controls ARE components.css - the slider, the switch, the
    segmented control and the press all live in it. Two fixtures rather than
    one for that reason. */
-import { mountFixture } from './mount.ts';
+import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
 import '$lib/theme/palettes.css';
@@ -14,4 +14,4 @@ import '$lib/styles/components.css';
 import '$lib/motion/press.css';
 import Gallery from './controls-gallery.svelte';
 
-mountFixture('controls', Gallery);
+publishFixture('controls', () => mountInto(Gallery, {}, document.querySelector('#controls')!));

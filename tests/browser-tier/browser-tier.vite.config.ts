@@ -109,7 +109,7 @@ export default defineConfig({
      module scope, not a missing feature. Never a demo here: a fixture states
      its own journal. */
   define: {
-    __DEMO__: 'false',
+    __DEMO__: JSON.stringify(false),
     __APP_VERSION__: JSON.stringify('0.0.0-browser-tier')
   },
   // Same exclusion the app's own config needs (ticket 09): pre-bundling
