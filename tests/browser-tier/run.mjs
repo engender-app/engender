@@ -1268,7 +1268,7 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  const { debounce, savedQuestionStability } = live;
+  const { debounce, intervalLengthDebounce, savedQuestionStability } = live;
 
   if (debounce.runsAfterTenKeystrokes === debounce.runsBeforeTyping + 1)
     ok('typing ten characters fires one debounced run rather than ten');
@@ -1280,6 +1280,15 @@ try {
 
   if (debounce.clearedWithoutWaitingTheDebounce) ok('clearing the query lands within a flush, without waiting out the debounce');
   else fail('clearing the query lands within a flush, without waiting out the debounce', 'debounced value was not cleared yet');
+
+  // --- Phase 8 audit ticket 16: the stats custom-interval-length field ----
+  if (intervalLengthDebounce.runsAfterThreeDigits === intervalLengthDebounce.runsBeforeTyping + 1)
+    ok('typing a three-digit interval length fires one debounced run rather than three');
+  else
+    fail(
+      'typing a three-digit interval length fires one debounced run rather than three',
+      `${intervalLengthDebounce.runsBeforeTyping} run(s) before, ${intervalLengthDebounce.runsAfterThreeDigits} after`
+    );
 
   if (
     savedQuestionStability.unstableRunsAfterUnrelatedRename > savedQuestionStability.unstableRunsBeforeUnrelatedRename

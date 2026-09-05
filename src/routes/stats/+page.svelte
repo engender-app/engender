@@ -356,11 +356,15 @@
      purpose (../lib/data/intervalMoodPattern.ts). Neither card names a
      target or a verdict: both say only where days fell.
 
-     Both read across the journal's whole history rather than the segmented
+     Both ask across the journal's whole history rather than the segmented
      range above (Number.MIN_SAFE_INTEGER as the lower bound, which is what
      "ever" means on an epoch-day column), not just the visible window: an
      injection interval is commonly 14-28 days, so a completed one rarely
-     recurs three times inside even the 90-day preset. */
+     recurs three times inside even the 90-day preset. "Ever" is capped to a
+     lookback window at the journal/intervalMoodPattern.ts seam instead of
+     actually reaching a decade back (phase 8 audit ticket 16) - this screen
+     still asks the same question, it just no longer pays for the answer
+     literally. */
   let intervalMoodQuery = liveList((j) =>
     j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
   );
@@ -373,8 +377,27 @@
   let safeCustomIntervalLength = $derived(
     Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
   );
+
+  /* Waited out the same way /search's query is (phase 8 audit ticket 15,
+     ticket 16 here): the liveList closure below reads a $state before its
+     first await, which by the reactivity contract (journal.svelte.ts) makes
+     that read a dependency - so reading safeCustomIntervalLength directly
+     would re-run byCustomInterval's whole-history fold on every keystroke,
+     a fresh 102KB read per digit typed. No cleared-value case to special-case
+     the way /search's does: every value here is already a valid interval
+     length, clamped above, so there is nothing to land early on. */
+  const CUSTOM_INTERVAL_DEBOUNCE_MS = 250;
+  let debouncedCustomIntervalLength = $state(28);
+  $effect(() => {
+    const length = safeCustomIntervalLength;
+    const timer = setTimeout(() => {
+      debouncedCustomIntervalLength = length;
+    }, CUSTOM_INTERVAL_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  });
+
   let customIntervalQuery = liveList((j) =>
-    j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, safeCustomIntervalLength)
+    j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, debouncedCustomIntervalLength)
   );
   let customIntervalPattern = $derived(customIntervalQuery.rows);
 
@@ -1064,7 +1087,7 @@
             formatValue={(v) => v.toFixed(1)}
             scrubLabel={positionLabel}
             ariaLabel={m.custom_interval_chart_aria({
-              days: String(safeCustomIntervalLength),
+              days: String(debouncedCustomIntervalLength),
               count: String(customIntervalPattern.length),
               from: String(customIntervalPattern[0].position),
               to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
