@@ -1235,7 +1235,7 @@
   "regimen_new_sheet": "New regimen episode",
   "regimen_edit_sheet": "Edit regimen episode",
   "regimen_drug_label": "Drug",
-  "regimen_drug_placeholder": "e.g. estradiol valerate or testosterone cypionate",
+  "regimen_drug_placeholder": "e.g. estradiol valerate, testosterone cypionate or sertraline",
   "regimen_ester_label": "Ester (optional)",
   "regimen_ester_placeholder": "e.g. valerate",
   "regimen_dose_label": "Dose",
