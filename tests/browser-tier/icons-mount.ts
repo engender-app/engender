@@ -4,7 +4,7 @@
 
    components.css is imported here and is not in the kit's mount: the mood
    face's own rules live there now that one component serves every surface. */
-import { mountFixture } from './mount.ts';
+import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
 import '$lib/theme/palettes.css';
@@ -14,4 +14,4 @@ import '$lib/styles/kit.css';
 import '$lib/motion/press.css';
 import Gallery from './icons-gallery.svelte';
 
-mountFixture('icons', Gallery);
+publishFixture('icons', () => mountInto(Gallery, {}, document.querySelector('#icons')!));

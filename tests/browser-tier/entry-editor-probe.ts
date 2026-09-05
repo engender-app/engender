@@ -17,6 +17,21 @@
    what the markup says, and not whether the source text mentions
    `visibleTagGroups`.
 
+   Two things follow from reading it back through the save rather than off
+   the draft, and both are deliberate. The draft is component-local `$state`
+   with no handle out, so the save is the only way to see it at all. And the
+   save is ADR-0044's nine-area transaction, so a break in *that* would
+   surface here as a template that applied nothing - a misattribution worth
+   knowing about before believing this page's verdict on a red run.
+
+   The first two cases are not the node tests restated. What only this page
+   can fail on is the wiring: that clicking the row reaches the merge at all,
+   and that what the merge produced survives `toUpsert()` into the tables.
+   They are also the positive control the third case needs - without a case
+   proving a template's tag, dimension, note and presentation *do* land, "the
+   hidden ones did not land" would pass just as well on a screen that applies
+   nothing whatsoever.
+
    The draft mirror is the one thing here that does not run: it awaits
    `journalDataKey()`, which only the boot store resolves, and no fixture
    boots through that store. Nothing in this page's path touches it - the
@@ -34,9 +49,8 @@ import { attachPreferences } from '../../src/lib/data/prefs/store.svelte.ts';
 import { localStorageCache } from '../../src/lib/data/prefs/boot-cache.ts';
 import { refreshActiveFlag } from '../../src/lib/theme/activeFlag.svelte.ts';
 import EntryEditor from '../../src/lib/components/EntryEditor.svelte';
-import { mountScreen } from './mount.ts';
+import { mountInto, publishFixture } from './mount.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
-import { publish } from '../probe-handshake.mjs';
 
 import '../../src/lib/theme/fonts.css';
 import '../../src/lib/theme/base.css';
@@ -80,21 +94,16 @@ async function until<T>(get: () => Awaitable<T | null | undefined>, what: string
   throw new Error(`timed out waiting for ${what}`);
 }
 
-const find = <T extends Element>(root: ParentNode, selector: string): T | null => root.querySelector<T>(selector);
-
 /** Applies `templateId` through the sheet the screen offers, which is the
     only way in: the button exists for a new entry alone (a template is a
     creation aid), and the rows are inside a sheet that has to be opened. */
 async function applyTemplateThroughTheSheet(root: ParentNode, templateId: string): Promise<void> {
-  (await until(() => find<HTMLButtonElement>(root, '[data-use-template]'), 'the use-template button')).click();
-  const row = await until(
-    () => find<HTMLElement>(root, `[data-list-row="${templateId}"]`),
-    `the template row for ${templateId}`
-  );
-  row.click();
+  const row = `[data-list-row="${templateId}"]`;
+  (await until(() => root.querySelector<HTMLButtonElement>('[data-use-template]'), 'the use-template button')).click();
+  (await until(() => root.querySelector<HTMLElement>(row), `the template row for ${templateId}`)).click();
   // The screen closes the sheet as the last thing it does when a template
   // lands, so the row going away is the click having been taken.
-  await until(() => (find(root, `[data-list-row="${templateId}"]`) ? null : true), 'the template sheet to close');
+  await until(() => (root.querySelector(row) ? null : true), 'the template sheet to close');
 }
 
 type Applied = {
@@ -111,11 +120,11 @@ type Applied = {
 async function applyAndSave(journal: Journal, epochDay: number, templateIds: string[]): Promise<Applied> {
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
-  const screen = mountScreen(EntryEditor, { epochDay, seedMood: 4 }, target);
+  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4 }, target);
   try {
     for (const templateId of templateIds) await applyTemplateThroughTheSheet(target, templateId);
 
-    const save = await until(() => find<HTMLButtonElement>(target, '[data-save]'), 'the save button');
+    const save = await until(() => target.querySelector<HTMLButtonElement>('[data-save]'), 'the save button');
     save.click();
     /* Waited out on the screen's own `saving` flag rather than by polling
        the journal for the entry. A read issued while the save's transaction
@@ -182,13 +191,13 @@ async function run() {
   });
   await hydrateReference(journal);
 
-  publish(NAME, {
+  return {
     onBlank: await applyAndSave(journal, BLANK_DAY, [template.id]),
     overAFilledDraft: await applyAndSave(journal, OVER_A_FILLED_DRAFT_DAY, [groundwork.id, template.id]),
     namingWhatIsHidden: await applyAndSave(journal, HIDDEN_DAY, [hiddenTemplate.id]),
     shownPresentationId: shown.id,
     hiddenPresentationId: concealed.id
-  });
+  };
 }
 
-run().catch((error: unknown) => publish(NAME, { error: String((error as Error)?.stack ?? error) }));
+publishFixture(NAME, run);
