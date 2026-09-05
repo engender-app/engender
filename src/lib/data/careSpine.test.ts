@@ -2,18 +2,35 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   careSpine,
+  chooseRailEpisode,
   lastLoggedDoseDay,
   MIN_LABEL_GAP,
   nextExpectedSlot,
+  scheduleDoseFacts,
   SPINE_BACK_DAYS,
   SPINE_FORWARD_DAYS,
   SPINE_MIN_BACK_DAYS,
   SPINE_MIN_FORWARD_DAYS
 } from './careSpine';
 import { startOfDayTimestamp } from './epochDay';
-import type { DoseEvent, DosePause, DoseSchedule } from './types';
+import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
 
 const TODAY = 20000;
+
+function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
+  return {
+    id: 'ep-1',
+    drug: 'estradiol',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'weekly',
+    startEpochDay: TODAY - 100,
+    endEpochDay: null,
+    ...overrides
+  };
+}
 
 const NO_FACTS = {
   lastDoseEpochDay: null,
@@ -277,4 +294,84 @@ test('a rhythm whose next slot is past the rail has no next slot to show', () =>
     TODAY
   );
   assert.equal(slot, null);
+});
+
+/* Which of several active episodes draws the rail (ticket 38) */
+
+test('one active episode of any drug always wins the rail', () => {
+  const solo = episode({ drug: 'sertraline' });
+  assert.deepEqual(chooseRailEpisode([solo]), { rail: solo, others: [], ambiguous: false });
+});
+
+test('no active episode leaves nothing to draw', () => {
+  assert.deepEqual(chooseRailEpisode([]), { rail: null, others: [], ambiguous: false });
+});
+
+test('a curve drug alongside an unrelated one wins the rail; the other falls to its own row', () => {
+  const curve = episode({ id: 'ep-curve', drug: 'estradiol' });
+  const other = episode({ id: 'ep-other', drug: 'sertraline' });
+  assert.deepEqual(chooseRailEpisode([curve, other]), { rail: curve, others: [other], ambiguous: false });
+});
+
+test('two concurrent curve episodes are genuinely ambiguous', () => {
+  const first = episode({ id: 'ep-1', drug: 'estradiol' });
+  const second = episode({ id: 'ep-2', drug: 'testosterone' });
+  assert.deepEqual(chooseRailEpisode([first, second]), { rail: null, others: [first, second], ambiguous: true });
+});
+
+test('an ambiguous pair of curve episodes still lets an unrelated third row through', () => {
+  const first = episode({ id: 'ep-1', drug: 'estradiol' });
+  const second = episode({ id: 'ep-2', drug: 'testosterone' });
+  const other = episode({ id: 'ep-3', drug: 'sertraline' });
+  const result = chooseRailEpisode([first, second, other]);
+  assert.equal(result.rail, null);
+  assert.equal(result.ambiguous, true);
+  assert.deepEqual(result.others, [first, second, other]);
+});
+
+/* One episode's own last and next dose, scoped so an unrelated concurrent
+   schedule cannot bleed into either reading */
+
+test('a dose from an earlier episode of the same drug still counts as the last one', () => {
+  const oldRow = episode({ id: 'ep-old', drug: 'estradiol', startEpochDay: TODAY - 200, endEpochDay: TODAY - 50 });
+  const currentRow = episode({ id: 'ep-current', drug: 'estradiol', startEpochDay: TODAY - 49 });
+  const doses = [dose(TODAY - 60)]; // logged while ep-old was the active row
+  const facts = scheduleDoseFacts(currentRow, [oldRow, currentRow], null, doses, [], TODAY);
+  assert.equal(facts.lastDoseEpochDay, TODAY - 60);
+});
+
+/* The one edge the drug-name scoping reads differently to the whole-log
+   scan it replaced: a dose logged before any episode covered it at all
+   (nothing running yet, or an episode later deleted from under it). The
+   old, unfiltered read counted it regardless; attributeDrug has nothing to
+   attribute it to and drops it. A deliberate, documented narrowing
+   (ticket 38's Decisions), not an oversight - a dose with no regimen
+   covering it has nothing to say about that regimen's rail. */
+test('a dose predating any episode does not count as that episode’s last one', () => {
+  const solo = episode({ startEpochDay: TODAY - 10 });
+  const facts = scheduleDoseFacts(solo, [solo], null, [dose(TODAY - 20)], [], TODAY);
+  assert.equal(facts.lastDoseEpochDay, null, 'the dose predates the only episode there is, so it attributes to nothing');
+});
+
+test("a concurrent unrelated schedule's dose does not become this episode's last dose", () => {
+  const curve = episode({ id: 'ep-curve', drug: 'estradiol' });
+  const other = episode({ id: 'ep-other', drug: 'sertraline', dose: 50, doseUnit: 'mg', route: 'oral' });
+  const doses = [
+    dose(TODAY - 1, { drug: 'estradiol' }),
+    dose(TODAY, { drug: 'sertraline' })
+  ];
+  const facts = scheduleDoseFacts(curve, [curve, other], null, doses, [], TODAY);
+  assert.equal(facts.lastDoseEpochDay, TODAY - 1, 'today’s dose was the other drug, not this one');
+});
+
+test('no schedule for an episode means no next dose, but last dose still reads', () => {
+  const solo = episode();
+  const facts = scheduleDoseFacts(solo, [solo], null, [dose(TODAY - 3)], [], TODAY);
+  assert.deepEqual(facts, { lastDoseEpochDay: TODAY - 3, nextDoseEpochDay: null });
+});
+
+test("next dose still asks doseSchedule.ts's own arithmetic, scoped to this episode's id", () => {
+  const solo = episode({ startEpochDay: TODAY - 14 });
+  const facts = scheduleDoseFacts(solo, [solo], schedule(), [], [], TODAY);
+  assert.equal(facts.nextDoseEpochDay, TODAY);
 });

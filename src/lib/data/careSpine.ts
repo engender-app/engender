@@ -22,7 +22,9 @@
 
 import { adherence, expectedSlots, type DoseSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
-import type { DoseEvent, DosePause, DoseSchedule } from './types';
+import { resolveCurveDrug } from './hormoneDrug';
+import { attributeDose, attributeDrug } from './regimenEpisode';
+import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
 
 /** How far the rail can reach either side of today.
 
@@ -209,4 +211,78 @@ export function careSpine(facts: SpineFacts, todayEpochDay: number): CareSpine |
   });
 
   return { fromEpochDay, toEpochDay, marks };
+}
+
+/** Which of several active episodes draws the rail, and which fall to their
+    own line beneath it (ticket 38, "the spine assumes one dose a day").
+    The rail draws one schedule's last/next dose or none at all - its
+    captions carry no episode, so two marks of the same kind would be two
+    unlabelled dates with no way to tell them apart. A single active
+    episode of any drug is unambiguous and keeps every existing journal's
+    rail exactly as it read before this ticket.
+
+    With several active at once, the curve drug - the one this app models a
+    hormone level from (hormoneDrug.ts) - is the one whose timing the rail
+    exists to show, so it wins when there is exactly one. Two curve
+    episodes active together (switching hormones) is the one case
+    genuinely ambiguous, same as "several regimens" always read: the rail
+    draws neither, and every active episode - including the two competing
+    ones - falls to its own row instead of the rail naming nothing at all. */
+export function chooseRailEpisode(activeEpisodes: readonly RegimenEpisode[]): {
+  rail: RegimenEpisode | null;
+  others: RegimenEpisode[];
+  ambiguous: boolean;
+} {
+  if (activeEpisodes.length <= 1) {
+    return { rail: activeEpisodes[0] ?? null, others: [], ambiguous: false };
+  }
+
+  const curveEpisodes = activeEpisodes.filter((episode) => resolveCurveDrug(episode.drug) !== null);
+  if (curveEpisodes.length !== 1) {
+    return { rail: null, others: [...activeEpisodes], ambiguous: true };
+  }
+
+  const rail = curveEpisodes[0];
+  return { rail, others: activeEpisodes.filter((episode) => episode.id !== rail.id), ambiguous: false };
+}
+
+/** One episode's own last and next dose, scoped so a second, unrelated
+    concurrent schedule cannot bleed into either reading - the bug ticket
+    38 is named for.
+
+    Last reads by drug name (attributeDrug) rather than by this exact
+    episode row: a dose logged under an earlier episode of the same drug,
+    before a dose change split it into a new row, still counts, the same
+    continuity nextExpectedSlot already gets from anchoring on the
+    episode's own startEpochDay rather than the schedule's edit day. A
+    concurrent episode for a different drug resolves to its own name
+    instead (attributeDose/attributeDrug, regimenEpisode.ts) and so never
+    counts here, which is the fix itself - the whole-log scan this
+    replaced could not tell the two apart.
+
+    Next reads by this exact episode's own id (attributeDose), unchanged
+    from before this ticket: only a slot this episode's own rhythm expects,
+    from today, is its "next" one. `doses` is the whole log, unbounded by
+    date - both halves do their own scoping over it. */
+export function scheduleDoseFacts(
+  episode: RegimenEpisode,
+  episodes: readonly RegimenEpisode[],
+  schedule: DoseSchedule | null,
+  doses: readonly DoseEvent[],
+  pauses: readonly DosePause[],
+  todayEpochDay: number
+): { lastDoseEpochDay: number | null; nextDoseEpochDay: number | null } {
+  const drug = episode.drug.trim();
+  const ownDoses = doses.filter((dose) => attributeDrug(episodes, dose).drug?.trim() === drug);
+  const lastDoseEpochDay = lastLoggedDoseDay(ownDoses);
+
+  if (!schedule) return { lastDoseEpochDay, nextDoseEpochDay: null };
+
+  const dosesFromToday = doses.filter(
+    (dose) =>
+      epochDayFromTimestamp(dose.timestamp) >= todayEpochDay &&
+      attributeDose(episodes, dose).episode?.id === episode.id
+  );
+  const nextSlot = nextExpectedSlot(schedule, episode.startEpochDay, dosesFromToday, pauses, todayEpochDay);
+  return { lastDoseEpochDay, nextDoseEpochDay: nextSlot?.epochDay ?? null };
 }
