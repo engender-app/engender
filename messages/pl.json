@@ -3307,5 +3307,6 @@
   "document_missing_body": "Został usunięty albo ten odnośnik prowadzi do czegoś, czego tu nigdy nie było.",
   "document_missing_action": "Wróć do dokumentów",
   "day_document": "Dokument",
-  "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz"
+  "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz",
+  "document_page_alt": "Kartka: {title}"
 }

@@ -3251,5 +3251,6 @@
   "document_missing_body": "It was deleted, or this link points at something that was never here.",
   "document_missing_action": "Back to documents",
   "day_document": "Document",
-  "hub_sub_documents": "Opinions, referrals and rulings you have been given"
+  "hub_sub_documents": "Opinions, referrals and rulings you have been given",
+  "document_page_alt": "The page of {title}"
 }
