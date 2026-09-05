@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support';
 import type { Journal } from '../journal/journal';
-import { assembleClinicianDossier } from './clinicianSummaryData';
+import { assembleClinicianDossier, regimenDrugNames } from './clinicianSummaryData';
 
 let journal: Journal;
 
@@ -158,5 +158,43 @@ describe('assembleClinicianDossier', () => {
     });
 
     expect(dossier.demographics?.pronouns).toBeNull();
+  });
+
+  it('drops an excluded drug\'s rows from regimen, doses and exposure, and nothing else (ticket 39)', async () => {
+    const dossier = await assembleClinicianDossier(journal, {
+      fromEpochDay: 19000,
+      toEpochDay: 19010,
+      excludedDrugs: new Set(['Estradiol Valerate'])
+    });
+
+    expect(dossier.regimen!.history).toHaveLength(0);
+    expect(dossier.regimen!.current).toHaveLength(0);
+    expect(dossier.regimen!.doses).toHaveLength(0);
+    expect(dossier.exposure!.doseTotals).toHaveLength(0);
+
+    // Not keyed by drug: untouched.
+    expect(dossier.labs!).toHaveLength(1);
+    expect(dossier.sideEffects!).toHaveLength(1);
+  });
+
+  it('with no excluded drugs, prints every drug (default parameter)', async () => {
+    const dossier = await assembleClinicianDossier(journal, {
+      fromEpochDay: 19000,
+      toEpochDay: 19010
+    });
+
+    expect(dossier.regimen!.current).toHaveLength(1);
+  });
+});
+
+describe('regimenDrugNames', () => {
+  it('lists every distinct drug name across the given episodes, sorted', async () => {
+    const episodes = await journal.regimen.getEpisodes();
+
+    expect(regimenDrugNames(episodes)).toEqual(['Estradiol Valerate', 'Progesterone']);
+  });
+
+  it('comes back empty with no episodes', () => {
+    expect(regimenDrugNames([])).toEqual([]);
   });
 });

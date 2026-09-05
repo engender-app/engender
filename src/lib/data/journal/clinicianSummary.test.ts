@@ -261,3 +261,81 @@ test('un-finishing takes the line back off the page', async () => {
 
   assert.deepEqual(summary.finishedAreas, []);
 });
+
+/* Phase 8 features ticket 39: excluding a drug from the range sheet drops
+   its rows from regimen, dose-history and exposure, and nothing else. */
+
+test('excluding a drug drops its regimen episode, keeps everyone else\'s', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+  await episode(journal, 19000, { drug: 'spironolactone', route: 'oral', doseUnit: 'mg' });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['spironolactone']));
+
+  assert.deepEqual(
+    summary.regimenEpisodes.map((e) => e.drug),
+    ['estradiol valerate']
+  );
+});
+
+test('excluding a drug drops the doses attributed to it through the episode history, not just doses naming it directly', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
+
+  const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['estradiol valerate']));
+  const withDrug = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.equal(withoutDrug.doses.length, 0);
+  assert.equal(withDrug.doses.length, 1);
+});
+
+test('a dose that cannot be attributed to any drug is never dropped by an exclusion', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // Two concurrent episodes for different drugs: the dose names none of
+  // its own, so attributeDrug can't resolve it (ambiguous).
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+  await episode(journal, 19000, { drug: 'spironolactone', route: 'oral', doseUnit: 'mg' });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['estradiol valerate']));
+
+  assert.equal(summary.doses.length, 1);
+});
+
+test('excluding a drug drops its exposure dose totals and regimen days, keeps route days and excluded doses as they were', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
+
+  const withDrug = await journal.clinicianSummary.getSummary(19000, 19020);
+  const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['estradiol valerate']));
+
+  assert.equal(withDrug.exposure.doseTotals.length, 1);
+  assert.deepEqual(withoutDrug.exposure.doseTotals, []);
+  assert.deepEqual(withoutDrug.exposure.regimenDays, []);
+  // Not drug-keyed rows: unaffected by the exclusion.
+  assert.deepEqual(withoutDrug.exposure.routeDays, withDrug.exposure.routeDays);
+  assert.equal(withoutDrug.exposure.excludedDoses, withDrug.exposure.excludedDoses);
+});
+
+test('excluding a drug leaves labs and side effects untouched - neither is keyed by drug', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+  await journal.labs.upsertResult({ epochDay: 19005, analyte: 'estradiol', value: 150, unit: 'pg/mL', provider: 'Quest' });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['estradiol valerate']));
+
+  assert.equal(summary.labResults.length, 1);
+  assert.equal(summary.sideEffects.length, 1);
+});
+
+test('with no exclusion set, getSummary keeps printing every drug (default parameter)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, { drug: 'estradiol valerate' });
+
+  const summary = await journal.clinicianSummary.getSummary(19000, 19020);
+
+  assert.equal(summary.regimenEpisodes.length, 1);
+});
