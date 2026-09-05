@@ -172,7 +172,7 @@
   "search": "Search",
   "search_placeholder": "Search the whole journal…",
   "search_hint": "Notes, tags, letters, questions, anything with words in it. With or without diacritics: “lozko” finds “łóżko”.",
-  "search_more": "Show {count} more",
+  "list_more": "Show {count} more",
   "search_try": "Try “euphoria”, a tag like “therapy”, or a word from a letter you wrote.",
   "search_filters": "Filters",
   "search_filter_moods_aria": "Mood filters",
