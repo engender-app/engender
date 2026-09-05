@@ -108,7 +108,10 @@ export function wordsPerMinute(wordCount: number, spokenSeconds: number): number
   return (wordCount / spokenSeconds) * 60;
 }
 
-function rms(samples: Float32Array, from: number, length: number): number {
+/** Root mean square over a span. Exported because the gate measures a
+    frame's level with the same arithmetic the voicing decision used
+    (quality.ts), and two spellings of it would be two answers. */
+export function rms(samples: Float32Array, from: number, length: number): number {
   let sum = 0;
   for (let i = from; i < from + length; i++) sum += samples[i] * samples[i];
   return Math.sqrt(sum / length);
@@ -231,11 +234,17 @@ export function frameGeometry(sampleRate: number): FrameGeometry {
   };
 }
 
-/** The aggregates and the stats a list of frames adds up to. Separate from
-    trackPitch because the live gauge assembles its frames a chunk at a time
-    and still has to end up with the same track shape the whole-buffer path
-    produces - two ways of summing the same frames would drift. */
-export function summarizeFrames(frames: readonly PitchFrame[], hopSeconds: number): PitchTrack {
+/** The aggregates and the stats a list of frames adds up to. Its own
+    function rather than the tail of trackPitch because the summing is the
+    part worth reading on its own; nothing outside this module calls it.
+
+    It used to be the live gauge's too, which assembled its frames a chunk at
+    a time and came here to end up with the same track shape. The gauge no
+    longer reads a whole take twice, so it keeps its own durations running as
+    frames complete (quality.ts) and this is only the track's own readout.
+    The two are still the same two counts, and live.test.ts's take-in-pieces
+    equivalence test is what holds them together. */
+function summarizeFrames(frames: readonly PitchFrame[], hopSeconds: number): PitchTrack {
   const voicedHz = frames.filter((frame) => frame.hz !== null).map((frame) => frame.hz as number);
 
   let longestRun = 0;
