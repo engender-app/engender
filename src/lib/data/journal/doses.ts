@@ -159,6 +159,32 @@ export interface DosesArea {
       `epochDayFromTimestamp`. One bounded `MAX`, not a fetched list reduced
       in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
+  /** How many non-skipped doses carry each distinct `drug` value, within
+      each of `ranges`, in the range order given. Ranges must not overlap; a
+      dose in none of them is counted nowhere. One grouped aggregate, not a
+      fetched list counted in JS - the same reason `lastWriteEpochDay` is a
+      bounded `MAX`.
+
+      The `drug` column as stored, never resolved: a dose that names no drug
+      keeps a `null` key rather than being attributed to an episode's drug
+      here. Attribution is the caller's rule to apply (regimenEpisode.ts),
+      and a caller that needs it asks for one range per stretch over which
+      the answer is constant (`drugSpans`). Distinct drug values are few, so
+      what crosses the seam is a handful of counts however long the log is. */
+  countConsumingDosesByDrug(ranges: readonly DoseDayRange[]): Promise<DrugDoseCounts[]>;
+}
+
+/** A closed day range, both ends included. */
+export interface DoseDayRange {
+  fromEpochDay: number;
+  toEpochDay: number;
+}
+
+export interface DrugDoseCounts {
+  /** The `drug` column as stored. Null for a dose that named none. */
+  drug: string | null;
+  /** One count per range asked for, in the same order. */
+  countsByRange: number[];
 }
 
 type DoseRow = {
@@ -285,6 +311,43 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         [startOfDayTimestamp(fromEpochDay), startOfDayTimestamp(toEpochDay + 1)]
       );
       return rows.map(toDoseEvent);
+    },
+
+    async countConsumingDosesByDrug(ranges) {
+      if (ranges.length === 0) return [];
+
+      /* One CASE over the ranges rather than one statement each: what this
+         read exists to avoid is crossings, and a statement per range would
+         trade a large one for several small ones. The bounds are half-open
+         on the next day's local midnight, the same way getDoses bounds
+         itself and for the same DST reason. */
+      const bounds = ranges.map((range) => ({
+        from: startOfDayTimestamp(range.fromEpochDay),
+        until: startOfDayTimestamp(range.toEpochDay + 1)
+      }));
+      const whens = bounds.map((_, index) => `WHEN timestamp >= ? AND timestamp < ? THEN ${index}`).join(' ');
+      const params = bounds.flatMap((bound) => [bound.from, bound.until]);
+
+      const rows = await driver.query<{ drug: string | null; bucket: number; n: number }>(
+        `SELECT drug, CASE ${whens} END AS bucket, COUNT(*) AS n
+           FROM dose_event
+          WHERE status <> 'skipped' AND timestamp >= ? AND timestamp < ?
+          GROUP BY drug, bucket
+         HAVING bucket IS NOT NULL`,
+        [
+          ...params,
+          Math.min(...bounds.map((bound) => bound.from)),
+          Math.max(...bounds.map((bound) => bound.until))
+        ]
+      );
+
+      const byDrug = new Map<string | null, number[]>();
+      for (const row of rows) {
+        const counts = byDrug.get(row.drug) ?? ranges.map(() => 0);
+        counts[row.bucket] = row.n;
+        byDrug.set(row.drug, counts);
+      }
+      return [...byDrug].map(([drug, countsByRange]) => ({ drug, countsByRange }));
     },
 
     async upsertDose(input) {

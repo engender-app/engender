@@ -745,7 +745,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // The comparison reads the episode history as well: which episode is in
       // effect, and which of them each dose is attributed to (doses.ts).
       getComparison: ['dose', 'regimen'],
-      lastWriteEpochDay: ['dose']
+      lastWriteEpochDay: ['dose'],
+      // Counts rows in the dose log and nothing else: the caller resolves
+      // which drug an unnamed dose belongs to before asking, so the episode
+      // history is on the caller's list rather than this one's
+      // (stock.getProjections below carries both).
+      countConsumingDosesByDrug: ['dose']
     }
   }),
   stock: classify<Journal['stock']>()({

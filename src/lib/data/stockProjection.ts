@@ -98,12 +98,61 @@ function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly Re
   return drug !== null && drugsMatch(drug, stock.drug);
 }
 
-/** `stock`'s projection as of `asOfEpochDay`. `doses` need only cover
-    `[stock.recordedEpochDay, asOfEpochDay]` - nothing outside that range
-    is read - and need not already be scoped to this drug: this function
-    does that itself, via `episodes`, the way doseSchedule.ts's callers are
-    trusted to have scoped theirs to one episode (this one instead resolves
-    per dose, since a drug can span more than one). */
+/** The first day of the trailing window the consumption rate is estimated
+    over: `TRAILING_WINDOW_DAYS` back from `asOfEpochDay`, or the day the
+    count was recorded when that is later - there is nothing to estimate
+    from before the count. */
+export function trailingWindowStart(stock: StockEntry, asOfEpochDay: number): number {
+  return Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
+}
+
+/** The three figures a projection is made of, however they were counted.
+    All three are counts of doses, never the doses themselves: a projection
+    needs to know how many, not which. */
+export interface StockDoseCounts {
+  /** Doses consuming this drug's stock over `[recordedEpochDay,
+      asOfEpochDay]` - taken or changed, and attributed to this drug. */
+  consumed: number;
+  /** Those of them falling on or after `trailingWindowStart`. */
+  consumedInTrailingWindow: number;
+  /** Consuming doses in the same window that named no drug while more than
+      one concurrent episode was active, so no drug's count reflects them. */
+  excluded: number;
+}
+
+/** `stock`'s projection from counts already taken over its window. The
+    whole of the rule about what a projection means - a `remaining` free to
+    go negative, a rate averaged over calendar days including the ones that
+    consumed nothing, a run-out day at `asOfEpochDay` once the count is
+    already outrun - lives here, so the two ways of arriving at the counts
+    cannot drift apart. */
+export function projectStockFromCounts(
+  stock: StockEntry,
+  counts: StockDoseCounts,
+  asOfEpochDay: number
+): StockProjection {
+  const remaining = stock.quantity - counts.consumed;
+  const excludedDoses = counts.excluded;
+
+  const windowDays = asOfEpochDay - trailingWindowStart(stock, asOfEpochDay) + 1;
+  const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays : null;
+
+  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
+  if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
+  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+}
+
+/** `stock`'s projection as of `asOfEpochDay`, counting the doses itself.
+    `doses` need only cover `[stock.recordedEpochDay, asOfEpochDay]` -
+    nothing outside that range is read - and need not already be scoped to
+    this drug: this function does that itself, via `episodes`, the way
+    doseSchedule.ts's callers are trusted to have scoped theirs to one
+    episode (this one instead resolves per dose, since a drug can span more
+    than one).
+
+    For a caller holding the doses already. A caller that would have to
+    fetch a decade of them to count three numbers should ask its area for
+    the counts and use `projectStockFromCounts` instead (stock.ts). */
 export function projectStock(
   stock: StockEntry,
   doses: readonly DoseEvent[],
@@ -115,20 +164,21 @@ export function projectStock(
     return day >= stock.recordedEpochDay && day <= asOfEpochDay;
   };
 
+  const windowStart = trailingWindowStart(stock, asOfEpochDay);
   const consumed = doses.filter((dose) => inWindow(dose) && consumesStock(dose, stock, episodes));
-  const remaining = stock.quantity - consumed.length;
-  const excludedDoses = doses.filter(
-    (dose) => inWindow(dose) && isConsuming(dose) && attributeDrug(episodes, dose).ambiguous
-  ).length;
 
-  const windowStart = Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
-  const windowDays = asOfEpochDay - windowStart + 1;
-  const consumedInWindow = consumed.filter((dose) => epochDayFromTimestamp(dose.timestamp) >= windowStart);
-  const dailyRate = windowDays > 0 ? consumedInWindow.length / windowDays : null;
-
-  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
-  if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
-  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+  return projectStockFromCounts(
+    stock,
+    {
+      consumed: consumed.length,
+      consumedInTrailingWindow: consumed.filter((dose) => epochDayFromTimestamp(dose.timestamp) >= windowStart)
+        .length,
+      excluded: doses.filter(
+        (dose) => inWindow(dose) && isConsuming(dose) && attributeDrug(episodes, dose).ambiguous
+      ).length
+    },
+    asOfEpochDay
+  );
 }
 
 /** Threshold in days below which a medication stock triggers a low-stock notice. */

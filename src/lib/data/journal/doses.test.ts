@@ -519,3 +519,82 @@ test('an episode with no schedule says so, and names the episode the notice is a
   assert.equal(result.activeEpisode.id, episodeId);
   assert.equal(result.activeEpisode.drug, 'estradiol');
 });
+
+test('countConsumingDosesByDrug counts non-skipped doses per drug value in each range', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 100, 'estradiol');
+
+  // Two named 'estradiol', one named 'spironolactone', one naming nothing,
+  // one skipped and one outside every range.
+  await journal.doses.upsertDose({ timestamp: at(100), route: 'oral', dose: 2, doseUnit: 'mg', drug: 'estradiol' });
+  await journal.doses.upsertDose({ timestamp: at(105), route: 'oral', dose: 2, doseUnit: 'mg', drug: 'estradiol' });
+  await journal.doses.upsertDose({
+    timestamp: at(105),
+    route: 'oral',
+    dose: 1,
+    doseUnit: 'mg',
+    drug: 'spironolactone'
+  });
+  await journal.doses.upsertDose({ timestamp: at(107), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.doses.upsertDose({
+    timestamp: at(106),
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg',
+    drug: 'estradiol',
+    status: 'skipped'
+  });
+  await journal.doses.upsertDose({ timestamp: at(200), route: 'oral', dose: 2, doseUnit: 'mg', drug: 'estradiol' });
+
+  const counts = await journal.doses.countConsumingDosesByDrug([
+    { fromEpochDay: 100, toEpochDay: 104 },
+    { fromEpochDay: 105, toEpochDay: 110 }
+  ]);
+
+  const byDrug = new Map(counts.map((row) => [row.drug, row.countsByRange]));
+  assert.deepEqual(byDrug.get('estradiol'), [1, 1], 'the skipped one is not counted');
+  assert.deepEqual(byDrug.get('spironolactone'), [0, 1]);
+  assert.deepEqual(byDrug.get(null), [0, 1], 'a dose naming no drug keeps its own key');
+  // The dose on day 200 falls in no range and contributes nothing.
+  assert.equal(
+    counts.reduce((total, row) => total + row.countsByRange.reduce((a, b) => a + b, 0), 0),
+    4
+  );
+});
+
+test('countConsumingDosesByDrug agrees with counting getDoses in JS', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 100, 'estradiol');
+  for (const day of [100, 101, 103, 108, 109, 130]) {
+    await journal.doses.upsertDose({
+      timestamp: at(day),
+      route: 'oral',
+      dose: 2,
+      doseUnit: 'mg',
+      drug: day % 2 === 0 ? 'estradiol' : null,
+      status: day === 103 ? 'skipped' : 'taken'
+    });
+  }
+
+  const ranges = [
+    { fromEpochDay: 100, toEpochDay: 105 },
+    { fromEpochDay: 106, toEpochDay: 140 }
+  ];
+  const counts = await journal.doses.countConsumingDosesByDrug(ranges);
+
+  for (const [index, range] of ranges.entries()) {
+    const doses = (await journal.doses.getDoses(range.fromEpochDay, range.toEpochDay)).filter(
+      (dose) => dose.status !== 'skipped'
+    );
+    for (const row of counts) {
+      const inJs = doses.filter((dose) => (dose.drug ?? null) === row.drug).length;
+      assert.equal(row.countsByRange[index], inJs, `drug ${row.drug} in range ${index}`);
+    }
+  }
+});
+
+test('countConsumingDosesByDrug answers nothing for no ranges, and zeroes for an empty log', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.doses.countConsumingDosesByDrug([]), []);
+  assert.deepEqual(await journal.doses.countConsumingDosesByDrug([{ fromEpochDay: 1, toEpochDay: 9 }]), []);
+});

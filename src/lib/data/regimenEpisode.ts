@@ -14,7 +14,7 @@
    attributeDose are the two questions everything else in this file used to
    answer with resolveEpisodeAt alone. */
 
-import { epochDayFromTimestamp } from './epochDay';
+import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { spanCoversDay } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -105,6 +105,55 @@ export function attributeDrug(
   if (active.length === 0) return { drug: null, ambiguous: false };
   const drugs = new Set(active.map((episode) => episode.drug.trim()));
   return drugs.size === 1 ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
+}
+
+/** One stretch of days over which a dose naming no drug of its own
+    attributes the same way. `drug` and `ambiguous` carry exactly what
+    `attributeDrug` answers for such a dose on any day in the stretch. */
+export interface DrugSpan {
+  fromEpochDay: number;
+  toEpochDay: number;
+  drug: string | null;
+  ambiguous: boolean;
+}
+
+/** `[fromEpochDay, toEpochDay]` cut into the fewest stretches over which
+    attribution is constant, oldest first, covering the range with no gap
+    and no overlap. Empty for a range that runs backwards.
+
+    For callers that need to count drug-less doses rather than resolve them
+    one at a time (stockProjection.ts): attribution for such a dose depends
+    only on which episodes cover its day, so it can only change where an
+    episode starts or the day after one ends. Asking the question once per
+    stretch instead of once per dose is what lets a count be taken over days
+    rather than over rows, and the rule itself stays here - a caller gets
+    spans, never the reasoning that made them.
+
+    A dose that names its own drug is not covered by this: `attributeDrug`
+    takes that name as-is regardless of the day, so it needs no span. */
+export function drugSpans(
+  episodes: readonly RegimenEpisode[],
+  fromEpochDay: number,
+  toEpochDay: number
+): DrugSpan[] {
+  if (toEpochDay < fromEpochDay) return [];
+
+  /* Every day attribution could change on, clamped into the range: an
+     episode's first day, and the day after its last. An open episode never
+     stops, so it contributes no end. */
+  const cuts = new Set<number>([fromEpochDay]);
+  for (const episode of episodes) {
+    for (const day of [episode.startEpochDay, episode.endEpochDay === null ? null : episode.endEpochDay + 1]) {
+      if (day !== null && day > fromEpochDay && day <= toEpochDay) cuts.add(day);
+    }
+  }
+
+  const starts = [...cuts].sort((a, b) => a - b);
+  return starts.map((start, index) => {
+    const end = index + 1 < starts.length ? starts[index + 1] - 1 : toEpochDay;
+    const { drug, ambiguous } = attributeDrug(episodes, { drug: null, timestamp: startOfDayTimestamp(start) });
+    return { fromEpochDay: start, toEpochDay: end, drug, ambiguous };
+  });
 }
 
 /** The first episode there has ever been - the one HRT overall started

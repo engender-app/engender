@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { startOfDayTimestamp } from './epochDay.ts';
-import { activeEpisodesAt, attributeDose, attributeDrug, earliestEpisode } from './regimenEpisode.ts';
+import { activeEpisodesAt, attributeDose, attributeDrug, drugSpans, earliestEpisode } from './regimenEpisode.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (
@@ -159,4 +159,67 @@ test('attributeDrug falls back to the sole active episode, tolerates several agr
     drug: 'spironolactone',
     ambiguous: false
   });
+});
+
+test('drugSpans partitions a range into stretches a drug-less dose resolves the same way', () => {
+  /* Estradiol throughout, spironolactone overlapping it in the middle: the
+     overlap is the stretch where a dose naming no drug of its own cannot be
+     told apart. */
+  const episodes = [episode('e', 100, null, 'estradiol'), episode('s', 150, 199, 'spironolactone')];
+
+  assert.deepEqual(drugSpans(episodes, 90, 250), [
+    { fromEpochDay: 90, toEpochDay: 99, drug: null, ambiguous: false },
+    { fromEpochDay: 100, toEpochDay: 149, drug: 'estradiol', ambiguous: false },
+    { fromEpochDay: 150, toEpochDay: 199, drug: null, ambiguous: true },
+    { fromEpochDay: 200, toEpochDay: 250, drug: 'estradiol', ambiguous: false }
+  ]);
+});
+
+test('drugSpans agrees with attributeDrug on every day in the range', () => {
+  const episodes = [
+    episode('e', 100, 179, 'estradiol'),
+    episode('s', 150, 199, 'spironolactone'),
+    episode('e2', 190, null, 'estradiol'),
+    // A second estradiol episode overlapping the first: two active episodes
+    // that agree on the drug, which attributeDrug resolves rather than
+    // calling ambiguous.
+    episode('e3', 195, 205, 'estradiol')
+  ];
+
+  const spans = drugSpans(episodes, 95, 215);
+  for (let day = 95; day <= 215; day += 1) {
+    const span = spans.find((s) => day >= s.fromEpochDay && day <= s.toEpochDay);
+    assert.ok(span, `day ${day} falls in no span`);
+    assert.deepEqual(
+      { drug: span.drug, ambiguous: span.ambiguous },
+      attributeDrug(episodes, { drug: null, timestamp: startOfDayTimestamp(day) }),
+      `day ${day} disagrees with attributeDrug`
+    );
+  }
+});
+
+test('drugSpans covers the range exactly, with no gap and no overlap', () => {
+  const episodes = [episode('e', 100, 149, 'estradiol'), episode('s', 300, null, 'spironolactone')];
+  const spans = drugSpans(episodes, 50, 400);
+
+  assert.equal(spans[0].fromEpochDay, 50);
+  assert.equal(spans[spans.length - 1].toEpochDay, 400);
+  for (const [index, span] of spans.entries()) {
+    assert.ok(span.fromEpochDay <= span.toEpochDay, `span ${index} runs backwards`);
+    if (index > 0) assert.equal(span.fromEpochDay, spans[index - 1].toEpochDay + 1, `gap before span ${index}`);
+  }
+});
+
+test('drugSpans answers a single span when no episode boundary falls inside the range', () => {
+  const episodes = [episode('e', 100, null, 'estradiol')];
+  assert.deepEqual(drugSpans(episodes, 200, 300), [
+    { fromEpochDay: 200, toEpochDay: 300, drug: 'estradiol', ambiguous: false }
+  ]);
+  assert.deepEqual(drugSpans([], 200, 300), [
+    { fromEpochDay: 200, toEpochDay: 300, drug: null, ambiguous: false }
+  ]);
+});
+
+test('drugSpans answers nothing for a range that runs backwards', () => {
+  assert.deepEqual(drugSpans([episode('e', 100, null)], 300, 200), []);
 });
