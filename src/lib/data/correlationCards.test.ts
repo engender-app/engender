@@ -36,9 +36,10 @@ test('doseDaysFromEvents keys by epoch day and drops skipped doses - one never h
   assert.deepEqual([...days].sort((a, b) => a - b), [DAY_0, DAY_0 + 2]);
 });
 
-/* Phase 8 features ticket 42's regression guard: doseDaysFromEvents must
-   never grow a per-drug read - the source doc's point 7 keeps correlation
-   cards descriptive of dose days in general, not of one drug's mood effect.
+/* Phase 8 features ticket 42's regression guard, carrying the phase 8
+   features spec's point 7 (spec.md, cross-cutting A): doseDaysFromEvents
+   must never grow a per-drug read, keeping correlation cards descriptive
+   of dose days in general, not of one drug's mood effect.
    Same timestamp and status, different drug, same day set is what a filter
    creeping in would break; checked by temporarily adding
    `.filter((d) => d.drug === 'Estradiol valerate')` to doseDaysFromEvents
