@@ -173,7 +173,7 @@ describe('the notifications view (ticket 04)', () => {
   });
 
   it('silences a kind when its area is finished, and leaves the others talking', () => {
-    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900 } };
+    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
 
     expect(unpromptedQuiet('measurements-nudge', states, 20000)).toBe(true);
     expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(false);
@@ -181,7 +181,7 @@ describe('the notifications view (ticket 04)', () => {
   });
 
   it('silences both kinds an area owns, the notification as well as the tile', () => {
-    const states: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null } };
+    const states: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
 
     expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(true);
     expect(unpromptedQuiet('wear-elapsed', states, 20000)).toBe(true);
@@ -191,7 +191,7 @@ describe('the notifications view (ticket 04)', () => {
     const everything: AreaStates = Object.fromEntries(
       UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [
         row.area,
-        { hidden: true, finishedEpochDay: null }
+        { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
       ])
     );
 

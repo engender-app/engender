@@ -2144,6 +2144,27 @@ DROP INDEX idx_entry_presentation_id;
 CREATE INDEX idx_entry_presentation_id ON entry(presentation_id, timestamp);
 `;
 
+/* v69: the day an area was paused, not done (phase 8 features ticket 51,
+   ADR-0052 amendment). Nullable and dated for the same reason
+   `finished_epoch_day` is (ADR-0010): the day is the person's own assertion
+   and is not derivable, and a chart or a clinician summary can say when the
+   pause started for free once it is a day rather than a flag.
+
+   No CHECK against `finished_epoch_day`. `journal/areaStates.ts`'s writers
+   are what keep the two mutually exclusive - clearing one whenever the other
+   is set to a day - and a constraint here would duplicate that rule in SQL
+   for no row this build's own writers can ever produce; an inconsistent row
+   arriving from an older archive is exactly the sort of thing a CHECK would
+   refuse to even read back rather than let `areaState.ts` treat as quiet
+   either way.
+
+   Only three areas can carry one today - `SUSPENDABLE_AREAS`
+   (areaState.ts) - but the column is on the same sparse per-area table as
+   the other two rather than a second one keyed the same way twice. */
+const SCHEMA_V69 = `
+ALTER TABLE area_state ADD COLUMN suspended_epoch_day INTEGER;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2212,5 +2233,6 @@ export const migrations: Migration[] = [
   { version: 65, sql: SCHEMA_V65 },
   { version: 66, sql: SCHEMA_V66 },
   { version: 67, sql: SCHEMA_V67 },
-  { version: 68, sql: SCHEMA_V68 }
+  { version: 68, sql: SCHEMA_V68 },
+  { version: 69, sql: SCHEMA_V69 }
 ];

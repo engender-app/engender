@@ -744,6 +744,11 @@ export interface ArchiveAreaState {
   area: string;
   hidden: boolean;
   finishedEpochDay: number | null;
+  /** The day this area was paused, or null while it is active or finished
+      (phase 8 features ticket 51). Only `hairRemovalSessions`,
+      `voiceBenchmarks` and `voicePracticeTakes` carry one today
+      (`SUSPENDABLE_AREAS`, areaState.ts). */
+  suspendedEpochDay: number | null;
 }
 
 /** Everything the journal holds (CONTEXT: "Journal"). */

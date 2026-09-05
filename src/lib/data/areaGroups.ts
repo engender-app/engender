@@ -23,7 +23,7 @@
    `vocabulary/areaLabels.ts`'s, the same split `day.ts` keeps from
    `vocabulary/dayLabels.ts`. */
 
-import { areaQuiet, type AreaStates, type FinishableArea } from './areaState';
+import { areaQuiet, type AreaStates, type FinishableArea, type SuspendableArea, SUSPENDABLE_AREAS } from './areaState';
 
 /** One finishable thing, as a person addresses it. Named after the More hub's
     own row keys, because that is what the screens behind them are called. */
@@ -97,6 +97,56 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
   const found: { key: AreaGroupKey; epochDay: number }[] = [];
   for (const key of AREA_GROUP_KEYS) {
     const epochDay = groupFinishedOn(key, states);
+    if (epochDay !== null) found.push({ key, epochDay });
+  }
+  return found.sort((a, b) => a.epochDay - b.epochDay);
+}
+
+/** The groups whose areas are all suspendable (phase 8 features ticket 51).
+    Derived from `SUSPENDABLE_AREAS` rather than typed out a second time - the
+    same reason this file's own header exists: one list, checked, instead of
+    a screen and a rule quietly disagreeing about which groups these are. */
+export const SUSPENDABLE_GROUPS = AREA_GROUP_KEYS.filter((key) =>
+  AREA_GROUPS[key].every((area): area is SuspendableArea => (SUSPENDABLE_AREAS as readonly string[]).includes(area))
+);
+
+/** A group's areas, typed as suspendable, or null where the group is not one
+    of `SUSPENDABLE_GROUPS`. The one cast this file needs sits here, so a
+    caller asking whether a group can be suspended reads a typed answer
+    rather than reaching for `AREA_GROUPS[group] as SuspendableArea[]` itself
+    and trusting it was asked only where that holds. */
+export function suspendableAreasOf(key: AreaGroupKey): readonly SuspendableArea[] | null {
+  return (SUSPENDABLE_GROUPS as readonly AreaGroupKey[]).includes(key)
+    ? (AREA_GROUPS[key] as readonly SuspendableArea[])
+    : null;
+}
+
+/** The day a group was paused, or null while it has not been - the same rule
+    `groupFinishedOn` states, read off `suspendedEpochDay` instead. Suspended
+    and finished are mutually exclusive per area (areaState.ts), so a group
+    reads as suspended and as finished at once only if an inconsistent row
+    somehow arrived from outside this build's own writers - unreachable
+    through the app, same as a half-finished group is. */
+export function groupSuspendedOn(key: AreaGroupKey, states: AreaStates): number | null {
+  let latest: number | null = null;
+  for (const area of AREA_GROUPS[key]) {
+    const day = states[area]?.suspendedEpochDay ?? null;
+    if (day === null) return null;
+    if (latest === null || day > latest) latest = day;
+  }
+  return latest;
+}
+
+/** Every group the person has paused, oldest first - `finishedGroups`'s own
+    shape, for the two consumers that draw a finished mark and need a paused
+    one too (chartAnnotations.ts). Only ever non-empty for `SUSPENDABLE_GROUPS`
+    in this build, but reads generically over every group for the same reason
+    `groupFinishedOn` does: the areas a caller cannot suspend simply never
+    carry a day here. */
+export function suspendedGroups(states: AreaStates): { key: AreaGroupKey; epochDay: number }[] {
+  const found: { key: AreaGroupKey; epochDay: number }[] = [];
+  for (const key of AREA_GROUP_KEYS) {
+    const epochDay = groupSuspendedOn(key, states);
     if (epochDay !== null) found.push({ key, epochDay });
   }
   return found.sort((a, b) => a.epochDay - b.epochDay);

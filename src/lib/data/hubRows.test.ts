@@ -33,8 +33,9 @@ const reading = (over: Partial<HubReading> = {}): HubReading => ({
   ...over
 });
 
-const finished = (epochDay: number) => ({ hidden: false, finishedEpochDay: epochDay });
-const hidden = { hidden: true, finishedEpochDay: null };
+const finished = (epochDay: number) => ({ hidden: false, finishedEpochDay: epochDay, suspendedEpochDay: null });
+const suspended = (epochDay: number) => ({ hidden: false, finishedEpochDay: null, suspendedEpochDay: epochDay });
+const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null };
 
 // --- the row list itself ----------------------------------------------------
 
@@ -242,6 +243,40 @@ test('a finish dated in the future has not happened yet', () => {
   assert.deepEqual(line, { kind: 'not-yet' });
 });
 
+// --- suspended ----------------------------------------------------------------
+
+test('a suspended row says the day it was paused', () => {
+  const line = rowLine(spec('hair-removal'), reading({ states: { hairRemovalSessions: suspended(TODAY - 30) } }));
+
+  assert.deepEqual(line, { kind: 'suspended', epochDay: TODAY - 30 });
+});
+
+test('a row fronting two sections reads as suspended only when both are', () => {
+  const half: AreaStates = { voiceBenchmarks: suspended(TODAY - 30) };
+  const whole: AreaStates = { voiceBenchmarks: suspended(TODAY - 30), voicePracticeTakes: suspended(TODAY - 20) };
+
+  assert.equal(rowLine(spec('voice-benchmark'), reading({ states: half })).kind, 'not-yet');
+  assert.deepEqual(rowLine(spec('voice-benchmark'), reading({ states: whole })), {
+    kind: 'suspended',
+    epochDay: TODAY - 20
+  });
+});
+
+test('finished wins over suspended - a row cannot read both, but if it ever did, finished is the one that shows', () => {
+  const line = rowLine(
+    spec('hair-removal'),
+    reading({ states: { hairRemovalSessions: { hidden: false, finishedEpochDay: TODAY - 10, suspendedEpochDay: TODAY - 30 } } })
+  );
+
+  assert.deepEqual(line, { kind: 'finished', epochDay: TODAY - 10 });
+});
+
+test('a suspend day dated in the future has not happened yet', () => {
+  const line = rowLine(spec('hair-removal'), reading({ states: { hairRemovalSessions: suspended(TODAY + 10) } }));
+
+  assert.deepEqual(line, { kind: 'not-yet' });
+});
+
 // --- hidden -----------------------------------------------------------------
 
 test('a hidden area takes its row off the hub', () => {
@@ -289,6 +324,17 @@ test('a finished row leaves its group for the finished set, and the set comes la
   );
   const practice = sections.find((section) => section.key === 'practice');
   assert.ok(!practice?.rows.some((row) => row.spec.key === 'wear'), 'the row is in two places at once');
+});
+
+test('a suspended row stays under its own group, unlike a finished one - it is not done', () => {
+  const sections = hubSections(reading({ states: { hairRemovalSessions: suspended(TODAY - 30) } }));
+
+  assert.ok(
+    !sections.some((section) => section.key === 'finished'),
+    'nothing is finished, so there is no finished set at all'
+  );
+  const body = sections.find((section) => section.key === 'body');
+  assert.ok(body?.rows.some((row) => row.spec.key === 'hair-removal'), 'the suspended row left its own group');
 });
 
 test('a finished row keeps its icon and its screen', () => {

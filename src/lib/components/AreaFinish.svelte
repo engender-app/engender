@@ -8,12 +8,21 @@
      is one component rather than eight copies because the risk here is copy
      and eight copies of a sentence drift.
 
-     ## The three states, and why the middle one is a sheet
+     ## The states, and why the middle ones are sheets
 
-     Not finished, it is one quiet row at the foot of the screen. Finished, it
-     is what the person said and a row to undo it - two rows, not an icon
-     button, because un-finishing has to be at least as easy as finishing and
-     an unlabelled glyph is not.
+     Not finished, it is one quiet row at the foot of the screen - two, on
+     voice and hair removal, since pausing is the other thing those two
+     screens can say (phase 8 features ticket 51, ADR-0052 amendment).
+     Finished, it is what the person said and a row to undo it - two rows,
+     not an icon button, because un-finishing has to be at least as easy as
+     finishing and an unlabelled glyph is not. Suspended reads the same way,
+     with "resume" standing in for "pick it back up".
+
+     A stream is active, suspended or finished, never two of those at once
+     (`journal/areaStates.ts` enforces it on write), so the card never has to
+     choose which of two conflicting rows to draw - only one of the three
+     states is ever true, and finishing while suspended (or the reverse) just
+     moves it from one to the other.
 
      The confirmation exists for the reason the photo-section milestone's
      does: the gesture reads as destructive and nothing is destroyed, so the
@@ -63,11 +72,13 @@
     AREA_GROUPS,
     groupFinishedOn,
     groupLastWrite,
+    groupSuspendedOn,
     shouldOfferFinish,
+    suspendableAreasOf,
     type AreaGroupKey
   } from '$lib/data/areaGroups';
   import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
-  import { OFFERS, answerOffer, type FinishedArea } from '$lib/data/offers';
+  import { OFFERS, answerOffer, type FinishedArea, type SuspendedArea } from '$lib/data/offers';
   import { fmtDay } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
@@ -87,12 +98,18 @@
   let { group }: { group: AreaGroupKey } = $props();
 
   const OFFER = OFFERS['area-finished'];
+  const SUSPEND_OFFER = OFFERS['area-suspended'];
   const today = todayEpochDay();
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /** Null for every group but voice and hair removal (ticket 51) - the two
+      areas this group's own areas were named for. */
+  let suspendableAreas = $derived(suspendableAreasOf(group));
 
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
   let states = $derived(statesQuery.value ?? {});
   let finishedOn = $derived(groupFinishedOn(group, states));
+  let suspendedOn = $derived(groupSuspendedOn(group, states));
 
   /* Asked unconditionally rather than behind a gate of its own. A gate would
      have had to restate two of `shouldOfferFinish`'s four conditions here,
@@ -160,6 +177,36 @@
   function pickBackUp() {
     void journal.areaStates.setAreasFinished(AREA_GROUPS[group], null);
   }
+
+  let suspendSheetOpen = $state(false);
+  let suspendDateInput = $state(dateInputValueFromEpochDay(today));
+
+  /** The control's own way in, same as `openFinish` - today, editable. */
+  function openSuspend() {
+    suspendDateInput = dateInputValueFromEpochDay(today);
+    suspendSheetOpen = true;
+  }
+
+  /* Closed before the write, `confirmFinish`'s own order and its own reason:
+     a second tap finds no open sheet, and the write goes through
+     `answerOffer` so this is not a second path to `setAreasSuspended`
+     alongside whatever a future automatic trigger might reach for. */
+  async function confirmSuspend() {
+    if (!suspendableAreas) return;
+    const subject: SuspendedArea = {
+      areas: suspendableAreas,
+      epochDay: epochDayFromDateInputValueOrToday(suspendDateInput)
+    };
+    suspendSheetOpen = false;
+    await answerOffer(SUSPEND_OFFER, subject, 'confirm', journal);
+  }
+
+  /** Resuming: the same call with null, and no date to pick - `pickBackUp`'s
+      own shape. */
+  function resume() {
+    if (!suspendableAreas) return;
+    void journal.areaStates.setAreasSuspended(suspendableAreas, null);
+  }
 </script>
 
 <div class="screen-part area-finish">
@@ -211,6 +258,25 @@
           chevron={false}
           onclick={pickBackUp}
         />
+      {:else if suspendedOn !== null}
+        <ListRow
+          key="area-suspended"
+          data-area-suspended
+          icon="pause"
+          title={m.area_suspend_done_title({ date: dayLong(suspendedOn) })}
+          subtitle={m.area_suspend_done_sub()}
+          aria-live="polite"
+          static
+          chevron={false}
+        />
+        <ListRow
+          key="area-suspend-undo"
+          data-area-suspend-undo
+          icon="plus"
+          title={m.area_suspend_undo()}
+          chevron={false}
+          onclick={resume}
+        />
       {:else if offering}
         <ListRow
           key="area-finish-decline"
@@ -232,6 +298,17 @@
           chevron={false}
           onclick={openFinish}
         />
+        {#if suspendableAreas}
+          <ListRow
+            key="area-suspend"
+            data-area-suspend
+            icon="pause"
+            title={m.area_suspend_row_title()}
+            subtitle={m.area_suspend_row_sub()}
+            chevron={false}
+            onclick={openSuspend}
+          />
+        {/if}
       {/if}
     </ListCard>
   </div>
@@ -254,6 +331,31 @@
     </button>
   </div>
 </Sheet>
+
+{#if suspendableAreas}
+  <Sheet bind:open={suspendSheetOpen} title={m.area_suspend_sheet_title()}>
+    <h3>{m.area_suspend_sheet_title()}</h3>
+    <p class="muted small area-finish-body">{m.area_suspend_sheet_body()}</p>
+    <Field label={m.area_suspend_date_label()} id="area-suspend-date">
+      {#snippet children(id)}
+        <DatePicker
+          name="area-suspend-date"
+          max={dateInputValueFromEpochDay(today)}
+          bind:value={suspendDateInput}
+          {id}
+        />
+      {/snippet}
+    </Field>
+    <div class="stack-3 area-finish-actions">
+      <button class="btn btn-primary" data-area-suspend-confirm onclick={confirmSuspend}>
+        <span>{SUSPEND_OFFER.copy.confirm()}</span>
+      </button>
+      <button class="btn btn-ghost" onclick={() => (suspendSheetOpen = false)}>
+        <span>{m.area_suspend_cancel()}</span>
+      </button>
+    </div>
+  </Sheet>
+{/if}
 
 <style>
   .area-finish-body {

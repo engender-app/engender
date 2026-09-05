@@ -8,13 +8,18 @@ import {
   groupDeclined,
   groupFinishedOn,
   groupLastWrite,
-  shouldOfferFinish
+  groupSuspendedOn,
+  shouldOfferFinish,
+  SUSPENDABLE_GROUPS,
+  suspendableAreasOf,
+  suspendedGroups
 } from './areaGroups.ts';
 import { FINISHABLE_AREAS, type AreaStates } from './areaState.ts';
 
 const TODAY = 20000;
 
-const finished = (epochDay: number) => ({ hidden: false, finishedEpochDay: epochDay });
+const finished = (epochDay: number) => ({ hidden: false, finishedEpochDay: epochDay, suspendedEpochDay: null });
+const suspended = (epochDay: number) => ({ hidden: false, finishedEpochDay: null, suspendedEpochDay: epochDay });
 
 test('every finishable area is grouped, and none of them twice', () => {
   const grouped = AREA_GROUP_KEYS.flatMap((key) => [...AREA_GROUPS[key]]);
@@ -53,7 +58,7 @@ test('two areas finished on days that disagree read as the later one', () => {
 });
 
 test('hiding an area does not finish it', () => {
-  const states: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null } };
+  const states: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
 
   assert.equal(groupFinishedOn('wear', states), null);
 });
@@ -70,6 +75,45 @@ test('the finished groups come back oldest first, each named once', () => {
     { key: 'measurements', epochDay: 19700 },
     { key: 'hair-progress', epochDay: 19800 },
     { key: 'wear', epochDay: 19900 }
+  ]);
+});
+
+test('the suspendable groups are voice and hair removal, and only those two', () => {
+  assert.deepEqual([...SUSPENDABLE_GROUPS].sort(), ['hair-removal', 'voice']);
+});
+
+test("suspendableAreasOf answers a suspendable group's areas, typed, and null for the rest", () => {
+  assert.deepEqual([...(suspendableAreasOf('voice') ?? [])], ['voiceBenchmarks', 'voicePracticeTakes']);
+  assert.deepEqual([...(suspendableAreasOf('hair-removal') ?? [])], ['hairRemovalSessions']);
+  assert.equal(suspendableAreasOf('measurements'), null);
+});
+
+test('a group of one is suspended on the day its area is, mirroring groupFinishedOn', () => {
+  const states: AreaStates = { hairRemovalSessions: suspended(19800) };
+
+  assert.equal(groupSuspendedOn('hair-removal', states), 19800);
+  assert.equal(groupSuspendedOn('measurements', states), null);
+});
+
+test('a suspendable group fronting two areas is not suspended until both are, and disagreeing days read as the later one', () => {
+  const half: AreaStates = { voiceBenchmarks: suspended(19800) };
+  const whole: AreaStates = { voiceBenchmarks: suspended(19800), voicePracticeTakes: suspended(19850) };
+
+  assert.equal(groupSuspendedOn('voice', half), null);
+  assert.equal(groupSuspendedOn('voice', whole), 19850);
+});
+
+test('the suspended groups come back oldest first, each named once, and a finished one is not among them', () => {
+  const states: AreaStates = {
+    hairRemovalSessions: suspended(19900),
+    voiceBenchmarks: suspended(19700),
+    voicePracticeTakes: suspended(19700),
+    measurements: finished(19000)
+  };
+
+  assert.deepEqual(suspendedGroups(states), [
+    { key: 'voice', epochDay: 19700 },
+    { key: 'hair-removal', epochDay: 19900 }
   ]);
 });
 
@@ -165,7 +209,7 @@ test('an area that is already quiet is not asked about', () => {
   );
   assert.equal(
     shouldOfferFinish('measurements', {
-      states: { measurements: { hidden: true, finishedEpochDay: null } },
+      states: { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } },
       lastWrites,
       declined: [],
       todayEpochDay: TODAY

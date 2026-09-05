@@ -229,7 +229,7 @@ describe('schedulableReminders (phase 6 ticket 04)', () => {
      the same way the switch does, and takes nothing else with it. */
   test('drops the wear prompts once the wear log is finished, switch on or not', () => {
     const finished = {
-      areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20000 } },
+      areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20000, suspendedEpochDay: null } },
       todayEpochDay: 20309,
       remindersEnabled: true,
       wearElapsedEnabled: true
@@ -240,7 +240,7 @@ describe('schedulableReminders (phase 6 ticket 04)', () => {
 
   test('keeps them while the finish day is still ahead', () => {
     const notYet = {
-      areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20400 } },
+      areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20400, suspendedEpochDay: null } },
       todayEpochDay: 20309,
       remindersEnabled: true,
       wearElapsedEnabled: true
