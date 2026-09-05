@@ -48,7 +48,7 @@
    same split `areaGroups.ts` keeps from `vocabulary/areaLabels.ts`. */
 
 import { FINISH_SUGGESTION_QUIET_DAYS, groupFinishedOn, latestWrite, type AreaGroupKey } from './areaGroups';
-import { areaHidden, type AreaStates } from './areaState';
+import { areasHidden, type AreaStates } from './areaState';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
 
@@ -411,6 +411,28 @@ export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
 
 export const HUB_ROWS: readonly HubRow[] = ROWS;
 
+const ROWS_BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
+
+/** One row, by key. Total over `HubRowKey` and returning a `HubRow` rather
+    than `HubRow | undefined`, which is what makes a second surface able to
+    read a screen's identity off the row instead of restating it: the stats
+    tab's cards are keyed by this type and a card naming no row does not
+    compile (`statsAreas.ts`). */
+export function hubRow(key: HubRowKey): HubRow {
+  return ROWS_BY_KEY.get(key)!;
+}
+
+/** The screen behind a row, without the query string one row carries.
+
+    `voice-benchmark` opens the voice screen on its benchmark tab, which is
+    that row's business; anything asking which screen is behind the row - the
+    stats card that fronts the same area, the test that holds every feature
+    screen to the kit - means the screen. Here rather than as a `split` at
+    each of those call sites. */
+export function rowScreen(row: HubRowSpec): string {
+  return row.href.split('?')[0];
+}
+
 /* Every finishable group has to be fronted by a row, or it is one a person
    can declare finished on its own screen and which then moves nowhere on the
    hub, silently. This makes that a compile error - demonstrated by deleting
@@ -458,17 +480,11 @@ export function rowReads(spec: HubRowSpec): LastWriteKey[] {
   return spec.areas.filter(hasLastWrite);
 }
 
-/** Whether a row has gone with a hidden area.
-
-    Every hideable section behind it, and there has to be at least one: a row
-    fronting no area is a screen rather than an area and nothing hides it, and
-    a row where one half is hidden and the other is not still has something to
-    show. `cycleEvents` is outside `HideableArea` (ADR-0043), so the row
-    fronting only it fails the guard below and can never go this way - which
-    is the asymmetry the ADR asks for, expressed rather than special-cased. */
+/** Whether a row has gone with a hidden area: `areasHidden` over the sections
+    it fronts, which is where the rule lives now that the stats tab's cards
+    ask it too (`areaState.ts`). */
 export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
-  if (spec.areas.length === 0) return false;
-  return spec.areas.every((area) => area !== 'cycleEvents' && areaHidden(area, states));
+  return areasHidden(spec.areas, states);
 }
 
 /** What a row's second line says.

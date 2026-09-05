@@ -198,6 +198,24 @@ export function areaHidden(area: HideableArea, states: AreaStates): boolean {
   return states[area]?.hidden === true;
 }
 
+/** Whether a surface fronting these areas has gone with them.
+
+    Every one of them has to be hidden, and there has to be at least one: a
+    surface fronting no area is a screen rather than an area and nothing
+    hides it, and one whose other half is still shown has something left to
+    show. `cycleEvents` is outside `HideableArea` (ADR-0043), so a surface
+    fronting only it can never go this way - the asymmetry the ADR asks for,
+    expressed rather than special-cased.
+
+    Here rather than in either caller because both surfaces that front areas
+    ask it: the More hub's rows (`hubRows.ts`) and the stats tab's cards
+    (`statsAreas.ts`), which used to answer it per card off a single named
+    area and so could disagree with the row it sits behind. */
+export function areasHidden(areas: readonly ArchiveSectionName[], states: AreaStates): boolean {
+  if (areas.length === 0) return false;
+  return areas.every((area) => area !== 'cycleEvents' && areaHidden(area, states));
+}
+
 /** Whether an area should stop talking: hidden, or finished on or before
     today. The one question the prompt-and-tile cascade asks, so a hidden
     area and a finished one silence prompts and tiles the same way while the
