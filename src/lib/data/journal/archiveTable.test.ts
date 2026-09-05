@@ -62,7 +62,8 @@ const reading = (driver: SqliteDriver): SectionRead =>
     hairRemovalPhotos: [],
     procedurePhotos: [],
     tryoutPhotos: [],
-    benchmarkFiles: []
+    benchmarkFiles: [],
+    documents: []
   });
 
 const restoring = (driver: SqliteDriver) => ({

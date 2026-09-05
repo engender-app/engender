@@ -265,7 +265,8 @@ test('a test may register an entry of its own and read it back through the same 
       hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
       procedures: journal.procedures,
-      tryouts: journal.tryouts
+      tryouts: journal.tryouts,
+      documents: journal.documents
     },
     [...LAST_WRITE_ENTRIES, invented]
   );

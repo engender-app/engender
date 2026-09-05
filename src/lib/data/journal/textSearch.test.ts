@@ -419,4 +419,8 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     epochDay: DAY,
     enabled: true
   });
+  await journal.documents.addDocument(
+    { epochDay: DAY, title: `document ${word}` },
+    { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }
+  );
 }

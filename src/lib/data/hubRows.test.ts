@@ -90,10 +90,12 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows can report a reading and thirteen never can', () => {
+test('fourteen rows can report a reading and thirteen never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
-  assert.equal(reads.length, 13);
+  // The fourteenth is documents (phase 8 features ticket 52): the media
+  // group's first row that fronts an area of its own.
+  assert.equal(reads.length, 14);
   assert.equal(HUB_ROWS.length - reads.length, 13);
 });
 
@@ -372,11 +374,11 @@ test('a fresh journal draws every row, each saying what is behind it', () => {
   }
 });
 
-test('the media group is photos and voice memos, and body keeps the other four', () => {
+test('the media group is photos, voice memos and documents, and body keeps the other four', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  assert.deepEqual(group('media'), ['photos', 'voice']);
+  assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
   assert.deepEqual(group('body'), ['measurements', 'sizes', 'hair-progress', 'hair-removal']);
 });

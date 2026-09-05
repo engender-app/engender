@@ -429,7 +429,8 @@ const COMPOSING_READS: readonly ComposingRead[] = [
       ['hairProgress', 'getPhotosOnDay'],
       ['hairRemoval', 'getSessionsOnDay'],
       ['procedures', 'getDayRecords'],
-      ['tryouts', 'getPhotosOnDay']
+      ['tryouts', 'getPhotosOnDay'],
+      ['documents', 'getDocumentsOnDay']
     ]
   },
   {
@@ -457,7 +458,8 @@ const COMPOSING_READS: readonly ComposingRead[] = [
       ['hairProgress', 'lastPhotoWriteEpochDay'],
       ['hairRemoval', 'lastWriteEpochDay'],
       ['procedures', 'lastWriteEpochDay'],
-      ['tryouts', 'lastWriteEpochDay']
+      ['tryouts', 'lastWriteEpochDay'],
+      ['documents', 'lastWriteEpochDay']
     ]
   },
   {

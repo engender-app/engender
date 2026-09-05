@@ -1168,3 +1168,30 @@ export interface TaperSession {
   epochDay: number;
   note: string;
 }
+
+/** One piece of paper the person keeps (phase 8 features ticket 52,
+    ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court ruling,
+    a referral. The app never reads it - no OCR, no text extraction, no
+    search over what it says - so the three fields beside the file are the
+    whole record, and `title` is the person's own summary and the only handle
+    search has on it.
+
+    `JournalDocument` rather than `Document`, which is the DOM's own global:
+    a screen importing this type would shadow it, and a type that means one
+    thing in `data/` and another everywhere else is not worth the shorter
+    name.
+
+    `epochDay` is the day the paper is *from*, not the day it was scanned in,
+    which is what makes a shoebox of prints from 1994 importable.
+
+    `fileName` is the same opaque `<uuid>.jpg` a photo carries
+    (photos/names.ts) - an image document goes through the existing
+    normalisation, so it has a derived thumbnail beside it like any other
+    photo. ADR-0065's link to a goal, milestone, procedure or episode is
+    ticket 56's and is not part of this shape yet. */
+export interface JournalDocument {
+  id: string;
+  epochDay: number;
+  title: string;
+  fileName: string;
+}

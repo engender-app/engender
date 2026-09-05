@@ -241,6 +241,32 @@ test('the sweep reclaims a voice recording file no row references', async () => 
   assert.deepEqual(files.names(), []);
 });
 
+/* Phase 8 features ticket 52. The sweep's table list is what `referenced`
+   is built from, so `document` missing from it is not a leak - it is every
+   stored diagnosis deleted on the next boot. Both halves are asserted
+   because only the first one fails if the entry is taken back out. */
+test('the sweep keeps a document, which shares this store (ticket 52)', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, shot('d', 'D'));
+  const stored = (await journal.documents.getDocument(id))!;
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names(), [thumbFileName(stored.fileName), stored.fileName].sort());
+});
+
+test('the sweep reclaims a deleted document’s files', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, shot('d', 'D'));
+  // The row gone but the app dead before the files, the same interrupted
+  // delete the photo case above stands in for.
+  await db.run('DELETE FROM document WHERE uuid = ?', [id]);
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names(), []);
+});
+
 test('mood cannot be cleared from an entry even with a photo still on it', async () => {
   const { journal } = await journalWithFiles();
   // Mood is required unconditionally now (ticket 04): a photo does not

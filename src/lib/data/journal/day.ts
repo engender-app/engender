@@ -61,6 +61,7 @@ import type {
   Entry,
   HairRemovalSession,
   HairStage,
+  JournalDocument,
   LabResult,
   Measurement,
   Milestone,
@@ -74,6 +75,7 @@ import type {
 } from '../types';
 import type { ArchiveSectionName } from './archiveSections';
 import type { CycleEventsArea } from './cycleEvents';
+import type { DocumentsArea } from './documents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
 import type { FeltSenseArea, FeltSenseOnDay } from './feltSense';
@@ -117,6 +119,7 @@ export interface DayRecords {
   hairRemovalSessions: HairRemovalSession[];
   procedureRecords: ProcedureDayRecord[];
   tryoutPhotos: TryoutPhotoOnDay[];
+  documents: JournalDocument[];
 }
 
 export type DaySectionKey = keyof DayRecords;
@@ -144,6 +147,7 @@ export interface DayAreas {
   hairRemoval: HairRemovalArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
+  documents: DocumentsArea;
 }
 
 /** What every section's read is given: the areas, and the day to read. */
@@ -307,6 +311,17 @@ const SECTIONS = [
     covers: ['tryouts'],
     tables: ['tryout'],
     read: ({ tryouts, epochDay }) => tryouts.getPhotosOnDay(epochDay)
+  }),
+  /* A document is dated by the day the paper is from rather than the day it
+     was scanned in (ADR-0065), which is what puts an opinion from 1994 in
+     1994 - and is the reason this section exists at all. The row says the
+     title and goes to the document's own screen; the page image stays
+     behind that tap (dayRows.ts). */
+  section({
+    key: 'documents',
+    covers: ['documents'],
+    tables: ['document'],
+    read: ({ documents, epochDay }) => documents.getDocumentsOnDay(epochDay)
   })
 ] as const;
 
