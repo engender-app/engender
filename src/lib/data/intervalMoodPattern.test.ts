@@ -60,6 +60,20 @@ test('oral and sublingual doses carry no interval - only IM/SC depots have one',
   assert.deepEqual(intervals, []);
 });
 
+/* Phase 8 features ticket 42's regression guard: completedInjectionIntervals
+   must never grow a per-drug read, the same invariant correlationCards.test.ts
+   pins on doseDaysFromEvents. Two injections of different drugs still span
+   one interval, the same as two of the same drug; checked by temporarily
+   adding a drug filter to completedInjectionIntervals and confirming this
+   test fails before taking it back out. */
+test('completedInjectionIntervals does not read drug - a mix of injectable drugs still spans one interval', () => {
+  const sameDrug = completedInjectionIntervals([dose(DAY_0, { drug: 'Estradiol valerate' }), dose(DAY_0 + 14, { drug: 'Estradiol valerate' })]);
+  const mixedDrugs = completedInjectionIntervals([dose(DAY_0, { drug: 'Estradiol valerate' }), dose(DAY_0 + 14, { drug: 'Testosterone cypionate' })]);
+
+  assert.deepEqual(sameDrug, mixedDrugs);
+  assert.deepEqual(sameDrug, [{ startEpochDay: DAY_0, length: 14 }]);
+});
+
 test('foldByCustomInterval folds every intervalLengthDays days starting from fromEpochDay, with no claim of a cycle', () => {
   // A multiple of 14, so position 1 falls on it - the anchor is the epoch
   // itself (epochDayFromTimestamp counts from 1970-01-01), not this test's

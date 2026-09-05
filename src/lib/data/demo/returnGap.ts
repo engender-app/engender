@@ -36,24 +36,27 @@ export async function seedReturnGap(journal: Journal, today: number = todayEpoch
   await seedPersonaJournal(journal, anchor);
   await seedFullFixture(journal, anchor);
 
-  /* One regimen episode active through the gap, not two.
+  /* One regimen episode active through the gap, not three.
 
-     The full fixture runs an injectable estradiol episode and an oral
-     progesterone one concurrently on purpose - it is the shape concurrent
-     episode handling exists for - and `doses.getComparison` answers
-     `multipleEpisodes` for it, because two active episodes have no single
-     schedule to compare a gap against. That is the dose log's own answer
-     and the return surface honours it, which means the unedited fixture can
-     never show the dose row at all: it is the one row on this screen that
-     no review build could reach.
+     The full fixture runs an injectable estradiol episode alongside an oral
+     progesterone one and an oral non-hormone one (phase 8 features ticket
+     42) concurrently on purpose - it is the shape concurrent episode
+     handling exists for - and `doses.getComparison` answers
+     `multipleEpisodes` for more than one active at once, because
+     concurrent episodes have no single schedule to compare a gap against.
+     That is the dose log's own answer and the return surface honours it,
+     which means the unedited fixture can never show the dose row at all:
+     it is the one row on this screen that no review build could reach.
 
-     So the progesterone run ends the day the journal stops. An ordinary
-     thing to have happened, and it leaves exactly one schedule with slots
-     inside the gap. Somebody on two concurrent regimens still gets no dose
-     row on their own return surface, which is a real limit rather than a
-     demo artefact, and it belongs to `getComparison` rather than here. */
-  const progesterone = (await journal.regimen.getEpisodes()).find((e) => e.drug === 'Progesterone');
-  if (progesterone) await journal.regimen.endEpisode(progesterone.id, anchor);
+     So every episode but the estradiol one ends the day the journal
+     stops. An ordinary thing to have happened, and it leaves exactly one
+     schedule with slots inside the gap. Somebody on several concurrent
+     regimens still gets no dose row on their own return surface, which is
+     a real limit rather than a demo artefact, and it belongs to
+     `getComparison` rather than here. */
+  for (const episode of await journal.regimen.getEpisodes()) {
+    if (episode.drug !== 'Estradiol valerate') await journal.regimen.endEpisode(episode.id, anchor);
+  }
 
   /* The era the person is in. Open at both ends on purpose: an era with no
      end is what makes it the stretch they are still in, and no start is the
