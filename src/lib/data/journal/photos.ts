@@ -185,11 +185,13 @@ export async function photosByMilestone(
 
    Reads `hair_photo` (migrations.ts v13), `voice_recording` (migrations.ts
    v17), `video_note` (migrations.ts v30), `tryout_photo` (migrations.ts
-   v31) and `document` (migrations.ts v72) as well as `photo`: a hair-progress photo's row lives in its own
-   table (journal/hairProgress.ts), a voice recording's in its own
+   v31) and `document` (migrations.ts v75) as well as `photo`: a
+   hair-progress photo's row lives in its own table
+   (journal/hairProgress.ts), a voice recording's in its own
    (journal/voiceRecordings.ts), a video note's in its own
-   (journal/videoNotes.ts) and a tryout photo's in its own
-   (journal/tryouts.ts), neither as a third owner here, but every kind of
+   (journal/videoNotes.ts), a tryout photo's in its own
+   (journal/tryouts.ts) and a document's in its own
+   (journal/documents.ts), none as a further owner here, but every kind of
    file sits in the same store and would otherwise look orphaned the
    moment this ran. Neither a recording nor a video note has a thumbnail
    to derive, so their file names are read straight rather than through

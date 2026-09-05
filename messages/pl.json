@@ -3361,5 +3361,6 @@
   "day_document": "Dokument",
   "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz",
   "document_page_alt": "Kartka: {title}",
-  "document_save_failed": "Nie udało się zapisać tego dokumentu. Nic nie zostało zachowane."
+  "document_save_failed": "Nie udało się zapisać tego dokumentu. Nic nie zostało zachowane.",
+  "document_edit_failed": "Nie udało się zapisać tej zmiany. Dokument został bez zmian."
 }

@@ -69,12 +69,21 @@ export interface DocumentsArea {
   deleteDocument(id: string): Promise<void>;
 }
 
-/** A title is the only handle anything has on a document - the list shows
+/** The title as it will be stored, or a throw.
+
+    A title is the only handle anything has on a document - the list shows
     it, search matches on it and nothing else, and the app never reads the
-    page itself (ADR-0065). So a blank one is refused here rather than stored
-    as an unfindable row, and the import sheet's own disabled save is the
-    same rule said earlier. */
-function assertTitled(title: string): string {
+    page itself (ADR-0065). So a blank one is refused here rather than
+    stored as an unfindable row, and the import sheet's own disabled save is
+    the same rule said earlier.
+
+    Not `flatArea`'s `guard` hook, which would be the obvious home for it:
+    a guard is a pure check and this also trims, so putting it there would
+    leave every write storing the untrimmed string it had just approved.
+    Both writers call this instead - `addDocument` because it has to refuse
+    before any file lands, `updateDocument` because a correction is as
+    capable of blanking a title as an import is. */
+function titled(title: string): string {
   const trimmed = title.trim();
   if (trimmed === '') throw new Error('a document needs a title');
   return trimmed;
@@ -83,17 +92,21 @@ function assertTitled(title: string): string {
 export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): DocumentsArea {
   const documents = flatArea<JournalDocument>(driver, {
     table: 'document',
-    columns: { epochDay: 'epoch_day', title: 'title', fileName: 'file_path' },
-    guard: (input) => void assertTitled(input.title)
+    columns: { epochDay: 'epoch_day', title: 'title', fileName: 'file_path' }
   });
+
+  /** One document or none, by its travelling id. Shared by the read and the
+      delete rather than the delete writing its own SELECT: the whole point
+      of the flat factory is that a column list is not written twice. */
+  const byId = async (id: string): Promise<JournalDocument | null> => {
+    const [document] = await documents.read('WHERE uuid = ?', [id]);
+    return document ?? null;
+  };
 
   return {
     getDocuments: () => documents.read('ORDER BY epoch_day DESC, id DESC'),
 
-    async getDocument(id) {
-      const [document] = await documents.read('WHERE uuid = ?', [id]);
-      return document ?? null;
-    },
+    getDocument: byId,
 
     getDocumentsOnDay: (epochDay) => documents.read('WHERE epoch_day = ? ORDER BY id', [epochDay]),
 
@@ -103,7 +116,7 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
     },
 
     async addDocument(input, image) {
-      const title = assertTitled(input.title);
+      const title = titled(input.title);
       const fileName = photoFileName(mintUuid());
       const [full, thumb] = filesOf(fileName);
 
@@ -117,13 +130,13 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
     },
 
     async updateDocument(document) {
-      await documents.upsert({ ...document, title: assertTitled(document.title) });
+      await documents.upsert({ ...document, title: titled(document.title) });
     },
 
     async deleteDocument(id) {
-      const rows = await driver.query<{ file_path: string }>('SELECT file_path FROM document WHERE uuid = ?', [id]);
+      const document = await byId(id);
       await documents.delete(id);
-      for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
+      if (document) for (const name of filesOf(document.fileName)) await files.remove(name);
     }
   };
 }

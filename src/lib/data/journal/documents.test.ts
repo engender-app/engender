@@ -62,10 +62,25 @@ test('a title that is empty or only spaces is refused before anything is written
   assert.deepEqual(await journal.documents.getDocuments(), []);
 });
 
-test('a title keeps its own spacing trimmed at the edges', async () => {
+test('a title keeps its own spacing trimmed at the edges, on the way in and on a correction', async () => {
   const { journal } = await device();
   const id = await journal.documents.addDocument({ epochDay: 20000, title: '  Carry letter  ' }, page());
   assert.equal((await journal.documents.getDocument(id))!.title, 'Carry letter');
+
+  const stored = (await journal.documents.getDocument(id))!;
+  await journal.documents.updateDocument({ ...stored, title: '  Carry letter, second  ' });
+  assert.equal((await journal.documents.getDocument(id))!.title, 'Carry letter, second');
+});
+
+/* Both writers, because both can produce one: an import with a blank title
+   and a correction that empties one are the same unfindable row. */
+test('a correction cannot blank a title either', async () => {
+  const { journal } = await device();
+  const id = await journal.documents.addDocument({ epochDay: 20000, title: 'Referral' }, page());
+  const stored = (await journal.documents.getDocument(id))!;
+
+  await assert.rejects(journal.documents.updateDocument({ ...stored, title: '  ' }));
+  assert.equal((await journal.documents.getDocument(id))!.title, 'Referral');
 });
 
 test('a document dated years before the journal started shows on that day', async () => {
