@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { clipped, concat, mix, noise, silence, sine, wobblingSine } from './test-support/synth.ts';
 import { trackPitch } from './pitch.ts';
-import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality } from './quality.ts';
+import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality, takeSignals } from './quality.ts';
 import type { QualityCheck } from './quality.ts';
 
 /* The gate (ticket 15, seam 1). Its failure modes are tested as carefully as
@@ -13,7 +13,11 @@ import type { QualityCheck } from './quality.ts';
 const assess = (
   signal: { samples: Float32Array; sampleRate: number },
   checks: readonly QualityCheck[] = VOWEL_CHECKS
-) => assessQuality(signal.samples, signal.sampleRate, trackPitch(signal.samples, signal.sampleRate), checks);
+) =>
+  assessQuality(
+    takeSignals(signal.samples, signal.sampleRate, trackPitch(signal.samples, signal.sampleRate)),
+    checks
+  );
 
 /** A held vowel as a good take arrives: room tone under it, three seconds of
     it, level well short of the rails. */
@@ -80,4 +84,31 @@ test('silence is rejected rather than read as a perfectly steady take', () => {
   const report = assess(silence(3));
   assert.equal(report.passed, false);
   assert.ok(report.failed.includes('tooShort'));
+});
+
+/** Words with room between them, which is the only shape that gives the SNR
+    enough unvoiced frames to have a floor worth measuring - a held vowel is
+    periodic end to end and scores the ceiling instead. */
+const spokenTake = () =>
+  concat(
+    mix(sine(190, 0.4, 16000, 0.3), noise(0.4, 16000, 0.01)),
+    noise(0.25, 16000, 0.01),
+    mix(sine(210, 0.5, 16000, 0.3), noise(0.5, 16000, 0.01)),
+    noise(0.3, 16000, 0.01),
+    mix(sine(170, 0.6, 16000, 0.3), noise(0.6, 16000, 0.01))
+  );
+
+test('the room floor is read off dB bins, and the bin is all it costs', () => {
+  // AU-05 turned the two SNR ranks - the voiced median and the room's quiet
+  // quarter - from sorted lists into a 0.01 dB histogram, so that a poll
+  // costs the same however long the take is. This is the one number in the
+  // gate that moved, so it is pinned: the sorted lists answered 31.4608 dB
+  // on this take and the bins answer 31.4600, which is the whole cost. A
+  // sweep of 168 room-and-voice combinations put the worst drift anywhere at
+  // 0.0066 dB and flipped no verdict; a hundredth of a decibel is the bound
+  // quality.ts claims, and anything past it is a bug rather than a rounding.
+  assert.ok(
+    Math.abs(assess(spokenTake()).snrDb - 31.4608) < 0.01,
+    `${assess(spokenTake()).snrDb} against the sorted lists' 31.4608 dB`
+  );
 });
