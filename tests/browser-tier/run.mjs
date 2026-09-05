@@ -1878,6 +1878,57 @@ await block('ticket 29 browser tier', 6, async () => {
     );
 });
 
+// --- Phase 8 audit ticket 25: a screen's own decision, read as a value -----
+/* The first check here that mounts a whole screen and asks what it decided.
+   Everything else in this file drives a module or a gallery; the entry
+   editor's template filter is a closure inside the component, so this is
+   the only place it can run at all. See entry-editor-probe.ts on why the
+   assertions are on rows in SQLite rather than on the markup. */
+await block('phase 8 audit ticket 25 entry editor', 4, async () => {
+  const r = await load('/entry-editor.html', 'entry-editor-probe');
+  if (r.error) throw new Error(r.error);
+
+  const eq = (label, actual, expected) => {
+    if (JSON.stringify(actual) === JSON.stringify(expected)) ok(label);
+    else fail(label, `got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+  };
+
+  /* Tags come back in the journal's own read order rather than the draft's,
+     which is why the two tags below read the other way round from the order
+     the template lists them in. What is under test is which tags are there
+     and that the shared one is not doubled - not what order they are in. */
+  eq('a template applied to a blank draft saves its tags, its dims, its scaffold and its presentation', r.onBlank, {
+    tags: ['g-body-eu', 'g-euphoria'],
+    dims: { euphoria_dysphoria: 85 },
+    note: 'What felt euphoric today?',
+    presentationId: r.shownPresentationId
+  });
+
+  /* The three merge rules at once, over a draft a first template already
+     filled: the shared tag is not doubled, the dimension moves 20 to 85,
+     and the note that is already written is not replaced by the scaffold. */
+  eq('over a filled draft: tags union, dims replace by key, a written note stays written', r.overAFilledDraft, {
+    tags: ['g-body-eu', 'g-euphoria'],
+    dims: { euphoria_dysphoria: 85 },
+    note: 'already writing',
+    presentationId: r.shownPresentationId
+  });
+
+  /* The screen's own rule, which lives nowhere else: what a person cannot
+     see, they cannot edit back off, so a template naming it never puts it
+     in the draft (CONTEXT: "Hidden"). */
+  eq('a template naming a hidden tag, dimension and presentation applies none of the three', r.namingWhatIsHidden, {
+    tags: ['g-body-eu'],
+    dims: { euphoria_dysphoria: 85 },
+    note: '',
+    presentationId: null
+  });
+
+  if (r.hiddenPresentationId && r.hiddenPresentationId !== r.shownPresentationId)
+    ok('and the hidden presentation the third template named is a real row, not one the journal never had');
+  else fail('the hidden presentation is a real row', JSON.stringify(r));
+});
+
 await browser.close();
 await server.close();
 
