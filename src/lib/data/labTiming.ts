@@ -13,7 +13,9 @@
    to know, without the advice. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
-import type { DoseRoute, LabResult, LabTiming } from './types';
+import { resolveCurveDrug } from './hormoneDrug';
+import { attributeDrug } from './regimenEpisode';
+import type { DoseRoute, LabResult, LabTiming, RegimenEpisode } from './types';
 
 /** A lab draw, as much of it as is known: the calendar day it belongs to
     (ADR-0001) and the local wall-clock time it happened at, when someone
@@ -95,6 +97,54 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
   const instant = drawInstant(draw);
   if (instant === null) return null;
   return { route: dose.route, hoursSinceDose: (instant - dose.timestamp) / HOUR };
+}
+
+/** A dose event as deriveTiming (labs.ts) reads it off `dose_event`: only
+    the fields selectTimingDose below needs, from rows already filtered to
+    "not skipped, at or before the draw" and ordered latest first. */
+export interface CandidateDose {
+  timestamp: number;
+  route: DoseRoute;
+  drug: string | null;
+}
+
+/** The candidate that supplies `analyte`'s timing, or null when none does.
+    `analyte` must itself resolve to one of the two curve drugs
+    (hormoneDrug.ts) - prolactin and any custom analyte resolve to none and
+    always get null here, exactly as when there is no dose at all.
+
+    Otherwise a candidate is skipped over, as if it weren't there, only when
+    `attributeDrug` (regimenEpisode.ts) resolves it to a drug and that drug
+    is not this analyte's curve drug - a concurrent dose for an unrelated
+    drug, the case this exists for. A dose `attributeDrug` has nothing to
+    resolve at all (`drug: null, ambiguous: false` - no episode covers it and
+    it names no drug of its own) is not the same as one resolved to a
+    different drug: it counts, exactly as every dose did before this existed,
+    so a journal that has never logged a regimen episode keeps stamping
+    timing the way it always has. Only a dose `attributeDrug` could not tell
+    apart from another (`ambiguous: true` - concurrent episodes for
+    different drugs, neither named on the dose) is excluded on that same
+    "nothing to attribute" footing, because there is no honest attribution
+    to fall back on for those either.
+
+    `doses` must already be in the order a match should be picked from -
+    latest first - since this returns the first one that qualifies rather
+    than choosing among several. */
+export function selectTimingDose(
+  analyte: string,
+  doses: readonly CandidateDose[],
+  episodes: readonly RegimenEpisode[]
+): CandidateDose | null {
+  const curveDrug = resolveCurveDrug(analyte);
+  if (curveDrug === null) return null;
+
+  return (
+    doses.find((dose) => {
+      const attribution = attributeDrug(episodes, dose);
+      if (attribution.drug === null) return !attribution.ambiguous;
+      return resolveCurveDrug(attribution.drug) === curveDrug;
+    }) ?? null
+  );
 }
 
 /** The axes a lab series' points can disagree on. A **Lab series**

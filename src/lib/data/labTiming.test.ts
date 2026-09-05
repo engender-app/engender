@@ -1,8 +1,15 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { drawInstant, drawUpperBound, labTimingFor, seriesComparability } from './labTiming';
+import {
+  drawInstant,
+  drawUpperBound,
+  labTimingFor,
+  seriesComparability,
+  selectTimingDose,
+  type CandidateDose
+} from './labTiming';
 import { startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
-import type { LabResult, LabTiming } from './types';
+import type { LabResult, LabTiming, RegimenEpisode } from './types';
 
 const DAY = 20000;
 
@@ -85,6 +92,79 @@ test('an untimed draw has no hours figure rather than a made-up one', () => {
 
 test('a draw with no dose before it has no timing context at all', () => {
   assert.equal(labTimingFor({ epochDay: DAY, drawTime: '08:00' }, null), null);
+});
+
+// ---------------------------------------------------------------------------
+// selectTimingDose
+// ---------------------------------------------------------------------------
+
+const episode = (over: Partial<RegimenEpisode> = {}): RegimenEpisode => ({
+  id: 'e',
+  drug: 'estradiol',
+  ester: null,
+  dose: 2,
+  doseUnit: 'mg',
+  route: 'oral',
+  interval: 'daily',
+  startEpochDay: DAY - 100,
+  endEpochDay: null,
+  ...over
+});
+
+const dose = (over: Partial<CandidateDose> = {}): CandidateDose => ({
+  timestamp: at(DAY - 1, '20:00'),
+  route: 'oral',
+  drug: null,
+  ...over
+});
+
+test('a concurrent non-hormone dose never supplies an estradiol draw its timing', () => {
+  /* Two concurrent episodes name their doses' drug explicitly (types.ts) -
+     that's what breaks the tie a drug-less dose could not resolve here. */
+  const episodes = [episode({ drug: 'estradiol' }), episode({ id: 'e2', drug: 'sertraline' })];
+  const doses = [
+    dose({ timestamp: at(DAY, '07:00'), drug: 'sertraline' }),
+    dose({ timestamp: at(DAY - 1, '20:00'), drug: 'estradiol' })
+  ];
+  assert.deepEqual(selectTimingDose('estradiol', doses, episodes), doses[1]);
+});
+
+test('a concurrent second hormone still counts when it names the same curve drug', () => {
+  const episodes = [episode({ drug: 'estradiol' })];
+  const doses = [dose({ timestamp: at(DAY, '07:00'), drug: 'estradiol valerate' })];
+  assert.deepEqual(selectTimingDose('estradiol', doses, episodes), doses[0]);
+});
+
+test('no dose of the right drug at all yields null, same as no dose whatsoever', () => {
+  const episodes = [episode({ drug: 'sertraline' })];
+  const doses = [dose({ timestamp: at(DAY, '07:00'), drug: 'sertraline' })];
+  assert.equal(selectTimingDose('estradiol', doses, episodes), null);
+  assert.equal(selectTimingDose('estradiol', [], episodes), null);
+});
+
+/* A journal that never logged a regimen episode has nothing for
+   attributeDrug to resolve a drug-less dose against - `{ drug: null,
+   ambiguous: false }`, its pre-existing "nothing to attribute" case - and
+   that is not the same as a dose attributed to some other drug. Losing this
+   would break every journal that logs doses without ever logging an episode. */
+test('a dose with no episode to attribute it against still supplies timing', () => {
+  assert.deepEqual(selectTimingDose('estradiol', [dose()], []), dose());
+});
+
+/* The other half: when two concurrent episodes for different drugs leave a
+   drug-less dose ambiguous (regimenEpisode.ts), that is not an honest match
+   either, and is excluded on the same footing as the case above - not
+   treated as a positive attribution to the analyte's own drug. */
+test('a dose left ambiguous by concurrent episodes does not supply timing', () => {
+  const episodes = [episode({ drug: 'estradiol' }), episode({ id: 'e2', drug: 'sertraline' })];
+  assert.equal(selectTimingDose('estradiol', [dose()], episodes), null);
+});
+
+test('an analyte with no curve drug draws no timing, whatever the doses say', () => {
+  const episodes = [episode({ drug: 'estradiol' })];
+  const doses = [dose({ timestamp: at(DAY, '07:00') })];
+  assert.equal(selectTimingDose('prolactin', doses, episodes), null);
+  assert.equal(selectTimingDose('vitamin d', doses, episodes), null);
 });
 
 // ---------------------------------------------------------------------------
