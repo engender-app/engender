@@ -154,6 +154,75 @@ test('a procedure with no date set annotates nothing', async () => {
   assert.deepEqual(await journal.chartAnnotations.getAnnotations(20000, 20199, TODAY), []);
 });
 
+/* Phase 8 features ticket 59: a past appointment joins the seam like any
+   other dated area, named by the person's own kind. */
+test('a past appointment marks the day it happened, named by its own kind', async () => {
+  const journal = await journalWith();
+
+  await journal.appointments.upsertAppointment({
+    epochDay: 20100,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: null,
+    note: null
+  });
+
+  const found = await journal.chartAnnotations.getAnnotations(20080, 20120, TODAY);
+  const appointment = found.find((a) => a.kind === 'appointment');
+
+  assert.equal(appointment?.name, 'endokrynolog');
+  assert.equal(appointment?.fromEpochDay, 20100);
+  assert.equal(appointment?.shape, 'point');
+});
+
+test('an appointment with no kind still draws, with no name of its own', async () => {
+  const journal = await journalWith();
+
+  await journal.appointments.upsertAppointment({
+    epochDay: 20100,
+    procedureId: null,
+    kind: null,
+    place: null,
+    note: null
+  });
+
+  const found = await journal.chartAnnotations.getAnnotations(20080, 20120, TODAY);
+  const appointment = found.find((a) => a.kind === 'appointment');
+
+  assert.equal(appointment?.name, null);
+});
+
+test('a future appointment does not draw', async () => {
+  const journal = await journalWith();
+
+  await journal.appointments.upsertAppointment({
+    epochDay: TODAY + 10,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: null,
+    note: null
+  });
+
+  const found = await journal.chartAnnotations.getAnnotations(TODAY - 20, TODAY + 20, TODAY);
+
+  assert.deepEqual(found.filter((a) => a.kind === 'appointment'), []);
+});
+
+/* A consult is an appointment whose procedureId is set (ADR-0066), and it
+   draws the same way a standalone one does - no separate kind, no separate
+   exclusion. */
+test('a consult draws as an appointment, not as something the procedure owns alone', async () => {
+  const journal = await journalWith();
+
+  const procedureId = await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20200 });
+  await journal.procedures.addConsult(procedureId, 20100);
+
+  const found = await journal.chartAnnotations.getAnnotations(20080, 20120, TODAY);
+  const appointment = found.find((a) => a.kind === 'appointment');
+
+  assert.equal(appointment?.fromEpochDay, 20100);
+});
+
 test('nothing outside the range comes back', async () => {
   const journal = await journalWith();
 
