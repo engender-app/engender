@@ -56,11 +56,11 @@
       speaking" and stops. */
   const TARGET_SECONDS = 1.5;
   /** The ordinary use of this tab runs five to ten minutes, and nothing
-      bounded a single take before this (phase 8 audit issue 04) - the poll
-      re-reads everything captured so far, so an open-ended one eventually
-      costs more than its own period. Two minutes stays comfortably inside
-      that period even before ticket 05 makes the poll itself cheap, and
-      cuts off only the excess of an ordinary session, not the practising. */
+      bounded a single take before this (phase 8 audit issue 04). The poll no
+      longer costs more the longer the take runs (issue 05), so this is not
+      holding the gauge up any more - it is here because an unbounded take is
+      an unbounded recording, and two minutes cuts off only the excess of an
+      ordinary session, not the practising. */
   const PRACTISE_CEILING_SECONDS = 120;
 
   let running = $state(false);
