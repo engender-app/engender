@@ -125,7 +125,23 @@ export interface UnpromptedRow {
 
       A row's `prefKey` is untouched by any of this. Whether a kind of prompt
       talks is a different question from whether an area is on, and this is a
-      switch above the preferences rather than a replacement for them. */
+      switch above the preferences rather than a replacement for them.
+
+      Checked 2026-09-05 (features ticket 35) against the worry that
+      `prefs/catalogue.ts`'s `*Enabled` booleans are a second, boolean-shaped
+      answer to what this field already answers: they are not. Five rows
+      carry a non-null area today - `wear-timer` and `wear-elapsed` both
+      name `wearSessions`, so it is five booleans across four areas, not
+      four - and every other `*Enabled` boolean fronts a record that cannot
+      be an area at all (its own reason lives on its row above). ADR-0039's
+      amendment is why the boolean survives alongside the cascade rather than
+      being replaced by it: a kind's toggle means "never show me this kind,"
+      not "hide the one instance that's currently true," and folding it into
+      `unpromptedQuiet` would delete that distinction. This field being
+      required rather than optional already forces the next kind to answer
+      the same question, so no separate exhaustiveness guard is needed for
+      it either. Nothing changed as a result of this check - see ticket 35's
+      Outcome. */
   area: HideableArea | null;
   /** Present when this kind has a row on the surfaces view
       (`/settings/live-tiles`), carrying the preference that switch writes
