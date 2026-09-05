@@ -28,6 +28,7 @@ import { markJournalBusy } from '../journal-busy';
 import type { Journal } from '../journal/journal';
 import { CLINICIAN_SUMMARY_TABLES } from '../journal/clinicianSummary';
 import { DAY_TABLES } from '../journal/day';
+import { DAY_AHEAD_TABLES } from '../journal/dayAhead';
 import { LAST_WRITE_TABLES } from '../journal/lastWrite';
 import { SEARCH_TABLES } from '../journal/textSearch';
 import { RECONCILE_TABLES } from '../journal/reconcile';
@@ -766,7 +767,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   letters: classify<Journal['letters']>()({
     writes: { addLetter: ['letter'], deleteLetter: ['letter'] },
-    reads: { getLetters: ['letter'], getLetterSeals: ['letter'], getLetter: ['letter'] }
+    reads: {
+      getLetters: ['letter'],
+      getLetterSeals: ['letter'],
+      getLetter: ['letter'],
+      getUnlockDaysInRange: ['letter']
+    }
   }),
   roadmap: classify<Journal['roadmap']>()({
     writes: {
@@ -924,6 +930,14 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   lastWrite: classify<Journal['lastWrite']>()({
     writes: {},
     reads: { getLastWrites: LAST_WRITE_TABLES }
+  }),
+  /* Read-only, and its table list is its own registry's for the reason
+     day's is (dayAhead.ts's DAY_AHEAD_TABLES): a kind registered there
+     brings its tables with it, so a mark cannot go stale on a write to an
+     area registered after this line was written. */
+  dayAhead: classify<Journal['dayAhead']>()({
+    writes: {},
+    reads: { getDayAhead: DAY_AHEAD_TABLES }
   }),
   /* Read-only, and its table list is its own registry's for the reason day's
      is (textSearch.ts's SEARCH_TABLES): an area registered there brings its

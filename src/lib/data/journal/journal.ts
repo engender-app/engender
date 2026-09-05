@@ -25,6 +25,7 @@ import { makeJournalBookArea, type JournalBookArea } from './journalBook';
 import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlationCards';
 import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
 import { makeDayArea, type DayArea } from './day';
+import { makeDayAheadArea, type DayAheadArea } from './dayAhead';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
 import { makeDocumentsArea, type DocumentsArea } from './documents';
 import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
@@ -248,6 +249,15 @@ export interface Journal {
       deliberately having no last write, is lastWrite.ts's registry rather
       than a list of imports here. Reads only. */
   lastWrite: LastWriteArea;
+  /** Every forward mark from a range - an appointment, a surgery date, a
+      milestone still ahead, a letter's unlock day, and a dose slot only
+      where the schedule is not daily (phase 8 features ticket 61,
+      ADR-0067). A view over rows five areas own, like `day` above and for
+      the same reason - which areas earn a mark, and which are written down
+      as deliberately earning none, is dayAhead.ts's registry rather than a
+      list of imports here. Reads only, and nothing new is stored: every
+      fact behind a mark is a column or a schedule that already exists. */
+  dayAhead: DayAheadArea;
   /** Every area that holds text, matched against one query (phase 5
       deepening ticket 24, ADR-0005). A view over rows eighteen areas own, like
       `day` above and for the same reason - which areas are searchable, and
@@ -400,6 +410,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const milestones = makeMilestonesArea(driver, files);
   const appointments = makeAppointmentsArea(driver);
   const procedures = makeProceduresArea(driver, files, checklists, milestones, appointments);
+  const letters = makeLettersArea(driver);
   const entries = makeEntriesArea(driver, files);
   const doubtJournal = makeDoubtJournalArea(driver);
   const feltSense = makeFeltSenseArea(driver);
@@ -528,6 +539,14 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       tryouts,
       documents
     }),
+    dayAhead: makeDayAheadArea({
+      appointments,
+      procedures,
+      milestones,
+      letters,
+      regimen,
+      doses
+    }),
     textSearch: makeTextSearchArea(driver),
     journalBook: makeJournalBookArea({ entries, milestones, sideEffects, stats, tags }),
     personalEffects,
@@ -541,7 +560,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     areaStates,
     feltSense,
     tryouts,
-    letters: makeLettersArea(driver),
+    letters,
     revisits: makeRevisitsArea(driver),
     roadmap: makeRoadmapArea(driver),
     checklists,

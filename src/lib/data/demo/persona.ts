@@ -19,6 +19,8 @@ import type { EntryInput } from '../journal/entries';
 import type { BodyRegionFeeling } from '../types';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
+import type { AppointmentInput } from '../journal/appointments';
+import type { DocumentInput } from '../journal/documents';
 import { demoNow } from './demoClock';
 import {
   epochDayFromLocalDate,
@@ -57,12 +59,24 @@ export interface PersonaMilestone extends MilestoneInput {
   hasPhoto: boolean;
 }
 
+/** An appointment plus the entry that debriefs it, for the one appointment
+    that carries one (phase 8 features ticket 64). Written through the
+    pre-ticket-58 date-keyed mechanism (checklists.ts's `setAppointmentDate`
+    and `recordDebriefEntry`), since ticket 58 - the one that keys a debrief
+    to the appointment's own id instead - has not landed. */
+export interface PersonaAppointment extends AppointmentInput {
+  procedureId: null;
+  debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };
+}
+
 export interface Persona {
   customTag: { groupKey: string; label: string };
   presentations: PersonaPresentation[];
   entries: PersonaEntry[];
   milestones: PersonaMilestone[];
   reminders: ReminderInput[];
+  appointments: PersonaAppointment[];
+  documents: DocumentInput[];
   labResults: LabResultInput[];
   tallyEvents: TallyEventInput[];
 }
@@ -259,6 +273,14 @@ export function demoPreferences(today: number = todayEpochDay()): Partial<Prefer
 /** The persona as journal input: no ids anywhere, because the journal mints
     every one of them (ADR-0002). Writing it is journal-seed.ts's job. */
 export function persona(today: number = todayEpochDay()): Persona {
+  // The one past-with-debrief and one future appointment ticket 64 asks
+  // for. The future one shares a day with the existing "Endocrinologist"
+  // reminder below rather than drifting to its own date: a reminder to
+  // attend a visit and the booked visit itself are the same appointment,
+  // and two different "next endo visit" dates would read as a bug rather
+  // than as two separate concepts.
+  const pastAppointmentDay = today - 24;
+  const futureAppointmentDay = today + 12;
   return {
     customTag: VOICE_PRACTICE,
     presentations: [
@@ -282,8 +304,34 @@ export function persona(today: number = todayEpochDay()): Persona {
     reminders: [
       { title: 'Estradiol patch', type: 'med', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
       { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
-      { title: 'Endocrinologist', type: 'appointment', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: today + 12, enabled: true },
+      { title: 'Endocrinologist', type: 'appointment', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: futureAppointmentDay, enabled: true },
     ],
+    appointments: [
+      {
+        epochDay: pastAppointmentDay,
+        procedureId: null,
+        kind: 'Endocrinologist',
+        place: 'Przychodnia na Kopernika',
+        note: 'levels holding steady, no changes',
+        debrief: {
+          timestamp: startOfDayTimestamp(pastAppointmentDay) + 15 * 3600000,
+          mood: 4,
+          note: 'Endo appointment today. Levels look fine, staying the course for now. She used my name without me correcting her first. Still gets me a little, every time.',
+          tags: ['g-soc-eu', 'e-happy']
+        }
+      },
+      {
+        epochDay: futureAppointmentDay,
+        procedureId: null,
+        kind: 'Endocrinologist',
+        place: 'Przychodnia na Kopernika',
+        note: 'ask about raising the dose'
+      }
+    ],
+    // One document, dated well before HRT start: the referral that started
+    // it (ticket 52, ADR-0065). No link - ticket 56, the one that gives a
+    // document a link, has not landed.
+    documents: [{ epochDay: today - 760, title: 'Skierowanie do endokrynologa' }],
     /* Two labs across the estradiol series, which is what raises the
        comparability flag on it: a series folds results together by unit
        alone, and these were not all drawn by the same lab. No timing context

@@ -10,6 +10,7 @@ import {
   adherence,
   expectedAmountOn,
   expectedSlots,
+  isDailySchedule,
   lastInjectionBefore,
   matchDoseRoute,
   nearestOpenSlotDistance,
@@ -198,6 +199,20 @@ test('a pause covers its endpoints, and an open pause covers everything after it
 
   assert.equal(pauseCoversDay(pause(100, null), 99), false);
   assert.equal(pauseCoversDay(pause(100, null), 5000), true);
+});
+
+test('an every-N-days schedule is daily at one day or less, and not daily above it', () => {
+  assert.equal(isDailySchedule(schedule(1, 1)), true);
+  assert.equal(isDailySchedule(schedule(1, 2)), true, 'twice a day is still every day');
+  assert.equal(isDailySchedule(schedule(0, 1)), true, 'no rhythm at all reads as daily too');
+  assert.equal(isDailySchedule(schedule(2, 1)), false);
+  assert.equal(isDailySchedule(schedule(7, 1)), false);
+});
+
+test('a weekday schedule is daily only once every weekday is picked', () => {
+  assert.equal(isDailySchedule(weekdaySchedule([1, 2, 3, 4, 5, 6, 0])), true);
+  assert.equal(isDailySchedule(weekdaySchedule([1, 3, 5])), false);
+  assert.equal(isDailySchedule(weekdaySchedule([1, 2, 3, 4, 5])), false, 'weekdays only is not every day');
 });
 
 test('adherence pairs each slot with the dose logged in that position of the day', () => {
