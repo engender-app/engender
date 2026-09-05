@@ -26,7 +26,7 @@
    (ADR-0011) is long enough to be worth reading on its own. */
 
 import { filesOf, thumbFileName } from '../photos/names';
-import { restoreArchive, type RestoreContents } from './restore';
+import type { RestoreContents, RestoreMode } from './restore';
 import {
   daylioPreview,
   type DaylioCommitResult,
@@ -156,6 +156,22 @@ export interface ArchiveArea {
   /** Adds what this device does not have and leaves matched rows alone, so
       importing the same archive twice is a no-op the second time. */
   merge(contents: RestoreContents): Promise<void>;
+}
+
+/** restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/
+    payload.ts, an 82KB chunk that otherwise rides every eager path into this
+    file (ticket 21's audit, ticket 27). One wrapper rather than repeating
+    `await import('./restore')` at each of the eight call sites below - a
+    dynamic import of the same specifier already resolves from the module
+    loader's own cache, so there is nothing here worth memoizing by hand. */
+async function restoreArchive(
+  driver: SqliteDriver,
+  files: PhotoFileStore,
+  mode: RestoreMode,
+  contents: RestoreContents
+): Promise<void> {
+  const restore = await import('./restore');
+  return restore.restoreArchive(driver, files, mode, contents);
 }
 
 /** One import_log row, direct rather than through the ordinary merge: this
