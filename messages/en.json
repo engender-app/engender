@@ -3305,5 +3305,6 @@
   "day_document": "Document",
   "hub_sub_documents": "Opinions, referrals and rulings you have been given",
   "document_page_alt": "The page of {title}",
-  "document_save_failed": "Couldn’t file this document. Nothing was kept."
+  "document_save_failed": "Couldn’t file this document. Nothing was kept.",
+  "document_edit_failed": "Couldn’t save that change. The document is as it was."
 }

@@ -92,7 +92,7 @@ export interface SectionRead {
   procedurePhotos: ProcedurePhotoRow[];
   tryoutPhotos: TryoutPhotoRow[];
   benchmarkFiles: BenchmarkFileRow[];
-  documents: DocumentFileRow[];
+  documentFiles: DocumentFileRow[];
 }
 
 /** The shared reads, in one place so the manifest and the sections that name
@@ -140,7 +140,7 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
     // The file names only. A document's own rows come out through
     // readFlatTable below, from its descriptor; this read exists so the
     // manifest and the section work from the same table in one pass.
-    documents: await driver.query<DocumentFileRow>('SELECT file_path FROM document ORDER BY epoch_day, id')
+    documentFiles: await driver.query<DocumentFileRow>('SELECT file_path FROM document ORDER BY epoch_day, id')
   };
 }
 

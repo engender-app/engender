@@ -299,6 +299,11 @@ test('the registry answers the spec\'s worked cases for what travels', () => {
   assert.deepEqual(travelsOf('milestones'), { fields: ['name'] }, 'a milestone set travels as names, not dates');
   assert.equal(travelsOf('checklists'), 'whole', 'an appointment question list travels whole');
   assert.equal(travelsOf('eras'), 'none', 'an era would travel as a name with no bounds, so eras do not travel');
+  /* Phase 8 features ticket 52, ADR-0065. A structure file is a thing
+     people hand to someone else, and a document is the most personal record
+     the journal holds - an opinion, a diagnosis, a ruling. The ticket asks
+     for this one asserted rather than left to the declaration. */
+  assert.equal(travelsOf('documents'), 'none', 'nothing about a document belongs in a structure file');
 
   /* "Entries, photos, doses, labs, measurements and every other record of
      what happened" - one section standing in for each of those five. */

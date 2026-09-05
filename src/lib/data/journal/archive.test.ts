@@ -538,6 +538,38 @@ test('the manifest names every photo file and its thumbnail, plus every recordin
   assert.deepEqual(await snapshot.readFile(`${videoNote}.webm`), bytes('a video note'));
 });
 
+/* Phase 8 features ticket 52. The manifest is hand-assembled rather than
+   read off the section registry (archive.ts), so a table missing from it
+   travels as rows naming bytes that are not in the archive - and restores
+   into an area full of broken references. Asserted directly rather than
+   left to the golden fixture, which compares committed bytes and so heals
+   itself the next time somebody regenerates it. */
+test('the manifest carries a document’s page and its thumbnail, not just its row', async () => {
+  const { journal, files } = await populated();
+  const id = await journal.documents.addDocument(
+    { epochDay: 8766, title: 'Opinia psychiatryczna' },
+    { full: bytes('a scanned page'), thumb: bytes('its thumb') }
+  );
+  const document = (await journal.documents.getDocument(id))!;
+
+  const snapshot = await journal.archive.snapshot();
+
+  /* By the row's own file name, not by the document's id: a document's file
+     is minted separately from the row that names it (documents.ts), unlike
+     a photo, whose row id and file name are the same uuid. */
+  const stem = document.fileName.replace(/\.jpg$/, '');
+  assert.deepEqual(
+    snapshot.files.filter((f) => f.name.startsWith(stem)),
+    [
+      { name: document.fileName, length: bytes('a scanned page').length },
+      { name: thumbFileName(document.fileName), length: bytes('its thumb').length }
+    ],
+    'the document travels as a row with no bytes'
+  );
+  assert.deepEqual(await snapshot.readFile(document.fileName), bytes('a scanned page'));
+  assert.ok(files.names().includes(document.fileName));
+});
+
 test('a trashed entry, and its photo, recording and video-note files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
   const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;

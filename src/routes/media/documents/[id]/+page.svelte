@@ -32,6 +32,7 @@
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { readThumbnail } from '$lib/stores/photoFiles';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
@@ -88,13 +89,27 @@
     };
   });
 
+  let saving = $state(false);
+
   async function saveChanges() {
-    if (!stored || draft.title.trim() === '') return;
-    await journal.documents.updateDocument({
-      ...stored,
-      title: draft.title,
-      epochDay: epochDayFromDateInputValueOrToday(draft.day)
-    });
+    if (!stored || draft.title.trim() === '' || saving) return;
+    saving = true;
+    try {
+      await journal.documents.updateDocument({
+        ...stored,
+        title: draft.title,
+        epochDay: epochDayFromDateInputValueOrToday(draft.day)
+      });
+    } catch (error) {
+      /* An update naming an id the journal no longer holds throws
+         (ADR-0053), which here means the row went while this screen was
+         open. The same shape the import's own failure takes on the list
+         screen: say so rather than leave a button that did nothing. */
+      console.error('a document could not be updated', error);
+      toast(m.document_edit_failed());
+    } finally {
+      saving = false;
+    }
   }
 
   async function deleteDocument() {

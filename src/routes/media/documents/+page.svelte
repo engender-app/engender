@@ -100,7 +100,6 @@
           {#each documents as document (document.id)}
             <ListRow
               key={document.id}
-              data-document={document.id}
               icon="documents"
               title={document.title}
               subtitle={dayLabel(document.epochDay)}

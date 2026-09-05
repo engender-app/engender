@@ -418,7 +418,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
              this list rather than in a `manifestNames` call of its own
              (phase 8 features ticket 52). Without it a document travels as
              a row with no bytes and restores into a broken reference. */
-          ...reading.documents
+          ...reading.documentFiles
         ])),
         ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
         ...(await manifestNames(reading.videos.map((v) => v.file_path))),
