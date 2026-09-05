@@ -114,7 +114,7 @@
     <!-- The page itself, at the top of the screen the tap opened. -->
     <div class="screen-part doc-page">
       {#if pageUrl}
-        <img class="doc-page-image" src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
+        <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
       {:else}
         <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
       {/if}

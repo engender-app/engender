@@ -163,7 +163,14 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     },
     presentationId: femme.id
   });
-  await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
+  // Overridden to a day well before the entry's own (ticket 47): the golden
+  // fixture is what proves epoch_day_override actually round-trips through
+  // pack/restore, not just that the column exists and always reads null.
+  const entryPhotoId = await journal.photos.attach(
+    { entryId: entry },
+    { full: bytes('full photo'), thumb: bytes('thumb') }
+  );
+  await journal.photos.setEpochDayOverride(entryPhotoId, 19000);
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
   await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
   await journal.marginNotes.add({ entryId: entry, epochDay: 20050, text: 'reading this back, zażółć gęślą jaźń' });
@@ -296,6 +303,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
   await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  await journal.roadmap.setTrackDismissed('medical', true);
 
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',
@@ -342,7 +350,11 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);
 
+  /* Not a binder: `kind` is a column with a default (schema v71), so a
+     fixture that only ever carried the default would round-trip green
+     whether the writer bound the field or not. */
   await journal.wearSessions.upsertSession({
+    kind: 'tucking',
     startTimestamp: 1_700_000_000_000,
     durationMs: 6 * 3600000,
     note: 'a bit tight by the end',

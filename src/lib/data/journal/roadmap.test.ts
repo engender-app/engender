@@ -131,6 +131,61 @@ test('setting a custom goal that does not exist fails loudly rather than doing n
   await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
 
+/* "Not my path" one grain out (phase 8 features ticket 49 item 5). Presence
+   is the whole state here, unlike a goal's tri-state: a track is either
+   somebody's path or it is not, and there is no track-level equivalent of
+   "checked". */
+
+test('no track is dismissed to begin with', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), []);
+});
+
+test('a dismissed track comes back, and undoing it deletes the row rather than storing a value', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.roadmap.setTrackDismissed('medical', true);
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['medical']);
+
+  await journal.roadmap.setTrackDismissed('medical', false);
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), []);
+});
+
+test('dismissing a track twice is idempotent, and undoing one never dismissed is not an error', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.roadmap.setTrackDismissed('legal', true);
+  await journal.roadmap.setTrackDismissed('legal', true);
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['legal']);
+
+  await journal.roadmap.setTrackDismissed('social', false);
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['legal']);
+});
+
+test('tracks are dismissed one at a time and come back in a stable order', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  await journal.roadmap.setTrackDismissed('presentational', true);
+  await journal.roadmap.setTrackDismissed('legal', true);
+
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['legal', 'presentational']);
+});
+
+test('dismissing a track leaves every goal status it holds exactly as it was', async () => {
+  /* The fold is a reading of the stored ticks, never a write over them:
+     somebody who dismisses the medical track and changes their mind gets
+     back what they had ticked, not an emptied list. */
+  const { journal } = await journalWithBuiltIns();
+  await journal.roadmap.setGoalStatus('pl', 'pl-medical-bloodwork', 'checked');
+  const goal = await journal.roadmap.addCustomGoal('medical', 'Ask about a second opinion');
+  await journal.roadmap.setCustomGoalStatus(goal.id, 'checked');
+
+  await journal.roadmap.setTrackDismissed('medical', true);
+
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { 'pl-medical-bloodwork': 'checked' });
+  assert.equal((await journal.roadmap.getCustomGoals())[0].status, 'checked');
+});
+
 test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, ADR-0045)', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-id-card', 'checked');

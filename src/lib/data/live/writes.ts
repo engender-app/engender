@@ -147,7 +147,14 @@ export const TABLE_NAMES = [
   'videoNote',
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
-     time, so there is nothing a per-pack name would let a query skip. */
+     time, so there is nothing a per-pack name would let a query skip.
+
+     Track dismissals (phase 8 features ticket 49) share the name rather
+     than taking one of their own, which is the opposite call from
+     'roadmapGoal' below and for the opposite reason: a dismissed track
+     decides which ticks are even shown, so no screen ever reads one
+     without the other, and a separate name would only buy a re-query of
+     four rows. */
   'roadmapCheck',
   /* Custom roadmap goals (phase 5 ticket 20), kept apart from
      'roadmapCheck': a screen reading the custom goals someone added
@@ -407,7 +414,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       attach: ['photo', 'entry', 'milestone'],
       remove: ['photo', 'entry', 'milestone'],
-      setStarred: ['photo', 'entry', 'milestone']
+      setStarred: ['photo', 'entry', 'milestone'],
+      // Changes which day the photo itself reads as (ticket 47), which both
+      // reads below fold into what they hand an entry or milestone.
+      setEpochDayOverride: ['photo', 'entry', 'milestone']
     },
     // Both reads join the owners, to date each photo and to say which record
     // it hangs off.
@@ -587,7 +597,12 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       upsertSession: ['wearSession', 'reminder'],
       deleteSession: ['wearSession', 'reminder']
     },
-    reads: { getSessions: ['wearSession'], getRunningSession: ['wearSession'], lastWriteEpochDay: ['wearSession'] }
+    reads: {
+      getSessions: ['wearSession'],
+      getRunningSession: ['wearSession'],
+      latestKind: ['wearSession'],
+      lastWriteEpochDay: ['wearSession']
+    }
   }),
   hairProgress: classify<Journal['hairProgress']>()({
     writes: {
@@ -722,10 +737,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   roadmap: classify<Journal['roadmap']>()({
     writes: {
       setGoalStatus: ['roadmapCheck'],
+      setTrackDismissed: ['roadmapCheck'],
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal']
     },
-    reads: { getGoalStatuses: ['roadmapCheck'], getCustomGoals: ['roadmapGoal'] }
+    reads: {
+      getGoalStatuses: ['roadmapCheck'],
+      getDismissedTracks: ['roadmapCheck'],
+      getCustomGoals: ['roadmapGoal']
+    }
   }),
   checklists: classify<Journal['checklists']>()({
     writes: {

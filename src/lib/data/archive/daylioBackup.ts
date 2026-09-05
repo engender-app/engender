@@ -651,7 +651,7 @@ export async function daylioBackupPreview(
         unimported.add(assetId);
         continue;
       }
-      if (planned.kind === 'photo') photos.push({ id: planned.id, fileName: planned.fileName, starred: false });
+      if (planned.kind === 'photo') photos.push({ id: planned.id, fileName: planned.fileName, starred: false, epochDayOverride: null });
       else recordings.push({ id: planned.id, fileName: planned.fileName });
       plannedAssets.set(assetId, planned.asset);
     }
@@ -708,7 +708,7 @@ export async function daylioBackupPreview(
       }
       const planned = missingAssets.has(assetId) ? null : await planAsset(assetId, asset, readAsset, missingAssets);
       if (planned && planned.kind === 'photo') {
-        photo = { id: planned.id, fileName: planned.fileName, starred: false };
+        photo = { id: planned.id, fileName: planned.fileName, starred: false, epochDayOverride: null };
         plannedAssets.set(assetId, planned.asset);
       } else {
         unimported.add(assetId);

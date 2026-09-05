@@ -301,6 +301,38 @@ test('every photo in the journal comes back dated, oldest first, naming its mile
   ]);
 });
 
+test('an override takes precedence over the owner day in both inJournal and starredPhotos (ticket 47)', async () => {
+  const { journal } = await journalWithFiles();
+  const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
+  const id = await journal.photos.attach({ entryId }, shot('e', 't'));
+  await journal.photos.setStarred(id, true);
+
+  await journal.photos.setEpochDayOverride(id, 19000);
+
+  assert.equal((await journal.photos.inJournal())[0].epochDay, 19000);
+  assert.equal((await journal.photos.starredPhotos())[0].epochDay, 19000);
+
+  await journal.photos.setEpochDayOverride(id, null);
+
+  assert.equal((await journal.photos.inJournal())[0].epochDay, 20100, 'clearing the override reverts to the inherited day');
+  assert.equal((await journal.photos.starredPhotos())[0].epochDay, 20100, 'clearing the override reverts to the inherited day');
+});
+
+test('setEpochDayOverride throws on an unknown id, the same way setStarred does', async () => {
+  const { journal } = await journalWithFiles();
+  await assert.rejects(journal.photos.setEpochDayOverride('no-such-id', 19000), /unknown photo/);
+});
+
+test('attach sets the override directly when the normalized photo carries one (the import prompt path)', async () => {
+  const { journal } = await journalWithFiles();
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'Shoebox print', epochDay: 20000 });
+
+  const id = await journal.photos.attach({ milestoneId }, { ...shot('old', 'print'), epochDayOverride: 7000 });
+
+  assert.equal((await journal.photos.inJournal())[0].epochDay, 7000);
+  assert.equal((await journal.photos.inJournal())[0].id, id);
+});
+
 test('a journal with no photos yields an empty list, not a broken join', async () => {
   const { journal } = await journalWithFiles();
   await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });

@@ -531,6 +531,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // above already searches - and a mute is presence, not a value.
   eraMutes: 'no text of its own: a uuid naming a muted era',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
+  roadmapTracks: 'no text of its own: the name of one of the app’s four tracks',
   hairPhotos: 'no text of its own: a dated photograph',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',

@@ -203,7 +203,7 @@ test('entries travel by uuid, with their dimension values, tags, photos, recordi
     // rows are in - an entry's tags are a set, so it is the ids that
     // matter, not which of them the seed happened to create first.
     tags: ['e-happy', tag.id],
-    photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false }],
+    photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false, epochDayOverride: null }],
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
     videos: [{ id: videoNote, fileName: `${videoNote}.webm` }],
     bodyRegions: { chest: { dysphoria: 40, euphoria: null } },
@@ -302,7 +302,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       roadmapGoalKey: null,
       procedureId: null,
       tryoutId: null,
-      photo: { id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, starred: false }
+      photo: { id: milestonePhoto, fileName: `${milestonePhoto}.jpg`, starred: false, epochDayOverride: null }
     }
   ]);
   /* Ordered by draw day, so the one carrying a dosing context comes first.
@@ -666,7 +666,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   entry_template_dimension_value: ['template_id', 'dimension_id', 'value'],
   // Shared between two owners (entry, milestone) rather than one section's
   // own table - a descriptor names one table for one section.
-  photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred'],
+  photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred', 'epoch_day_override'],
   // Owns a child (photo), the same reason `entry` above is hand-written.
   milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id'],
   // A matched built-in row is UPDATEd in place (applyDimensions), which a

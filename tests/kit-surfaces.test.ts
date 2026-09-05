@@ -150,6 +150,14 @@ describe('the surfaces', () => {
          reader measuring them against each other. */
       'OrderedStrip.svelte',
       'PairedDots.svelte',
+      /* Not a surface: a Sheet with a fixed arrangement inside it, the same
+         shape ConfirmDeleteSheet is (ticket 47) - except this one owns its
+         own copy rather than taking it as props, because both callers (the
+         entry editor's and the milestone editor's own add-photo flows) ask
+         exactly the same question in exactly the same words. ConfirmDeleteSheet
+         takes copy as props because its sixteen callers each word their own
+         confirmation differently; this one has no such variation to plumb. */
+      'PhotoDayPromptSheet.svelte',
       /* The rows, the add control, the confirm sheet and the alignment
          review five screens each assembled around a photo list (phase 5
          audit ticket 11). Unlike RecordSheet below, it does draw its own
