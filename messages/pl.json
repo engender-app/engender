@@ -3391,6 +3391,6 @@
   "document_unsupported_file": "Tego pliku aplikacja nie odczyta - to nie jest ani PDF, ani obraz. Spróbuj z PDF-em, JPEG-iem albo PNG-iem.",
   "document_too_large": "Ten plik jest za duży, żeby go zapisać. Maksymalnie 25 MB.",
   "document_picker_failed": "Nie udało się otworzyć wyboru pliku.",
-  "document_export": "Zapisz na urządzeniu",
+  "document_export": "Wyślij albo zapisz",
   "document_export_hint": "Plik wtedy opuszcza szyfrowanie aplikacji."
 }

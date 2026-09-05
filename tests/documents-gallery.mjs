@@ -1,9 +1,12 @@
-/* Screenshots of the documents area (phase 8 features ticket 52, ADR-0065).
+/* Screenshots of the documents area (phase 8 features tickets 52 and 53,
+   ADR-0065).
 
-   Four states, which are the four a sign-off has to see: the empty screen,
+   Five states, which are the five a sign-off has to see: the empty screen,
    the import sheet with a title typed into it, the list with several
-   documents on it, and one document's own screen - the only place in the
-   app that draws a page image at all.
+   documents on it, one document's own screen - the only place in the app
+   that draws a page image at all - and a PDF document's own screen, which
+   draws no page at all (ticket 53): the paper icon, the size, and the one
+   export action.
 
    The pages themselves are drawn in the browser and handed to the real file
    input, so what is on screen has been through normalizePhoto, the metadata
@@ -150,6 +153,25 @@ for (const theme of ['light', 'dark']) {
     return bytes;
   };
 
+  /* A real `%PDF-` signature is what makes this land as a document rather
+     than get refused (documents/accept.ts) - the rest of the bytes are
+     never read by anything (ADR-0065), so padding is all they need to be. */
+  const importPdf = async (title, day) => {
+    const bytes = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(4096, 0x20)]);
+    page.once('filechooser', (chooser) =>
+      chooser.setFiles({ name: 'court-ruling.pdf', mimeType: 'application/pdf', buffer: bytes })
+    );
+    await page.locator('[data-add]').click();
+    await page.waitForSelector('#document-title');
+    await page.locator('#document-title').fill(title);
+    await page.evaluate((iso) => {
+      const el = document.querySelector('#document-day');
+      const fp = el?._flatpickr ?? el?.flatpickr;
+      if (!fp) throw new Error('no flatpickr instance on #document-day');
+      fp.setDate(iso, true);
+    }, day);
+  };
+
   await settle('/');
   await page.getByRole('button', { name: 'Reset demo state' }).click();
   await page.waitForTimeout(1500);
@@ -186,6 +208,19 @@ for (const theme of ['light', 'dark']) {
   await page.waitForSelector('#document-title');
   await page.waitForTimeout(1200);
   await shoot('04-one-document');
+
+  /* ---------- 05: a PDF document's own screen (ticket 53). No page image
+     anywhere - the paper icon, the size, and the export action are the
+     whole of what a PDF gets here. ---------- */
+  await page.goBack();
+  await page.waitForSelector('[data-add]');
+  await importPdf('Postanowienie sądu, PDF', '2025-02-14');
+  await page.locator('[data-save-document]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForFunction(() => document.querySelector('[data-document-size]')?.textContent?.trim());
+  await page.waitForTimeout(600);
+  await shoot('05-one-pdf-document');
 
   await page.close();
 }

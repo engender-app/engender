@@ -201,7 +201,7 @@
       <div class="screen-part stack-3">
         <p data-document-size>{pdfBytes ? fileSize(pdfBytes.byteLength) : ''}</p>
         <button class="btn btn-soft press" data-export-document disabled={!pdfBytes} onclick={exportPdf}>
-          <span>{m.document_export()}</span>
+          <Icon name="share" size={20} /><span>{m.document_export()}</span>
         </button>
         <p class="muted small">{m.document_export_hint()}</p>
       </div>
