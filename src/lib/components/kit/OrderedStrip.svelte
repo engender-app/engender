@@ -54,7 +54,17 @@
   /* Each step's share worked out once. The three rows below all place
      against it - the segment's width, its label's cell, and whether that
      label fits at all - and reading it per row is the same arithmetic four
-     times with four chances to disagree. */
+     times with four chances to disagree.
+
+     The denominator here is the sum of every step, not the tallest one:
+     this is a part-to-whole strip (ADR-0058), the same rule Donut's own
+     whole is (charts/parts.ts's `slices`), and a different question from
+     what BarRows and Distribution ask, where a row's length only means
+     something next to the tallest row in the set. Left inline rather than
+     moved to barRow.ts, since that module's rule doesn't fit this one; and
+     left inline rather than moved to parts.ts, since this strip doesn't
+     share the donut's cap/remainder machinery to make reusing it
+     worthwhile. */
   let drawn = $derived.by(() => {
     const total = steps.reduce((sum, s) => sum + s.count, 0);
     return steps.map((step) => {

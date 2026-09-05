@@ -19,7 +19,7 @@
      comparison legible before the numbers are read), and having one of the
      two rise and the other appear would read as an oversight in whichever
      of them was still. */
-  import { share } from '$lib/charts/geometry';
+  import { leaderShares } from './barRow';
 
   export interface DistributionStep {
     /** 1-5 on the mood ramp. */
@@ -30,7 +30,7 @@
 
   let { steps }: { steps: DistributionStep[] } = $props();
 
-  let top = $derived(Math.max(0, ...steps.map((s) => s.count)));
+  let shares = $derived(leaderShares(steps.map((s) => s.count)));
 </script>
 
 <div class="kit-dist" data-chart="distribution">
@@ -44,7 +44,7 @@
         <b class="kit-dist-count">{step.count}</b>
         <span
           class="kit-dist-mark"
-          style={`--bar-share: ${share(step.count, top)}; --dist-fill: var(--mood-${step.step})`}
+          style={`--bar-share: ${shares[i]}; --dist-fill: var(--mood-${step.step})`}
         ></span>
       </span>
       <span class="kit-dist-name">{step.name}</span>
