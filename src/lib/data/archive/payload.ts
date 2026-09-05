@@ -49,6 +49,11 @@ export interface ArchivePhoto {
       ArchiveLabResult's header gives: no release has shipped, so no
       archive in existence predates it. */
   starred: boolean;
+  /** The day this photo shows on, when it overrides its owner's
+      (ticket 47, ADR-0008/0015). Null on every photo before this ticket
+      and on any photo nobody has corrected since - restore.ts writes
+      `?? null` for an archive whose payload predates this field. */
+  epochDayOverride: number | null;
 }
 
 /** One voice recording (phase 4 ticket 24, CONTEXT: "Voice recording"). Its
@@ -702,6 +707,13 @@ export interface ArchiveMarginNote {
   text: string;
 }
 
+/** A word the person has told the words screen to stop counting (phase 8
+    features ticket 48, ADR-0003). Named by the word itself: nothing else in
+    the journal resolves an id against it. */
+export interface ArchiveWordIgnore {
+  word: string;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -819,6 +831,7 @@ export interface ArchiveJournal {
   savedQuestions: ArchiveSavedQuestion[];
   revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
+  wordIgnore: ArchiveWordIgnore[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

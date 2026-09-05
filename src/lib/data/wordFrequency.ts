@@ -179,11 +179,27 @@ export function analyseNotes<T extends { note: string }>(entries: readonly T[]):
 
 /** Every word across already-analysed notes, most-frequent first. Ties
     break alphabetically so the order is stable across two runs over the
-    same notes rather than depending on iteration order. */
-export function countWords(notes: readonly Pick<AnalysedNote, 'words'>[]): WordCount[] {
+    same notes rather than depending on iteration order.
+
+    `ignored` (phase 8 features ticket 48) is a second fold on top of the
+    per-note stopword one `analyseNote` already applied, not a replacement
+    for it: a name or a third-language word has no stopword list to fall
+    into, so the person names it directly instead. Takes the set as a
+    parameter rather than reading the driver, the same shape every other
+    function here holds to - the words screen reads it once and passes it
+    down. Words already arrive lowercased (`tokenize`), so the set is
+    expected lowercased too; callers that write to it fold case the same
+    way. */
+export function countWords(
+  notes: readonly Pick<AnalysedNote, 'words'>[],
+  ignored?: ReadonlySet<string>
+): WordCount[] {
   const counts = new Map<string, number>();
   for (const { words } of notes) {
-    for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1);
+    for (const word of words) {
+      if (ignored?.has(word)) continue;
+      counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
   }
   return [...counts.entries()].sort(([wordA, countA], [wordB, countB]) => {
     if (countA !== countB) return countB - countA;

@@ -304,6 +304,23 @@ const SECTIONS = [
     read: read.readMarginNotes,
     apply: apply.applyMarginNotes
   }),
+  /* Which words the words screen has been told to stop counting (phase 8
+     features ticket 48, ADR-0003). Flat, and the same smallest kind
+     `eraMutes` above is: one column, no `after` - the word is free text
+     naming nothing else in the journal, so nothing here resolves a rowid
+     against it.
+
+     A word someone chose to stop seeing about their own note-taking is not
+     something to hand to someone else in a structure file - the same
+     reasoning `eraMutes` gives for its own `travels: 'none'`. */
+  flat({
+    name: 'wordIgnore',
+    travels: 'none',
+    table: 'word_frequency_ignore',
+    identity: 'word',
+    orderBy: 'word',
+    columns: { word: 'word' }
+  }),
   section({
     name: 'milestones',
     // A milestone linked to a procedure or a tryout stores that owner's

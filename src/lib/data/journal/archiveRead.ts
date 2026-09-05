@@ -61,6 +61,7 @@ export type PhotoRow = {
   entry_id: number | null;
   milestone_id: number | null;
   starred: number;
+  epoch_day_override: number | null;
 };
 export type RecordingRow = { uuid: string; file_path: string; entry_id: number };
 export type VideoRow = { uuid: string; file_path: string; entry_id: number };
@@ -96,7 +97,7 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
     // from these rows, and trash is out of scope for archives entirely
     // (phase 5 ticket 19).
     photos: await driver.query<PhotoRow>(
-      `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id, p.starred FROM photo p
+      `SELECT p.uuid, p.file_path, p.entry_id, p.milestone_id, p.starred, p.epoch_day_override FROM photo p
        LEFT JOIN entry e ON e.id = p.entry_id
        WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
        ORDER BY p.order_index, p.id`
@@ -167,7 +168,8 @@ function groupBy<Row, Value>(rows: Row[], key: (row: Row) => number, value: (row
 const toArchivePhoto = (row: PhotoRow): ArchivePhoto => ({
   id: row.uuid,
   fileName: row.file_path,
-  starred: bool(row.starred)
+  starred: bool(row.starred),
+  epochDayOverride: row.epoch_day_override
 });
 
 const toArchiveVoiceRecording = (row: RecordingRow): ArchiveVoiceRecording => ({

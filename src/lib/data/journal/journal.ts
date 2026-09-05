@@ -69,6 +69,7 @@ import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchmarks';
 import { makeVoicePracticeTakesArea, type VoicePracticeTakesArea } from './voicePracticeTakes';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
+import { makeWordIgnoreArea, type WordIgnoreArea } from './wordIgnore';
 import { reconcileBuiltIns } from './reconcile';
 
 /** Every write below that addresses a row by id answers the unknown-id
@@ -200,6 +201,12 @@ export interface Journal {
       rows here outlive the era they name, and resurfacingConsent.ts is the
       one place that reads the two areas together. */
   eraMutes: EraMutesArea;
+  /** Which words the words screen has been told to stop counting (phase 8
+      features ticket 48, ADR-0003). Rows only, keyed by the word itself -
+      wordFrequency.ts's pure fold is what actually drops them from a
+      count, taking this area's read as a parameter rather than reading the
+      driver. */
+  wordIgnore: WordIgnoreArea;
   /** What was happening around the numbers a time chart draws (phase 5
       deepening ticket 23): milestones, regimen episodes, dose and journaling
       pauses, tryouts, and a procedure's surgery day and recovery window, for
@@ -398,6 +405,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const marginNotes = makeMarginNotesArea(driver);
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
+  const wordIgnore = makeWordIgnoreArea(driver);
   const comfortItems = makeComfortItemsArea(driver);
   const areaStates = makeAreaStatesArea(driver);
 
@@ -433,6 +441,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     marginNotes,
     eras,
     eraMutes,
+    wordIgnore,
     chartAnnotations: makeChartAnnotationsArea({
       areaStates,
       milestones,
