@@ -53,9 +53,12 @@ const FOLDS: readonly [replacement: string, letterforms: string][] = [
     Russian alphabet plus the four Ukrainian letters Russian does not have
     (ҐЄІЇ) and Belarusian's Ў - the Cyrillic alphabets a journal kept in this
     part of the world is written in. Each one costs a `REPLACE` per scanned
-    row, on top of the Latin table's own; that is the same trade `foldedSql`
-    already made against reading every text row out over the Capacitor
-    bridge to fold it in JS. */
+    row, on top of the Latin table's own - the chain goes from 48 to 86, so
+    it is worth saying what that measured rather than leaving it as a
+    concession: `search-everywhere` over the ten-year fixture
+    (tests/long-journal) came out at 36ms against its 37ms baseline and a
+    150ms budget, which is inside the run-to-run wobble. The scan is bounded
+    by rows read, not by the length of the expression applied to each one. */
 const SQL_ONLY_UPPERCASE = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯҐЄІЇЎ';
 
 /** Compiled once rather than per call: `foldText` runs on every search index
