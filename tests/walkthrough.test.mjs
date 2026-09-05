@@ -4197,6 +4197,51 @@ try {
   ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
 } catch (e) { fail('a place for paper', e); }
 
+/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, which
+   draws no page at all - the paper icon, its size and the export action
+   are what its own screen has instead. Type is decided by reading the
+   bytes: this file is named .png in the chooser and is a PDF anyway. */
+try {
+  await fresh('/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  const pdfBytes = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(2048, 0x20)]);
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: 'scan_0143.png', mimeType: 'image/png', buffer: pdfBytes })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  await page.locator('#document-title').fill('Postanowienie sądu');
+  await fillDate(page, '#document-day', '2025-02-14');
+  await page.locator('[data-save-document]').click();
+  await page.waitForSelector('[data-list-row]');
+
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForFunction(() => document.querySelector('[data-document-size]')?.textContent?.trim());
+  if (await page.locator('[data-document-page]').count()) {
+    throw new Error('a PDF document is drawing a page image');
+  }
+  const sizeText = await page.locator('[data-document-size]').textContent();
+  if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-export-document]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.pdf')) {
+    throw new Error(`the exported file is not named as a PDF: ${download.suggestedFilename()}`);
+  }
+  const exported = await readFile(await download.path());
+  if (!exported.equals(pdfBytes)) throw new Error('the exported bytes do not match what was filed');
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  ok('a PDF, named .png by the picker, is filed by its real bytes, shows no page, and exports unchanged');
+} catch (e) { fail('a document can be a PDF', e); }
+
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
 
