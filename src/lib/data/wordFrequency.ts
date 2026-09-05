@@ -14,7 +14,8 @@
    three times per tap - once to pick its stopword list, once to count it,
    once more for the screen's own language flag - and all three inside a
    `$derived` on the main thread. `wordFrequency` is still here as the two
-   steps in one call, for a caller that reads once and never filters.
+   steps in one call, which is where this module's output is stated and
+   tested; no screen calls it.
 
    Two folds, not one function: counting counts, `groupByPresentation`
    and `groupByEra` partition. Grouping reuses each area's own existing
