@@ -22,7 +22,11 @@ export async function chooseFiles(
     input.multiple = options.multiple ?? false;
     if (options.capture) input.capture = options.capture;
 
+    let settled = false;
     const done = (result: File[] | Error) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('focus', onFocusReturn);
       input.remove();
       if (result instanceof Error) reject(result);
       else resolve(result);
@@ -30,6 +34,19 @@ export async function chooseFiles(
 
     input.addEventListener('change', () => done([...(input.files ?? [])]));
     input.addEventListener('cancel', () => done([]));
+
+    // Ticket 66: the native picker can be torn down without ever firing
+    // `change` or `cancel` (that ticket's own bug did exactly this, on the
+    // Android side, before either event had a chance to fire). The window
+    // only regains focus once the native picker is gone either way, so if
+    // neither event has settled the promise by the next tick after focus
+    // returns, nothing more is coming - resolve empty, the same outcome a
+    // cancel produces, rather than leave the caller waiting forever.
+    const onFocusReturn = () => {
+      window.removeEventListener('focus', onFocusReturn);
+      setTimeout(() => done([]), 0);
+    };
+    window.addEventListener('focus', onFocusReturn);
 
     input.style.display = 'none';
     document.body.append(input);

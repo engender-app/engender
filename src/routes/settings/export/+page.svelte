@@ -10,7 +10,7 @@
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { archiveFailureKind, type ArchiveFailureKind } from '$lib/data/archive/failure';
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
-  import { pickArchive, type PickedArchive } from '$lib/data/archive/pick';
+  import { EmptyArchiveFileError, pickArchive, type PickedArchive } from '$lib/data/archive/pick';
   import { verifyArchive } from '$lib/data/journal/restore';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
@@ -48,9 +48,14 @@
   /* Walkthrough handle for which catalogued sentence impError holds, so the
      suite can tell import failures apart without matching on the wording
      itself (ADR: the walkthrough grips handles, never wording). The
-     archive's own four kinds come from archive/failure.ts; the two below
-     are this screen's pre-flight guards, which never reach a file. */
-  type ImportGuardKind = '' | 'pick-first' | 'password-needed';
+     archive's own four kinds come from archive/failure.ts, which classifies
+     what the container, the codec and the crypto throw; the three below are
+     this screen's own guards ahead of that: 'pick-first' and
+     'password-needed' never reach a file, and 'empty-file' reaches one but
+     refuses it (EmptyArchiveFileError, pick.ts) before a byte is
+     decrypted - still this screen's guard, not the container's, because
+     nothing archive-shaped was ever opened. */
+  type ImportGuardKind = '' | 'pick-first' | 'password-needed' | 'empty-file';
   let impErrorKind = $state<ArchiveFailureKind | ImportGuardKind>('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
@@ -336,7 +341,12 @@
       impErrorKind = '';
     } catch (error) {
       console.error('the archive picker failed', error);
-      toast(m.imp_picker_failed());
+      if (error instanceof EmptyArchiveFileError) {
+        impErrorKind = 'empty-file';
+        impError = m.imp_file_empty();
+      } else {
+        toast(m.imp_picker_failed());
+      }
     }
   }
 
@@ -509,7 +519,11 @@
 
   async function chooseBackup() {
     try {
-      const [file] = await chooseFiles('.daylio,application/zip');
+      // Some Android file providers type a .daylio file as
+      // application/octet-stream rather than zip, and Capacitor's picker
+      // greys out a file that matches no accept entry at all (ticket 66) -
+      // application/zip alone made that file unselectable.
+      const [file] = await chooseFiles('.daylio,application/zip,application/octet-stream');
       if (!file) return;
       backupName = file.name;
       backupPreview = null;
@@ -518,6 +532,10 @@
       // Checked before the file is buffered at all: a corrupted or hostile
       // member's declared size is zipReader.ts's job, but the file's own
       // size on disk is cheaper to refuse before a single byte is read.
+      if (file.size === 0) {
+        backupError = m.dlb_file_empty();
+        return;
+      }
       if (file.size > IMPORT_FILE_SIZE_CEILING_BYTES) {
         backupError = m.dlb_file_too_large();
         return;
