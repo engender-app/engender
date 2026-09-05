@@ -118,7 +118,8 @@ export type ChartAnnotationKind =
   | 'tallyCorrectlyGendered'
   | 'bodyRegionDysphoria'
   | 'bodyRegionEuphoria'
-  | 'finishedArea';
+  | 'finishedArea'
+  | 'suspendedArea';
 
 /** Whether a kind is a moment or a stretch. Here rather than on each record,
     so no caller can hand in a milestone that claims to be a period.
@@ -142,7 +143,12 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   tallyCorrectlyGendered: 'point',
   bodyRegionDysphoria: 'point',
   bodyRegionEuphoria: 'point',
-  finishedArea: 'point'
+  finishedArea: 'point',
+  /* Phase 8 features ticket 51. A point, the same reason `finishedArea` is
+     one: the day the pause started is what a flat stretch after it needs
+     explaining with, not a stretch of its own - the app has no stored day
+     the pause ended (that is what resuming clears, not sets). */
+  suspendedArea: 'point'
 };
 
 /** One dated thing, as the query hands it over: stored days, untouched.

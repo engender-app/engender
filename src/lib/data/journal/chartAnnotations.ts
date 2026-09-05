@@ -72,7 +72,7 @@
    drug, and belongs under every chart on the screen. */
 
 import { annotationsInRange, type ChartAnnotation, type ChartAnnotationSource } from '../../charts/annotations';
-import { finishedGroups } from '../areaGroups';
+import { finishedGroups, suspendedGroups } from '../areaGroups';
 import { epochDayFromTimestamp } from '../epochDay';
 import { doseMilligrams } from '../hormoneCurveFit';
 import { resolveQualitativeKey } from '../hormoneCurveQualitative';
@@ -190,6 +190,19 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
         ...finishedGroups(areaStates).map((group) => ({
           id: `finished-${group.key}`,
           kind: 'finishedArea' as const,
+          name: group.key,
+          startEpochDay: group.epochDay,
+          endEpochDay: null
+        })),
+        /* The day an area was paused (phase 8 features ticket 51). Same
+           shape as the finished mark above, and for the same reason - a flat
+           stretch after this day needs explaining as a pause rather than as
+           a gap nobody logged. Only ever produced for `SUSPENDABLE_GROUPS`
+           in this build (areaGroups.ts), but read generically the same way
+           `finishedGroups` is. */
+        ...suspendedGroups(areaStates).map((group) => ({
+          id: `suspended-${group.key}`,
+          kind: 'suspendedArea' as const,
           name: group.key,
           startEpochDay: group.epochDay,
           endEpochDay: null

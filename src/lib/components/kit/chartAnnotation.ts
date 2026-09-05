@@ -46,7 +46,10 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   /* Phase 8 features ticket 04. "finished", never "completed" or "done" -
      nothing here is an achievement and a stream that restarts was not
      completed (CONTEXT: "Finished"). */
-  finishedArea: m.chart_annotation_finished_area
+  finishedArea: m.chart_annotation_finished_area,
+  /* Phase 8 features ticket 51. "paused", never "done" or "finished" - the
+     whole point of the word this ticket added. */
+  suspendedArea: m.chart_annotation_suspended_area
 };
 
 function kindWord(kind: ChartAnnotationKind): string {
@@ -80,7 +83,7 @@ export function annotationName(annotation: ChartAnnotation): string {
 function recordName(annotation: ChartAnnotation): string | undefined {
   const name = annotation.name?.trim();
   if (!name) return undefined;
-  return annotation.kind === 'finishedArea' ? areaGroupName(name) : name;
+  return annotation.kind === 'finishedArea' || annotation.kind === 'suspendedArea' ? areaGroupName(name) : name;
 }
 
 /** The long form, for the readout and for the list a screen reader takes.

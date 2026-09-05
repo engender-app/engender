@@ -80,7 +80,7 @@ describe("the editor's effects card, and the cascade (ADR-0052)", () => {
     // A backdated entry is not a way back into a prompt somebody switched off.
     expect(editor).toContain('areaQuiet(\'personalEffects\', areaStatesQuery.value ?? {}, todayEpochDay())');
 
-    const finished: AreaStates = { personalEffects: { hidden: false, finishedEpochDay: 19900 } };
+    const finished: AreaStates = { personalEffects: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
     expect(areaQuiet('personalEffects', finished, 20000)).toBe(true);
     expect(areaQuiet('personalEffects', {}, 20000)).toBe(false);
   });

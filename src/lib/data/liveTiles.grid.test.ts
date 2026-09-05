@@ -549,21 +549,21 @@ describe('the dismiss controls', () => {
      an area owns off the grid, and touches no other tile. */
 
   it('takes an area\'s tiles off the grid once it is finished', () => {
-    const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1 } };
+    const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1, suspendedEpochDay: null } };
 
     expect(tileNamed('wear-timer', { areaStates })).toBeUndefined();
     expect(tileNamed('measurements-nudge', { areaStates })).toBeDefined();
   });
 
   it('takes them off while it is hidden too, and puts them back when it is not', () => {
-    const hidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null } };
+    const hidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
 
     expect(tileNamed('measurements-nudge', { areaStates: hidden })).toBeUndefined();
     expect(tileNamed('measurements-nudge', { areaStates: {} })).toBeDefined();
   });
 
   it('leaves a finish day that has not arrived alone', () => {
-    const later: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY + 1 } };
+    const later: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY + 1, suspendedEpochDay: null } };
 
     expect(tileNamed('wear-timer', { areaStates: later })).toBeDefined();
   });

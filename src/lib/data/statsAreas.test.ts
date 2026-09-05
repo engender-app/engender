@@ -95,28 +95,36 @@ describe('the emptiness rule', () => {
   });
 
   it('takes a hidden area out', () => {
-    const states: AreaStates = { measurements: { hidden: true, finishedEpochDay: null } };
+    const states: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
     const cards = statsAreaCards(fourAreas, states);
     expect(cards.map((card) => card.panel.key)).not.toContain('measurements');
   });
 
   it('keeps a finished area and carries the day it ended', () => {
-    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 20105 } };
+    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 20105, suspendedEpochDay: null } };
     const cards = statsAreaCards(fourAreas, states);
     const measurements = cards.find((card) => card.panel.key === 'measurements');
     expect(measurements?.finishedEpochDay).toBe(20105);
   });
 
   it('reports no end day for a row that cannot be finished', () => {
-    const states: AreaStates = { tallyEvents: { hidden: false, finishedEpochDay: 20105 } };
+    const states: AreaStates = { tallyEvents: { hidden: false, finishedEpochDay: 20105, suspendedEpochDay: null } };
     const cards = statsAreaCards({ tallyEvents: 20080 }, states);
     expect(cards[0].finishedEpochDay).toBeNull();
+  });
+
+  it('keeps a suspended area and carries the day it was paused, distinct from finishedEpochDay', () => {
+    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: null, suspendedEpochDay: 20105 } };
+    const cards = statsAreaCards(fourAreas, states);
+    const measurements = cards.find((card) => card.panel.key === 'measurements');
+    expect(measurements?.suspendedEpochDay).toBe(20105);
+    expect(measurements?.finishedEpochDay).toBeNull();
   });
 
   it('cannot hide the cycle row, which owns its own visibility', () => {
     /* ADR-0043, structural rather than declared: `cycleEvents` is outside
        `HideableArea`, so no state a person can reach takes this card off. */
-    const cards = statsAreaCards({ cycleEvents: 20100 }, { measurements: { hidden: true, finishedEpochDay: null } });
+    const cards = statsAreaCards({ cycleEvents: 20100 }, { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } });
     expect(cards.map((card) => card.panel.key)).toEqual(['cycle-events']);
   });
 
@@ -125,10 +133,10 @@ describe('the emptiness rule', () => {
        progress is stagings plus photographs: somebody who hides the stagings
        and keeps photographing has something left on the card. */
     const written = { hairStages: 20000, hairPhotos: 20050 };
-    const half: AreaStates = { hairStages: { hidden: true, finishedEpochDay: null } };
+    const half: AreaStates = { hairStages: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
     expect(statsAreaCards(written, half).map((card) => card.panel.key)).toEqual(['hair-progress']);
 
-    const both: AreaStates = { ...half, hairPhotos: { hidden: true, finishedEpochDay: null } };
+    const both: AreaStates = { ...half, hairPhotos: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
     expect(statsAreaCards(written, both)).toEqual([]);
   });
 });

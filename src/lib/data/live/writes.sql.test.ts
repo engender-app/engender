@@ -762,6 +762,9 @@ beforeAll(async () => {
   await drive('areaStates', 'setAreasFinished', () =>
     journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250)
   );
+  await drive('areaStates', 'setAreasSuspended', () =>
+    journal.areaStates.setAreasSuspended(['voiceBenchmarks'], 19260)
+  );
 
   // --- comfortItems ---------------------------------------------------
   const comfortItemId = (await drive('comfortItems', 'addItem', () =>

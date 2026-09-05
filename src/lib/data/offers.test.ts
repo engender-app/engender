@@ -66,6 +66,9 @@ function recordingJournal() {
     areaStates: {
       setAreasFinished: async () => {
         calls.push('areaStates.setAreasFinished');
+      },
+      setAreasSuspended: async () => {
+        calls.push('areaStates.setAreasSuspended');
       }
     },
     doses: {
@@ -122,6 +125,10 @@ const SUBJECTS: { [K in OfferKey]: Parameters<(typeof OFFERS)[K]['write']>[1] } 
      same call and a subject naming one would let a half-finished row
      through. */
   'area-finished': { areas: ['hairStages', 'hairPhotos'], epochDay: 20000 },
+  /* Two areas, the same reason: `voice` is the other group fronting more
+     than one section, and the only other suspendable one besides
+     hair removal (SUSPENDABLE_AREAS, areaState.ts). */
+  'area-suspended': { areas: ['voiceBenchmarks', 'voicePracticeTakes'], epochDay: 20000 },
   /* Phase 8 features ticket 05. An oral dose, which is the one arm of
      `DoseEventInput` that needs no site - the sheet collects a site for
      every other route, and a subject here that skipped one would not
