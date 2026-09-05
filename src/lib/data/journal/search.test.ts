@@ -49,6 +49,22 @@ test('a word the fold does not cover is still found, by FTS5 folding it', async 
   assert.deepEqual(await found('kupil'), ['Müller kupił bilet']);
 });
 
+test('a Cyrillic word is found however either side was capitalised', async () => {
+  /* Phase 8 features ticket 49 item 4. The entry half of the answer, and it
+     was the half nobody had run: `fold.ts`'s table lists only Polish and
+     Western European letterforms, so the suspicion was that a Cyrillic note
+     fell through it. It does not, for two reasons that both have to hold -
+     JS `toLowerCase()` folds Cyrillic case on the way into `entry_fts`, and
+     FTS5's default `unicode61` tokenizer treats Cyrillic letters as token
+     characters rather than as separators. Written down as a test because
+     both are somebody else's defaults and neither is stated in this repo. */
+  const { found } = await journalWithNotes(['Настя писала о смене имени', 'Юлія прийшла', 'nic po polsku']);
+
+  assert.deepEqual(await found('настя'), ['Настя писала о смене имени']);
+  assert.deepEqual(await found('НАСТЯ'), ['Настя писала о смене имени']);
+  assert.deepEqual(await found('юлія'), ['Юлія прийшла']);
+});
+
 test('a partial word finds the entry it starts', async () => {
   const { found } = await journalWithNotes(['Coffee with Marta', 'ćwiczenia rano']);
 

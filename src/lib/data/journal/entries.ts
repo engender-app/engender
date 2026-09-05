@@ -1101,8 +1101,13 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
           for (const photo of removedPhotos) {
             await driver.run('DELETE FROM photo WHERE uuid = ? AND entry_id = ?', [photo.uuid, current.id]);
           }
-          for (const photo of stagedPhotos) {
-            await insertStagedPhoto(driver, { entryId: current.id, milestoneId: null }, photo);
+          for (const [i, photo] of stagedPhotos.entries()) {
+            await insertStagedPhoto(
+              driver,
+              { entryId: current.id, milestoneId: null },
+              photo,
+              attaching[i].epochDayOverride ?? null
+            );
           }
           for (const recording of removedRecordings) {
             await driver.run('DELETE FROM voice_recording WHERE uuid = ? AND entry_id = ?', [
@@ -1173,8 +1178,8 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
         await upsertDimensionValues(entryId, dimIds);
         await insertEntryTags(entryId, tagIds);
         await insertBodyRegions(entryId, bodyRegions);
-        for (const photo of stagedPhotos) {
-          await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo);
+        for (const [i, photo] of stagedPhotos.entries()) {
+          await insertStagedPhoto(driver, { entryId, milestoneId: null }, photo, attachingNew[i].epochDayOverride ?? null);
         }
         for (const recording of stagedRecordings) {
           await insertStagedRecording(driver, entryId, recording);

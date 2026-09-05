@@ -304,6 +304,23 @@ const SECTIONS = [
     read: read.readMarginNotes,
     apply: apply.applyMarginNotes
   }),
+  /* Which words the words screen has been told to stop counting (phase 8
+     features ticket 48, ADR-0003). Flat, and the same smallest kind
+     `eraMutes` above is: one column, no `after` - the word is free text
+     naming nothing else in the journal, so nothing here resolves a rowid
+     against it.
+
+     A word someone chose to stop seeing about their own note-taking is not
+     something to hand to someone else in a structure file - the same
+     reasoning `eraMutes` gives for its own `travels: 'none'`. */
+  flat({
+    name: 'wordIgnore',
+    travels: 'none',
+    table: 'word_frequency_ignore',
+    identity: 'word',
+    orderBy: 'word',
+    columns: { word: 'word' }
+  }),
   section({
     name: 'milestones',
     // A milestone linked to a procedure or a tryout stores that owner's
@@ -721,6 +738,24 @@ const SECTIONS = [
     travels: 'none',
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
+  }),
+  /* A track somebody has said is not their path (phase 8 features ticket
+     49). Named by bundled structure rather than by anything the person
+     wrote, so it does not travel, for the same reason roadmapChecks above
+     does not: it records a fact about this person against content every
+     install already has.
+
+     A descriptor rather than a hand-written pair, unlike roadmapChecks: a
+     tick is identified by a pack/goal couple, which `identity` has no way
+     to name, and a dismissed track is one column of one table - exactly
+     what eraMutes above is. */
+  flat({
+    name: 'roadmapTracks',
+    travels: 'none',
+    table: 'roadmap_track',
+    identity: 'track',
+    orderBy: 'track',
+    columns: { track: 'track' }
   }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
      present locally is simply skipped rather than compared column by column:

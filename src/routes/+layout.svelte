@@ -589,7 +589,27 @@
         <PostRecoveryAccessMode />
       {:else if locked}
         <!-- Instead of the route, not over it: nothing below this renders,
-             so no screen mounts and no query runs while the app is locked. -->
+             so no screen mounts and no query runs while the app is locked.
+
+             What that costs, decided and kept (phase 8 features ticket 49
+             item 3): the route unmounts, so component state and scroll
+             position go with it, and unlocking is not a navigation, so
+             `restoreScroll` never runs either. The app comes back at the top
+             of the screen it was on. Asked to put somebody back exactly where
+             they were reading - pass 3's D5 - the answer here is no, on
+             purpose. Not rendering the journal behind a lock screen is the
+             property the gesture exists for, and quick exit is the gesture
+             for somebody walking in: redrawing the paragraph that was just
+             hidden, a second after the passphrase is typed in front of that
+             person, is not a kindness. The URL is untouched, so what the
+             person does get back is the screen itself.
+
+             A journal with no access secret at all never reaches this branch.
+             It takes `lockState.blanked` instead - an overlay above a tree
+             that stays mounted - and does keep its position, which is where
+             the original "already true, by construction" reading came from.
+             walkthrough.test.mjs flow 18 asserts the passphrase case, since
+             that is every journal this feature exists for. -->
         <SessionUnlock mode={bootState.accessMode} />
       {:else if redirectingToOnboarding}
         <!-- The effect above is already navigating here; nothing renders

@@ -322,14 +322,14 @@ export async function dayonePreview(
     const text = raw.text ?? '';
     const note = text.trim() !== '' ? noteFromText(text) : noteFromRichText(raw.richText ?? '{}', raw.uuid);
 
-    const photoRows: { id: string; fileName: string; starred: boolean }[] = [];
+    const photoRows: { id: string; fileName: string; starred: boolean; epochDayOverride: null }[] = [];
     for (const photo of raw.photos ?? []) {
       const resolved = await resolveDayOnePhoto(reader, photo);
       if (!resolved) {
         unresolvedPhotoCount += 1;
         continue;
       }
-      photoRows.push({ id: resolved.id, fileName: resolved.fileName, starred: false });
+      photoRows.push({ id: resolved.id, fileName: resolved.fileName, starred: false, epochDayOverride: null });
       rawPhotos.set(resolved.fileName, resolved.raw);
     }
 

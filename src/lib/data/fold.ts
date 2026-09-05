@@ -34,6 +34,33 @@ const FOLDS: readonly [replacement: string, letterforms: string][] = [
   ['z', 'żźž']
 ];
 
+/** Uppercase letterforms that fold to themselves lowercased and that
+    SQLite's `lower()` cannot reach, so only `foldedSql` needs them - the SQL
+    side's half of the fold, never the JS side's, where `toLowerCase()`
+    already does all of this (phase 8 features ticket 49 item 4).
+
+    Cyrillic is the case that made this necessary. `FOLDS` above says nothing
+    about it and does not need to: no letterform here strips to anything,
+    Cyrillic simply has to survive with its case folded. What broke was that
+    only one of the two sides folded it - the query, in JS - so `Настя` sat
+    capitalised in the column while `настя` was typed, and a name written the
+    way people write names could not be found. The entry note's own index is
+    unaffected: FTS5's `unicode61` tokenizer case-folds Cyrillic itself, and
+    search.test.ts asserts that rather than assuming it.
+
+    Written out letter by letter, because SQLite has no locale-aware `lower()`
+    to fall back on and there is no arithmetic a `REPLACE` chain can do. The
+    Russian alphabet plus the four Ukrainian letters Russian does not have
+    (ҐЄІЇ) and Belarusian's Ў - the Cyrillic alphabets a journal kept in this
+    part of the world is written in. Each one costs a `REPLACE` per scanned
+    row, on top of the Latin table's own - the chain goes from 48 to 86, so
+    it is worth saying what that measured rather than leaving it as a
+    concession: `search-everywhere` over the ten-year fixture
+    (tests/long-journal) came out at 36ms against its 37ms baseline and a
+    150ms budget, which is inside the run-to-run wobble. The scan is bounded
+    by rows read, not by the length of the expression applied to each one. */
+const SQL_ONLY_UPPERCASE = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯҐЄІЇЎ';
+
 /** Compiled once rather than per call: `foldText` runs on every search index
     write and on every keystroke of a query. */
 const FOLD_PATTERNS: readonly [RegExp, string][] = FOLDS.map(([replacement, letterforms]) => [
@@ -60,12 +87,15 @@ export function foldText(s: string): string {
     database while folding the typed query. JS `toLowerCase()` has no such
     limit, which is why only this side needs the pairs.
 
+    `SQL_ONLY_UPPERCASE` is the rest of that same gap: a letterform this
+    table folds nothing about, but whose case `lower()` still cannot reach.
+
     What stays outside the fold on this side alone: an uppercase letterform
-    the fold does not list at all - Ü, ß - which `toLowerCase()` lowers for
-    the query and `lower()` leaves standing in the text. It is the same kind
-    of documented narrowing as FTS5's whole-token matching (searchQuery.ts),
-    it costs a miss rather than a wrong hit, and closing it would mean either
-    a custom SQL function per driver or reading every text row out to fold it
+    neither table lists - Ü, ß - which `toLowerCase()` lowers for the query
+    and `lower()` leaves standing in the text. It is the same kind of
+    documented narrowing as FTS5's whole-token matching (searchQuery.ts), it
+    costs a miss rather than a wrong hit, and closing it would mean either a
+    custom SQL function per driver or reading every text row out to fold it
     in JS.
 
     fold.test.ts drives the two forms against each other over the same
@@ -83,6 +113,9 @@ export function foldedSql(expr: string): string {
         sql = `REPLACE(${sql}, '${spelling}', '${replacement}')`;
       }
     }
+  }
+  for (const uppercase of SQL_ONLY_UPPERCASE) {
+    sql = `REPLACE(${sql}, '${uppercase}', '${uppercase.toLowerCase()}')`;
   }
   return sql;
 }

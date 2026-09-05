@@ -2180,11 +2180,86 @@ const SCHEMA_V70 = `
 ALTER TABLE regimen_episode ADD COLUMN end_reason TEXT;
 `;
 
-/* v71: which practice a wear session was (phase 8 features ticket 50,
-   ADR-0064). v22 merged binder and tucking into one table with no column
-   telling them apart, so no copy, chart default or duration cue could ever
-   be specific to either; `kind` is that column, closed to three values
-   (`binder`, `tucking`, `compression`) drafted in messages/*.json.
+/* v71: the word-frequency ignore list (phase 8 features ticket 48,
+   ADR-0003). Numbered v71 rather than v70: ticket 43's regimen-episode
+   end_reason column landed on main first and took v70, so this was
+   renumbered here rather than fought over during the merge.
+
+   wordFrequency.ts's own stopword lists only ever choose between English and
+   Polish - a third language, or a name, has nowhere to go and inflates the
+   count as if it were content. This is the person's own list of words to
+   drop from every future read, on top of whichever stopword list already
+   applied, for exactly that gap.
+
+   `word` is the identity, the same shape `era_mute` gives a natural-key
+   membership table: presence is the whole of the state, so unignoring
+   deletes the row rather than storing a false. Case-folded the same way
+   `tokenize()` folds a note before counting, so "Kraków" and "kraków" are
+   one entry. No `created_at`: a row is only ever inserted or deleted, never
+   edited in place, so `updated_at` already says everything `created_at`
+   would - the shape every other flat table here already carries. */
+const SCHEMA_V71 = `
+CREATE TABLE word_frequency_ignore (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  word       TEXT NOT NULL UNIQUE,
+  updated_at INTEGER NOT NULL
+);
+`;
+
+/* v72: a photo's day, overridden (phase 8 features ticket 47, ADR-0008,
+   ADR-0015). Numbered v72 rather than v71: ticket 48's word-frequency
+   ignore list landed on main first and took v71, so this was renumbered
+   here rather than fought over during the merge.
+
+   Nullable, no default, and not derivable (ADR-0010): every photo this app
+   can normalize has already had its capture date stripped (ADR-0015 strips
+   EXIF/XMP/IPTC/comments on import), so the day a photo shows on is always
+   read off its owning entry or milestone unless this column says
+   otherwise. journal/photos.ts's two read queries put it first in their
+   COALESCE; nothing else derives from it and it derives from nothing. */
+const SCHEMA_V72 = `
+ALTER TABLE photo ADD COLUMN epoch_day_override INTEGER;
+`;
+
+/* v73: "not my path" one grain out, at the roadmap track (phase 8 features
+   ticket 49 item 5). Numbered v73 rather than v71: tickets 48 and 47 landed
+   on main first and took v71 and v72, so this was renumbered here rather
+   than fought over during the merge.
+
+   Until now the tri-state existed per goal only, so somebody the medical
+   track has nothing to do with had to say so on each of its seven goals in
+   turn.
+
+   Presence is the whole of the state, the shape roadmap_check gives a tick
+   (v18) and era_mute gives a mute (v56): a row means "not my path" and no
+   row means the ordinary case, so undoing it is a DELETE and there is no
+   third value to store or read back. That is also what makes the table safe
+   against a track this build does not have - a row naming a track that
+   ROADMAP_TRACKS no longer lists is simply never asked about, the same way
+   a stale era mute is.
+
+   Not keyed by pack. A track is the app's own structure and a pack
+   populates it (roadmap.ts), so dismissing "medical" is a statement about
+   the person's path rather than about Poland's procedure, and it should
+   still hold if a second country's pack ever arrives. `roadmap_check` is
+   keyed by pack for the opposite reason: a goal key only means anything
+   inside the pack that defines it. */
+const SCHEMA_V73 = `
+CREATE TABLE roadmap_track (
+  track      TEXT PRIMARY KEY,
+  updated_at INTEGER NOT NULL
+);
+`;
+
+/* v74: which practice a wear session was (phase 8 features ticket 50,
+   ADR-0064). Numbered v74 rather than v71: tickets 48 and 47 took v71 to
+   v73 on main while this branch was open, so this was renumbered at the
+   merge rather than fought over.
+
+   v22 merged binder and tucking into one table with no column telling them
+   apart, so no copy, chart default or duration cue could ever be specific
+   to either; `kind` is that column, closed to three values (`binder`,
+   `tucking`, `compression`) drafted in messages/*.json.
 
    NOT NULL because a session with no kind has no wording to draw - every
    user-facing string on that screen is picked by it. SQLite cannot add a
@@ -2195,7 +2270,7 @@ ALTER TABLE regimen_episode ADD COLUMN end_reason TEXT;
    v69 and v70 give: the write layer (wearSessions.ts) is the one writer,
    and a CHECK would refuse to even read back a row arriving from an older
    archive. */
-const SCHEMA_V71 = `
+const SCHEMA_V74 = `
 ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
 `;
 
@@ -2270,5 +2345,8 @@ export const migrations: Migration[] = [
   { version: 68, sql: SCHEMA_V68 },
   { version: 69, sql: SCHEMA_V69 },
   { version: 70, sql: SCHEMA_V70 },
-  { version: 71, sql: SCHEMA_V71 }
+  { version: 71, sql: SCHEMA_V71 },
+  { version: 72, sql: SCHEMA_V72 },
+  { version: 73, sql: SCHEMA_V73 },
+  { version: 74, sql: SCHEMA_V74 }
 ];

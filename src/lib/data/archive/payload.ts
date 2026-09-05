@@ -49,6 +49,11 @@ export interface ArchivePhoto {
       ArchiveLabResult's header gives: no release has shipped, so no
       archive in existence predates it. */
   starred: boolean;
+  /** The day this photo shows on, when it overrides its owner's
+      (ticket 47, ADR-0008/0015). Null on every photo before this ticket
+      and on any photo nobody has corrected since - restore.ts writes
+      `?? null` for an archive whose payload predates this field. */
+  epochDayOverride: number | null;
 }
 
 /** One voice recording (phase 4 ticket 24, CONTEXT: "Voice recording"). Its
@@ -369,6 +374,15 @@ export interface ArchiveRoadmapCheck {
   packKey: string;
   goalKey: string;
   status: string;
+}
+
+/** A roadmap track the person has said is not their path (phase 8 features
+    ticket 49), named by the track key alone - there is no pack in it,
+    because a track is the app's own structure rather than a pack's content.
+    Presence is the whole of the state, the way an ArchiveRoadmapCheck's own
+    absence means unchecked, so there is nothing here but the name. */
+export interface ArchiveRoadmapTrack {
+  track: string;
 }
 
 /** A user-authored roadmap goal (phase 5 ticket 20), named by its own
@@ -693,6 +707,13 @@ export interface ArchiveMarginNote {
   text: string;
 }
 
+/** A word the person has told the words screen to stop counting (phase 8
+    features ticket 48, ADR-0003). Named by the word itself: nothing else in
+    the journal resolves an id against it. */
+export interface ArchiveWordIgnore {
+  word: string;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -791,6 +812,7 @@ export interface ArchiveJournal {
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
+  roadmapTracks: ArchiveRoadmapTrack[];
   roadmapGoals: ArchiveRoadmapGoal[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
@@ -810,6 +832,7 @@ export interface ArchiveJournal {
   savedQuestions: ArchiveSavedQuestion[];
   revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
+  wordIgnore: ArchiveWordIgnore[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

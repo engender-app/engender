@@ -218,26 +218,61 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
     or null when `anchor`'s drug is not the one this effect's table
     describes and there is no band to draw.
 
-    The anchor is the whole episode because both halves of the answer come
-    from it: its start day is where the bands are counted from and its drug
-    is what decides whether they exist. Which episode anchors is unchanged
-    (ticket 02) - it is still the earliest overall, not the active one. */
+    The anchor is the whole episode because all three parts of the answer
+    come from it: its start day is where the bands are counted from, its drug
+    is what decides whether they exist, and its end day is where they stop.
+    Which episode anchors is unchanged (ticket 02) - it is still the earliest
+    overall, not the active one.
+
+    Nothing is drawn past `endEpochDay` (phase 8 features ticket 49). Every
+    window here is a claim about a body on the drug the table describes, so
+    it says nothing about the days after that drug stopped, and the gate
+    fails closed the same way `resolveCurveDrug`'s does rather than hedging:
+
+    - an episode that ended before the onset could even begin gets null, not
+      a band whose every day is unreachable,
+    - a completion window the episode never reached is dropped rather than
+      drawn with both ends in the past,
+    - anything the episode ran into stops at its end day, including
+      hair_changes' open end, which was only ever open for a body still on
+      the hormone.
+
+    Until this, a five-year masculinizing completion band kept drawing years
+    past a stopped regimen, citing the Endocrine Society underneath it for a
+    body no longer on what the table describes. */
 export function literatureWindowDays(
   effect: PersonalEffectType,
-  anchor: Pick<RegimenEpisode, 'drug' | 'startEpochDay'>
+  anchor: Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>
 ): EffectWindowDays | null {
   if (!literatureCovers(effect, anchor.drug)) return null;
 
   const anchorEpochDay = anchor.startEpochDay;
+  const endEpochDay = anchor.endEpochDay;
   const window = EFFECT_LITERATURE_WINDOW[effect]!;
-  const completion = window.completionMonths
-    ? {
-        start: afterAnchor(anchorEpochDay, window.completionMonths.min),
-        end: window.completionMonths.max == null ? null : afterAnchor(anchorEpochDay, window.completionMonths.max)
-      }
-    : null;
+
+  /** The one question the clip asks, asked once. Always false while the
+      episode is open, which is what leaves every band exactly as it was
+      before the clip existed. */
+  const pastEnd = (day: number): boolean => endEpochDay !== null && day > endEpochDay;
+  const clip = (day: number): number => (pastEnd(day) ? endEpochDay! : day);
+
+  const onsetStart = afterAnchor(anchorEpochDay, window.onsetMonths.min);
+  if (pastEnd(onsetStart)) return null;
+
+  const completionStart = window.completionMonths ? afterAnchor(anchorEpochDay, window.completionMonths.min) : null;
+  const completion =
+    window.completionMonths && completionStart !== null && !pastEnd(completionStart)
+      ? {
+          start: completionStart,
+          end:
+            window.completionMonths.max == null
+              ? endEpochDay
+              : clip(afterAnchor(anchorEpochDay, window.completionMonths.max))
+        }
+      : null;
+
   return {
-    onset: { start: afterAnchor(anchorEpochDay, window.onsetMonths.min), end: afterAnchor(anchorEpochDay, window.onsetMonths.max) },
+    onset: { start: onsetStart, end: clip(afterAnchor(anchorEpochDay, window.onsetMonths.max)) },
     completion
   };
 }

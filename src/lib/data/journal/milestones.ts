@@ -144,6 +144,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
             ])
           : [];
       const staged = photoChange.action === 'replace' ? await stagePhoto(files, photoChange.photo) : null;
+      const stagedOverride = photoChange.action === 'replace' ? (photoChange.photo.epochDayOverride ?? null) : null;
 
       // roadmapGoalKey, procedureId, tryoutId and description are each set
       // by a different caller (roadmap sync, the procedure hub, tryout
@@ -181,7 +182,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           assertChanged(result, `milestone: ${input.id}`);
           await driver.run('DELETE FROM photo WHERE milestone_id = ?', [milestoneRowid]);
           if (staged) {
-            await insertStagedPhoto(driver, { entryId: null, milestoneId: milestoneRowid }, staged);
+            await insertStagedPhoto(driver, { entryId: null, milestoneId: milestoneRowid }, staged, stagedOverride);
           }
         });
         await removeFilesAfterCommit(files, oldPhotos);
@@ -208,7 +209,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         await driver.run(insertSql, insertParams);
         if (staged) {
           const rowid = await rowidByUuid(driver, 'milestone', uuid);
-          await insertStagedPhoto(driver, { entryId: null, milestoneId: rowid }, staged);
+          await insertStagedPhoto(driver, { entryId: null, milestoneId: rowid }, staged, stagedOverride);
         }
       });
       return uuid;

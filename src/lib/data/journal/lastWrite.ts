@@ -263,6 +263,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
 
   eraMutes: 'no date of its own: a uuid naming a muted era',
   roadmapChecks: 'no date of its own',
+  roadmapTracks: 'no date of its own',
   roadmapGoals: 'no date of its own',
   checklists: 'no date of its own',
 
@@ -296,7 +297,8 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // gap about - it is drawn wherever the entry it annotates is, and asking
   // "when was one last written" answers nothing the return surface or the
   // hub would use it for.
-  marginNotes: 'drawn beside the entry it annotates, not a stream of its own to report a gap about'
+  marginNotes: 'drawn beside the entry it annotates, not a stream of its own to report a gap about',
+  wordIgnore: 'reference data, not a written stream'
 };
 
 export const LAST_WRITE_ENTRIES: readonly LastWriteEntry[] = ENTRIES;

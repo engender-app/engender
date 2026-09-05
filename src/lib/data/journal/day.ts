@@ -370,6 +370,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   medicationStock: 'a running count, dated by when it was last reported',
 
   roadmapChecks: 'no date of its own',
+  roadmapTracks: 'no date of its own',
   roadmapGoals: 'no date of its own',
   checklists: 'no date of its own',
 
@@ -414,7 +415,11 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // ticket). Keyed by the day it was written on, a margin note would need a
   // second section here just to point back at its entry; keyed by the day
   // it belongs to, it already is one - the entry's own row.
-  marginNotes: 'drawn beside the entry it annotates, not as a section of its own'
+  marginNotes: 'drawn beside the entry it annotates, not as a section of its own',
+  // A word someone has told the words screen to stop counting is not a
+  // thing that happened on a day - the same reference-data reason
+  // dimensions/tagGroups get above (phase 8 features ticket 48).
+  wordIgnore: 'reference data'
 };
 
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;
