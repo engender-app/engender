@@ -514,3 +514,36 @@ test('the curve markers do not pick it up', async () => {
   const markers = await journal.chartAnnotations.getCurveMarkers(20000, TODAY, TODAY);
   assert.equal(markers.filter((a) => a.kind === 'finishedArea').length, 0);
 });
+
+/* Phase 8 features ticket 51: the day a stream was paused. Same shape as the
+   finished mark above, on the one area here with a real case for it
+   (hairRemovalSessions is not fronted by anything else, unlike voice). */
+
+test('a suspended area marks the day it was paused, distinct from a finished one', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasSuspended(['hairRemovalSessions'], 20100);
+
+  const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  const suspended = marks.filter((a) => a.kind === 'suspendedArea');
+
+  assert.equal(suspended.length, 1);
+  assert.equal(suspended[0].shape, 'point');
+  assert.equal(suspended[0].fromEpochDay, 20100);
+  assert.equal(suspended[0].name, 'hair-removal');
+  assert.equal(marks.filter((a) => a.kind === 'finishedArea').length, 0);
+});
+
+test('a row fronting two areas marks suspended once, and not at all until both are', async () => {
+  const journal = await journalWith();
+  await journal.areaStates.setAreasSuspended(['voiceBenchmarks'], 20100);
+
+  const half = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  assert.equal(half.filter((a) => a.kind === 'suspendedArea').length, 0);
+
+  await journal.areaStates.setAreasSuspended(['voicePracticeTakes'], 20100);
+  const whole = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
+  const suspended = whole.filter((a) => a.kind === 'suspendedArea');
+
+  assert.equal(suspended.length, 1, 'one gesture, one mark');
+  assert.equal(suspended[0].name, 'voice');
+});

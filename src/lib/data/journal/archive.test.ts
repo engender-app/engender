@@ -568,17 +568,19 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
    stream that reads as unfinished again on the new phone makes having
    finished it a lie. The date is the part worth pinning by hand - a flag
    would survive a boolean round trip that silently dropped the day. */
-test('an area\'s hidden and finished state travels, and a restore keeps the day it names', async () => {
+test('an area\'s hidden, finished and suspended state travels, and a restore keeps the days it names', async () => {
   const { journal } = await populated();
   await journal.areaStates.setAreasHidden(['sizeRecords'], true);
   await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
+  await journal.areaStates.setAreasSuspended(['voiceBenchmarks'], 19310);
 
   const snapshot = await journal.archive.snapshot();
 
   assert.deepEqual(snapshot.journal.areaStates, [
-    { area: 'hairPhotos', hidden: false, finishedEpochDay: 19300 },
-    { area: 'hairStages', hidden: false, finishedEpochDay: 19300 },
-    { area: 'sizeRecords', hidden: true, finishedEpochDay: null }
+    { area: 'hairPhotos', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    { area: 'hairStages', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    { area: 'sizeRecords', hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
+    { area: 'voiceBenchmarks', hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
   ]);
 
   const target = openJournal(await migratedDb(), fakeFileStore());
@@ -588,9 +590,10 @@ test('an area\'s hidden and finished state travels, and a restore keeps the day 
   await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
 
   assert.deepEqual(await target.areaStates.getAreaStates(), {
-    hairPhotos: { hidden: false, finishedEpochDay: 19300 },
-    hairStages: { hidden: false, finishedEpochDay: 19300 },
-    sizeRecords: { hidden: true, finishedEpochDay: null }
+    hairPhotos: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    hairStages: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    sizeRecords: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
+    voiceBenchmarks: { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
   });
 });
 

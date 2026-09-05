@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {
   areaHidden,
   areaQuiet,
+  areaStateResting,
   FINISHABLE_AREAS,
   NOT_FINISHABLE,
+  SUSPENDABLE_AREAS,
   type AreaStates
 } from './areaState.ts';
 import { cycleTrackingVisible } from './cycleTracking.ts';
@@ -21,8 +23,8 @@ test('an area with no row is neither hidden nor quiet, and nothing had to say so
 });
 
 test('hidden and finished are independent: either one alone makes an area quiet', () => {
-  const onlyHidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null } };
-  const onlyFinished: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900 } };
+  const onlyHidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
+  const onlyFinished: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
 
   assert.equal(areaHidden('measurements', onlyHidden), true);
   assert.equal(areaQuiet('measurements', onlyHidden, TODAY), true);
@@ -34,14 +36,41 @@ test('hidden and finished are independent: either one alone makes an area quiet'
 });
 
 test('a finish day in the future has not happened yet', () => {
-  const states: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY + 1 } };
+  const states: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY + 1, suspendedEpochDay: null } };
 
   assert.equal(areaQuiet('wearSessions', states, TODAY), false);
   assert.equal(areaQuiet('wearSessions', states, TODAY + 1), true);
 });
 
+test('a suspended area is quiet, the same as hidden or finished, and a future suspend day has not happened yet', () => {
+  const states: AreaStates = {
+    hairRemovalSessions: { hidden: false, finishedEpochDay: null, suspendedEpochDay: TODAY - 1 }
+  };
+  const future: AreaStates = {
+    hairRemovalSessions: { hidden: false, finishedEpochDay: null, suspendedEpochDay: TODAY + 1 }
+  };
+
+  assert.equal(areaHidden('hairRemovalSessions', states), false);
+  assert.equal(areaQuiet('hairRemovalSessions', states, TODAY), true);
+  assert.equal(areaQuiet('hairRemovalSessions', future, TODAY), false);
+});
+
+test('the three suspendable areas are the two named cases, voice fronting both of its sections', () => {
+  assert.deepEqual([...SUSPENDABLE_AREAS].sort(), ['hairRemovalSessions', 'voiceBenchmarks', 'voicePracticeTakes']);
+  for (const area of SUSPENDABLE_AREAS) {
+    assert.ok(FINISHABLE_AREAS.includes(area), `${area} is suspendable but not finishable`);
+  }
+});
+
+test('areaStateResting is true only where every field is at rest', () => {
+  assert.equal(areaStateResting({ hidden: false, finishedEpochDay: null, suspendedEpochDay: null }), true);
+  assert.equal(areaStateResting({ hidden: true, finishedEpochDay: null, suspendedEpochDay: null }), false);
+  assert.equal(areaStateResting({ hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null }), false);
+  assert.equal(areaStateResting({ hidden: false, finishedEpochDay: null, suspendedEpochDay: 19900 }), false);
+});
+
 test('one area answering does not answer for another', () => {
-  const states: AreaStates = { hairStages: { hidden: true, finishedEpochDay: 19000 } };
+  const states: AreaStates = { hairStages: { hidden: true, finishedEpochDay: 19000, suspendedEpochDay: null } };
 
   assert.equal(areaQuiet('hairStages', states, TODAY), true);
   assert.equal(areaQuiet('hairPhotos', states, TODAY), false);
@@ -89,7 +118,7 @@ test('cycle tracking keeps its own gate: no row here changes what it answers', (
   // so neither gate below can be asked about it and no state can be built that
   // would answer. That is what stops the record reversing a one-directional
   // rule; areaStates.test.ts covers the row a foreign archive could carry.
-  const states: AreaStates = { cycleEvents: { hidden: true, finishedEpochDay: 19000 } };
+  const states: AreaStates = { cycleEvents: { hidden: true, finishedEpochDay: 19000, suspendedEpochDay: null } };
   void states;
 
   const testosterone: RegimenEpisode = {
