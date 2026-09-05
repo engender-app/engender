@@ -160,10 +160,12 @@ export interface DosesArea {
       in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** How many non-skipped doses carry each distinct `drug` value, within
-      each of `ranges`, in the range order given. Ranges must not overlap; a
-      dose in none of them is counted nowhere. One grouped aggregate, not a
-      fetched list counted in JS - the same reason `lastWriteEpochDay` is a
-      bounded `MAX`.
+      each of `ranges`, in the range order given. A dose in none of them is
+      counted nowhere. One grouped aggregate, not a fetched list counted in
+      JS - the same reason `lastWriteEpochDay` is a bounded `MAX`.
+
+      Overlapping ranges, and a range that runs backwards, throw (ADR-0053):
+      either would return figures that look ordinary and are wrong.
 
       The `drug` column as stored, never resolved: a dose that names no drug
       keeps a `null` key rather than being attributed to an episode's drug
@@ -184,7 +186,7 @@ export interface DrugDoseCounts {
   /** The `drug` column as stored. Null for a dose that named none. */
   drug: string | null;
   /** One count per range asked for, in the same order. */
-  countsByRange: number[];
+  countsByRange: readonly number[];
 }
 
 type DoseRow = {
@@ -316,17 +318,43 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     async countConsumingDosesByDrug(ranges) {
       if (ranges.length === 0) return [];
 
+      /* Refused rather than tolerated, the way an update on an unknown id is
+         (ADR-0053): the CASE below takes the first arm that matches, so
+         overlapping ranges would quietly count a dose once instead of twice
+         and hand back figures nothing could tell were wrong. A range that
+         runs backwards is the same kind of caller mistake. */
+      const sorted = [...ranges].sort((a, b) => a.fromEpochDay - b.fromEpochDay);
+      for (const [index, range] of sorted.entries()) {
+        if (range.toEpochDay < range.fromEpochDay) {
+          throw new Error(`countConsumingDosesByDrug: range ${range.fromEpochDay}..${range.toEpochDay} runs backwards`);
+        }
+        const previous = sorted[index - 1];
+        if (previous && range.fromEpochDay <= previous.toEpochDay) {
+          throw new Error(
+            `countConsumingDosesByDrug: ranges overlap at day ${range.fromEpochDay} ` +
+              `(${previous.fromEpochDay}..${previous.toEpochDay} and ${range.fromEpochDay}..${range.toEpochDay})`
+          );
+        }
+      }
+
       /* One CASE over the ranges rather than one statement each: what this
          read exists to avoid is crossings, and a statement per range would
          trade a large one for several small ones. The bounds are half-open
          on the next day's local midnight, the same way getDoses bounds
-         itself and for the same DST reason. */
+         itself and for the same DST reason.
+
+         Two things a reader must not rearrange. The CASE sits in the SELECT
+         list, so its pairs of binds come before the WHERE clause's two -
+         these are positional parameters and the order here is the order they
+         appear in the statement text, not the order they are written below.
+         And the WHERE bound looks redundant beside the CASE but is not: it
+         is what lets idx_dose_event_timestamp restrict the scan, where the
+         CASE alone would read the table and label every row. */
       const bounds = ranges.map((range) => ({
         from: startOfDayTimestamp(range.fromEpochDay),
         until: startOfDayTimestamp(range.toEpochDay + 1)
       }));
       const whens = bounds.map((_, index) => `WHEN timestamp >= ? AND timestamp < ? THEN ${index}`).join(' ');
-      const params = bounds.flatMap((bound) => [bound.from, bound.until]);
 
       const rows = await driver.query<{ drug: string | null; bucket: number; n: number }>(
         `SELECT drug, CASE ${whens} END AS bucket, COUNT(*) AS n
@@ -335,7 +363,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
           GROUP BY drug, bucket
          HAVING bucket IS NOT NULL`,
         [
-          ...params,
+          ...bounds.flatMap((bound) => [bound.from, bound.until]),
           Math.min(...bounds.map((bound) => bound.from)),
           Math.max(...bounds.map((bound) => bound.until))
         ]

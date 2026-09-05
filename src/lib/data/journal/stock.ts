@@ -19,8 +19,7 @@ import { bool, mintUuid, now } from './support';
 import type { DosesArea } from './doses';
 import type { RegimenArea } from './regimen';
 import type { RemindersArea } from './reminders';
-import { projectStockFromCounts, trailingWindowStart, type StockProjection } from '../stockProjection';
-import { drugSpans } from '../regimenEpisode';
+import { projectEveryStock, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 
@@ -126,16 +125,12 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
      seam here so that three numbers per drug could be reduced out of it -
      the single largest thing Home read on arrival.
 
-     What replaces it: cut the window at every day any entry's answer could
-     change on - where a drug-less dose starts attributing differently
-     (drugSpans), where a count was taken, and where a trailing rate window
-     opens - and ask the dose log how many non-skipped doses each drug value
-     has in each stretch. Every stretch then lies inside exactly one span,
-     so a stretch's drug-less doses all belong to the same drug or to none,
-     and the per-entry figures are sums over stretches. The attribution rule
-     itself never leaves regimenEpisode.ts and the arithmetic never leaves
-     stockProjection.ts; the SQL counts rows in date windows and knows
-     nothing about either. */
+     What replaces it: projectEveryStock chooses the date windows the
+     figures can be summed from and this area answers its one counting
+     question against the dose log. Everything that decides which drug a
+     dose belongs to stays above the seam - the attribution rule in
+     regimenEpisode.ts, the windowing and the sums in stockProjection.ts -
+     and the SQL only ever counts rows in date windows. */
   const projections = async (asOfEpochDay: number): Promise<StockProjectionRow[]> => {
     /* Both at once, the way the old getDoses and getEpisodes pair was:
        neither answer depends on the other, and only the count that follows
@@ -143,67 +138,10 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     const [entries, episodes] = await Promise.all([getEntries(), regimen.getEpisodes()]);
     if (entries.length === 0) return [];
 
-    const from = Math.min(...entries.map((entry) => entry.recordedEpochDay), asOfEpochDay);
-    const spans = drugSpans(episodes, from, asOfEpochDay);
-
-    const cuts = new Set<number>(spans.map((span) => span.fromEpochDay));
-    for (const entry of entries) {
-      for (const day of [entry.recordedEpochDay, trailingWindowStart(entry, asOfEpochDay)]) {
-        if (day > from && day <= asOfEpochDay) cuts.add(day);
-      }
-    }
-
-    const starts = [...cuts].sort((a, b) => a - b);
-    const ranges = starts.map((start, index) => ({
-      fromEpochDay: start,
-      toEpochDay: index + 1 < starts.length ? starts[index + 1] - 1 : asOfEpochDay
-    }));
-    const spanForRange = ranges.map((range) =>
-      spans.find((span) => range.fromEpochDay >= span.fromEpochDay && range.fromEpochDay <= span.toEpochDay)
+    const projected = await projectEveryStock(entries, episodes, asOfEpochDay, (ranges) =>
+      doses.countConsumingDosesByDrug(ranges)
     );
-
-    /* Doses that named a drug are keyed by that name, trimmed the way a
-       drug is matched everywhere else; doses that named none are kept apart,
-       because which drug they count against is the span's answer and not
-       their own. A falsy `drug` is what attributeDrug treats as naming
-       nothing, so the same test decides it here. */
-    const namedByRange = ranges.map(() => new Map<string, number>());
-    const unnamedByRange = ranges.map(() => 0);
-    for (const row of await doses.countConsumingDosesByDrug(ranges)) {
-      row.countsByRange.forEach((count, index) => {
-        if (!row.drug) {
-          unnamedByRange[index] += count;
-          return;
-        }
-        const key = row.drug.trim();
-        namedByRange[index].set(key, (namedByRange[index].get(key) ?? 0) + count);
-      });
-    }
-
-    return entries.map((entry) => {
-      const drug = entry.drug.trim();
-      const windowStart = trailingWindowStart(entry, asOfEpochDay);
-      let consumed = 0;
-      let consumedInTrailingWindow = 0;
-      let excluded = 0;
-
-      for (const [index, range] of ranges.entries()) {
-        if (range.fromEpochDay < entry.recordedEpochDay) continue;
-        const span = spanForRange[index];
-        const unnamed = unnamedByRange[index];
-        const attributed =
-          (namedByRange[index].get(drug) ?? 0) + (span?.drug != null && span.drug.trim() === drug ? unnamed : 0);
-
-        consumed += attributed;
-        if (range.fromEpochDay >= windowStart) consumedInTrailingWindow += attributed;
-        if (span?.ambiguous) excluded += unnamed;
-      }
-
-      return {
-        entry,
-        projection: projectStockFromCounts(entry, { consumed, consumedInTrailingWindow, excluded }, asOfEpochDay)
-      };
-    });
+    return entries.map((entry, index) => ({ entry, projection: projected[index] }));
   };
 
   return {
