@@ -3,7 +3,10 @@
    comparable conditions. Pure, and kept above the journal seam beside
    regimenEpisode.ts and doseSchedule.ts for the same reason: this is a
    question about a draw and a dose, not a row anyone stores. Nothing here
-   reads a clock or a database.
+   reads a clock or a database - selectTimingDose (phase 8 features ticket
+   37) does lean on regimenEpisode.ts and hormoneDrug.ts as real
+   dependencies rather than peers, since picking which dose a draw's timing
+   comes from is inseparable from whose drug that dose was.
 
    Purely descriptive throughout. This module answers "how long after which
    dose was this drawn" and stops: it names no draw time as better than
@@ -99,14 +102,12 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
   return { route: dose.route, hoursSinceDose: (instant - dose.timestamp) / HOUR };
 }
 
-/** A dose event as deriveTiming (labs.ts) reads it off `dose_event`: only
-    the fields selectTimingDose below needs, from rows already filtered to
-    "not skipped, at or before the draw" and ordered latest first. */
-export interface CandidateDose {
-  timestamp: number;
-  route: DoseRoute;
-  drug: string | null;
-}
+/** A dose event as deriveTiming (labs.ts) reads it off `dose_event`: a
+    TimingDose (labTimingFor's own question) plus the one extra field
+    selectTimingDose below needs to decide whether it's a candidate at all -
+    from rows already filtered to "not skipped, at or before the draw" and
+    ordered latest first. */
+export type CandidateDose = TimingDose & { drug: string | null };
 
 /** The candidate that supplies `analyte`'s timing, or null when none does.
     `analyte` must itself resolve to one of the two curve drugs
