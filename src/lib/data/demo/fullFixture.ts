@@ -255,7 +255,14 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       note: r() < 0.2 ? 'a bit tight by the end' : null
     });
   }
-  await journal.wearSessions.upsertSession({ startTimestamp: now - 2 * 3_600_000, durationMs: null });
+  // Its elapsed reminder is what ticket 31's web reminders list has to show
+  // and delete - the one write that screen offers on web (ADR-0063).
+  await journal.wearSessions.upsertSession({
+    startTimestamp: now - 2 * 3_600_000,
+    durationMs: null,
+    reminderHoursAfterStart: 8,
+    reminderTitle: 'Binder check-in'
+  });
 
   // Cycle events: roughly monthly over two years.
   for (let day = today - 730; day <= today; day += between(24, 34)) {
