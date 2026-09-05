@@ -58,6 +58,9 @@ import { isDue } from './android-auto-export';
 import { startAutoExportScheduler, stopAutoExportScheduler } from './auto-export-scheduler';
 
 const flush = async () => {
+  /* Fake timers don't advance for a dynamic import's own microtask hop
+     (maybeRun's `await import('./android-auto-export')`), so nudge them
+     forward once before draining the rest with plain microtask ticks. */
   await vi.advanceTimersByTimeAsync(0);
   for (let i = 0; i < 12; i++) await Promise.resolve();
 };
