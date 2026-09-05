@@ -26,7 +26,7 @@ import {
   statsAreaCards
 } from './statsAreas';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
-import { HUB_ROWS, hubRow, type HubRowKey } from './hubRows';
+import { hubRow } from './hubRows';
 import type { AreaStates } from './areaState';
 
 const covered = new Set(STATS_AREA_PANELS.flatMap((panel) => panel.covers));
@@ -134,19 +134,10 @@ describe('the emptiness rule', () => {
 });
 
 describe('a card reads its identity off its hub row', () => {
-  it('carries the row\'s icon and the row\'s screen, and declares neither', () => {
-    /* Not two lists compared: `STATS_AREA_PANELS` has one list to read from,
-       and a card key naming no row does not compile. What is worth asserting
-       is that the resolution ran - a card that declared nothing would
-       otherwise render an undefined icon and a dead link. */
-    for (const panel of STATS_AREA_PANELS) {
-      if (panel.key in CARDS_WITHOUT_A_ROW) continue;
-      const row = hubRow(panel.key as HubRowKey);
-      expect(panel.icon, `${panel.key} icon`).toBe(row.icon);
-      expect(panel.href, `${panel.key} href`).toBe(row.href.split('?')[0]);
-      expect(panel.finishes, `${panel.key} finishes`).toBe(row.finishes);
-    }
-  });
+  /* Only what can fail is here. That a card carries its row's icon, route
+     and finishable group is the derivation itself and is held by the types;
+     asserting it back would be the two-lists test this ticket deleted,
+     wearing the derivation as its expected value. */
 
   it('points at the screen where the row points at one of its tabs', () => {
     // The one row carrying a query string. The card means the screen.
@@ -155,11 +146,10 @@ describe('a card reads its identity off its hub row', () => {
     expect(card?.href).toBe('/settings/voice');
   });
 
-  it('accounts for every card the hub does not front, and no others', () => {
-    const rowKeys = new Set<string>(HUB_ROWS.map((row) => row.key));
-    const rowless = STATS_AREA_PANELS.filter((panel) => !rowKeys.has(panel.key)).map((panel) => panel.key);
-    expect(rowless.sort()).toEqual(Object.keys(CARDS_WITHOUT_A_ROW).sort());
-    for (const reason of Object.values(CARDS_WITHOUT_A_ROW)) expect(reason.length).toBeGreaterThan(0);
+  it('says why each of the two rowless cards has no row', () => {
+    for (const [key, reason] of Object.entries(CARDS_WITHOUT_A_ROW)) {
+      expect(reason.length, `${key} has no written reason`).toBeGreaterThan(0);
+    }
   });
 });
 

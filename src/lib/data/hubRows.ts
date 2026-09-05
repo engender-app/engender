@@ -411,7 +411,7 @@ export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
 
 export const HUB_ROWS: readonly HubRow[] = ROWS;
 
-const BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
+const ROWS_BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
 
 /** One row, by key. Total over `HubRowKey` and returning a `HubRow` rather
     than `HubRow | undefined`, which is what makes a second surface able to
@@ -419,7 +419,18 @@ const BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
     tab's cards are keyed by this type and a card naming no row does not
     compile (`statsAreas.ts`). */
 export function hubRow(key: HubRowKey): HubRow {
-  return BY_KEY.get(key)!;
+  return ROWS_BY_KEY.get(key)!;
+}
+
+/** The screen behind a row, without the query string one row carries.
+
+    `voice-benchmark` opens the voice screen on its benchmark tab, which is
+    that row's business; anything asking which screen is behind the row - the
+    stats card that fronts the same area, the test that holds every feature
+    screen to the kit - means the screen. Here rather than as a `split` at
+    each of those call sites. */
+export function rowScreen(row: HubRowSpec): string {
+  return row.href.split('?')[0];
 }
 
 /* Every finishable group has to be fronted by a row, or it is one a person

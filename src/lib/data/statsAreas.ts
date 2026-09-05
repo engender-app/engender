@@ -27,11 +27,19 @@
               and which is `HubRowKey` rather than a string: a card naming no
               row does not compile
      group    which of the hub's four groups the card sits in - the same four
-              in the same order, so a person learns one organising idea
+              in the same order, so a person learns one organising idea. The
+              card's own, not the row's, which is the ticket's own scope
+              line: the hub has a fifth group since ticket 02, `media`, and
+              no card can sit in it because both media rows front content
+              that travels inside an entry and has no last write to index
      covers   which `lastWrite.ts` areas this row fronts. A row appears when
               **any** of them has ever been written (ADR-0056's emptiness
               rule), because somebody can log hair stages for two years and
-              never take a photograph, and an empty half is not an empty area
+              never take a photograph, and an empty half is not an empty
+              area. Also the card's own rather than the row's `areas`, and
+              not for want of trying to derive it: `care` fronts no section
+              at all while its card indexes the dose log, and the voice
+              benchmark card deliberately covers half of what its row does
 
    Its icon, its route and its finishable group are the hub row's, read off
    by key. They used to be restated here, and drifted within the hour: the
@@ -44,9 +52,13 @@
    gone, and what it asserted is now a compile error.
 
    Which area's `hidden` flag takes a card out was the fifth restated field,
-   and it is `covers` too: `areasHidden` (areaState.ts) over the areas the
-   card is already declared to be about, the same rule the hub row applies to
-   the sections behind it.
+   and it is gone rather than read off the row: `areasHidden` (areaState.ts)
+   asks it over the areas the card is already declared to cover. That is the
+   same *rule* the hub applies to a row - every area behind the surface, or
+   it stays - over inputs that are the card's own, so the card fronting an
+   area the row does not (`care`) and the card covering half of what its row
+   does (`voice-benchmark`) can still answer differently to their rows, on
+   purpose.
 
    No wording here: this file is Node-tier safe and imports no paraglide
    (ADR-0016). The names live in `vocabulary/statsAreaLabels.ts`, the same
@@ -63,7 +75,7 @@
 
 import { areasHidden, type AreaStates } from './areaState';
 import { groupFinishedOn, type AreaGroupKey } from './areaGroups';
-import { hubRow, type HubRowKey } from './hubRows';
+import { hubRow, rowScreen, type HubRowKey } from './hubRows';
 import type { LastWriteKey } from './journal/lastWrite';
 
 /** The More hub's four groups, in the More hub's order. */
@@ -106,7 +118,11 @@ function panel<Key extends HubRowKey, const Covers extends readonly LastWriteKey
 
 /** A card with no hub row behind it, which has to state the identity a row
     would have given it. Two of them, and `CARDS_WITHOUT_A_ROW` below is
-    where each says why it is one. */
+    where each says why it is one.
+
+    Carrying an icon of its own *is* what a rowless card is, so that is what
+    separates the two declarations below, at the type level and at runtime
+    alike - one predicate rather than a marker field beside it. */
 function rowless<Key extends string, const Covers extends readonly LastWriteKey[]>(
   declared: {
     key: Key;
@@ -119,6 +135,10 @@ function rowless<Key extends string, const Covers extends readonly LastWriteKey[
 ) {
   return declared;
 }
+
+/** A card that declares its own identity, which is a card with no hub row -
+    the predicate `STATS_AREA_PANELS` and `RowlessKey` below both use. */
+type Rowless = Extract<(typeof PANELS)[number], { icon: string }>;
 
 const PANELS = [
   panel({ key: 'measurements', group: 'body', covers: ['measurements'] }),
@@ -183,14 +203,23 @@ export const STATS_AREA_PANELS: readonly (StatsAreaPanel & { key: StatsAreaKey }
     return {
       ...declared,
       finishes: row.finishes,
-      /* The path, not the row's whole href: the one row carrying a query
+      /* `rowScreen`, not the row's whole href: the one row carrying a query
          string points at its own tab (the voice benchmark's), which is the
          row's business rather than the card's. Both mean the same screen. */
-      href: row.href.split('?')[0],
+      href: rowScreen(row),
       icon: row.icon
     };
   }
 );
+
+/* A rowless card may not take a key the hub already fronts: two cards would
+   draw under one handle, and the one keyed by the row would be the copy
+   ignoring it. Demonstrated by keying the tally card `wear` and watching
+   `Shadowing` stop being `never` - the shape `hubRows.ts` uses for the other
+   direction of the same join. */
+type Shadowing = Extract<Rowless['key'], HubRowKey>;
+type AssertNoneShadowing<Shadowed extends never> = Shadowed;
+export type NoRowlessCardShadowsARow = AssertNoneShadowing<Shadowing>;
 
 /** Every card with no hub row behind it, and why - the full `Record` over
     whatever `PANELS` declares that the hub does not front, the shape
