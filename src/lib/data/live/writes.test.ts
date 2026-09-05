@@ -462,6 +462,26 @@ const COMPOSING_READS: readonly ComposingRead[] = [
     ]
   },
   {
+    // Its own registry's union too (dayAhead.ts's DAY_AHEAD_TABLES), checked
+    // the same way: one entry here per kind's own read. `appointments` and
+    // `procedures` each name the other's table too - the surgery-hub join
+    // `getProcedures`/`getAppointments` both carry - so listing either read
+    // once already brings both tables with it.
+    read: ['dayAhead', 'getDayAhead'],
+    composes: [
+      ['appointments', 'getAppointments'],
+      ['procedures', 'getProcedures'],
+      ['milestones', 'getMilestones'],
+      ['letters', 'getUnlockDaysInRange'],
+      ['regimen', 'getEpisodes'],
+      ['doses', 'getSchedules'],
+      ['doses', 'getPauses']
+    ],
+    narrows: {
+      photo: 'a mark is a day and a kind: the milestone read it comes through carries photos it never draws'
+    }
+  },
+  {
     read: ['journalBook', 'getBook'],
     composes: [
       ['entries', 'searchEntries'],
