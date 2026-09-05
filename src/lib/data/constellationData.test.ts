@@ -123,3 +123,44 @@ describe('tracing the path up to a position', () => {
     expect(tracedThrough(plotted, 900)).toHaveLength(40);
   });
 });
+
+/* Ticket AU-20: the each-block that draws these keys by `slot` now, not by
+   `id`, so a sliding window updates TRACE_WINDOW stable DOM nodes instead of
+   destroying and recreating most of them every frame. `slot` is a reading's
+   absolute index mod TRACE_WINDOW - a ring buffer position - which only
+   works because this window is dense and ordered: every index between
+   `first` and `head` is a reading, and nothing is ever reordered. */
+describe('keying a stable window position', () => {
+  const year = plotPoints(
+    Array.from({ length: 365 }, (_, i) => reading({ id: `y${i}`, day: 20000 + i })),
+    SCALE,
+    SCALE
+  );
+
+  it('gives every reading in the window its own slot', () => {
+    const traced = tracedThrough(year, 200);
+    const slots = new Set(traced.map((point) => point.slot));
+    expect(slots.size).toBe(traced.length);
+  });
+
+  it('matches slot to array position while the window is still filling', () => {
+    const traced = tracedThrough(year, 50);
+    traced.forEach((point, i) => expect(point.slot).toBe(i));
+  });
+
+  it('keeps a reading on the same slot from one frame to the next', () => {
+    const before = tracedThrough(year, 200);
+    const after = tracedThrough(year, 201);
+    const stillThere = before.find((point) => point.id === 'y150');
+    const stillThereAfter = after.find((point) => point.id === 'y150');
+    expect(stillThereAfter?.slot).toBe(stillThere?.slot);
+  });
+
+  it('hands a leaving reading\'s slot to the one that replaces it', () => {
+    const before = tracedThrough(year, 200);
+    const after = tracedThrough(year, 201);
+    const leaving = before[0];
+    const entering = after[after.length - 1];
+    expect(entering.slot).toBe(leaving.slot);
+  });
+});

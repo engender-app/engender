@@ -248,7 +248,7 @@
 
         {#each byMode as group (group.key)}
           <g {...roleAttrs(group.role)} aria-hidden="true">
-            {#each group.points as point (point.id)}
+            {#each group.points as point (point.slot)}
               <circle
                 class="cn-dot"
                 class:is-unset={!point.presentationId}
