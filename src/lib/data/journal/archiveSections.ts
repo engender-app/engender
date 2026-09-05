@@ -650,16 +650,37 @@ const SECTIONS = [
     read: read.readHairRemovalSessions,
     apply: apply.applyHairRemovalSessions
   }),
-  // Inserts its own consult and photo children, the same reasoning
+  // Inserts its own photo children, the same reasoning
   // `hairRemovalSessions` above gives. Its recovery checklist travels in
   // `checklists` and is matched there by owner uuid, so the two sections
-  // need no order between them.
+  // need no order between them. Its consults are `appointments` below, which
+  // is the one section that does have to come after this one.
   section({
     name: 'procedures',
-    discard: ['DELETE FROM procedure_photo', 'DELETE FROM procedure_consult', 'DELETE FROM procedure'],
+    discard: ['DELETE FROM procedure_photo', 'DELETE FROM procedure'],
     travels: 'none',
     read: read.readProcedures,
     apply: apply.applyProcedures
+  }),
+  /* Appointments (ticket 57, ADR-0066). Declared here rather than nested
+     under a procedure the way consults were: most appointments belong to no
+     procedure, and the link is a uuid this section resolves against the rows
+     `procedures` has already written - which is what `after` is for.
+
+     Not `flat`: a descriptor maps columns, and this one's procedure link is
+     a rowid on this device and a uuid on the wire.
+
+     An archive written before this section existed still restores -
+     `aliasLegacyConsults` (archiveApply.ts) lifts its nested consults up
+     here before anything reads the payload. */
+  section({
+    name: 'appointments',
+    after: ['procedures'],
+    discard: ['DELETE FROM appointment'],
+    // Where somebody's medical appointments were and what they were about.
+    travels: 'none',
+    read: read.readAppointments,
+    apply: apply.applyAppointments
   }),
   // No rule validation of its own: the schema's recurrence CHECK is the same
   // rule reminderRule.ts states, and the insert is inside the transaction.

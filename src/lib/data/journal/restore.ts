@@ -59,6 +59,7 @@ import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { reconcileBuiltInsWithin } from './reconcile';
+import { aliasLegacyConsults } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
 import { now } from './support';
 
@@ -111,7 +112,8 @@ export async function restoreArchive(
   mode: RestoreMode,
   contents: RestoreContents
 ): Promise<void> {
-  assertRestorable(contents.journal);
+  const journal = aliasLegacyConsults(contents.journal);
+  assertRestorable(journal);
 
   await writeArchiveFiles(files, contents.files);
 
@@ -122,7 +124,7 @@ export async function restoreArchive(
     if (mode === 'replace') await discardJournalRows(driver);
     // Which sections there are and what has to be inserted before what are
     // the registry's (archiveSections.ts), not this function's.
-    await applyArchiveJournal({ driver, mode, journal: contents.journal, ts: now() });
+    await applyArchiveJournal({ driver, mode, journal, ts: now() });
   });
 }
 
@@ -135,7 +137,7 @@ export async function restoreArchive(
     OpenedArchive doc, ADR-0007). */
 export async function verifyArchive(source: AsyncIterable<Uint8Array>, password: string): Promise<void> {
   const { payload, files } = await openArchive(source, password);
-  assertRestorable(payload.journal);
+  assertRestorable(aliasLegacyConsults(payload.journal));
 
   const iterator = files[Symbol.asyncIterator]();
   while (!(await iterator.next()).done);

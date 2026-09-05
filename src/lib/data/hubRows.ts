@@ -12,7 +12,7 @@
    reading at all:
 
      read      the row reports its own areas' last write, out of the one
-               assembled read `journal/lastWrite.ts` answers with. Thirteen
+               assembled read `journal/lastWrite.ts` answers with. Fourteen
                rows, not the eighteen the ticket counted: a row can only
                report a last write where the registry has one, and seven of
                the rows it counted front an area that opted out of that
@@ -213,13 +213,17 @@ const ROWS = [
     line: 'read'
   },
   {
-    key: 'appointment-prep',
+    /* Renamed from `appointment-prep` by ticket 57 rather than joined by a
+       second row: prep, the record and the debrief were three descriptions
+       of one thing, and the one that names it is the one that stays
+       (ADR-0066). Keeps `check` - no new icon. */
+    key: 'appointments',
     icon: 'check',
-    href: '/health/appointment-prep',
+    href: '/health/appointments',
     group: 'health',
-    areas: [],
+    areas: ['appointments'],
     finishes: null,
-    line: 'written'
+    line: 'read'
   },
   {
     key: 'clinician-summary',

@@ -56,6 +56,7 @@
 
 import type { TableName } from '../live/writes';
 import type { ArchiveSectionName } from './archiveSections';
+import type { AppointmentsArea } from './appointments';
 import type { CycleEventsArea } from './cycleEvents';
 import type { DosesArea } from './doses';
 import type { EntriesArea } from './entries';
@@ -94,6 +95,7 @@ export interface LastWriteAreas {
   feltSense: FeltSenseArea;
   hairProgress: HairProgressArea;
   hairRemoval: HairRemovalArea;
+  appointments: AppointmentsArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
 }
@@ -209,13 +211,27 @@ const ENTRIES = [
     tables: ['hairRemoval'],
     read: ({ hairRemoval, todayEpochDay }) => hairRemoval.lastWriteEpochDay(todayEpochDay)
   }),
-  /* Consults and recovery photos only, the same exclusion getDayRecords
-     makes (day.ts): a procedure's own surgeryEpochDay reaches the day view
-     as the milestone ADR-0045 mints, and asking this registry about it would
-     answer a question procedures.ts itself refuses to. */
+  /* An appointment still ahead is not a write, which `lastWriteEpochDay`
+     enforces with the same `<= today` every entry here does - and it is
+     also why this area joins `comingBack.ts`'s planned areas, so booking
+     the next visit cannot close the person's own return gap (ADR-0066). */
+  entry({
+    key: 'appointments',
+    tables: ['appointment'],
+    read: ({ appointments, todayEpochDay }) => appointments.lastWriteEpochDay(todayEpochDay)
+  }),
+  /* Its consults and its recovery photos, which is what the surgery hub row
+     reports: a journey whose only activity was booking the next visit has
+     not gone quiet. Reads the appointments a second time, after the entry
+     above, on purpose - the two answer different questions, and both are
+     planned areas so neither reaches the return gap. The exclusion this
+     shares with getDayRecords (day.ts) is the other one: a procedure's own
+     surgeryEpochDay reaches the day view as the milestone ADR-0045 mints,
+     and asking this registry about it would answer a question procedures.ts
+     itself refuses to. */
   entry({
     key: 'procedures',
-    tables: ['procedure'],
+    tables: ['procedure', 'appointment'],
     read: ({ procedures, todayEpochDay }) => procedures.lastWriteEpochDay(todayEpochDay)
   }),
   /* Photos only, the same exclusion getPhotosOnDay makes: a tryout's own

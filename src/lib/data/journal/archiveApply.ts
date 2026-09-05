@@ -23,7 +23,7 @@
 
 import { bodyRegionIsLogged } from '../bodyMap';
 import { foldText } from '../fold';
-import type { ArchiveJournal } from '../archive/payload';
+import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
 import { assertChanged, rowidWhere } from './support';
@@ -1024,7 +1024,6 @@ export async function applyHairRemovalSessions({ driver, journal, ts }: Restorin
    resolved to a rowid, so neither section has to run before the other. */
 export async function applyProcedures({ driver, journal, ts }: Restoring): Promise<void> {
   const procedures = await presentIds(driver, 'SELECT uuid AS id FROM procedure');
-  const consults = await presentIds(driver, 'SELECT uuid AS id FROM procedure_consult');
   const photos = await presentIds(driver, 'SELECT uuid AS id FROM procedure_photo');
 
   for (const procedure of journal.procedures) {
@@ -1037,16 +1036,6 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
 
     const procedureRowId = await rowidWhere(driver, 'procedure', 'uuid = ?', [procedure.id], 'procedure uuid');
 
-    for (const consult of procedure.consults) {
-      if (consults.has(consult.id)) continue;
-      await driver.run('INSERT INTO procedure_consult (uuid, procedure_id, epoch_day, updated_at) VALUES (?, ?, ?, ?)', [
-        consult.id,
-        procedureRowId,
-        consult.epochDay,
-        ts
-      ]);
-    }
-
     for (const photo of procedure.photos) {
       if (photos.has(photo.id)) continue;
       await driver.run(
@@ -1055,6 +1044,75 @@ export async function applyProcedures({ driver, journal, ts }: Restoring): Promi
       );
     }
   }
+}
+
+/** Appointments (ticket 57, ADR-0066). Insert-if-absent by uuid like every
+    other user-owned row; the only thing it resolves is the procedure link,
+    which travels as that procedure's uuid and so needs `procedures` to have
+    been applied first (the section's `after`).
+
+    An appointment naming a procedure this journal does not hold keeps its
+    day and loses the link, rather than being dropped. That case is
+    unreachable from a whole archive - a linked appointment travels beside
+    the procedure that owns it - and reachable from a hand-edited or partial
+    one, where a dated record of a visit is worth more than the link is. */
+export async function applyAppointments({ driver, journal, ts }: Restoring): Promise<void> {
+  const present = await presentIds(driver, 'SELECT uuid AS id FROM appointment');
+
+  for (const appointment of journal.appointments) {
+    if (present.has(appointment.id)) continue;
+
+    const rows = appointment.procedureId
+      ? await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [appointment.procedureId])
+      : [];
+
+    await driver.run(
+      `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        appointment.id,
+        rows[0]?.id ?? null,
+        appointment.epochDay,
+        appointment.kind,
+        appointment.place,
+        appointment.note,
+        ts
+      ]
+    );
+  }
+}
+
+/** An archive written before ticket 57 carried its consults nested under
+    their procedures and has no `appointments` section at all, which
+    `assertRestorable` (restore.ts) would refuse outright - so this lifts
+    them out before anything reads the payload. The one thing in the rename
+    that could quietly turn somebody's backup away.
+
+    Both directions are left alone where they are already right: a payload
+    that carries `appointments` is returned untouched, and a procedure with
+    no `consults` contributes nothing. A consult becomes an appointment
+    carrying the same uuid and day, linked to its procedure, with no kind,
+    place or note - because there was nowhere for one to have been written.
+
+    Not a `PayloadMigration` (payload.ts): those are keyed on the archive's
+    format version, which this rename does not move. */
+export function aliasLegacyConsults(journal: ArchiveJournal): ArchiveJournal {
+  if (Array.isArray(journal?.appointments)) return journal;
+  if (!Array.isArray(journal?.procedures)) return journal;
+
+  const appointments = journal.procedures.flatMap((procedure) =>
+    (procedure.consults ?? []).map(
+      (consult): ArchiveAppointment => ({
+        id: consult.id,
+        epochDay: consult.epochDay,
+        procedureId: procedure.id,
+        kind: null,
+        place: null,
+        note: null
+      })
+    )
+  );
+  return { ...journal, appointments };
 }
 
 

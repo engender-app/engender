@@ -426,9 +426,13 @@ export interface ArchiveProcedurePhoto {
   fileName: string;
 }
 
-/** One consult date (phase 5 ticket 07), nested under its procedure and
-    carrying its own uuid - which is what lets Merge tell a consult this
-    device already has from one only the archive holds. */
+/** One consult date, as an archive written before phase 8 features ticket
+    57 carried it: nested under its procedure, with its own uuid.
+
+    Kept because those archives have to keep restoring. `aliasLegacyConsults`
+    (archiveApply.ts) lifts them into `appointments` on the way in, which is
+    the whole of what an older backup costs. Nothing writes this shape any
+    more. */
 export interface ArchiveProcedureConsult {
   id: string;
   epochDay: number;
@@ -439,14 +443,34 @@ export interface ArchiveProcedureConsult {
     recovery checklist is not here: it is an ordinary `checklist` row
     carrying this procedure's id as its owner, so it travels in the
     `checklists` section. Neither section has to apply before the other -
-    an owner pair is matched by uuid, not resolved to a rowid. */
+    an owner pair is matched by uuid, not resolved to a rowid.
+
+    Nor are its consults, since ticket 57: those are appointments, and they
+    travel in the `appointments` section naming this procedure. `consults`
+    survives as an optional field only so an older archive parses - see
+    `ArchiveProcedureConsult` above. */
 export interface ArchiveProcedure {
   id: string;
   name: string;
   surgeryEpochDay: number | null;
-  consults: ArchiveProcedureConsult[];
+  /** Only ever present on an archive written before ticket 57. */
+  consults?: ArchiveProcedureConsult[];
   notes: string;
   photos: ArchiveProcedurePhoto[];
+}
+
+/** One appointment (phase 8 features ticket 57, ADR-0066). Its own section
+    rather than nested under a procedure the way a consult was: most
+    appointments belong to no procedure at all, and `procedureId` is the
+    link, carried as the procedure's travelling uuid so the applying device
+    resolves it against its own rowids. */
+export interface ArchiveAppointment {
+  id: string;
+  epochDay: number;
+  procedureId: string | null;
+  kind: string | null;
+  place: string | null;
+  note: string | null;
 }
 
 /** One counterevidence entry as it read at the moment its snapshot was
@@ -796,6 +820,7 @@ export interface ArchiveJournal {
   hairPhotos: ArchiveHairPhoto[];
   hairRemovalSessions: ArchiveHairRemovalSession[];
   procedures: ArchiveProcedure[];
+  appointments: ArchiveAppointment[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
