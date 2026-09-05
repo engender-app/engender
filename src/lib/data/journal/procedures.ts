@@ -30,7 +30,8 @@
    removeFilesOf reclaims them the same way on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure, ProcedureConsult } from '../types';
+import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure } from '../types';
+import type { AppointmentsArea } from './appointments';
 import type { ChecklistsArea } from './checklists';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { MilestonesArea } from './milestones';
@@ -71,14 +72,20 @@ export interface ProcedurePhoto {
   fileName: string;
 }
 
-/** One dated thing a procedure holds, with the procedure named on it
-    (phase 5 deepening ticket 21). Two arms rather than a photo list hanging
-    off a consult, because a consult and a recovery photo are two unrelated
-    records that happen to share an owner. */
-export type ProcedureDayRecord = {
+/** One recovery photo a procedure holds, with the procedure named on it
+    (phase 5 deepening ticket 21).
+
+    It used to be two arms, the second being the procedure's consults. Those
+    are appointments now (ticket 57, ADR-0066) and reach a day through
+    `appointments.getDayRecords`, which names the procedure on them the same
+    way this does - so a consult is reported once rather than by two sections
+    of the same day. */
+export interface ProcedureDayRecord {
   procedureId: string;
   procedureName: string;
-} & ({ kind: 'consult'; id: string } | { kind: 'recovery-photo'; id: string; fileName: string });
+  id: string;
+  fileName: string;
+}
 
 export interface ProceduresArea {
   /** Every procedure, the ones with a surgery date first and oldest first,
@@ -93,15 +100,18 @@ export interface ProceduresArea {
       a field on upsertProcedure, so the dates editor and the notes field
       cannot overwrite each other. */
   setNotes(id: string, notes: string): Promise<void>;
-  /** Returns the consult's own id, which is what deleteConsult takes. */
+  /** Returns the consult's own id, which is what deleteConsult takes.
+      Writes an appointment linked to this procedure (ticket 57): the same
+      row the appointments screen creates, with the link filled in. */
   addConsult(procedureId: string, epochDay: number): Promise<string>;
   /** Idempotent. */
   deleteConsult(id: string): Promise<void>;
   /** A procedure's recovery photos, oldest first. */
   getPhotos(procedureId: string): Promise<ProcedurePhoto[]>;
-  /** What a procedure put on one day (phase 5 deepening ticket 21):
-      consults booked for it and recovery photos taken on it, each carrying
-      the procedure it belongs to.
+  /** What a procedure put on one day (phase 5 deepening ticket 21): the
+      recovery photos taken on it, carrying the procedure they belong to.
+      Its consults are appointments now and reach a day through
+      `appointments.getDayRecords` instead (ticket 57).
 
       Not the procedure itself. A procedure is a journey that runs for
       months, and a day view says what happened on a day rather than what
@@ -111,10 +121,12 @@ export interface ProceduresArea {
   getDayRecords(epochDay: number): Promise<ProcedureDayRecord[]>;
   /** The day of the most recent consult or recovery photo, across every
       procedure, at or before `todayEpochDay`, or null if there is none
-      (phase 8 features ticket 03, lastWrite.ts). Mirrors `getDayRecords`'
-      own exclusion: a procedure's `surgeryEpochDay` reaches the day view as
-      the milestone ADR-0045 mints, so it is not part of this area's own
-      last write either. */
+      (phase 8 features ticket 03, lastWrite.ts). Still reads the consults,
+      unlike `getDayRecords` above: this is what the surgery hub row
+      reports, and a journey whose only activity was booking the next visit
+      has not gone quiet. Mirrors `getDayRecords`' other exclusion, though -
+      a procedure's `surgeryEpochDay` reaches the day view as the milestone
+      ADR-0045 mints, so it is not part of this area's own last write. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
@@ -147,7 +159,8 @@ export function makeProceduresArea(
   driver: SqliteDriver,
   files: PhotoFileStore,
   checklists: ChecklistsArea,
-  milestones: MilestonesArea
+  milestones: MilestonesArea,
+  appointments: AppointmentsArea
 ): ProceduresArea {
   const rowidOf = async (procedureId: string): Promise<number> => {
     const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [procedureId]);
@@ -164,27 +177,18 @@ export function makeProceduresArea(
         `SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
-      const consultRows = await driver.query<{ uuid: string; procedure_id: number; epoch_day: number }>(
-        'SELECT uuid, procedure_id, epoch_day FROM procedure_consult ORDER BY epoch_day, id'
-      );
-
-      // One query for every procedure's consults rather than one per row:
-      // the screen renders the whole list at once, the same reason
-      // photosByMilestone (photos.ts) exists.
-      const consults = new Map<number, ProcedureConsult[]>();
-      for (const row of consultRows) {
-        const forProcedure = consults.get(row.procedure_id);
-        const consult = { id: row.uuid, epochDay: row.epoch_day };
-        if (forProcedure) forProcedure.push(consult);
-        else consults.set(row.procedure_id, [consult]);
-      }
+      // The appointments that name a procedure, grouped by it and read in
+      // one query rather than one per row - appointments.ts owns that table
+      // now (ticket 57), and a consult is one of its rows with the link
+      // filled in.
+      const consults = await appointments.consultsByProcedure();
 
       return rows.map((row) => ({
         id: row.uuid,
         name: row.name,
         surgeryEpochDay: row.surgery_epoch_day,
         notes: row.notes,
-        consults: consults.get(row.id) ?? []
+        consults: consults.get(row.uuid) ?? []
       }));
     },
 
@@ -237,7 +241,7 @@ export function makeProceduresArea(
     async lastWriteEpochDay(todayEpochDay) {
       const rows = await driver.query<{ day: number | null }>(
         `SELECT MAX(day) AS day FROM (
-           SELECT epoch_day AS day FROM procedure_consult
+           SELECT epoch_day AS day FROM appointment WHERE procedure_id IS NOT NULL
            UNION ALL
            SELECT epoch_day AS day FROM procedure_photo
          ) WHERE day <= ?`,
@@ -246,18 +250,17 @@ export function makeProceduresArea(
       return rows[0]?.day ?? null;
     },
 
-    async addConsult(procedureId, epochDay) {
-      const procedureRowId = await rowidOf(procedureId);
-      const uuid = mintUuid();
-      await driver.run(
-        'INSERT INTO procedure_consult (uuid, procedure_id, epoch_day, updated_at) VALUES (?, ?, ?, ?)',
-        [uuid, procedureRowId, epochDay, now()]
-      );
-      return uuid;
+    /* Both of these go through appointments.ts rather than writing the
+       table here: one writer for one table is what keeps the delete
+       contract and the blank-is-null rule from having a second opinion
+       (ADR-0053, ADR-0066). What the surgery screen adds is only that the
+       procedure link is filled in. */
+    addConsult(procedureId, epochDay) {
+      return appointments.upsertAppointment({ epochDay, procedureId, kind: null, place: null, note: null });
     },
 
-    async deleteConsult(id) {
-      await driver.run('DELETE FROM procedure_consult WHERE uuid = ?', [id]);
+    deleteConsult(id) {
+      return appointments.deleteAppointment(id);
     },
 
     async getPhotos(procedureId) {
@@ -272,46 +275,31 @@ export function makeProceduresArea(
       return rows.map((row) => ({ id: row.uuid, procedureId, epochDay: row.epoch_day, fileName: row.file_path }));
     },
 
-    /* Two queries, one per record kind, rather than one per procedure: a
-       day view that walked the procedures and asked each for its photos
-       would cost a round trip per journey being tracked, on a day where
-       almost always none of them has anything. */
+    /* One query rather than one per procedure: a day view that walked the
+       procedures and asked each for its photos would cost a round trip per
+       journey being tracked, on a day where almost always none of them has
+       anything. */
     async getDayRecords(epochDay) {
-      const [consults, photos] = await Promise.all([
-        driver.query<{ uuid: string; procedure_uuid: string; procedure_name: string }>(
-          `SELECT c.uuid AS uuid, r.uuid AS procedure_uuid, r.name AS procedure_name
-             FROM procedure_consult c JOIN procedure r ON r.id = c.procedure_id
-            WHERE c.epoch_day = ?
-            ORDER BY c.id`,
-          [epochDay]
-        ),
-        driver.query<{ uuid: string; file_path: string; procedure_uuid: string; procedure_name: string }>(
-          `SELECT p.uuid AS uuid, p.file_path AS file_path, r.uuid AS procedure_uuid, r.name AS procedure_name
-             FROM procedure_photo p JOIN procedure r ON r.id = p.procedure_id
-            WHERE p.epoch_day = ?
-            ORDER BY p.id`,
-          [epochDay]
-        )
-      ]);
-      return [
-        ...consults.map(
-          (row): ProcedureDayRecord => ({
-            kind: 'consult',
-            id: row.uuid,
-            procedureId: row.procedure_uuid,
-            procedureName: row.procedure_name
-          })
-        ),
-        ...photos.map(
-          (row): ProcedureDayRecord => ({
-            kind: 'recovery-photo',
-            id: row.uuid,
-            fileName: row.file_path,
-            procedureId: row.procedure_uuid,
-            procedureName: row.procedure_name
-          })
-        )
-      ];
+      const photos = await driver.query<{
+        uuid: string;
+        file_path: string;
+        procedure_uuid: string;
+        procedure_name: string;
+      }>(
+        `SELECT p.uuid AS uuid, p.file_path AS file_path, r.uuid AS procedure_uuid, r.name AS procedure_name
+           FROM procedure_photo p JOIN procedure r ON r.id = p.procedure_id
+          WHERE p.epoch_day = ?
+          ORDER BY p.id`,
+        [epochDay]
+      );
+      return photos.map(
+        (row): ProcedureDayRecord => ({
+          id: row.uuid,
+          fileName: row.file_path,
+          procedureId: row.procedure_uuid,
+          procedureName: row.procedure_name
+        })
+      );
     },
 
     async addPhoto(procedureId, epochDay, photo) {

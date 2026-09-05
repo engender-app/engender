@@ -347,6 +347,13 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   await journal.eras.upsertEra({ name: `era ${word}`, startEpochDay: DAY, endEpochDay: null });
   await journal.milestones.upsertMilestone({ name: `milestone ${word}`, epochDay: DAY });
   await journal.procedures.upsertProcedure({ name: `procedure ${word}`, notes: 'plain notes' });
+  await journal.appointments.upsertAppointment({
+    epochDay: DAY,
+    procedureId: null,
+    kind: `kind ${word}`,
+    place: 'plain place',
+    note: 'plain note'
+  });
   await journal.checklists.addToStandaloneChecklist(`question ${word}`);
   await journal.checklists.setAppointmentDate(DAY);
   await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY });

@@ -184,6 +184,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   roadmapGoals: 'a goal is answered per goal and a roadmap has no last one',
   roadmapChecks: 'a tick against one bundled goal, answered per goal like the goals themselves',
   milestones: 'one dated point each, and the list of them never closes',
+  appointments: 'one dated visit each, and nobody declares themselves done seeing people',
   tallyEvents: 'one dated point each, and the list of them never closes',
   counterevidenceSnapshots:
     'a crisis surface, not a tracked series - being done needing it is not a thing to record',

@@ -1089,13 +1089,43 @@ export interface Procedure {
   notes: string;
 }
 
-/** One consult on the way to a procedure (phase 5 ticket 07): a date, and
-    the minted id that lets one mistyped date be dropped on its own
-    (ADR-0002). Carries nothing else - what was said at a consult goes in
-    an ordinary Entry or the procedure's notes. */
+/** One consult on the way to a procedure, as the procedure's own screen
+    reads it (phase 5 ticket 07): a date, and the minted id that lets one
+    mistyped date be dropped on its own (ADR-0002).
+
+    Since phase 8 features ticket 57 this is a projection of `Appointment`
+    rather than a record of its own - the same rows, narrowed to what the
+    surgery journey shows about them. The word survives because a procedure
+    still shows its consults (ADR-0066); the second table did not. */
 export interface ProcedureConsult {
   id: string;
   epochDay: number;
+}
+
+/** One appointment (phase 8 features ticket 57, ADR-0066, CONTEXT:
+    "Appointment"): the day, a kind the person names, where it was, a note,
+    and an optional link to the procedure it belongs to.
+
+    A consult is this record with `procedureId` filled in - not a different
+    kind of thing - which is why there is one table and one type rather than
+    a sibling for each. Everything but the day is optional, because an
+    appointment is usually written down before there is anything to say
+    about it.
+
+    `kind` is free text with nothing shipped in either language (ADR-0066):
+    a built-in list of endocrinologist, psychologist, surgeon would be a
+    picture of a medical path, and the app has no opinion about whether a
+    court hearing is an appointment. Its suggestions come off this journal's
+    own previous kinds (`getKinds`). */
+export interface Appointment {
+  id: string;
+  epochDay: number;
+  /** The procedure this belongs to, or null for an appointment that stands
+      on its own - which is most of them. */
+  procedureId: string | null;
+  kind: string | null;
+  place: string | null;
+  note: string | null;
 }
 
 /** One line in the pool the check-in draws its affirming line from (phase 5
