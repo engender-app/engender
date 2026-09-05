@@ -2446,7 +2446,7 @@
   "roadmap_state_not_my_path": "not my path",
   "roadmap_state_unchecked": "not checked",
   "roadmap_track_dismiss": "Not my path",
-  "roadmap_track_dismissed": "You said this part is not your path. Nothing here is counted or asked about.",
+  "roadmap_track_dismissed": "Not your path. Nothing in it is counted or asked about.",
   "roadmap_track_restore": "Put it back",
   "roadmap_milestone_prompt_sheet_title": "Add milestone",
   "roadmap_milestone_prompt_title": "Add \"{goal}\" as a milestone on your timeline?",
