@@ -1,10 +1,16 @@
-/* One row of the horizontal bar chart, as a type a plain module can import.
+/* One row of the horizontal bar chart, and the rule for what its length is
+   measured against.
 
-   It lived inside BarRows.svelte, which is where a component's own props
-   belong - but the rows are built by the screens and by
+   The type lived here already - the rows are built by the screens and by
    $lib/data/wrappedDisplay, and a `.ts` file cannot import a type out of a
-   `.svelte` one. Same split kit/role.ts already makes: the drawing is the
-   component's, the shape of what it draws is not. */
+   `.svelte` one. The denominator moved in beside it (phase 8 audit ticket
+   23): it used to sit inside BarRows.svelte and Distribution.svelte, reachable
+   only by an eye on a gallery render (ADR-0016, the Node tier cannot reach a
+   component), and it had already been got wrong twice that way. Same split
+   kit/role.ts already makes: the drawing is the component's, what a share is
+   of is not. */
+import { share } from '../../charts/geometry';
+
 export interface BarRow {
   key: string;
   name: string;
@@ -14,4 +20,37 @@ export interface BarRow {
   value: string;
   /** What the bar's length is drawn from. */
   amount: number;
+}
+
+/** What BarRows.svelte's track's full length is measured against - see the
+    component's own prop doc for what `leader` and `track` mean. */
+export type BarMeasure = 'leader' | 'track';
+
+export interface DrawnBar extends BarRow {
+  /** This bar's length, 0-100 - already decided by the measure. */
+  share: number;
+  /** Whether this is the section's stripe at full strength. Only possible
+      under `leader`: `track` has no bar to lead, every row is a position in
+      its own range. */
+  isLeader: boolean;
+}
+
+/** Each row's bar length and leader flag, decided by `measure` rather than
+    left for BarRows.svelte to work out. */
+export function drawBars(rows: BarRow[], measure: BarMeasure): DrawnBar[] {
+  const amounts = rows.map((row) => row.amount);
+  const top = measure === 'track' ? 1 : Math.max(0, ...amounts);
+  return rows.map((row) => ({
+    ...row,
+    share: share(row.amount, top),
+    isLeader: measure === 'leader' && row.amount === top && top > 0
+  }));
+}
+
+/** Each amount's share of the tallest amount in the set, 0-100. The same
+    rule as BarRows' `leader` measure, for a caller - Distribution.svelte -
+    whose columns aren't BarRow rows and have no `track` mode of their own. */
+export function leaderShares(amounts: number[]): number[] {
+  const top = Math.max(0, ...amounts);
+  return amounts.map((amount) => share(amount, top));
 }

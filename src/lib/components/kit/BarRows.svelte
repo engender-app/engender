@@ -27,8 +27,7 @@
      bar-only: the reading is the label, the note and the length together,
      and half of that being inert is a smaller target that also reads as an
      accident. */
-  import { share } from '$lib/charts/geometry';
-  import type { BarRow } from './barRow';
+  import { drawBars, type BarRow, type DrawnBar } from './barRow';
 
   let {
     rows,
@@ -64,10 +63,10 @@
     measure?: 'leader' | 'track';
   } = $props();
 
-  let top = $derived(measure === 'track' ? 1 : Math.max(0, ...rows.map((r) => r.amount)));
+  let drawn = $derived(drawBars(rows, measure));
 </script>
 
-{#snippet bar(row: BarRow)}
+{#snippet bar(row: DrawnBar)}
   <div class="kit-bar-label">
     <span class="kit-bar-name" data-bar-name>{row.name}</span>
     <span class="kit-bar-value" data-bar-value>{row.value}</span>
@@ -78,16 +77,12 @@
        is the one part of a bar that cannot be guessed from the drawing. -->
   {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
   <div class="kit-bar-track">
-    <span
-      class="kit-bar-mark"
-      class:is-leader={measure === 'leader' && row.amount === top && top > 0}
-      style={`--bar-share: ${share(row.amount, top)}`}
-    ></span>
+    <span class="kit-bar-mark" class:is-leader={row.isLeader} style={`--bar-share: ${row.share}`}></span>
   </div>
 {/snippet}
 
 <div class="kit-bars" data-chart="bars">
-  {#each rows as row, i (row.key)}
+  {#each drawn as row, i (row.key)}
     {#if onPick}
       <button
         type="button"
