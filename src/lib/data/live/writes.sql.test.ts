@@ -828,6 +828,7 @@ beforeAll(async () => {
     journal.roadmap.addCustomGoal('social', 'Tell my sister')
   )) as { id: string };
   await drive('roadmap', 'setCustomGoalStatus', () => journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked'));
+  await drive('roadmap', 'setTrackDismissed', () => journal.roadmap.setTrackDismissed('medical', true));
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
@@ -1004,6 +1005,7 @@ beforeAll(async () => {
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
+  await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
   await driveRead('stats', 'dayAverages', () => journal.stats.dayAverages('mood', 19000, 21000));
   await driveRead('stats', 'daySpread', () => journal.stats.daySpread('mood', 19000, 21000));
