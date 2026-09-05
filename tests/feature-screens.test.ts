@@ -54,16 +54,16 @@ const REACHED_FROM_INSIDE = [
   'settings/regimen',
   'settings/hormone-curve',
   'doses',
-  'settings/tryouts/[id]',
+  'transition/tryouts/[id]',
   /* The metric reference (phase 8 features ticket 27): reached only from a
      figure on the voice screen, never from the hub, which is ADR-0060's
      own rule and what keeps it out of the UX spec's navigation rules. On
      this list all the same, because what the list is for is holding a
      screen to the kit. */
-  'settings/voice/metrics',
+  'practice/voice/metrics',
   /* Two views over the unprompted registry (phase 6 ticket 04). The
      notifications view joins the list because its own milestone spec says so
-     ("feature-screens.test.ts covers /settings/eras and the notifications
+     ("feature-screens.test.ts covers /transition/eras and the notifications
      view"); its sibling /settings/live-tiles predates that line and is not
      on it. */
   'settings/notifications',
@@ -76,7 +76,7 @@ const REACHED_FROM_INSIDE = [
   'coming-back',
   'settings/stock',
   'settings/exposure',
-  'settings/photos/export'
+  'media/photos/export'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -131,7 +131,7 @@ describe('every feature screen', () => {
     // DIRECTION.md 3c: display face at the screen-title size, no icon. A
     // screen with only one area needs no heading at all, so this only
     // holds the screens that had a SectionTitle to replace.
-    for (const route of ['settings/letters', 'settings/tryouts/[id]', 'settings/resources']) {
+    for (const route of ['transition/letters', 'transition/tryouts/[id]', 'practice/resources']) {
       expect(sourceOf.get(route), route).toContain("from '$lib/components/kit/SectionHeading.svelte'");
     }
   });
@@ -166,16 +166,16 @@ describe('what a first-run journal sees', () => {
   const WITH_EMPTY_STATE = ROUTES.filter(
     (route) =>
       ![
-        'settings/milestones',
-        'settings/resources',
-        'settings/entry-templates',
-        'settings/clinician-summary',
+        'transition/milestones',
+        'practice/resources',
+        'practice/entry-templates',
+        'health/clinician-summary',
         'settings/exposure',
         /* The metric reference explains a fixed table of seven figures
            compiled into the bundle (data/voice/metrics.ts), so it has no
            empty state for the same reason the bundled directory has
            none. */
-        'settings/voice/metrics'
+        'practice/voice/metrics'
       ].includes(route)
   );
 
@@ -215,14 +215,14 @@ describe('what the worker is still fetching', () => {
   const ENTRY_DATA = ROUTES.filter(
     (route) =>
       ![
-        'settings/milestones',
-        'settings/resources',
+        'transition/milestones',
+        'practice/resources',
         'settings/notifications',
-        'settings/presentations',
-        'settings/entry-templates',
+        'transition/presentations',
+        'practice/entry-templates',
         // Reads no journal at all: seven figures explained, and not one of
         // the person's own numbers anywhere on it (ADR-0060).
-        'settings/voice/metrics'
+        'practice/voice/metrics'
       ].includes(route)
   );
 
@@ -280,7 +280,7 @@ describe('what the worker is still fetching', () => {
 
 describe('the two print surfaces', () => {
   it('keeps the clinician summary printable', () => {
-    const source = sourceOf.get('settings/clinician-summary')!;
+    const source = sourceOf.get('health/clinician-summary')!;
     // Its own print rule: the disclaimer that only appears on paper.
     expect(source).toMatch(/@media print/);
     /* And what print hides is the app around the page, not the page. The
@@ -297,9 +297,9 @@ describe('the two print surfaces', () => {
        behind an icon disc is neither what a clinician needs nor what the
        person handing the page over chose to disclose, so every list card
        here is handed no role. */
-    const source = sourceOf.get('settings/clinician-summary')!;
+    const source = sourceOf.get('health/clinician-summary')!;
     expect(source).not.toContain('roleAt(');
-    expect(markupOf.get('settings/clinician-summary')).not.toMatch(/<ListCard\b[^>]*role=/);
+    expect(markupOf.get('health/clinician-summary')).not.toMatch(/<ListCard\b[^>]*role=/);
   });
 
   it('shares its seam with the journal book rather than forking it', () => {

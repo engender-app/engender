@@ -52,7 +52,7 @@
 <div class="screen">
   <ScreenHeader title={m.timeline()} subtitle={m.tl_intro()} screen="timeline" back="/">
     {#snippet actions()}
-      <a class="icon-btn press" href="/settings/milestones" aria-label={m.tl_add_aria()}>
+      <a class="icon-btn press" href="/transition/milestones" aria-label={m.tl_add_aria()}>
         <Icon name="plus" size={22} />
       </a>
     {/snippet}
@@ -108,7 +108,7 @@
   {:else}
     <EmptyState title={m.tl_empty_title()} text={m.tl_empty_body()}>
       {#snippet action()}
-        <a class="btn btn-primary" href="/settings/milestones"><span>{m.tl_empty_action()}</span></a>
+        <a class="btn btn-primary" href="/transition/milestones"><span>{m.tl_empty_action()}</span></a>
       {/snippet}
     </EmptyState>
   {/if}

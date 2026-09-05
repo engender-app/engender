@@ -22,7 +22,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
-  /* Unbounded, like photos.inJournal() (settings/photos/+page.svelte): a
+  /* Unbounded, like photos.inJournal() (media/photos/+page.svelte): a
      starred list is self-limiting by how much a person actually stars,
      not by how large the journal is (ADR-0004's concern). */
   let entriesQuery = liveList((j) => j.entries.searchEntries('', [], { starred: true }));

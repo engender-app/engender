@@ -142,7 +142,7 @@
   <!-- "Start an era here" (phase 6 ticket 01): naming a stretch of your own
        timeline is a thought that arrives while looking at the day it starts
        on, so the action is offered where the thought is rather than only on
-       /settings/eras. A link and not a button, because it goes somewhere -
+       /transition/eras. A link and not a button, because it goes somewhere -
        the era editor opens there with this day already in its start bound.
        At ghost weight, under the entry button: adding an entry is what this
        screen is for, and two soft buttons would put the rarer action beside
@@ -153,7 +153,7 @@
     <button class="btn btn-soft" data-add onclick={() => goto(`/entry/new/${epochDay}`)}>
       <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
     </button>
-    <a class="btn btn-ghost" data-start-era href={`/settings/eras?start=${epochDay}`}>
+    <a class="btn btn-ghost" data-start-era href={`/transition/eras?start=${epochDay}`}>
       <Icon name="columns" size={20} /><span>{m.era_start_here()}</span>
     </a>
   </div>

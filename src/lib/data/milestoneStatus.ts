@@ -10,7 +10,7 @@
    fixture.
 
    Four screens asked this question before and one of them answered it
-   differently (settings/milestones grew its own copy of the wording); the
+   differently (transition/milestones grew its own copy of the wording); the
    wording still belongs to the screens, but the arithmetic is here. */
 
 import { anniversaryYears, nextAnniversaryEpochDay } from './epochDay';

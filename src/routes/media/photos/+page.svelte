@@ -192,7 +192,7 @@
           {/each}
         </div>
         <div>
-          <a class="btn btn-soft press" href="/settings/photos/export" data-journey-export>
+          <a class="btn btn-soft press" href="/media/photos/export" data-journey-export>
             <Icon name="image" size={20} /><span>{m.pj_open()}</span>
           </a>
         </div>

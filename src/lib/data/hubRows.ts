@@ -115,7 +115,7 @@ const ROWS = [
   {
     key: 'measurements',
     icon: 'ruler',
-    href: '/settings/measurements',
+    href: '/body/measurements',
     group: 'body',
     areas: ['measurements'],
     finishes: 'measurements',
@@ -124,7 +124,7 @@ const ROWS = [
   {
     key: 'sizes',
     icon: 'package',
-    href: '/settings/sizes',
+    href: '/body/sizes',
     group: 'body',
     areas: ['sizeRecords'],
     finishes: 'sizes',
@@ -133,7 +133,7 @@ const ROWS = [
   {
     key: 'hair-progress',
     icon: 'comb',
-    href: '/settings/hair-progress',
+    href: '/body/hair-progress',
     group: 'body',
     /* Two sections, one row: the stagings and the photographs finish
        together and the row reports whichever of them was written last
@@ -146,7 +146,7 @@ const ROWS = [
   {
     key: 'hair-removal',
     icon: 'shuffle',
-    href: '/settings/hair-removal',
+    href: '/body/hair-removal',
     group: 'body',
     areas: ['hairRemovalSessions'],
     finishes: 'hair-removal',
@@ -176,7 +176,7 @@ const ROWS = [
        outside `HideableArea` is what stops this file reversing it. */
     key: 'cycle-events',
     icon: 'calendar',
-    href: '/settings/cycle-events',
+    href: '/health/cycle-events',
     group: 'health',
     areas: ['cycleEvents'],
     finishes: null,
@@ -185,7 +185,7 @@ const ROWS = [
   {
     key: 'side-effects',
     icon: 'zap',
-    href: '/settings/side-effects',
+    href: '/health/side-effects',
     group: 'health',
     areas: ['sideEffects'],
     finishes: 'side-effects',
@@ -194,7 +194,7 @@ const ROWS = [
   {
     key: 'surgery',
     icon: 'flag',
-    href: '/settings/surgery',
+    href: '/health/surgery',
     group: 'health',
     areas: ['procedures'],
     finishes: null,
@@ -203,7 +203,7 @@ const ROWS = [
   {
     key: 'dilation',
     icon: 'flask',
-    href: '/settings/dilation',
+    href: '/health/dilation',
     group: 'health',
     /* The sessions, not the schedule. `taper` is what was meant to happen
        and opts out of the last-write registry for the reason a dose schedule
@@ -215,7 +215,7 @@ const ROWS = [
   {
     key: 'appointment-prep',
     icon: 'check',
-    href: '/settings/appointment-prep',
+    href: '/health/appointment-prep',
     group: 'health',
     areas: [],
     finishes: null,
@@ -224,7 +224,7 @@ const ROWS = [
   {
     key: 'clinician-summary',
     icon: 'share',
-    href: '/settings/clinician-summary',
+    href: '/health/clinician-summary',
     group: 'health',
     areas: [],
     finishes: null,
@@ -238,7 +238,7 @@ const ROWS = [
        dated event and a recovery window either side of it. */
     key: 'milestones',
     icon: 'sparkle',
-    href: '/settings/milestones',
+    href: '/transition/milestones',
     group: 'transition',
     areas: ['milestones'],
     finishes: null,
@@ -250,7 +250,7 @@ const ROWS = [
        outside the app rather than a route through it. */
     key: 'roadmap',
     icon: 'globe',
-    href: '/settings/roadmap',
+    href: '/transition/roadmap',
     group: 'transition',
     /* A goal and a tick against one both opt out of the last-write registry
        for the same reason: neither carries a date of its own. */
@@ -261,7 +261,7 @@ const ROWS = [
   {
     key: 'letters',
     icon: 'book',
-    href: '/settings/letters',
+    href: '/transition/letters',
     group: 'transition',
     /* Sealed until its unlock day, which is why the registry has no last
        write for it - asking when one was last written is a second way to
@@ -273,7 +273,7 @@ const ROWS = [
   {
     key: 'tryouts',
     icon: 'tag',
-    href: '/settings/tryouts',
+    href: '/transition/tryouts',
     group: 'transition',
     /* The tryout photos only, which is the registry's own bound: a tryout's
        start and end are a span, and its felt-sense history is
@@ -286,7 +286,7 @@ const ROWS = [
   {
     key: 'presentations',
     icon: 'palette',
-    href: '/settings/presentations',
+    href: '/transition/presentations',
     group: 'transition',
     areas: ['presentations'],
     finishes: null,
@@ -295,7 +295,7 @@ const ROWS = [
   {
     key: 'eras',
     icon: 'columns',
-    href: '/settings/eras',
+    href: '/transition/eras',
     group: 'transition',
     areas: ['eras'],
     finishes: null,
@@ -304,7 +304,7 @@ const ROWS = [
   {
     key: 'words',
     icon: 'note',
-    href: '/settings/words',
+    href: '/transition/words',
     group: 'transition',
     /* Note text grouped by the two things the rows either side of it name.
        It stores nothing of its own, so there is no section here. */
@@ -332,7 +332,7 @@ const ROWS = [
        recording. */
     key: 'voice-benchmark',
     icon: 'curve',
-    href: '/settings/voice?tab=record',
+    href: '/practice/voice?tab=record',
     group: 'practice',
     /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
        together - but only the benchmarks have a last write, since a practice
@@ -344,7 +344,7 @@ const ROWS = [
   {
     key: 'entry-templates',
     icon: 'grid',
-    href: '/settings/entry-templates',
+    href: '/practice/entry-templates',
     group: 'practice',
     areas: ['entryTemplates'],
     finishes: null,
@@ -353,7 +353,7 @@ const ROWS = [
   {
     key: 'wear',
     icon: 'clock',
-    href: '/settings/wear',
+    href: '/practice/wear',
     group: 'practice',
     areas: ['wearSessions'],
     finishes: 'wear',
@@ -365,7 +365,7 @@ const ROWS = [
        title both say so now (see `personal-effects`). */
     key: 'effects',
     icon: 'eye',
-    href: '/settings/personal-effects',
+    href: '/practice/personal-effects',
     group: 'practice',
     areas: ['personalEffects'],
     finishes: 'effects',
@@ -375,7 +375,7 @@ const ROWS = [
     /* `info` rather than the `globe` it shared with the roadmap. */
     key: 'resources',
     icon: 'info',
-    href: '/settings/resources',
+    href: '/practice/resources',
     group: 'practice',
     areas: [],
     finishes: null,
@@ -390,7 +390,7 @@ const ROWS = [
        instead is a line saying what is in them. */
     key: 'photos',
     icon: 'image',
-    href: '/settings/photos',
+    href: '/media/photos',
     group: 'media',
     areas: [],
     finishes: null,
@@ -399,7 +399,7 @@ const ROWS = [
   {
     key: 'voice',
     icon: 'mic',
-    href: '/settings/voice/memos',
+    href: '/media/voice/memos',
     group: 'media',
     areas: [],
     finishes: null,

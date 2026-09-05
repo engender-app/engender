@@ -39,7 +39,7 @@
 
    **The surgery-day milestone was missed by the count.** ADR-0045's own
    text names it - "reaching surgery day or the recovery phase in the
-   procedure hub" - and `settings/surgery/+page.svelte` has carried a
+   procedure hub" - and `health/surgery/+page.svelte` has carried a
    confirmation sheet for it since phase 5 ticket 12. A registry whose
    value is that the list is auditable cannot leave an existing offer off
    it, so it is registered.

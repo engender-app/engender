@@ -555,7 +555,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           seconds: String(elapsed.seconds)
         }),
         note: m.wear_session_running_since({ time: format.time(session.startTimestamp) }),
-        href: '/settings/wear',
+        href: '/practice/wear',
         action: {
           icon: 'stop',
           text: m.wear_session_stop_action(),
@@ -611,7 +611,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_surgery_title(),
         value,
         note: procedure.name,
-        href: '/settings/surgery'
+        href: '/health/surgery'
       };
     },
 
@@ -660,7 +660,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_letter_title(),
         value: format.fullDay(letter.epochDay),
         note: others > 0 ? m.tile_letter_more({ count: String(others) }) : m.tile_letter_single_note(),
-        href: `/settings/letters?read=${letter.id}`,
+        href: `/transition/letters?read=${letter.id}`,
         action: {
           icon: 'x',
           label: m.tile_letter_dismiss_action(),
@@ -715,12 +715,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_active_tryout_title(),
         value: qualifying.tryout.label,
         note: m.tile_active_tryout_note({ days: String(qualifying.daysElapsed) }),
-        href: `/settings/tryouts/${qualifying.tryout.id}`,
+        href: `/transition/tryouts/${qualifying.tryout.id}`,
         action: {
           icon: 'plus',
           text: m.tile_tryout_action(),
           label: m.tile_tryout_action(),
-          href: `/settings/tryouts/${qualifying.tryout.id}?feltSense=1`
+          href: `/transition/tryouts/${qualifying.tryout.id}?feltSense=1`
         },
         dismiss: dismissSnooze('active-tryout-tile')
       };
@@ -770,12 +770,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_voice_benchmark_title(),
         value: m.tile_voice_benchmark_action(),
         note: m.tile_voice_benchmark_days_ago({ days: String(qualifying.daysElapsed) }),
-        href: '/settings/voice?tab=compare',
+        href: '/practice/voice?tab=compare',
         action: {
           icon: 'mic',
           text: m.tile_voice_benchmark_action(),
           label: m.tile_voice_benchmark_action(),
-          href: '/settings/voice?tab=record'
+          href: '/practice/voice?tab=record'
         },
         dismiss: dismissSnooze('voice-benchmark-nudge')
       };
@@ -826,7 +826,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_hair_removal_title(),
         value: format.hairRemovalArea(qualifying.session.area),
         note: m.tile_hair_removal_guidance(),
-        href: '/settings/hair-removal',
+        href: '/body/hair-removal',
         dismiss: dismissSnooze('hair-removal-recovery')
       };
     },
@@ -847,12 +847,12 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         title: m.tile_measurements_title(),
         value: m.tile_measurements_prompt(),
         note: m.tile_measurements_note({ days: String(qualifying.daysSince) }),
-        href: '/settings/measurements',
+        href: '/body/measurements',
         action: {
           icon: 'plus',
           text: m.tile_measurements_action(),
           label: m.tile_measurements_action(),
-          href: '/settings/measurements'
+          href: '/body/measurements'
         },
         dismiss: dismissSnooze('measurements-nudge')
       };

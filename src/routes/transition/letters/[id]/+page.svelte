@@ -41,7 +41,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.letters_title()} screen="letters" back={() => smartBack('/settings/letters')} />
+  <ScreenHeader title={m.letters_title()} screen="letters" back={() => smartBack('/transition/letters')} />
 
   {#if letterQuery.loading}
     <Skeleton variant="card" count={1} />
@@ -54,7 +54,7 @@
       key="letters-gone"
       title={m.letters_gone_title()}
       text={m.letters_gone_body()}
-      action={{ label: m.letters_title(), href: '/settings/letters' }}
+      action={{ label: m.letters_title(), href: '/transition/letters' }}
       aria-live="polite"
     />
   {:else if isLetterSealed(letter, today)}

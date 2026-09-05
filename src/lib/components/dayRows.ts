@@ -58,9 +58,9 @@ export interface DayRow {
   count?: number;
 }
 
-const HAIR_PROGRESS = '/settings/hair-progress';
-const MILESTONES = '/settings/milestones';
-const SURGERY = '/settings/surgery';
+const HAIR_PROGRESS = '/body/hair-progress';
+const MILESTONES = '/transition/milestones';
+const SURGERY = '/health/surgery';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -131,7 +131,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'mic',
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
       subtitle: m.day_voice_benchmark(),
-      href: '/settings/voice?tab=compare'
+      href: '/practice/voice?tab=compare'
     })),
 
   measurements: (day) =>
@@ -139,7 +139,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       key: `measurement-${measurement.id}`,
       icon: 'ruler',
       title: `${vocabulary.measurementTypeName(measurement.type)} ${measurement.value} ${measurement.unit}`,
-      href: '/settings/measurements'
+      href: '/body/measurements'
     })),
 
   sizeRecords: (day) =>
@@ -148,7 +148,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'package',
       title: `${garmentCategoryName(record.category)} ${record.size}`,
       subtitle: record.brand || undefined,
-      href: '/settings/sizes'
+      href: '/body/sizes'
     })),
 
   taperSessions: (day) =>
@@ -157,7 +157,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'flask',
       title: m.dilation(),
       subtitle: session.note || undefined,
-      href: '/settings/dilation'
+      href: '/health/dilation'
     })),
 
   sideEffects: (day) =>
@@ -166,7 +166,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'zap',
       title: effect.name,
       subtitle: severityName(effect.severity) ?? undefined,
-      href: '/settings/side-effects'
+      href: '/health/side-effects'
     })),
 
   personalEffects: (day) =>
@@ -177,7 +177,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       // Earned: without it the row reads as something logged today rather
       // than as the day someone put to when it started.
       subtitle: m.day_first_noticed(),
-      href: '/settings/personal-effects'
+      href: '/practice/personal-effects'
     })),
 
   cycleEvents: (day) =>
@@ -185,7 +185,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       key: `cycle-${event.id}`,
       icon: 'calendar',
       title: cycleEventKindName(event.kind),
-      href: '/settings/cycle-events'
+      href: '/health/cycle-events'
     })),
 
   /* Both counters as one row each, with the day's count on them. A tally is
@@ -220,7 +220,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
            only record on a day whose title is a bare number. What the person
            wrote comes first where they wrote anything. */
         subtitle: session.note || m.wear_log(),
-        href: '/settings/wear'
+        href: '/practice/wear'
       };
     }),
 
@@ -232,7 +232,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       // The note if there is one, and the felt sense itself if not: a row
       // saying only a name would not say what it was doing on this day.
       subtitle: felt.note || moodName(felt.mood),
-      href: felt.owner.kind === 'tryout' ? `/settings/tryouts/${felt.owner.id}` : MILESTONES
+      href: felt.owner.kind === 'tryout' ? `/transition/tryouts/${felt.owner.id}` : MILESTONES
     })),
 
   /* The scale as well as the grade. On the hair-progress screen the scale is
@@ -272,7 +272,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       key: `hair-removal-${session.id}`,
       icon: 'shuffle',
       title: `${hairRemovalAreaName(session.area)}, ${hairRemovalMethodName(session.method)}`,
-      href: '/settings/hair-removal'
+      href: '/body/hair-removal'
     })),
 
   /* One section, two kinds of record: the consults a row each, the recovery
@@ -307,7 +307,7 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       icon: 'tag',
       title: group[0].tryoutLabel,
       subtitle: m.day_tryout_photos(),
-      href: `/settings/tryouts/${group[0].tryoutId}`,
+      href: `/transition/tryouts/${group[0].tryoutId}`,
       photo: group[0],
       count: group.length
     }))

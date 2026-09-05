@@ -14,7 +14,7 @@
        Nothing seeds it, nothing offers it, and nothing anywhere else in the
        app triggers it - the only route in is this screen's own single tap.
      - A panel pointing at the bundled support directory
-       (/settings/resources), added at Alicja's request during this
+       (/practice/resources), added at Alicja's request during this
        ticket's review, then reworked from a heading-action link into its
        own panel in the same round - the ticket text itself excludes new
        crisis-resource *content*, and this adds none: same href, same copy
@@ -92,7 +92,7 @@
      Truncation versus link, the decision the ticket asks for in writing:
      each row shows the day the letter was written and the opening of its
      text, clamped by the kit row's own two-line rule, and the tap opens the
-     whole letter on /settings/letters/[id]. Neither half works alone here.
+     whole letter on /transition/letters/[id]. Neither half works alone here.
      A date-only row asks somebody mid-crisis to gamble a navigation on a
      letter they cannot place, and a letter cut off at two lines is the
      failure the ticket names outright - so the preview is only ever a
@@ -223,7 +223,7 @@
       icon="globe"
       title={m.resources_title()}
       subtitle={m.resources_row_sub()}
-      href="/settings/resources"
+      href="/practice/resources"
     />
   </ListCard>
 
@@ -307,7 +307,7 @@
          the card wore the letters' own book disc and chevron and read as a
          fourth letter. -->
     {#if unlockedLetters.length > LETTER_LIMIT}
-      <a class="btn btn-soft btn-block press" data-all-letters href="/settings/letters">
+      <a class="btn btn-soft btn-block press" data-all-letters href="/transition/letters">
         <span>{m.safe_space_letters_all({ count: unlockedLetters.length - LETTER_LIMIT })}</span>
       </a>
     {/if}
