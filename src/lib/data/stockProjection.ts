@@ -35,7 +35,8 @@
    one is gone. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributeDrug } from './regimenEpisode';
+import { attributeDrug, drugSpans } from './regimenEpisode';
+import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
 /** How many trailing days of the dose log the consumption rate is
@@ -98,12 +99,152 @@ function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly Re
   return drug !== null && drugsMatch(drug, stock.drug);
 }
 
-/** `stock`'s projection as of `asOfEpochDay`. `doses` need only cover
-    `[stock.recordedEpochDay, asOfEpochDay]` - nothing outside that range
-    is read - and need not already be scoped to this drug: this function
-    does that itself, via `episodes`, the way doseSchedule.ts's callers are
-    trusted to have scoped theirs to one episode (this one instead resolves
-    per dose, since a drug can span more than one). */
+/** The first day of the trailing window the consumption rate is estimated
+    over: `TRAILING_WINDOW_DAYS` back from `asOfEpochDay`, or the day the
+    count was recorded when that is later - there is nothing to estimate
+    from before the count. */
+export function trailingWindowStart(stock: StockEntry, asOfEpochDay: number): number {
+  return Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
+}
+
+/** The three figures a projection is made of, however they were counted.
+    All three are counts of doses, never the doses themselves: a projection
+    needs to know how many, not which. */
+export interface StockDoseCounts {
+  /** Doses consuming this drug's stock over `[recordedEpochDay,
+      asOfEpochDay]` - taken or changed, and attributed to this drug. */
+  consumed: number;
+  /** Those of them falling on or after `trailingWindowStart`. */
+  consumedInTrailingWindow: number;
+  /** Consuming doses in the same window that named no drug while more than
+      one concurrent episode was active, so no drug's count reflects them. */
+  excluded: number;
+}
+
+/** `stock`'s projection from counts already taken over its window. The
+    whole of the rule about what a projection means - a `remaining` free to
+    go negative, a rate averaged over calendar days including the ones that
+    consumed nothing, a run-out day at `asOfEpochDay` once the count is
+    already outrun - lives here, so the two ways of arriving at the counts
+    cannot drift apart. */
+export function projectStockFromCounts(
+  stock: StockEntry,
+  counts: StockDoseCounts,
+  asOfEpochDay: number
+): StockProjection {
+  const remaining = stock.quantity - counts.consumed;
+  const excludedDoses = counts.excluded;
+
+  const windowDays = asOfEpochDay - trailingWindowStart(stock, asOfEpochDay) + 1;
+  const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays : null;
+
+  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
+  if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
+  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+}
+
+/** How many non-skipped doses carry each stored `drug` value in each of
+    the ranges asked for. Declared structurally rather than imported from
+    the doses area, so this module still depends on nothing below the
+    journal seam: `DosesArea.countConsumingDosesByDrug` satisfies it. */
+export type DrugDoseCounter = (
+  ranges: readonly { fromEpochDay: number; toEpochDay: number }[]
+) => Promise<readonly { drug: string | null; countsByRange: readonly number[] }[]>;
+
+/** Every entry's projection as of `asOfEpochDay`, in the order given,
+    without ever holding a dose.
+
+    `count` is asked one question, over ranges chosen here: the window is
+    cut wherever any entry's answer could change - where a drug-less dose
+    starts attributing differently (`drugSpans`), where a count was taken,
+    and where a trailing rate window opens. Each range therefore sits inside
+    exactly one attribution span, so a range's drug-less doses all belong to
+    the same drug or to none, and each entry's three figures are sums over
+    the ranges from its count day onward.
+
+    Still pure in the sense this module means: no clock and no database, only
+    a function that answers a counting question. What `count` must not be is
+    a source of the attribution rule - it is handed date windows and reports
+    what the `drug` column holds, and the resolving happens here. */
+export async function projectEveryStock(
+  entries: readonly StockEntry[],
+  episodes: readonly RegimenEpisode[],
+  asOfEpochDay: number,
+  count: DrugDoseCounter
+): Promise<StockProjection[]> {
+  if (entries.length === 0) return [];
+
+  const from = Math.min(...entries.map((entry) => entry.recordedEpochDay), asOfEpochDay);
+  const spans = drugSpans(episodes, from, asOfEpochDay);
+  const ranges = rangesFromCuts(
+    [
+      ...spans.map((span) => span.fromEpochDay),
+      ...entries.flatMap((entry) => [entry.recordedEpochDay, trailingWindowStart(entry, asOfEpochDay)])
+    ],
+    from,
+    asOfEpochDay
+  );
+
+  /* Every range starts on a cut, and the spans cover the same window with
+     no gap, so each range does sit inside one - a missing span would mean
+     the two cut sets had come apart, which is this module's own bug and not
+     something to paper over with a zero. */
+  const spanForRange = ranges.map((range) => {
+    const span = spans.find((s) => range.fromEpochDay >= s.fromEpochDay && range.fromEpochDay <= s.toEpochDay);
+    if (!span) throw new Error(`no attribution span covers day ${range.fromEpochDay}`);
+    return span;
+  });
+
+  /* Doses that named a drug are keyed by that name, trimmed the way a drug
+     is matched everywhere else; doses that named none are kept apart,
+     because which drug they count against is the span's answer rather than
+     their own. A falsy `drug` is what attributeDrug treats as naming
+     nothing, so the same test decides it here. */
+  const namedByRange = ranges.map(() => new Map<string, number>());
+  const unnamedByRange = ranges.map(() => 0);
+  for (const row of await count(ranges)) {
+    row.countsByRange.forEach((n, index) => {
+      if (!row.drug) {
+        unnamedByRange[index] += n;
+        return;
+      }
+      const key = row.drug.trim();
+      namedByRange[index].set(key, (namedByRange[index].get(key) ?? 0) + n);
+    });
+  }
+
+  return entries.map((entry) => {
+    const drug = entry.drug.trim();
+    const windowStart = trailingWindowStart(entry, asOfEpochDay);
+    const counts: StockDoseCounts = { consumed: 0, consumedInTrailingWindow: 0, excluded: 0 };
+
+    for (const [index, range] of ranges.entries()) {
+      if (range.fromEpochDay < entry.recordedEpochDay) continue;
+      const span = spanForRange[index];
+      const unnamed = unnamedByRange[index];
+      const attributed =
+        (namedByRange[index].get(drug) ?? 0) + (span.drug !== null && span.drug.trim() === drug ? unnamed : 0);
+
+      counts.consumed += attributed;
+      if (range.fromEpochDay >= windowStart) counts.consumedInTrailingWindow += attributed;
+      if (span.ambiguous) counts.excluded += unnamed;
+    }
+
+    return projectStockFromCounts(entry, counts, asOfEpochDay);
+  });
+}
+
+/** `stock`'s projection as of `asOfEpochDay`, counting the doses itself.
+    `doses` need only cover `[stock.recordedEpochDay, asOfEpochDay]` -
+    nothing outside that range is read - and need not already be scoped to
+    this drug: this function does that itself, via `episodes`, the way
+    doseSchedule.ts's callers are trusted to have scoped theirs to one
+    episode (this one instead resolves per dose, since a drug can span more
+    than one).
+
+    For a caller holding the doses already. A caller that would have to
+    fetch a decade of them to count three numbers should ask its area for
+    the counts and use `projectStockFromCounts` instead (stock.ts). */
 export function projectStock(
   stock: StockEntry,
   doses: readonly DoseEvent[],
@@ -115,20 +256,21 @@ export function projectStock(
     return day >= stock.recordedEpochDay && day <= asOfEpochDay;
   };
 
+  const windowStart = trailingWindowStart(stock, asOfEpochDay);
   const consumed = doses.filter((dose) => inWindow(dose) && consumesStock(dose, stock, episodes));
-  const remaining = stock.quantity - consumed.length;
-  const excludedDoses = doses.filter(
-    (dose) => inWindow(dose) && isConsuming(dose) && attributeDrug(episodes, dose).ambiguous
-  ).length;
 
-  const windowStart = Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
-  const windowDays = asOfEpochDay - windowStart + 1;
-  const consumedInWindow = consumed.filter((dose) => epochDayFromTimestamp(dose.timestamp) >= windowStart);
-  const dailyRate = windowDays > 0 ? consumedInWindow.length / windowDays : null;
-
-  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
-  if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
-  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+  return projectStockFromCounts(
+    stock,
+    {
+      consumed: consumed.length,
+      consumedInTrailingWindow: consumed.filter((dose) => epochDayFromTimestamp(dose.timestamp) >= windowStart)
+        .length,
+      excluded: doses.filter(
+        (dose) => inWindow(dose) && isConsuming(dose) && attributeDrug(episodes, dose).ambiguous
+      ).length
+    },
+    asOfEpochDay
+  );
 }
 
 /** Threshold in days below which a medication stock triggers a low-stock notice. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { spanCoversDay, spanOverlapsRange } from './span';
+import { rangesFromCuts, spanCoversDay, spanOverlapsRange } from './span';
 
 const span = (startEpochDay: number | null, endEpochDay: number | null) => ({
   startEpochDay,
@@ -62,5 +62,40 @@ describe('spanOverlapsRange', () => {
   it('an open start overlaps any range that starts before its end', () => {
     expect(spanOverlapsRange(span(null, 150), 100, 200)).toBe(true);
     expect(spanOverlapsRange(span(null, 50), 100, 200)).toBe(false);
+  });
+});
+
+describe('rangesFromCuts', () => {
+  it('cuts a window into gapless closed ranges', () => {
+    expect(rangesFromCuts([120, 150], 100, 200)).toEqual([
+      { fromEpochDay: 100, toEpochDay: 119 },
+      { fromEpochDay: 120, toEpochDay: 149 },
+      { fromEpochDay: 150, toEpochDay: 200 }
+    ]);
+  });
+
+  it('answers one range when nothing cuts inside the window', () => {
+    expect(rangesFromCuts([], 100, 200)).toEqual([{ fromEpochDay: 100, toEpochDay: 200 }]);
+    expect(rangesFromCuts([50, 300], 100, 200)).toEqual([{ fromEpochDay: 100, toEpochDay: 200 }]);
+  });
+
+  it('deduplicates and sorts its cuts, and ignores one on the first day', () => {
+    expect(rangesFromCuts([150, 120, 150, 100], 100, 200)).toEqual([
+      { fromEpochDay: 100, toEpochDay: 119 },
+      { fromEpochDay: 120, toEpochDay: 149 },
+      { fromEpochDay: 150, toEpochDay: 200 }
+    ]);
+  });
+
+  it('handles a single-day window and a range that runs backwards', () => {
+    expect(rangesFromCuts([100], 100, 100)).toEqual([{ fromEpochDay: 100, toEpochDay: 100 }]);
+    expect(rangesFromCuts([150], 200, 100)).toEqual([]);
+  });
+
+  it('cuts on the last day, leaving that day its own range', () => {
+    expect(rangesFromCuts([200], 100, 200)).toEqual([
+      { fromEpochDay: 100, toEpochDay: 199 },
+      { fromEpochDay: 200, toEpochDay: 200 }
+    ]);
   });
 });

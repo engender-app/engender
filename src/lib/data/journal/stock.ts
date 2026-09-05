@@ -19,7 +19,7 @@ import { bool, mintUuid, now } from './support';
 import type { DosesArea } from './doses';
 import type { RegimenArea } from './regimen';
 import type { RemindersArea } from './reminders';
-import { projectStock, type StockProjection } from '../stockProjection';
+import { projectEveryStock, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 
@@ -119,20 +119,29 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
   const findAutoReminder = (all: readonly Reminder[], drug: string): Reminder | null =>
     all.find((reminder) => reminder.autoSource === autoSourceFor(drug)) ?? null;
 
-  /* Every drug's projection as of `asOfEpochDay`. One getDoses call over
-     the widest range any entry needs, rather than one per drug - the
-     projection itself does the per-drug filtering (stockProjection.ts). */
+  /* Every drug's projection as of `asOfEpochDay`, from counts rather than
+     from the doses counted (phase 8 audit ticket 26). Someone whose oldest
+     count was taken years ago used to have their whole dose log crossed the
+     seam here so that three numbers per drug could be reduced out of it -
+     the single largest thing Home read on arrival.
+
+     What replaces it: projectEveryStock chooses the date windows the
+     figures can be summed from and this area answers its one counting
+     question against the dose log. Everything that decides which drug a
+     dose belongs to stays above the seam - the attribution rule in
+     regimenEpisode.ts, the windowing and the sums in stockProjection.ts -
+     and the SQL only ever counts rows in date windows. */
   const projections = async (asOfEpochDay: number): Promise<StockProjectionRow[]> => {
-    const entries = await getEntries();
+    /* Both at once, the way the old getDoses and getEpisodes pair was:
+       neither answer depends on the other, and only the count that follows
+       depends on both. */
+    const [entries, episodes] = await Promise.all([getEntries(), regimen.getEpisodes()]);
     if (entries.length === 0) return [];
 
-    const earliest = Math.min(...entries.map((entry) => entry.recordedEpochDay));
-    const [doseEvents, episodes] = await Promise.all([
-      doses.getDoses(Math.min(earliest, asOfEpochDay), asOfEpochDay),
-      regimen.getEpisodes()
-    ]);
-
-    return entries.map((entry) => ({ entry, projection: projectStock(entry, doseEvents, episodes, asOfEpochDay) }));
+    const projected = await projectEveryStock(entries, episodes, asOfEpochDay, (ranges) =>
+      doses.countConsumingDosesByDrug(ranges)
+    );
+    return entries.map((entry, index) => ({ entry, projection: projected[index] }));
   };
 
   return {
