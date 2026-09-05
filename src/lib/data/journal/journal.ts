@@ -461,6 +461,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     eraMutes,
     wordIgnore,
     chartAnnotations: makeChartAnnotationsArea({
+      appointments,
       areaStates,
       milestones,
       regimen,
