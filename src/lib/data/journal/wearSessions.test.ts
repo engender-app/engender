@@ -41,18 +41,25 @@ test('the duration cue is a running binder session past eight hours, and nothing
     durationMs: null
   });
 
-  assert.equal(binderCueShowing(running('binder'), BINDER_CUE_HOURS * HOUR - 1), false);
-  assert.equal(binderCueShowing(running('binder'), BINDER_CUE_HOURS * HOUR), true);
-  assert.equal(binderCueShowing(running('binder'), 30 * HOUR), true);
+  assert.equal(binderCueShowing(running('binder'), BINDER_CUE_HOURS * HOUR - 1, true), false);
+  assert.equal(binderCueShowing(running('binder'), BINDER_CUE_HOURS * HOUR, true), true);
+  assert.equal(binderCueShowing(running('binder'), 30 * HOUR, true), true);
 
   // No equivalent computation for the other two (ADR-0064): the evidence
   // for a tucking figure is weaker than the practice it would flag, and
   // there is no compression figure anywhere to borrow.
-  assert.equal(binderCueShowing(running('tucking'), 30 * HOUR), false);
-  assert.equal(binderCueShowing(running('compression'), 30 * HOUR), false);
+  assert.equal(binderCueShowing(running('tucking'), 30 * HOUR, true), false);
+  assert.equal(binderCueShowing(running('compression'), 30 * HOUR, true), false);
 
   // A stopped session is a record of something already over.
-  assert.equal(binderCueShowing({ kind: 'binder', startTimestamp: 0, durationMs: 12 * HOUR }, 30 * HOUR), false);
+  assert.equal(
+    binderCueShowing({ kind: 'binder', startTimestamp: 0, durationMs: 12 * HOUR }, 30 * HOUR, true),
+    false
+  );
+
+  // And the preference switches the whole thing off, for a session that
+  // would otherwise be showing it.
+  assert.equal(binderCueShowing(running('binder'), 30 * HOUR, false), false);
 });
 
 test('the trend region follows the kind until the person picks one, and falls back to what is offered', () => {

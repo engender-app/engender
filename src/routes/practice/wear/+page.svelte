@@ -54,7 +54,8 @@
     wearReminderTitle,
     wearRunningCardTitle,
     wearRunningSheetTitle,
-    wearSafetyFacts
+    wearSafetyFacts,
+    wearAddAria
   } from '$lib/data/vocabulary/wearLabels';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
@@ -135,7 +136,7 @@
   /* Recomputed off the same 30 second tick the elapsed reading is, so the
      cue appears on its own without the screen being touched (ADR-0064). */
   let showCue = $derived(
-    prefs.wearDurationCueEnabled && running !== null && binderCueShowing(running, nowTick)
+    running !== null && binderCueShowing(running, nowTick, prefs.wearDurationCueEnabled)
   );
 
   const reminderFor = (sessionId: string): Reminder | null =>
@@ -374,7 +375,7 @@
 <div class="screen">
   <ScreenHeader title={m.wear_log()} back={() => smartBack('/more')} subtitle={m.wear_log_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={wearAddAria(latestKind)} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -537,7 +538,7 @@
     editTitle={(draft) => (draft.isRunning ? wearRunningSheetTitle(draft.kind) : wearEditSheetTitle(draft.kind))}
     deleteLabel={m.wear_session_delete()}
     confirm={{
-      title: wearDeleteSheetTitle(record.editor?.kind ?? latestKind),
+      title: (session) => wearDeleteSheetTitle(session.kind),
       question: (session) =>
         m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(session.startTimestamp)) }),
       hint: () => m.wear_session_delete_hint(),
@@ -609,14 +610,15 @@
            `resize` on the box, `crossfade` on the block leaving it. -->
       <div use:resize>
         {#key editor.kind}
+          {@const safety = wearSafetyFacts(editor.kind)}
           <div class="wear-facts" data-wear-facts={editor.kind} out:crossfade>
             <p class="wear-facts-title">{m.wear_facts_title()}</p>
             <ul class="muted small wear-facts-list">
-              {#each wearSafetyFacts(editor.kind).facts as fact (fact)}
+              {#each safety.facts as fact (fact)}
                 <li>{fact}</li>
               {/each}
             </ul>
-            <p class="muted small">{wearSafetyFacts(editor.kind).source}</p>
+            <p class="muted small">{safety.source}</p>
           </div>
         {/key}
       </div>

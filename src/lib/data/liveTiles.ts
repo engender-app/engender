@@ -554,7 +554,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       /* The cue takes the note's line rather than crowding in beside the
          start time: the elapsed reading above it already says how long,
          and a tile has one line to say anything in. */
-      const cueShowing = reads.wearDurationCue && binderCueShowing(session, nowMs);
+      const cueShowing = binderCueShowing(session, nowMs, reads.wearDurationCue);
       const attrs: TileHandles = { 'data-wear-running-tile': true };
       if (cueShowing) attrs['data-wear-duration-cue'] = true;
       return {

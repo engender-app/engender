@@ -282,14 +282,18 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     });
   }
 
-  // Wear sessions: a year, irregular, most backfilled with a duration and
-  // one still running so the live timer state is reachable too.
+  /* Wear sessions: a year, irregular, most backfilled with a duration and
+     one still running so the live timer state is reachable too. All three
+     kinds, so every per-kind wording and the binder-only duration cue are
+     reachable in the demo (ticket 50), off one draw per session rather than
+     two - a second conditional draw would spend a different count of the
+     seeded sequence depending on the first, and everything seeded after
+     this would move with it. */
+  const kindFor = (roll: number) => (roll < 0.6 ? 'binder' : roll < 0.8 ? 'tucking' : 'compression');
   for (let day = trackingStart; day <= today - 1; day++) {
     if (r() < 0.55) continue;
     await journal.wearSessions.upsertSession({
-      // All three kinds, so every per-kind wording and the binder-only
-      // duration cue are reachable in the demo (ticket 50).
-      kind: r() < 0.6 ? 'binder' : r() < 0.5 ? 'tucking' : 'compression',
+      kind: kindFor(r()),
       startTimestamp: (day * 24 + 8) * 3_600_000,
       durationMs: between(2, 8) * 3_600_000,
       note: r() < 0.2 ? 'a bit tight by the end' : null

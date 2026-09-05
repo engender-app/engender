@@ -16,10 +16,20 @@
    template would be wrong in two thirds of the catalogue, the same trap
    doseLabels.ts names for injection sites.
 
-   The screen's own name, the hub row, the stats area and the search-hit
-   label are deliberately not here. Those name a screen that holds all three
-   kinds at once, and "Wear log" is what all three are; the per-kind wording
-   starts at the session. */
+   Five strings deliberately stay generic and are not here. Four name a
+   surface holding all three kinds at once - the screen's own title, the More
+   hub's row, the stats-area label and the search-hit label - and "Wear log"
+   is what all three are. The fifth is `tile_wear_title` ("Wear timer"),
+   which unprompted/registry.ts uses for the row that switches the tile off
+   as a kind: that switch covers all three too, and the tile the switch is
+   about does carry the kind (`wearTileTitle` below).
+
+   Two more are generic for a reason that is not that. The empty state has no
+   session to name and no kind to draw from, and naming the fallback kind
+   there would put a guess in front of somebody who has logged nothing. And
+   `prov_reminder_wear`, on the reminders list, is resolved from a reminder's
+   `autoSource` marker alone (provenance.ts) - naming the kind would mean
+   that screen reading wear sessions to render a hint. */
 
 /* Relative rather than `$lib`, unlike doseLabels.ts beside it: liveTiles.ts
    reads this file for the wear tile's title, and liveTiles.grid.test.ts
@@ -31,6 +41,15 @@ const KIND_LABELS: Record<WearKind, () => string> = {
   binder: m.wear_kind_binder,
   tucking: m.wear_kind_tucking,
   compression: m.wear_kind_compression
+};
+
+/* The add button's accessible name. It opens a blank draft on `latestKind`,
+   so it says which kind that is rather than "a wear session" - what the
+   button is about to do is the whole of what an accessible name owes. */
+const ADD_ARIA: Record<WearKind, () => string> = {
+  binder: m.wear_session_add_aria_binder,
+  tucking: m.wear_session_add_aria_tucking,
+  compression: m.wear_session_add_aria_compression
 };
 
 const NEW_SHEET_TITLES: Record<WearKind, () => string> = {
@@ -129,6 +148,7 @@ const SAFETY_FACTS: Record<WearKind, { facts: () => string[]; source: () => stri
 };
 
 export const wearKindLabel = (kind: WearKind): string => KIND_LABELS[kind]();
+export const wearAddAria = (kind: WearKind): string => ADD_ARIA[kind]();
 export const wearNewSheetTitle = (kind: WearKind): string => NEW_SHEET_TITLES[kind]();
 export const wearEditSheetTitle = (kind: WearKind): string => EDIT_SHEET_TITLES[kind]();
 export const wearRunningSheetTitle = (kind: WearKind): string => RUNNING_SHEET_TITLES[kind]();
