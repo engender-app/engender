@@ -667,9 +667,9 @@
     <!-- Dynamic, not a top-of-file import: flatpickr is 52 KB nobody needs
          before the backdate field opens, and a static import here put it in
          every cold boot's eager preload set, including the passphrase gate
-         (phase 8 audit F6). The placeholder below is the same input element
-         DatePicker itself renders, so the field's box does not jump when the
-         chunk lands and swaps it in. -->
+         (phase 8 audit F6). The placeholder below matches DatePicker's own
+         `class="input"` box so the field does not jump when the chunk lands
+         and swaps it in - keep the two in sync if DatePicker's markup changes. -->
     {#await import('./DatePicker.svelte')}
       <input class="input" id="backdate" name="backdate" disabled aria-label={m.another_day()} />
     {:then { default: DatePicker }}
