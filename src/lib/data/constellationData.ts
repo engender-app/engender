@@ -131,7 +131,8 @@ export function plotPoints(
 }
 
 /** The path up to and including the scrubbed reading, each point carrying
-    the strength it is drawn at.
+    the strength it is drawn at and the window slot it draws in (ADR-0058 /
+    ticket AU-20).
 
     An index rather than a day, because order is the only thing time is on
     this chart: neither axis is a date, so a gap in journalling has nowhere
