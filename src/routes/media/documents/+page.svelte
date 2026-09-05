@@ -31,6 +31,7 @@
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { JournalDocument } from '$lib/data/types';
+  import { documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -84,13 +85,8 @@
      that would mean this list fetching all four kinds' full lists just to
      label one line each, where the target's own name is already one tap
      away on the document's own screen. */
-  function linkLabel(document: { targetKind: JournalDocument['targetKind'] }): string | false {
-    if (document.targetKind === 'milestone') return m.document_link_kind_milestone();
-    if (document.targetKind === 'procedure') return m.document_link_kind_procedure();
-    if (document.targetKind === 'episode') return m.document_link_kind_episode();
-    if (document.targetKind === 'goal') return m.document_link_kind_goal();
-    return false;
-  }
+  const linkLabel = (document: { targetKind: JournalDocument['targetKind'] }): string | false =>
+    document.targetKind !== null && documentTargetKindLabel(document.targetKind);
 </script>
 
 <div class="screen">

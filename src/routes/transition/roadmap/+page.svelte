@@ -265,7 +265,10 @@
              that cycles the tick is `.kit-row-main`, and `.kit-row-act`
              opens the goal's own sheet, on every row whether ticked or
              not - the "keep opinions" goal is exactly the case where paper
-             arrives before a tick ever could. -->
+             arrives before a tick ever could. The glyph on it is a chevron
+             rather than the paper one: the sheet holds the tick, the
+             milestone and the documents, and an icon naming one of the
+             three reads as though it were all of it. -->
         {#each rankByLean(section.goals, lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
           <div class="kit-row is-split" data-goal={goal.key} data-status={status}>
@@ -305,7 +308,7 @@
               aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(goal.key) })}
               onclick={() => openBuiltInGoal(goal.key)}
             >
-              <Icon name="documents" size={18} />
+              <Icon name="chevronRight" size={18} />
             </button>
           </div>
         {/each}
@@ -345,7 +348,7 @@
               aria-label={m.roadmap_goal_open_aria({ goal: goal.text })}
               onclick={() => openCustomGoal(goal)}
             >
-              <Icon name="documents" size={18} />
+              <Icon name="chevronRight" size={18} />
             </button>
           </div>
         {/each}
