@@ -686,7 +686,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // so a renamed journey redraws them.
     reads: {
       getAppointments: ['appointment', 'procedure'],
-      getAppointment: ['appointment'],
+      getAppointment: ['appointment', 'procedure'],
       getKinds: ['appointment'],
       getDayRecords: ['appointment', 'procedure'],
       lastWriteEpochDay: ['appointment'],

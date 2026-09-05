@@ -43,11 +43,13 @@ export interface ChecklistsArea {
       null when there is no most-recent-past appointment at all
       (appointments.ts's `mostRecentPastAppointment`); the shape still
       answers, since an absent appointment has nothing dismissed and no
-      entry either. The exact shape `debriefOfferVisible`
-      (vocabulary/entryTemplates.ts) takes, so a caller folding the
-      predicate over a live read needs one query rather than composing
-      several. */
+      entry either. `appointmentId` comes back out again, which is what
+      makes this the exact shape `debriefOfferVisible`
+      (vocabulary/entryTemplates.ts) takes: a caller folding the predicate
+      over a live read needs one query and no splicing, and cannot hand the
+      predicate a different appointment than the read was scoped to. */
   getDebriefState(appointmentId: string | null): Promise<{
+    appointmentId: string | null;
     itemCount: number;
     dismissed: boolean;
     debriefEntryId: number | null;
@@ -131,6 +133,16 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     return rows[0];
   };
 
+  /* Both debrief writers below store their column on the standalone
+     checklist, so both need one to exist; before ticket 58 the retired
+     `setAppointmentDate` was what created it and they could assume it had.
+     Neither is reached in the app without a prep question already standing,
+     but the demo seed writes a debrief link into a journal that has no prep
+     list at all (journal-seed.ts), and the alternative is a zero-row UPDATE
+     that reports success. */
+  const standaloneChecklistId = async (): Promise<string> =>
+    (await standaloneChecklist())?.id ?? (await area.createChecklist()).id;
+
   /* The one comparison `getDebriefState` and `getDebriefEntryId` both need:
      the linked entry only answers for the appointment it was actually
      recorded against (ticket 58) - a row left over from a since-superseded
@@ -199,6 +211,7 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     async getDebriefState(appointmentId) {
       const [row, checklist] = await Promise.all([standaloneDebriefRow(), standaloneChecklist()]);
       return {
+        appointmentId,
         itemCount: checklist?.items.length ?? 0,
         dismissed: appointmentId !== null && row?.debrief_dismissed_appointment_id === appointmentId,
         debriefEntryId: debriefEntryIdFor(row, appointmentId)
@@ -206,12 +219,10 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     },
 
     async setDebriefDismissed(appointmentId) {
-      const existing = await standaloneChecklist();
-      const checklistId = existing ? existing.id : (await area.createChecklist()).id;
       await driver.run('UPDATE checklist SET debrief_dismissed_appointment_id = ?, updated_at = ? WHERE uuid = ?', [
         appointmentId,
         now(),
-        checklistId
+        await standaloneChecklistId()
       ]);
     },
 
@@ -222,8 +233,8 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     async recordDebriefEntry(entryId, appointmentId) {
       await driver.run(
         `UPDATE checklist SET debrief_entry_id = ?, debrief_entry_appointment_id = ?, updated_at = ?
-         WHERE owner_kind IS NULL`,
-        [entryId, appointmentId, now()]
+         WHERE uuid = ?`,
+        [entryId, appointmentId, now(), await standaloneChecklistId()]
       );
     },
 

@@ -89,25 +89,33 @@ const trimmed = (value: string | null): string | null => {
   return text ? text : null;
 };
 
+/* The two selectors below are one line drawn through an oldest-first list
+   (`getAppointments`'s own order), read from either side: everything before
+   the boundary has happened, everything at or after it has not. Today falls
+   on the "not yet" side on purpose - an appointment later today has not
+   happened, which is the same line the debrief offer has always drawn.
+   Sharing the index is what stops the two from ever disagreeing about which
+   appointment is which, and it means neither has to copy a list to find one
+   row. Both are pure, over an already-fetched list, with the screen's
+   `today` as an argument - the same shape `liveTiles.ts`'s `shouldShow*`
+   functions take, so they are provable without a driver. */
+const firstNotYetHappened = (appointments: Appointment[], todayEpochDay: number): number => {
+  const index = appointments.findIndex((appointment) => appointment.epochDay >= todayEpochDay);
+  return index === -1 ? appointments.length : index;
+};
+
 /** The appointment prep screen's own date (ticket 58): the earliest one at
-    or after today, or null. Pure, over an already-fetched, oldest-first
-    list (`getAppointments`'s own order) - a screen's `today` is its own
-    argument, the same shape `liveTiles.ts`'s `shouldShow*` functions take,
-    so this is provable without a driver. Today itself counts as still
-    ahead: an appointment later today has not happened yet. */
+    or after today, or null. */
 export function soonestFutureAppointment(appointments: Appointment[], todayEpochDay: number): Appointment | null {
-  return appointments.find((appointment) => appointment.epochDay >= todayEpochDay) ?? null;
+  return appointments[firstNotYetHappened(appointments, todayEpochDay)] ?? null;
 }
 
 /** The debrief's and the clinician summary's own appointment (ticket 58,
-    ADR-0066): the latest one strictly before today, or null. Today itself
-    is excluded on purpose - the appointment could still be later today,
-    the same line the debrief offer has always drawn - and only ever the
+    ADR-0066): the latest one strictly before today, or null. Only ever the
     most recent one: back-filling history is entering a record, not living
     through a visit. */
 export function mostRecentPastAppointment(appointments: Appointment[], todayEpochDay: number): Appointment | null {
-  const past = appointments.filter((appointment) => appointment.epochDay < todayEpochDay);
-  return past.length ? past[past.length - 1] : null;
+  return appointments[firstNotYetHappened(appointments, todayEpochDay) - 1] ?? null;
 }
 
 /** The `appointment`/`procedure` join every `getAppointments`/`getAppointment`

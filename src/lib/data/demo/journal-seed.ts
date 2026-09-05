@@ -83,7 +83,10 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
 
   /* The debrief is linked by the appointment's own id (ticket 58), the same
      link `recordDebriefEntry` makes for a person who wrote it through the
-     real offer. */
+     real offer. Unlike that person, the persona has no standing prep list
+     for the link to land on, which is why `recordDebriefEntry` creates the
+     standalone checklist on first use (checklists.ts) rather than assuming
+     one exists. */
   for (const { debrief, ...appointment } of appointments) {
     const appointmentId = await journal.appointments.upsertAppointment(appointment);
     if (debrief) {
