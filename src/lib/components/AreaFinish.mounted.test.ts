@@ -44,15 +44,15 @@ describe('where the finish control is mounted', () => {
 
   it('puts each group on the screen that owns it', () => {
     expect(mounts).toEqual([
-      { route: 'settings/dilation', group: 'dilation' },
-      { route: 'settings/hair-progress', group: 'hair-progress' },
-      { route: 'settings/hair-removal', group: 'hair-removal' },
-      { route: 'settings/measurements', group: 'measurements' },
-      { route: 'settings/personal-effects', group: 'effects' },
-      { route: 'settings/side-effects', group: 'side-effects' },
-      { route: 'settings/sizes', group: 'sizes' },
-      { route: 'settings/voice', group: 'voice' },
-      { route: 'settings/wear', group: 'wear' }
+      { route: 'body/hair-progress', group: 'hair-progress' },
+      { route: 'body/hair-removal', group: 'hair-removal' },
+      { route: 'body/measurements', group: 'measurements' },
+      { route: 'body/sizes', group: 'sizes' },
+      { route: 'health/dilation', group: 'dilation' },
+      { route: 'health/side-effects', group: 'side-effects' },
+      { route: 'practice/personal-effects', group: 'effects' },
+      { route: 'practice/voice', group: 'voice' },
+      { route: 'practice/wear', group: 'wear' }
     ]);
   });
 
@@ -99,6 +99,6 @@ describe('where the finish control is mounted', () => {
        finishes the benchmarks and the practice takes together, and the row
        that fronts both is the benchmark row - the memos row is entry content
        and is not finishable at all. */
-    expect(owner['voice']).toBe('settings/voice');
+    expect(owner['voice']).toBe('practice/voice');
   });
 });

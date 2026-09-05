@@ -38,8 +38,8 @@ export function stretchTooShortToCompare(stretch: EpochRange, journalFirstEpochD
 /** The `/compare` path a "compare this stretch" link opens: `stretch` as
     side A and `preceding` as side B, in the same date-range query
     parameters a person filling in the two pickers by hand would produce.
-    `/compare` reads these once, on arrival, the same way `/settings/eras`
-    reads `start` (settings/eras/+page.svelte). */
+    `/compare` reads these once, on arrival, the same way `/transition/eras`
+    reads `start` (transition/eras/+page.svelte). */
 export function compareStretchQuery(stretch: EpochRange, preceding: EpochRange): string {
   const params = new URLSearchParams({
     aStart: dateInputValueFromEpochDay(stretch.start),

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const page = readFileSync(root + '/src/routes/settings/clinician-summary/+page.svelte', 'utf8');
+const page = readFileSync(root + '/src/routes/health/clinician-summary/+page.svelte', 'utf8');
 
 /** The nearest `class="..."` attribute value that names `className` as one
     of its classes, wherever in the attribute it falls. */

@@ -342,7 +342,7 @@ test('a finished row keeps its icon and its screen', () => {
   const row = sections.at(-1)?.rows[0];
 
   assert.equal(row?.spec.icon, 'clock');
-  assert.equal(row?.spec.href, '/settings/wear');
+  assert.equal(row?.spec.href, '/practice/wear');
 });
 
 test('the cycle row is drawn only behind its own gate', () => {

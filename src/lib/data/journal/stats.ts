@@ -95,7 +95,7 @@ export interface RecapPhoto extends Photo {
 
 /** How many photos a recap picks out of the range. Four fills a thumbnail
     row on the narrowest screen the app supports and reads as a handful
-    rather than a gallery; the photo grid (settings/photos) is where every
+    rather than a gallery; the photo grid (media/photos) is where every
     photo lives. */
 export const RECAP_PHOTO_HIGHLIGHTS = 4;
 

@@ -94,7 +94,7 @@
        route parameter was captured in a const that never updated - so the
        section stayed hidden after a create. The parameter is read through
        detailDraft now, which is the module that reads it reactively. */
-    if (detail.isNew) await goto(`/settings/tryouts/${id}`);
+    if (detail.isNew) await goto(`/transition/tryouts/${id}`);
   }
 
   /* Only once a tryout has its own id, the same reasoning hair-removal's
@@ -264,7 +264,7 @@
 
 
 <div class="screen">
-  <ScreenHeader title={detail.isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/settings/tryouts" />
+  <ScreenHeader title={detail.isNew ? m.tryout_new_title() : m.tryout_edit_title()} back="/transition/tryouts" />
 
   <div class="editor-section">
     <Field label={m.tryout_kind_label()} legend>

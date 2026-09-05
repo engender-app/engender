@@ -173,10 +173,10 @@
   const GETTING_STARTED_UNTIL = 5;
   let showGettingStarted = $derived(entryCount != null && entryCount < GETTING_STARTED_UNTIL);
   const GETTING_STARTED = [
-    { key: 'milestones', icon: 'flag', href: '/settings/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
+    { key: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
     { key: 'regimen', icon: 'flask', href: '/settings/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
-    { key: 'letters', icon: 'clock', href: '/settings/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
-    { key: 'photos', icon: 'camera', href: '/settings/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
+    { key: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
+    { key: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
   ];
 
@@ -600,7 +600,7 @@
         {/each}
       {:else}
         <ListRow
-          href="/settings/milestones"
+          href="/transition/milestones"
           data-milestones-empty
           chevron={false}
           title={m.home_milestones_empty_title()}

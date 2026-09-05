@@ -45,7 +45,7 @@ export function eraCoversDay(era: EraSpan, day: number): boolean {
     only one - except after a merge, which can land two overlapping eras on
     purpose (archiveSections.ts). This still answers with exactly one there,
     which is what keeps a filtered read total while the person sorts the
-    overlap out on /settings/eras. */
+    overlap out on /transition/eras. */
 export function eraForDay<T extends EraSpan>(eras: readonly T[], day: number): T | null {
   return eras.find((era) => eraCoversDay(era, day)) ?? null;
 }

@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const words = readFileSync(root + 'src/routes/settings/words/+page.svelte', 'utf8');
+const words = readFileSync(root + 'src/routes/transition/words/+page.svelte', 'utf8');
 
 describe('what a filter tap on the word list re-runs', () => {
   it('analyses the query rows, so a tap never reaches the note text', () => {

@@ -82,7 +82,7 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
        and the screen reaches it through `answerOffer`, which is the only
        path there is. What a confirmation actually writes is asserted below
        against the entry itself, which is where it now lives. */
-    const roadmapSrc = read('src/routes/settings/roadmap/+page.svelte');
+    const roadmapSrc = read('src/routes/transition/roadmap/+page.svelte');
     expect(roadmapSrc).toContain("import RoadmapMilestonePromptSheet from '$lib/components/RoadmapMilestonePromptSheet.svelte'");
     expect(roadmapSrc).toContain('prefs.roadmapMilestoneSyncEnabled');
     expect(roadmapSrc).toContain('<RoadmapMilestonePromptSheet');

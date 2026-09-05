@@ -4,5 +4,5 @@
 import { redirect } from '@sveltejs/kit';
 
 export function load() {
-  redirect(307, '/settings/milestones');
+  redirect(307, '/transition/milestones');
 }

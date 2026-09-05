@@ -134,7 +134,7 @@ export function bandsOf(metric: VoiceMetric, language: BandLanguage): readonly P
 }
 
 /** Where the explanations live. */
-export const VOICE_METRICS_ROUTE = '/settings/voice/metrics';
+export const VOICE_METRICS_ROUTE = '/practice/voice/metrics';
 
 /** Where one figure's own explanation lives. Here rather than written out
     at each call site so that a link and the section it lands on cannot

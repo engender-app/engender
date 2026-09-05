@@ -4,7 +4,7 @@
      rows the same way a tag or a gender dimension is: edited into the
      person's own or hidden, never deleted (CONTEXT: "Hidden") - the shared
      record editor's `remove` handle is wired to throw rather than ever
-     being reachable from this screen, the same shape /settings/presentations
+     being reachable from this screen, the same shape /transition/presentations
      already gives a hide-only area.
 
      No empty state: reconcile seeds every `ENTRY_TEMPLATES` built-in on

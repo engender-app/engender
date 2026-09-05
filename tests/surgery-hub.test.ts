@@ -29,7 +29,7 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
   });
 
   it('surgery page implements all 4 active lifecycle sections and prompt for milestone on surgery day', () => {
-    const pageCode = read('src/routes/settings/surgery/+page.svelte');
+    const pageCode = read('src/routes/health/surgery/+page.svelte');
     expect(pageCode).toContain('data-recovery-log');
     expect(pageCode).toContain('data-phase');
     expect(pageCode).toContain('data-record-milestone-prompt');

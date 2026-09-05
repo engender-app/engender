@@ -433,7 +433,7 @@
         key="wrapped-muted"
         title={m.wrapped_muted_title()}
         text={m.wrapped_muted_body()}
-        action={{ label: m.eras_title(), href: '/settings/eras' }}
+        action={{ label: m.eras_title(), href: '/transition/eras' }}
         aria-live="polite"
       />
     {:else if !recap || recap.entryCount < WRAPPED_ENTRY_FLOOR}

@@ -53,7 +53,7 @@
 {#if url}
   <!-- No caption track: a video note is the person's own recording of
        themselves, with nothing to transcribe that they did not just say.
-       The same call settings/photos/export makes for its timelapse. -->
+       The same call media/photos/export makes for its timelapse. -->
   <!-- svelte-ignore a11y_media_has_caption -->
   <video class="video-note-player" controls preload="metadata" src={url}></video>
 {/if}

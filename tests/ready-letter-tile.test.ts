@@ -28,8 +28,8 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const home = read('src/routes/+page.svelte');
 const homeMarkup = home.replace(/<script[\s\S]*?<\/script>/g, '');
-const lettersPage = read('src/routes/settings/letters/+page.svelte');
-const letterIdPage = read('src/routes/settings/letters/[id]/+page.svelte');
+const lettersPage = read('src/routes/transition/letters/+page.svelte');
+const letterIdPage = read('src/routes/transition/letters/[id]/+page.svelte');
 const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
@@ -151,7 +151,7 @@ describe('Home ready-letter live tile rendering and behavior', () => {
   });
 
   it('links tile to the letter reading route', () => {
-    expect(read('src/lib/data/liveTiles.ts')).toContain('/settings/letters?read=${letter.id}');
+    expect(read('src/lib/data/liveTiles.ts')).toContain('/transition/letters?read=${letter.id}');
   });
 });
 
@@ -163,7 +163,7 @@ describe('Settings and letter route integration', () => {
     expect(row?.title()).toBe(enMessages.tile_letter_title);
   });
 
-  it('marks letter as read on opening /settings/letters or [id]', () => {
+  it('marks letter as read on opening /transition/letters or [id]', () => {
     expect(lettersPage).toContain('markLetterRead(letter.id)');
     expect(lettersPage).toContain("page.url.searchParams.get('read')");
     // The [id] route (phase 5 deepening ticket 13) renders the letter's own

@@ -319,7 +319,7 @@
           icon="calendar"
           title={m.cycle_events()}
           subtitle={m.cycle_tracking_regimen_row_sub()}
-          href="/settings/cycle-events"
+          href="/health/cycle-events"
         />
       </ListCard>
     </div>
