@@ -2,6 +2,7 @@
    under test here is the pack structure, not the wording: a pack holds
    keys and a review date, and roadmapLabels.ts turns a key into text. */
 
+import { readFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
 import {
   POLISH_PACK,
@@ -134,6 +135,32 @@ test('every track the app declares is folded by the same rule, with none left ou
       expect(other.customGoals).toEqual(CUSTOM.filter((goal) => goal.track === other.track));
     }
   }
+});
+
+test('the roadmap screen draws its tracks through the fold rather than from its own list', () => {
+  /* The half of box 5 the two tests around this one cannot reach. Nobody
+     would break the fold by editing `roadmapSections`, which walks
+     ROADMAP_TRACKS and so folds a fifth track for free. The way a fifth
+     track would actually arrive un-foldable is a screen keeping its own
+     list of tracks - which is exactly what this screen used to do, an
+     `{#each ROADMAP_TRACKS}` with the goals filtered inline - so what has
+     to hold is that it no longer can.
+
+     Read as source rather than mounted, the way ClinicianSummaryDossier's
+     own contract tests read theirs: what is under test is where the screen
+     gets its tracks from, and a render would answer that only for the
+     tracks that happen to exist today. */
+  const screen = readFileSync(
+    new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url),
+    'utf8'
+  );
+
+  expect(screen).toContain('roadmapSections(pack, customGoals, dismissedTracks)');
+  expect(screen).toContain('{#each sections as section');
+  expect(screen).not.toMatch(/\{#each ROADMAP_TRACKS/);
+  // And it must not re-derive a track's goals beside the fold that just did.
+  expect(screen).not.toMatch(/goalsInTrack\(/);
+  expect(screen).not.toMatch(/customGoals\.filter\(/);
 });
 
 test('a fold that knows about one track fewer fails the rule the real one passes', () => {

@@ -175,10 +175,15 @@
              the whole track, and a row inside the list would read as one
              more step to take. -->
         {#snippet action()}
+          <!-- No `aria-pressed`. The label itself changes, so a toggle state
+               on top of it announces the same fact twice ("Put it back,
+               pressed"); a toggle button earns aria-pressed when its label
+               holds still, and this one does not. `data-dismissed` carries
+               the state for the stylesheet and the tests instead. -->
           <button
-            class="roadmap-track-btn press"
+            class="roadmap-track-btn"
             data-track-toggle={track}
-            aria-pressed={section.dismissed}
+            data-dismissed={section.dismissed}
             onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
           >
             {section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}
@@ -408,7 +413,7 @@
      sits outside the ListCard that carries `--role-mark`, so a role colour
      would not resolve here, and reaching for `--accent` instead puts a flag
      stripe's own colour beside a display heading for no reason. */
-  .roadmap-track-btn[aria-pressed='true'] {
+  .roadmap-track-btn[data-dismissed='true'] {
     color: var(--text-1);
   }
 </style>

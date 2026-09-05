@@ -45,7 +45,6 @@ import type {
   ArchivePhoto,
   ArchivePreset,
   ArchiveRoadmapCheck,
-  ArchiveRoadmapTrack,
   ArchiveTag,
   ArchiveTagGroup,
   ArchiveTryout,
@@ -437,11 +436,6 @@ export async function readRoadmapChecks({ driver }: SectionRead): Promise<Archiv
     'SELECT pack_key, goal_key, status FROM roadmap_check ORDER BY pack_key, goal_key'
   );
   return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key, status: r.status }));
-}
-
-export async function readRoadmapTracks({ driver }: SectionRead): Promise<ArchiveRoadmapTrack[]> {
-  const rows = await driver.query<{ track: string }>('SELECT track FROM roadmap_track ORDER BY track');
-  return rows.map((r) => ({ track: r.track }));
 }
 
 export async function readChecklists({ driver }: SectionRead): Promise<ArchiveChecklist[]> {

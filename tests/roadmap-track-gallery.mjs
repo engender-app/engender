@@ -52,8 +52,18 @@ const settle = async (path) => {
 };
 
 /* Not `fullPage`: the app scrolls inside [data-app-root], so a full-page
-   capture gets one viewport and a lot of nothing. */
+   capture gets one viewport and a lot of nothing.
+
+   The demo bar goes first. It is a quarter of a 390x844 frame and none of
+   it is the app, which matters here because these shots are for looking at
+   rather than for diffing. Removed per shot rather than once, since the
+   screen re-renders it after a navigation. */
 const shoot = async (name) => {
+  await page.evaluate(() => {
+    for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
+    document.body.classList.remove('has-demo-bar');
+  });
+  await page.waitForTimeout(200);
   await page.screenshot({ path: `${outDir}/${name}.png` });
   shots.push(name);
 };

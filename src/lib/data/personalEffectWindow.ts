@@ -250,17 +250,18 @@ export function literatureWindowDays(
   const endEpochDay = anchor.endEpochDay;
   const window = EFFECT_LITERATURE_WINDOW[effect]!;
 
-  /** Null while the episode is open, which is what leaves every band exactly
-      as it was before the clip existed. */
-  const clip = (day: number): number => (endEpochDay !== null && day > endEpochDay ? endEpochDay : day);
-  const startedTooLate = (day: number): boolean => endEpochDay !== null && day > endEpochDay;
+  /** The one question the clip asks, asked once. Always false while the
+      episode is open, which is what leaves every band exactly as it was
+      before the clip existed. */
+  const pastEnd = (day: number): boolean => endEpochDay !== null && day > endEpochDay;
+  const clip = (day: number): number => (pastEnd(day) ? endEpochDay! : day);
 
   const onsetStart = afterAnchor(anchorEpochDay, window.onsetMonths.min);
-  if (startedTooLate(onsetStart)) return null;
+  if (pastEnd(onsetStart)) return null;
 
   const completionStart = window.completionMonths ? afterAnchor(anchorEpochDay, window.completionMonths.min) : null;
   const completion =
-    window.completionMonths && completionStart !== null && !startedTooLate(completionStart)
+    window.completionMonths && completionStart !== null && !pastEnd(completionStart)
       ? {
           start: completionStart,
           end:
