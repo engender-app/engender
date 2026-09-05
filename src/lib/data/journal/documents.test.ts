@@ -191,3 +191,27 @@ test('documents linked to one target, newest first, and not the others', async (
     [newer, older]
   );
 });
+
+/* Ticket 56 asks for the null-out tested per kind, and two of the four kinds
+   have no delete to test: a regimen episode is never deleted (regimen.ts) and
+   a roadmap goal cannot be deleted today (provenance.ts). The two that do -
+   milestones and procedures - are tested where their own areas are
+   (areas.test.ts, procedures.test.ts).
+
+   This is the guard for the day that stops being true. It reads the live area
+   objects rather than restating a list, so adding a delete to either area
+   fails here until the document link is nulled the way deleteMilestone and
+   deleteProcedure null it. */
+test('a regimen episode and a roadmap goal still have no delete for a link to dangle from', async () => {
+  const { journal } = await device();
+  const deletesIn = (area: object) =>
+    Object.entries(area)
+      .filter(([name, value]) => name.startsWith('delete') && typeof value === 'function')
+      .map(([name]) => name);
+
+  // The oracle first: an area that does delete is seen by the same read.
+  assert.deepEqual(deletesIn(journal.documents), ['deleteDocument']);
+
+  assert.deepEqual(deletesIn(journal.regimen), []);
+  assert.deepEqual(deletesIn(journal.roadmap), []);
+});
