@@ -3339,6 +3339,8 @@
   "document_link_add": "Link it",
   "document_link_sheet": "Link this document",
   "document_link_clear": "Remove the link",
+  "document_link_empty_title": "Nothing to link this to yet",
+  "document_link_empty_body": "A document can sit under a milestone, a procedure, a course of medication or a step on your roadmap. Once you have one of those, it turns up here.",
   "document_linked_here_title": "Documents linked here",
   "document_link_kind_milestone": "A milestone",
   "document_link_kind_procedure": "A procedure",
