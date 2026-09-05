@@ -379,6 +379,21 @@
           />
         </span>
       </div>
+      <div class="kit-row" data-wear-duration-cue-toggle>
+        <span class="kit-row-text">
+          <span class="kit-row-title">{m.wear_duration_cue_toggle()}</span>
+          <span class="kit-row-sub">{m.wear_duration_cue_sub()}</span>
+        </span>
+        <span class="kit-row-trail">
+          <Switch
+            checked={prefs.wearDurationCueEnabled}
+            label={m.wear_duration_cue_toggle()}
+            onChange={(v) => {
+              prefs.wearDurationCueEnabled = v;
+            }}
+          />
+        </span>
+      </div>
       <div class="kit-row" data-roadmap-milestone-sync>
         <span class="kit-row-text">
           <span class="kit-row-title">{m.roadmap_milestone_sync_title()}</span>

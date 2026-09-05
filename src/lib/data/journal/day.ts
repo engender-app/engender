@@ -385,6 +385,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   medicationStock: 'a running count, dated by when it was last reported',
 
   roadmapChecks: 'no date of its own',
+  roadmapTracks: 'no date of its own',
   roadmapGoals: 'no date of its own',
   checklists: 'no date of its own',
 

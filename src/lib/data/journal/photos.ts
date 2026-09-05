@@ -33,6 +33,15 @@ import { assertChanged, bool, mintUuid, now } from './support';
 export interface NormalizedPhoto {
   full: Uint8Array;
   thumb: Uint8Array;
+  /** The day this photo shows on, when it differs from whatever its owner
+      (entry or milestone) is dated to (ticket 47, ADR-0008/0015). Every
+      photo this app normalizes has already had its capture date stripped,
+      so a picked file never carries one to read - this is where the
+      add-photo flow's day prompt puts what the person typed. Undefined or
+      null leaves the day inherited, exactly as before this column existed
+      (ADR-0010: nothing here is derived, and nothing derives from it beyond
+      the read queries below). */
+  epochDayOverride?: number | null;
 }
 
 /** Exactly one owner, mirroring the photo table's CHECK constraint. An
@@ -66,6 +75,10 @@ export interface PhotosArea {
       of curation metadata should: a typo'd id and a successful toggle must
       not look alike. */
   setStarred(id: string, starred: boolean): Promise<void>;
+  /** Sets or clears which day this photo shows on (ticket 47, ADR-0008/
+      0015): null reverts it to whatever its owning entry or milestone is
+      dated to. Throws on an unknown id, the same reason setStarred does. */
+  setEpochDayOverride(id: string, epochDay: number | null): Promise<void>;
 }
 
 type PhotoRow = { uuid: string; file_path: string; starred: number };
@@ -314,13 +327,14 @@ export async function stagePhoto(
 export async function insertStagedPhoto(
   driver: SqliteDriver,
   columns: PhotoColumns,
-  photo: StagedPhoto
+  photo: StagedPhoto,
+  epochDayOverride: number | null = null
 ): Promise<string> {
   const orderIndex = await nextOrderIndex(driver, columns);
   await driver.run(
-    `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [photo.id, columns.entryId, columns.milestoneId, photo.fileName, orderIndex, now()]
+    `INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, epoch_day_override, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [photo.id, columns.entryId, columns.milestoneId, photo.fileName, orderIndex, epochDayOverride, now()]
   );
   return photo.id;
 }
@@ -333,7 +347,7 @@ export async function attachPhoto(
 ): Promise<string> {
   const columns = await columnsFor(driver, owner);
   const staged = await stagePhoto(files, photo);
-  return insertStagedPhoto(driver, columns, staged);
+  return insertStagedPhoto(driver, columns, staged, photo.epochDayOverride ?? null);
 }
 
 export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): PhotosArea {
@@ -354,7 +368,7 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
          (phase 5 ticket 19); a milestone's has no such state to check. */
       const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
         `SELECT p.uuid, p.file_path, p.starred,
-                COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
+                COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
                 m.name AS milestone_name
          FROM photo p
          LEFT JOIN entry e ON e.id = p.entry_id
@@ -372,7 +386,7 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
     async starredPhotos() {
       const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
         `SELECT p.uuid, p.file_path, p.starred,
-                COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
+                COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
                 m.name AS milestone_name
          FROM photo p
          LEFT JOIN entry e ON e.id = p.entry_id
@@ -390,6 +404,15 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
     async setStarred(id, starred) {
       const result = await driver.run('UPDATE photo SET starred = ?, updated_at = ? WHERE uuid = ?', [
         starred ? 1 : 0,
+        now(),
+        id
+      ]);
+      assertChanged(result, `photo: ${id}`);
+    },
+
+    async setEpochDayOverride(id, epochDay) {
+      const result = await driver.run('UPDATE photo SET epoch_day_override = ?, updated_at = ? WHERE uuid = ?', [
+        epochDay,
         now(),
         id
       ]);

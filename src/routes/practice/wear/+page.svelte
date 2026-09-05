@@ -39,7 +39,25 @@
     todayEpochDay,
     FIRST_EPOCH_DAY
   } from '$lib/data/epochDay';
-  import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
+  import {
+    binderCueShowing,
+    hoursMinutesOf,
+    wearTrendRegion,
+    WEAR_KIND_REGION,
+    WEAR_KINDS
+  } from '$lib/data/journal/wearSessions';
+  import {
+    wearDeleteSheetTitle,
+    wearEditSheetTitle,
+    wearKindLabel,
+    wearNewSheetTitle,
+    wearReminderTitle,
+    wearRunningCardTitle,
+    wearRunningSheetTitle,
+    wearSafetyFacts,
+    wearAddAria
+  } from '$lib/data/vocabulary/wearLabels';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
@@ -47,7 +65,7 @@
   import { dayAxisLabel, dayAxisOptions } from '$lib/components/kit/dayAxisLabel';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '$lib/data/bodyMap';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { Reminder, WearSession } from '$lib/data/types';
+  import type { Reminder, WearKind, WearSession } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -89,11 +107,20 @@
   let sessionsQuery = liveList((j) => j.wearSessions.getSessions(from, today));
   let runningQuery = liveQuery((j) => j.wearSessions.getRunningSession());
   let remindersQuery = liveList((j) => j.reminders.getReminders());
+  /* What a blank draft and the trend's region default open on. Not read off
+     `sessions` above: that list is a 90 day window, and the kind somebody
+     last logged is a fact about their whole journal (wearSessions.ts). */
+  let latestKindQuery = liveQuery((j) => j.wearSessions.latestKind());
 
   let sessions = $derived(sessionsQuery.rows);
   let running = $derived(runningQuery.value ?? null);
   let reminders = $derived(remindersQuery.rows);
   let loading = $derived(sessionsQuery.loading);
+  /* Binder when there is nothing to go on. The sheet opens on it with the
+     picker right there, so a first session is one tap from being corrected;
+     quick add's one-tap start is the case with no picker at all, and it
+     reads the same answer (QuickAdd.svelte). */
+  let latestKind = $derived<WearKind>(latestKindQuery.value ?? 'binder');
 
   // Newest first - the running session (if any) gets its own card above this list.
   let completed = $derived([...sessions].filter((s) => s.durationMs !== null).reverse());
@@ -106,6 +133,11 @@
   });
 
   let runningElapsed = $derived(running ? hoursMinutesOf(nowTick - running.startTimestamp) : null);
+  /* Recomputed off the same 30 second tick the elapsed reading is, so the
+     cue appears on its own without the screen being touched (ADR-0064). */
+  let showCue = $derived(
+    running !== null && binderCueShowing(running, nowTick, prefs.wearDurationCueEnabled)
+  );
 
   const reminderFor = (sessionId: string): Reminder | null =>
     reminders.find((r) => r.autoSource === `wear:${sessionId}`) ?? null;
@@ -134,6 +166,10 @@
 
   type Editor = {
     id?: string;
+    /** Editable on an existing session, unlike `mode`: a mistyped kind
+        would otherwise leave the row wearing the wrong wording for good,
+        and it is the same one column either way. */
+    kind: WearKind;
     isRunning: boolean;
     /** The anchor a day change is applied against (shiftStartToDay). For a
         brand-new backfilled session this is today's local midnight. */
@@ -150,6 +186,7 @@
 
   const record = recordEditor<WearSession, Editor>({
     blank: () => ({
+      kind: latestKind,
       isRunning: false,
       startTimestamp: startOfDayTimestamp(today),
       mode: running ? 'backfill' : 'live',
@@ -164,6 +201,7 @@
       const reminder = reminderFor(session.id);
       return {
         id: session.id,
+        kind: session.kind,
         isRunning,
         startTimestamp: session.startTimestamp,
         mode: isRunning ? 'live' : 'backfill',
@@ -181,11 +219,12 @@
 
       if (draft.mode === 'live' && !draft.id) {
         await journal.wearSessions.upsertSession({
+          kind: draft.kind,
           startTimestamp: Date.now(),
           durationMs: null,
           note,
           reminderHoursAfterStart,
-          reminderTitle: m.wear_log()
+          reminderTitle: wearReminderTitle(draft.kind)
         });
         return;
       }
@@ -193,16 +232,19 @@
       const newDay = epochDayFromDateInputValueOrToday(draft.day);
       await journal.wearSessions.upsertSession({
         id: draft.id,
+        kind: draft.kind,
         startTimestamp: shiftStartToDay(draft.startTimestamp, newDay),
         durationMs: Math.round(parseFloat(draft.durationHours) * 3600000),
         note,
         reminderHoursAfterStart,
-        reminderTitle: m.wear_log()
+        reminderTitle: wearReminderTitle(draft.kind)
       });
     },
     remove: (id) => journal.wearSessions.deleteSession(id),
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
+
+  let kindOptions = $derived(WEAR_KINDS.map((kind) => ({ value: kind, label: wearKindLabel(kind) })));
 
   let modeOptions = $derived(
     running
@@ -238,30 +280,37 @@
   async function stopRunning(draft: Editor) {
     await journal.wearSessions.upsertSession({
       id: draft.id,
+      kind: draft.kind,
       startTimestamp: draft.startTimestamp,
       durationMs: Date.now() - draft.startTimestamp,
       note: draft.note.trim() || null,
       reminderHoursAfterStart: reminderHoursOf(draft),
-      reminderTitle: m.wear_log()
+      reminderTitle: wearReminderTitle(draft.kind)
     });
     record.editor = null;
   }
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* Chest and genitals only - binder and tucking's own pair (CONTEXT: "Wear
-     session"), not the full body-map vocabulary. */
+  /* One region per kind and nothing else (CONTEXT: "Wear session"), not the
+     full body-map vocabulary. Three rather than the two this offered before
+     kinds existed, because compression compares against hips and waist. */
+  const TREND_REGIONS = Object.values(WEAR_KIND_REGION);
   let trendRegionOptions = $derived(
-    vocabulary.bodyRegions
-      .filter((r) => r.id === 'chest' || r.id === 'genitals')
-      .map((r) => ({ value: r.id, label: r.name }))
+    vocabulary.bodyRegions.filter((r) => TREND_REGIONS.includes(r.id)).map((r) => ({ value: r.id, label: r.name }))
   );
-  let trendRegion = $state('chest');
-  $effect(() => {
-    if (trendRegionOptions.length && !trendRegionOptions.some((r) => r.value === trendRegion)) {
-      trendRegion = trendRegionOptions[0].value;
-    }
-  });
+  /* Null until the person picks. Which region that resolves to - the pick,
+     the kind's default, or the fallback when either names a region the
+     person has turned off - is `wearTrendRegion`'s rule, not this screen's
+     (wearSessions.ts). */
+  let pickedRegion = $state<string | null>(null);
+  let trendRegion = $derived(
+    wearTrendRegion(
+      latestKind,
+      pickedRegion,
+      trendRegionOptions.map((r) => r.value)
+    )
+  );
 
   let range = $state(30);
 
@@ -326,7 +375,7 @@
 <div class="screen">
   <ScreenHeader title={m.wear_log()} back={() => smartBack('/more')} subtitle={m.wear_log_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.wear_session_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={wearAddAria(latestKind)} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
@@ -342,7 +391,7 @@
             key="running"
             data-wear-running
             icon="clock"
-            title={m.wear_session_running_card_title()}
+            title={wearRunningCardTitle(running.kind)}
             subtitle={runningElapsed
               ? `${m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })} · ${m.wear_session_duration_hm({ hours: String(runningElapsed.hours), minutes: String(runningElapsed.minutes) })}`
               : m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })}
@@ -353,6 +402,13 @@
               <Icon name="stop" size={20} />
             {/snippet}
           </ListRow>
+          <!-- The cue (ADR-0064). A line inside the card the running row
+               already sits in, rather than anything that interrupts: the
+               row keeps its stop control, and nothing about Stop or Save
+               changes when this appears. -->
+          {#if showCue}
+            <p class="muted small wear-cue" data-wear-duration-cue transition:disclose>{m.wear_session_cue()}</p>
+          {/if}
         </ListCard>
       {/if}
 
@@ -365,7 +421,7 @@
                 key={session.id}
                 data-wear-session={session.id}
                 icon="clock"
-                title={m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}
+                title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
                 subtitle={session.note
                   ? `${fmtDayLong(epochDayFromTimestamp(session.startTimestamp))} · ${session.note}`
                   : fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}
@@ -442,7 +498,7 @@
               label={m.wear_session_trend_region_group()}
               value={trendRegion}
               options={trendRegionOptions}
-              onPick={(v) => (trendRegion = v)}
+              onPick={(v) => (pickedRegion = v)}
             />
           {/if}
         {/snippet}
@@ -478,11 +534,11 @@
   <RecordSheet
     {record}
     handle="wear-session"
-    newTitle={m.wear_session_new_sheet()}
-    editTitle={(draft) => (draft.isRunning ? m.wear_session_running_sheet() : m.wear_session_edit_sheet())}
+    newTitle={(draft) => wearNewSheetTitle(draft.kind)}
+    editTitle={(draft) => (draft.isRunning ? wearRunningSheetTitle(draft.kind) : wearEditSheetTitle(draft.kind))}
     deleteLabel={m.wear_session_delete()}
     confirm={{
-      title: m.wear_session_delete_sheet(),
+      title: (session) => wearDeleteSheetTitle(session.kind),
       question: (session) =>
         m.wear_session_delete_q({ date: fmtDayLong(epochDayFromTimestamp(session.startTimestamp)) }),
       hint: () => m.wear_session_delete_hint(),
@@ -491,6 +547,17 @@
     }}
   >
     {#snippet fields(editor)}
+      <Field label={m.wear_kind_group()} legend>
+        {#snippet children()}
+          <Segmented
+            key="wear-kind"
+            name={m.wear_kind_group()}
+            options={kindOptions}
+            value={editor.kind}
+            onChange={(v) => (editor.kind = v as WearKind)}
+          />
+        {/snippet}
+      </Field>
 
       {#if editor.isRunning}
         <p class="muted small">{m.wear_session_running_since({ time: fmtTime(editor.startTimestamp) })}</p>
@@ -533,6 +600,28 @@
           ></textarea>
         {/snippet}
       </Field>
+
+      <!-- The facts (ticket 50 section 4). Always here, for every kind, and
+           never gated by the duration cue's toggle: these are about method
+           rather than duration, and each block names where it comes from
+           the way the voice screen's pitch bands do (ADR-0059). -->
+      <!-- One slot that travels between the three sets rather than snapping
+           to a new height, the same pairing the range control above uses:
+           `resize` on the box, `crossfade` on the block leaving it. -->
+      <div use:resize>
+        {#key editor.kind}
+          {@const safety = wearSafetyFacts(editor.kind)}
+          <div class="wear-facts" data-wear-facts={editor.kind} out:crossfade>
+            <p class="wear-facts-title">{m.wear_facts_title()}</p>
+            <ul class="muted small wear-facts-list">
+              {#each safety.facts as fact (fact)}
+                <li>{fact}</li>
+              {/each}
+            </ul>
+            <p class="muted small">{safety.source}</p>
+          </div>
+        {/key}
+      </div>
 
       {#if !isWeb}
         <Field label={m.wear_session_reminder_toggle()} legend spread>
@@ -608,5 +697,29 @@
 
   .legend-region {
     background: var(--accent-2);
+  }
+
+  /* Indented to the row's text column rather than the card's edge, so the
+     cue reads as belonging to the session above it. */
+  .wear-cue {
+    margin: 0;
+    padding: 0 var(--space-4) var(--space-3) var(--space-4);
+  }
+
+  .wear-facts {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .wear-facts-title {
+    margin: 0;
+    font-weight: var(--weight-medium);
+  }
+
+  .wear-facts-list {
+    margin: 0;
+    padding-left: var(--space-4);
+    display: grid;
+    gap: var(--space-1);
   }
 </style>
