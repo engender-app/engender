@@ -902,7 +902,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         tileKey: 'appointment-today',
         attrs: { 'data-appointment-today-tile': true },
         title: m.tile_appointment_title(),
-        value: appointment.kind ?? m.appointments_untitled(),
+        // Same fallback chain the appointments screen's own `titleOf` uses:
+        // a consult with no kind typed in still names the journey it
+        // belongs to before falling back to the untitled label.
+        value: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
         note:
           rest.length > 0
             ? m.tile_appointment_more({ count: String(rest.length) })

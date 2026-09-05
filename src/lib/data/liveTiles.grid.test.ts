@@ -563,11 +563,18 @@ describe('what each tile says', () => {
     expect(tile.dismiss).toBeUndefined();
   });
 
-  it('the appointment tile falls back to the untitled label with no kind set', () => {
+  it('the appointment tile falls back to the untitled label with no kind or procedure', () => {
     const tile = tileNamed('appointment-today', {
       reads: { todayAppointments: [{ ...todayAppointment, kind: null }] }
     })!;
     expect(tile.value).toBe(m.appointments_untitled());
+  });
+
+  it('the appointment tile names the procedure before the untitled label', () => {
+    const tile = tileNamed('appointment-today', {
+      reads: { todayAppointments: [{ ...todayAppointment, kind: null, procedureName: 'Vaginoplasty' }] }
+    })!;
+    expect(tile.value).toBe('Vaginoplasty');
   });
 
   it('the appointment tile counts the rest when more than one is today', () => {

@@ -89,7 +89,7 @@
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
-  import { splitHomeTiles } from '$lib/data/liveTiles';
+  import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
 
   const today = todayEpochDay();
@@ -468,6 +468,41 @@
     />
   {/if}
 
+  <!-- One tier's worth of tiles, in `block`'s weight and shape - shared by
+       the today location above and the moment location below (phase 8
+       features ticket 63), so the two locations cannot read the same table
+       and still draw two different shapes for it. -->
+  {#snippet tileRow(tiles: HomeTile[], block: (typeof TILE_BLOCKS)[number])}
+    {#if tiles.length > 0}
+      <TileGrid
+        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        data-live-tile-grid
+        data-rows={block.rows}
+      >
+        <!-- One slide rule for every tile on screen (deepening ticket 07) -
+             `shownTiles`, not just this tier, so a journal with one today
+             tile and one moment tile still slides both in together. -->
+        {#each tiles as tile (tile.key)}
+          <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
+            <Tile
+              key={tile.tileKey}
+              weight={block.weight}
+              title={tile.title}
+              value={tile.value}
+              note={tile.note}
+              href={tile.href}
+              action={tile.action}
+              dismiss={tile.dismiss}
+              {...tile.attrs}
+              data-live-tile={tile.key}
+            />
+          </div>
+        {/each}
+      </TileGrid>
+    {/if}
+  {/snippet}
+
   <!-- The today tier leads Home, above the mood pick (phase 8 features
        ticket 63, ADR-0067): what is happening today - a wear session
        running, a dose the day expects, an appointment on the date - answers
@@ -475,38 +510,11 @@
        grid: this is the same today-tier row the block below used to draw in
        its own turn, only moved. Empty, and nothing here renders at all -
        Home looks exactly as it did before this ticket. -->
-  {#each TILE_BLOCKS.filter((block) => block.tier === 'today') as block (block.tier)}
-    {#if todayTiles.length > 0}
-      <div transition:disclose>
-        <TileGrid
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-          flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-          data-live-tile-grid
-          data-rows={block.rows}
-        >
-          <!-- One slide rule for every tile on screen (deepening ticket 07) -
-               `shownTiles`, not just this tier, so a journal with one today
-               tile and one moment tile still slides both in together. -->
-          {#each todayTiles as tile (tile.key)}
-            <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
-              <Tile
-                key={tile.tileKey}
-                weight={block.weight}
-                title={tile.title}
-                value={tile.value}
-                note={tile.note}
-                href={tile.href}
-                action={tile.action}
-                dismiss={tile.dismiss}
-                {...tile.attrs}
-                data-live-tile={tile.key}
-              />
-            </div>
-          {/each}
-        </TileGrid>
-      </div>
-    {/if}
-  {/each}
+  {#if todayTiles.length > 0}
+    <div transition:disclose>
+      {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
+    </div>
+  {/if}
 
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
@@ -526,33 +534,7 @@
        the kit and tested for. -->
   {#if momentTiles.length > 0 || quietTiles.length > 0 || tileSplit.folded.length > 0}
     <div class="home-tiles" transition:disclose>
-      {#each TILE_BLOCKS.filter((block) => block.tier !== 'today') as block (block.tier)}
-        {#if momentTiles.length > 0}
-          <TileGrid
-            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-            flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-            data-live-tile-grid
-            data-rows={block.rows}
-          >
-            {#each momentTiles as tile (tile.key)}
-              <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
-                <Tile
-                  key={tile.tileKey}
-                  weight={block.weight}
-                  title={tile.title}
-                  value={tile.value}
-                  note={tile.note}
-                  href={tile.href}
-                  action={tile.action}
-                  dismiss={tile.dismiss}
-                  {...tile.attrs}
-                  data-live-tile={tile.key}
-                />
-              </div>
-            {/each}
-          </TileGrid>
-        {/if}
-      {/each}
+      {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
 
       <!-- The quiet weight. A dormant nudge keeps neither its action nor its
            dismiss: the whole line taps through to the screen its action
