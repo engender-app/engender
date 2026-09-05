@@ -59,7 +59,7 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   voiceBenchmark: ['voice_benchmark'],
   voicePracticeTake: ['voice_practice_take'],
   videoNote: ['video_note'],
-  roadmapCheck: ['roadmap_check'],
+  roadmapCheck: ['roadmap_check', 'roadmap_track'],
   roadmapGoal: ['roadmap_goal'],
   // The recovery checklist is an ordinary checklist row (writes.ts's own
   // comment on `procedures`), so it lives here and not under 'procedure'.
@@ -76,7 +76,8 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   areaState: ['area_state'],
   savedQuestion: ['saved_question'],
   revisit: ['revisit'],
-  marginNote: ['margin_note']
+  marginNote: ['margin_note'],
+  wordIgnore: ['word_frequency_ignore']
 };
 
 /** Tables `SELECT name FROM sqlite_master` returns that no coarse name

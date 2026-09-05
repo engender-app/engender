@@ -183,6 +183,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   procedures: 'one dated event and a recovery window; the course ends when the recovery does',
   roadmapGoals: 'a goal is answered per goal and a roadmap has no last one',
   roadmapChecks: 'a tick against one bundled goal, answered per goal like the goals themselves',
+  roadmapTracks: 'saying a track is not your path is already the roadmap\'s own way of putting one away',
   milestones: 'one dated point each, and the list of them never closes',
   tallyEvents: 'one dated point each, and the list of them never closes',
   counterevidenceSnapshots:
@@ -218,7 +219,8 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   entryTemplates: 'reference data, not a series (CONTEXT: "Reference data")',
   measurementTypes: 'reference data, not a series (CONTEXT: "Reference data")',
   effectCategories: 'reference data, not a series (CONTEXT: "Reference data")',
-  personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")'
+  personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")',
+  wordIgnore: 'reference data, not a series (CONTEXT: "Reference data")'
 };
 
 /** Whether an area is out of the navigation. Nothing here hides data: a

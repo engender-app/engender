@@ -147,7 +147,14 @@ export const TABLE_NAMES = [
   'videoNote',
   /* Roadmap goal ticks (phase 4 ticket 23). One name for every country
      pack's ticks: they live in one table and a screen shows one pack at a
-     time, so there is nothing a per-pack name would let a query skip. */
+     time, so there is nothing a per-pack name would let a query skip.
+
+     Track dismissals (phase 8 features ticket 49) share the name rather
+     than taking one of their own, which is the opposite call from
+     'roadmapGoal' below and for the opposite reason: a dismissed track
+     decides which ticks are even shown, so no screen ever reads one
+     without the other, and a separate name would only buy a re-query of
+     four rows. */
   'roadmapCheck',
   /* Custom roadmap goals (phase 5 ticket 20), kept apart from
      'roadmapCheck': a screen reading the custom goals someone added
@@ -219,7 +226,12 @@ export const TABLE_NAMES = [
      entry's own query must not re-run when a margin note changes, and the
      reverse - adding, editing or removing a note must not make every
      screen reading entries think the entry itself changed. */
-  'marginNote'
+  'marginNote',
+  /* The word-frequency ignore list (phase 8 features ticket 48). Its own
+     name rather than folded into anything: no read here depends on it but
+     the words screen's own count, and ignoring a word has not touched a
+     single entry's note. */
+  'wordIgnore'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -397,7 +409,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       attach: ['photo', 'entry', 'milestone'],
       remove: ['photo', 'entry', 'milestone'],
-      setStarred: ['photo', 'entry', 'milestone']
+      setStarred: ['photo', 'entry', 'milestone'],
+      // Changes which day the photo itself reads as (ticket 47), which both
+      // reads below fold into what they hand an entry or milestone.
+      setEpochDayOverride: ['photo', 'entry', 'milestone']
     },
     // Both reads join the owners, to date each photo and to say which record
     // it hangs off.
@@ -547,6 +562,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: { setEraMuted: ['eraMute'] },
     reads: { getMutedEraUuids: ['eraMute'] }
   }),
+  wordIgnore: classify<Journal['wordIgnore']>()({
+    writes: { setWordIgnored: ['wordIgnore'] },
+    reads: { getIgnoredWords: ['wordIgnore'] }
+  }),
   wearSessions: classify<Journal['wearSessions']>()({
     writes: {
       // A save can also create, move or clear this session's own reminder
@@ -695,10 +714,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   roadmap: classify<Journal['roadmap']>()({
     writes: {
       setGoalStatus: ['roadmapCheck'],
+      setTrackDismissed: ['roadmapCheck'],
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal']
     },
-    reads: { getGoalStatuses: ['roadmapCheck'], getCustomGoals: ['roadmapGoal'] }
+    reads: {
+      getGoalStatuses: ['roadmapCheck'],
+      getDismissedTracks: ['roadmapCheck'],
+      getCustomGoals: ['roadmapGoal']
+    }
   }),
   checklists: classify<Journal['checklists']>()({
     writes: {

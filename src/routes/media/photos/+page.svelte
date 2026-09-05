@@ -10,9 +10,9 @@
      The picking grid stays a grid. A photo is chosen by looking at it, so
      the cell is the photograph; nothing about that was the old world's. */
   import { m } from '$lib/paraglide/messages';
-  import { liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
-  import { calendarDuration } from '$lib/data/epochDay';
+  import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
   import {
     orderAnchorsByJourney,
     stepCompareAnchor,
@@ -21,10 +21,14 @@
   } from '$lib/data/photos/compare-state';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Measurement } from '$lib/data/types';
+  import type { DatedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -104,6 +108,27 @@
       selected = [];
     }
   }
+
+  /* Editing a single photo's day (ticket 47, ADR-0008/0015): every photo
+     this app can normalize has had its capture date stripped on import, so
+     this is the only place after the fact to say when one is really from -
+     Persona 1's shoebox print, dated to 1994 rather than to the day it was
+     scanned in. Held by id rather than by the photo object itself: the
+     list is a live query, and re-opening the sheet after a write should
+     read the row it just changed rather than a stale copy of it. */
+  let dayEditorId = $state<string | null>(null);
+  let dayEditorValue = $state('');
+
+  function openDayEditor(photo: DatedPhoto) {
+    dayEditorId = photo.id;
+    dayEditorValue = dateInputValueFromEpochDay(photo.epochDay);
+  }
+
+  async function saveDayEditor() {
+    if (!dayEditorId) return;
+    await journal.photos.setEpochDayOverride(dayEditorId, epochDayFromDateInputValueOrToday(dayEditorValue));
+    dayEditorId = null;
+  }
 </script>
 
 <div class="screen">
@@ -182,13 +207,18 @@
         </p>
         <div class="photo-grid">
           {#each photos as p, i (p.id + String(p.epochDay))}
-            <button class="photo-cell" data-photo-cell class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
-              aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-              onclick={() => toggle(p.id)}>
-              <PhotoThumb photo={p} size={104} />
-              <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
-              {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
-            </button>
+            <div class="photo-cell-wrap">
+              <button class="photo-cell" data-photo-cell class:is-selected={orderedSelected.includes(p.id)} aria-pressed={orderedSelected.includes(p.id)}
+                aria-label={m.ph_cell_aria({ date: fmtDay(p.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+                onclick={() => toggle(p.id)}>
+                <PhotoThumb photo={p} size={104} />
+                <span class="photo-date">{fmtDay(p.epochDay, { month: 'short', year: '2-digit' })}</span>
+                {#if orderedSelected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+              </button>
+              <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} onclick={() => openDayEditor(p)}>
+                <Icon name="calendar" size={14} />
+              </button>
+            </div>
           {/each}
         </div>
         <div>
@@ -210,4 +240,49 @@
       {/snippet}
     </ReadGate>
   {/if}
+
+  <Sheet open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
+    {#if dayEditorId !== null}
+      <h3>{m.photo_day_edit_title()}</h3>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_edit_hint()}</p>
+      <Field label={m.photo_day_label()} id="photo-day-edit">
+        {#snippet children(id)}
+          <DatePicker name="photo-day-edit" bind:value={dayEditorValue} {id} />
+        {/snippet}
+      </Field>
+      <button class="btn btn-primary press" data-photo-day-edit-save onclick={saveDayEditor}>
+        <span>{m.photo_day_edit_save()}</span>
+      </button>
+    {/if}
+  </Sheet>
 </div>
+
+<style>
+  /* The day-edit affordance on a browse cell (ticket 47): a sibling of
+     .photo-cell rather than a change to it, so export/+page.svelte's own
+     .photo-cell button - screens.css's shared class - keeps meaning
+     exactly what it always has there.
+
+     Sized and lifted the same way .starred-photo-unstar already solves
+     the identical problem (screens.css): a real button here needs the
+     full --touch-target hit area, but a 44px disc would swallow half the
+     104px cell, so the tap target and the visual circle are two
+     differently-sized boxes - the outer button transparent and centred
+     on the corner, the smaller ::before disc carrying the surface fill
+     and the shadow that lifts it off whatever the photo underneath
+     happens to be. */
+  .photo-cell-wrap { position: relative; }
+  .photo-edit-day {
+    position: absolute; bottom: -8px; left: -8px;
+    width: var(--touch-target); height: var(--touch-target);
+    border: none; cursor: pointer; background: none; color: var(--text-1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-edit-day :global(.icon) { position: relative; }
+  .photo-edit-day::before {
+    content: '';
+    position: absolute; inset: 0; margin: auto;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface); box-shadow: var(--shadow-1);
+  }
+</style>

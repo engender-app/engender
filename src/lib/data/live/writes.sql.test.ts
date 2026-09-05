@@ -320,6 +320,7 @@ beforeAll(async () => {
     journal.photos.attach({ milestoneId: secondMilestoneId }, photo('loose'))
   )) as string;
   await drive('photos', 'setStarred', () => journal.photos.setStarred(looseMilestonePhoto, true));
+  await drive('photos', 'setEpochDayOverride', () => journal.photos.setEpochDayOverride(looseMilestonePhoto, 19000));
   await drive('photos', 'remove', () => journal.photos.remove(looseMilestonePhoto));
   await drive('milestones', 'deleteMilestone', () => journal.milestones.deleteMilestone(secondMilestoneId));
 
@@ -639,6 +640,9 @@ beforeAll(async () => {
   await drive('eraMutes', 'setEraMuted', () => journal.eraMutes.setEraMuted(beforeIKnew, true));
   await drive('eras', 'deleteEra', () => journal.eras.deleteEra(firstYear));
 
+  // --- wordIgnore -----------------------------------------------------------
+  await drive('wordIgnore', 'setWordIgnored', () => journal.wordIgnore.setWordIgnored('marta', true));
+
   // --- wearSessions -----------------------------------------------------
   const wearSessionId = (await drive('wearSessions', 'upsertSession', () =>
     journal.wearSessions.upsertSession({
@@ -825,6 +829,7 @@ beforeAll(async () => {
     journal.roadmap.addCustomGoal('social', 'Tell my sister')
   )) as { id: string };
   await drive('roadmap', 'setCustomGoalStatus', () => journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked'));
+  await drive('roadmap', 'setTrackDismissed', () => journal.roadmap.setTrackDismissed('medical', true));
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
@@ -926,6 +931,7 @@ beforeAll(async () => {
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
   await driveRead('eraMutes', 'getMutedEraUuids', () => journal.eraMutes.getMutedEraUuids());
+  await driveRead('wordIgnore', 'getIgnoredWords', () => journal.wordIgnore.getIgnoredWords());
   await driveRead('chartAnnotations', 'getAnnotations', () =>
     journal.chartAnnotations.getAnnotations(0, 30000, 20000)
   );
@@ -1001,6 +1007,7 @@ beforeAll(async () => {
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
+  await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
   await driveRead('stats', 'dayAverages', () => journal.stats.dayAverages('mood', 19000, 21000));
   await driveRead('stats', 'daySpread', () => journal.stats.daySpread('mood', 19000, 21000));

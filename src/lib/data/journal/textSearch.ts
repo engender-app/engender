@@ -517,6 +517,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // above already searches - and a mute is presence, not a value.
   eraMutes: 'no text of its own: a uuid naming a muted era',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
+  roadmapTracks: 'no text of its own: the name of one of the app’s four tracks',
   hairPhotos: 'no text of its own: a dated photograph',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',
@@ -554,7 +555,11 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // search, and search returning a hit on the search itself would be the
   // feature answering its own reflection rather than the journal.
   savedQuestions: 'a name for a search, not a record for search to hand back as a hit',
-  revisits: 'no text of its own: an entry link and two days'
+  revisits: 'no text of its own: an entry link and two days',
+  // The word itself is already searchable where it was actually written -
+  // the entry's own note, matched through the FTS index (ADR-0005) - so
+  // matching it here too would show the same word twice.
+  wordIgnore: 'a word already searchable in the note it came from, not new text of its own'
 };
 
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;

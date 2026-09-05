@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 71);
+  assert.equal(db.getUserVersion(), 74);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1167,12 +1167,12 @@ test('v45 is a no-op for an installation that never set a PIN', async () => {
   assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 });
 
-test('v71 gives every wear session a kind, and a row from before it reads back as a binder', async () => {
+test('v74 gives every wear session a kind, and a row from before it reads back as a binder', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(
     db,
     noopFileOps(),
-    migrations.filter((m) => m.version <= 70)
+    migrations.filter((m) => m.version <= 73)
   );
 
   /* Written when the table had no column telling binding from tucking apart

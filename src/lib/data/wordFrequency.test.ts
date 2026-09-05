@@ -115,6 +115,57 @@ describe('wordFrequency', () => {
   });
 });
 
+describe('countWords with an ignore set', () => {
+  it('drops an ignored word regardless of which stopword list matched its note', () => {
+    // "Marta" is neither an English nor a Polish stopword, and would count
+    // normally without an ignore set - the case a third-language or a name
+    // has nowhere else to go (ticket 48).
+    const analysed = analyseNotes([note('Marta felt happy today'), note('Marta czuła się szczęśliwa')]);
+    const result = countWords(analysed, new Set(['marta']));
+    const words = result.map(([w]) => w);
+    expect(words).not.toContain('marta');
+    expect(words).toContain('happy');
+    expect(words).toContain('szczęśliwa');
+  });
+
+  it('composes with the per-note stopword fold rather than replacing it', () => {
+    // "i" already falls out as an English stopword; ignoring "happy" on top
+    // of that must not bring "i" back.
+    const analysed = analyseNotes([note('I am happy and proud')]);
+    const words = countWords(analysed, new Set(['happy'])).map(([w]) => w);
+    expect(words).not.toContain('i');
+    expect(words).not.toContain('happy');
+    expect(words).toContain('proud');
+  });
+
+  it('case-folds the ignore set the same way tokenize() folds a note', () => {
+    const analysed = analyseNotes([note('Kraków was cold')]);
+    const words = countWords(analysed, new Set(['kraków'])).map(([w]) => w);
+    expect(words).not.toContain('kraków');
+    expect(words).toContain('cold');
+  });
+
+  it("a third-language note's content words still count normally, only the ignored one removed", () => {
+    // Cyrillic, no Polish diacritic and no hit against either closed-class
+    // list: noteLanguage falls back to 'en', so none of these words fall
+    // out as a stopword - the ticket's own motivating gap (persona 5,
+    // Yuliia). Without an ignore set every content word should count as
+    // normal; naming one in the set should remove only that one.
+    const analysed = analyseNotes([note('Сьогодні було важко, але вже краще')]);
+    const unfiltered = countWords(analysed).map(([w]) => w);
+    expect(unfiltered).toEqual(expect.arrayContaining(['сьогодні', 'було', 'важко', 'краще']));
+
+    const withIgnore = countWords(analysed, new Set(['важко'])).map(([w]) => w);
+    expect(withIgnore).not.toContain('важко');
+    expect(withIgnore).toEqual(expect.arrayContaining(['сьогодні', 'було', 'краще']));
+  });
+
+  it('is unaffected by an empty or absent ignore set', () => {
+    const analysed = analyseNotes([note('happy day')]);
+    expect(countWords(analysed, new Set())).toEqual(countWords(analysed));
+  });
+});
+
 /* Phase 8 audit ticket 17. Counted rather than timed: what the ticket asks
    for is that a note is read once, and a stopwatch cannot tell one pass
    from three on a note short enough to fit in a test.

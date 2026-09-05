@@ -40,6 +40,18 @@ export interface RoadmapArea {
       is no reorder or move-track UI for a custom goal to feed. */
   addCustomGoal(track: RoadmapTrack, text: string): Promise<CustomRoadmapGoal>;
   setCustomGoalStatus(id: string, status: RoadmapGoalStatus): Promise<void>;
+
+  /** Which tracks the person has said are not their path (phase 8 features
+      ticket 49), sorted, so a caller comparing two reads gets the same
+      order. A track named here that `ROADMAP_TRACKS` no longer lists is
+      returned like any other and matches nothing on screen - the same
+      no-cleanup-job property a mute naming a deleted era has. */
+  getDismissedTracks(): Promise<string[]>;
+  /** Idempotent both ways: presence is the whole of the state, so
+      dismissing twice writes the same row and undoing one that was never
+      dismissed deletes nothing and is success. Never touches a goal's own
+      status - the fold is a reading of the ticks, not a write over them. */
+  setTrackDismissed(track: RoadmapTrack, dismissed: boolean): Promise<void>;
 }
 
 export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
@@ -90,6 +102,23 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
         id
       ]);
       assertChanged(result, `custom roadmap goal: ${id}`);
+    },
+
+    async getDismissedTracks() {
+      const rows = await driver.query<{ track: string }>('SELECT track FROM roadmap_track ORDER BY track');
+      return rows.map((row) => row.track);
+    },
+
+    async setTrackDismissed(track, dismissed) {
+      if (!dismissed) {
+        await driver.run('DELETE FROM roadmap_track WHERE track = ?', [track]);
+        return;
+      }
+      await driver.run(
+        `INSERT INTO roadmap_track (track, updated_at) VALUES (?, ?)
+           ON CONFLICT (track) DO UPDATE SET updated_at = excluded.updated_at`,
+        [track, now()]
+      );
     }
   };
 }
