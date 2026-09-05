@@ -279,6 +279,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
 
   eraMutes: 'no date of its own: a uuid naming a muted era',
   roadmapChecks: 'no date of its own',
+  roadmapTracks: 'no date of its own',
   roadmapGoals: 'no date of its own',
   checklists: 'no date of its own',
 

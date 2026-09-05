@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { EpisodeEndReason } from '../types';
+import type { EpisodeEndReason, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
@@ -374,6 +374,15 @@ export interface ArchiveRoadmapCheck {
   packKey: string;
   goalKey: string;
   status: string;
+}
+
+/** A roadmap track the person has said is not their path (phase 8 features
+    ticket 49), named by the track key alone - there is no pack in it,
+    because a track is the app's own structure rather than a pack's content.
+    Presence is the whole of the state, the way an ArchiveRoadmapCheck's own
+    absence means unchecked, so there is nothing here but the name. */
+export interface ArchiveRoadmapTrack {
+  track: string;
 }
 
 /** A user-authored roadmap goal (phase 5 ticket 20), named by its own
@@ -756,6 +765,7 @@ export interface ArchiveMedicationStock {
     session has nothing of its own to record about the handoff. */
 export interface ArchiveWearSession {
   id: string;
+  kind: WearKind;
   startTimestamp: number;
   durationMs: number | null;
   note: string | null;
@@ -827,6 +837,7 @@ export interface ArchiveJournal {
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
+  roadmapTracks: ArchiveRoadmapTrack[];
   roadmapGoals: ArchiveRoadmapGoal[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];

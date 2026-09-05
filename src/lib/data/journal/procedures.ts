@@ -238,6 +238,14 @@ export function makeProceduresArea(
       assertChanged(result, `procedure: ${id}`);
     },
 
+    /* The one read in this area that still selects from `appointment`
+       itself, against the rule the writes below follow. Deliberate: the
+       last-write registry budgets one query per registered area
+       (lastWrite.test.ts, "the assembled read costs one query per
+       registered area"), and asking appointments.ts for the consult half
+       and taking MAX in JS costs two. A union of two MAXes is what fits
+       that budget, and the budget is a documented repo standard, so it
+       wins over the ownership line. Nothing here writes. */
     async lastWriteEpochDay(todayEpochDay) {
       const rows = await driver.query<{ day: number | null }>(
         `SELECT MAX(day) AS day FROM (

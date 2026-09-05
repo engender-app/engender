@@ -95,6 +95,21 @@ export interface PreferenceValues {
   entryProcedureRecoveryEnabled: boolean;
   /** Whether active HRT regimen shows a physical change marker chip in the entry editor. */
   entryHrtEffectsEnabled: boolean;
+  /** Whether a running binder session past eight hours picks up its
+      duration cue, on the wear screen and the live tile (phase 8 features
+      ticket 50, ADR-0064). Default on: the figure is well enough sourced to
+      show unasked, and the cue blocks nothing.
+
+      It covers the cue and only the cue. The static safety facts on the
+      record sheet are not gated by it - those are the near-universally
+      agreed non-duration ones (never sleep in a binder, no ace bandages, no
+      household tape), and a person turning off an eight-hour marker is not
+      asking to be told less about tape.
+
+      Device-local for the same reason `entryNudges` and
+      `roadmapMilestoneSyncEnabled` are: a yes/no about what this
+      installation's screens say. */
+  wearDurationCueEnabled: boolean;
   /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
       A kind-level switch, not a way to hide one running session: the tile
       appears while a session is running and the kind is on, and this never
@@ -398,6 +413,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   entryDoseQuickLogEnabled: true,
   entryProcedureRecoveryEnabled: true,
   entryHrtEffectsEnabled: true,
+  wearDurationCueEnabled: true,
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
@@ -487,6 +503,7 @@ export const DEVICE_LOCAL_KEYS = [
   'entryDoseQuickLogEnabled',
   'entryProcedureRecoveryEnabled',
   'entryHrtEffectsEnabled',
+  'wearDurationCueEnabled',
   'wearTimerEnabled',
   'dosePanelEnabled',
   'readyLetterEnabled',

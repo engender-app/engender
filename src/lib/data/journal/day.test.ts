@@ -59,7 +59,7 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
   await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: epochDay });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay });
   await journal.tally.log({ kind: 'correctly_gendered', epochDay });
-  await journal.wearSessions.upsertSession({ startTimestamp: at(epochDay, 10), durationMs: 3600000 });
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: at(epochDay, 10), durationMs: 3600000 });
 
   const tryoutId = await journal.tryouts.upsertTryout({
     kind: 'name',

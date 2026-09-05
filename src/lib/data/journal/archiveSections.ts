@@ -760,6 +760,24 @@ const SECTIONS = [
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
+  /* A track somebody has said is not their path (phase 8 features ticket
+     49). Named by bundled structure rather than by anything the person
+     wrote, so it does not travel, for the same reason roadmapChecks above
+     does not: it records a fact about this person against content every
+     install already has.
+
+     A descriptor rather than a hand-written pair, unlike roadmapChecks: a
+     tick is identified by a pack/goal couple, which `identity` has no way
+     to name, and a dismissed track is one column of one table - exactly
+     what eraMutes above is. */
+  flat({
+    name: 'roadmapTracks',
+    travels: 'none',
+    table: 'roadmap_track',
+    identity: 'track',
+    orderBy: 'track',
+    columns: { track: 'track' }
+  }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
      present locally is simply skipped rather than compared column by column:
      a custom goal's text and track are fixed at creation (roadmap.ts has no
@@ -936,7 +954,19 @@ const SECTIONS = [
     table: 'wear_session',
     identity: 'uuid',
     orderBy: 'start_timestamp, id',
-    columns: { uuid: 'id', start_timestamp: 'startTimestamp', duration_ms: 'durationMs', note: 'note' }
+    columns: {
+      uuid: 'id',
+      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one:
+         no archive written before ticket 50 carries the field, and the flat
+         writer binds an undefined as a raw driver error rather than a null.
+         The value matches the column's own v71 default, so a session
+         restored from an older archive and one that was already in the
+         journal end up saying the same thing. */
+      kind: { field: 'kind', whenAbsent: 'binder' },
+      start_timestamp: 'startTimestamp',
+      duration_ms: 'durationMs',
+      note: 'note'
+    }
   }),
   /* Voice benchmarks (phase 5 deepening ticket 15). Flat: one row per take,
      no children, no rowid resolved against another section. Its two audio

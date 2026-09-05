@@ -239,8 +239,9 @@
           <div class="tag-row" role="group" aria-label={m.appointments_kind_label()}>
             {#each kindsQuery.rows as kind (kind)}
               <button
-                class="tag-chip"
+                class="tag-chip press"
                 class:is-selected={editor.kind === kind}
+                aria-pressed={editor.kind === kind}
                 data-kind={kind}
                 onclick={() => (editor.kind = kind)}
               >

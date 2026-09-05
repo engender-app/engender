@@ -2221,7 +2221,60 @@ const SCHEMA_V72 = `
 ALTER TABLE photo ADD COLUMN epoch_day_override INTEGER;
 `;
 
-/* v73: a consult becomes an appointment (phase 8 features ticket 57,
+/* v73: "not my path" one grain out, at the roadmap track (phase 8 features
+   ticket 49 item 5). Numbered v73 rather than v71: tickets 48 and 47 landed
+   on main first and took v71 and v72, so this was renumbered here rather
+   than fought over during the merge.
+
+   Until now the tri-state existed per goal only, so somebody the medical
+   track has nothing to do with had to say so on each of its seven goals in
+   turn.
+
+   Presence is the whole of the state, the shape roadmap_check gives a tick
+   (v18) and era_mute gives a mute (v56): a row means "not my path" and no
+   row means the ordinary case, so undoing it is a DELETE and there is no
+   third value to store or read back. That is also what makes the table safe
+   against a track this build does not have - a row naming a track that
+   ROADMAP_TRACKS no longer lists is simply never asked about, the same way
+   a stale era mute is.
+
+   Not keyed by pack. A track is the app's own structure and a pack
+   populates it (roadmap.ts), so dismissing "medical" is a statement about
+   the person's path rather than about Poland's procedure, and it should
+   still hold if a second country's pack ever arrives. `roadmap_check` is
+   keyed by pack for the opposite reason: a goal key only means anything
+   inside the pack that defines it. */
+const SCHEMA_V73 = `
+CREATE TABLE roadmap_track (
+  track      TEXT PRIMARY KEY,
+  updated_at INTEGER NOT NULL
+);
+`;
+
+/* v74: which practice a wear session was (phase 8 features ticket 50,
+   ADR-0064). Numbered v74 rather than v71: tickets 48 and 47 took v71 to
+   v73 on main while this branch was open, so this was renumbered at the
+   merge rather than fought over.
+
+   v22 merged binder and tucking into one table with no column telling them
+   apart, so no copy, chart default or duration cue could ever be specific
+   to either; `kind` is that column, closed to three values (`binder`,
+   `tucking`, `compression`) drafted in messages/*.json.
+
+   NOT NULL because a session with no kind has no wording to draw - every
+   user-facing string on that screen is picked by it. SQLite cannot add a
+   NOT NULL column without a default, and the default doubles as the
+   backfill for rows written before this migration: the app is unpublished,
+   so the ticket leaves what an existing row becomes free, and `binder` is
+   the kind the feature shipped named after. No CHECK, the same reasoning
+   v69 and v70 give: the write layer (wearSessions.ts) is the one writer,
+   and a CHECK would refuse to even read back a row arriving from an older
+   archive. */
+const SCHEMA_V74 = `
+ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
+`;
+
+/* v75: a consult becomes an appointment (phase 8 features ticket 57,
    ADR-0066). The concept existed on four surfaces and had a row in none: the
    prep date was a column on the one ownerless checklist, the debrief hung off
    that same column, the clinician summary used it as a range start, and
@@ -2234,8 +2287,15 @@ ALTER TABLE photo ADD COLUMN epoch_day_override INTEGER;
    attached to a procedure, and that is this table's `procedure_id` going
    nullable rather than a different kind of row.
 
-   The copy, drop, rename shape v37/v38/v63 use, because dropping a column's
-   NOT NULL cannot be done in place. Rowids are carried across unchanged, so
+   Numbered v75 rather than v73: tickets 49 and 50 landed on main first and
+   took v73 and v74, so this was renumbered here rather than fought over
+   during the merge.
+
+   A copy and a drop, the front half of the shape v37/v38/v63 use, because
+   dropping a column's NOT NULL cannot be done in place. No rename at the
+   end of it: those three rebuilt a table under its own name, and this one
+   is changing the name, so the new table is created as `appointment`
+   outright and `procedure_consult` is dropped. Rowids are carried across unchanged, so
    `procedure_photo`'s sibling rows and anything holding an appointment's id
    keep meaning what they meant. `ON DELETE CASCADE` is kept: an appointment
    that named a procedure still goes with it.
@@ -2248,7 +2308,7 @@ ALTER TABLE photo ADD COLUMN epoch_day_override INTEGER;
 
    `checklist.appointment_epoch_day` is untouched here and still written -
    ticket 58 retires it to a read. */
-const SCHEMA_V73 = `
+const SCHEMA_V75 = `
 CREATE TABLE appointment (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid         TEXT NOT NULL UNIQUE,
@@ -2263,8 +2323,7 @@ INSERT INTO appointment (id, uuid, procedure_id, epoch_day, updated_at)
   SELECT id, uuid, procedure_id, epoch_day, updated_at FROM procedure_consult;
 DROP TABLE procedure_consult;
 CREATE INDEX idx_appointment_procedure ON appointment(procedure_id);
-CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);
-`;
+CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);`;
 
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
@@ -2339,5 +2398,7 @@ export const migrations: Migration[] = [
   { version: 70, sql: SCHEMA_V70 },
   { version: 71, sql: SCHEMA_V71 },
   { version: 72, sql: SCHEMA_V72 },
-  { version: 73, sql: SCHEMA_V73 }
+  { version: 73, sql: SCHEMA_V73 },
+  { version: 74, sql: SCHEMA_V74 },
+  { version: 75, sql: SCHEMA_V75 }
 ];

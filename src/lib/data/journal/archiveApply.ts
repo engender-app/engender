@@ -1062,6 +1062,9 @@ export async function applyAppointments({ driver, journal, ts }: Restoring): Pro
   for (const appointment of journal.appointments) {
     if (present.has(appointment.id)) continue;
 
+    // Not `rowidWhere`: that one throws on an id it cannot find, and the
+    // whole point here is that an unresolvable link is dropped rather than
+    // taking the appointment down with it.
     const rows = appointment.procedureId
       ? await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [appointment.procedureId])
       : [];
@@ -1095,7 +1098,13 @@ export async function applyAppointments({ driver, journal, ts }: Restoring): Pro
     place or note - because there was nowhere for one to have been written.
 
     Not a `PayloadMigration` (payload.ts): those are keyed on the archive's
-    format version, which this rename does not move. */
+    format version, which this rename does not move.
+
+    The two shape checks below are not defensive coding against an
+    impossible state: `ArchiveJournal` is what a *file* claims to be, and
+    the whole reason this function exists is that a real file does not have
+    the key the type says it has. `assertRestorable` is the same check for
+    the same reason, one layer on. */
 export function aliasLegacyConsults(journal: ArchiveJournal): ArchiveJournal {
   if (Array.isArray(journal?.appointments)) return journal;
   if (!Array.isArray(journal?.procedures)) return journal;

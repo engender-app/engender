@@ -47,8 +47,10 @@
         (recordHandles.ts). */
     handle: string;
     /** The editor sheet's title while adding. Omit this and the four props
-        below for a record with no editor. */
-    newTitle?: string;
+        below for a record with no editor. Reads the draft, for the same
+        reason `editTitle` does: a wear session's kind is picked inside the
+        sheet, so what a new one is called changes while it is open. */
+    newTitle?: string | ((draft: TDraft) => string);
     /** And while editing. A screen whose editing state is not one thing -
         a wear session can be running - reads the draft for it, the shape
         `confirm.question` and `canSave` already take. */
@@ -70,9 +72,12 @@
         stopped). Rendered in the save button's place, handle and all. */
     primary?: Snippet<[TDraft]>;
     confirm: {
-      title: string;
-      /** Both are handed the record being deleted, so the screen never
-          derives the delete target to name it. */
+      /** All three are handed the record being deleted, so the screen never
+          derives the delete target to name it. A screen whose records are
+          not one thing - a wear session has a kind - reads the target for
+          the title too, rather than the draft the editor happens to be
+          holding, which can already have been changed to something else. */
+      title: string | ((target: TRecord) => string);
       question: (target: TRecord) => string;
       hint?: (target: TRecord) => string | null;
       confirmLabel: string;
@@ -84,19 +89,28 @@
   let draft = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
 
-  /** A label a screen either states outright or reads off the draft. */
-  const wording = (label: string | ((draft: TDraft) => string) | undefined, draft: TDraft) =>
-    typeof label === 'function' ? label(draft) : label;
+  /* Stated outright by most screens, read off the record being deleted by
+     the one whose records are not all the same thing. Empty while there is
+     no target, which is only ever while the sheet is closed. */
+  const confirmTitle = $derived(
+    typeof confirm.title === 'string' ? confirm.title : deleteTarget ? confirm.title(deleteTarget) : ''
+  );
+
+  /** A label a screen either states outright or reads off something: the
+      draft, for the editor sheet's own titles, or the record being deleted,
+      for the confirm sheet's. */
+  const wording = <T,>(label: string | ((subject: T) => string) | undefined, subject: T) =>
+    typeof label === 'function' ? label(subject) : label;
 </script>
 
 {#if fields}
   <Sheet
     open={draft !== null}
-    title={draft ? (draft.id ? wording(editTitle, draft) : newTitle) : newTitle}
+    title={draft ? wording(draft.id ? editTitle : newTitle, draft) : undefined}
     onClose={() => (record.editor = null)}
   >
     {#if draft}
-      <h3>{draft.id ? wording(editTitle, draft) : newTitle}</h3>
+      <h3>{wording(draft.id ? editTitle : newTitle, draft)}</h3>
       {@render fields(draft)}
       <div class="stack-3">
         {#if primary}
@@ -126,7 +140,7 @@
 
 <ConfirmDeleteSheet
   open={deleteTarget !== null}
-  title={confirm.title}
+  title={confirmTitle}
   question={deleteTarget ? confirm.question(deleteTarget) : ''}
   hint={deleteTarget && confirm.hint ? confirm.hint(deleteTarget) : null}
   confirmLabel={confirm.confirmLabel}
