@@ -226,15 +226,17 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
   return [...items].sort((a, b) => dayOf(b) - dayOf(a)).slice(0, WAITING_PER_KIND);
 }
 
-/** The two registered areas whose day is a plan rather than a record, and
-    so the two the gap is not measured over.
+/** The registered areas whose day is a plan rather than a record, and so the
+    ones the gap is not measured over.
 
     Every other area in the last-write registry answers "when did something
-    last happen": an entry, a dose, a measurement, a wear session. These two
+    last happen": an entry, a dose, a measurement, a wear session. These
     answer "what day is on the calendar", and the app supports putting one
     there in advance - `milestoneStatus` has a whole `countdown` arm for a
-    milestone that has not happened yet, and a procedure consult is an
-    appointment somebody books ahead of.
+    milestone that has not happened yet, and an appointment is by definition
+    something somebody books ahead of. `procedures` is here because its own
+    last write is its consults, which are those appointments seen from the
+    surgery journey (ADR-0066).
 
     Left in, they close the gap they are inside of. Somebody who wrote
     "name change hearing, 12 September" in July, stopped journalling in
@@ -248,7 +250,7 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
     registry answers the question it says it answers, and this is the one
     consumer for which "the newest dated record" and "the last time somebody
     wrote something" are different questions. */
-export const PLANNED_AREAS = ['milestones', 'procedures'] as const;
+export const PLANNED_AREAS = ['milestones', 'procedures', 'appointments'] as const;
 
 /** The registry with `PLANNED_AREAS` dropped - what both the gap itself and
     its own median are measured over, since a planned day is not a moment

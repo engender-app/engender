@@ -724,6 +724,33 @@ beforeAll(async () => {
     journal.procedures.addChecklistItem(procedureId, 'buy gauze')
   )) as { id: string };
   await drive('procedures', 'recordSurgeryMilestone', () => journal.procedures.recordSurgeryMilestone(procedureId));
+
+  // --- appointments -----------------------------------------------------
+  const appointmentId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({
+      epochDay: 20040,
+      procedureId: null,
+      kind: 'endokrynolog',
+      place: 'Poradnia',
+      note: 'ask about the dose'
+    })
+  )) as string;
+  // The edit and the linked case, so the UPDATE and the procedure lookup are
+  // both driven rather than only the insert.
+  await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({
+      id: appointmentId,
+      epochDay: 20041,
+      procedureId,
+      kind: 'chirurg',
+      place: null,
+      note: null
+    })
+  );
+  const secondAppointmentId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: 20042, procedureId: null, kind: null, place: null, note: null })
+  )) as string;
+  await drive('appointments', 'deleteAppointment', () => journal.appointments.deleteAppointment(secondAppointmentId));
   const secondProcedureId = (await drive('procedures', 'upsertProcedure', () =>
     journal.procedures.upsertProcedure({ name: 'a second procedure', surgeryEpochDay: 20100, notes: '' })
   )) as string;
@@ -983,6 +1010,11 @@ beforeAll(async () => {
   await driveRead('procedures', 'lastWriteEpochDay', () => journal.procedures.lastWriteEpochDay(20000));
   await driveRead('procedures', 'getChecklist', () => journal.procedures.getChecklist(procedureId));
   await driveRead('procedures', 'getMilestone', () => journal.procedures.getMilestone(procedureId));
+  await driveRead('appointments', 'getAppointments', () => journal.appointments.getAppointments());
+  await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
+  await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
+  await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));
+  await driveRead('appointments', 'consultsByProcedure', () => journal.appointments.consultsByProcedure());
   await driveRead('checklists', 'getChecklist', () => journal.checklists.getChecklist(ownedChecklist!.id));
   await driveRead('checklists', 'getChecklistByOwner', () => journal.checklists.getChecklistByOwner(owner));
   await driveRead('checklists', 'getStandaloneChecklist', () => journal.checklists.getStandaloneChecklist());

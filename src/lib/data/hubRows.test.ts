@@ -80,7 +80,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
      `read` with nothing to read or `written` while sitting on a registered
      area. Seven rows front an area that opted out of the last-write registry
      on purpose - a sealed letter, a span, reference data - and those never
-     report a reading, for the same reason the five view-only rows do not. */
+     report a reading, for the same reason the four view-only rows do not. */
   for (const row of HUB_ROWS) {
     assert.equal(
       row.line === 'read',
@@ -90,11 +90,11 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows can report a reading and thirteen never can', () => {
+test('fourteen rows can report a reading and twelve never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
-  assert.equal(reads.length, 13);
-  assert.equal(HUB_ROWS.length - reads.length, 13);
+  assert.equal(reads.length, 14);
+  assert.equal(HUB_ROWS.length - reads.length, 12);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
