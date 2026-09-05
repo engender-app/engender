@@ -182,7 +182,7 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
      features ticket 52): the fixture is where the archive's file manifest
      gets held to carrying a document's bytes as well as its row, and where
      an out-of-range day proves the section's own ORDER BY. */
-  await journal.documents.addDocument(
+  const document = await journal.documents.addDocument(
     { epochDay: 8766, title: 'Opinia psychiatryczna' },
     { full: bytes('a scanned page'), thumb: bytes('its thumbnail') }
   );
@@ -195,6 +195,11 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   });
   await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
   await journal.feltSense.add({ milestoneId: milestone }, { epochDay: 19365, mood: 5, note: 'a year on' });
+
+  // Filed under the milestone above (phase 8 features ticket 56), so the
+  // fixture pins that the link travels and not just the two columns being
+  // there to be null.
+  await journal.documents.setDocumentTarget(document, { kind: 'milestone', id: milestone });
 
   await journal.labs.upsertResult({
     epochDay: 20004,
