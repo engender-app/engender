@@ -66,6 +66,11 @@
   import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { isAndroid } from '$lib/platform';
+
+  /* ADR-0063 / ticket 32: the elapsed reminder can only ever fire through
+     the Android bridge, so web offers no toggle and no hours field. */
+  let isWeb = $derived(!isAndroid());
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): index 0 is the
      only role guaranteed chromatic on all 8 palettes, and a two-line chart
@@ -212,7 +217,7 @@
      so the sheet's disabled state and `upsert`'s own refusal are the same
      rule read twice. */
   function canSave(draft: Editor): boolean {
-    if (draft.reminderEnabled) {
+    if (!isWeb && draft.reminderEnabled) {
       const hours = parseFloat(draft.reminderHours);
       if (draft.reminderHours.trim() === '' || isNaN(hours)) return false;
     }
@@ -222,7 +227,13 @@
     return draft.durationHours.trim() !== '' && !isNaN(duration) && duration > 0;
   }
 
-  const reminderHoursOf = (editor: Editor): number | null => (editor.reminderEnabled ? parseFloat(editor.reminderHours) : null);
+  /* undefined leaves an existing reminder row untouched; null deletes it
+     (wearSessions.reconcileReminder). Web has no way to change the
+     reminder, so it must always send undefined - never re-derive null from
+     an editor.reminderEnabled that a hidden toggle left at its prefilled
+     value (ticket 32). */
+  const reminderHoursOf = (editor: Editor): number | null | undefined =>
+    isWeb ? undefined : editor.reminderEnabled ? parseFloat(editor.reminderHours) : null;
 
   async function stopRunning(draft: Editor) {
     await journal.wearSessions.upsertSession({
@@ -523,27 +534,29 @@
         {/snippet}
       </Field>
 
-      <Field label={m.wear_session_reminder_toggle()} legend spread>
-        {#snippet children()}
-          <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => (editor.reminderEnabled = v)} />
-        {/snippet}
-      </Field>
-      {#if editor.reminderEnabled}
-        <div class="disclosed" transition:disclose>
-          <Field label={m.wear_session_reminder_hours_label()} id="wear-reminder-hours">
-            {#snippet children(id)}
-              <input
-                class="input"
-                type="number"
-                {id}
-                name="wear-reminder-hours"
-                inputmode="decimal"
-                bind:value={editor.reminderHours}
-              />
-            {/snippet}
-          </Field>
-          <p class="muted small">{m.wear_session_reminder_hint()}</p>
-        </div>
+      {#if !isWeb}
+        <Field label={m.wear_session_reminder_toggle()} legend spread>
+          {#snippet children()}
+            <Switch checked={editor.reminderEnabled} label={m.wear_session_reminder_toggle()} onChange={(v) => (editor.reminderEnabled = v)} />
+          {/snippet}
+        </Field>
+        {#if editor.reminderEnabled}
+          <div class="disclosed" transition:disclose>
+            <Field label={m.wear_session_reminder_hours_label()} id="wear-reminder-hours">
+              {#snippet children(id)}
+                <input
+                  class="input"
+                  type="number"
+                  {id}
+                  name="wear-reminder-hours"
+                  inputmode="decimal"
+                  bind:value={editor.reminderHours}
+                />
+              {/snippet}
+            </Field>
+            <p class="muted small">{m.wear_session_reminder_hint()}</p>
+          </div>
+        {/if}
       {/if}
     {/snippet}
     <!-- The one screen whose primary action is not always a save: a live

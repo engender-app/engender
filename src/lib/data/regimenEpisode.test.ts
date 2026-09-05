@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { startOfDayTimestamp } from './epochDay.ts';
-import { activeEpisodesAt, attributeDose, attributeDrug, drugSpans, earliestEpisode } from './regimenEpisode.ts';
+import {
+  activeEpisodesAt,
+  attributeDose,
+  attributeDrug,
+  drugSpans,
+  earliestEpisode,
+  nearestActiveEpisode
+} from './regimenEpisode.ts';
+import type { DoseEvent, DosePause, DoseSchedule } from './types.ts';
 import type { RegimenEpisode } from './types.ts';
 
 const episode = (
@@ -222,4 +230,77 @@ test('drugSpans answers a single span when no episode boundary falls inside the 
 
 test('drugSpans answers nothing for a range that runs backwards', () => {
   assert.deepEqual(drugSpans([episode('e', 100, null)], 300, 200), []);
+});
+
+const daily = (episodeId: string): DoseSchedule => ({
+  id: `s-${episodeId}`,
+  episodeId,
+  recurrence: { kind: 'everyNDays', everyNDays: 1 },
+  dosesPerDay: 1,
+  doseAmounts: null
+});
+
+const doseFor = (drug: string, epochDay: number): DoseEvent =>
+  ({
+    id: `d-${drug}-${epochDay}`,
+    timestamp: startOfDayTimestamp(epochDay) + 8 * 3600000,
+    drug,
+    route: 'oral',
+    dose: 2,
+    doseUnit: 'mg',
+    status: 'taken',
+    scheduled: null
+  }) as DoseEvent;
+
+test('nearestActiveEpisode is null with nothing active to choose between', () => {
+  assert.equal(nearestActiveEpisode([], [], [], [], [], 200, 30), null);
+});
+
+test('nearestActiveEpisode is the sole active episode, schedule or not', () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  assert.equal(nearestActiveEpisode([e1], [e1], [], [], [], 200, 30), e1);
+});
+
+test('nearestActiveEpisode preselects whichever active schedule has the nearer open slot', () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  const e2 = episode('e2', 100, null, 'spiro');
+  const episodes = [e1, e2];
+  const schedules = [daily('e1'), daily('e2')];
+  /* e2's today is already logged, so its nearest open slot is tomorrow;
+     e1's today is still open. */
+  const doses = [doseFor('spiro', 200)];
+  assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [], doses, 200, 30), e1);
+});
+
+test('nearestActiveEpisode is null when two active schedules tie for nearest', () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  const e2 = episode('e2', 100, null, 'spiro');
+  const episodes = [e1, e2];
+  const schedules = [daily('e1'), daily('e2')];
+  assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [], [], 200, 30), null);
+});
+
+test('nearestActiveEpisode preselects a scheduled episode over one with no schedule at all', () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  const asNeeded = episode('e2', 100, null, 'spiro');
+  const episodes = [e1, asNeeded];
+  assert.equal(nearestActiveEpisode(episodes, episodes, [daily('e1')], [], [], 200, 30), e1);
+});
+
+test('nearestActiveEpisode is null when neither active episode has a schedule to offer a slot at all', () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  const e2 = episode('e2', 100, null, 'spiro');
+  assert.equal(nearestActiveEpisode([e1, e2], [e1, e2], [], [], [], 200, 30), null);
+});
+
+test("nearestActiveEpisode scopes a pause to its own episode - one episode's pause does not blank out another's slot", () => {
+  const e1 = episode('e1', 100, null, 'estradiol');
+  const e2 = episode('e2', 100, null, 'spiro');
+  const episodes = [e1, e2];
+  const schedules = [daily('e1'), daily('e2')];
+  const e1PausedToday: DosePause = { id: 'p1', episodeId: 'e1', startEpochDay: 200, endEpochDay: 200, reason: 'planned' };
+  /* e1's own today is paused, so its nearest open slot is tomorrow (distance
+     1) - e2's today is untouched by a pause that isn't its own, so it stays
+     open (distance 0) and wins outright, not a tie. */
+  assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [e1PausedToday], [], 200, 30), e2);
 });
