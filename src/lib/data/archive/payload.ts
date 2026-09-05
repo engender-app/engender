@@ -738,6 +738,23 @@ export interface ArchiveWordIgnore {
   word: string;
 }
 
+/** One piece of paper the person keeps (phase 8 features ticket 52,
+    ADR-0065). Its own interface rather than a reused ArchivePhoto, for the
+    reason this file's header gives: a rename on one must not silently change
+    what the other travels as. It carries a day and a title of its own, which
+    a photo does not - a document is a record, not content hanging off one.
+
+    ADR-0065's optional link to a goal, a milestone, a procedure or an
+    episode is ticket 56's and is not on the wire yet. */
+export interface ArchiveDocument {
+  id: string;
+  epochDay: number;
+  title: string;
+  /** The opaque `<uuid>.jpg` of photos/names.ts, whose bytes travel in the
+      archive's file manifest beside the photos. Never a path. */
+  fileName: string;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -858,6 +875,7 @@ export interface ArchiveJournal {
   revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
   wordIgnore: ArchiveWordIgnore[];
+  documents: ArchiveDocument[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

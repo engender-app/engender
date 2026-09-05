@@ -184,12 +184,14 @@ export async function photosByMilestone(
    it.
 
    Reads `hair_photo` (migrations.ts v13), `voice_recording` (migrations.ts
-   v17), `video_note` (migrations.ts v30) and `tryout_photo` (migrations.ts
-   v31) as well as `photo`: a hair-progress photo's row lives in its own
-   table (journal/hairProgress.ts), a voice recording's in its own
+   v17), `video_note` (migrations.ts v30), `tryout_photo` (migrations.ts
+   v31) and `document` (migrations.ts v75) as well as `photo`: a
+   hair-progress photo's row lives in its own table
+   (journal/hairProgress.ts), a voice recording's in its own
    (journal/voiceRecordings.ts), a video note's in its own
-   (journal/videoNotes.ts) and a tryout photo's in its own
-   (journal/tryouts.ts), neither as a third owner here, but every kind of
+   (journal/videoNotes.ts), a tryout photo's in its own
+   (journal/tryouts.ts) and a document's in its own
+   (journal/documents.ts), none as a further owner here, but every kind of
    file sits in the same store and would otherwise look orphaned the
    moment this ran. Neither a recording nor a video note has a thumbnail
    to derive, so their file names are read straight rather than through
@@ -231,6 +233,7 @@ async function sweepUnreferencedFiles(
     hairRemovalPhotoRows,
     procedurePhotoRows,
     tryoutPhotoRows,
+    documentRows,
     recordingRows,
     videoRows,
     benchmarkRows
@@ -240,6 +243,7 @@ async function sweepUnreferencedFiles(
       driver.query<{ file_path: string }>('SELECT file_path FROM hair_removal_photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM procedure_photo'),
       driver.query<{ file_path: string }>('SELECT file_path FROM tryout_photo'),
+      driver.query<{ file_path: string }>('SELECT file_path FROM document'),
       driver.query<{ file_path: string }>('SELECT file_path FROM voice_recording'),
       driver.query<{ file_path: string }>('SELECT file_path FROM video_note'),
       driver.query<{ passage_file_path: string; vowel_file_path: string | null }>(
@@ -247,9 +251,16 @@ async function sweepUnreferencedFiles(
       )
     ]);
   const referenced = new Set([
-    ...[...photoRows, ...hairPhotoRows, ...hairRemovalPhotoRows, ...procedurePhotoRows, ...tryoutPhotoRows].flatMap(
-      (row) => filesOf(row.file_path)
-    ),
+    ...[
+      ...photoRows,
+      ...hairPhotoRows,
+      ...hairRemovalPhotoRows,
+      ...procedurePhotoRows,
+      ...tryoutPhotoRows,
+      // A document's image went through the same normalisation, so it has
+      // the derived thumbnail beside it (phase 8 features ticket 52).
+      ...documentRows
+    ].flatMap((row) => filesOf(row.file_path)),
     ...recordingRows.map((row) => row.file_path),
     // Neither a recording nor a video note has a thumbnail sibling, so
     // filesOf() would only ever invent a name no row references.

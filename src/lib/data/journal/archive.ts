@@ -399,8 +399,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async snapshot() {
       // One read of the photo, hair photo, hair-removal photo, recovery
-      // photo, tryout photo, recording, video-note and benchmark tables for
-      // the rows,
+      // photo, tryout photo, recording, video-note, benchmark and document
+      // tables for the rows,
       // their owners and the manifest: several passes over the same
       // lists, never several queries (archiveRead.ts).
       const reading = await readRowContext(driver);
@@ -411,7 +411,14 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           ...reading.hairPhotos,
           ...reading.hairRemovalPhotos,
           ...reading.procedurePhotos,
-          ...reading.tryoutPhotos
+          ...reading.tryoutPhotos,
+          /* A document's image went through the same normalisation a
+             photo's did (documents.ts), so it has the derived thumbnail
+             beside it that `filesOf` expands to - which is why it is in
+             this list rather than in a `manifestNames` call of its own
+             (phase 8 features ticket 52). Without it a document travels as
+             a row with no bytes and restores into a broken reference. */
+          ...reading.documentFiles
         ])),
         ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
         ...(await manifestNames(reading.videos.map((v) => v.file_path))),

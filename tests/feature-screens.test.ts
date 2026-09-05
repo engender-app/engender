@@ -82,7 +82,11 @@ const REACHED_FROM_INSIDE = [
      reached from that screen. The list itself is untouched - it is a
      standing list of what to ask, which outlives any one appointment
      (ADR-0066). */
-  'health/appointment-prep'
+  'health/appointment-prep',
+  /* One document (phase 8 features ticket 52). Reached from a row on
+     /media/documents, from a day's context list and from a search hit,
+     never from the hub - the hub row is the list. */
+  'media/documents/[id]'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -106,17 +110,17 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the twelve screens reached only from inside another', () => {
+  it('is the hub, plus the thirteen screens reached only from inside another', () => {
     /* The count that was here covered all 36 routes and had been raised ten
        times since it was written as 26, twice by two branches that each
        thought they were adding the 28th. The hub's own rows no longer need
        one - they arrive from `hubRows.ts`, and a row with no screen behind
        it throws in `sourceOf` above before any assertion runs.
 
-       The eleven below it still do, for the reason the note at the top of
+       The thirteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(12);
+    expect(REACHED_FROM_INSIDE.length).toBe(13);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

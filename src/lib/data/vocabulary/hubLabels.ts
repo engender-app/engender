@@ -56,7 +56,8 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   effects: m.effects_timeline,
   resources: m.resources_title,
   photos: m.progress_photos,
-  voice: m.recordings_label
+  voice: m.recordings_label,
+  documents: m.documents_title
 };
 
 /** What every row says about what is behind it: the whole of a row that never
@@ -95,7 +96,8 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   effects: m.hub_sub_effects,
   resources: m.hub_sub_resources,
   photos: m.hub_sub_photos,
-  voice: m.hub_sub_voice
+  voice: m.hub_sub_voice,
+  documents: m.hub_sub_documents
 };
 
 const GROUP_HEADING: Record<HubGroupKey | 'finished', () => string> = {
