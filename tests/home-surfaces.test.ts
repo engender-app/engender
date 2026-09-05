@@ -160,9 +160,10 @@ describe('what spec 08 took off Home', () => {
     /* ADR-0029: the handle is the kind's own key, so an added tile cannot
        arrive without one and none of them can be renamed by a copy edit. */
     expect(markup).toContain('data-live-tile={tile.key}');
-    // Two blocks since the weights landed - the tile grids and the quiet
-    // list - each keyed on the same field.
-    expect((markup.match(/as tile \(tile\.key\)\}/g) ?? []).length).toBe(2);
+    // Three blocks since phase 8 features ticket 63 split the today weight
+    // out to its own location above the mood pick: the today grid, the
+    // moment grid, and the quiet list - each keyed on the same field.
+    expect((markup.match(/as tile \(tile\.key\)\}/g) ?? []).length).toBe(3);
     for (const kind of LIVE_TILE_ORDER) expect(UNPROMPTED_KINDS).toContain(kind);
   });
 
@@ -170,11 +171,13 @@ describe('what spec 08 took off Home', () => {
     /* The bug deepening ticket 07 fixed: seven tiles asked `liveTilesCount >
        1` and four asked a hand-written disjunction of only the original
        five, so a journal showing the wear and measurements tiles slid one in
-       and let the other appear. Two grids since the weights landed - the
-       rows and the cards - and the rule is written the same way in both,
-       over what is on screen rather than over one grid's own length. */
+       and let the other appear. Two occurrences since phase 8 features
+       ticket 63 moved the today grid above the mood pick - one per weight
+       that still renders a grid - and the rule is written the same way in
+       both, over what is on screen rather than over one grid's own
+       length. */
     const rules = markup.match(/transition:tileSlide=\{\{[^}]*\}\}/g) ?? [];
-    expect(rules.length, 'said once for every weight, not once per tile').toBe(1);
+    expect(rules.length, 'said once for every weight, not once per tile').toBe(2);
     for (const rule of rules) expect(rule).toBe('transition:tileSlide={{ enabled: shownTiles.length > 1 }}');
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
   });
