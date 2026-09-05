@@ -70,7 +70,6 @@ import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchm
 import { makeVoicePracticeTakesArea, type VoicePracticeTakesArea } from './voicePracticeTakes';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { reconcileBuiltIns } from './reconcile';
-import { discardJournalRows } from './restore';
 
 /** Every write below that addresses a row by id answers the unknown-id
     case the same way, in every area, and the answer differs by operation
@@ -519,6 +518,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     archive: makeArchiveArea(driver, files),
     reconcileBuiltIns: () => reconcileBuiltIns(driver),
     discardEverything: async () => {
+      const { discardJournalRows } = await import('./restore');
       await driver.transaction(() => discardJournalRows(driver));
     }
   };
