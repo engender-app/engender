@@ -90,6 +90,13 @@ export interface ArchiveSection {
   travels: 'none' | 'whole' | { fields: readonly string[] };
   read(reading: SectionRead): Promise<unknown[]>;
   apply(restoring: Restoring): Promise<void>;
+  /** The declaration `flat` derived this section from, for the one other
+      place that needs the descriptor rather than the section it builds -
+      the archive test's carried-column oracle (archive.test.ts), which
+      walks it with `columnsOf` instead of retyping the column list a third
+      time. Absent on a `section`-built entry: those own no single table to
+      walk. */
+  flatTable?: FlatTable<unknown>;
 }
 
 /** Keeps the row type honest at the declaration site: `read` has to return
@@ -133,7 +140,8 @@ function flat<
     // makes it flat - so emptying it needs nothing declared here either.
     discard: [`DELETE FROM ${declared.table}`],
     read: (reading: SectionRead) => read.readFlatTable(table, reading),
-    apply: (restoring: Restoring) => apply.applyFlatTable(table, restoring.journal[declared.name], restoring)
+    apply: (restoring: Restoring) => apply.applyFlatTable(table, restoring.journal[declared.name], restoring),
+    flatTable: table as FlatTable<unknown>
   };
 }
 
