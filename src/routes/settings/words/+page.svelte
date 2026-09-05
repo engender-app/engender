@@ -16,7 +16,7 @@
      reverse. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { groupByEra, groupByPresentation, noteLanguage, wordFrequency } from '$lib/data/wordFrequency';
+  import { analyseNotes, countWords, groupByEra, groupByPresentation } from '$lib/data/wordFrequency';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -58,18 +58,26 @@
       selectedId = null;
   });
 
+  /* Every note read once, on arrival and on any later write, and never
+     again for a filter (phase 8 audit ticket 17). `$derived` is what makes
+     that true: this one depends on the query alone, so the three below
+     re-run on a tap of the Segmented or the picker and this one does not.
+     Everything downstream - the partition, the counting, the Polish caveat
+     - is answered off what it produced rather than off the note text. */
+  let analysed = $derived(analyseNotes(entriesQuery.rows));
+
   // The partition itself is wordFrequency.ts's own tested fold - grouped
   // by every presentation or era, `null` the bucket for one carrying none.
   // "All" is never that bucket (there is no "no presentation"/"no era"
   // filter option, see above): it is the unfiltered list, read straight
-  // off the query rather than out of the grouping.
+  // off the analysed notes rather than out of the grouping.
   let grouped = $derived(
-    dimension === 'presentation' ? groupByPresentation(entriesQuery.rows) : groupByEra(entriesQuery.rows, erasQuery.rows)
+    dimension === 'presentation' ? groupByPresentation(analysed) : groupByEra(analysed, erasQuery.rows)
   );
-  let filteredEntries = $derived(selectedId ? (grouped.get(selectedId) ?? []) : entriesQuery.rows);
+  let filteredEntries = $derived(selectedId ? (grouped.get(selectedId) ?? []) : analysed);
 
-  let frequencies = $derived(wordFrequency(filteredEntries).slice(0, WORD_LIMIT));
-  let hasPolish = $derived(filteredEntries.some((e) => noteLanguage(e.note) === 'pl'));
+  let frequencies = $derived(countWords(filteredEntries).slice(0, WORD_LIMIT));
+  let hasPolish = $derived(filteredEntries.some((e) => e.language === 'pl'));
 </script>
 
 <div class="screen">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { noteLanguage, wordFrequency, type WordFrequencySource } from './wordFrequency';
+import { analyseNotes, countWords, noteLanguage, wordFrequency, type WordFrequencySource } from './wordFrequency';
 import type { EraSpan } from './eras';
 
 const note = (
@@ -26,6 +26,13 @@ describe('noteLanguage', () => {
   it('defaults to the app base locale on a tie or on no evidence at all', () => {
     expect(noteLanguage('')).toBe('en');
     expect(noteLanguage('Marta 2026')).toBe('en');
+  });
+
+  // The diacritic test reads the raw note rather than a lowercased copy of
+  // it (phase 8 audit ticket 17), so both cases have to be in the class.
+  it('reads a diacritic in either case', () => {
+    expect(noteLanguage('DZIŚ BYŁO CIĘŻKO')).toBe('pl');
+    expect(noteLanguage('Żal')).toBe('pl');
   });
 });
 
@@ -105,6 +112,72 @@ describe('wordFrequency', () => {
   it('is empty over no entries and over notes that are stopwords only', () => {
     expect(wordFrequency([])).toEqual([]);
     expect(wordFrequency([note('and the of it')])).toEqual([]);
+  });
+});
+
+/* Phase 8 audit ticket 17. Counted rather than timed: what the ticket asks
+   for is that a note is read once, and a stopwatch cannot tell one pass
+   from three on a note short enough to fit in a test.
+
+   `String#match` is the seam because the tokeniser is the module's only
+   caller of it, and the pattern check keeps the count to that one regex. If
+   the tokeniser ever stops going through `String#match` this stops counting
+   anything and the assertions below fail loudly, which is the right way for
+   it to break. */
+function tokenisationPasses(run: () => void): number {
+  const real = String.prototype.match;
+  let passes = 0;
+  String.prototype.match = function (this: string, pattern: string | RegExp) {
+    if (pattern instanceof RegExp && pattern.source === '\\p{L}+') passes++;
+    return real.call(this, pattern as RegExp);
+  } as typeof String.prototype.match;
+  try {
+    run();
+  } finally {
+    String.prototype.match = real;
+  }
+  return passes;
+}
+
+describe('reading a note once', () => {
+  // English on purpose: a note with a Polish diacritic settles its language
+  // before it is tokenised at all, so it could not tell one pass from two.
+  const notes = [note('I am happy and tired today'), note('the mirror was kinder this morning')];
+
+  it('tokenises each note once, however many answers are taken off it', () => {
+    expect(tokenisationPasses(() => analyseNotes(notes))).toBe(notes.length);
+    expect(tokenisationPasses(() => wordFrequency(notes))).toBe(notes.length);
+  });
+
+  it('reads the language off the same pass the words came from', () => {
+    const analysed = analyseNotes([note('Czuję się dziś dobrze'), note('I am happy today')]);
+    expect(analysed.map((a) => a.language)).toEqual(['pl', 'en']);
+    expect(analysed[0].words).not.toContain('się');
+    expect(analysed[1].words).not.toContain('am');
+  });
+
+  it('counts a filter change without going back to the notes', async () => {
+    const { groupByPresentation } = await import('./wordFrequency');
+    const analysed = analyseNotes([
+      note('I am happy today', 'p1'),
+      note('the mirror was kinder', 'p2'),
+      note('happy again this morning', 'p1')
+    ]);
+    const grouped = groupByPresentation(analysed);
+    // The rows still carry their `note`, since analysing keeps the row it
+    // read - so the assertion below is that counting declines to look at
+    // text it is holding, not that the text is out of reach.
+    expect(analysed[0].note).toBe('I am happy today');
+
+    // Every tap the screen's filter can make: one presentation, the other,
+    // then back to the unfiltered list.
+    const passes = tokenisationPasses(() => {
+      countWords(grouped.get('p1') ?? []);
+      countWords(grouped.get('p2') ?? []);
+      countWords(analysed);
+    });
+    expect(passes).toBe(0);
+    expect(countWords(grouped.get('p1') ?? [])).toContainEqual(['happy', 2]);
   });
 });
 
