@@ -20,8 +20,15 @@
 
    That leaves nothing needing the take itself, so the take is not kept. What
    is held is the tail a frame still reads from - a frame is measured against
-   the samples after it as well as under it - and the last few seconds of
-   pitch, which is the trace the gauge draws.
+   the samples after it as well as under it - and the two seconds of pitch
+   the gauge draws as its trace.
+
+   The take's own p10/p90 pitch span was the third thing being recomputed per
+   poll, and it got no running form because it needed none: `read()` returns
+   a `QualityReport`, no check in the gate asks about the span, and the
+   summary that computed it was thrown away every time. It is still computed
+   once, at the end, from the decoded file (`trackPitch`, benchmark.ts) -
+   which is the only place its number was ever read from.
 
    Pure: samples in, a report out. The microphone, the AudioContext and the
    animation frame are the screen's (audio/capture.ts). */
@@ -29,12 +36,11 @@
 import { frameGeometry, pitchAt, rms, type PitchFrame } from './pitch';
 import { assessQuality, runningQualitySignals, type QualityCheck, type QualityReport } from './quality';
 
-/** How much of the pitch trace is kept. The recording screens draw the last
-    200 frames, two seconds of it; the rest is headroom for a caller that
-    asks for a little more. Beyond that a frame is scrolled off the trace and
-    already counted in the accumulators, so keeping it would only be keeping
-    it. */
-const RETAINED_FRAMES = 300;
+/** How much of the pitch trace is kept: exactly what the recording screens
+    draw, which is two seconds of it (VoiceGauge's TRACE_FRAMES). Beyond that
+    a frame has scrolled off the trace and is already counted in the running
+    signals, so keeping it would only be keeping it. */
+const RETAINED_FRAMES = 200;
 
 export interface LiveGauge {
   /** Adds newly captured samples. Chunk sizes need not be regular. */
@@ -44,7 +50,7 @@ export interface LiveGauge {
   /** The most recent frames, oldest first: the pitch trace the gauge draws.
       Frames rather than one current value, because steadiness is a shape
       over time and a single number cannot show it. At most
-      `RETAINED_FRAMES` of them. */
+      `RETAINED_FRAMES` of them, which is what the screens ask for. */
   recentFrames(count: number): readonly PitchFrame[];
   secondsCaptured(): number;
 }
@@ -56,7 +62,7 @@ export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[
   // frame geometry the per-frame path used to rebuild on every call.
   const difference = new Float64Array(maxTau + 1);
   const normalized = new Float64Array(maxTau + 1);
-  const signals = runningQualitySignals(hopSeconds);
+  const measuring = runningQualitySignals(hopSeconds);
   const frames: PitchFrame[] = [];
 
   /** How much of the buffer one frame reads: its own window, plus the
@@ -77,7 +83,7 @@ export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[
 
   return {
     push(chunk) {
-      signals.observeSamples(chunk);
+      measuring.observeSamples(chunk);
       captured += chunk.length;
 
       // Everything before the next frame's start has been read for the last
@@ -105,14 +111,14 @@ export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[
       for (; nextFrameAt + frameSpan <= pendingFrom + pendingLength; nextFrameAt += hop) {
         const at = nextFrameAt - pendingFrom;
         const hz = pitchAt(samples, at, sampleRate, geometry, difference, normalized);
-        signals.observeFrame(rms(samples, at, hop), hz);
+        measuring.observeFrame(rms(samples, at, hop), hz);
         frames.push({ atSeconds: nextFrameAt / sampleRate, hz });
         if (frames.length > RETAINED_FRAMES) frames.shift();
       }
     },
 
     read() {
-      return assessQuality(signals.signals(), checks);
+      return assessQuality(measuring.signals(), checks);
     },
 
     recentFrames(count) {
