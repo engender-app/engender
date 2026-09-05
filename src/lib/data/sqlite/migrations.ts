@@ -2180,6 +2180,32 @@ const SCHEMA_V70 = `
 ALTER TABLE regimen_episode ADD COLUMN end_reason TEXT;
 `;
 
+/* v71: "not my path" one grain out, at the roadmap track (phase 8 features
+   ticket 49 item 5). Until now the tri-state existed per goal only, so
+   somebody the medical track has nothing to do with had to say so on each
+   of its seven goals in turn.
+
+   Presence is the whole of the state, the shape roadmap_check gives a tick
+   (v18) and era_mute gives a mute (v56): a row means "not my path" and no
+   row means the ordinary case, so undoing it is a DELETE and there is no
+   third value to store or read back. That is also what makes the table safe
+   against a track this build does not have - a row naming a track that
+   ROADMAP_TRACKS no longer lists is simply never asked about, the same way
+   a stale era mute is.
+
+   Not keyed by pack. A track is the app's own structure and a pack
+   populates it (roadmap.ts), so dismissing "medical" is a statement about
+   the person's path rather than about Poland's procedure, and it should
+   still hold if a second country's pack ever arrives. `roadmap_check` is
+   keyed by pack for the opposite reason: a goal key only means anything
+   inside the pack that defines it. */
+const SCHEMA_V71 = `
+CREATE TABLE roadmap_track (
+  track      TEXT PRIMARY KEY,
+  updated_at INTEGER NOT NULL
+);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2250,5 +2276,6 @@ export const migrations: Migration[] = [
   { version: 67, sql: SCHEMA_V67 },
   { version: 68, sql: SCHEMA_V68 },
   { version: 69, sql: SCHEMA_V69 },
-  { version: 70, sql: SCHEMA_V70 }
+  { version: 70, sql: SCHEMA_V70 },
+  { version: 71, sql: SCHEMA_V71 }
 ];

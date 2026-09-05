@@ -722,6 +722,18 @@ const SECTIONS = [
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
+  /* A track somebody has said is not their path (phase 8 features ticket
+     49). Named by bundled structure rather than by anything the person
+     wrote, so it does not travel, for the same reason roadmapChecks above
+     does not: it records a fact about this person against content every
+     install already has. */
+  section({
+    name: 'roadmapTracks',
+    discard: ['DELETE FROM roadmap_track'],
+    travels: 'none',
+    read: read.readRoadmapTracks,
+    apply: apply.applyRoadmapTracks
+  }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
      present locally is simply skipped rather than compared column by column:
      a custom goal's text and track are fixed at creation (roadmap.ts has no

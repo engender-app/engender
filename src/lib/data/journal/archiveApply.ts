@@ -672,6 +672,20 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
   );
 }
 
+export async function applyRoadmapTracks({ driver, journal, ts }: Restoring): Promise<void> {
+  /* Presence is the state, so a track already dismissed on this device is
+     simply skipped: there is no column two devices could disagree about,
+     and re-inserting would only move `updated_at`. */
+  const rows = await driver.query<{ track: string }>('SELECT track FROM roadmap_track');
+  const present = new Set(rows.map((row) => row.track));
+
+  await insertRows(
+    driver,
+    'INSERT INTO roadmap_track (track, updated_at)',
+    journal.roadmapTracks.filter((row) => !present.has(row.track)).map((row) => [row.track, ts])
+  );
+}
+
 const nextChecklistItemOrderIndex = async (driver: SqliteDriver, checklistId: number): Promise<number> => {
   const rows = await driver.query<{ next: number }>(
     'SELECT COALESCE(MAX(order_index), -1) + 1 AS next FROM checklist_item WHERE checklist_id = ?',
