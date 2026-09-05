@@ -1095,7 +1095,7 @@
   "regimen_new_sheet": "Nowy etap kuracji",
   "regimen_edit_sheet": "Edytuj etap kuracji",
   "regimen_drug_label": "Lek",
-  "regimen_drug_placeholder": "np. walerianian estradiolu lub cypionian testosteronu",
+  "regimen_drug_placeholder": "np. walerianian estradiolu, cypionian testosteronu lub sertralina",
   "regimen_ester_label": "Ester (opcjonalnie)",
   "regimen_ester_placeholder": "np. walerianian",
   "regimen_dose_label": "Dawka",
