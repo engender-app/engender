@@ -17,13 +17,13 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { ChecklistItem } from '$lib/data/types';
-  import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { readLabResultsInRange } from '$lib/data/journal/clinicianSummary';
+  import { soonestFutureAppointment, mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { severityName } from '$lib/data/vocabulary/labels';
   import { stockRemainingLabel, stockRunOutLabel } from '$lib/data/vocabulary/stockLabel';
-  import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -40,7 +40,6 @@
   import { roleAt } from '$lib/theme/roles';
 
   const today = todayEpochDay();
-  const todayInput = dateInputValueFromEpochDay(today);
   const dayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
@@ -50,26 +49,23 @@
      empty list stays the quiet screen it already was. */
   let hasQuestions = $derived(items.length > 0);
 
-  /* The standalone checklist's own appointment date (checklists.ts,
-     migrations.ts v48): the one thing this ticket adds storage for.
-     Read live and written straight through - no local draft state, since
-     the field has exactly one source of truth and nothing here needs to
-     hold an in-progress edit across a popup closing. */
-  let appointmentDateQuery = liveQuery((j) => j.checklists.getAppointmentDate());
-  let appointmentDate = $derived(appointmentDateQuery.value ?? null);
-  let appointmentDateInput = $derived(appointmentDate === null ? '' : dateInputValueFromEpochDay(appointmentDate));
-
-  function setAppointmentDate(value: string) {
-    journal.checklists.setAppointmentDate(value ? epochDayFromDateInputValue(value) : null);
-  }
+  /* The appointment record (appointments.ts, ticket 58, ADR-0066): read
+     over every appointment rather than a settable field of its own, since
+     the concept was never the checklist's - it only ever borrowed a
+     column. The date row below shows the soonest one still ahead;
+     everything else on this screen that wants "since last time" wants the
+     most recent one behind instead, the same appointment the debrief
+     offers about. */
+  let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
+  let upcomingAppointment = $derived(soonestFutureAppointment(appointmentsQuery.rows, today));
+  let lastAppointment = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today));
 
   /* The completed debrief, findable from the appointment it belongs to
-     (phase 6 ticket 08, What to Build #2). `debrief_entry_id` is
-     device-local and cleared the moment the appointment date changes
-     (checklists.ts), so this can never point at a different appointment
-     than the one on screen. */
-  let debriefEntryIdQuery = liveQuery((j) => j.checklists.getDebriefEntryId());
-  let debriefEntryId = $derived(debriefEntryIdQuery.value ?? null);
+     (phase 6 ticket 08, What to Build #2). Scoped to `lastAppointment`'s id
+     (checklists.ts, ticket 58), so this can never point at a different
+     appointment than the one the debrief offer itself is about. */
+  let debriefStateQuery = liveQuery((j) => j.checklists.getDebriefState(lastAppointment?.id ?? null));
+  let debriefEntryId = $derived(debriefStateQuery.value?.debriefEntryId ?? null);
 
   /* The current regimen, read the same way the care overview reads it
      (care/+page.svelte) rather than a second look at the episode log:
@@ -83,16 +79,19 @@
      care/+page.svelte names rather than silently drops. */
   let severalRegimens = $derived(comparison?.reason === 'multipleEpisodes');
 
-  /* "Since last time" has nothing to scope from until a date is on record
-     (ticket 25's design note) - these two stay empty rather than falling
+  /* "Since last time" has nothing to scope from until an appointment is on
+     record (ticket 25's design note, rekeyed to the most recent past
+     appointment by ticket 58) - these two stay empty rather than falling
      back to some arbitrary window, which would silently answer a question
      nobody asked. readLabResultsInRange is clinicianSummary.ts's own range
      read, not a second assembly of it. */
   let labsQuery = liveList((j) =>
-    appointmentDate === null ? Promise.resolve([]) : readLabResultsInRange(j.labs, appointmentDate, today)
+    lastAppointment === null ? Promise.resolve([]) : readLabResultsInRange(j.labs, lastAppointment.epochDay, today)
   );
   let sideEffectsQuery = liveList((j) =>
-    appointmentDate === null ? Promise.resolve([]) : j.sideEffects.getSideEffectsInRange(appointmentDate, today)
+    lastAppointment === null
+      ? Promise.resolve([])
+      : j.sideEffects.getSideEffectsInRange(lastAppointment.epochDay, today)
   );
 
   /* The stock horizon is a live snapshot, not a range - it answers "how
@@ -214,27 +213,19 @@
     <div class="screen-part">
       <SectionHeading text={m.appointment_prep_context_heading()} />
       <ListCard role={roleAt(activeFlag.roles, 1)}>
-        <!-- Styled as a row of this card rather than compare page's own
-             date-row (Alicja, 2026-09-01: the plain label/value line read
-             wrong stacked over two icon-disc rows). `static` because the
-             row itself goes nowhere - the invisible DatePicker layered over
-             it is the real control, the same overlay compare page's own
-             date-row uses, just anchored to .kit-row's position: relative
-             instead. -->
-        <ListRow key="last-appointment" icon="calendar" title={m.appointment_prep_last_appointment_label()} static>
-          {#snippet trailing()}
-            {appointmentDate === null ? m.appointment_prep_last_appointment_unset() : dayShort(appointmentDate)}
-            <DatePicker
-              id="appointment-prep-date"
-              value={appointmentDateInput}
-              max={todayInput}
-              ariaLabel={m.appointment_prep_last_appointment_aria()}
-              invis
-              onchange={setAppointmentDate}
-              data-appointment-date
-            />
-          {/snippet}
-        </ListRow>
+        <!-- A way into the appointment record rather than a date picker of
+             its own (ticket 58): the date shown is read off `appointment`,
+             so setting or changing one now happens on the appointments
+             screen itself. -->
+        <ListRow
+          key="next-appointment"
+          icon="calendar"
+          title={m.appointment_prep_next_appointment_label()}
+          subtitle={upcomingAppointment === null
+            ? m.appointment_prep_next_appointment_unset()
+            : dayShort(upcomingAppointment.epochDay)}
+          href="/health/appointments"
+        />
         {#if debriefEntryId !== null}
           <ListRow
             key="debrief"

@@ -8,7 +8,8 @@
      printing or saving to PDF. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import {
     customInclusiveRange,
@@ -49,13 +50,14 @@
   let dobInput = $state('');
   let inclusion = $state<ClinicianDossierInclusion>({ ...DEFAULT_CLINICIAN_DOSSIER_INCLUSION });
 
-  /* "Since last appointment" (ticket 19): the standalone checklist's own
-     appointment date, the same field appointment-prep's own screen reads
-     (checklists.ts). Absent rather than defaulted when none is on record -
-     the button below does not render, instead of falling back to some
-     other window (ticket 19's own line). */
-  let appointmentDateQuery = liveQuery((j) => j.checklists.getAppointmentDate());
-  let appointmentDate = $derived(appointmentDateQuery.value ?? null);
+  /* "Since last appointment" (ticket 19): the most recent past appointment
+     (appointments.ts's own pure selector, ticket 58), the same one the
+     debrief offer is about. Absent rather than defaulted when none is on
+     record - the button below does not render, instead of falling back to
+     some other window (ticket 19's own line). */
+  let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
+  let lastAppointment = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today));
+  let appointmentDate = $derived(lastAppointment?.epochDay ?? null);
 
   /* Every drug the person has ever logged a regimen episode for (ticket
      39), unbounded - not scoped to the range below, since the toggle is a
