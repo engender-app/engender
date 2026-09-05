@@ -26,7 +26,7 @@
    (ADR-0011) is long enough to be worth reading on its own. */
 
 import { filesOf, thumbFileName } from '../photos/names';
-import { restoreArchive, type RestoreContents } from './restore';
+import type { RestoreContents } from './restore';
 import {
   daylioPreview,
   type DaylioCommitResult,
@@ -158,6 +158,16 @@ export interface ArchiveArea {
   merge(contents: RestoreContents): Promise<void>;
 }
 
+/** `restoreArchive` behind a dynamic import: it drags in pack.ts/codec.ts/
+    payload.ts, an 82KB chunk that otherwise rides every eager path into this
+    file (ticket 21's audit, ticket 27). Memoized so the eight call sites
+    below share one fetch rather than repeating the import expression. */
+let restoreModule: Promise<typeof import('./restore')> | undefined;
+function loadRestore(): Promise<typeof import('./restore')> {
+  restoreModule ??= import('./restore');
+  return restoreModule;
+}
+
 /** One import_log row, direct rather than through the ordinary merge: this
     record is not content a device might already have and skip (ADR-0002's
     own insert-if-absent shape) - it is a new fact every time, minted here
@@ -204,8 +214,14 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     manifestNames(fileOwners.flatMap((owner) => filesOf(owner.file_path)));
 
   const area: ArchiveArea = {
-    replace: (contents) => restoreArchive(driver, files, 'replace', contents),
-    merge: (contents) => restoreArchive(driver, files, 'merge', contents),
+    async replace(contents) {
+      const { restoreArchive } = await loadRestore();
+      return restoreArchive(driver, files, 'replace', contents);
+    },
+    async merge(contents) {
+      const { restoreArchive } = await loadRestore();
+      return restoreArchive(driver, files, 'merge', contents);
+    },
 
     async previewDaylioImport(csv, naming) {
       return daylioPreview(csv, (await area.snapshot()).journal, naming);
@@ -216,6 +232,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         throw new Error(`Daylio mood ${preview.unmappedMoodLabels.join(', ')} is not mapped; nothing was imported`);
       }
       const before = await area.snapshot();
+      const { restoreArchive } = await loadRestore();
       await restoreArchive(driver, files, 'merge', {
         journal: preview.journal,
         files: (async function* () {})()
@@ -268,6 +285,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         }
       };
 
+      const { restoreArchive } = await loadRestore();
       await restoreArchive(driver, files, 'merge', { journal: preview.journal, files: assetFiles() });
       /* The source name is the registry's own (archive/sources.ts), so the
          log names what read the file rather than a second spelling of it.
@@ -294,6 +312,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async commitTransTracksImport(preview, normalize) {
       const before = await area.snapshot();
+      const { restoreArchive } = await loadRestore();
       await restoreArchive(driver, files, 'merge', {
         journal: preview.journal,
         files: (async function* () {
@@ -322,6 +341,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     async commitDayOneImport(preview, normalize) {
       const photosOf = (journal: ArchiveJournal) => journal.entries.reduce((n, e) => n + e.photos.length, 0);
       const before = await area.snapshot();
+      const { restoreArchive } = await loadRestore();
       await restoreArchive(driver, files, 'merge', {
         journal: preview.journal,
         files: (async function* () {
@@ -347,6 +367,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async commitTrackAndGraphImport(preview) {
       const before = await area.snapshot();
+      const { restoreArchive } = await loadRestore();
       await restoreArchive(driver, files, 'merge', {
         journal: preview.journal,
         files: (async function* () {})()
@@ -366,6 +387,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async commitPixelsImport(preview) {
       const before = await area.snapshot();
+      const { restoreArchive } = await loadRestore();
       await restoreArchive(driver, files, 'merge', {
         journal: preview.journal,
         files: (async function* () {})()
