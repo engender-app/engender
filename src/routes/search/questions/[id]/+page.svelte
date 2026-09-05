@@ -70,29 +70,58 @@
     void goto(`/entry/${draw.entry.id}`);
   }
 
+  /* `question` is `questions.find(...)` over a liveList's rows, which are
+     rebuilt from scratch - every row a fresh object - on any write to the
+     saved_question table (phase 8 audit ticket 15): renaming a *different*
+     saved question changes no field this screen reads, but still hands
+     `question` a new reference, and a closure reading it before its first
+     await re-runs on that reference alone. `searchSignature` is a primitive
+     (searchQuery.ts's own `criteria` idiom, from /search), so it is
+     unchanged when nothing this screen actually asks with has changed; the
+     effect below only republishes `stableSearch` - what the two closures
+     read - when the signature actually moves, the same as /search waiting
+     for the typist to stop before it reads `query`.
+
+     The `lastSearchSignature` guard is load-bearing, not a redundant check
+     `$derived`'s own memoization already does: this effect reads `question`
+     itself to build `stableSearch`, and a dynamically-tracked dependency
+     read during one run stays tracked into the next. Skip the guard and
+     every run would read `question` unconditionally, which would keep it a
+     tracked dependency forever and re-run this effect on every future
+     unrelated rename - the probe's "ignores an unrelated rename" check is
+     what would catch that regression. */
+  let searchSignature = $derived(question ? JSON.stringify([question.queryText, entrySearchFiltersOf(question)]) : null);
+  let stableSearch = $state<{ queryText: string; filters: ReturnType<typeof entrySearchFiltersOf> } | null>(null);
+  let lastSearchSignature: string | null = null;
+  $effect(() => {
+    const signature = searchSignature;
+    if (signature === lastSearchSignature) return;
+    lastSearchSignature = signature;
+    stableSearch = question ? { queryText: question.queryText, filters: entrySearchFiltersOf(question) } : null;
+  });
+
   const NOTHING_ASKED = { hits: [], total: 0 };
   let search = liveQuery((j) => {
-    if (!question) return Promise.resolve(NOTHING_ASKED);
-    const q = question;
+    if (!stableSearch) return Promise.resolve(NOTHING_ASKED);
+    const { queryText, filters } = stableSearch;
     const limit = PAGE * pages;
-    const matchingTagIds = tagIdsMatching(q.queryText, vocabulary.tags);
-    const filters = entrySearchFiltersOf(q);
+    const matchingTagIds = tagIdsMatching(queryText, vocabulary.tags);
     return Promise.all([
-      j.entries.searchEntries(q.queryText, matchingTagIds, filters, limit),
-      j.entries.countSearchMatches(q.queryText, matchingTagIds, filters)
+      j.entries.searchEntries(queryText, matchingTagIds, filters, limit),
+      j.entries.countSearchMatches(queryText, matchingTagIds, filters)
     ]).then(([hits, total]) => ({ hits, total }));
   });
 
   const NOTHING_ELSEWHERE = { hits: [], total: 0 };
   let elsewhere = liveQuery((j) => {
-    const typed = question?.queryText.trim();
-    if (!question || !typed) return Promise.resolve(NOTHING_ELSEWHERE);
+    const typed = stableSearch?.queryText.trim();
+    if (!stableSearch || !typed) return Promise.resolve(NOTHING_ELSEWHERE);
     const limit = PAGE * hitPages;
     return j.textSearch.search({
       query: typed,
       today: todayEpochDay(),
-      startEpochDay: question.startEpochDay,
-      endEpochDay: question.endEpochDay,
+      startEpochDay: stableSearch.filters.startEpochDay ?? null,
+      endEpochDay: stableSearch.filters.endEpochDay ?? null,
       limit
     });
   });
@@ -112,7 +141,7 @@
   let marginNotesByEntry = $derived(marginNotesRead.value ?? new Map());
 
   let elsewhereResults = $derived(elsewhere.value ?? NOTHING_ELSEWHERE);
-  let hitRows = $derived(searchHitRows(elsewhereResults.hits, question?.queryText.trim() ?? ''));
+  let hitRows = $derived(searchHitRows(elsewhereResults.hits, stableSearch?.queryText.trim() ?? ''));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
   let foundTotal = $derived(total + elsewhereResults.total);

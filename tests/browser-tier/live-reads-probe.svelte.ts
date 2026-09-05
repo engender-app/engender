@@ -29,6 +29,7 @@ import {
   type LiveQuery
 } from '../../src/lib/data/live/journal.svelte.ts';
 import { readWhatIsWaiting, WAITING_TABLES } from '../../src/lib/data/comingBackReads.ts';
+import { entrySearchFiltersOf } from '../../src/lib/data/savedQuestionQuery.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
@@ -252,6 +253,170 @@ async function run() {
   flushSync();
   await new Promise((resolve) => setTimeout(resolve, 200));
 
+  /* Phase 8 audit ticket 15: /search's own debounce, proved as a run count
+     rather than by timing (the ticket's own acceptance criterion). A
+     hand-wired $state + $effect + setTimeout rather than the real route:
+     what has to be proved is the reactivity contract itself (a closure's
+     dependency is whatever `$state` it reads before its first await), which
+     needs nothing from the journal. The interval here is the probe's own,
+     not /search's SEARCH_DEBOUNCE_MS - "many keystrokes settle at one run"
+     holds at any interval, not at one particular millisecond count. */
+  const DEBOUNCE_PROBE_MS = 60;
+  let typedQuery = $state('');
+  let debouncedQuery = $state('');
+  let debounceRuns = 0;
+  let debounceQuery: LiveQuery<number>;
+
+  $effect.root(() => {
+    $effect(() => {
+      const typed = typedQuery.trim();
+      if (!typed) {
+        debouncedQuery = '';
+        return;
+      }
+      const timer = setTimeout(() => {
+        debouncedQuery = typed;
+      }, DEBOUNCE_PROBE_MS);
+      return () => clearTimeout(timer);
+    });
+    debounceQuery = liveQuery(async () => {
+      const typed = debouncedQuery;
+      debounceRuns += 1;
+      return typed.length;
+    });
+  });
+
+  await until(() => debounceQuery.value !== undefined, 'the debounce-shaped query to settle its first run');
+  const debounceRunsBeforeTyping = debounceRuns;
+
+  // Ten keystrokes, each landing well inside the debounce interval of the
+  // one before it - the ticket's own "typing ten characters" line.
+  const TYPED = 'entriesabc';
+  let typedSoFar = '';
+  for (const ch of TYPED) {
+    typedSoFar += ch;
+    typedQuery = typedSoFar;
+    flushSync();
+    await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_PROBE_MS / 3));
+  }
+  await until(() => debouncedQuery === TYPED, 'the debounced value to catch up once typing pauses');
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_PROBE_MS * 2));
+  const debounceRunsAfterTenKeystrokes = debounceRuns;
+
+  // Clearing is the one case that is not debounced: the value lands within
+  // a flush, no timer wait, which is the other acceptance line.
+  typedQuery = '';
+  flushSync();
+  const clearedWithoutWaitingTheDebounce = debouncedQuery === '';
+  await until(() => debounceRuns > debounceRunsAfterTenKeystrokes, 'the cleared query to reach the counting query');
+
+  /* Phase 8 audit ticket 15: /search/questions/[id]'s own version of the same
+     fix. getSavedQuestions() rebuilds every row from scratch on any write to
+     saved_question (savedQuestions.ts's toDomain, a new object per row on
+     every call), so a closure reading `questions.find(...)` directly re-runs
+     when a *different* saved question is renamed, even though nothing the
+     viewed question's own search reads changed. `stableSearch` (the actual
+     screen's fix, mirrored here) reads a JSON signature instead - the same
+     `criteria` idiom /search's own page uses - and only republishes when that
+     signature actually moves. */
+  const viewedId = await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Kept name',
+    queryText: 'kept query',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+  const otherId = await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Other name',
+    queryText: 'other query',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+
+  let unstableRuns = 0;
+  let stableRuns = 0;
+  let unstableQuery: LiveQuery<number>;
+  let stableQuery: LiveQuery<number>;
+  let stableSearchInput = $state<{ queryText: string } | null>(null);
+  let lastSavedQuestionSignature: string | null = null;
+
+  $effect.root(() => {
+    const questionsQuery = liveList((j) => j.savedQuestions.getSavedQuestions());
+
+    unstableQuery = liveQuery(async () => {
+      const question = questionsQuery.rows.find((q) => q.id === viewedId);
+      unstableRuns += 1;
+      return question?.queryText.length ?? -1;
+    });
+
+    $effect(() => {
+      const question = questionsQuery.rows.find((q) => q.id === viewedId);
+      const signature = question ? JSON.stringify([question.queryText, entrySearchFiltersOf(question)]) : null;
+      if (signature === lastSavedQuestionSignature) return;
+      lastSavedQuestionSignature = signature;
+      stableSearchInput = question ? { queryText: question.queryText } : null;
+    });
+
+    stableQuery = liveQuery(async () => {
+      const input = stableSearchInput;
+      stableRuns += 1;
+      return input?.queryText.length ?? -1;
+    });
+  });
+
+  await until(() => unstableQuery.value !== undefined, 'the unstable saved-question query to settle');
+  await until(() => stableQuery.value !== undefined, 'the stable saved-question query to settle');
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  const unstableRunsBeforeUnrelatedRename = unstableRuns;
+  const stableRunsBeforeUnrelatedRename = stableRuns;
+
+  // Renaming a DIFFERENT saved question: nothing the viewed question's
+  // search reads has changed, but getSavedQuestions() rebuilds every row.
+  await journal.savedQuestions.upsertSavedQuestion({
+    id: otherId,
+    name: 'Renamed other',
+    queryText: 'other query',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+  const unstableErrorAfterUnrelatedRename = await reasonIfNotReached(
+    until(() => unstableRuns > unstableRunsBeforeUnrelatedRename, 'the unstable query to re-run after an unrelated rename')
+  );
+  flushSync();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const stableRunsAfterUnrelatedRename = stableRuns;
+
+  // And the fix still re-runs for a change that does matter: the viewed
+  // question's own queryText changing.
+  await journal.savedQuestions.upsertSavedQuestion({
+    id: viewedId,
+    name: 'Kept name',
+    queryText: 'changed query',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false
+  });
+  const stableErrorAfterRealChange = await reasonIfNotReached(
+    until(() => stableRuns > stableRunsAfterUnrelatedRename, "the stable query to re-run after its own queryText changes")
+  );
+
   publish({
     projection: { runsBefore: projectionRunsBefore, runsAfter: projectionRuns, error: projectionError },
     narrowed: {
@@ -267,6 +432,19 @@ async function run() {
       latestDay: feltSenseQuery.value?.get(tryoutId) ?? null,
       expectedDay: TODAY - 4,
       error: feltSenseError ?? feltSenseWriteError
+    },
+    debounce: {
+      runsBeforeTyping: debounceRunsBeforeTyping,
+      runsAfterTenKeystrokes: debounceRunsAfterTenKeystrokes,
+      clearedWithoutWaitingTheDebounce
+    },
+    savedQuestionStability: {
+      unstableRunsBeforeUnrelatedRename,
+      unstableRunsAfterUnrelatedRename: unstableRuns,
+      unstableErrorAfterUnrelatedRename,
+      stableRunsBeforeUnrelatedRename,
+      stableRunsAfterUnrelatedRename,
+      stableErrorAfterRealChange
     }
   });
 }
