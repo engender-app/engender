@@ -14,9 +14,10 @@
    attributeDose are the two questions everything else in this file used to
    answer with resolveEpisodeAt alone. */
 
+import { nearestOpenSlotDistance } from './doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { rangesFromCuts, spanCoversDay } from './span';
-import type { DoseEvent, RegimenEpisode } from './types';
+import type { DoseEvent, DoseSchedule, DosePause, RegimenEpisode } from './types';
 
 /** Whether `episode` is in effect on `day`: started on or before it, and
     either still open (`endEpochDay` null) or ends on or after it. Delegates
@@ -168,4 +169,46 @@ export function drugSpans(
     the caller takes the episode. */
 export function earliestEpisode(episodes: readonly RegimenEpisode[]): RegimenEpisode | null {
   return episodes[0] ?? null;
+}
+
+/** Which of `active`'s episodes a new dose without a drug of its own should
+    default to (phase 8 ticket 40): the sole one if there is only one, or -
+    with several active at once - whichever schedule's nearest still-open
+    slot (doseSchedule.ts's nearestOpenSlotDistance) sits closest to
+    `todayEpochDay`. Null when that does not pick out exactly one: two (or
+    more) schedules tied for nearest, or none of the active episodes has a
+    schedule with an open slot to offer at all - an as-needed drug never
+    wins the comparison, it only leaves the tie unresolved. That is exactly
+    the case the picker still has to ask about.
+
+    `episodes` is the full list, needed only so a dose can be attributed to
+    the one active episode it names (attributeDose above) - each episode's
+    own doses are picked out here rather than by the caller, the same split
+    getComparison already makes before calling adherence. */
+export function nearestActiveEpisode(
+  episodes: readonly RegimenEpisode[],
+  active: readonly RegimenEpisode[],
+  schedules: readonly DoseSchedule[],
+  pauses: readonly DosePause[],
+  doses: readonly DoseEvent[],
+  todayEpochDay: number,
+  maxRadiusDays: number
+): RegimenEpisode | null {
+  if (active.length <= 1) return active[0] ?? null;
+
+  const distances = active.map((ep) => {
+    const schedule = schedules.find((s) => s.episodeId === ep.id);
+    if (!schedule) return { episode: ep, distance: null as number | null };
+    const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === ep.id);
+    return {
+      episode: ep,
+      distance: nearestOpenSlotDistance(schedule, ep.startEpochDay, episodeDoses, pauses, todayEpochDay, maxRadiusDays)
+    };
+  });
+
+  const known = distances.filter((d): d is { episode: RegimenEpisode; distance: number } => d.distance !== null);
+  if (known.length === 0) return null;
+  const nearest = Math.min(...known.map((d) => d.distance));
+  const winners = known.filter((d) => d.distance === nearest);
+  return winners.length === 1 ? winners[0].episode : null;
 }

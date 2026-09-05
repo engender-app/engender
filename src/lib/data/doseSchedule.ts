@@ -370,3 +370,29 @@ export function adherence(
 export function expectedAmountOn({ rows }: Adherence, epochDay: number): DoseScheduleAmount | null {
   return rows.find((row) => row.slot.epochDay === epochDay && row.dose === null)?.slot.amount ?? null;
 }
+
+/** How many days from `todayEpochDay` to the nearest slot `schedule` still
+    expects nothing logged against - the day a new dose without a drug
+    picked yet is most likely for (phase 8 ticket 40). Searches only
+    `maxRadiusDays` either side of today, capped further to the schedule's
+    own period (`everyNDays`, or a week for `weekdays`) - the smallest
+    window guaranteed to hold a slot, so a rare wide-interval schedule
+    costs no more than a narrow one. Null when nothing in that window is
+    open: an as-needed drug with no schedule at all never reaches here, and
+    a schedule whose only nearby slot a pause covers is the same as having
+    none. */
+export function nearestOpenSlotDistance(
+  schedule: DoseSchedule,
+  anchorEpochDay: number,
+  doses: readonly DoseEvent[],
+  pauses: readonly DosePause[],
+  todayEpochDay: number,
+  maxRadiusDays: number
+): number | null {
+  const period = schedule.recurrence.kind === 'everyNDays' ? Math.max(schedule.recurrence.everyNDays, 1) : 7;
+  const radius = Math.min(period, maxRadiusDays);
+  const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay - radius, todayEpochDay + radius);
+  const { rows } = adherence(slots, doses, pauses);
+  const distances = rows.filter((row) => row.dose === null).map((row) => Math.abs(row.slot.epochDay - todayEpochDay));
+  return distances.length > 0 ? Math.min(...distances) : null;
+}
