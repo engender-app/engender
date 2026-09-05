@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { EpisodeEndReason } from '../types';
+import type { EpisodeEndReason, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
@@ -720,6 +720,7 @@ export interface ArchiveMedicationStock {
     session has nothing of its own to record about the handoff. */
 export interface ArchiveWearSession {
   id: string;
+  kind: WearKind;
   startTimestamp: number;
   durationMs: number | null;
   note: string | null;

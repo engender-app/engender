@@ -225,6 +225,7 @@ test('the date range narrows dated areas and leaves undated ones alone', async (
 test('a wear session is dated by the day its session started, and the range reaches it', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.wearSessions.upsertSession({
+    kind: 'binder',
     startTimestamp: startOfDayTimestamp(DAY) + 20 * 3_600_000,
     durationMs: 3_600_000,
     note: 'żółć under a shirt'
@@ -370,6 +371,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   await journal.sizeRecords.upsertRecord({ epochDay: DAY, category: 'shirts', size: 'M', fitNote: `fit ${word}` });
   await journal.taper.upsertSession({ epochDay: DAY, note: `taper ${word}` });
   await journal.wearSessions.upsertSession({
+    kind: 'binder',
     startTimestamp: startOfDayTimestamp(DAY) + 9 * 3_600_000,
     durationMs: 3_600_000,
     note: `wear ${word}`

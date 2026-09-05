@@ -642,6 +642,7 @@ beforeAll(async () => {
   // --- wearSessions -----------------------------------------------------
   const wearSessionId = (await drive('wearSessions', 'upsertSession', () =>
     journal.wearSessions.upsertSession({
+      kind: 'binder',
       startTimestamp: 1_700_000_000_000,
       durationMs: 6 * 3_600_000,
       note: 'a bit tight by the end',
@@ -650,7 +651,7 @@ beforeAll(async () => {
     })
   )) as string;
   const secondWearSessionId = (await drive('wearSessions', 'upsertSession', () =>
-    journal.wearSessions.upsertSession({ startTimestamp: 1_700_100_000_000, durationMs: null })
+    journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: 1_700_100_000_000, durationMs: null })
   )) as string;
   await drive('wearSessions', 'deleteSession', () => journal.wearSessions.deleteSession(secondWearSessionId));
 
@@ -933,6 +934,7 @@ beforeAll(async () => {
   );
   await driveRead('wearSessions', 'getSessions', () => journal.wearSessions.getSessions(0, 30000));
   await driveRead('wearSessions', 'getRunningSession', () => journal.wearSessions.getRunningSession());
+  await driveRead('wearSessions', 'latestKind', () => journal.wearSessions.latestKind());
   await driveRead('wearSessions', 'lastWriteEpochDay', () => journal.wearSessions.lastWriteEpochDay(20000));
   await driveRead('clinicianSummary', 'getSummary', () => journal.clinicianSummary.getSummary(0, 30000));
   await driveRead('day', 'getDay', () => journal.day.getDay(20000));

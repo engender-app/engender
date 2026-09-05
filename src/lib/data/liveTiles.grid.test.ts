@@ -51,6 +51,7 @@ const WEAR_ELAPSED_MS = 3_723_000;
 
 const wearSession: WearSession = {
   id: 'wear-1',
+  kind: 'binder',
   startTimestamp: NOW - WEAR_ELAPSED_MS,
   durationMs: null,
   note: null

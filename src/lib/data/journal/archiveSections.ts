@@ -898,7 +898,19 @@ const SECTIONS = [
     table: 'wear_session',
     identity: 'uuid',
     orderBy: 'start_timestamp, id',
-    columns: { uuid: 'id', start_timestamp: 'startTimestamp', duration_ms: 'durationMs', note: 'note' }
+    columns: {
+      uuid: 'id',
+      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one:
+         no archive written before ticket 50 carries the field, and the flat
+         writer binds an undefined as a raw driver error rather than a null.
+         The value matches the column's own v71 default, so a session
+         restored from an older archive and one that was already in the
+         journal end up saying the same thing. */
+      kind: { field: 'kind', whenAbsent: 'binder' },
+      start_timestamp: 'startTimestamp',
+      duration_ms: 'durationMs',
+      note: 'note'
+    }
   }),
   /* Voice benchmarks (phase 5 deepening ticket 15). Flat: one row per take,
      no children, no rowid resolved against another section. Its two audio

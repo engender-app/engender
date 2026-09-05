@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 70);
+  assert.equal(db.getUserVersion(), 71);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1165,4 +1165,29 @@ test('v45 is a no-op for an installation that never set a PIN', async () => {
   assert.equal(pref(db, 'pinHash'), undefined);
   assert.equal(pref(db, 'name'), '"Alicja"');
   assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+});
+
+test('v71 gives every wear session a kind, and a row from before it reads back as a binder', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 70)
+  );
+
+  /* Written when the table had no column telling binding from tucking apart
+     at all (v22), so nothing about this row says which it was. The app is
+     unpublished and ticket 50 leaves what happens to such a row open; the
+     column's own default is what it gets. */
+  db.raw.exec(`INSERT INTO wear_session (uuid, start_timestamp, duration_ms, note, updated_at)
+    VALUES ('ws-old', 1700000000000, 21600000, 'a bit tight by the end', 1000)`);
+
+  await runMigrations(db, noopFileOps(), migrations);
+
+  const row = db.raw.prepare("SELECT kind, note FROM wear_session WHERE uuid = 'ws-old'").get() as {
+    kind: string;
+    note: string;
+  };
+  assert.equal(row.kind, 'binder');
+  assert.equal(row.note, 'a bit tight by the end');
 });

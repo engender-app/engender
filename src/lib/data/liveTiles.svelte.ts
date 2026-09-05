@@ -172,6 +172,7 @@ export function homeTiles(
         stopWear: (session) => {
           void journal.wearSessions.upsertSession({
             id: session.id,
+            kind: session.kind,
             startTimestamp: session.startTimestamp,
             durationMs: Date.now() - session.startTimestamp,
             note: session.note
