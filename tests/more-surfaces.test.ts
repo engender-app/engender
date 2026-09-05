@@ -93,8 +93,10 @@ describe('every row the hub carries', () => {
 
      Phase 8 UX ticket 02 moved `photos` and `voice` into a new Media group,
      resolved three duplicated icon pairs and renamed the personal effects
-     route. Its reasons are in `hubRows.ts`; what this line-by-line list is
-     for is noticing an unintended change to any of it. */
+     route. Phase 8 features ticket 52 added `documents`, the media group's
+     third row and the first one in it that fronts an area of its own. Its
+     reasons are in `hubRows.ts`; what this line-by-line list is for is
+     noticing an unintended change to any of it. */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['measurements', 'ruler', '/body/measurements', 'body', 'read'],
     ['sizes', 'package', '/body/sizes', 'body', 'read'],
@@ -121,7 +123,8 @@ describe('every row the hub carries', () => {
     ['effects', 'eye', '/practice/personal-effects', 'practice', 'read'],
     ['resources', 'info', '/practice/resources', 'practice', 'written'],
     ['photos', 'image', '/media/photos', 'media', 'written'],
-    ['voice', 'mic', '/media/voice/memos', 'media', 'written']
+    ['voice', 'mic', '/media/voice/memos', 'media', 'written'],
+    ['documents', 'documents', '/media/documents', 'media', 'read']
   ];
 
   it('is exactly this list, in this order', () => {
