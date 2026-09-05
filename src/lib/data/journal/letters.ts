@@ -36,6 +36,14 @@ export interface LettersArea {
       deep link into a single letter takes, which cannot work from the
       newest-first page above (phase 5 deepening ticket 13). */
   getLetter(id: string): Promise<Letter | null>;
+  /** The distinct days a letter unlocks between `fromEpochDay` and
+      `toEpochDay` inclusive - never an id, and never the text (phase 8
+      features ticket 61, dayAhead.ts). A mark says only that a letter
+      unlocks; this is what makes that true at the source rather than at
+      the caller's discretion, unlike `getLetterSeals`, which carries an id
+      and exists for a different reader (letterStatus.ts) that is allowed
+      to know which letter it is offering. */
+  getUnlockDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /** Returns the letter's id. Throws on blank text: a letter's one field
       is the whole point of the record, unlike Entry's "at least one of
       six" rule. */
@@ -81,6 +89,16 @@ export function makeLettersArea(driver: SqliteDriver): LettersArea {
         [id]
       );
       return rows.length ? toLetter(rows[0]) : null;
+    },
+
+    async getUnlockDaysInRange(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ unlock_epoch_day: number }>(
+        `SELECT DISTINCT unlock_epoch_day FROM letter
+          WHERE unlock_epoch_day BETWEEN ? AND ?
+          ORDER BY unlock_epoch_day`,
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map((row) => row.unlock_epoch_day);
     },
 
     async addLetter(input) {
