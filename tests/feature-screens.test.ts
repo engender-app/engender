@@ -24,7 +24,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { HUB_ROWS, type HubRowKey } from '../src/lib/data/hubRows.ts';
+import { HUB_ROWS, rowScreen, type HubRow, type HubRowKey } from '../src/lib/data/hubRows.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -33,10 +33,10 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
     keyed by `HubRowKey`, so a row named here that stops existing is a
     compile error rather than a silent exemption.
 
-    SCREENS.md still says "22 More-hub rows" against the hub's 26 - the
-    inventory was last correct before `/doubt` moved onto the hub under spec
-    08, and ticket 24 found the same gap from the other side and recorded it
-    as out of its scope. Correcting SCREENS.md is still nobody's ticket, and
+    SCREENS.md still says "22 More-hub rows" against a hub that has been
+    longer than that since `/doubt` moved onto it under spec 08, and ticket
+    24 found the same gap from the other side and recorded it as out of its
+    scope. Correcting SCREENS.md is still nobody's ticket, and
     reading the routes off the hub instead of off the doc makes that
     disagreement smaller rather than pretending it is settled. */
 const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
@@ -79,14 +79,11 @@ const REACHED_FROM_INSIDE = [
   'settings/photos/export'
 ];
 
-/** A hub row's route: its href without the leading slash, and without the
-    query string the one tabbed row carries (the voice benchmark's), since
-    what this file reads is the screen's source. */
-const routeOf = (href: string) => href.split('?')[0].slice(1);
+/** A hub row's route: the screen behind it, without the leading slash, since
+    what this file reads is that screen's source. */
+const routeOf = (row: HubRow) => rowScreen(row).slice(1);
 
-const HUB_ROUTES = HUB_ROWS.filter((row) => !(row.key in NOT_A_FEATURE_SCREEN)).map((row) =>
-  routeOf(row.href)
-);
+const HUB_ROUTES = HUB_ROWS.filter((row) => !(row.key in NOT_A_FEATURE_SCREEN)).map(routeOf);
 
 const ROUTES = [...HUB_ROUTES, ...REACHED_FROM_INSIDE];
 
@@ -103,19 +100,17 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the screens reached only from inside another', () => {
-    /* This assertion used to be a count - 36, having been 26 when the list
-       was written and having been raised ten times since, twice by two
-       branches that each thought they were adding the 28th. A route added
-       to the hub reaches this file on its own now, so what is left to hold
-       is the join: every row is either here or excused, and no screen below
-       the hub restates one that is already on it. */
-    for (const row of HUB_ROWS) {
-      const listed = ROUTES.includes(routeOf(row.href));
-      expect(listed || row.key in NOT_A_FEATURE_SCREEN, `${row.key} is neither on the list nor excused`).toBe(
-        true
-      );
-    }
+  it('is the hub, plus the eleven screens reached only from inside another', () => {
+    /* The count that was here covered all 36 routes and had been raised ten
+       times since it was written as 26, twice by two branches that each
+       thought they were adding the 28th. The hub's own rows no longer need
+       one - they arrive from `hubRows.ts`, and a row with no screen behind
+       it throws in `sourceOf` above before any assertion runs.
+
+       The eleven below it still do, for the reason the note at the top of
+       the file gives: a screen quietly dropped from a hand-written list and
+       a screen quietly dropped from the redesign look identical. */
+    expect(REACHED_FROM_INSIDE.length).toBe(11);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
