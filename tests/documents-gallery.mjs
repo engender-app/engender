@@ -213,13 +213,23 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(800);
   await shoot('06-document-linked');
 
-  /* ---------- 07: the other end. The goal's own sheet lists what points at
+  /* ---------- 07: the picker again, now that the link is set: the row it
+     points at carries a tick, and there is a way out of the link at the top
+     of the sheet. ---------- */
+  await page.locator('[data-pick-document-target]').click();
+  await page.waitForSelector('[data-clear-target]');
+  await page.waitForTimeout(400);
+  await shootViewport('07-picker-linked');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  /* ---------- 08: the other end. The goal's own sheet lists what points at
      it; the goal itself stores nothing. ---------- */
   await settle('/transition/roadmap');
   await page.locator(`[data-open-goal="${GOAL}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.waitForTimeout(600);
-  await shootViewport('07-goal-sheet');
+  await shootViewport('08-goal-sheet');
 
   await page.close();
 }

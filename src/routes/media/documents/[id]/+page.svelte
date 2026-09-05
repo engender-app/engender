@@ -29,6 +29,8 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -38,6 +40,7 @@
   import { documentTarget } from '$lib/data/journal/documents';
   import { POLISH_PACK } from '$lib/data/roadmap';
   import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
+  import { DOCUMENT_TARGET_ICON, documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
   import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -196,29 +199,61 @@
           <DatePicker name="document-day" bind:value={draft.day} {id} />
         {/snippet}
       </Field>
+      <!-- The link is a row of the same list card the rest of the app files
+           things in, rather than a line of text with a button beside it: it
+           goes to the target the way any row goes to what it names, and the
+           trailing control is the row's own `action` - which is what keeps a
+           button out of the middle of a link (ListRow's own reason for the
+           split shape). Unlinked, the row has nowhere to go, so it acts. -->
       <Field label={m.document_link_label()} legend>
         {#snippet children()}
-          <div class="kit-row is-static" data-document-link>
-            <span class="kit-row-text">
-              {#if target && targetLabel}
-                <a class="kit-row-title" href={targetLabel.href}>{targetLabel.text}</a>
-              {:else if target}
-                <span class="kit-row-sub">{m.document_target_gone()}</span>
-              {:else}
-                <span class="kit-row-sub">{m.document_link_none()}</span>
-              {/if}
-            </span>
-            <span class="kit-row-trail">
-              <button
-                type="button"
-                class="btn btn-ghost press"
-                data-pick-document-target
+          <ListCard>
+            {#if target && targetLabel}
+              <ListRow
+                key="document-target"
+                data-document-link
+                icon={DOCUMENT_TARGET_ICON[target.kind]}
+                title={targetLabel.text}
+                subtitle={documentTargetKindLabel(target.kind)}
+                href={targetLabel.href}
+                action={{
+                  icon: 'pencil',
+                  label: m.document_link_change(),
+                  onclick: () => (pickingTarget = true),
+                  attrs: { 'data-pick-document-target': 'true' }
+                }}
+              />
+            {:else if target}
+              <!-- A link whose target is gone, which a restored archive can
+                   carry (ADR-0065): the paper outlives what it was filed
+                   under, so the row states that and offers the picker rather
+                   than pointing at nothing. -->
+              <ListRow
+                key="document-target"
+                data-document-link
+                static
+                icon={DOCUMENT_TARGET_ICON[target.kind]}
+                title={m.document_target_gone()}
+                action={{
+                  icon: 'pencil',
+                  label: m.document_link_change(),
+                  onclick: () => (pickingTarget = true),
+                  attrs: { 'data-pick-document-target': 'true' }
+                }}
+              />
+            {:else}
+              <ListRow
+                key="document-target"
+                data-document-link
+                data-pick-document-target="true"
+                icon="plus"
+                title={m.document_link_add()}
+                subtitle={m.document_link_none()}
+                chevron={false}
                 onclick={() => (pickingTarget = true)}
-              >
-                <span>{target ? m.document_link_change() : m.document_link_add()}</span>
-              </button>
-            </span>
-          </div>
+              />
+            {/if}
+          </ListCard>
         {/snippet}
       </Field>
       <button
