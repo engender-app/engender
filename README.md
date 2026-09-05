@@ -1,10 +1,11 @@
 # Gender Diary
 
-A local-first, private diary for tracking gender transition — moods, gender
-feelings on configurable scales, quick tags, notes, photos, milestones. Web
-PWA + Android (Capacitor) from one SvelteKit codebase. No accounts, no
-analytics, GPLv3. The hosted web app still uses network requests to its own
-origin for the app shell and updates. Full product spec in [prd.md](prd.md).
+enGender keeps a person's gender transition in one place, on their own
+device: moods, gender feelings on configurable scales, quick tags, notes,
+photos, milestones. Web PWA + Android (Capacitor) from one SvelteKit
+codebase. No accounts, no analytics, GPLv3. The hosted web app still uses
+network requests to its own origin for the app shell and updates. Full
+product spec in [prd.md](prd.md).
 
 ## Status
 

@@ -317,6 +317,21 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       href: `/transition/tryouts/${group[0].tryoutId}`,
       photo: group[0],
       count: group.length
+    })),
+
+  /* One row each and no `photo` on any of them, which is the one place this
+     file's "photographs collapse" rule is not the question. ADR-0065 keeps
+     a document's page off every list there is, so what the day shows is the
+     title the person wrote and a subtitle saying what kind of record it is
+     - the title alone would not, since "Carry letter" on a day reads like
+     one of the letters. */
+  documents: (day) =>
+    day.documents.map((document) => ({
+      key: `document-${document.id}`,
+      icon: 'documents',
+      title: document.title,
+      subtitle: m.day_document(),
+      href: `/media/documents/${document.id}`
     }))
 };
 

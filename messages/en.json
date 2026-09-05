@@ -139,7 +139,7 @@
   "cal_jump_month": "Jump to month",
   "next_month": "Next month",
   "next_year": "Next year",
-  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries.",
+  "heat_hint": "Days with entries are filled in: deeper colour means a higher {metric}. A day of two readings that landed far enough apart is split down the middle, and a day of several readings sits on a stack. Tap a filled day to see its entries. A day ahead with a small mark has something coming up; tap it to see what.",
   "legend_none": "no entry",
   "entries_this_day": [
     {
@@ -227,6 +227,7 @@
   "chart_annotation_journaling_pause": "journaling pause",
   "chart_annotation_tryout": "tryout",
   "chart_annotation_era": "era",
+  "chart_annotation_appointment": "appointment",
   "chart_annotation_side_effect": "side effect",
   "chart_annotation_injection": "injection",
   "chart_annotation_tally_misgendered": "misgendering, above your own range",
@@ -1866,6 +1867,7 @@
   "week_cell_no_entry": "{day}: no entry",
   "week_cell_level": "{day}: level {level} of 4",
   "heat_cell_none": "{date}, no entries",
+  "heat_cell_coming_up": "{date}, something coming up",
   "heat_cell_entries": [
     {
       "declarations": [
@@ -3303,5 +3305,30 @@
   "appointments_delete_q": "Delete this appointment?",
   "appointments_untitled": "Appointment",
   "appointments_prep_sub": "What to raise when you go",
-  "appointments_kind_suggestions": "Kinds you have used before."
+  "appointments_kind_suggestions": "Kinds you have used before.",
+  "documents_title": "Documents",
+  "documents_intro": "Paper you have been handed, kept in here rather than in a downloads folder. Nothing in it is read or searched but the title you write.",
+  "document_add_aria": "Add a document",
+  "documents_empty_title": "No paper here yet",
+  "documents_empty_body": "Photograph a page, say what it is and what day it is from. It is stored encrypted, like everything else.",
+  "documents_empty_action": "Add a document",
+  "document_new_sheet": "Name this document",
+  "document_title_label": "What it is",
+  "document_title_placeholder": "Psychiatric opinion",
+  "document_day_label": "Date on the paper",
+  "document_save": "Save",
+  "document_title": "Document",
+  "document_save_changes": "Save changes",
+  "document_delete": "Delete",
+  "document_delete_sheet": "Delete document",
+  "document_delete_q": "Delete {title}?",
+  "document_delete_hint": "The page goes with it. This cannot be undone.",
+  "document_missing_title": "This document is gone",
+  "document_missing_body": "It was deleted, or this link points at something that was never here.",
+  "document_missing_action": "Back to documents",
+  "day_document": "Document",
+  "hub_sub_documents": "Opinions, referrals and rulings you have been given",
+  "document_page_alt": "The page of {title}",
+  "document_save_failed": "Couldn’t file this document. Nothing was kept.",
+  "document_edit_failed": "Couldn’t save that change. The document is as it was."
 }

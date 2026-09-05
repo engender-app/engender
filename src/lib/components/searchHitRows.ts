@@ -105,6 +105,10 @@ const AREA_ROWS: Record<
     label: () => m.affirmations_row_title(),
     href: () => '/settings/affirmations'
   },
+  /* Goes to the document itself rather than to the list: a hit is one
+     piece of paper somebody is looking for, and its own screen is the only
+     place the page image is drawn at all (ADR-0065). */
+  documents: { icon: 'documents', label: () => m.documents_title(), href: (hit) => `/media/documents/${hit.id}` },
   labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/settings/labs' },
   sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
   taperSessions: { icon: 'flask', label: () => m.dilation(), href: () => '/health/dilation' },
