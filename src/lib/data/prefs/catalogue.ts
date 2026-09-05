@@ -174,6 +174,10 @@ export interface PreferenceValues {
   hairRemovalRecoveryEnabled: boolean;
   /** Whether the measurements nudge live tile is ever shown (phase 5 deepening ticket 03). */
   measurementsNudgeEnabled: boolean;
+  /** Whether the appointment-today live tile is ever shown (phase 8 features
+      ticket 63), when today's date carries an appointment. Same shape and
+      reasoning as `wearTimerEnabled`. */
+  appointmentTodayEnabled: boolean;
   /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
       stops the Home card and the recap read behind it, rather than hiding a
       card over work that still runs.
@@ -431,6 +435,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   pauseActiveBannerEnabled: true,
   hairRemovalRecoveryEnabled: true,
   measurementsNudgeEnabled: true,
+  appointmentTodayEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
   wrappedNotificationsEnabled: false,
@@ -519,6 +524,7 @@ export const DEVICE_LOCAL_KEYS = [
   'pauseActiveBannerEnabled',
   'hairRemovalRecoveryEnabled',
   'measurementsNudgeEnabled',
+  'appointmentTodayEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
   'wrappedNotificationsEnabled',
