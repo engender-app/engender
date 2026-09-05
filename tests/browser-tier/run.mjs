@@ -1266,6 +1266,50 @@ try {
   fail('phase 8 audit ticket 14 seeded live reads', e.message ?? String(e));
 }
 
+// --- Phase 8 audit ticket 15: search waits for the typist ------------------
+try {
+  const live = await load('/live-reads.html', 'live-reads-probe');
+  if (live.error) throw new Error(live.error);
+
+  const { debounce, savedQuestionStability } = live;
+
+  if (debounce.runsAfterTenKeystrokes === debounce.runsBeforeTyping + 1)
+    ok('typing ten characters fires one debounced run rather than ten');
+  else
+    fail(
+      'typing ten characters fires one debounced run rather than ten',
+      `${debounce.runsBeforeTyping} run(s) before, ${debounce.runsAfterTenKeystrokes} after`
+    );
+
+  if (debounce.clearedWithoutWaitingTheDebounce) ok('clearing the query lands within a flush, without waiting out the debounce');
+  else fail('clearing the query lands within a flush, without waiting out the debounce', 'debounced value was not cleared yet');
+
+  if (
+    savedQuestionStability.unstableRunsAfterUnrelatedRename > savedQuestionStability.unstableRunsBeforeUnrelatedRename
+  )
+    ok('a closure reading a saved question object directly re-runs when an unrelated saved question is renamed (the defect)');
+  else
+    fail(
+      'a closure reading a saved question object directly re-runs on an unrelated rename',
+      savedQuestionStability.unstableErrorAfterUnrelatedRename ??
+        `still ${savedQuestionStability.unstableRunsAfterUnrelatedRename} run(s)`
+    );
+
+  if (savedQuestionStability.stableRunsAfterUnrelatedRename === savedQuestionStability.stableRunsBeforeUnrelatedRename)
+    ok('the signature-memoized read ignores an unrelated saved question being renamed');
+  else
+    fail(
+      'the signature-memoized read ignores an unrelated saved question being renamed',
+      `${savedQuestionStability.stableRunsBeforeUnrelatedRename} run(s) before, ${savedQuestionStability.stableRunsAfterUnrelatedRename} after`
+    );
+
+  if (savedQuestionStability.stableErrorAfterRealChange === null)
+    ok("the signature-memoized read still re-runs when the viewed question's own queryText changes");
+  else fail("the signature-memoized read re-runs when its own queryText changes", savedQuestionStability.stableErrorAfterRealChange);
+} catch (e) {
+  fail('phase 8 audit ticket 15 search waits for the typist', e.message ?? String(e));
+}
+
 // --- Phase 5 audit deepening ticket 09: a dependent read waits for its record
 await block('ticket 09 detail draft', 3, async () => {
   const detail = await load('/detail-draft.html', 'detail-draft-probe');

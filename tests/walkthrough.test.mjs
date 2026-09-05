@@ -588,13 +588,82 @@ try {
   await page.waitForSelector('[data-search-hit="labResults"]');
 
   /* A word in no record at all still says so, rather than showing the
-     entries' empty state over hits from somewhere else. */
+     entries' empty state over hits from somewhere else. The wait covers the
+     search debounce (ticket 15) on top of the round trip a fixed wait always
+     had to cover here - there is no result to wait for, only its absence. */
   await page.locator('#q').fill('pierogi');
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(600);
   if (await page.locator('[data-search-hit]').count()) throw new Error('a word in no record still returned hits');
 
   ok('search reaches records outside entries, and every hit says its kind and where it goes');
 } catch (e) { fail('search reaches past entries', e); }
+
+/* 5d. search waits for the typist (phase 8 audit ticket 15).
+
+   Ten keystrokes firing one search rather than ten is proved by counting
+   closure runs (tests/browser-tier/live-reads-probe.svelte.ts) - nothing a
+   walkthrough drives from outside the page can count that. What this proves
+   instead is what a person actually sees: a query typed key by key still
+   lands once typing stops, `pressSequentially` rather than `fill` because
+   `fill` sets the whole value in one event and would exercise no wait at
+   all. */
+try {
+  await fresh('/search');
+
+  await page.locator('#q').pressSequentially('hopeful', { delay: 30 });
+  await page.waitForSelector('[data-entry-card]');
+
+  ok('a query typed key by key still lands once the typing stops');
+} catch (e) { fail('search waits for the typist', e); }
+
+/* 5e. clearing search does not wait out the debounce (phase 8 audit ticket 15). */
+try {
+  await fresh('/search');
+
+  await page.locator('#q').fill('hopeful');
+  await page.waitForSelector('[data-entry-card]');
+
+  await page.locator('#q').fill('');
+  // Well inside the 250ms debounce interval - clearing is the one case the
+  // ticket says is not waited out, so the previous results have to be gone
+  // long before a debounced run of an empty query ever could have answered.
+  await page.waitForTimeout(80);
+  if (await page.locator('[data-entry-card]').count()) throw new Error('clearing left the previous results on screen');
+  const hint = await page.locator('[data-screen]').innerText();
+  if (!hint?.toLowerCase().includes('try') && !hint?.toLowerCase().includes('spróbuj')) {
+    throw new Error('clearing did not bring back the idle hint');
+  }
+
+  ok('clearing the query clears the results well inside the debounce interval, not after it');
+} catch (e) { fail('clearing search does not wait out the debounce', e); }
+
+/* 5f. a saved question runs (phase 8 audit ticket 15's "same shape" screen).
+
+   Regression cover for moving that screen's two closures off `question`
+   itself onto a signature-memoized copy of it - the run-count claim about
+   *why* is proved against the real journal in the browser tier
+   (live-reads-probe.svelte.ts); what this proves is that the run still
+   shows the entries a person searched for. */
+try {
+  await fresh('/search');
+  await page.locator('#q').fill('hopeful');
+  await page.waitForSelector('[data-entry-card]');
+
+  await page.locator('[data-search-save]').click();
+  await page.waitForSelector('[data-saved-question-save-confirm]');
+  await page.locator('#saved-question-name').fill('ticket15 saved question');
+  await page.locator('[data-saved-question-save-confirm]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
+  await page.locator('a[href="/search/questions"]').click();
+  // text-under-test: the name is this test's own fixture data, not app copy.
+  const row = page.locator('[data-saved-question]').filter({ hasText: 'ticket15 saved question' }); // text-under-test
+  await row.waitFor();
+  await row.click();
+  await page.waitForSelector('[data-entry-card]');
+
+  ok('a saved question runs and shows entries, the same read /search itself made');
+} catch (e) { fail('saved question runs', e); }
 
 /* 6. stats range + value list.
 
