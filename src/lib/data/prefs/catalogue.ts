@@ -361,6 +361,12 @@ export interface PreferenceValues {
       journal restored onto a new phone after a long gap should meet what is
       waiting rather than inherit a note saying it was already shown. */
   comingBackSeenSince: number | null;
+  /** Which drugs a person has turned off the clinician summary's regimen,
+      dose-history and exposure sections, keyed by drug name (phase 8
+      features ticket 39, ADR-0031). On (absent or false) by default. Device-
+      local: which drug a printout leaves out is a choice about a specific
+      visit on this installation, not portable journal data (ADR-0003). */
+  clinicianSummaryDrugExcluded: Partial<Record<string, boolean>>;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -437,7 +443,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   lastVerifiedAt: null,
   roadmapMilestoneSyncEnabled: true,
   areaFinishOfferDeclined: [],
-  comingBackSeenSince: null
+  comingBackSeenSince: null,
+  clinicianSummaryDrugExcluded: {}
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -517,7 +524,8 @@ export const DEVICE_LOCAL_KEYS = [
   'measurementProtocolDismissed',
   'hairPhotoProtocolDismissed',
   'hormoneCurveFitToOwnLabs',
-  'comingBackSeenSince'
+  'comingBackSeenSince',
+  'clinicianSummaryDrugExcluded'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens

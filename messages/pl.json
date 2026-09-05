@@ -2334,6 +2334,8 @@
   "clinician_summary_period_label": "Okres raportu",
   "clinician_summary_include_title": "Zawartość raportu",
   "clinician_summary_include_note": "Wybierz sekcje, które mają znaleźć się w drukowanym raporcie.",
+  "clinician_summary_drugs_title": "Uwzględnione leki",
+  "clinician_summary_drugs_note": "Wyłącz lek, aby pominąć go w sekcjach schematu, dawek i ekspozycji poniżej.",
   "clinician_summary_part_demographics": "Profil pacjenta",
   "clinician_summary_part_regimen": "Kuracja i historia dawek",
   "clinician_summary_part_exposure": "Łączna ekspozycja",

@@ -31,6 +31,7 @@
 import type { TableName } from '../live/writes';
 import { finishedGroups, type AreaGroupKey } from '../areaGroups';
 import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
+import { attributeDrug } from '../regimenEpisode';
 import { spanOverlapsRange } from '../span';
 import type { AreaStatesArea } from './areaStates';
 import type { ChecklistsArea } from './checklists';
@@ -105,11 +106,15 @@ export interface ClinicianSummaryAreas {
   procedures: ProceduresArea;
 }
 
-/** What every section's read is given: the areas, and the range to read
-    for. */
+/** What every section's read is given: the areas, the range to read for,
+    and the drugs a visit's printout has turned off (phase 8 features
+    ticket 39, ADR-0031). Empty by default - most sections ignore it
+    entirely, the same way most ignore fromEpochDay/toEpochDay's siblings
+    like `procedures` do. */
 export interface ClinicianSummaryReading extends ClinicianSummaryAreas {
   fromEpochDay: number;
   toEpochDay: number;
+  excludedDrugs: ReadonlySet<string>;
 }
 
 /** One part of the summary's declaration that it prints. Erased over what
@@ -133,10 +138,45 @@ function section<Key extends ClinicianSummarySectionKey>(declared: {
 
 /* An episode belongs in the history if any part of its dated range overlaps
    the window - the same overlap exposureCounters.ts's own overlapDays
-   tests, kept here as a filter rather than a count. */
-async function readRegimenEpisodes({ regimen, fromEpochDay, toEpochDay }: ClinicianSummaryReading) {
+   tests, kept here as a filter rather than a count. Composed with the
+   drug exclusion (phase 8 features ticket 39) in the same `.filter` rather
+   than as a second pass over the list. */
+async function readRegimenEpisodes({ regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const episodes = await regimen.getEpisodes();
-  return episodes.filter((episode) => spanOverlapsRange(episode, fromEpochDay, toEpochDay));
+  return episodes.filter(
+    (episode) => spanOverlapsRange(episode, fromEpochDay, toEpochDay) && !excludedDrugs.has(episode.drug)
+  );
+}
+
+/* A dose event usually names no drug of its own, so which drug it counts
+   against is resolved against the episode history exactly the way
+   exposureCounters.ts's cumulativeDoseTotals already resolves it
+   (attributeDrug) - reusing that question rather than re-deriving "which
+   drug was this dose" a second way. A dose attributeDrug cannot resolve at
+   all (`drug: null`) names no excluded drug either, so it stays. */
+async function readDoses({ doses, regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
+  const [events, episodes] = await Promise.all([doses.getDoses(fromEpochDay, toEpochDay), regimen.getEpisodes()]);
+  return events.filter((dose) => {
+    const { drug } = attributeDrug(episodes, dose);
+    return drug === null || !excludedDrugs.has(drug);
+  });
+}
+
+/* Exposure counters, with the excluded drugs' rows dropped from the two
+   parts keyed by drug (phase 8 features ticket 39). `routeDays` is not
+   filtered: it is a route total, not a drug total (daysOnEachRoute merges
+   across whatever episodes used that route), and this ticket does not
+   conflate the two any more than it conflates an analyte with a drug.
+   `excludedDoses` stays as-is for the same reason - it counts doses the
+   drug log itself could not attribute, which a drug toggle does not
+   change. */
+async function readExposure({ exposure, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
+  const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
+  return {
+    ...counters,
+    doseTotals: counters.doseTotals.filter((total) => !excludedDrugs.has(total.drug)),
+    regimenDays: counters.regimenDays.filter((days) => !excludedDrugs.has(days.drug))
+  };
 }
 
 /* labs.ts has no cross-analyte range read (unlike doses and side effects),
@@ -202,7 +242,10 @@ async function readAppointmentPrepItems({ checklists }: ClinicianSummaryReading)
 
 const SECTIONS = [
   section({ key: 'regimenEpisodes', tables: ['regimen'], read: readRegimenEpisodes }),
-  section({ key: 'doses', tables: ['dose'], read: ({ doses, fromEpochDay, toEpochDay }) => doses.getDoses(fromEpochDay, toEpochDay) }),
+  // Reads the regimen table too now, for the same attribution readExposure
+  // below already depends on it for: a dose event usually names no drug of
+  // its own, so telling its rows apart needs the episode history.
+  section({ key: 'doses', tables: ['dose', 'regimen'], read: readDoses }),
   section({
     key: 'labResults',
     tables: ['lab'],
@@ -213,7 +256,7 @@ const SECTIONS = [
     // Every counter is recomputed from the dose log and the episode history
     // on each read (exposure.ts), so this section depends on both.
     tables: ['dose', 'regimen'],
-    read: ({ exposure, fromEpochDay, toEpochDay }) => exposure.getCounters(fromEpochDay, toEpochDay)
+    read: readExposure
   }),
   section({
     key: 'sideEffects',
@@ -276,8 +319,10 @@ async function assembleClinicianSummary(
 
 export interface ClinicianSummaryArea {
   /** Every registered section read for `[fromEpochDay, toEpochDay]` and
-      assembled for printing - nothing here is stored (phase 4 ticket 12). */
-  getSummary(fromEpochDay: number, toEpochDay: number): Promise<ClinicianSummary>;
+      assembled for printing - nothing here is stored (phase 4 ticket 12).
+      `excludedDrugs` (phase 8 features ticket 39) defaults to none, so
+      every existing caller keeps printing every drug. */
+  getSummary(fromEpochDay: number, toEpochDay: number, excludedDrugs?: ReadonlySet<string>): Promise<ClinicianSummary>;
 }
 
 /** The section list is a parameter, defaulting to the registry, so a test
@@ -288,6 +333,7 @@ export function makeClinicianSummaryArea(
   sections: readonly ClinicianSummarySection[] = CLINICIAN_SUMMARY_SECTIONS
 ): ClinicianSummaryArea {
   return {
-    getSummary: (fromEpochDay, toEpochDay) => assembleClinicianSummary({ ...areas, fromEpochDay, toEpochDay }, sections)
+    getSummary: (fromEpochDay, toEpochDay, excludedDrugs = new Set()) =>
+      assembleClinicianSummary({ ...areas, fromEpochDay, toEpochDay, excludedDrugs }, sections)
   };
 }
