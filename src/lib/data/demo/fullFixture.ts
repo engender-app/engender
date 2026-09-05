@@ -129,7 +129,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     route: 'oral',
     interval: 'daily',
     startEpochDay: sertralineStart,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertSchedule({
     episodeId: sertralineEpisodeId,
