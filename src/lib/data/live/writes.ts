@@ -219,7 +219,12 @@ export const TABLE_NAMES = [
      entry's own query must not re-run when a margin note changes, and the
      reverse - adding, editing or removing a note must not make every
      screen reading entries think the entry itself changed. */
-  'marginNote'
+  'marginNote',
+  /* The word-frequency ignore list (phase 8 features ticket 48). Its own
+     name rather than folded into anything: no read here depends on it but
+     the words screen's own count, and ignoring a word has not touched a
+     single entry's note. */
+  'wordIgnore'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -546,6 +551,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   eraMutes: classify<Journal['eraMutes']>()({
     writes: { setEraMuted: ['eraMute'] },
     reads: { getMutedEraUuids: ['eraMute'] }
+  }),
+  wordIgnore: classify<Journal['wordIgnore']>()({
+    writes: { setWordIgnored: ['wordIgnore'] },
+    reads: { getIgnoredWords: ['wordIgnore'] }
   }),
   wearSessions: classify<Journal['wearSessions']>()({
     writes: {

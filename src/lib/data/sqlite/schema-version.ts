@@ -17,4 +17,4 @@
    assertions in that file get checked, by running the schema suite after a
    merge rather than by trusting that both sides of it were touched. */
 
-export const LATEST_SCHEMA_VERSION = 70;
+export const LATEST_SCHEMA_VERSION = 71;

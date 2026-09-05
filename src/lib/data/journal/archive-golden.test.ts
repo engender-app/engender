@@ -53,6 +53,7 @@ const SECTIONS = [
   'bodyRegions',
   'entries',
   'marginNotes',
+  'wordIgnore',
   'milestones',
   'labResults',
   'measurementTypes',
