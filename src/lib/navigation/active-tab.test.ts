@@ -56,6 +56,18 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/doses')).toBe('settings');
   });
 
+  /* Features ticket 33: the 23 hub-row screens moved off /settings/<slug>
+     onto their own HubGroupKey-named address, and the tab still has to
+     light for all of them - one case per new prefix, not per moved route,
+     since the table matches on prefix rather than on the full path. */
+  it('lights settings for every group the hub rows moved onto', () => {
+    expect(activeTabKey('/body/measurements')).toBe('settings');
+    expect(activeTabKey('/health/surgery')).toBe('settings');
+    expect(activeTabKey('/transition/milestones')).toBe('settings');
+    expect(activeTabKey('/practice/voice')).toBe('settings');
+    expect(activeTabKey('/media/photos')).toBe('settings');
+  });
+
   it('lights home for the doubt journal', () => {
     expect(activeTabKey('/doubt')).toBe('home');
   });
