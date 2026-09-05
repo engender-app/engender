@@ -252,7 +252,13 @@ export const STATS_AREA_OPT_OUTS: Record<Exclude<LastWriteKey, Covered>, string>
   /* No screen browses felt sense on its own: a felt-sense history hangs off
      the tryout or the milestone it was logged against, and a card here would
      have nowhere to send anybody. The gap is recorded, not filled. */
-  feltSenseEntries: 'no screen owns it; it hangs off the tryout or milestone it was logged against'
+  feltSenseEntries: 'no screen owns it; it hangs off the tryout or milestone it was logged against',
+  /* Phase 8 features ticket 52. The index is a place to look at what a
+     stream has accumulated, and a document is not a stream: the app never
+     reads one (ADR-0065), draws nothing from a set of them and has nothing
+     to chart. A card counting somebody's diagnoses would also be the one
+     figure in the app nobody asked for. */
+  documents: 'nothing about a set of documents is a figure; the app never reads what is in them'
 };
 
 /** One card the screen will draw: the panel, and the two dated facts the

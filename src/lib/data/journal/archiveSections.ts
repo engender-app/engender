@@ -321,6 +321,33 @@ const SECTIONS = [
     orderBy: 'word',
     columns: { word: 'word' }
   }),
+  /* The paper the person keeps (phase 8 features ticket 52, ADR-0065).
+     Flat: one table, no children, no owner to resolve a rowid against, so
+     it needs no `after` either.
+
+     A structure file is a thing people hand to someone else, and nothing
+     about a diagnosis, an opinion or a court ruling belongs in one - which
+     is not a judgement about sensitivity so much as about what a structure
+     file is for (ADR-0049): it carries how somebody set the app up, and a
+     document is the most personal record in it. `travels: 'none'`.
+
+     The rows travel in an encrypted archive like every other section, and
+     the bytes they name travel with them - but that half is not here.
+     archive.ts's file manifest is hand-assembled and reads `documents` off
+     `readRowContext`, which is why this table joins the ones read there. */
+  flat({
+    name: 'documents',
+    travels: 'none',
+    table: 'document',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      title: 'title',
+      file_path: 'fileName'
+    }
+  }),
   section({
     name: 'milestones',
     // A milestone linked to a procedure or a tryout stores that owner's

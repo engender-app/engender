@@ -26,6 +26,7 @@ import { makeCorrelationCardsArea, type CorrelationCardsArea } from './correlati
 import { makeCycleEventsArea, type CycleEventsArea } from './cycleEvents';
 import { makeDayArea, type DayArea } from './day';
 import { makeDimensionsArea, type DimensionsArea } from './dimensions';
+import { makeDocumentsArea, type DocumentsArea } from './documents';
 import { makeDoubtJournalArea, type DoubtJournalArea } from './doubtJournal';
 import { makeDosesArea, type DosesArea } from './doses';
 import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCategories';
@@ -100,6 +101,13 @@ export interface Journal {
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
   photos: PhotosArea;
+  /** The paper a transition generates (phase 8 features ticket 52,
+      ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court
+      ruling. Its own area rather than a kind of photo, because a photo
+      belongs to an entry or a milestone and a document belongs to nothing -
+      it is a dated record of its own, with a title the person wrote and
+      which is the only thing about it anything ever reads. */
+  documents: DocumentsArea;
   /** The fluidity engine's named presentations (phase 5 deepening ticket 17,
       ADR-0048, CONTEXT: "Presentation") - a name and a flag-role colour,
       nothing more. `entries.upsertEntry` writes `presentationId` directly
@@ -414,6 +422,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const eras = makeErasArea(driver);
   const eraMutes = makeEraMutesArea(driver);
   const wordIgnore = makeWordIgnoreArea(driver);
+  const documents = makeDocumentsArea(driver, files);
   const comfortItems = makeComfortItemsArea(driver);
   const areaStates = makeAreaStatesArea(driver);
 
@@ -425,6 +434,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     dimensions,
     milestones,
     photos: makePhotosArea(driver, files),
+    documents,
     presentations: makePresentationsArea(driver),
     entryTemplates: makeEntryTemplatesArea(driver),
     voice: makeVoiceArea(driver),
@@ -492,7 +502,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       hairRemoval,
       appointments,
       procedures,
-      tryouts
+      tryouts,
+      documents
     }),
     lastWrite: makeLastWriteArea({
       entries,
@@ -513,7 +524,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       hairRemoval,
       appointments,
       procedures,
-      tryouts
+      tryouts,
+      documents
     }),
     textSearch: makeTextSearchArea(driver),
     journalBook: makeJournalBookArea({ entries, milestones, sideEffects, stats, tags }),

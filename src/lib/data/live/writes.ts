@@ -239,7 +239,12 @@ export const TABLE_NAMES = [
      name rather than folded into anything: no read here depends on it but
      the words screen's own count, and ignoring a word has not touched a
      single entry's note. */
-  'wordIgnore'
+  'wordIgnore',
+  /* The documents area (phase 8 features ticket 52, ADR-0065). Its own
+     name rather than folded into 'photo': a document belongs to no entry
+     and no milestone, so nothing that reads a photo reads one of these,
+     and filing a diagnosis must not re-run every entry query in the app. */
+  'document'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -425,6 +430,24 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // Both reads join the owners, to date each photo and to say which record
     // it hangs off.
     reads: { inJournal: ['photo', 'entry', 'milestone'], starredPhotos: ['photo', 'entry', 'milestone'] }
+  }),
+  /* One table and one owner - itself - so unlike `photos` above there is no
+     second name to announce (phase 8 features ticket 52). The day view and
+     search reach these rows through their own registries, whose tables are
+     folded in from `DAY_TABLES` and `SEARCH_TABLES` rather than listed
+     again here. */
+  documents: classify<Journal['documents']>()({
+    writes: {
+      addDocument: ['document'],
+      updateDocument: ['document'],
+      deleteDocument: ['document']
+    },
+    reads: {
+      getDocuments: ['document'],
+      getDocument: ['document'],
+      getDocumentsOnDay: ['document'],
+      lastWriteEpochDay: ['document']
+    }
   }),
   // Read-only, the same reason exposure and stats are: a recording's row is
   // owned by upsertEntry/deleteEntry (voiceRecording is already announced
