@@ -130,7 +130,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.appointment_prep_title()} back="/more" subtitle={m.appointment_prep_intro()}>
+  <ScreenHeader title={m.appointment_prep_title()} back="/health/appointments" subtitle={m.appointment_prep_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.appointment_prep_add_aria()} onclick={openAddSheet}>
         <Icon name="plus" size={22} />
