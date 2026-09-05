@@ -2408,8 +2408,15 @@ try {
 
   /* The kit's heading, not SectionTitle's: phase 5 UX ticket 25 moved the
      feature screens onto it, and the handle moved with the component the
-     way ticket 24's list-row handles did. */
-  const tracks = (await page.locator('[data-section-heading]').allTextContents()).map((t) => t.trim());
+     way ticket 24's list-row handles did.
+
+     The `h2` inside it rather than the element itself, because a
+     SectionHeading also renders an `action` snippet on the same line and
+     `allTextContents` swallows it: once each track heading carried a "Not
+     my path" control (phase 8 features ticket 49), every track here read as
+     "Social Not my path" and no name matched. The heading's own name is its
+     h2, and it was only ever the h2 this meant to read. */
+  const tracks = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
   for (const track of ['Social', 'Legal', 'Presentation', 'Medical']) {
     if (!tracks.includes(track)) throw new Error('missing track ' + track + ': ' + JSON.stringify(tracks));
   }

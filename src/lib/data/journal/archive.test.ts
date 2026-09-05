@@ -734,9 +734,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // the same thing on every device, the way a built-in tag travels as its
   // key (ADR-0002).
   roadmap_check: ['pack_key', 'goal_key', 'status'],
-  // Named by the track alone, and there is nothing else on the row to
-  // carry: presence is the whole of the state (phase 8 features ticket 49).
-  roadmap_track: ['track'],
   // Owns a child (tryout_photo) below.
   tryout: ['uuid', 'kind', 'label', 'description', 'start_epoch_day', 'end_epoch_day'],
   // Exactly one of tryout_id/milestone_id travels, each as that owner's own

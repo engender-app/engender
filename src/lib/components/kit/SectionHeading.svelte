@@ -13,7 +13,13 @@
     action
   }: {
     text: string;
-    /** A link out of the area, right-aligned on the heading's own line. */
+    /** A control for the area as a whole, right-aligned on the heading's own
+        line: a link out of it, an add button, or a state the whole area
+        carries (the roadmap's "not my path" per track). Not a row's control
+        - anything that acts on one thing in the area belongs beside that
+        thing. Whatever goes here renders inside `[data-section-heading]`, so
+        a test reading a heading's name must read its `h2` rather than the
+        element's text. */
     action?: Snippet;
   } = $props();
 </script>
