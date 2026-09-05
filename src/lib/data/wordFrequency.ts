@@ -4,7 +4,19 @@
    reads the driver, nothing scores or ranks a word by anything but its own
    count, and nothing says what a word means.
 
-   Two folds, not one function: `wordFrequency` counts, `groupByPresentation`
+   Counting is two steps, not one (phase 8 audit ticket 17). `analyseNotes`
+   reads each note once and hands back the words it is made of and the
+   language it is in; `countWords` counts an already-analysed set. The split
+   is what the screen's filter is: picking a presentation or an era does not
+   change a single note, only which of them are counted, so a tap re-runs
+   the counting over token arrays that already exist rather than reading the
+   whole journal's note text again. Before the split each note was walked
+   three times per tap - once to pick its stopword list, once to count it,
+   once more for the screen's own language flag - and all three inside a
+   `$derived` on the main thread. `wordFrequency` is still here as the two
+   steps in one call, for a caller that reads once and never filters.
+
+   Two folds, not one function: counting counts, `groupByPresentation`
    and `groupByEra` partition. Grouping reuses each area's own existing
    shape - an entry already carries `presentationId`, and `groupByEra` is
    `eraForDay` (eras.ts) run over every row - rather than restating either
@@ -66,8 +78,11 @@ const tokenize = (text: string): string[] => (text.match(WORDS) ?? []).map((w) =
 /* Diacritics with no letter in common with the Latin alphabet English uses -
    seeing any of these in a note settles the question outright. ł is
    included even though it is also a folded English "l" in isolation,
-   because it never appears in English running text. */
-const POLISH_DIACRITICS = /[ąćęłńóśźż]/;
+   because it never appears in English running text. Both cases are written
+   out rather than lowercasing the note first: this runs over the raw note,
+   and a note is upwards of a kilobyte, so folding one to find one character
+   allocates a copy of the whole journal's text to answer a yes/no. */
+const POLISH_DIACRITICS = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
 
 /* Closed classes only: pronouns, articles, conjunctions, prepositions,
    auxiliary verb forms - the words that carry no content of their own and
@@ -116,10 +131,12 @@ const STOPWORDS_PL = new Set([
     anywhere is decisive outright. On a note with neither - too short, or
     made only of content words neither list happens to carry - the app's
     base locale (project.inlang) is the honest default rather than an
-    invented third answer. */
-export function noteLanguage(note: string): NoteLanguage {
-  if (POLISH_DIACRITICS.test(note.toLowerCase())) return 'pl';
-  const words = tokenize(note);
+    invented third answer.
+
+    Takes the note's words rather than tokenising them itself, so the one
+    pass `analyseNote` makes answers this too. */
+function languageOf(note: string, words: readonly string[]): NoteLanguage {
+  if (POLISH_DIACRITICS.test(note)) return 'pl';
   let plHits = 0;
   let enHits = 0;
   for (const word of words) {
@@ -129,25 +146,64 @@ export function noteLanguage(note: string): NoteLanguage {
   return plHits > enHits ? 'pl' : 'en';
 }
 
-/** Every word across `entries`, counted after each note's own stopwords are
-    dropped, most-frequent first. Diacritics are kept - the count key is a
-    lowercased word, never a folded one (fold.ts's fold is for search
-    matching, where merging "łza" and "lza" is the point; here it would
-    silently combine two different words). */
-export function wordFrequency(entries: readonly { note: string }[]): WordCount[] {
+/** What one note is, once it has been read: the language its own text is
+    in, and the words left after that language's stopwords are dropped. Both
+    come out of a single pass over the note, and both are what everything
+    downstream asks - the counting, and the screen's caveat about Polish. */
+export interface AnalysedNote {
+  readonly language: NoteLanguage;
+  /** Lowercased content words, in the order the note wrote them. Diacritics
+      are kept - the count key is a lowercased word, never a folded one
+      (fold.ts's fold is for search matching, where merging "łza" and "lza"
+      is the point; here it would silently combine two different words). */
+  readonly words: readonly string[];
+}
+
+/** One pass over a note's text, and the only place in this module that
+    tokenises. Not exported: a caller holds rows rather than one note, and
+    `analyseNotes` is what reads them. */
+function analyseNote(note: string): AnalysedNote {
+  const words = tokenize(note);
+  const language = languageOf(note, words);
+  const stopwords = language === 'pl' ? STOPWORDS_PL : STOPWORDS_EN;
+  return { language, words: words.filter((word) => !stopwords.has(word)) };
+}
+
+/** Every row carried through with its analysis attached, so the grouping
+    folds below partition analysed notes rather than raw ones and a filter
+    change never reaches the text again. */
+export function analyseNotes<T extends { note: string }>(entries: readonly T[]): (T & AnalysedNote)[] {
+  return entries.map((entry) => ({ ...entry, ...analyseNote(entry.note) }));
+}
+
+/** Every word across already-analysed notes, most-frequent first. Ties
+    break alphabetically so the order is stable across two runs over the
+    same notes rather than depending on iteration order. */
+export function countWords(notes: readonly Pick<AnalysedNote, 'words'>[]): WordCount[] {
   const counts = new Map<string, number>();
-  for (const entry of entries) {
-    const language = noteLanguage(entry.note);
-    const stopwords = language === 'pl' ? STOPWORDS_PL : STOPWORDS_EN;
-    for (const word of tokenize(entry.note)) {
-      if (stopwords.has(word)) continue;
-      counts.set(word, (counts.get(word) ?? 0) + 1);
-    }
+  for (const { words } of notes) {
+    for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1);
   }
   return [...counts.entries()].sort(([wordA, countA], [wordB, countB]) => {
     if (countA !== countB) return countB - countA;
     return wordA < wordB ? -1 : wordA > wordB ? 1 : 0;
   });
+}
+
+/** Which language a note is in, on its own. The screen reads the same
+    answer off `AnalysedNote.language` rather than calling this, since by
+    then the note has already been read. */
+export function noteLanguage(note: string): NoteLanguage {
+  return languageOf(note, tokenize(note));
+}
+
+/** Read and count in one call: the whole fold in one place. No screen calls
+    it - the one screen that counts words filters them too, so it holds the
+    two steps apart - and it is kept because it is what wordFrequency.test.ts
+    states the output of this module against, which is the thing that must
+    not move when the counting is rearranged underneath it. */
+export function wordFrequency(entries: readonly { note: string }[]): WordCount[] {
+  return countWords(analyseNotes(entries));
 }
 
 /** Every entry's own `presentationId`, `null` the bucket for one carrying
