@@ -297,9 +297,12 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   }
   // Its elapsed reminder is what ticket 31's web reminders list has to show
   // and delete - the one write that screen offers on web (ADR-0063).
+  /* Nine hours in, not two: past the eight-hour figure, so the binder
+     duration cue is reachable in the demo on both surfaces that carry it
+     (ticket 50). */
   await journal.wearSessions.upsertSession({
     kind: 'binder',
-    startTimestamp: now - 2 * 3_600_000,
+    startTimestamp: now - 9 * 3_600_000,
     durationMs: null,
     reminderHoursAfterStart: 8,
     reminderTitle: 'Binder check-in'
