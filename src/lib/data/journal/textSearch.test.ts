@@ -225,6 +225,7 @@ test('the date range narrows dated areas and leaves undated ones alone', async (
 test('a wear session is dated by the day its session started, and the range reaches it', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.wearSessions.upsertSession({
+    kind: 'binder',
     startTimestamp: startOfDayTimestamp(DAY) + 20 * 3_600_000,
     durationMs: 3_600_000,
     note: 'żółć under a shirt'
@@ -254,6 +255,24 @@ test('a row that matched on two of its columns shows the one its area prefers', 
   await journal.procedures.upsertProcedure({ name: 'żółć journey', notes: 'żółć again in the notes' });
 
   assert.deepEqual(await found(journal, 'zolc'), ['żółć journey']);
+});
+
+test('a Cyrillic word in a scanned area is found however either side was capitalised', async () => {
+  /* Phase 8 features ticket 49 item 4, the non-entry half - and the half
+     that was genuinely broken. An entry note goes through `foldText` in JS
+     on both sides, where `toLowerCase()` handles Cyrillic; a milestone name
+     is matched by `foldedSql` inside SQL, and SQLite's `lower()` maps A-Z
+     and nothing else. So `Настя` stayed capitalised in the column while
+     `настя` was folded on the query side, and the two never met. Anyone
+     keeping this journal in Russian or Ukrainian could not find a name they
+     had written down. */
+  const { journal } = await journalWithBuiltIns();
+  await journal.milestones.upsertMilestone({ name: 'Настя', epochDay: DAY });
+  await journal.milestones.upsertMilestone({ name: 'Ґалаґан', epochDay: DAY });
+
+  assert.deepEqual(await found(journal, 'настя'), ['Настя']);
+  assert.deepEqual(await found(journal, 'НАСТЯ'), ['Настя']);
+  assert.deepEqual(await found(journal, 'ґалаґан'), ['Ґалаґан']);
 });
 
 test('a milestone matches on its description when its name does not', async () => {
@@ -377,6 +396,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   await journal.sizeRecords.upsertRecord({ epochDay: DAY, category: 'shirts', size: 'M', fitNote: `fit ${word}` });
   await journal.taper.upsertSession({ epochDay: DAY, note: `taper ${word}` });
   await journal.wearSessions.upsertSession({
+    kind: 'binder',
     startTimestamp: startOfDayTimestamp(DAY) + 9 * 3_600_000,
     durationMs: 3_600_000,
     note: `wear ${word}`

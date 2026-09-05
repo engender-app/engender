@@ -51,6 +51,7 @@ const WEAR_ELAPSED_MS = 3_723_000;
 
 const wearSession: WearSession = {
   id: 'wear-1',
+  kind: 'binder',
   startTimestamp: NOW - WEAR_ELAPSED_MS,
   durationMs: null,
   note: null
@@ -141,6 +142,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
     snoozed: allOn(false),
     areaStates: {},
     reads: {
+      wearDurationCue: true,
       runningWear: wearSession,
       episodes: [episode],
       procedures: [procedure],
@@ -356,6 +358,36 @@ describe('what each tile says', () => {
     expect(tile.note).toBe(m.wear_session_running_since({ time: `time:${wearSession.startTimestamp}` }));
     expect(tile.action?.attrs).toEqual({ 'data-wear-stop': '' });
     expect(tile.dismiss).toBeUndefined();
+    // Named by the kind, not by "wear" (ticket 50).
+    expect(tile.title).toBe(m.tile_wear_title_binder());
+  });
+
+  /* The duration cue (ticket 50, ADR-0064). Nine hours in, which is past
+     the eight-hour figure the binder rule reads. */
+  const NINE_HOURS_IN = { nowMs: wearSession.startTimestamp + 9 * 3600_000 };
+
+  it('a binder session past eight hours picks the cue up on the tile', () => {
+    const tile = tileNamed('wear-timer', NINE_HOURS_IN)!;
+    expect(tile.attrs).toEqual({ 'data-wear-running-tile': true, 'data-wear-duration-cue': true });
+    // The cue takes the note's line, and says the figure is not clinical.
+    expect(tile.note).toBe(m.wear_session_cue());
+  });
+
+  it('no cue fires for a tucking or compression session, however long it runs', () => {
+    for (const kind of ['tucking', 'compression'] as const) {
+      const tile = tileNamed('wear-timer', {
+        ...NINE_HOURS_IN,
+        reads: { runningWear: { ...wearSession, kind } }
+      })!;
+      expect(tile.attrs).toEqual({ 'data-wear-running-tile': true });
+      expect(tile.title).toBe(kind === 'tucking' ? m.tile_wear_title_tucking() : m.tile_wear_title_compression());
+    }
+  });
+
+  it('the cue preference silences the marker without hiding the tile', () => {
+    const tile = tileNamed('wear-timer', { ...NINE_HOURS_IN, reads: { wearDurationCue: false } })!;
+    expect(tile.attrs).toEqual({ 'data-wear-running-tile': true });
+    expect(tile.note).toBe(m.wear_session_running_since({ time: `time:${wearSession.startTimestamp}` }));
   });
 
   it('the dose panel names the active episode and links the log sheet', () => {

@@ -17,7 +17,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
-  import { POLISH_PACK, ROADMAP_TRACKS, goalsInTrack, type RoadmapGoalKey, type RoadmapTrack } from '$lib/data/roadmap';
+  import { POLISH_PACK, roadmapSections, type RoadmapGoalKey, type RoadmapTrack } from '$lib/data/roadmap';
   import { rankByLean } from '$lib/data/lean';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { RoadmapGoalStatus } from '$lib/data/types';
@@ -48,7 +48,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { crossfade } from '$lib/motion/reveal';
+  import { crossfade, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -62,6 +62,16 @@
 
   let customQuery = liveList((j) => j.roadmap.getCustomGoals());
   let customGoals = $derived(customQuery.rows);
+
+  /* "Not my path" one grain out (phase 8 features ticket 49 item 5). Which
+     tracks are folded is stored, and which goals that leaves is
+     roadmap.ts's `roadmapSections` - so the list of tracks this screen
+     draws comes from ROADMAP_TRACKS through that function rather than from
+     an {#each} over the constant here, and a fifth track cannot arrive
+     un-foldable. */
+  let dismissedQuery = liveQuery((j) => j.roadmap.getDismissedTracks());
+  let dismissedTracks = $derived(dismissedQuery.value ?? []);
+  let sections = $derived(roadmapSections(pack, customGoals, dismissedTracks));
 
   /* CONTEXT: "Lean" (phase 5 ticket 43, ADR-0030) - the active preset
      reorders each track's built-in goals, matching ones first. Custom
@@ -155,18 +165,46 @@
     <p class="muted small">{roadmapPackSources(pack.key)} {m.roadmap_reviewed_on({ date: reviewedLabel })}</p>
   </div>
 
-  {#if statusQuery.loading || customQuery.loading}
+  {#if statusQuery.loading || customQuery.loading || dismissedQuery.loading}
     <div out:crossfade><Skeleton variant="line" count={4} /></div>
   {:else}
-    {#each ROADMAP_TRACKS as track, i (track)}
-      <SectionHeading text={roadmapTrackName(track)} />
+    {#each sections as section, i (section.track)}
+      {@const track = section.track}
+      <SectionHeading text={roadmapTrackName(track)}>
+        <!-- On the heading rather than in the card: it is a statement about
+             the whole track, and a row inside the list would read as one
+             more step to take. -->
+        {#snippet action()}
+          <!-- No `aria-pressed`. The label itself changes, so a toggle state
+               on top of it announces the same fact twice ("Put it back,
+               pressed"); a toggle button earns aria-pressed when its label
+               holds still, and this one does not. `data-dismissed` carries
+               the state for the stylesheet and the tests instead. -->
+          <button
+            class="roadmap-track-btn"
+            data-track-toggle={track}
+            data-dismissed={section.dismissed}
+            onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
+          >
+            {section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}
+          </button>
+        {/snippet}
+      </SectionHeading>
+      {#if section.dismissed}
+        <!-- No card, which is most of what "put away" means here: a folded
+             track costs its heading, one line and nothing else, where the
+             card it replaces was taller than the two goals it hid. The
+             heading stays, so putting it back is where putting it away was,
+             and the stored statuses wait untouched underneath. -->
+        <p class="roadmap-track-note" data-track-dismissed={track} in:disclose>{m.roadmap_track_dismissed()}</p>
+      {:else}
       <ListCard role={roleAt(activeFlag.roles, i)}>
         <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
              .roadmap-box is a three-state control (checked/not-my-path/
              unchecked, two different glyphs), which ListRow's binary
              `checked` has no room for, and the done/skip title styling
              needs a class ListRow's plain `title` string can't carry. -->
-        {#each rankByLean(goalsInTrack(pack, track), lean) as goal (goal.key)}
+        {#each rankByLean(section.goals, lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
           <button
             class="kit-row"
@@ -199,7 +237,7 @@
             </span>
           </button>
         {/each}
-        {#each customGoals.filter((g) => g.track === track) as goal (goal.id)}
+        {#each section.customGoals as goal (goal.id)}
           <button
             class="kit-row"
             data-goal={goal.id}
@@ -241,6 +279,7 @@
           <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
         </button>
       </ListCard>
+      {/if}
     {/each}
   {/if}
 </div>
@@ -330,5 +369,51 @@
   .roadmap-skip-text {
     color: var(--text-2);
     font-style: italic;
+  }
+
+  /* The whole of a folded track: one line on the page's own ground, no
+     card. Italic and muted for the same reason .roadmap-skip-text is - it
+     is the same statement one grain out - and short, because it repeats
+     under every track that has been put away. */
+  .roadmap-track-note {
+    margin: 0 0 var(--space-5);
+    color: var(--text-2);
+    font-style: italic;
+    font-size: var(--text-sm);
+  }
+
+  /* Quiet enough to lose an argument with the goals underneath it. A track
+     is somebody's path until the person says otherwise, and as a filled
+     accent chip beside a display heading this read as the thing to do next
+     - the loudest control on a screen whose whole content is the steps it
+     is offering to hide. Text on the page's own ground instead, in the
+     secondary ink a skipped goal already uses.
+
+     The height is the touch floor, not the words: the label is one small
+     line and would otherwise come out around 20px tall (PRODUCT.md's
+     Android 48dp floor). Negative inline margin so the words still align
+     with the screen edge the heading starts from, while the target it
+     carries is wider than them. */
+  .roadmap-track-btn {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--text-2);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    margin-right: calc(var(--space-2) * -1);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Put back is the way out of a state rather than a second action, so it
+     steps up one level of ink and no further. Not the accent: the heading
+     sits outside the ListCard that carries `--role-mark`, so a role colour
+     would not resolve here, and reaching for `--accent` instead puts a flag
+     stripe's own colour beside a display heading for no reason. */
+  .roadmap-track-btn[data-dismissed='true'] {
+    color: var(--text-1);
   }
 </style>

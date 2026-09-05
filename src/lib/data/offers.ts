@@ -99,6 +99,7 @@ import type { NormalizedPhoto } from './journal/photos';
 import type { ProceduresArea } from './journal/procedures';
 import type { TryoutsArea } from './journal/tryouts';
 import type { WearSessionsArea } from './journal/wearSessions';
+import type { WearKind } from './types';
 
 /** Every offer this registry knows about. A key here with no entry in
     `OFFERS` does not compile, because `OFFERS` is a total `Record` over
@@ -228,6 +229,12 @@ export type ReturningDose = DoseEventInput;
     is the one failure this offer exists to prevent. */
 export interface ReturningWearSession {
   sessionId: string;
+  /** Carried rather than re-read: `upsertSession` writes every column of
+      the row it is given (wearSessions.ts), so closing a session has to
+      hand back the kind it was started as. Named around
+      `WaitingItem.kind`, which is already the discriminant of the list this
+      subject is built from. */
+  wearKind: WearKind;
   startTimestamp: number;
   endEpochDay: number;
 }
@@ -433,6 +440,7 @@ export const OFFERS = {
     write: async ({ wearSessions }: OfferJournal, subject: ReturningWearSession) => {
       await wearSessions.upsertSession({
         id: subject.sessionId,
+        kind: subject.wearKind,
         startTimestamp: subject.startTimestamp,
         durationMs: startOfDayTimestamp(subject.endEpochDay + 1) - subject.startTimestamp
       });

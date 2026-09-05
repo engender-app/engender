@@ -63,7 +63,7 @@
 import { epochDayFromTimestamp } from './epochDay';
 import type { DoseScheduleComparison } from './journal/doses';
 import { eraCoversDay } from './eras';
-import type { Era, Letter, Milestone, WearSession } from './types';
+import type { Era, Letter, Milestone, WearKind, WearSession } from './types';
 
 /** How long a gap has to be before returning is treated as a return.
 
@@ -118,6 +118,10 @@ export type WaitingItem =
           re-derived at the screen: a day converted back to a timestamp
           would move the start of a session the person never touched. */
       startTimestamp: number;
+      /** Which practice it was (ticket 50), for the same reason the
+          timestamp is carried: closing the session rewrites the whole row,
+          and the sheet's own wording says which kind it is closing. */
+      wearKind: WearKind;
     }
   | {
       kind: 'dose';
@@ -185,7 +189,7 @@ export interface ComingBackInput {
   letters: readonly Pick<Letter, 'id' | 'unlockEpochDay'>[];
   milestones: readonly Pick<Milestone, 'id' | 'name' | 'epochDay'>[];
   eras: readonly Pick<Era, 'id' | 'name' | 'startEpochDay' | 'endEpochDay'>[];
-  runningWearSession: Pick<WearSession, 'id' | 'startTimestamp'> | null;
+  runningWearSession: Pick<WearSession, 'id' | 'kind' | 'startTimestamp'> | null;
   /** `doses.getComparison` over the gap window. Its union already carries
       the reasons there is nothing to compare against, so this file asks
       about doses only in the one arm where a schedule exists. */
@@ -408,7 +412,8 @@ export function whatIsWaiting(input: ComingBackInput): ComingBack | null {
       kind: 'wear-session',
       sessionId: input.runningWearSession.id,
       startEpochDay: epochDayFromTimestamp(input.runningWearSession.startTimestamp),
-      startTimestamp: input.runningWearSession.startTimestamp
+      startTimestamp: input.runningWearSession.startTimestamp,
+      wearKind: input.runningWearSession.kind
     });
   }
 
