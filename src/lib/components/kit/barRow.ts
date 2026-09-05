@@ -35,11 +35,15 @@ export interface DrawnBar extends BarRow {
   isLeader: boolean;
 }
 
+function tallest(amounts: number[]): number {
+  return Math.max(0, ...amounts);
+}
+
 /** Each row's bar length and leader flag, decided by `measure` rather than
     left for BarRows.svelte to work out. */
 export function drawBars(rows: BarRow[], measure: BarMeasure): DrawnBar[] {
   const amounts = rows.map((row) => row.amount);
-  const top = measure === 'track' ? 1 : Math.max(0, ...amounts);
+  const top = measure === 'track' ? 1 : tallest(amounts);
   return rows.map((row) => ({
     ...row,
     share: share(row.amount, top),
@@ -51,6 +55,6 @@ export function drawBars(rows: BarRow[], measure: BarMeasure): DrawnBar[] {
     rule as BarRows' `leader` measure, for a caller - Distribution.svelte -
     whose columns aren't BarRow rows and have no `track` mode of their own. */
 export function leaderShares(amounts: number[]): number[] {
-  const top = Math.max(0, ...amounts);
+  const top = tallest(amounts);
   return amounts.map((amount) => share(amount, top));
 }
