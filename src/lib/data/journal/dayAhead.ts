@@ -86,8 +86,8 @@ export interface DayAheadReading extends DayAheadAreas {
     `LastWriteEntry` are: the list holds every kind at once, and a test
     registers a kind this file has never named. */
 export interface DayAheadSection {
-  key: DayAheadMarkKind;
-  covers: readonly ArchiveSectionName[];
+  key: string;
+  covers: readonly string[];
   tables: readonly TableName[];
   read(reading: DayAheadReading): Promise<number[]>;
 }
@@ -96,8 +96,8 @@ export interface DayAheadSection {
     does: `covers` has to keep its literal names rather than widening to
     every archive section, which is what would make the opt-out record's own
     check below pass by accepting anything. */
-function section<const Covers extends readonly ArchiveSectionName[]>(declared: {
-  key: DayAheadMarkKind;
+function section<Key extends DayAheadMarkKind, const Covers extends readonly ArchiveSectionName[]>(declared: {
+  key: Key;
   covers: Covers;
   tables: readonly TableName[];
   read(reading: DayAheadReading): Promise<number[]>;
@@ -112,7 +112,7 @@ function distinctSorted(days: readonly number[]): number[] {
   return [...new Set(days)].sort((a, b) => a - b);
 }
 
-const SECTIONS: readonly DayAheadSection[] = [
+const SECTIONS = [
   /* An appointment still ahead (ADR-0066's general case, ticket 57).
      `getAppointments()` reads the whole small table the same way the care
      page reads a journal's whole episode list - nothing here adds a second,
@@ -259,6 +259,8 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   entries: 'written on the day it happened, never ahead of it',
   labResults: 'recorded when drawn, not scheduled ahead of time',
   measurements: 'recorded when taken, not scheduled ahead of time',
+  taperSessions:
+    "recorded when it happened - the taper's own future sessions are what taper above already excludes",
   sizeRecords: 'recorded when taken, not scheduled ahead of time',
   sideEffects: 'noted when it started, not scheduled ahead of time',
   cycleEvents: 'logged when it happened, not scheduled ahead of time',
@@ -335,7 +337,12 @@ async function assembleDayAhead(
   const results = await Promise.all(sections.map((s) => s.read(reading)));
   const marks: DayAheadMark[] = [];
   sections.forEach((s, index) => {
-    for (const epochDay of results[index]) marks.push({ kind: s.key, epochDay });
+    // The cast is the price of `DayAheadSection` being erased over its own
+    // area dependency, the same price `assembleDay`/`assembleLastWrites` pay
+    // for the same reason: it is what lets one list hold every kind and lets
+    // a test register a kind this file has never heard of.
+    const kind = s.key as DayAheadMarkKind;
+    for (const epochDay of results[index]) marks.push({ kind, epochDay });
   });
   marks.sort((a, b) => a.epochDay - b.epochDay);
   return marks;
