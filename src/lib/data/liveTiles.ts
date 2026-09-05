@@ -42,6 +42,7 @@ import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
+import type { AppointmentDayRecord } from './journal/appointments';
 import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/registry';
 import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
@@ -268,7 +269,7 @@ export function shouldShowMeasurementsNudge(params: {
    spec's cap ticket is what changes it.
    --------------------------------------------------------------------- */
 
-/** The kinds Home's grid draws, narrowed out of `UnpromptedKind`'s eighteen.
+/** The kinds Home's grid draws, narrowed out of `UnpromptedKind`'s nineteen.
 
     Written out rather than derived from `LIVE_TILE_ORDER` below, for the
     reason registry.ts gives about its own `UnpromptedKind`: a union read off
@@ -289,7 +290,8 @@ export type LiveTileKind =
   | 'voice-benchmark-nudge'
   | 'pause-active-banner'
   | 'hair-removal-recovery'
-  | 'measurements-nudge';
+  | 'measurements-nudge'
+  | 'appointment-today';
 
 /** The order Home draws them in, and the only place that order is written.
 
@@ -310,7 +312,12 @@ export const LIVE_TILE_ORDER = [
   'voice-benchmark-nudge',
   'pause-active-banner',
   'hair-removal-recovery',
-  'measurements-nudge'
+  'measurements-nudge',
+  /* Appended rather than slotted into the historical route order above:
+     this kind never lived on the route (phase 8 features ticket 63), so
+     there is no prior position to preserve - only where it lands in its own
+     tier, which `LIVE_TILE_TIER` below decides. */
+  'appointment-today'
 ] as const satisfies readonly LiveTileKind[];
 
 /** How much of the screen a tile is worth (phase 8 UX ticket 01, ADR-0055).
@@ -321,7 +328,8 @@ export const LIVE_TILE_ORDER = [
     still have to be bucketed to draw.
 
     - `today` is true today and false tomorrow: a wear session running now,
-      a dose slot the day expects, the two days of hair-removal aftercare.
+      a dose slot the day expects, the two days of hair-removal aftercare,
+      an appointment on today's date (phase 8 features ticket 63).
     - `moment` is something that has happened and is waiting: a letter that
       unlocked, a bad moment Safe Space can answer, a surgery whose day is
       approaching, a break that is running.
@@ -356,7 +364,8 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'pause-active-banner': 'moment',
   'active-tryout-tile': 'dormant',
   'voice-benchmark-nudge': 'dormant',
-  'measurements-nudge': 'dormant'
+  'measurements-nudge': 'dormant',
+  'appointment-today': 'today'
 };
 
 /** How many tiles Home draws at their own weight. The rest fold into one
@@ -474,6 +483,10 @@ export interface HomeTileReads {
   journalingPauses: readonly JournalingPause[];
   latestHairRemovalSession: HairRemovalSession | null;
   measurements: { count: number; latestDay: number | null };
+  /** Today's own appointment rows (phase 8 features ticket 63) - `getDayRecords`
+      asked for today rather than the whole table, the same reason
+      `todayDoses` above is bounded rather than every dose ever logged. */
+  todayAppointments: readonly AppointmentDayRecord[];
 }
 
 /** What a tile's controls do. Everything a tile can start except opening the
@@ -522,7 +535,7 @@ export interface HomeTilesInput {
 }
 
 /** The preference and the snooze, already resolved for one kind. Handed to
-    each builder rather than checked for it, because four of the eleven have
+    each builder rather than checked for it, because five of the twelve have
     no predicate to pass it to and would otherwise skip the gate. */
 interface TileGate {
   enabled: boolean;
@@ -534,8 +547,8 @@ interface TileGate {
     builder can disagree with the table the ordering reads. */
 type TileBuilder = (gate: TileGate) => Omit<HomeTile, 'tier'> | null;
 
-/** Home's grid: the eleven kinds, gated, in `LIVE_TILE_ORDER`, with nothing
-    dropped for being eleventh. A `Record` keyed by `LiveTileKind` rather
+/** Home's grid: the twelve kinds, gated, in `LIVE_TILE_ORDER`, with nothing
+    dropped for being twelfth. A `Record` keyed by `LiveTileKind` rather
     than an array, so a kind added to the union is a missing-property error
     here as well as a missing entry in the order. */
 function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
@@ -870,6 +883,31 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           href: '/body/measurements'
         },
         dismiss: dismissSnooze('measurements-nudge')
+      };
+    },
+
+    /* An appointment on today's date (phase 8 features ticket 63, ADR-0067).
+       No snooze: unlike the recurring nudges beside it in this tier, the
+       fact is true for exactly one day and gone on its own tomorrow, so
+       there is nothing a snooze would buy that waiting for tomorrow does
+       not already give for free. More than one appointment today still
+       produces the one tile the acceptance asks for - the rest are counted
+       the same way a second unread letter is. */
+    'appointment-today': (gate) => {
+      if (!gate.enabled || gate.snoozed) return null;
+      const [appointment, ...rest] = reads.todayAppointments;
+      if (!appointment) return null;
+      return {
+        key: 'appointment-today',
+        tileKey: 'appointment-today',
+        attrs: { 'data-appointment-today-tile': true },
+        title: m.tile_appointment_title(),
+        value: appointment.kind ?? m.appointments_untitled(),
+        note:
+          rest.length > 0
+            ? m.tile_appointment_more({ count: String(rest.length) })
+            : (appointment.place ?? undefined),
+        href: '/health/appointments'
       };
     }
   };
