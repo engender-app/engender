@@ -1,9 +1,14 @@
-/* The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear session").
-   Two ways to reach the same row: a live start/stop timer - a running
-   session is a row with a real start_timestamp and a null duration_ms - or
-   a backfilled start day plus duration entered directly. Its own record
-   type, not an Entry: no mood, dimension values, tags or note beyond its
-   own free-text comfort/pain field.
+/* The wear log (phase 5 ticket 04, CONTEXT: "Wear session"). Two ways to
+   reach the same row: a live start/stop timer - a running session is a row
+   with a real start_timestamp and a null duration_ms - or a backfilled
+   start day plus duration entered directly. Its own record type, not an
+   Entry: no mood, dimension values, tags or note beyond its own free-text
+   comfort/pain field.
+
+   Every row says which practice it was (`kind`, schema v71, phase 8
+   features ticket 50). Everything downstream reads it: the screen's whole
+   wording, which body region the trend defaults to, and whether the eight-
+   hour duration cue below can apply at all.
 
    Its optional Reminder hook is reconciled here rather than at the UI seam,
    the same reason stock.ts owns its run-out reminder rather than leaving it
@@ -23,13 +28,18 @@
 
 import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Reminder, WearSession } from '../types';
+import type { Reminder, WearKind, WearSession } from '../types';
 import { assertChanged, mintUuid, now } from './support';
 import type { RemindersArea } from './reminders';
 import { wearAutoSource } from '../autoSource';
 
 export interface WearSessionInput {
   id?: string;
+  /** Required on every write, not just a create (ticket 50): every caller
+      that updates a session is holding the row it read, so asking for the
+      kind back costs nothing and keeps the column out of the "sometimes
+      set" category a partial update would put it in. */
+  kind: WearKind;
   startTimestamp: number;
   /** Null means the session is still running (live mode, not yet stopped). */
   durationMs: number | null;
@@ -57,6 +67,11 @@ export interface WearSessionsArea {
       a second while one is running is the UI's own call, not something
       this area arbitrates. */
   getRunningSession(): Promise<WearSession | null>;
+  /** The kind of the most recently started session, or null with nothing
+      logged. What a screen with no kind to hand opens on (ticket 50): the
+      wear sheet's blank draft, and quick add's one-tap start, which has no
+      picker to offer at all. */
+  latestKind(): Promise<WearKind | null>;
   /** The day the most recent session started, at or before `todayEpochDay`,
       or null if there is none (phase 8 features ticket 03, lastWrite.ts).
       The table stores a `start_timestamp`, not an `epoch_day`, the same
@@ -70,6 +85,7 @@ export interface WearSessionsArea {
 
 type WearSessionRow = {
   uuid: string;
+  kind: string;
   start_timestamp: number;
   duration_ms: number | null;
   note: string | null;
@@ -77,10 +93,48 @@ type WearSessionRow = {
 
 const toWearSession = (row: WearSessionRow): WearSession => ({
   id: row.uuid,
+  kind: row.kind as WearKind,
   startTimestamp: row.start_timestamp,
   durationMs: row.duration_ms,
   note: row.note
 });
+
+const SESSION_COLUMNS = 'uuid, kind, start_timestamp, duration_ms, note';
+
+/** The three kinds, in the order a picker offers them. Typed against the
+    union rather than deriving it, the same shape `EpisodeEndReason` and its
+    label record have: the `Record<WearKind, ...>` maps in
+    vocabulary/wearLabels.ts are what turn a forgotten kind into a
+    typecheck failure. */
+export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compression'];
+
+/** How long a running binder session runs before it picks up the duration
+    cue (ADR-0064).
+
+    Eight hours is what four independent harm-reduction sources converge on
+    - Point of Pride, Desert AIDS Project, the Rainbow Project and Trans
+    Care BC (binder-tucking-safety-guidance-research.md) - and the copy that
+    reads it says "commonly recommended" rather than a limit, because the
+    one peer-reviewed source on the question (Peitzmeier et al. 2017) is
+    explicit that the figure is community folk consensus and that its own
+    correlational finding is about days per week, not hours per day.
+
+    Binding only. Tucking's own eight-hour figure has two sources against
+    binding's four and is already exceeded by 44.8% of daily tuckers (Malik
+    et al. 2024), and no source of any kind gives a compression figure, so
+    neither kind gets a threshold rather than getting a borrowed one. */
+export const BINDER_CUE_HOURS = 8;
+
+/** Whether this session is showing the duration cue right now. Running
+    binder sessions only: a stopped session is a record of something already
+    over, and there is nothing non-blocking to say about it after the fact. */
+export function binderCueShowing(
+  session: Pick<WearSession, 'kind' | 'startTimestamp' | 'durationMs'>,
+  nowMs: number
+): boolean {
+  if (session.kind !== 'binder' || session.durationMs !== null) return false;
+  return nowMs - session.startTimestamp >= BINDER_CUE_HOURS * 3600000;
+}
 
 /** Whole hours and minutes out of a millisecond span. */
 export function hoursMinutesOf(ms: number): { hours: number; minutes: number } {
@@ -155,7 +209,7 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
   return {
     async getSessions(fromEpochDay, toEpochDay) {
       const rows = await driver.query<WearSessionRow>(
-        `SELECT uuid, start_timestamp, duration_ms, note FROM wear_session
+        `SELECT ${SESSION_COLUMNS} FROM wear_session
           WHERE start_timestamp >= ? AND start_timestamp < ?
           ORDER BY start_timestamp, id`,
         [startOfDayTimestamp(fromEpochDay), startOfDayTimestamp(toEpochDay + 1)]
@@ -165,9 +219,16 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
 
     async getRunningSession() {
       const rows = await driver.query<WearSessionRow>(
-        'SELECT uuid, start_timestamp, duration_ms, note FROM wear_session WHERE duration_ms IS NULL ORDER BY start_timestamp DESC LIMIT 1'
+        `SELECT ${SESSION_COLUMNS} FROM wear_session WHERE duration_ms IS NULL ORDER BY start_timestamp DESC LIMIT 1`
       );
       return rows.length ? toWearSession(rows[0]) : null;
+    },
+
+    async latestKind() {
+      const rows = await driver.query<{ kind: string }>(
+        'SELECT kind FROM wear_session ORDER BY start_timestamp DESC, id DESC LIMIT 1'
+      );
+      return rows.length ? (rows[0].kind as WearKind) : null;
     },
 
     async lastWriteEpochDay(todayEpochDay) {
@@ -181,19 +242,19 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
 
     async upsertSession(input) {
       const note = input.note?.trim() || null;
-      const values = [input.startTimestamp, input.durationMs, note, now()];
+      const values = [input.kind, input.startTimestamp, input.durationMs, note, now()];
 
       let id = input.id;
       if (id) {
         const result = await driver.run(
-          'UPDATE wear_session SET start_timestamp = ?, duration_ms = ?, note = ?, updated_at = ? WHERE uuid = ?',
+          'UPDATE wear_session SET kind = ?, start_timestamp = ?, duration_ms = ?, note = ?, updated_at = ? WHERE uuid = ?',
           [...values, id]
         );
         assertChanged(result, `wear session: ${id}`);
       } else {
         id = mintUuid();
         await driver.run(
-          'INSERT INTO wear_session (start_timestamp, duration_ms, note, updated_at, uuid) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO wear_session (kind, start_timestamp, duration_ms, note, updated_at, uuid) VALUES (?, ?, ?, ?, ?, ?)',
           [...values, id]
         );
       }

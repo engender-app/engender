@@ -251,7 +251,7 @@ test('the era covering today is waiting only while it is still open', () => {
 test('a wear session still running is waiting, and carries the day it started', () => {
   const surface = whatIsWaiting({
     ...BASE,
-    runningWearSession: { id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) + 3_600_000 }
+    runningWearSession: { kind: 'binder', id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) + 3_600_000 }
   });
 
   assert.deepEqual(surface?.items, [
@@ -259,7 +259,8 @@ test('a wear session still running is waiting, and carries the day it started', 
       kind: 'wear-session',
       sessionId: 'w1',
       startEpochDay: AWAY - 1,
-      startTimestamp: startOfDayTimestamp(AWAY - 1) + 3_600_000
+      startTimestamp: startOfDayTimestamp(AWAY - 1) + 3_600_000,
+      wearKind: 'binder'
     }
   ]);
 });
@@ -330,7 +331,7 @@ test('what arrived comes before what can be tidied', () => {
     letters: [{ id: 'l1', unlockEpochDay: AWAY + 2 }],
     milestones: [{ id: 'm1', name: 'Voice therapy starts', epochDay: AWAY + 3 }],
     eras: [{ id: 'e', name: 'Second year', startEpochDay: AWAY - 90, endEpochDay: null }],
-    runningWearSession: { id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) },
+    runningWearSession: { kind: 'binder', id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) },
     doses: comparison()
   });
 
@@ -345,7 +346,7 @@ test('every item names itself by its own row, so two of a kind are two rows', ()
       { id: 'l2', unlockEpochDay: AWAY + 3 }
     ],
     eras: [{ id: 'e', name: 'Second year', startEpochDay: AWAY - 90, endEpochDay: null }],
-    runningWearSession: { id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) },
+    runningWearSession: { kind: 'binder', id: 'w1', startTimestamp: startOfDayTimestamp(AWAY - 1) },
     doses: comparison()
   });
   const keys = surface!.items.map(waitingItemKey);

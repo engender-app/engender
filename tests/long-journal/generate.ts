@@ -700,6 +700,7 @@ export async function generateLongJournal(
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.55) continue;
     await journal.wearSessions.upsertSession({
+      kind: random() < 0.6 ? 'binder' : random() < 0.5 ? 'tucking' : 'compression',
       startTimestamp: (day * 24 + 8) * 3_600_000,
       durationMs: between(2, 8) * 3_600_000,
       note: random() < 0.2 ? 'a bit tight by the end' : null

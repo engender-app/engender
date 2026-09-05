@@ -330,7 +330,11 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);
 
+  /* Not a binder: `kind` is a column with a default (schema v71), so a
+     fixture that only ever carried the default would round-trip green
+     whether the writer bound the field or not. */
   await journal.wearSessions.upsertSession({
+    kind: 'tucking',
     startTimestamp: 1_700_000_000_000,
     durationMs: 6 * 3600000,
     note: 'a bit tight by the end',

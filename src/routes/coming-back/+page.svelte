@@ -270,6 +270,7 @@
     if (!wearDraft) return;
     const subject: ReturningWearSession = {
       sessionId: wearDraft.item.sessionId,
+      wearKind: wearDraft.item.wearKind,
       startTimestamp: wearDraft.item.startTimestamp,
       endEpochDay: epochDayFromDateInputValueOrToday(wearDraft.end)
     };

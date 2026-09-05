@@ -140,7 +140,12 @@ const SUBJECTS: { [K in OfferKey]: Parameters<(typeof OFFERS)[K]['write']>[1] } 
     doseUnit: 'mg',
     drug: 'estradiol valerate'
   },
-  'returning-wear-session': { sessionId: 'wear-1', startTimestamp: START_OF_DAY, endEpochDay: 20002 }
+  'returning-wear-session': {
+    sessionId: 'wear-1',
+    wearKind: 'binder',
+    startTimestamp: START_OF_DAY,
+    endEpochDay: 20002
+  }
 };
 
 describe('the in-flow offer registry', () => {

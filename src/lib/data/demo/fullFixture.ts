@@ -287,6 +287,9 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   for (let day = trackingStart; day <= today - 1; day++) {
     if (r() < 0.55) continue;
     await journal.wearSessions.upsertSession({
+      // All three kinds, so every per-kind wording and the binder-only
+      // duration cue are reachable in the demo (ticket 50).
+      kind: r() < 0.6 ? 'binder' : r() < 0.5 ? 'tucking' : 'compression',
       startTimestamp: (day * 24 + 8) * 3_600_000,
       durationMs: between(2, 8) * 3_600_000,
       note: r() < 0.2 ? 'a bit tight by the end' : null
@@ -295,6 +298,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // Its elapsed reminder is what ticket 31's web reminders list has to show
   // and delete - the one write that screen offers on web (ADR-0063).
   await journal.wearSessions.upsertSession({
+    kind: 'binder',
     startTimestamp: now - 2 * 3_600_000,
     durationMs: null,
     reminderHoursAfterStart: 8,
