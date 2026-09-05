@@ -72,9 +72,12 @@
         stopped). Rendered in the save button's place, handle and all. */
     primary?: Snippet<[TDraft]>;
     confirm: {
-      title: string;
-      /** Both are handed the record being deleted, so the screen never
-          derives the delete target to name it. */
+      /** All three are handed the record being deleted, so the screen never
+          derives the delete target to name it. A screen whose records are
+          not one thing - a wear session has a kind - reads the target for
+          the title too, rather than the draft the editor happens to be
+          holding, which can already have been changed to something else. */
+      title: string | ((target: TRecord) => string);
       question: (target: TRecord) => string;
       hint?: (target: TRecord) => string | null;
       confirmLabel: string;
@@ -86,9 +89,18 @@
   let draft = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
 
-  /** A label a screen either states outright or reads off the draft. */
-  const wording = (label: string | ((draft: TDraft) => string) | undefined, draft: TDraft) =>
-    typeof label === 'function' ? label(draft) : label;
+  /* Stated outright by most screens, read off the record being deleted by
+     the one whose records are not all the same thing. Empty while there is
+     no target, which is only ever while the sheet is closed. */
+  const confirmTitle = $derived(
+    typeof confirm.title === 'string' ? confirm.title : deleteTarget ? confirm.title(deleteTarget) : ''
+  );
+
+  /** A label a screen either states outright or reads off something: the
+      draft, for the editor sheet's own titles, or the record being deleted,
+      for the confirm sheet's. */
+  const wording = <T,>(label: string | ((subject: T) => string) | undefined, subject: T) =>
+    typeof label === 'function' ? label(subject) : label;
 </script>
 
 {#if fields}
@@ -128,7 +140,7 @@
 
 <ConfirmDeleteSheet
   open={deleteTarget !== null}
-  title={confirm.title}
+  title={confirmTitle}
   question={deleteTarget ? confirm.question(deleteTarget) : ''}
   hint={deleteTarget && confirm.hint ? confirm.hint(deleteTarget) : null}
   confirmLabel={confirm.confirmLabel}

@@ -160,12 +160,18 @@ export const BINDER_CUE_HOURS = 8;
 
 /** Whether this session is showing the duration cue right now. Running
     binder sessions only: a stopped session is a record of something already
-    over, and there is nothing non-blocking to say about it after the fact. */
+    over, and there is nothing non-blocking to say about it after the fact.
+
+    `enabled` is `prefs.wearDurationCueEnabled`, taken here rather than
+    checked beside each call, so the two surfaces that draw the cue - the
+    wear screen's running card and Home's tile - cannot come to disagree
+    about what switches it off. */
 export function binderCueShowing(
   session: Pick<WearSession, 'kind' | 'startTimestamp' | 'durationMs'>,
-  nowMs: number
+  nowMs: number,
+  enabled: boolean
 ): boolean {
-  if (session.kind !== 'binder' || session.durationMs !== null) return false;
+  if (!enabled || session.kind !== 'binder' || session.durationMs !== null) return false;
   return nowMs - session.startTimestamp >= BINDER_CUE_HOURS * 3600000;
 }
 
