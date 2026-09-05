@@ -37,7 +37,8 @@ import { adherence, expectedAmountOn, expectedSlots, pauseCoversDay as isDosePau
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { spanCoversDay } from './span';
-import { hoursMinutesSecondsOf } from './journal/wearSessions';
+import { binderCueShowing, hoursMinutesSecondsOf } from './journal/wearSessions';
+import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
@@ -449,6 +450,12 @@ export interface HomeTile {
 /** What the reads answered. One field per query `liveTiles.svelte.ts` runs. */
 export interface HomeTileReads {
   runningWear: WearSession | null;
+  /** `prefs.wearDurationCueEnabled` - a preference rather than a read, the
+      same exception `safeSpaceDismissedEntryId` below is, and beside the
+      running session it qualifies. Not `gate.enabled`: that switches the
+      whole tile off, and this only decides whether the tile picks up the
+      eight-hour marker (ticket 50, ADR-0064). */
+  wearDurationCue: boolean;
   episodes: readonly RegimenEpisode[];
   procedures: readonly Procedure[];
   letters: LetterSeal[];
@@ -544,17 +551,25 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       const session = reads.runningWear;
       if (!session) return null;
       const elapsed = hoursMinutesSecondsOf(nowMs - session.startTimestamp);
+      /* The cue takes the note's line rather than crowding in beside the
+         start time: the elapsed reading above it already says how long,
+         and a tile has one line to say anything in. */
+      const cueShowing = reads.wearDurationCue && binderCueShowing(session, nowMs);
+      const attrs: TileHandles = { 'data-wear-running-tile': true };
+      if (cueShowing) attrs['data-wear-duration-cue'] = true;
       return {
         key: 'wear-timer',
         tileKey: 'wear-timer',
-        attrs: { 'data-wear-running-tile': true },
-        title: m.tile_wear_title(),
+        attrs,
+        title: wearTileTitle(session.kind),
         value: m.wear_session_duration_hms({
           hours: String(elapsed.hours),
           minutes: String(elapsed.minutes),
           seconds: String(elapsed.seconds)
         }),
-        note: m.wear_session_running_since({ time: format.time(session.startTimestamp) }),
+        note: cueShowing
+          ? m.wear_session_cue()
+          : m.wear_session_running_since({ time: format.time(session.startTimestamp) }),
         href: '/practice/wear',
         action: {
           icon: 'stop',

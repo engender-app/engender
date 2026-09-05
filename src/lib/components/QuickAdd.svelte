@@ -60,7 +60,7 @@
   import { isHrtOnsetWindowCurrent } from '$lib/data/personalEffectWindow';
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import type { TallyKind, WearSession } from '$lib/data/types';
+  import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { MAGNIFIER_SPREAD, magnify } from '$lib/motion/magnifier';
   import { ui } from '$lib/stores/ui.svelte';
@@ -279,6 +279,12 @@
      the fan covers the app, and the only way to start or stop a session
      from anywhere else is to close it first. */
   let running = $state<WearSession | null>(null);
+  /* Which kind a start from here writes (ticket 50). This is the one place
+     a session is created with no picker in front of the person, so it
+     repeats whatever they logged last rather than choosing for them, and
+     falls back to binder only when there is nothing to repeat. The wear
+     screen's own sheet is where a kind gets corrected. */
+  let lastKind = $state<WearKind>('binder');
   /* The personal effects onset nudge (phase 5 ticket 49).
      Read once each time the fan opens, the same running-style pattern
      wearSessions uses above: active only while at least one tier-1
@@ -302,6 +308,14 @@
          what it says with nothing running. */
       .catch((error) => {
         console.error('quick add: could not read the running wear session', error);
+      });
+    void journal.wearSessions
+      .latestKind()
+      .then((kind) => {
+        if (!stale && kind) lastKind = kind;
+      })
+      .catch((error) => {
+        console.error('quick add: could not read the last wear kind', error);
       });
     void journal.regimen
       .getEpisodes()
@@ -340,7 +354,7 @@
               durationMs: Date.now() - session.startTimestamp,
               note: session.note
             })
-          : journal.wearSessions.upsertSession({ startTimestamp: Date.now(), durationMs: null }),
+          : journal.wearSessions.upsertSession({ kind: lastKind, startTimestamp: Date.now(), durationMs: null }),
       'wear',
       'wear'
     );
