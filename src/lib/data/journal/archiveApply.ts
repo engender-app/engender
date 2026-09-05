@@ -496,7 +496,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
     }
 
     for (const [orderIndex, photo] of (entry.photos ?? []).entries()) {
-      photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, flag(photo.starred), ts]);
+      photoRows.push([photo.id, entryId, null, photo.fileName, orderIndex, flag(photo.starred), photo.epochDayOverride ?? null, ts]);
     }
 
     for (const [orderIndex, recording] of (entry.recordings ?? []).entries()) {
@@ -527,7 +527,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
   await insertRows(driver, 'INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria)', bodyRegionRows);
   await insertRows(
     driver,
-    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, updated_at)',
+    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, epoch_day_override, updated_at)',
     photoRows
   );
   await insertRows(
@@ -575,12 +575,21 @@ export async function applyMilestones({ driver, journal, ts }: Restoring): Promi
     if (milestoneId === undefined) {
       throw new Error(`milestone row id missing after restore insert: ${milestone.id}`);
     }
-    photoRows.push([milestone.photo.id, null, milestoneId, milestone.photo.fileName, 0, flag(milestone.photo.starred), ts]);
+    photoRows.push([
+      milestone.photo.id,
+      null,
+      milestoneId,
+      milestone.photo.fileName,
+      0,
+      flag(milestone.photo.starred),
+      milestone.photo.epochDayOverride ?? null,
+      ts
+    ]);
   }
 
   await insertRows(
     driver,
-    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, updated_at)',
+    'INSERT INTO photo (uuid, entry_id, milestone_id, file_path, order_index, starred, epoch_day_override, updated_at)',
     photoRows
   );
 }

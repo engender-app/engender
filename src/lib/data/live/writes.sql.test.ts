@@ -320,6 +320,7 @@ beforeAll(async () => {
     journal.photos.attach({ milestoneId: secondMilestoneId }, photo('loose'))
   )) as string;
   await drive('photos', 'setStarred', () => journal.photos.setStarred(looseMilestonePhoto, true));
+  await drive('photos', 'setEpochDayOverride', () => journal.photos.setEpochDayOverride(looseMilestonePhoto, 19000));
   await drive('photos', 'remove', () => journal.photos.remove(looseMilestonePhoto));
   await drive('milestones', 'deleteMilestone', () => journal.milestones.deleteMilestone(secondMilestoneId));
 
