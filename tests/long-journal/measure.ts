@@ -658,7 +658,7 @@ export async function measureLongJournal(
   // projection also runs attributeDrug (regimenEpisode.ts) once per dose,
   // which is where the fixture's three regimen episodes' overlap-resolution
   // path actually gets exercised - the only place in this suite that does.
-  await measure('stock-projection', 'stock screen, every drug projected against the whole dose log', async () => {
+  await measure('stock-projection', 'stock screen, every drug projected from counts over the dose log', async () => {
     const projections = await journal.stock.getProjections(today);
     const excluded = projections.reduce((n, p) => n + p.projection.excludedDoses, 0);
     return {
