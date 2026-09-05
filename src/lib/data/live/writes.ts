@@ -402,7 +402,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       attach: ['photo', 'entry', 'milestone'],
       remove: ['photo', 'entry', 'milestone'],
-      setStarred: ['photo', 'entry', 'milestone']
+      setStarred: ['photo', 'entry', 'milestone'],
+      // Changes which day the photo itself reads as (ticket 47), which both
+      // reads below fold into what they hand an entry or milestone.
+      setEpochDayOverride: ['photo', 'entry', 'milestone']
     },
     // Both reads join the owners, to date each photo and to say which record
     // it hangs off.
