@@ -163,7 +163,14 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     },
     presentationId: femme.id
   });
-  await journal.photos.attach({ entryId: entry }, { full: bytes('full photo'), thumb: bytes('thumb') });
+  // Overridden to a day well before the entry's own (ticket 47): the golden
+  // fixture is what proves epoch_day_override actually round-trips through
+  // pack/restore, not just that the column exists and always reads null.
+  const entryPhotoId = await journal.photos.attach(
+    { entryId: entry },
+    { full: bytes('full photo'), thumb: bytes('thumb') }
+  );
+  await journal.photos.setEpochDayOverride(entryPhotoId, 19000);
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a voice note')] });
   await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
   await journal.marginNotes.add({ entryId: entry, epochDay: 20050, text: 'reading this back, zażółć gęślą jaźń' });

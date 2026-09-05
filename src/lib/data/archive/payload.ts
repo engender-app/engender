@@ -49,6 +49,11 @@ export interface ArchivePhoto {
       ArchiveLabResult's header gives: no release has shipped, so no
       archive in existence predates it. */
   starred: boolean;
+  /** The day this photo shows on, when it overrides its owner's
+      (ticket 47, ADR-0008/0015). Null on every photo before this ticket
+      and on any photo nobody has corrected since - restore.ts writes
+      `?? null` for an archive whose payload predates this field. */
+  epochDayOverride: number | null;
 }
 
 /** One voice recording (phase 4 ticket 24, CONTEXT: "Voice recording"). Its

@@ -21,8 +21,14 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import {
+    todayEpochDay,
+    epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
+    dateInputValueFromEpochDay
+  } from '$lib/data/epochDay';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
+  import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { EditorPhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
@@ -33,6 +39,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -153,10 +160,37 @@
     return [{ id: 'milestone-photo', fileName: photo.kind === 'stored' ? photo.photo.fileName : null }];
   }
 
+  /* The day-prompt (ticket 47, ADR-0008/0015): normalizing always strips
+     whatever date the picked file carried, so a photo picked or captured
+     here is asked for a day before it lands in the draft. A milestone
+     shows at most one photo, so this holds at most one pending pick -
+     unlike the entry editor's queue, there is never a second to lose. */
+  let pendingMilestonePhoto = $state<NormalizedPhoto | null>(null);
+  let pendingMilestoneDay = $state('');
+
+  function offerMilestonePhotoDay(photo: NormalizedPhoto) {
+    pendingMilestonePhoto = photo;
+    pendingMilestoneDay = record.editor?.date ?? dateInputValueFromEpochDay(todayEpochDay());
+  }
+
+  // Skipping (day === null) leaves the override unset: the photo inherits
+  // this milestone's day, exactly as before this ticket.
+  function resolveMilestonePhotoDay(day: string | null) {
+    if (!pendingMilestonePhoto || !record.editor) {
+      pendingMilestonePhoto = null;
+      return;
+    }
+    record.editor.photo = {
+      kind: 'picked',
+      photo: { ...pendingMilestonePhoto, epochDayOverride: day ? epochDayFromDateInputValue(day) : null }
+    };
+    pendingMilestonePhoto = null;
+  }
+
   const milestonePhoto = photoSection<MilestonePhotoSlot>({
     photos: () => milestonePhotoSlots(record.editor?.photo ?? null),
     add: (photo) => {
-      if (record.editor) record.editor.photo = { kind: 'picked', photo };
+      offerMilestonePhotoDay(photo);
     },
     remove: () => {
       if (record.editor) record.editor.photo = null;
@@ -404,6 +438,14 @@
     onAccept={milestonePhoto.review.accept}
     onRetake={milestonePhoto.review.capture}
     onCancel={milestonePhoto.review.cancel}
+  />
+
+  <PhotoDayPromptSheet
+    open={pendingMilestonePhoto !== null}
+    bind:day={pendingMilestoneDay}
+    fieldId="milestone-photo-day-prompt"
+    onSave={() => resolveMilestonePhotoDay(pendingMilestoneDay)}
+    onSkip={() => resolveMilestonePhotoDay(null)}
   />
 
   <FeltSenseOfferSheet
