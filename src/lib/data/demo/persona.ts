@@ -312,7 +312,7 @@ export function persona(today: number = todayEpochDay()): Persona {
         procedureId: null,
         kind: 'Endocrinologist',
         place: 'Przychodnia na Kopernika',
-        note: 'switched to twice-weekly patches',
+        note: 'levels holding steady, no changes',
         debrief: {
           timestamp: startOfDayTimestamp(pastAppointmentDay) + 15 * 3600000,
           mood: 4,
