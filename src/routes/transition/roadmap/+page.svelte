@@ -176,23 +176,24 @@
              more step to take. -->
         {#snippet action()}
           <button
-            class="btn btn-soft roadmap-track-btn press"
+            class="roadmap-track-btn press"
             data-track-toggle={track}
             aria-pressed={section.dismissed}
             onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
           >
-            <span>{section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}</span>
+            {section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}
           </button>
         {/snippet}
       </SectionHeading>
+      {#if section.dismissed}
+        <!-- No card, which is most of what "put away" means here: a folded
+             track costs its heading, one line and nothing else, where the
+             card it replaces was taller than the two goals it hid. The
+             heading stays, so putting it back is where putting it away was,
+             and the stored statuses wait untouched underneath. -->
+        <p class="roadmap-track-note" data-track-dismissed={track} in:disclose>{m.roadmap_track_dismissed()}</p>
+      {:else}
       <ListCard role={roleAt(activeFlag.roles, i)}>
-        {#if section.dismissed}
-          <!-- The track keeps its heading and its card, so putting it back is
-               where putting it away was. Nothing inside is a control any
-               more: the goals are folded rather than ticked or skipped, and
-               their stored statuses wait untouched underneath. -->
-          <p class="roadmap-track-note" data-track-dismissed={track} in:disclose>{m.roadmap_track_dismissed()}</p>
-        {:else}
         <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
              .roadmap-box is a three-state control (checked/not-my-path/
              unchecked, two different glyphs), which ListRow's binary
@@ -272,8 +273,8 @@
           <span class="roadmap-box add-icon"><Icon name="plus" size={20} /></span>
           <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
         </button>
-        {/if}
       </ListCard>
+      {/if}
     {/each}
   {/if}
 </div>
@@ -365,29 +366,49 @@
     font-style: italic;
   }
 
-  /* The whole of a folded track's card. Padded to a row's own inset rather
-     than a row's height: it is one sentence and it should not pretend to be
-     a list with one thing left in it. Italic for the same reason
-     .roadmap-skip-text is - this is the same statement, one grain out. */
+  /* The whole of a folded track: one line on the page's own ground, no
+     card. Italic and muted for the same reason .roadmap-skip-text is - it
+     is the same statement one grain out - and short, because it repeats
+     under every track that has been put away. */
   .roadmap-track-note {
-    margin: 0;
-    padding: var(--space-3) var(--space-4);
+    margin: 0 0 var(--space-5);
     color: var(--text-2);
     font-style: italic;
     font-size: var(--text-sm);
   }
 
   /* Quiet enough to lose an argument with the goals underneath it. A track
-     is somebody's path until they say otherwise, so the control that says
-     otherwise should not be the loudest thing on the line. */
+     is somebody's path until the person says otherwise, and as a filled
+     accent chip beside a display heading this read as the thing to do next
+     - the loudest control on a screen whose whole content is the steps it
+     is offering to hide. Text on the page's own ground instead, in the
+     secondary ink a skipped goal already uses.
+
+     The height is the touch floor, not the words: the label is one small
+     line and would otherwise come out around 20px tall (PRODUCT.md's
+     Android 48dp floor). Negative inline margin so the words still align
+     with the screen edge the heading starts from, while the target it
+     carries is wider than them. */
   .roadmap-track-btn {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--text-2);
+    font: inherit;
     font-size: var(--text-sm);
-    padding: var(--space-1) var(--space-3);
-    min-height: 0;
+    font-weight: var(--weight-bold);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    margin-right: calc(var(--space-2) * -1);
+    border-radius: var(--radius-sm);
   }
 
+  /* Put back is the way out of a state rather than a second action, so it
+     steps up one level of ink and no further. Not the accent: the heading
+     sits outside the ListCard that carries `--role-mark`, so a role colour
+     would not resolve here, and reaching for `--accent` instead puts a flag
+     stripe's own colour beside a display heading for no reason. */
   .roadmap-track-btn[aria-pressed='true'] {
-    background: var(--surface-2);
-    color: var(--text-2);
+    color: var(--text-1);
   }
 </style>

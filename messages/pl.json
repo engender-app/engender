@@ -2490,7 +2490,7 @@
   "roadmap_state_not_my_path": "nie moja droga",
   "roadmap_state_unchecked": "nieodznaczone",
   "roadmap_track_dismiss": "Nie moja droga",
-  "roadmap_track_dismissed": "Ta część nie jest twoją drogą. Nic tutaj się nie liczy i nic o to nie pyta.",
+  "roadmap_track_dismissed": "Nie twoja droga. Nic z tego się nie liczy i nic o to nie pyta.",
   "roadmap_track_restore": "Przywróć",
   "roadmap_milestone_prompt_sheet_title": "Dodaj kamień milowy",
   "roadmap_milestone_prompt_title": "Dodać „{goal}” jako kamień milowy na osi czasu?",
