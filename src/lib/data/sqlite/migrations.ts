@@ -2206,6 +2206,21 @@ CREATE TABLE word_frequency_ignore (
 );
 `;
 
+/* v72: a photo's day, overridden (phase 8 features ticket 47, ADR-0008,
+   ADR-0015). Numbered v72 rather than v71: ticket 48's word-frequency
+   ignore list landed on main first and took v71, so this was renumbered
+   here rather than fought over during the merge.
+
+   Nullable, no default, and not derivable (ADR-0010): every photo this app
+   can normalize has already had its capture date stripped (ADR-0015 strips
+   EXIF/XMP/IPTC/comments on import), so the day a photo shows on is always
+   read off its owning entry or milestone unless this column says
+   otherwise. journal/photos.ts's two read queries put it first in their
+   COALESCE; nothing else derives from it and it derives from nothing. */
+const SCHEMA_V72 = `
+ALTER TABLE photo ADD COLUMN epoch_day_override INTEGER;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2277,5 +2292,6 @@ export const migrations: Migration[] = [
   { version: 68, sql: SCHEMA_V68 },
   { version: 69, sql: SCHEMA_V69 },
   { version: 70, sql: SCHEMA_V70 },
-  { version: 71, sql: SCHEMA_V71 }
+  { version: 71, sql: SCHEMA_V71 },
+  { version: 72, sql: SCHEMA_V72 }
 ];

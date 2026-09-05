@@ -38,6 +38,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
+  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -452,10 +453,37 @@
     }
   }
 
+  /* The day-prompt queue (ticket 47, ADR-0008/0015): every picked or
+     captured photo is normalized before it reaches the draft, and
+     normalizing always strips whatever date the file carried, so each one
+     gets asked for a day before it lands. A queue rather than a single
+     pending photo because pickPhotos() can bring back several at once
+     (photoPicking.ts) - each is asked in turn, oldest first, so none is
+     silently dropped by the next one overwriting `dayPromptQueue[0]`
+     before it resolves. */
+  let dayPromptQueue = $state<NormalizedPhoto[]>([]);
+  let dayPromptValue = $state('');
+
+  function queueForDayPrompt(photos: NormalizedPhoto[]) {
+    const wasEmpty = dayPromptQueue.length === 0;
+    dayPromptQueue = [...dayPromptQueue, ...photos];
+    if (wasEmpty && dayPromptQueue.length) dayPromptValue = dateInputValueFromEpochDay(entryDraft.epochDay);
+  }
+
+  // Skipping (day === null) leaves the override unset, exactly as before
+  // this ticket: the photo inherits this entry's day, same as always.
+  function resolveDayPrompt(day: string | null) {
+    const [photo, ...rest] = dayPromptQueue;
+    if (!photo) return;
+    entryDraft.addPhoto({ ...photo, epochDayOverride: day ? epochDayFromDateInputValue(day) : null });
+    dayPromptQueue = rest;
+    if (rest.length) dayPromptValue = dateInputValueFromEpochDay(entryDraft.epochDay);
+  }
+
   // An entry holds several photos, so one trip through the picker can bring
   // back several (photoPicking.ts).
   async function addPhoto() {
-    for (const photo of await pickPhotos()) entryDraft.addPhoto(photo);
+    queueForDayPrompt(await pickPhotos());
   }
 
   // The context is this entry: the last photo already in its own draft,
@@ -467,7 +495,7 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => entryDraft.addPhoto(photo));
+  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => queueForDayPrompt([photo]));
 
   // Unset while nothing is being recorded; the record/stop button reads
   // this to know which state it is showing (ticket 24).
@@ -1213,6 +1241,25 @@
         />
       {/each}
     </ListCard>
+  </Sheet>
+
+  <Sheet open={dayPromptQueue.length > 0} title={m.photo_day_prompt_title()} onClose={() => resolveDayPrompt(null)}>
+    {#if dayPromptQueue.length > 0}
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_prompt_hint()}</p>
+      <Field label={m.photo_day_label()} id="entry-photo-day-prompt">
+        {#snippet children(id)}
+          <DatePicker name="entry-photo-day-prompt" bind:value={dayPromptValue} {id} />
+        {/snippet}
+      </Field>
+      <div class="stack-3">
+        <button class="btn btn-primary press" data-photo-day-save onclick={() => resolveDayPrompt(dayPromptValue)}>
+          <span>{m.photo_day_prompt_save()}</span>
+        </button>
+        <button class="btn btn-ghost press" data-photo-day-skip onclick={() => resolveDayPrompt(null)}>
+          <span>{m.photo_day_prompt_skip()}</span>
+        </button>
+      </div>
+    {/if}
   </Sheet>
 
   <PhotoAlignmentReview

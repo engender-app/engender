@@ -392,3 +392,15 @@ test('draft holds contextual sub-records and attaches them to toUpsert payload',
   assert.equal(clearedUpsert.cycleEvent, undefined);
 });
 
+test('a picked photo carrying an epochDayOverride (ticket 47) passes through toUpsert() untouched', () => {
+  // The add-photo day prompt bakes the override onto the NormalizedPhoto
+  // itself (EntryEditor.svelte); nothing in the draft needs to know about
+  // it beyond carrying the object through unchanged, the same as it does
+  // for a photo with none.
+  const draft = createEntryDraft(20_000);
+  draft.setMood(4);
+  draft.addPhoto({ ...photo(9), epochDayOverride: 19000 });
+
+  assert.deepEqual(draft.toUpsert().attachPhotos, [{ ...photo(9), epochDayOverride: 19000 }]);
+});
+

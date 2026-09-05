@@ -202,7 +202,7 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
     if (existingEntries.has(id)) continue;
 
     const fileName = photoFileName(id);
-    const photo: ArchivePhoto = { id, fileName, starred: false };
+    const photo: ArchivePhoto = { id, fileName, starred: false, epochDayOverride: null };
     entries.push({
       uuid: id,
       epochDay,
