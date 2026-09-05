@@ -246,13 +246,88 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
     wrote something" are different questions. */
 export const PLANNED_AREAS = ['milestones', 'procedures'] as const;
 
+/** How far back the median looks for a write to count (phase 8 features
+    ticket 45). "Roughly the last year": long enough to see a person's own
+    rhythm rather than one recent cluster, short enough that an area touched
+    once, long ago, and never since does not sit in the sample forever. */
+const MEDIAN_GAP_WINDOW_DAYS = 365;
+
+/** The fewest distinct write-days the median trusts (ticket 45). Below this
+    a "typical gap" is a guess dressed as a number - two data points are one
+    gap, and one gap is not a rhythm. Chosen to still leave the floor as the
+    only word for a journal in its first weeks, the same as before this
+    ticket: `RETURN_GAP_DAYS` governs alone until there is enough history to
+    say otherwise. */
+const MIN_WRITE_DAYS_FOR_MEDIAN = 5;
+
+/** The journal's own rhythm: the median gap between distinct days something
+    was written, over roughly the last year - or null where there is not
+    enough history to say, in which case `RETURN_GAP_DAYS` governs alone
+    (ticket 45).
+
+    Reads exactly what `returnGap` reads, no new table: the last write per
+    area, the same registry (`journal/lastWrite.ts`) hands both. A full
+    history of every write is not available here and does not need to be -
+    each area's own last-write day already answers "when was this last
+    touched", and a person whose practice spans several areas leaves one
+    such day per area, spread out by how often each area is actually used.
+    Collected, deduplicated (a single sitting that touches four areas is one
+    write-day, not four) and sorted, the gaps between them are this journal's
+    own rhythm.
+
+    `PLANNED_AREAS` drop out here for the same reason `returnGap` drops them
+    from the gap itself: a milestone dated ahead is not a moment somebody
+    wrote something, so it is not a beat in this rhythm either. */
+export function medianWriteGap(
+  lastWrites: Partial<Record<string, number | null>>,
+  todayEpochDay: number
+): number | null {
+  const written = Object.entries(lastWrites).filter(
+    ([area]) => !PLANNED_AREAS.includes(area as never)
+  );
+  const cutoff = todayEpochDay - MEDIAN_GAP_WINDOW_DAYS;
+  const days = [...new Set(written.map(([, day]) => day).filter((day): day is number => day !== null && day !== undefined && day > cutoff))].sort(
+    (a, b) => a - b
+  );
+  if (days.length < MIN_WRITE_DAYS_FOR_MEDIAN) return null;
+
+  const gaps = days.slice(1).map((day, index) => day - days[index]).sort((a, b) => a - b);
+  const mid = Math.floor(gaps.length / 2);
+  return gaps.length % 2 === 0 ? (gaps[mid - 1] + gaps[mid]) / 2 : gaps[mid];
+}
+
+/** How far the threshold scales past a journal's own median gap (ticket 45).
+
+    Not 1: a gap right at the person's own median is, by definition, roughly
+    as long as half their own gaps already are, so a threshold that low would
+    fire on close to every other ordinary return - the exact "screen you
+    learn to dismiss" outcome this ticket exists to avoid, arrived at with a
+    number instead of a constant. 1.5 clears that: for a fairly regular
+    rhythm, most ordinary gaps land under it, and it takes a gap the person's
+    own history would call long, not merely average, to cross it.
+
+    Checked against two shapes rather than picked in the abstract: a
+    daily-ish journal's median lands under a week, so `1.5 * median` stays
+    far under `RETURN_GAP_DAYS` and the floor governs, unchanged from before
+    this ticket. A sparse, event-shaped journal (thirty long entries a year,
+    a dose every few weeks - Persona 4, "Tomek") with an eight-week median
+    gets a threshold of twelve weeks: past the three-week floor, and still
+    "roughly" the person's own rhythm rather than a number unrelated to it. */
+const MEDIAN_GAP_MULTIPLE = 1.5;
+
 /** Whether coming back now is a return, and which gap it is.
 
     The threshold, and the only place it is applied. Null where a journal has
-    never been written to and where the gap is shorter than
-    `RETURN_GAP_DAYS`; otherwise the day of the last write before the gap,
-    which is that return's own identity - what `comingBackSeenSince` stores
-    and what `whatIsWaiting` is then asked about. */
+    never been written to and where the gap is shorter than the threshold;
+    otherwise the day of the last write before the gap, which is that
+    return's own identity - what `comingBackSeenSince` stores and what
+    `whatIsWaiting` is then asked about.
+
+    The threshold itself is `RETURN_GAP_DAYS` or `MEDIAN_GAP_MULTIPLE` times
+    the journal's own median write gap, whichever is greater (ticket 45): the
+    floor never loosens, so a journal too young to have a median behaves
+    exactly as it did before this ticket, and a journal with an established,
+    wider rhythm is measured against its own pace rather than everyone's. */
 export function returnGap(
   lastWrites: Partial<Record<string, number | null>>,
   todayEpochDay: number
@@ -262,7 +337,10 @@ export function returnGap(
   );
   const since = lastWriteDay(written);
   if (since === null) return null;
-  return todayEpochDay - since < RETURN_GAP_DAYS ? null : since;
+  const median = medianWriteGap(lastWrites, todayEpochDay);
+  const threshold =
+    median === null ? RETURN_GAP_DAYS : Math.max(RETURN_GAP_DAYS, MEDIAN_GAP_MULTIPLE * median);
+  return todayEpochDay - since < threshold ? null : since;
 }
 
 /** What is waiting in the gap it is handed, or null if nothing is.
