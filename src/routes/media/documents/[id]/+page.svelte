@@ -19,7 +19,13 @@
      reactively - a `const id = page.params.id` goes stale when SvelteKit
      reuses this component across two ids. There is no `new` here: a
      document cannot exist before its file does, so it is always born on the
-     list screen's import. */
+     list screen's import.
+
+     A PDF (ticket 53, ADR-0065) has no thumbnail to draw here, so it shows
+     the same paper icon the list row already uses, plus its size and one
+     action: write the file back out, unchanged, through the share sheet or
+     a download (archive/deliver.ts) - the only way this app hands a file
+     to anything outside its own encryption. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -30,8 +36,11 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
+  import { deliverBlob } from '$lib/data/archive/deliver';
+  import { nameSlug } from '$lib/data/fold';
+  import { isPdfDocument } from '$lib/data/journal/documents';
   import { journal } from '$lib/data/live/journal.svelte';
-  import { readThumbnail } from '$lib/stores/photoFiles';
+  import { readPhoto, readThumbnail } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { JournalDocument } from '$lib/data/types';
@@ -51,6 +60,8 @@
 
   let confirming = $state(false);
 
+  let isPdf = $derived(stored ? isPdfDocument(stored.fileName) : false);
+
   /* The page, drawn at whatever shape it is rather than through PhotoThumb.
      That primitive is a fixed square tile with a caption across the bottom,
      which is right for a grid of photographs and wrong for one sheet of
@@ -60,12 +71,15 @@
 
      It is the thumbnail rather than the full page. What it is for is
      recognising which document this is; reading one is ticket 55's viewer,
-     which is also where the zoom lives. */
+     which is also where the zoom lives. A PDF has no thumbnail at all
+     (ticket 53), so this never runs for one - `readThumbnail` would
+     otherwise hand back the PDF's own bytes under a JPEG's `type`
+     (photos/names.ts's `thumbFileName` only rewrites a `.jpg` suffix). */
   let pageUrl = $state<string | null>(null);
 
   $effect(() => {
     const fileName = stored?.fileName;
-    if (!fileName) return;
+    if (!fileName || isPdfDocument(fileName)) return;
 
     let stale = false;
     let objectUrl: string | null = null;
@@ -88,6 +102,51 @@
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   });
+
+  /* A PDF's own bytes, read once and held for as long as this screen is
+     open: the size line needs its length, and the export action needs the
+     same bytes right after - reading twice would cost a second decrypt of
+     a file that can be tens of megabytes (ticket 53's own ceiling). */
+  let pdfBytes = $state<Uint8Array | null>(null);
+
+  $effect(() => {
+    const fileName = stored?.fileName;
+    if (!fileName || !isPdfDocument(fileName)) return;
+
+    let stale = false;
+    readPhoto(fileName).then(
+      (bytes) => {
+        if (!stale) pdfBytes = bytes;
+      },
+      () => {}
+    );
+
+    return () => {
+      stale = true;
+      pdfBytes = null;
+    };
+  });
+
+  const fileSize = (bytes: number): string =>
+    bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+  async function exportPdf() {
+    if (!stored || !pdfBytes) return;
+    try {
+      const delivery = await deliverBlob(
+        `${nameSlug(stored.title) || 'document'}.pdf`,
+        new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
+      );
+      if (delivery === 'cancelled') {
+        toast(m.exp_cancelled());
+        return;
+      }
+      toast(delivery === 'shared' ? m.pj_shared() : m.pj_downloaded());
+    } catch (error) {
+      console.error('a document could not be exported', error);
+      toast(m.pj_failed());
+    }
+  }
 
   let saving = $state(false);
 
@@ -126,7 +185,10 @@
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <!-- The page itself, at the top of the screen the tap opened. -->
+    <!-- The page itself, at the top of the screen the tap opened. A PDF
+         has no page image to show (ticket 53) - the same empty frame an
+         image document's own thumbnail still loading uses, here shown on
+         purpose rather than while waiting. -->
     <div class="screen-part doc-page">
       {#if pageUrl}
         <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
@@ -134,6 +196,16 @@
         <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
       {/if}
     </div>
+
+    {#if isPdf}
+      <div class="screen-part stack-3">
+        <p data-document-size>{pdfBytes ? fileSize(pdfBytes.byteLength) : ''}</p>
+        <button class="btn btn-soft press" data-export-document disabled={!pdfBytes} onclick={exportPdf}>
+          <span>{m.document_export()}</span>
+        </button>
+        <p class="muted small">{m.document_export_hint()}</p>
+      </div>
+    {/if}
 
     <div class="editor-section">
       <Field label={m.document_title_label()} id="document-title">
