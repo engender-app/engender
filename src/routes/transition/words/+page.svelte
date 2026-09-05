@@ -1,8 +1,10 @@
 <script lang="ts">
   /* Word frequency over note text, grouped by presentation and by era
-     (phase 8 features ticket 14, ADR-0048, ADR-0049). A reading surface
-     over existing text: it stores nothing and registers no archive
-     section (wordFrequency.ts).
+     (phase 8 features ticket 14, ADR-0048, ADR-0049). Mostly a reading
+     surface over existing text - wordFrequency.ts itself stores nothing -
+     plus one write of its own (phase 8 features ticket 48): a word can be
+     told to stop counting, which is wordIgnore.ts's own small area and
+     archive section, not this module's.
 
      The grouping control is two things, the same split /body-map's own
      presentation filter already makes: a Segmented switch for which
@@ -15,7 +17,7 @@
      rather than carrying a presentation id into the era list or the
      reverse. */
   import { m } from '$lib/paraglide/messages';
-  import { liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { analyseNotes, countWords, groupByEra, groupByPresentation } from '$lib/data/wordFrequency';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -41,6 +43,9 @@
 
   let entriesQuery = liveList((j) => j.entries.noteEntries());
   let erasQuery = liveList((j) => j.eras.getEras());
+  let ignoredQuery = liveQuery((j) => j.wordIgnore.getIgnoredWords());
+  let ignoredWords = $derived(ignoredQuery.value ?? new Set<string>());
+  let ignoredWordsSorted = $derived([...ignoredWords].sort());
 
   // A picked presentation or era hidden or deleted mid-session falls back
   // to "All" rather than pointing at nothing, the same stale-reference
@@ -76,7 +81,7 @@
   );
   let filteredEntries = $derived(selectedId ? (grouped.get(selectedId) ?? []) : analysed);
 
-  let frequencies = $derived(countWords(filteredEntries).slice(0, WORD_LIMIT));
+  let frequencies = $derived(countWords(filteredEntries, ignoredWords).slice(0, WORD_LIMIT));
   let hasPolish = $derived(filteredEntries.some((e) => e.language === 'pl'));
 </script>
 
@@ -141,7 +146,17 @@
       {:else}
         <ListCard role={roleAt(activeFlag.roles, 0)}>
           {#each frequencies as [word, count] (word)}
-            <ListRow static title={word} data-word-row={word}>
+            <ListRow
+              static
+              title={word}
+              data-word-row={word}
+              action={{
+                icon: 'eyeOff',
+                label: m.words_ignore_aria({ word }),
+                onclick: () => journal.wordIgnore.setWordIgnored(word, true),
+                attrs: { 'data-ignore-word': word }
+              }}
+            >
               {#snippet trailing()}{count}{/snippet}
             </ListRow>
           {/each}
@@ -152,4 +167,25 @@
       <Notice icon="note" key="words-empty" text={m.words_empty()} />
     {/snippet}
   </ReadGate>
+
+  {#if ignoredWordsSorted.length > 0}
+    <div class="screen-part">
+      <h2 class="editor-heading">{m.words_ignored_title()}</h2>
+      <ListCard role={roleAt(activeFlag.roles, 0)}>
+        {#each ignoredWordsSorted as word (word)}
+          <ListRow
+            static
+            title={word}
+            data-ignored-word-row={word}
+            action={{
+              icon: 'eye',
+              label: m.words_unignore_aria({ word }),
+              onclick: () => journal.wordIgnore.setWordIgnored(word, false),
+              attrs: { 'data-unignore-word': word }
+            }}
+          />
+        {/each}
+      </ListCard>
+    </div>
+  {/if}
 </div>

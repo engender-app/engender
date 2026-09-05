@@ -8,6 +8,7 @@
   "bodyRegions": 11,
   "entries": 2,
   "marginNotes": 1,
+  "wordIgnore": 1,
   "milestones": 1,
   "labResults": 1,
   "measurementTypes": 5,

@@ -1360,6 +1360,14 @@ try {
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
   await page.locator('[data-next]').click(); // scales -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
+
+  /* Ticket 46: the persona premise this step answers is that it defaults
+     the daily nudge on. It doesn't - confirmed here at the switch itself,
+     not only by never touching it below. */
+  if ((await page.getByRole('switch', { name: 'Daily check-in' }).getAttribute('aria-checked')) === 'true') {
+    throw new Error('daily check-in switched itself on by default');
+  }
+
   await page.locator('[data-next]').click(); // check-in -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');

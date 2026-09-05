@@ -226,7 +226,12 @@ export const TABLE_NAMES = [
      entry's own query must not re-run when a margin note changes, and the
      reverse - adding, editing or removing a note must not make every
      screen reading entries think the entry itself changed. */
-  'marginNote'
+  'marginNote',
+  /* The word-frequency ignore list (phase 8 features ticket 48). Its own
+     name rather than folded into anything: no read here depends on it but
+     the words screen's own count, and ignoring a word has not touched a
+     single entry's note. */
+  'wordIgnore'
 ] as const;
 
 /** The tables a query can depend on, derived from TABLE_NAMES above. */
@@ -404,7 +409,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       attach: ['photo', 'entry', 'milestone'],
       remove: ['photo', 'entry', 'milestone'],
-      setStarred: ['photo', 'entry', 'milestone']
+      setStarred: ['photo', 'entry', 'milestone'],
+      // Changes which day the photo itself reads as (ticket 47), which both
+      // reads below fold into what they hand an entry or milestone.
+      setEpochDayOverride: ['photo', 'entry', 'milestone']
     },
     // Both reads join the owners, to date each photo and to say which record
     // it hangs off.
@@ -553,6 +561,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   eraMutes: classify<Journal['eraMutes']>()({
     writes: { setEraMuted: ['eraMute'] },
     reads: { getMutedEraUuids: ['eraMute'] }
+  }),
+  wordIgnore: classify<Journal['wordIgnore']>()({
+    writes: { setWordIgnored: ['wordIgnore'] },
+    reads: { getIgnoredWords: ['wordIgnore'] }
   }),
   wearSessions: classify<Journal['wearSessions']>()({
     writes: {
