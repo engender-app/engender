@@ -113,6 +113,15 @@ export interface LongJournalSummary {
   stockEntries: number;
   checklistItems: number;
   voiceRecordings: number;
+  /** Standalone appointments, seeded at a quarterly cadence (phase 8
+      features ticket 59). Not counting the surgery's own two consults,
+      which are appointments too (ADR-0066) but come from `addConsult`
+      rather than from this loop - this is what the appointment-seeding loop
+      itself wrote, the same way `doseEvents` counts one episode's doses and
+      leaves the rest to `additionalDoseEvents`. Roughly four a year is the
+      density ADR-0066 describes: "somebody four years into endocrinology
+      has roughly sixteen of these". */
+  appointments: number;
   /** The start day of the earliest open-ended tryout (`endEpochDay: null`) -
       the widest possible span `searchEntries` can be asked to read for one
       tryout's detail screen. */
@@ -296,6 +305,14 @@ const INJECTABLE_SITES: InjectionSiteKey[] = [
 const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
 const CYCLE_EVENT_KINDS = ['period_occurred', 'spotting', 'nothing_this_month'] as const;
 const SIDE_EFFECT_NAMES = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
+/* Phase 8 features ticket 59. A blank entry (`''`) is one of these on
+   purpose: `appointments.ts` stores it as NULL, which is the neutral-copy
+   case the annotation seam has to draw too. */
+const APPOINTMENT_KINDS = ['endokrynolog', 'psycholog', 'ginekolog', '', 'laryngolog', 'dermatolog', ''];
+/** Roughly one appointment a quarter, which is the density ADR-0066 gives as
+    typical: "somebody four years into endocrinology has roughly sixteen of
+    these" is about one every 91 days. */
+const APPOINTMENT_STEP_DAYS = 91;
 
 export async function generateLongJournal(
   journal: Journal,
@@ -339,6 +356,7 @@ export async function generateLongJournal(
     stockEntries: 0,
     checklistItems: 0,
     voiceRecordings: 0,
+    appointments: 0,
     tryoutWideOpenStartEpochDay: 0,
     lastSingleEpisodeEpochDay: 0
   };
@@ -727,6 +745,20 @@ export async function generateLongJournal(
       epochDay: firstEpochDay + Math.floor(((i + 1) / 11) * days)
     });
     summary.sideEffects++;
+  }
+
+  // Appointments: roughly quarterly, past ones only - a future appointment
+  // is out of scope for a chart (ADR-0066) and is exercised by its own,
+  // narrower tests instead of by this shared fixture.
+  for (let day = firstEpochDay, i = 0; day <= lastEpochDay; day += APPOINTMENT_STEP_DAYS, i++) {
+    await journal.appointments.upsertAppointment({
+      epochDay: day,
+      procedureId: null,
+      kind: APPOINTMENT_KINDS[i % APPOINTMENT_KINDS.length],
+      place: null,
+      note: null
+    });
+    summary.appointments++;
   }
 
   // Surgery: one procedure, dated, with a consult, notes and a recovery

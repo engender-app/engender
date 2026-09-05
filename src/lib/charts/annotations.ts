@@ -68,10 +68,13 @@
                                    in the wrong ticket. Named so the next
                                    person knows it was looked at.
 
-   Two things the app stores dates for and this deliberately does not draw:
-   entries themselves (every logged day would be an annotation, which is the
-   line already on the chart) and consults (a date in a procedure's history
-   that says nothing about the range a chart covers). */
+   One thing the app stores dates for and this deliberately does not draw:
+   entries themselves - every logged day would be an annotation, which is
+   the line already on the chart. A consult used to be excluded for the same
+   reason recorded here once, back when it lived only inside a procedure's
+   own history; phase 8 features ticket 59 gave every appointment a row of
+   its own (ADR-0066), and a consult is one of those rows, so it draws like
+   any other appointment now. */
 
 import type { EpisodeEndReason } from '../data/types';
 import { spanOverlapsRange } from '../data/span';
@@ -103,7 +106,15 @@ import { spanOverlapsRange } from '../data/span';
     exactly what a flat stretch on any chart covering it needs explaining
     with: without it the reader cannot tell a practice that ended from a
     month nobody logged. Its `name` is the area's own key, resolved by
-    kit/chartAnnotation.ts. */
+    kit/chartAnnotation.ts.
+
+    `appointment` is phase 8 features ticket 59's (ADR-0066). One point per
+    past appointment, named by the person's own kind where they typed one -
+    the same rule `name` already follows everywhere else, so no fallback
+    lives here. A consult is an appointment whose procedureId is set and
+    carries no kind of its own here: it draws exactly like any other
+    appointment, which is the point of it having stopped being a separate
+    thing. */
 export type ChartAnnotationKind =
   | 'milestone'
   | 'surgery'
@@ -113,6 +124,7 @@ export type ChartAnnotationKind =
   | 'journalingPause'
   | 'tryout'
   | 'era'
+  | 'appointment'
   | 'sideEffect'
   | 'injection'
   | 'tallyMisgendered'
@@ -138,6 +150,7 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   journalingPause: 'span',
   tryout: 'span',
   era: 'point',
+  appointment: 'point',
   sideEffect: 'point',
   injection: 'point',
   tallyMisgendered: 'point',
