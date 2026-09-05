@@ -77,6 +77,16 @@ const REMINDER_TITLES: Record<WearKind, () => string> = {
   compression: m.wear_session_reminder_title_compression
 };
 
+/* The return surface's row for a session left running through a gap
+   (offers.ts's `returning-wear-session`). The offer's own sheet copy says
+   "this session" throughout and needs no kind; the row that opens it is
+   naming a record in a list of other records, so it does. */
+const RETURNING_ROW_TITLES: Record<WearKind, () => string> = {
+  binder: m.coming_back_wear_row_binder,
+  tucking: m.coming_back_wear_row_tucking,
+  compression: m.coming_back_wear_row_compression
+};
+
 const TILE_TITLES: Record<WearKind, () => string> = {
   binder: m.tile_wear_title_binder,
   tucking: m.tile_wear_title_tucking,
@@ -126,6 +136,7 @@ export const wearRunningCardTitle = (kind: WearKind): string => RUNNING_CARD_TIT
 export const wearDeleteSheetTitle = (kind: WearKind): string => DELETE_SHEET_TITLES[kind]();
 export const wearReminderTitle = (kind: WearKind): string => REMINDER_TITLES[kind]();
 export const wearTileTitle = (kind: WearKind): string => TILE_TITLES[kind]();
+export const wearReturningRowTitle = (kind: WearKind): string => RETURNING_ROW_TITLES[kind]();
 export const wearSafetyFacts = (kind: WearKind): { facts: string[]; source: string } => ({
   facts: SAFETY_FACTS[kind].facts(),
   source: SAFETY_FACTS[kind].source()

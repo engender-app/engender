@@ -119,6 +119,28 @@ export const WEAR_KIND_REGION: Record<WearKind, string> = {
   compression: 'hips_waist'
 };
 
+/** Which region the trend actually draws against: what the person picked,
+    or the kind's own default, or - if either names a region they have
+    turned off in their body-region vocabulary - the first one still
+    offered. A function rather than three expressions on the screen, so the
+    override and the fallback are one rule that can be read and tested in
+    one place.
+
+    `picked` is null until the person touches the picker, and never seeded
+    with the default: seeded, a deliberate pick of the region the default
+    already names would be indistinguishable from not having picked, and the
+    selection would start following the kind again on the next save. */
+export function wearTrendRegion(
+  kind: WearKind,
+  picked: string | null,
+  available: readonly string[]
+): string {
+  for (const candidate of [picked, WEAR_KIND_REGION[kind]]) {
+    if (candidate !== null && available.includes(candidate)) return candidate;
+  }
+  return available[0] ?? WEAR_KIND_REGION[kind];
+}
+
 /** How long a running binder session runs before it picks up the duration
     cue (ADR-0064).
 

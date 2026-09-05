@@ -42,6 +42,7 @@
   import {
     binderCueShowing,
     hoursMinutesOf,
+    wearTrendRegion,
     WEAR_KIND_REGION,
     WEAR_KINDS
   } from '$lib/data/journal/wearSessions';
@@ -297,28 +298,18 @@
   let trendRegionOptions = $derived(
     vocabulary.bodyRegions.filter((r) => TREND_REGIONS.includes(r.id)).map((r) => ({ value: r.id, label: r.name }))
   );
-  /* The kind's own region, or the first one still offered if the person has
-     turned that region off in their body-region vocabulary - the same
-     fallback this had before there were kinds, since a picker with nothing
-     selected reads as broken either way. */
-  let defaultRegion = $derived(
-    trendRegionOptions.some((r) => r.value === WEAR_KIND_REGION[latestKind])
-      ? WEAR_KIND_REGION[latestKind]
-      : (trendRegionOptions[0]?.value ?? WEAR_KIND_REGION[latestKind])
-  );
-  /* Null until the person picks, rather than a `$state` seeded with the
-     default: seeded, a deliberate pick of the region the default already
-     names would be indistinguishable from not having picked, and the
-     selection would start following the kind again on the next save.
-     Picking anything at all stops it following, for any kind, which is the
-     override the ticket keeps free. */
+  /* Null until the person picks. Which region that resolves to - the pick,
+     the kind's default, or the fallback when either names a region the
+     person has turned off - is `wearTrendRegion`'s rule, not this screen's
+     (wearSessions.ts). */
   let pickedRegion = $state<string | null>(null);
-  let trendRegion = $derived(pickedRegion ?? defaultRegion);
-  $effect(() => {
-    if (pickedRegion !== null && !trendRegionOptions.some((r) => r.value === pickedRegion)) {
-      pickedRegion = null;
-    }
-  });
+  let trendRegion = $derived(
+    wearTrendRegion(
+      latestKind,
+      pickedRegion,
+      trendRegionOptions.map((r) => r.value)
+    )
+  );
 
   let range = $state(30);
 
@@ -719,7 +710,7 @@
 
   .wear-facts-title {
     margin: 0;
-    font-weight: 600;
+    font-weight: var(--weight-medium);
   }
 
   .wear-facts-list {
