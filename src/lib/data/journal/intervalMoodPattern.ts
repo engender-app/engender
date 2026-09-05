@@ -21,7 +21,18 @@
    completions at the common 14-28 day cadence and several at even a
    quarterly depot regimen - comfortably past MIN_POSITION_DAYS, the
    evidence floor either fold is held to. A caller asking for a narrower
-   range than that keeps it; only "ever" gets capped. */
+   range than that keeps it; only "ever" gets capped.
+
+   This does mean a journal older than the lookback window reads a
+   different average than it did before this ticket, not only at the
+   floor's edge: a position that already cleared MIN_POSITION_DAYS loses
+   whatever days fell outside the window, so its value can move even
+   though it was never empty either way. Accepted rather than hidden -
+   the ticket's own Notes call bounding the read "the cheaper option" over
+   moving the fold into SQL, and a bound is exactly a claim about how much
+   history still corroborates today's position. Two years is chosen so
+   that claim holds for any regimen this app actually models; it is not a
+   claim that no real journal's answer ever moves. */
 
 import { rekeyDaySeries } from '../dayKeying';
 import { FIRST_EPOCH_DAY } from '../epochDay';

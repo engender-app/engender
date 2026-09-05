@@ -736,9 +736,10 @@ try {
 /* 6c. the custom-interval card's length field waits for the typist (phase 8
    audit ticket 16, the same debounce ticket 15 gave /search's query).
 
-   Ten keystrokes firing one read rather than one per digit is proved by
-   counting closure runs (tests/browser-tier/live-reads-probe.svelte.ts) -
-   nothing a walkthrough drives from outside the page can count that. What
+   Three digits firing one read rather than three is proved by counting
+   closure runs (tests/browser-tier/live-reads-probe.svelte.ts's own
+   ticket-16 section, alongside ticket 15's) - nothing a walkthrough drives
+   from outside the page can count that. What
    this proves instead is what a person actually sees: a length typed digit
    by digit still lands once typing stops, `pressSequentially` rather than
    `fill` because `fill` sets the whole value in one event and would
