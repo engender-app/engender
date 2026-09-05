@@ -67,7 +67,8 @@ const episode: RegimenEpisode = {
   route: 'patch',
   interval: '3.5 days',
   startEpochDay: TODAY - 15,
-  endEpochDay: null
+  endEpochDay: null,
+  endReason: null
 };
 
 const schedule: DoseSchedule = {

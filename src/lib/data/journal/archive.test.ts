@@ -77,7 +77,8 @@ async function populated() {
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   const dose = await journal.doses.upsertDose({
@@ -373,7 +374,8 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       route: 'im',
       interval: 'every 2 weeks',
       startEpochDay: 19000,
-      endEpochDay: null
+      endEpochDay: null,
+      endReason: null
     }
   ]);
 });
@@ -595,6 +597,28 @@ test('an area\'s hidden, finished and suspended state travels, and a restore kee
     sizeRecords: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
     voiceBenchmarks: { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
   });
+});
+
+/* Ticket 43: a regimen episode's end reason is the same shape again - a
+   fact the person recorded, not derivable, so it travels rather than
+   defaulting silently to nothing on the other end. */
+test('a regimen episode\'s end reason travels, and a restore keeps it', async () => {
+  const { journal, episode } = await populated();
+  await journal.regimen.endEpisode(episode, 19100, 'pausedForNow');
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.equal(
+    snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.endReason,
+    'pausedForNow'
+  );
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  const restored = (await target.regimen.getEpisodes()).find((e) => e.id === episode);
+  assert.equal(restored?.endReason, 'pausedForNow');
 });
 
 /* Every column of every table, checked against what the snapshot claims to

@@ -104,7 +104,8 @@ async function populated() {
     route: 'im',
     interval: 'every 2 weeks',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   const dose = await journal.doses.upsertDose({
@@ -339,7 +340,8 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
     route: 'im',
     interval: 'twice weekly',
     startEpochDay: 19000,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await source.journal.doses.upsertSchedule({
     episodeId: episode,
@@ -398,7 +400,8 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
     route: originalEpisode.route,
     interval: originalEpisode.interval,
     startEpochDay: originalEpisode.startEpochDay,
-    endEpochDay: 19499
+    endEpochDay: 19499,
+    endReason: null
   });
   await target.journal.regimen.upsertEpisode({
     drug: 'estradiol enanthate',
@@ -408,7 +411,8 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
     route: 'im',
     interval: 'every 10 days',
     startEpochDay: 19500,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   assert.equal(attributeDose(await target.journal.regimen.getEpisodes(), dose).episode?.drug, 'estradiol enanthate');
 });

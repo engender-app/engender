@@ -15,7 +15,7 @@
 
 import { m } from '$lib/paraglide/messages';
 import type { ApplicationSiteKey, InjectionSiteKey, RouteOption } from '$lib/data/doseSchedule';
-import type { DoseRoute, DoseStatus, InjectionVehicle, PauseReason } from '$lib/data/types';
+import type { DoseRoute, DoseStatus, EpisodeEndReason, InjectionVehicle, PauseReason } from '$lib/data/types';
 import type { RegimenTemplateKey } from './builtins';
 
 const INJECTION_SITE_LABELS: Record<InjectionSiteKey, () => string> = {
@@ -68,6 +68,13 @@ const PAUSE_REASON_LABELS: Record<PauseReason, () => string> = {
   accidental: m.pause_reason_accidental
 };
 
+/** None preferred over another (ticket 43, mirroring the rule just above). */
+const EPISODE_END_REASON_LABELS: Record<EpisodeEndReason, () => string> = {
+  switchedDrugOrRoute: m.episode_end_reason_switched,
+  pausedForNow: m.episode_end_reason_paused,
+  decidedToStop: m.episode_end_reason_stopped
+};
+
 /* A regimen template's picker-row name, and the drug/ester text it pre-fills
    (CONTEXT: "Regimen template", phase 5 ticket 42). Route is not repeated
    here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each
@@ -117,6 +124,8 @@ export const routeLabel = (route: DoseRoute): string => ROUTE_LABELS[route]?.() 
 export const statusLabel = (status: DoseStatus): string => STATUS_LABELS[status]?.() ?? status;
 export const vehicleLabel = (vehicle: InjectionVehicle): string => VEHICLE_LABELS[vehicle]?.() ?? vehicle;
 export const pauseReasonLabel = (reason: PauseReason): string => PAUSE_REASON_LABELS[reason]?.() ?? reason;
+export const episodeEndReasonLabel = (reason: EpisodeEndReason): string =>
+  EPISODE_END_REASON_LABELS[reason]?.() ?? reason;
 export const regimenTemplateName = (key: string): string =>
   REGIMEN_TEMPLATE_NAME[key as RegimenTemplateKey]?.() ?? key;
 export const regimenTemplateDrug = (key: string): string => REGIMEN_TEMPLATE_DRUG[key as RegimenTemplateKey]?.() ?? '';

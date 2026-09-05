@@ -171,7 +171,8 @@ async function run() {
     route: 'oral',
     interval: 'daily',
     startEpochDay: TODAY - 5,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   const projectionError = await reasonIfNotReached(
     until(() => projectionRuns > projectionRunsBefore, 'the stock projection to be re-read after an episode edit')

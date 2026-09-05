@@ -509,7 +509,21 @@ export interface RegimenEpisode {
   interval: string;
   startEpochDay: number;
   endEpochDay: number | null;
+  /** Why the episode ended, set only alongside `endEpochDay` by the "end
+      this episode" action (ticket 43) - never editable on its own, and
+      never assignable while `endEpochDay` is null, the same way the day
+      itself cannot be. Null on every episode ended before this ticket, and
+      cleared again if the end day is ever reopened, because a reason with
+      no end day is meaningless. */
+  endReason: EpisodeEndReason | null;
 }
+
+/** Three ways a course can stop, drafted in the ticket rather than guessed
+    at later (CONTEXT: "Regimen episode", ticket 43) - switching to a
+    different drug or route, a pause with no plan yet to resume it, or a
+    deliberate stop. None is preferred over another, mirroring `PauseReason`'s
+    own rule below. */
+export type EpisodeEndReason = 'switchedDrugOrRoute' | 'pausedForNow' | 'decidedToStop';
 
 /* The routes a dose can be taken by (phase 4 ticket 02). A closed set,
    unlike a regimen episode's free-text `route`: what fields a dose carries

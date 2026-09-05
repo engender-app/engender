@@ -28,6 +28,7 @@ function episode(ester: string, over: Partial<RegimenEpisode> = {}): RegimenEpis
     interval: 'every 7 days',
     startEpochDay: -1000,
     endEpochDay: null,
+    endReason: null,
     ...over
   };
 }

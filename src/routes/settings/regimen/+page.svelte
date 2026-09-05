@@ -19,9 +19,9 @@
   import { testosteroneActive } from '$lib/data/cycleTracking';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
+  import { episodeEndReasonLabel, pauseReasonLabel } from '$lib/data/vocabulary/doseLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { DoseScheduleRecurrence, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
+  import type { DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -72,6 +72,10 @@
     startDate: string;
     /** `''` while the episode is still ongoing (types.ts's null). */
     endDate: string;
+    /** Whatever the loaded episode already carries (ticket 43) - preserved
+        on a straight edit of the other fields, and only ever set to
+        something new through `endEpisodeToday` below. */
+    endReason: EpisodeEndReason | null;
   } | null>(null);
   /* Offered above manual entry when adding a new episode (CONTEXT: "Regimen
      template") - picking one only pre-fills drug/ester/route in the editor
@@ -91,7 +95,8 @@
           route: episode.route,
           interval: episode.interval,
           startDate: dateInputValueFromEpochDay(episode.startEpochDay),
-          endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay)
+          endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay),
+          endReason: episode.endReason
         }
       : {
           drug: template?.drug ?? '',
@@ -101,7 +106,8 @@
           route: template?.route ?? '',
           interval: '',
           startDate: dateInputValueFromEpochDay(todayEpochDay()),
-          endDate: ''
+          endDate: '',
+          endReason: null
         };
   }
 
@@ -120,19 +126,22 @@
       route: editor.route.trim(),
       interval: editor.interval.trim(),
       startEpochDay: epochDayFromDateInputValueOrToday(editor.startDate),
-      endEpochDay: editor.endDate ? epochDayFromDateInputValue(editor.endDate) : null
+      endEpochDay: editor.endDate ? epochDayFromDateInputValue(editor.endDate) : null,
+      endReason: editor.endReason
     });
     editor = null;
   }
 
   /** The "end this episode" action (phase 5 ticket 38): sets today as the
       episode's end day, independent of any other episode starting - not a
-      side effect of the general edit form above. */
+      side effect of the general edit form above. Ticket 43: carries
+      whichever reason chip was picked, or none - ending with no reason
+      chosen stays valid. */
   async function endEpisodeToday() {
     if (!editor?.id) return;
     const endEpochDay = todayEpochDay();
-    await journal.regimen.endEpisode(editor.id, endEpochDay);
-    editor = { ...editor, endDate: dateInputValueFromEpochDay(endEpochDay) };
+    await journal.regimen.endEpisode(editor.id, endEpochDay, pendingEndReason);
+    editor = { ...editor, endDate: dateInputValueFromEpochDay(endEpochDay), endReason: pendingEndReason };
   }
 
   /** Monday-first, matching `weekdayOfEpochDay` (epochDay.ts) and the
@@ -147,6 +156,11 @@
     doseAmounts: { dose: string; doseUnit: string }[];
   } | null>(null);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
+  /** The reason chip picked before pressing "End episode" (ticket 43) - not
+      part of `editor` itself, since it names what is *about* to happen
+      rather than what the loaded episode already carries. Optional: no
+      chip picked stays a valid way to end an episode. */
+  let pendingEndReason = $state<EpisodeEndReason | null>(null);
 
   /* A hash arrived with the navigation (the clinician summary links each
      episode): scroll to it once the rows exist, which the browser's own
@@ -162,6 +176,7 @@
     if (!id) {
       schedule = null;
       newPause = null;
+      pendingEndReason = null;
       return;
     }
     const recurrence = editorSchedule?.recurrence ?? { kind: 'everyNDays' as const, everyNDays: 1 };
@@ -176,6 +191,7 @@
       }))
     };
     newPause = null;
+    pendingEndReason = null;
   });
 
   function toggleWeekday(day: number) {
@@ -639,6 +655,27 @@
             <span>{m.regimen_pause_add()}</span>
           </button>
         {/if}
+      {/if}
+
+      {#if editor.id && editor.endDate === ''}
+        <Field label={m.regimen_pause_reason_label()} legend>
+          {#snippet children(id)}
+            <div class="tag-row" role="group" aria-labelledby={id}>
+              {#each ['switchedDrugOrRoute', 'pausedForNow', 'decidedToStop'] as const as reason (reason)}
+                <button
+                  type="button"
+                  class="tag-chip"
+                  class:is-selected={pendingEndReason === reason}
+                  aria-pressed={pendingEndReason === reason}
+                  data-end-reason={reason}
+                  onclick={() => (pendingEndReason = pendingEndReason === reason ? null : reason)}
+                >
+                  {episodeEndReasonLabel(reason)}
+                </button>
+              {/each}
+            </div>
+          {/snippet}
+        </Field>
       {/if}
 
       <div class="stack-3">

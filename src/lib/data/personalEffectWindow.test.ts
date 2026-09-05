@@ -298,7 +298,8 @@ test('isHrtOnsetWindowCurrent returns true only while at least one onset window 
     route: 'oral',
     interval: 'daily',
     startEpochDay: ANCHOR,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   };
 
   // No episodes -> false
@@ -342,7 +343,8 @@ test('isHrtOnsetWindowCurrent handles testosterone and unclassified drugs', () =
     route: 'subcutaneous',
     interval: 'weekly',
     startEpochDay: ANCHOR,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   };
 
   // Active during onset window for testosterone
@@ -360,7 +362,8 @@ test('isHrtOnsetWindowCurrent handles testosterone and unclassified drugs', () =
     route: 'oral',
     interval: 'daily',
     startEpochDay: ANCHOR,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   };
   assert.equal(isHrtOnsetWindowCurrent([unclassifiedEpisode], ANCHOR), false);
 });

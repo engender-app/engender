@@ -38,7 +38,8 @@ function tEpisode(drug: string, ester: string | null): RegimenEpisode {
     route: 'IM',
     interval: 'every 7 days',
     startEpochDay: 0,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   };
 }
 

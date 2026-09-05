@@ -28,6 +28,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
     interval: 'weekly',
     startEpochDay: TODAY - 100,
     endEpochDay: null,
+    endReason: null,
     ...overrides
   };
 }

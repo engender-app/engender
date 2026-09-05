@@ -39,6 +39,7 @@ async function episode(journal: Journal, startEpochDay: number, overrides: Parti
     interval: 'every 2 weeks',
     startEpochDay,
     endEpochDay: null,
+    endReason: null,
     ...overrides
   });
 }
