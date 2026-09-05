@@ -733,6 +733,31 @@ try {
   ok('a second scale joins the day-by-day chart and can be put down again');
 } catch (e) { fail('a second scale on the day-by-day chart', e); }
 
+/* 6c. the custom-interval card's length field waits for the typist (phase 8
+   audit ticket 16, the same debounce ticket 15 gave /search's query).
+
+   Ten keystrokes firing one read rather than one per digit is proved by
+   counting closure runs (tests/browser-tier/live-reads-probe.svelte.ts) -
+   nothing a walkthrough drives from outside the page can count that. What
+   this proves instead is what a person actually sees: a length typed digit
+   by digit still lands once typing stops, `pressSequentially` rather than
+   `fill` because `fill` sets the whole value in one event and would
+   exercise no wait at all. 182 is a three-digit length the demo persona's
+   own history draws a pattern for - chosen by checking the rendered card
+   rather than assumed, since a length past the persona's span draws nothing
+   to wait for. */
+try {
+  await fresh('/stats');
+  const card = page.locator('[data-chart-card="custom-interval"]');
+  const field = page.locator('#custom-interval-length');
+
+  await field.fill('');
+  await field.pressSequentially('182', { delay: 30 });
+  await card.locator('[aria-label*="182-day interval"]').first().waitFor();
+
+  ok('the custom interval length typed digit by digit still lands once typing stops');
+} catch (e) { fail('custom interval length waits for the typist', e); }
+
 /* 6b. ticket 18's three view-only screens: chronological milestones with
    a compressed gap, thumbnail-backed photo comparison with both sides
    step-able, and the on-demand recap sequence with its Rive fallback. */

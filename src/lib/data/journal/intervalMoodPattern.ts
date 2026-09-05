@@ -3,13 +3,41 @@
    area owns no table of its own. The bucketing math lives in
    ../dayKeying.ts and the two ways of getting a repeating rule out of a
    journal in ../intervalMoodPattern.ts, both tested without a driver; this
-   file only wires them to the rest of the journal. */
+   file only wires them to the rest of the journal.
+
+   Phase 8 audit ticket 16: both folds take "ever" literally. /stats passes
+   Number.MIN_SAFE_INTEGER as fromEpochDay because a completed injection
+   interval commonly runs 14-28 days and rarely recurs three times inside
+   even the screen's own 90-day range, so the fold needs more history than
+   any range picker there offers. Read as a decade of days, though, that
+   costs 102.3KB per card on the ten-year fixture - twice, since both cards
+   ask - and dayOfInterval's own dose read every dose ever logged besides.
+   `boundedFrom` below caps how far back "ever" actually reaches, rather
+   than moving the fold into a `GROUP BY` expression in SQL: the arithmetic
+   stays where it is, in dayKeying.ts, which already has its own tests and
+   is shared with the anchored keying, and folding in SQL would split that
+   arithmetic across two call sites for a saving this bound gets more
+   simply. INTERVAL_FOLD_LOOKBACK_DAYS is two years, which holds dozens of
+   completions at the common 14-28 day cadence and several at even a
+   quarterly depot regimen - comfortably past MIN_POSITION_DAYS, the
+   evidence floor either fold is held to. A caller asking for a narrower
+   range than that keeps it; only "ever" gets capped. */
 
 import { rekeyDaySeries } from '../dayKeying';
 import { FIRST_EPOCH_DAY } from '../epochDay';
 import { completedInjectionIntervals, foldByCustomInterval, type PatternPoint } from '../intervalMoodPattern';
 import type { DosesArea } from './doses';
 import type { StatsArea } from './stats';
+
+/** How far back either fold looks when asked for "ever". See the module
+    header for why this is a bound rather than a SQL fold. */
+const INTERVAL_FOLD_LOOKBACK_DAYS = 730;
+
+/** `fromEpochDay`, or `toEpochDay` minus the lookback window if that is
+    later - never wider than what the caller actually asked for. */
+function boundedFrom(fromEpochDay: number, toEpochDay: number): number {
+  return Math.max(fromEpochDay, toEpochDay - INTERVAL_FOLD_LOOKBACK_DAYS + 1);
+}
 
 export interface IntervalMoodPatternArea {
   /** Day-average mood bucketed by day of interval, averaged across every
@@ -26,6 +54,7 @@ export interface IntervalMoodPatternArea {
 export function makeIntervalMoodPatternArea(stats: StatsArea, doses: DosesArea): IntervalMoodPatternArea {
   return {
     async dayOfInterval(fromEpochDay, toEpochDay) {
+      const from = boundedFrom(fromEpochDay, toEpochDay);
       /* The dose read is clamped to a real epoch day, and this is not
          defensive tidying: `/stats` asks for all history as
          `Number.MIN_SAFE_INTEGER`, which is right for `dayAverages`
@@ -38,8 +67,8 @@ export function makeIntervalMoodPatternArea(stats: StatsArea, doses: DosesArea):
          day, and rather than at the call site, which would leave the next
          caller to find the same NaN. */
       const [dayAverages, doseEvents] = await Promise.all([
-        stats.dayAverages('mood', fromEpochDay, toEpochDay),
-        doses.getDoses(Math.max(FIRST_EPOCH_DAY, fromEpochDay), toEpochDay)
+        stats.dayAverages('mood', from, toEpochDay),
+        doses.getDoses(Math.max(FIRST_EPOCH_DAY, from), toEpochDay)
       ]);
       return rekeyDaySeries(dayAverages, {
         type: 'repeating',
@@ -48,7 +77,7 @@ export function makeIntervalMoodPatternArea(stats: StatsArea, doses: DosesArea):
     },
 
     async byCustomInterval(fromEpochDay, toEpochDay, intervalLengthDays) {
-      const dayAverages = await stats.dayAverages('mood', fromEpochDay, toEpochDay);
+      const dayAverages = await stats.dayAverages('mood', boundedFrom(fromEpochDay, toEpochDay), toEpochDay);
       return foldByCustomInterval(dayAverages, intervalLengthDays);
     }
   };
