@@ -2110,6 +2110,40 @@ const SCHEMA_V67 = `
 ALTER TABLE voice_benchmark ADD COLUMN resonance_scale REAL;
 `;
 
+/* Five indexes for five hot reads that had none, or had one that could not
+   serve them (phase 8 audit ticket 18). Index statements only.
+
+   `milestone.epoch_day` and `felt_sense.epoch_day` had no index at all:
+   both areas' lastWriteEpochDay (a MAX under `epoch_day <= ?`, on the More
+   hub's hot path since its last-write subscription), the day screen's
+   on-day reads, and milestone's own recap range and chart annotations all
+   scanned every row.
+
+   `entry_tag`'s primary key is (entry_id, tag_id), so a lookup by
+   entry_id is covered and one by tag_id is not - entries.ts's
+   entriesWithTag needs to drive its join from this table by tag_id
+   instead of reversing off entry's trashed_at index.
+
+   `measurement`'s existing idx_measurement_type(type, epoch_day) can't
+   serve lastWriteEpochDay's `ORDER BY epoch_day DESC LIMIT 1`: that read
+   has no `type` predicate, and epoch_day isn't the index's leading
+   column. A second index leading with epoch_day alone is what it needs.
+
+   `idx_entry_presentation_id` widens from `(presentation_id)` to
+   `(presentation_id, timestamp)`: the fluidity engine's MRU read
+   (presentations.ts) takes a MAX(timestamp) per presentation with an
+   extra trashed_at filter the old index couldn't cover, so it read every
+   entry for a presentation rather than stopping at the newest untrashed
+   one. That subquery runs on every entry save. */
+const SCHEMA_V68 = `
+CREATE INDEX idx_milestone_epoch_day ON milestone(epoch_day);
+CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
+CREATE INDEX idx_entry_tag_tag_id ON entry_tag(tag_id);
+CREATE INDEX idx_measurement_epoch_day ON measurement(epoch_day);
+DROP INDEX idx_entry_presentation_id;
+CREATE INDEX idx_entry_presentation_id ON entry(presentation_id, timestamp);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2177,5 +2211,6 @@ export const migrations: Migration[] = [
   { version: 64, sql: SCHEMA_V64 },
   { version: 65, sql: SCHEMA_V65 },
   { version: 66, sql: SCHEMA_V66 },
-  { version: 67, sql: SCHEMA_V67 }
+  { version: 67, sql: SCHEMA_V67 },
+  { version: 68, sql: SCHEMA_V68 }
 ];
