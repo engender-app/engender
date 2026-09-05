@@ -1,4 +1,5 @@
-/* Where each screen was scrolled to.
+/* Where each screen was scrolled to, and how much of its long lists was
+   rendered when it was left.
 
    The app scrolls `[data-app-scroll-region]` rather than the window, so the
    browser's own scroll restoration never sees it and SvelteKit's does not
@@ -21,6 +22,21 @@
 
 const positions = new Map<string, number>();
 
+/* How far a screen's batched lists had been grown when it was left (phase 8
+   features ticket 66). Here rather than in the kit component because it is
+   the same fact as the position above and exists to serve it: a list that
+   comes back rendering one batch is a short region, and a remembered
+   position restored against a short region is clamped to the end of what is
+   there. Both halves of "what this screen looked like when you left it" are
+   remembered in one place and for one lifetime - the tab's, not the
+   journal's.
+
+   Keyed by the list as well as the path: a screen can hold two batched
+   lists, and growing one is not growing the other. */
+const batches = new Map<string, number>();
+
+const batchKey = (path: string, list: string) => `${path}#${list}`;
+
 function region(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-app-scroll-region]');
 }
@@ -37,6 +53,18 @@ export function restoreScroll(path: string): void {
   const el = region();
   if (!el) return;
   el.scrollTop = positions.get(path) ?? 0;
+}
+
+/** Called by a batched list whenever it grows, so leaving now and coming
+    back renders the same rows again. */
+export function rememberBatches(path: string, list: string, count: number): void {
+  batches.set(batchKey(path, list), count);
+}
+
+/** What a batched list should mount rendering. One batch for a screen
+    nobody has grown, which is every screen the first time. */
+export function restoredBatches(path: string, list: string): number {
+  return Math.max(1, batches.get(batchKey(path, list)) ?? 1);
 }
 
 /** Scrolls the element a navigation's hash names into view, once it exists.
