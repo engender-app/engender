@@ -2796,12 +2796,8 @@ try {
      and every kind has a set. Nothing about them is conditional on the cue:
      they follow the picker with no session saved and no eight hours run. */
   await page.waitForSelector('[data-wear-facts="binder"]');
-  for (const [kind, label] of [
-    ['tucking', 'Tucking'], // text-under-test: the kind picker's own labels
-    ['compression', 'Compression'],
-    ['binder', 'Binder']
-  ]) {
-    await page.getByRole('radio', { name: label, exact: true }).click();
+  for (const kind of ['tucking', 'compression', 'binder']) {
+    await page.locator(`[data-segmented="wear-kind"] [data-segment="${kind}"]`).click();
     await page.waitForSelector(`[data-wear-facts="${kind}"]`);
   }
 
