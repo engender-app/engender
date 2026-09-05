@@ -20,7 +20,8 @@ async function episode(journal: Journal, startEpochDay: number, drug: string, en
     route: 'oral',
     interval: 'daily',
     startEpochDay,
-    endEpochDay
+    endEpochDay,
+    endReason: null
   });
 }
 
@@ -397,7 +398,8 @@ async function injectableEpisode(journal: Journal, startEpochDay: number, drug: 
     route: 'oral',
     interval: 'daily',
     startEpochDay,
-    endEpochDay
+    endEpochDay,
+    endReason: null
   });
 }
 

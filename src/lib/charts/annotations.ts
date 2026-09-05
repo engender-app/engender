@@ -73,6 +73,7 @@
    line already on the chart) and consults (a date in a procedure's history
    that says nothing about the range a chart covers). */
 
+import type { EpisodeEndReason } from '../data/types';
 import { spanOverlapsRange } from '../data/span';
 
 /** The kinds of thing that get annotated, and nothing else: this draws dates
@@ -181,6 +182,10 @@ export interface ChartAnnotationSource {
       effect, a day that stood out - is about the person rather than about
       one drug, and belongs under all of them. */
   series?: string;
+  /** Why a `regimen` episode ended (ticket 43). Absent on every other kind,
+      and null on a `regimen` source that is still open or that ended
+      before this ticket. */
+  endReason?: EpisodeEndReason | null;
 }
 
 /** One annotation that falls inside the range asked for, clipped to it. */
@@ -203,6 +208,8 @@ export interface ChartAnnotation {
   href?: string;
   /** The source's, carried through unchanged. */
   series?: string;
+  /** The source's, carried through unchanged. */
+  endReason?: EpisodeEndReason | null;
 }
 
 export interface AnnotationRange {
@@ -262,7 +269,8 @@ export function annotationsInRange(
       // A moment ends on the day it happened, and a moment outside the range
       // never got this far. A stretch that has not ended has no day to draw
       // an edge at.
-      endsInRange: shape === 'point' || (source.endEpochDay !== null && end <= range.to)
+      endsInRange: shape === 'point' || (source.endEpochDay !== null && end <= range.to),
+      endReason: source.endReason
     });
   }
 

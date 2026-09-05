@@ -34,7 +34,8 @@ const testosterone: RegimenEpisode = {
   route: 'im',
   interval: '7 days',
   startEpochDay: 19000,
-  endEpochDay: null
+  endEpochDay: null,
+  endReason: null
 };
 
 describe("the editor's cycle affordance (ADR-0043)", () => {

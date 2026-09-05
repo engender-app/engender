@@ -2165,6 +2165,21 @@ const SCHEMA_V69 = `
 ALTER TABLE area_state ADD COLUMN suspended_epoch_day INTEGER;
 `;
 
+/* v70: why a regimen episode ended (phase 8 features ticket 43). Nullable,
+   no default, and not derivable (ADR-0010): the reason is the person's own
+   assertion, set only by journal/regimen.ts's endEpisode alongside
+   end_epoch_day and cleared whenever that day is. Three values, drafted in
+   messages/*.json and none preferred over another - the same "neither is
+   better" rule dose_pause.reason already carries. No CHECK tying it to
+   end_epoch_day for the same reason v69 above gives none against
+   finished_epoch_day: the write layer (regimen.ts) is what keeps a null end
+   day from ever carrying a reason, and an inconsistent row arriving from an
+   older archive is exactly the sort of thing a CHECK would refuse to even
+   read back. */
+const SCHEMA_V70 = `
+ALTER TABLE regimen_episode ADD COLUMN end_reason TEXT;
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2234,5 +2249,6 @@ export const migrations: Migration[] = [
   { version: 66, sql: SCHEMA_V66 },
   { version: 67, sql: SCHEMA_V67 },
   { version: 68, sql: SCHEMA_V68 },
-  { version: 69, sql: SCHEMA_V69 }
+  { version: 69, sql: SCHEMA_V69 },
+  { version: 70, sql: SCHEMA_V70 }
 ];

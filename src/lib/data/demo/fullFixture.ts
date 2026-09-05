@@ -58,7 +58,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     route: 'im',
     interval: 'weekly',
     startEpochDay: estradiolStart,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertSchedule({
     episodeId: estradiolEpisodeId,
@@ -93,7 +94,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     route: 'oral',
     interval: 'daily',
     startEpochDay: progesteroneStart,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertSchedule({
     episodeId: progesteroneEpisodeId,

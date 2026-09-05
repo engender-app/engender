@@ -33,7 +33,8 @@ const EPISODE: RegimenEpisode = {
   dose: 4,
   doseUnit: 'mg',
   startEpochDay: TODAY - 400,
-  endEpochDay: null
+  endEpochDay: null,
+  endReason: null
 };
 
 /** The gap window's dose comparison, as `doses.getComparison` answers it:

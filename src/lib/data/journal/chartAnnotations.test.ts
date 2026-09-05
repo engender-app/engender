@@ -35,7 +35,8 @@ test('gathers every dated area a chart can be annotated with', async () => {
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: 20090,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 20120, endEpochDay: 20125, reason: 'planned' });
   await journal.journalingPauses.upsertPause({ startEpochDay: 20130, endEpochDay: 20134 });
@@ -79,7 +80,8 @@ test('a dose pause is named by the drug of the episode it belongs to', async () 
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: 20090,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 20120, endEpochDay: 20125, reason: 'planned' });
 
@@ -87,6 +89,43 @@ test('a dose pause is named by the drug of the episode it belongs to', async () 
   const pause = found.find((a) => a.kind === 'dosePause');
 
   assert.equal(pause?.name, 'estradiol valerate');
+});
+
+/* Ticket 43: the regimen source carries the episode's end reason straight
+   through, null on every episode that is still open or has none. */
+test('a regimen annotation carries its episode\'s end reason', async () => {
+  const journal = await journalWith();
+
+  const withReason = await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'every 7 days',
+    startEpochDay: 20000,
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.regimen.endEpisode(withReason, 20050, 'pausedForNow');
+  await journal.regimen.upsertEpisode({
+    drug: 'progesterone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 20060,
+    endEpochDay: null,
+    endReason: null
+  });
+
+  const found = await journal.chartAnnotations.getAnnotations(20000, 20200, TODAY);
+  const ended = found.find((a) => a.kind === 'regimen' && a.name === 'estradiol valerate');
+  const ongoing = found.find((a) => a.kind === 'regimen' && a.name === 'progesterone');
+
+  assert.equal(ended?.endReason, 'pausedForNow');
+  assert.equal(ongoing?.endReason, null);
 });
 
 /* The surgery day and the weeks after it are two different marks: one is a
@@ -139,7 +178,8 @@ test('an unfinished episode reaches to today and not to the end of the range', a
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: 20090,
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   const [found] = await journal.chartAnnotations.getAnnotations(20080, 20300, 20150);
@@ -224,7 +264,8 @@ test('an injection marks under the ester its own episode resolves to', async () 
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: daysAgo(60),
-    endEpochDay: daysAgo(30)
+    endEpochDay: daysAgo(30),
+    endReason: null
   });
   await journal.regimen.upsertEpisode({
     drug: 'estradiol enanthate',
@@ -234,7 +275,8 @@ test('an injection marks under the ester its own episode resolves to', async () 
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: daysAgo(29),
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   await journal.doses.upsertDose(injection(daysAgo(45)));
@@ -262,7 +304,8 @@ test('a dose no chart draws is marked by none of them', async () => {
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: daysAgo(60),
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
 
   // Nothing was taken, so nothing reached the bloodstream the chart is about.
@@ -289,7 +332,8 @@ test('an oral dose is no injection and marks nothing', async () => {
     route: 'oral',
     interval: 'daily',
     startEpochDay: daysAgo(60),
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertDose({ timestamp: at(daysAgo(10)), dose: 2, doseUnit: 'mg', route: 'oral' });
 
@@ -310,7 +354,8 @@ test('an injection with no band of its own marks under its illustrative curve', 
     route: 'im',
     interval: 'every 7 days',
     startEpochDay: daysAgo(60),
-    endEpochDay: null
+    endEpochDay: null,
+    endReason: null
   });
   await journal.doses.upsertDose(injection(daysAgo(10), { dose: 80 }));
 
