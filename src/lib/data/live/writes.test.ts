@@ -428,6 +428,7 @@ const COMPOSING_READS: readonly ComposingRead[] = [
       ['hairProgress', 'getStagesOnDay'],
       ['hairProgress', 'getPhotosOnDay'],
       ['hairRemoval', 'getSessionsOnDay'],
+      ['appointments', 'getDayRecords'],
       ['procedures', 'getDayRecords'],
       ['tryouts', 'getPhotosOnDay'],
       ['documents', 'getDocumentsOnDay']

@@ -346,6 +346,15 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     notes: 'drains out on day five'
   });
   await journal.procedures.addConsult(procedure, 19950);
+  /* One appointment on its own beside the consult above, so the section
+     carries both cases it has to (ticket 57). */
+  await journal.appointments.upsertAppointment({
+    epochDay: 20030,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: 'Poradnia, ul. Kopernika',
+    note: 'ask about the dose'
+  });
   await journal.procedures.addPhoto(procedure, 20052, { full: bytes('recovery'), thumb: bytes('rt') });
   const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);

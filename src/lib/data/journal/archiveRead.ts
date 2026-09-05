@@ -42,7 +42,7 @@ import type {
   ArchiveMilestone,
   ArchivePersonalEffectType,
   ArchiveProcedure,
-  ArchiveProcedureConsult,
+  ArchiveAppointment,
   ArchiveProcedurePhoto,
   ArchivePhoto,
   ArchivePreset,
@@ -620,15 +620,6 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
   }>(
     'SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
   );
-  const consults = await driver.query<{ uuid: string; procedure_id: number; epoch_day: number }>(
-    'SELECT uuid, procedure_id, epoch_day FROM procedure_consult ORDER BY epoch_day, id'
-  );
-
-  const consultsById = groupBy(
-    consults,
-    (consult) => consult.procedure_id,
-    (consult): ArchiveProcedureConsult => ({ id: consult.uuid, epochDay: consult.epoch_day })
-  );
   const photosById = groupBy(
     procedurePhotos,
     (photo) => photo.procedure_id,
@@ -639,9 +630,35 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     id: procedure.uuid,
     name: procedure.name,
     surgeryEpochDay: procedure.surgery_epoch_day,
-    consults: consultsById.get(procedure.id) ?? [],
     notes: procedure.notes,
     photos: photosById.get(procedure.id) ?? []
+  }));
+}
+
+/* The procedure link travels as the procedure's own uuid rather than its
+   rowid, which is this device's alone (ADR-0002) - the same join
+   readDoseSchedules makes for the same reason. */
+export async function readAppointments({ driver }: SectionRead): Promise<ArchiveAppointment[]> {
+  const rows = await driver.query<{
+    uuid: string;
+    epoch_day: number;
+    procedure_uuid: string | null;
+    kind: string | null;
+    place: string | null;
+    note: string | null;
+  }>(
+    `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
+            a.kind AS kind, a.place AS place, a.note AS note
+       FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
+      ORDER BY a.epoch_day, a.id`
+  );
+  return rows.map((row) => ({
+    id: row.uuid,
+    epochDay: row.epoch_day,
+    procedureId: row.procedure_uuid,
+    kind: row.kind,
+    place: row.place,
+    note: row.note
   }));
 }
 
