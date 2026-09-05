@@ -1007,6 +1007,7 @@ beforeAll(async () => {
   await driveRead('clinicianSummary', 'getSummary', () => journal.clinicianSummary.getSummary(0, 30000));
   await driveRead('day', 'getDay', () => journal.day.getDay(20000));
   await driveRead('lastWrite', 'getLastWrites', () => journal.lastWrite.getLastWrites(20000));
+  await driveRead('dayAhead', 'getDayAhead', () => journal.dayAhead.getDayAhead(0, 30000, 20000));
   await driveRead('textSearch', 'search', () =>
     journal.textSearch.search({ query: 'good', today: 20000, limit: 10 })
   );
@@ -1073,6 +1074,7 @@ beforeAll(async () => {
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
+  await driveRead('letters', 'getUnlockDaysInRange', () => journal.letters.getUnlockDaysInRange(20000, 30000));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
   await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
