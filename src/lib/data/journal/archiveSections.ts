@@ -739,6 +739,24 @@ const SECTIONS = [
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
+  /* A track somebody has said is not their path (phase 8 features ticket
+     49). Named by bundled structure rather than by anything the person
+     wrote, so it does not travel, for the same reason roadmapChecks above
+     does not: it records a fact about this person against content every
+     install already has.
+
+     A descriptor rather than a hand-written pair, unlike roadmapChecks: a
+     tick is identified by a pack/goal couple, which `identity` has no way
+     to name, and a dismissed track is one column of one table - exactly
+     what eraMutes above is. */
+  flat({
+    name: 'roadmapTracks',
+    travels: 'none',
+    table: 'roadmap_track',
+    identity: 'track',
+    orderBy: 'track',
+    columns: { track: 'track' }
+  }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
      present locally is simply skipped rather than compared column by column:
      a custom goal's text and track are fixed at creation (roadmap.ts has no

@@ -73,6 +73,7 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   letters: (r) => r.id,
   voicePracticeTakes: (r) => r.id,
   roadmapChecks: (r) => `${r.packKey}:${r.goalKey}`,
+  roadmapTracks: (r) => r.track,
   roadmapGoals: (r) => r.id,
   regimenEpisodes: (r) => r.id,
   doseEvents: (r) => r.id,
