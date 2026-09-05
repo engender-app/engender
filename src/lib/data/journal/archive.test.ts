@@ -5,6 +5,8 @@ import { thumbFileName } from '../photos/names.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
+import { ARCHIVE_SECTIONS } from './archiveSections.ts';
+import { columnsOf } from './archiveTable.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 
@@ -596,187 +598,152 @@ test('an area\'s hidden and finished state travels, and a restore keeps the day 
    carry. The point is drift: an archive that quietly stops carrying a
    column added later is a backup that silently loses data, and nothing
    else in this suite would notice. A new column fails here until it is
-   either carried or listed as deliberately left behind. */
-const CARRIED: Record<string, string[]> = {
+   either carried or listed as deliberately left behind.
+
+   The 27 flat sections' columns are not retyped here (phase 8 audit
+   finding 24): FLAT_CARRIED walks each one's own descriptor
+   (archiveSections.ts's `flatTable`) with the same columnsOf()
+   readFlatTable/applyFlatTable already use, so this oracle checks the
+   descriptor's agreement with the schema rather than a second map's habit
+   of agreeing with the first. Delete a column from a descriptor and this
+   table fails the same way an untracked schema column does - carried by
+   nothing, because FLAT_CARRIED no longer claims it.
+
+   What stays hand-typed in HAND_WRITTEN_CARRIED is every table a
+   descriptor cannot describe - the archive table module's own three
+   limits (a child table, a rowid resolved against another section, an
+   update branch for a built-in row a Replace overwrites in place) - with
+   each exception's reason given where it is declared below. */
+const FLAT_CARRIED: Record<string, string[]> = Object.fromEntries(
+  ARCHIVE_SECTIONS.flatMap((section) =>
+    section.flatTable ? [[section.flatTable.table, columnsOf(section.flatTable).map((c) => c.column)]] : []
+  )
+);
+
+const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
+  // Owns five children below (applyEntries/readEntries) - a descriptor
+  // speaks for one table, and a photo/recording/video/dimension-link/
+  // tag-link/region-link is six more.
   entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_id'],
-  presentation: ['uuid', 'name', 'role_index', 'hidden'],
+  // Child of entry, and its own rowid is resolved against dimensions.
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
+  // Child of entry, and its own rowid is resolved against tagGroups' tags.
   entry_tag: ['entry_id', 'tag_id'],
+  // Child of entry. `region` stores bodyRegions' own domain key directly,
+  // not a rowid, so this needs no `after` even though it is a child.
   entry_body_region: ['entry_id', 'region', 'dysphoria', 'euphoria'],
+  // Built-in rows are updated in place, not just inserted, and the two
+  // children below are its own (applyEntryTemplates).
   entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_id', 'hidden'],
   entry_template_tag: ['template_id', 'tag_id'],
   entry_template_dimension_value: ['template_id', 'dimension_id', 'value'],
+  // Shared between two owners (entry, milestone) rather than one section's
+  // own table - a descriptor names one table for one section.
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred'],
+  // Owns a child (photo), the same reason `entry` above is hand-written.
   milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id'],
+  // A matched built-in row is UPDATEd in place (applyDimensions), which a
+  // descriptor's insert-if-absent has no branch for.
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
+  // Same update branch as gender_dimension, plus its own child below.
   gender_preset: ['uuid', 'key', 'name', 'is_built_in'],
   preset_dimension: ['preset_id', 'dimension_id', 'order_index'],
+  // Same update branch as gender_dimension, plus its own child (tag) below.
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
+  // Child of tag_group, and its own rows are updated in place too
+  // (applyTagGroups) - a rename or a hide reaches an already-present tag.
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
+  // Same update branch as gender_dimension.
   affirmation: ['uuid', 'key', 'language', 'text', 'hidden'],
+  // Same update branch as gender_dimension.
   body_region: ['uuid', 'key', 'name', 'hidden'],
-  reminder: [
-    'uuid',
-    'title',
-    'type',
-    'time',
-    'recurrence',
-    'interval',
-    'anchor_epoch_day',
-    'epoch_day',
-    'enabled',
-    'auto_source'
-  ],
-  // entry_id travels as the entry's own uuid, the way procedure_id does
-  // above (ADR-0002) - migrations.ts v61 has the reasoning.
-  revisit: ['uuid', 'entry_id', 'entry_epoch_day', 'created_epoch_day', 'target_epoch_day'],
-  /* The dosing context travels: a device importing this cannot re-derive it,
-     because the dose log it was measured against is not the one being
-     imported into (ticket 03). */
-  lab_result: [
-    'uuid',
-    'epoch_day',
-    'analyte',
-    'value',
-    'unit',
-    'note',
-    'draw_time',
-    'provider',
-    'timing_route',
-    'timing_hours',
-    'timing_day_of_interval'
-  ],
-  measurement: ['uuid', 'epoch_day', 'type', 'value', 'unit'],
+  // Same update branch as gender_dimension.
   measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
-  size_record: ['uuid', 'epoch_day', 'category', 'size', 'brand', 'fit_note'],
-  taper: ['uuid', 'surgery_epoch_day', 'start_epoch_day', 'stages'],
-  taper_session: ['uuid', 'epoch_day', 'note'],
-  tally_event: ['uuid', 'epoch_day', 'kind'],
-  regimen_episode: [
-    'uuid',
-    'drug',
-    'ester',
-    'dose',
-    'dose_unit',
-    'route',
-    'interval',
-    'start_epoch_day',
-    'end_epoch_day'
-  ],
-  dose_event: [
-    'uuid',
-    'timestamp',
-    'route',
-    'dose',
-    'dose_unit',
-    'injection_site',
-    'vehicle',
-    'application_site',
-    'status',
-    'scheduled_dose',
-    'scheduled_route',
-    'scheduled_timestamp',
-    'drug'
-  ],
   // episode_id travels as the episode's uuid, the way preset_dimension's
-  // rowids travel as keys (ADR-0002).
+  // rowids travel as keys (ADR-0002). Its own rowid is resolved against
+  // regimenEpisodes, and dose_schedule_weekday/dose_schedule_dose_amount
+  // below are its own children.
   dose_schedule: ['uuid', 'episode_id', 'recurrence_kind', 'every_n_days', 'doses_per_day'],
+  // Rowid resolved against regimenEpisodes, the same reason dose_schedule
+  // above is hand-written.
   dose_pause: ['uuid', 'episode_id', 'start_epoch_day', 'end_epoch_day', 'reason'],
   // schedule_id travels as the schedule's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - nested inside its ArchiveDoseSchedule
-  // rather than carried as its own section (payload.ts).
+  // rather than carried as its own section (payload.ts). Children of
+  // dose_schedule above.
   dose_schedule_weekday: ['schedule_id', 'weekday'],
   dose_schedule_dose_amount: ['schedule_id', 'position', 'dose', 'dose_unit'],
-  medication_stock: [
-    'uuid',
-    'drug',
-    'quantity',
-    'unit',
-    'recorded_epoch_day',
-    'reminder_ever_created',
-    'reminder_dismissed',
-    'opened_epoch_day',
-    'in_use_window_days',
-    'in_use_end_epoch_day'
-  ],
-  side_effect: ['uuid', 'name', 'severity', 'epoch_day'],
-  cycle_event: ['uuid', 'kind', 'epoch_day'],
-  journaling_pause: ['uuid', 'start_epoch_day', 'end_epoch_day'],
-  saved_question: ['uuid', 'name', 'query_text', 'tag_ids', 'moods', 'start_epoch_day', 'end_epoch_day', 'has_note', 'has_photo'],
-  era: ['uuid', 'name', 'start_epoch_day', 'end_epoch_day'],
-  era_mute: ['era_uuid'],
-  personal_effect: ['uuid', 'effect', 'first_noticed_epoch_day'],
+  // Same update branch as gender_dimension, and the one section with
+  // nothing to discard - every row is built-in (archiveSections.ts's own
+  // comment).
   effect_category: ['key', 'name', 'enabled'],
+  // Same update branch as gender_dimension.
   personal_effect_type: ['uuid', 'key', 'name', 'is_built_in', 'category_key', 'direction', 'hidden'],
-  hair_stage: ['uuid', 'epoch_day', 'scale', 'stage', 'description'],
+  // Read once for the archive's file manifest alongside hair_removal_photo/
+  // procedure_photo/tryout_photo below (archive.ts's `manifest()`), so its
+  // rows come from SectionRead rather than a second query the way a flat
+  // section's own read would issue.
   hair_photo: ['uuid', 'epoch_day', 'file_path'],
+  // Owns a child (hair_removal_photo) below.
   hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'cost', 'provider'],
   // session_id travels as the session's own uuid, the way dose_pause's
-  // episode_id does (ADR-0002).
+  // episode_id does (ADR-0002). Read once for the file manifest, the same
+  // reason hair_photo above is hand-written.
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
+  // Owns two children (procedure_consult, procedure_photo) below.
   procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes'],
   // procedure_id travels as the procedure's own uuid on both children, the
   // way dose_pause's episode_id does (ADR-0002).
   procedure_consult: ['uuid', 'procedure_id', 'epoch_day'],
+  // Read once for the file manifest, the same reason hair_photo above is
+  // hand-written.
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
+  // Owns a child (doubt_snapshot_entry) below.
   doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
   doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
-  letter: ['uuid', 'epoch_day', 'text', 'unlock_epoch_day'],
-  voice_practice_take: ['uuid', 'epoch_day', 'min_hz', 'max_hz', 'median_hz', 'felt_sense'],
-  // No uuid: a tick is named by its pack and goal keys, which mean the
-  // same thing on every device, the way a built-in tag travels as its key
-  // (ADR-0002).
+  // Identified by a pack/goal pair (applyRoadmapChecks), not by one column
+  // - a compound identity a descriptor's single `identity` field cannot
+  // name. No uuid: a tick is named by its pack and goal keys, which mean
+  // the same thing on every device, the way a built-in tag travels as its
+  // key (ADR-0002).
   roadmap_check: ['pack_key', 'goal_key', 'status'],
-  // Uuid-identified like a checklist item: unlike roadmap_check, this row
-  // carries data of its own (a track and its text) rather than naming
-  // bundled content (ADR-0002).
-  roadmap_goal: ['uuid', 'track', 'text', 'status'],
+  // Owns a child (tryout_photo) below.
   tryout: ['uuid', 'kind', 'label', 'description', 'start_epoch_day', 'end_epoch_day'],
   // Exactly one of tryout_id/milestone_id travels, each as that owner's own
-  // uuid, the same shape `photo`'s entry_id/milestone_id pair carries.
+  // uuid, the same shape `photo`'s entry_id/milestone_id pair carries - and
+  // both are rowids resolved against the tryouts/milestones sections.
   felt_sense: ['uuid', 'tryout_id', 'milestone_id', 'epoch_day', 'mood', 'note'],
   // Exactly one owner, unlike felt_sense's two - a margin note always
-  // belongs to an entry (phase 8 features ticket 07).
+  // belongs to an entry (phase 8 features ticket 07), and entry_id is a
+  // rowid resolved against the entries section.
   margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
+  // Read once for the file manifest, the same reason hair_photo above is
+  // hand-written.
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
+  // Child of entry (applyEntries), read once for the file manifest the
+  // same reason hair_photo above is - `entry_id` travels as the entry's
+  // own uuid (ADR-0002).
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
-  // Every figure travels: they are measurements of the two files, not state
-  // derived from anything the archive already carries (ticket 15).
-  voice_benchmark: [
-    'uuid',
-    'epoch_day',
-    'timestamp',
-    'passage_key',
-    'passage_file_path',
-    'vowel_file_path',
-    'f0_median_hz',
-    'f0_p10_hz',
-    'f0_p90_hz',
-    'semitone_sd',
-    'words_per_minute',
-    'f1_hz',
-    'f2_hz',
-    'snr_db',
-    'note',
-    'pitch_track',
-    'capture_chain',
-    'resonance_scale'
-  ],
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
+  // Owns a child (checklist_item) below; unlike a vocabulary table its own
+  // row has nothing to UPDATE once created (checklists.ts has no rename or
+  // move setter), only the item below is walked in both modes.
   checklist: ['uuid', 'owner_kind', 'owner_uuid', 'appointment_epoch_day'],
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
-  wear_session: ['uuid', 'start_timestamp', 'duration_ms', 'note'],
-  comfort_item: ['uuid', 'text', 'position'],
-  // Named by its area rather than a uuid, the way roadmap_check is named by
-  // its pack and its goal (phase 8 deepening ticket 13).
-  area_state: ['area', 'hidden', 'finished_epoch_day'],
-  // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column.
+  // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column -
+  // a shape a descriptor's own columns have no transform for. Never
+  // `whole` (see archiveSections.ts's own note on why), but this table
+  // still travels with a backup.
   import_log: ['uuid', 'source', 'counts', 'imported_at'],
-  // Filtered by the portable allowlist rather than carried whole (ADR-0003).
+  // Filtered by the portable allowlist rather than carried whole
+  // (ADR-0003), which is not a table shape a descriptor's plain column
+  // list can express.
   pref: ['key', 'value']
 };
+
+const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CARRIED };
 
 /* `id` is this device's rowid and means nothing anywhere else (ADR-0002);
    `updated_at` is written by every area and read by nothing, and an
