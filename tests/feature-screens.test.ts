@@ -5,9 +5,13 @@
 
    This is the grind ticket, so the thing worth watching is not any one
    screen but that none of them was quietly left on the old vocabulary.
-   The list below is SCREENS.md's own: the 22 hub rows, the three reached
-   only from inside a feature screen, and the tryout detail. It is written
-   out rather than globbed, because a screen dropped from the glob and a
+   The list below is the More hub's own rows, read off `hubRows.ts`, plus
+   the handful of screens reached only from inside another one. It was a
+   third hand-written screen list until phase 8 audit ticket 22; a screen
+   that joins the hub now joins every assertion in this file with it, which
+   is the half of the problem a written-out list could never solve - and the
+   half it did solve stays, because the screens below the hub are still
+   written out rather than globbed, and a screen dropped from a glob and a
    screen dropped from the redesign look identical to a glob.
 
    Greps by design (ticket 08). The question this file asks 26 times is
@@ -20,76 +24,43 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { HUB_ROWS, type HubRowKey } from '../src/lib/data/hubRows.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
-/** SCREENS.md's list: 22 hub rows + tryouts/[id] + stock + exposure +
-    photos/export.
+/** The hub rows that are **not** on this list, and why. One of them, and
+    keyed by `HubRowKey`, so a row named here that stops existing is a
+    compile error rather than a silent exemption.
 
-    The cross-check the acceptance box asks for, and it finds a
-    discrepancy rather than agreement. SCREENS.md's Total says "22 More-hub
-    rows" and its four tables list 22 routes; the hub actually renders 23,
-    because `/doubt` moved onto it under spec 08 and the inventory was
-    never updated. Ticket 24 found the same gap from the other side and
-    recorded it as out of its scope, `tests/more-surfaces.test.ts` holding
-    the real 23.
+    SCREENS.md still says "22 More-hub rows" against the hub's 26 - the
+    inventory was last correct before `/doubt` moved onto the hub under spec
+    08, and ticket 24 found the same gap from the other side and recorded it
+    as out of its scope. Correcting SCREENS.md is still nobody's ticket, and
+    reading the routes off the hub instead of off the doc makes that
+    disagreement smaller rather than pretending it is settled. */
+const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
+  doubt: 'moved onto the hub under spec 08 with the screen itself unchanged (ticket 24), so it was never rebuilt onto the kit'
+};
 
-    So: 22 of this ticket's routes are hub rows, the 23rd hub row is
-    `/doubt`, and `/doubt` is not redesigned here - the move that put it on
-    the hub left the screen itself unchanged (ticket 24). Correcting
-    SCREENS.md is still nobody's ticket. */
-const ROUTES = [
-  // Body
-  'settings/photos',
-  'settings/measurements',
-  'settings/sizes',
-  'settings/hair-progress',
-  'settings/hair-removal',
-  /* Health. Four of these stopped being hub rows in phase 5 deepening ticket
-     07 - labs, regimen, hormone-curve and doses sit behind the new /care row
-     now - and they are still feature screens, still redesigned onto the kit,
-     so they stay on this list. What that ticket adds to it is /care itself. */
-  'care',
+/** Every screen reached only from inside another one, or from the shell -
+    the part of this list the hub cannot supply. */
+const REACHED_FROM_INSIDE = [
+  /* Four screens stopped being hub rows in phase 5 deepening ticket 07 -
+     labs, regimen, hormone-curve and doses sit behind the `/care` row now -
+     and they are still feature screens, still built on the kit, so they stay
+     on this list. */
   'settings/labs',
   'settings/regimen',
   'settings/hormone-curve',
   'doses',
-  'settings/cycle-events',
-  'settings/side-effects',
-  'settings/surgery',
-  'settings/dilation',
-  'settings/appointment-prep',
-  'settings/clinician-summary',
-  // Transition
-  'settings/milestones',
-  'settings/roadmap',
-  'settings/letters',
-  'settings/tryouts',
   'settings/tryouts/[id]',
-  'settings/presentations',
-  'settings/eras',
-  'settings/words',
-  // Practice
-  'settings/voice',
-  /* The More hub's `voice` row (icon 'mic') targets this route, not
-     `settings/voice` above - that one is `voice-benchmark`'s target
-     (more/+page.svelte:87-88). A feature screen in its own right (phase 8
-     features ticket 11) and missing here the same way `settings/presentations`
-     was: never joined this list when its own ticket landed. */
-  'settings/voice/memos',
-  /* The More hub's `entry-templates` row (icon 'grid'), same gap as the two
-     above it - built from the kit, missing from this list. */
-  'settings/entry-templates',
   /* The metric reference (phase 8 features ticket 27): reached only from a
      figure on the voice screen, never from the hub, which is ADR-0060's
      own rule and what keeps it out of the UX spec's navigation rules. On
      this list all the same, because what the list is for is holding a
      screen to the kit. */
   'settings/voice/metrics',
-  'settings/wear',
-  'settings/personal-effects',
-  'settings/resources',
   /* Two views over the unprompted registry (phase 6 ticket 04). The
      notifications view joins the list because its own milestone spec says so
      ("feature-screens.test.ts covers /settings/eras and the notifications
@@ -103,11 +74,21 @@ const ROUTES = [
      list for the reason the note above the list gives - a screen that is
      not here escapes every assertion in it. */
   'coming-back',
-  // Reached from inside a feature screen
   'settings/stock',
   'settings/exposure',
   'settings/photos/export'
 ];
+
+/** A hub row's route: its href without the leading slash, and without the
+    query string the one tabbed row carries (the voice benchmark's), since
+    what this file reads is the screen's source. */
+const routeOf = (href: string) => href.split('?')[0].slice(1);
+
+const HUB_ROUTES = HUB_ROWS.filter((row) => !(row.key in NOT_A_FEATURE_SCREEN)).map((row) =>
+  routeOf(row.href)
+);
+
+const ROUTES = [...HUB_ROUTES, ...REACHED_FROM_INSIDE];
 
 const sourceOf = new Map(ROUTES.map((route) => [route, read(`src/routes/${route}/+page.svelte`)]));
 const markupOf = new Map(
@@ -121,28 +102,21 @@ const markupOf = new Map(
   ])
 );
 
-describe('all 36 of them', () => {
-  it('is the count SCREENS.md gives, plus the ten added since', () => {
-    /* 26 when this list was written, 27 since deepening ticket 07 added
-       /care, then 28 and 29 as phase 6's tickets 01 and 04 landed
-       /settings/eras and the notifications view, then 30 through 32 as
-       ticket 26 joined /settings/presentations, /settings/voice/memos and
-       /settings/entry-templates - deepening ticket 17, phase 6 ticket 07
-       and features ticket 11 had each added one without ever landing it
-       here. Both 28 and 29 arrived on their own branch and each thought it
-       was the 28th, which is what this line is for: SCREENS.md is eight
-       tickets behind either way - see the note above the list - and
-       correcting it is still nobody's ticket. Then 33 and 34 as features
-       tickets 14 and 27 landed on the same day: 14's /settings/words,
-       built on the kit from the start, and 27's metric reference, the
-       first route here that was never a hub row and never will be. The
-       35th, ticket 05's return surface, is the second of those and goes
-       further: the metric reference is at least reachable from the screen
-       it explains, while this one is linked from nowhere on purpose
-       (ADR-0062). The 36th, features ticket 12's /settings/dilation, is an
-       ordinary hub row again. */
-    expect(ROUTES.length).toBe(36);
-    expect(new Set(ROUTES).size).toBe(36);
+describe('every feature screen', () => {
+  it('is the hub, plus the screens reached only from inside another', () => {
+    /* This assertion used to be a count - 36, having been 26 when the list
+       was written and having been raised ten times since, twice by two
+       branches that each thought they were adding the 28th. A route added
+       to the hub reaches this file on its own now, so what is left to hold
+       is the join: every row is either here or excused, and no screen below
+       the hub restates one that is already on it. */
+    for (const row of HUB_ROWS) {
+      const listed = ROUTES.includes(routeOf(row.href));
+      expect(listed || row.key in NOT_A_FEATURE_SCREEN, `${row.key} is neither on the list nor excused`).toBe(
+        true
+      );
+    }
+    expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
   it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {

@@ -5,10 +5,20 @@
    `LAST_WRITE_ENTRIES` rather than restating the list, so shortening the
    registry breaks it; and the emptiness rule is exercised over a journal
    that uses four areas out of sixteen, which is the shape the spec asked
-   for. */
+   for.
+
+   What was here and is not, since phase 8 audit ticket 22: a test that read
+   both this registry and the hub rows and asserted the icon and the href on
+   each of the fourteen cards that are also rows, defending itself against
+   matching nothing with a hand-written `expect(checked).toBe(14)`. There is
+   nothing left for the two lists to disagree about - a card declares neither
+   field now and reads both off its row - so the assertion it made is a
+   compile error, and the count nobody could have kept right is gone with
+   it. */
 
 import { describe, expect, it } from 'vitest';
 import {
+  CARDS_WITHOUT_A_ROW,
   STATS_AREA_GROUPS,
   STATS_AREA_OPT_OUTS,
   STATS_AREA_PANELS,
@@ -16,7 +26,7 @@ import {
   statsAreaCards
 } from './statsAreas';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
-import { HUB_ROWS } from './hubRows';
+import { HUB_ROWS, hubRow, type HubRowKey } from './hubRows';
 import type { AreaStates } from './areaState';
 
 const covered = new Set(STATS_AREA_PANELS.flatMap((panel) => panel.covers));
@@ -104,40 +114,52 @@ describe('the emptiness rule', () => {
   });
 
   it('cannot hide the cycle row, which owns its own visibility', () => {
-    const cycle = STATS_AREA_PANELS.find((panel) => panel.key === 'cycle-events');
-    expect(cycle?.hides).toBeNull();
+    /* ADR-0043, structural rather than declared: `cycleEvents` is outside
+       `HideableArea`, so no state a person can reach takes this card off. */
+    const cards = statsAreaCards({ cycleEvents: 20100 }, { measurements: { hidden: true, finishedEpochDay: null } });
+    expect(cards.map((card) => card.panel.key)).toEqual(['cycle-events']);
+  });
+
+  it('takes a two-area card out only when both halves are hidden', () => {
+    /* The hub row's rule, which is now this card's too (`areasHidden`). Hair
+       progress is stagings plus photographs: somebody who hides the stagings
+       and keeps photographing has something left on the card. */
+    const written = { hairStages: 20000, hairPhotos: 20050 };
+    const half: AreaStates = { hairStages: { hidden: true, finishedEpochDay: null } };
+    expect(statsAreaCards(written, half).map((card) => card.panel.key)).toEqual(['hair-progress']);
+
+    const both: AreaStates = { ...half, hairPhotos: { hidden: true, finishedEpochDay: null } };
+    expect(statsAreaCards(written, both)).toEqual([]);
   });
 });
 
-describe('agreeing with the More hub', () => {
-  it("draws the hub row's own icon and points at its screen, for every card that is one", () => {
-    /* This file's own promise - "the hub row's own icon, so the two surfaces
-       agree" (ADR-0024) - held rather than restated. It was restated and
-       drifted within the hour: phase 8 UX ticket 02 resolved three duplicated
-       hub icons and renamed the personal effects route while this module was
-       being merged, which left milestones on `flag`, the voice benchmark on
-       `mic`, personal effects on `sparkle`, and its href on a route that no
-       longer exists.
-
-       `labs` and `tally` are cards with no hub row of their own - one sits
-       behind /care and one is its own tab - so they are skipped rather than
-       failed, and the hub's own uniqueness test is what governs its icons. */
-    const hubRows = new Map<string, { icon: string; href: string }>(
-      HUB_ROWS.map((row) => [row.key, { icon: row.icon, href: row.href }])
-    );
-    let checked = 0;
-
+describe('a card reads its identity off its hub row', () => {
+  it('carries the row\'s icon and the row\'s screen, and declares neither', () => {
+    /* Not two lists compared: `STATS_AREA_PANELS` has one list to read from,
+       and a card key naming no row does not compile. What is worth asserting
+       is that the resolution ran - a card that declared nothing would
+       otherwise render an undefined icon and a dead link. */
     for (const panel of STATS_AREA_PANELS) {
-      const row = hubRows.get(panel.key);
-      if (!row) continue;
-      checked += 1;
+      if (panel.key in CARDS_WITHOUT_A_ROW) continue;
+      const row = hubRow(panel.key as HubRowKey);
       expect(panel.icon, `${panel.key} icon`).toBe(row.icon);
-      // The hub row's query string is its own (the benchmark tab); the path is
-      // what both surfaces have to agree on.
       expect(panel.href, `${panel.key} href`).toBe(row.href.split('?')[0]);
+      expect(panel.finishes, `${panel.key} finishes`).toBe(row.finishes);
     }
+  });
 
-    expect(checked, 'no stats card matched a hub row, so this checked nothing').toBe(14);
+  it('points at the screen where the row points at one of its tabs', () => {
+    // The one row carrying a query string. The card means the screen.
+    expect(hubRow('voice-benchmark').href).toBe('/settings/voice?tab=record');
+    const card = STATS_AREA_PANELS.find((panel) => panel.key === 'voice-benchmark');
+    expect(card?.href).toBe('/settings/voice');
+  });
+
+  it('accounts for every card the hub does not front, and no others', () => {
+    const rowKeys = new Set<string>(HUB_ROWS.map((row) => row.key));
+    const rowless = STATS_AREA_PANELS.filter((panel) => !rowKeys.has(panel.key)).map((panel) => panel.key);
+    expect(rowless.sort()).toEqual(Object.keys(CARDS_WITHOUT_A_ROW).sort());
+    for (const reason of Object.values(CARDS_WITHOUT_A_ROW)) expect(reason.length).toBeGreaterThan(0);
   });
 });
 
