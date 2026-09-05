@@ -116,10 +116,17 @@
 {#snippet list(rows: Appointment[])}
   <ListCard role={roleAt(activeFlag.roles, 0)}>
     {#each rows as appointment (appointment.id)}
+      <!-- `calendar` rather than the `check` the hub row wears. The hub's
+           icon is fixed - it is the prep list's, kept through the rename
+           (ADR-0066), and `calendar` is already spoken for there by cycle
+           events - but a lit tick beside a visit three weeks out says that
+           visit already happened. `calendar` is the app's own glyph for an
+           appointment date: the prep list's "Last appointment" row has worn
+           it since ticket 11. -->
       <ListRow
         key={appointment.id}
         data-appointment={appointment.id}
-        icon="check"
+        icon="calendar"
         title={titleOf(appointment)}
         subtitle={subtitleOf(appointment)}
         chevron={false}
@@ -157,7 +164,7 @@
     {#snippet empty()}
       <div class="screen-part">
         <Notice
-          icon="check"
+          icon="calendar"
           key="appointments-empty"
           role={roleAt(activeFlag.roles, 0)}
           title={m.appointments_empty_title()}
@@ -172,9 +179,11 @@
        and so is a way out of this screen rather than a part of it. -->
   <div class="screen-part">
     <ListCard role={roleAt(activeFlag.roles, 1)}>
+      <!-- `check` because that is the prep list's own icon, and this row is
+           the way to it: the disc says where a row leads. -->
       <ListRow
         key="appointment-prep"
-        icon="flag"
+        icon="check"
         title={m.appointment_prep_title()}
         subtitle={m.appointments_prep_sub()}
         href="/health/appointment-prep"
@@ -203,7 +212,7 @@
           <DatePicker name="appointment-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
-      <Field label={m.appointments_kind_label()} id="appointment-kind" hint={m.appointments_kind_hint()}>
+      <Field label={m.appointments_kind_label()} id="appointment-kind">
         {#snippet children(id)}
           <input
             class="input"
@@ -217,18 +226,29 @@
       {#if kindsQuery.rows.length}
         <!-- The person's own previous kinds, and nothing else ever
              (ADR-0066). A chip fills the field rather than toggling a
-             value, so what is stored is still whatever is in the input. -->
-        <div class="tag-row" role="group" aria-label={m.appointments_kind_label()}>
-          {#each kindsQuery.rows as kind (kind)}
-            <button
-              class="tag-chip"
-              class:is-selected={editor.kind === kind}
-              data-kind={kind}
-              onclick={() => (editor.kind = kind)}
-            >
-              {kind}
-            </button>
-          {/each}
+             value, so what is stored is still whatever is in the input.
+
+             Pulled up under the field it belongs to rather than sitting at
+             the sheet's own field rhythm, which read as a third control
+             between Kind and Place. The line under them says what they are;
+             it is here rather than in `Field`'s `hint`, which renders at
+             label weight and would put two bold lines above an empty
+             input. Neither exists on a journal that has never named a
+             kind, because there is nothing to explain and nothing ships. -->
+        <div class="ap-kinds">
+          <div class="tag-row" role="group" aria-label={m.appointments_kind_label()}>
+            {#each kindsQuery.rows as kind (kind)}
+              <button
+                class="tag-chip"
+                class:is-selected={editor.kind === kind}
+                data-kind={kind}
+                onclick={() => (editor.kind = kind)}
+              >
+                {kind}
+              </button>
+            {/each}
+          </div>
+          <p class="muted small">{m.appointments_kind_suggestions()}</p>
         </div>
       {/if}
       <Field label={m.appointments_place_label()} id="appointment-place">
@@ -257,3 +277,17 @@
     {/snippet}
   </RecordSheet>
 </div>
+
+<style>
+  /* The chips answer the field above them, so they sit against it rather
+     than at the gap between two fields. `--space-2` up, the sheet's own
+     field gap below - the same "tight group, generous separation" the kit
+     keeps everywhere else. */
+  .ap-kinds {
+    margin-top: calc(var(--space-2) * -1);
+  }
+
+  .ap-kinds .muted {
+    margin-top: var(--space-2);
+  }
+</style>

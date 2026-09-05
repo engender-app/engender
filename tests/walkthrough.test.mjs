@@ -3599,7 +3599,7 @@ try {
   /* Counted rather than assumed empty: earlier flows in this walk have
      written consults, and a consult is one of these rows now (ADR-0066). */
   const before = await page.locator('[data-appointment]').count();
-  if (await page.locator('.tag-chip[data-kind="ortopeda"]').count()) {
+  if (await page.locator('[data-kind="ortopeda"]').count()) {
     throw new Error('a kind nobody has ever typed here was offered as a suggestion');
   }
 
@@ -3613,7 +3613,9 @@ try {
     before + 1,
     { timeout: 8000 }
   );
-  const row = page.locator('[data-appointment]', { hasText: 'ortopeda' });
+  // text-under-test: the row has to show the kind that was typed, which is
+  // the whole of what a free-text field with no shipped list can promise.
+  const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
   /* Editing opens on what is stored, and the kind just used is offered as a
@@ -3621,20 +3623,20 @@ try {
      ships in either language. Tapping one fills the field rather than
      storing anything of its own. */
   await row.click();
-  await page.waitForSelector('.tag-chip[data-kind="ortopeda"]', { timeout: 8000 });
+  await page.waitForSelector('[data-kind="ortopeda"]', { timeout: 8000 });
   if ((await page.inputValue('#appointment-place')) !== 'Poradnia') {
     throw new Error('the editor did not open on the appointment that was stored');
   }
   await page.fill('#appointment-kind', '');
-  await page.click('.tag-chip[data-kind="ortopeda"]');
+  await page.click('[data-kind="ortopeda"]');
   const filled = await page.inputValue('#appointment-kind');
   if (filled !== 'ortopeda') throw new Error(`a kind chip filled the field with ${JSON.stringify(filled)}`);
 
   await page.fill('#appointment-kind', 'ortopeda dziecięcy');
   await page.click('[data-save-appointment]');
-  await page.waitForSelector('[data-appointment]:has-text("ortopeda dziecięcy")', { timeout: 8000 });
+  await page.waitForSelector('[data-appointment]:has-text("ortopeda dziecięcy")', { timeout: 8000 }); // text-under-test
 
-  await page.locator('[data-appointment]', { hasText: 'ortopeda dziecięcy' }).click();
+  await page.locator('[data-appointment]', { hasText: 'ortopeda dziecięcy' }).click(); // text-under-test
   await page.waitForSelector('[data-delete-appointment]');
   await page.click('[data-delete-appointment]');
   await page.click('[data-confirm-delete-appointment]');

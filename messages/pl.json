@@ -3294,7 +3294,7 @@
   "home_start_more_title": "Cała reszta",
   "home_start_more_sub": "Pełna lista tego, co ta aplikacja może dla Ciebie prowadzić.",
   "appointments_title": "Wizyty",
-  "appointments_intro": "Każda zapisana wizyta i te, które jeszcze przed tobą.",
+  "appointments_intro": "Co już za tobą i co jeszcze przed tobą.",
   "hub_sub_appointments": "Wizyty za tobą i przed tobą",
   "appointments_add_aria": "Dodaj wizytę",
   "appointments_upcoming_heading": "Przed tobą",
@@ -3307,7 +3307,6 @@
   "appointments_day_label": "Dzień",
   "appointments_kind_label": "Rodzaj",
   "appointments_kind_placeholder": "Do kogo idziesz?",
-  "appointments_kind_hint": "Własnymi słowami. Rodzaje, których już używasz, podpowiadają się przy pisaniu.",
   "appointments_place_label": "Miejsce",
   "appointments_place_placeholder": "Gdzie?",
   "appointments_note_label": "Notatka",
@@ -3317,5 +3316,6 @@
   "appointments_delete_sheet": "Usuń wizytę",
   "appointments_delete_q": "Usunąć tę wizytę?",
   "appointments_untitled": "Wizyta",
-  "appointments_prep_sub": "Co poruszyć na miejscu"
+  "appointments_prep_sub": "Co poruszyć na miejscu",
+  "appointments_kind_suggestions": "Rodzaje, których już używasz."
 }
