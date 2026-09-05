@@ -2274,6 +2274,101 @@ const SCHEMA_V74 = `
 ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
 `;
 
+/* v75: a consult becomes an appointment (phase 8 features ticket 57,
+   ADR-0066). The concept existed on four surfaces and had a row in none: the
+   prep date was a column on the one ownerless checklist, the debrief hung off
+   that same column, the clinician summary used it as a range start, and
+   `procedure_consult` was a genuine dated appointment record reachable only
+   through the procedure that owned it.
+
+   So the consult table grows into the general case rather than acquiring a
+   sibling - two tables for one concept is what a glossary exists to refuse. A
+   consult differs from any other appointment in exactly one way, that it is
+   attached to a procedure, and that is this table's `procedure_id` going
+   nullable rather than a different kind of row.
+
+   Numbered v75 rather than v73: tickets 49 and 50 landed on main first and
+   took v73 and v74, so this was renumbered here rather than fought over
+   during the merge.
+
+   A copy and a drop, the front half of the shape v37/v38/v63 use, because
+   dropping a column's NOT NULL cannot be done in place. No rename at the
+   end of it: those three rebuilt a table under its own name, and this one
+   is changing the name, so the new table is created as `appointment`
+   outright and `procedure_consult` is dropped. Rowids are carried across unchanged, so
+   `procedure_photo`'s sibling rows and anything holding an appointment's id
+   keep meaning what they meant. `ON DELETE CASCADE` is kept: an appointment
+   that named a procedure still goes with it.
+
+   `kind`, `place` and `note` are all nullable with no default. Nothing ships
+   in either language for `kind` in particular (ADR-0066): its suggestions are
+   the kinds this person has typed before, read off their own rows, because a
+   built-in list of endocrinologist, psychologist, surgeon is a picture of a
+   medical path the app has no business drawing.
+
+   `checklist.appointment_epoch_day` is untouched here and still written -
+   ticket 58 retires it to a read. */
+const SCHEMA_V75 = `
+CREATE TABLE appointment (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid         TEXT NOT NULL UNIQUE,
+  procedure_id INTEGER REFERENCES procedure(id) ON DELETE CASCADE,
+  epoch_day    INTEGER NOT NULL,
+  kind         TEXT,
+  place        TEXT,
+  note         TEXT,
+  updated_at   INTEGER NOT NULL
+);
+INSERT INTO appointment (id, uuid, procedure_id, epoch_day, updated_at)
+  SELECT id, uuid, procedure_id, epoch_day, updated_at FROM procedure_consult;
+DROP TABLE procedure_consult;
+CREATE INDEX idx_appointment_procedure ON appointment(procedure_id);
+CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);`;
+
+/* v76: the documents area (phase 8 features ticket 52, ADR-0065). A
+   transition generates paper - a psychiatric opinion, a diagnosis, a court
+   ruling, a referral - and the app held none of it, so the alternative was
+   the diagnosis PDF sitting in a phone's Downloads folder that the threat
+   model exists to keep it out of.
+
+   Flat and small on purpose: the day the paper is from, the title the person
+   wrote, and the stored file. No child table, no folder, no tag, no
+   category - ADR-0065's "every filing system grows a taxonomy the person
+   then has to maintain".
+
+   `title` is NOT NULL with no default because a row with no title says
+   nothing: search matches a document by its title and by nothing else
+   (ADR-0065 again - the app never reads a document's contents), so an
+   untitled row would be unfindable by the one handle it has. The import
+   sheet refuses an empty one before it gets here.
+
+   `epoch_day` is its own column rather than inherited from an owner the way
+   `photo`'s day is: a document is dated by when the paper is from, which for
+   a diagnosis from 1994 is nothing to do with when it was scanned in.
+
+   `file_path` holds the same opaque `<uuid>.jpg` a photo row does
+   (photos/names.ts), because an image document goes through the existing
+   normalisation and gets ADR-0015's metadata strip and a thumbnail on the
+   way in. Ticket 53 is what widens it past images.
+
+   The link column ADR-0065 describes - at most one, to a goal, a milestone,
+   a procedure or an episode - is ticket 56's and deliberately not here.
+
+   Numbered v76 rather than v72: tickets 48, 47, 49, 50 and 57 took v71 to
+   v75 on main while this branch was open, so this renumbered at each merge
+   rather than being fought over. */
+const SCHEMA_V76 = `
+CREATE TABLE document (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  epoch_day  INTEGER NOT NULL,
+  title      TEXT NOT NULL,
+  file_path  TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_document_epoch_day ON document(epoch_day);
+`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2348,5 +2443,7 @@ export const migrations: Migration[] = [
   { version: 71, sql: SCHEMA_V71 },
   { version: 72, sql: SCHEMA_V72 },
   { version: 73, sql: SCHEMA_V73 },
-  { version: 74, sql: SCHEMA_V74 }
+  { version: 74, sql: SCHEMA_V74 },
+  { version: 75, sql: SCHEMA_V75 },
+  { version: 76, sql: SCHEMA_V76 }
 ];

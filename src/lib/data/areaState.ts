@@ -185,6 +185,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   roadmapChecks: 'a tick against one bundled goal, answered per goal like the goals themselves',
   roadmapTracks: 'saying a track is not your path is already the roadmap\'s own way of putting one away',
   milestones: 'one dated point each, and the list of them never closes',
+  appointments: 'one dated visit each, and nobody declares themselves done seeing people',
   tallyEvents: 'one dated point each, and the list of them never closes',
   counterevidenceSnapshots:
     'a crisis surface, not a tracked series - being done needing it is not a thing to record',
@@ -199,6 +200,11 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   labResults: 'results arrive from outside on whatever schedule the prescription needs, so there is no practice of the person’s to declare done',
   reminders: 'an intention for a future day, switched off one reminder at a time',
   checklists: 'a list is answered and done with per list, which is the same statement one level down',
+  // Phase 8 features ticket 52, ADR-0065: paper keeps arriving. There is no
+  // state in which somebody is done being sent opinions, referrals and
+  // rulings, so an area-level finish here would be a statement nobody is in
+  // a position to make.
+  documents: 'paper keeps arriving, so there is no day somebody is done receiving it',
 
   /* Structural exclusions. */
   entries: 'the journal itself, not a stream inside it',

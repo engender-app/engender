@@ -643,6 +643,29 @@ beforeAll(async () => {
   // --- wordIgnore -----------------------------------------------------------
   await drive('wordIgnore', 'setWordIgnored', () => journal.wordIgnore.setWordIgnored('marta', true));
 
+  // --- documents ------------------------------------------------------------
+  const documentId = (await drive('documents', 'addDocument', () =>
+    journal.documents.addDocument(
+      { epochDay: 20000, title: 'Psychiatric opinion' },
+      { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }
+    )
+  )) as string;
+  await drive('documents', 'updateDocument', () =>
+    journal.documents.updateDocument({
+      id: documentId,
+      epochDay: 19999,
+      title: 'Psychiatric opinion, second',
+      fileName: `${documentId}.jpg`
+    })
+  );
+  // A second one purely to delete, so the reads below still have a document
+  // to read and the delete still runs its own SQL.
+  const doomedDocument = await journal.documents.addDocument(
+    { epochDay: 19998, title: 'A duplicate scan' },
+    { full: new Uint8Array([3]), thumb: new Uint8Array([4]) }
+  );
+  await drive('documents', 'deleteDocument', () => journal.documents.deleteDocument(doomedDocument));
+
   // --- wearSessions -----------------------------------------------------
   const wearSessionId = (await drive('wearSessions', 'upsertSession', () =>
     journal.wearSessions.upsertSession({
@@ -724,6 +747,33 @@ beforeAll(async () => {
     journal.procedures.addChecklistItem(procedureId, 'buy gauze')
   )) as { id: string };
   await drive('procedures', 'recordSurgeryMilestone', () => journal.procedures.recordSurgeryMilestone(procedureId));
+
+  // --- appointments -----------------------------------------------------
+  const appointmentId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({
+      epochDay: 20040,
+      procedureId: null,
+      kind: 'endokrynolog',
+      place: 'Poradnia',
+      note: 'ask about the dose'
+    })
+  )) as string;
+  // The edit and the linked case, so the UPDATE and the procedure lookup are
+  // both driven rather than only the insert.
+  await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({
+      id: appointmentId,
+      epochDay: 20041,
+      procedureId,
+      kind: 'chirurg',
+      place: null,
+      note: null
+    })
+  );
+  const secondAppointmentId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: 20042, procedureId: null, kind: null, place: null, note: null })
+  )) as string;
+  await drive('appointments', 'deleteAppointment', () => journal.appointments.deleteAppointment(secondAppointmentId));
   const secondProcedureId = (await drive('procedures', 'upsertProcedure', () =>
     journal.procedures.upsertProcedure({ name: 'a second procedure', surgeryEpochDay: 20100, notes: '' })
   )) as string;
@@ -932,6 +982,10 @@ beforeAll(async () => {
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
   await driveRead('eraMutes', 'getMutedEraUuids', () => journal.eraMutes.getMutedEraUuids());
   await driveRead('wordIgnore', 'getIgnoredWords', () => journal.wordIgnore.getIgnoredWords());
+  await driveRead('documents', 'getDocuments', () => journal.documents.getDocuments());
+  await driveRead('documents', 'getDocument', () => journal.documents.getDocument(documentId));
+  await driveRead('documents', 'getDocumentsOnDay', () => journal.documents.getDocumentsOnDay(19999));
+  await driveRead('documents', 'lastWriteEpochDay', () => journal.documents.lastWriteEpochDay(20000));
   await driveRead('chartAnnotations', 'getAnnotations', () =>
     journal.chartAnnotations.getAnnotations(0, 30000, 20000)
   );
@@ -945,6 +999,7 @@ beforeAll(async () => {
   await driveRead('clinicianSummary', 'getSummary', () => journal.clinicianSummary.getSummary(0, 30000));
   await driveRead('day', 'getDay', () => journal.day.getDay(20000));
   await driveRead('lastWrite', 'getLastWrites', () => journal.lastWrite.getLastWrites(20000));
+  await driveRead('dayAhead', 'getDayAhead', () => journal.dayAhead.getDayAhead(0, 30000, 20000));
   await driveRead('textSearch', 'search', () =>
     journal.textSearch.search({ query: 'good', today: 20000, limit: 10 })
   );
@@ -983,6 +1038,11 @@ beforeAll(async () => {
   await driveRead('procedures', 'lastWriteEpochDay', () => journal.procedures.lastWriteEpochDay(20000));
   await driveRead('procedures', 'getChecklist', () => journal.procedures.getChecklist(procedureId));
   await driveRead('procedures', 'getMilestone', () => journal.procedures.getMilestone(procedureId));
+  await driveRead('appointments', 'getAppointments', () => journal.appointments.getAppointments());
+  await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
+  await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
+  await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));
+  await driveRead('appointments', 'consultsByProcedure', () => journal.appointments.consultsByProcedure());
   await driveRead('checklists', 'getChecklist', () => journal.checklists.getChecklist(ownedChecklist!.id));
   await driveRead('checklists', 'getChecklistByOwner', () => journal.checklists.getChecklistByOwner(owner));
   await driveRead('checklists', 'getStandaloneChecklist', () => journal.checklists.getStandaloneChecklist());
@@ -1006,6 +1066,7 @@ beforeAll(async () => {
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
+  await driveRead('letters', 'getUnlockDaysInRange', () => journal.letters.getUnlockDaysInRange(20000, 30000));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
   await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());

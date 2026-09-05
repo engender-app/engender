@@ -62,6 +62,7 @@ export interface DayRow {
 const HAIR_PROGRESS = '/body/hair-progress';
 const MILESTONES = '/transition/milestones';
 const SURGERY = '/health/surgery';
+const APPOINTMENTS = '/health/appointments';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -278,22 +279,12 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       href: '/body/hair-removal'
     })),
 
-  /* One section, two kinds of record: the consults a row each, the recovery
-     photos a row per procedure. */
-  procedureRecords: (day) => [
-    ...day.procedureRecords
-      .filter((record) => record.kind === 'consult')
-      .map((record) => ({
-        key: `consult-${record.id}`,
-        icon: 'flag',
-        title: record.procedureName,
-        subtitle: m.day_consult(),
-        href: SURGERY
-      })),
-    ...groupedBy(
-      day.procedureRecords.filter((record) => record.kind === 'recovery-photo'),
-      (record) => record.procedureId
-    ).map((group) => ({
+  /* A row per procedure rather than per photograph: four shots of the same
+     recovery on one day are one thing that happened. The consults that used
+     to share this section are appointments now and have one of their own
+     (ticket 57). */
+  procedureRecords: (day) =>
+    groupedBy(day.procedureRecords, (record) => record.procedureId).map((group) => ({
       key: `recovery-photos-${group[0].procedureId}`,
       icon: 'flag',
       title: group[0].procedureName,
@@ -301,8 +292,21 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       href: SURGERY,
       photo: group[0],
       count: group.length
-    }))
-  ],
+    })),
+
+  /* What the appointment was, with where it was underneath it. An
+     appointment nobody named a kind for says only "appointment", because
+     the app ships no kinds of its own to guess with (ADR-0066); one that
+     belongs to a surgery journey says so, since that is what a consult
+     read as before the record existed. */
+  appointments: (day) =>
+    day.appointments.map((appointment) => ({
+      key: `appointment-${appointment.id}`,
+      icon: 'calendar',
+      title: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
+      subtitle: appointment.place ?? (appointment.kind ? appointment.procedureName ?? undefined : undefined),
+      href: APPOINTMENTS
+    })),
 
   tryoutPhotos: (day) =>
     groupedBy(day.tryoutPhotos, (photo) => photo.tryoutId).map((group) => ({
@@ -313,6 +317,21 @@ const SECTION_ROWS: Record<DaySectionKey, (day: DayRecords) => DayRow[]> = {
       href: `/transition/tryouts/${group[0].tryoutId}`,
       photo: group[0],
       count: group.length
+    })),
+
+  /* One row each and no `photo` on any of them, which is the one place this
+     file's "photographs collapse" rule is not the question. ADR-0065 keeps
+     a document's page off every list there is, so what the day shows is the
+     title the person wrote and a subtitle saying what kind of record it is
+     - the title alone would not, since "Carry letter" on a day reads like
+     one of the letters. */
+  documents: (day) =>
+    day.documents.map((document) => ({
+      key: `document-${document.id}`,
+      icon: 'documents',
+      title: document.title,
+      subtitle: m.day_document(),
+      href: `/media/documents/${document.id}`
     }))
 };
 

@@ -2693,7 +2693,7 @@ try {
     '/body/hair-removal', '/settings/labs', '/settings/regimen', '/settings/hormone-curve',
     '/health/cycle-events', '/health/side-effects', '/health/surgery',
     '/health/dilation',
-    '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
+    '/health/appointments', '/health/appointment-prep', '/health/clinician-summary', '/transition/milestones',
     '/transition/roadmap', '/transition/letters', '/transition/tryouts', '/transition/presentations',
     '/transition/eras',
     '/practice/voice', '/practice/wear', '/practice/personal-effects', '/practice/resources',
@@ -2982,12 +2982,15 @@ try {
     throw new Error('a reading row with nothing written in it does not say what is behind it');
   }
 
-  // Photos and voice memos live together now, and Body keeps the rest.
+  // Photos, voice memos and documents live together now, and Body keeps the
+  // rest. Documents joined in phase 8 features ticket 52.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
     rows.map((row) => row.getAttribute('data-list-row'))
   );
-  if (mediaRows.join(',') !== 'photos,voice') {
-    throw new Error(`the media group holds ${mediaRows.join(',') || 'nothing'}, not photos and voice memos`);
+  if (mediaRows.join(',') !== 'photos,voice,documents') {
+    throw new Error(
+      `the media group holds ${mediaRows.join(',') || 'nothing'}, not photos, voice memos and documents`
+    );
   }
 
   /* An area declared finished leaves its group for the finished set, keeps
@@ -3713,6 +3716,67 @@ try {
 } catch (e) { fail('quick add dose', e); }
 
 try {
+  /* The appointment record (phase 8 features ticket 57, ADR-0066): write a
+     visit down, edit it, and throw it away.
+
+     The kind suggestions are the half worth walking. Nothing ships in
+     either language, so the chip row can only exist once this journal has
+     named a kind itself - which means starting from a screen that has
+     none and watching one appear, rather than asserting a seeded list. */
+  await fresh('/health/appointments');
+  /* Counted rather than assumed empty: earlier flows in this walk have
+     written consults, and a consult is one of these rows now (ADR-0066). */
+  const before = await page.locator('[data-appointment]').count();
+  if (await page.locator('[data-kind="ortopeda"]').count()) {
+    throw new Error('a kind nobody has ever typed here was offered as a suggestion');
+  }
+
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  await page.fill('#appointment-kind', 'ortopeda');
+  await page.fill('#appointment-place', 'Poradnia');
+  await page.click('[data-save-appointment]');
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('[data-appointment]').length === n,
+    before + 1,
+    { timeout: 8000 }
+  );
+  // text-under-test: the row has to show the kind that was typed, which is
+  // the whole of what a free-text field with no shipped list can promise.
+  const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
+  if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
+
+  /* Editing opens on what is stored, and the kind just used is offered as a
+     chip - the only suggestion the app is entitled to make, since nothing
+     ships in either language. Tapping one fills the field rather than
+     storing anything of its own. */
+  await row.click();
+  await page.waitForSelector('[data-kind="ortopeda"]', { timeout: 8000 });
+  if ((await page.inputValue('#appointment-place')) !== 'Poradnia') {
+    throw new Error('the editor did not open on the appointment that was stored');
+  }
+  await page.fill('#appointment-kind', '');
+  await page.click('[data-kind="ortopeda"]');
+  const filled = await page.inputValue('#appointment-kind');
+  if (filled !== 'ortopeda') throw new Error(`a kind chip filled the field with ${JSON.stringify(filled)}`);
+
+  await page.fill('#appointment-kind', 'ortopeda dziecięcy');
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("ortopeda dziecięcy")', { timeout: 8000 }); // text-under-test
+
+  await page.locator('[data-appointment]', { hasText: 'ortopeda dziecięcy' }).click(); // text-under-test
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('[data-appointment]').length === n,
+    before,
+    { timeout: 8000 }
+  );
+  ok('appointments: written, suggested from your own previous kinds, edited and deleted');
+} catch (e) { fail('the appointment record', e); }
+
+try {
   /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one
@@ -4106,6 +4170,63 @@ try {
 
   ok('one screen over one registry: notify column absent on web, Home column still whole');
 } catch (e) { fail('the unprompted registry view', e); }
+
+/* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
+   opened and thrown away.
+
+   The whole of that path is UI - a file chooser, a sheet, a list row, a
+   detail screen and a confirm - so nothing below the screens can prove it,
+   which is what this flow is for. The page itself is drawn on a canvas and
+   handed to the real input, so it goes through normalizePhoto and the
+   encrypted store the way a scan would. */
+try {
+  await fresh('/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  const page1994 = await labSlipImage(['CITY HOSPITAL', 'Diagnosis, 1994']);
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: 'scan_0142.png', mimeType: 'image/png', buffer: page1994 })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+
+  /* Refused with no title, which is the whole of what makes a document
+     findable again: search matches the title and nothing else. */
+  if (!(await page.locator('[data-save-document]').isDisabled())) {
+    throw new Error('a document with no title can be saved');
+  }
+
+  await page.locator('#document-title').fill('Diagnosis, 1994');
+  // Years before this journal's own first entry, which is the case the
+  // editable date exists for.
+  await fillDate(page, '#document-day', '1994-06-30');
+  await page.locator('[data-save-document]').click();
+  await page.waitForSelector('[data-list-row]');
+
+  const row = page.locator('[data-list-row]').first();
+  if (!(await row.textContent()).includes('1994')) {
+    throw new Error(`the row does not carry the day on the paper: ${await row.textContent()}`);
+  }
+  await row.click();
+  await page.waitForSelector('[data-document-page]', { timeout: 15000 });
+
+  /* The page is drawn here and nowhere else (ADR-0065), so the list it came
+     from must not have had one on it. */
+  await page.goBack({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row]');
+  if (await page.locator('[data-list-row] img').count()) {
+    throw new Error('the documents list is drawing a page image');
+  }
+
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForSelector('[data-delete-document]');
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
+} catch (e) { fail('a place for paper', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).

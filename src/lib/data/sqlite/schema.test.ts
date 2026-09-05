@@ -15,7 +15,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 74);
+  assert.equal(db.getUserVersion(), 76);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -24,6 +24,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
 
   for (const expected of [
     'affirmation',
+    'appointment',
     'area_state',
     'comfort_item',
     'cycle_event',
@@ -1098,6 +1099,59 @@ test('v67 adds the corner-vowel scale column, and a benchmark from before it has
     ).resonance_scale,
     0.94
   );
+});
+
+test('v75 turns a consult into an appointment, keeping its procedure and its id', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= 74)
+  );
+
+  db.raw.exec("INSERT INTO procedure (uuid, name, notes, updated_at) VALUES ('p-1', 'Vaginoplasty', '', 0)");
+  const procedureId = (db.raw.prepare("SELECT id FROM procedure WHERE uuid = 'p-1'").get() as { id: number }).id;
+  db.raw
+    .prepare('INSERT INTO procedure_consult (uuid, procedure_id, epoch_day, updated_at) VALUES (?, ?, ?, ?)')
+    .run('c-1', procedureId, 20000, 0);
+
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+
+  const row = db.raw
+    .prepare('SELECT uuid, procedure_id, epoch_day, kind, place, note FROM appointment WHERE uuid = ?')
+    .get('c-1') as {
+    uuid: string;
+    procedure_id: number | null;
+    epoch_day: number;
+    kind: string | null;
+    place: string | null;
+    note: string | null;
+  };
+  assert.equal(row.procedure_id, procedureId);
+  assert.equal(row.epoch_day, 20000);
+  // The three new columns are unfilled rather than defaulted: a consult
+  // carried across says nothing about what kind of appointment it was.
+  assert.equal(row.kind, null);
+  assert.equal(row.place, null);
+  assert.equal(row.note, null);
+
+  // Nothing has to name a procedure any more, which is the whole rename.
+  db.raw
+    .prepare('INSERT INTO appointment (uuid, epoch_day, kind, updated_at) VALUES (?, ?, ?, ?)')
+    .run('a-1', 20010, 'endocrinologist', 0);
+  const standalone = db.raw.prepare('SELECT procedure_id FROM appointment WHERE uuid = ?').get('a-1') as {
+    procedure_id: number | null;
+  };
+  assert.equal(standalone.procedure_id, null);
+
+  // And a procedure still takes its own appointments with it: the rebuilt
+  // table keeps ON DELETE CASCADE on the link it made nullable.
+  db.raw.exec("DELETE FROM procedure WHERE uuid = 'p-1'");
+  const left = db.raw.prepare('SELECT COUNT(*) AS n FROM appointment').get() as { n: number };
+  assert.equal(left.n, 1);
+  const survivor = db.raw.prepare('SELECT uuid FROM appointment').get() as { uuid: string };
+  assert.equal(survivor.uuid, 'a-1');
 });
 
 test('the hand-written latest version and the migration list agree', async () => {

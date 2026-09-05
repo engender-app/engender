@@ -264,8 +264,10 @@ test('a test may register an entry of its own and read it back through the same 
       feltSense: journal.feltSense,
       hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
+      appointments: journal.appointments,
       procedures: journal.procedures,
-      tryouts: journal.tryouts
+      tryouts: journal.tryouts,
+      documents: journal.documents
     },
     [...LAST_WRITE_ENTRIES, invented]
   );

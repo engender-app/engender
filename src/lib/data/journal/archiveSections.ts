@@ -321,6 +321,33 @@ const SECTIONS = [
     orderBy: 'word',
     columns: { word: 'word' }
   }),
+  /* The paper the person keeps (phase 8 features ticket 52, ADR-0065).
+     Flat: one table, no children, no owner to resolve a rowid against, so
+     it needs no `after` either.
+
+     A structure file is a thing people hand to someone else, and nothing
+     about a diagnosis, an opinion or a court ruling belongs in one - which
+     is not a judgement about sensitivity so much as about what a structure
+     file is for (ADR-0049): it carries how somebody set the app up, and a
+     document is the most personal record in it. `travels: 'none'`.
+
+     The rows travel in an encrypted archive like every other section, and
+     the bytes they name travel with them - but that half is not here.
+     archive.ts's file manifest is hand-assembled and reads `documents` off
+     `readRowContext`, which is why this table joins the ones read there. */
+  flat({
+    name: 'documents',
+    travels: 'none',
+    table: 'document',
+    identity: 'uuid',
+    orderBy: 'epoch_day, id',
+    columns: {
+      uuid: 'id',
+      epoch_day: 'epochDay',
+      title: 'title',
+      file_path: 'fileName'
+    }
+  }),
   section({
     name: 'milestones',
     // A milestone linked to a procedure or a tryout stores that owner's
@@ -650,16 +677,37 @@ const SECTIONS = [
     read: read.readHairRemovalSessions,
     apply: apply.applyHairRemovalSessions
   }),
-  // Inserts its own consult and photo children, the same reasoning
+  // Inserts its own photo children, the same reasoning
   // `hairRemovalSessions` above gives. Its recovery checklist travels in
   // `checklists` and is matched there by owner uuid, so the two sections
-  // need no order between them.
+  // need no order between them. Its consults are `appointments` below, which
+  // is the one section that does have to come after this one.
   section({
     name: 'procedures',
-    discard: ['DELETE FROM procedure_photo', 'DELETE FROM procedure_consult', 'DELETE FROM procedure'],
+    discard: ['DELETE FROM procedure_photo', 'DELETE FROM procedure'],
     travels: 'none',
     read: read.readProcedures,
     apply: apply.applyProcedures
+  }),
+  /* Appointments (ticket 57, ADR-0066). Declared here rather than nested
+     under a procedure the way consults were: most appointments belong to no
+     procedure, and the link is a uuid this section resolves against the rows
+     `procedures` has already written - which is what `after` is for.
+
+     Not `flat`: a descriptor maps columns, and this one's procedure link is
+     a rowid on this device and a uuid on the wire.
+
+     An archive written before this section existed still restores -
+     `aliasLegacyConsults` (archiveApply.ts) lifts its nested consults up
+     here before anything reads the payload. */
+  section({
+    name: 'appointments',
+    after: ['procedures'],
+    discard: ['DELETE FROM appointment'],
+    // Where somebody's medical appointments were and what they were about.
+    travels: 'none',
+    read: read.readAppointments,
+    apply: apply.applyAppointments
   }),
   // No rule validation of its own: the schema's recurrence CHECK is the same
   // rule reminderRule.ts states, and the insert is inside the transaction.
