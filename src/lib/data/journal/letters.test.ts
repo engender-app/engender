@@ -79,3 +79,21 @@ test('a letter seal carries the days and the id, and never the body', async () =
   ]);
   assert.equal((await journal.letters.getLetterSeals(1)).length, 1);
 });
+
+test('the unlock days in a range carry no id and no text', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.letters.addLetter({ epochDay: 100, text: 'dear future me', unlockEpochDay: 200 });
+  await journal.letters.addLetter({ epochDay: 102, text: 'one more for the road', unlockEpochDay: 250 });
+  await journal.letters.addLetter({ epochDay: 103, text: 'out of range', unlockEpochDay: 999 });
+
+  assert.deepEqual(await journal.letters.getUnlockDaysInRange(200, 250), [200, 250]);
+  assert.deepEqual(await journal.letters.getUnlockDaysInRange(201, 249), []);
+});
+
+test('two letters unlocking the same day report that day once', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.letters.addLetter({ epochDay: 100, text: 'first', unlockEpochDay: 200 });
+  await journal.letters.addLetter({ epochDay: 101, text: 'second', unlockEpochDay: 200 });
+
+  assert.deepEqual(await journal.letters.getUnlockDaysInRange(0, 300), [200]);
+});

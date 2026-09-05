@@ -40,8 +40,18 @@
                             which this ticket rules out.
      entries                every logged day would be an annotation, and the
                             line on the chart is already made of them.
-     consults               a date in a procedure's history that says nothing
-                            about the range a chart covers.
+
+   ## Past appointments (phase 8 features ticket 59, ADR-0066)
+
+   Every past appointment draws through this same seam, named by the
+   person's own kind - a consult included, since it is now an appointment
+   row like any other rather than a fact reachable only through the
+   procedure it happens to name. `todayEpochDay` decides past from future
+   here rather than being left to `annotationsInRange`: an appointment is a
+   point, and nothing else in this file's selection filters a point kind by
+   whether it has happened yet, so an appointment still ahead would draw
+   like one that already did unless this seam said otherwise. Future
+   appointments are the calendar's mark to draw (ticket 61), not a chart's.
 
    ## The hormone curve's own markers (phase 8 features ticket 15)
 
@@ -81,6 +91,7 @@ import { OWN_SPREAD_WINDOW_DAYS, aboveOwnSpread, type DayValue } from '../ownSpr
 import { attributeDose } from '../regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from '../types';
 import { SURGERY_RECOVERY_CUTOFF_DAYS } from '../recoveryDay';
+import type { AppointmentsArea } from './appointments';
 import type { AreaStatesArea } from './areaStates';
 import type { DosesArea } from './doses';
 import type { ErasArea } from './eras';
@@ -104,6 +115,7 @@ export interface ChartAnnotationsArea {
 }
 
 interface Areas {
+  appointments: AppointmentsArea;
   areaStates: AreaStatesArea;
   milestones: MilestonesArea;
   regimen: RegimenArea;
@@ -119,7 +131,7 @@ interface Areas {
 export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
   return {
     async getAnnotations(fromEpochDay, toEpochDay, todayEpochDay) {
-      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures, eras, areaStates] =
+      const [milestones, episodes, dosePauses, journalingPauses, tryouts, procedures, eras, areaStates, appointments] =
         await Promise.all([
           areas.milestones.getMilestones(),
           areas.regimen.getEpisodes(),
@@ -128,7 +140,8 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           areas.tryouts.getTryouts(),
           areas.procedures.getProcedures(),
           areas.eras.getEras(),
-          areas.areaStates.getAreaStates()
+          areas.areaStates.getAreaStates(),
+          areas.appointments.getAppointments()
         ]);
 
       const drugOf = new Map(episodes.map((episode) => [episode.id, episode.drug]));
@@ -178,6 +191,22 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
             kind: 'era' as const,
             name: era.name,
             startEpochDay: era.startEpochDay as number,
+            endEpochDay: null
+          })),
+        /* Past appointments (phase 8 features ticket 59, ADR-0066). Filtered
+           here rather than left to annotationsInRange: a point kind is kept
+           by that function whenever its one day falls in the chart's range,
+           and an appointment still ahead is not a day that has fallen
+           anywhere yet. `name` is the appointment's own kind, or null where
+           the person typed none - kit/chartAnnotation.ts's neutral word is
+           what a null name falls back to, the same as every other kind. */
+        ...appointments
+          .filter((appointment) => appointment.epochDay <= todayEpochDay)
+          .map((appointment) => ({
+            id: appointment.id,
+            kind: 'appointment' as const,
+            name: appointment.kind,
+            startEpochDay: appointment.epochDay,
             endEpochDay: null
           })),
         /* The day a stream ended (phase 8 features ticket 04). One mark per

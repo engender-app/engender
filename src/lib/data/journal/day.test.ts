@@ -77,6 +77,8 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
   const procedureId = await journal.procedures.upsertProcedure({ name: 'orchiectomy' });
   await journal.procedures.addConsult(procedureId, epochDay);
   await journal.procedures.addPhoto(procedureId, epochDay, photo());
+
+  await journal.documents.addDocument({ epochDay, title: 'Psychiatric opinion' }, photo());
 }
 
 test('every area that travels either shows on a day or says why it does not', () => {
@@ -161,7 +163,8 @@ test('a section reads only its own day', async () => {
   assert.equal(day.labResults.length, 1);
   assert.equal(day.labResults[0].epochDay, DAY);
   assert.equal(day.tallyEvents.length, 1);
-  assert.equal(day.procedureRecords.length, 2);
+  assert.equal(day.procedureRecords.length, 1);
+  assert.equal(day.appointments.length, 1);
   // The marker is one row per effect that a later date replaces in place,
   // so filling a second day moves it rather than adding one.
   assert.equal(day.personalEffects.length, 0);
@@ -178,11 +181,14 @@ test('a felt-sense row says which tryout it belongs to, and a procedure record w
     [['tryout', 'Robin']]
   );
   assert.deepEqual(
-    day.procedureRecords.map((r) => [r.kind, r.procedureName]).sort(),
-    [
-      ['consult', 'orchiectomy'],
-      ['recovery-photo', 'orchiectomy']
-    ]
+    day.procedureRecords.map((r) => r.procedureName),
+    ['orchiectomy']
+  );
+  // A consult reaches a day as an appointment naming its journey, not as a
+  // second procedure record (ticket 57).
+  assert.deepEqual(
+    day.appointments.map((a) => [a.kind, a.procedureName]),
+    [[null, 'orchiectomy']]
   );
   assert.deepEqual(
     day.tryoutPhotos.map((p) => p.tryoutLabel),
@@ -228,13 +234,14 @@ test('a maximal day costs one pass per area, not one per row', async () => {
     sparse,
     `a busy day cost ${busy} queries against a sparse day's ${sparse}: something reads per row`
   );
-  /* 27 for 19 sections as this lands: entries hydrate their dimension
+  /* 28 for 20 sections as this lands: entries hydrate their dimension
      values, tags, body regions, photos, recordings and video notes,
      milestones read their photos, and procedures asks for consults and
      recovery photos separately. Held as a number rather than derived so
      that a section quietly gaining a query has to come back here and say
-     so. */
-  assert.equal(busy, 27, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
+     so. Documents is the twentieth and costs the one query a flat area
+     costs (phase 8 features ticket 52). */
+  assert.equal(busy, 28, `a day costs ${busy} queries across ${DAY_SECTIONS.length} sections`);
 });
 
 test('a test may register a section of its own and read it back through the same path', async () => {
@@ -264,8 +271,10 @@ test('a test may register a section of its own and read it back through the same
       feltSense: journal.feltSense,
       hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
+      appointments: journal.appointments,
       procedures: journal.procedures,
-      tryouts: journal.tryouts
+      tryouts: journal.tryouts,
+      documents: journal.documents
     },
     [invented]
   );

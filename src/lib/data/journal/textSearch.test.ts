@@ -176,6 +176,26 @@ test('one word reaches every registered area, folded on both sides', async () =>
   }
 });
 
+/* Phase 8 features ticket 52, ADR-0065: "Search finds a document by the
+   title the person wrote and by nothing else." The registry's own
+   `one word reaches every registered area` test covers the positive half;
+   this is the negative one, and it is the half the ADR is actually about -
+   the app never reads a document, so neither its stored file nor its
+   travelling id may be a way to find it. */
+test('a document is found by its title and by neither its file nor its id', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.documents.addDocument(
+    { epochDay: DAY, title: 'Opinia psychiatryczna' },
+    { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }
+  );
+  const { fileName } = (await journal.documents.getDocument(id))!;
+
+  assert.deepEqual(await areasFound(journal, 'psychiatryczna'), ['documents']);
+  assert.deepEqual(await areasFound(journal, fileName), []);
+  assert.deepEqual(await areasFound(journal, fileName.replace('.jpg', '')), []);
+  assert.deepEqual(await areasFound(journal, id), []);
+});
+
 test('a hit carries its area, its record and its day', async () => {
   const { journal } = await journalWithBuiltIns();
   const letterId = await journal.letters.addLetter({ epochDay: DAY, text: 'żółć w środku', unlockEpochDay: DAY });
@@ -366,6 +386,13 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   await journal.eras.upsertEra({ name: `era ${word}`, startEpochDay: DAY, endEpochDay: null });
   await journal.milestones.upsertMilestone({ name: `milestone ${word}`, epochDay: DAY });
   await journal.procedures.upsertProcedure({ name: `procedure ${word}`, notes: 'plain notes' });
+  await journal.appointments.upsertAppointment({
+    epochDay: DAY,
+    procedureId: null,
+    kind: `kind ${word}`,
+    place: 'plain place',
+    note: 'plain note'
+  });
   await journal.checklists.addToStandaloneChecklist(`question ${word}`);
   await journal.checklists.setAppointmentDate(DAY);
   await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY });
@@ -439,4 +466,8 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     epochDay: DAY,
     enabled: true
   });
+  await journal.documents.addDocument(
+    { epochDay: DAY, title: `document ${word}` },
+    { full: new Uint8Array([1]), thumb: new Uint8Array([2]) }
+  );
 }

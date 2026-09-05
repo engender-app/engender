@@ -162,6 +162,7 @@ test('getSummary depends on the tables the registered sections read, and no othe
     'lab',
     'sideEffect',
     'procedure',
+    'appointment',
     'checklist',
     'areaState'
   ]);

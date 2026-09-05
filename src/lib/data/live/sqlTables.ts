@@ -49,7 +49,8 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   eraMute: ['era_mute'],
   hairProgress: ['hair_stage', 'hair_photo'],
   hairRemoval: ['hair_removal_session', 'hair_removal_photo'],
-  procedure: ['procedure', 'procedure_consult', 'procedure_photo'],
+  procedure: ['procedure', 'procedure_photo'],
+  appointment: ['appointment'],
   doubtJournal: ['doubt_snapshot', 'doubt_snapshot_entry'],
   comfortItem: ['comfort_item'],
   tryout: ['tryout', 'tryout_photo'],
@@ -77,7 +78,8 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   savedQuestion: ['saved_question'],
   revisit: ['revisit'],
   marginNote: ['margin_note'],
-  wordIgnore: ['word_frequency_ignore']
+  wordIgnore: ['word_frequency_ignore'],
+  document: ['document']
 };
 
 /** Tables `SELECT name FROM sqlite_master` returns that no coarse name

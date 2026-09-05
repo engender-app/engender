@@ -11,11 +11,13 @@
    for the two reasons archive.ts's header gives - travelling identity, and
    one query per table for the whole journal instead of one per row.
 
-   Seven tables are read once and handed to every section that needs them,
+   Eight tables are read once and handed to every section that needs them,
    rather than queried per section: photo, voice_recording, video_note,
-   hair_photo, hair_removal_photo, procedure_photo and tryout_photo. The
-   file manifest is built from the same rows (archive.ts), so a second
-   read would be a second answer to the same question. */
+   hair_photo, hair_removal_photo, procedure_photo, tryout_photo and
+   document. The file manifest is built from the same rows (archive.ts), so
+   a second read would be a second answer to the same question. `document`
+   is the one of the eight read for the manifest alone - its rows travel
+   through readFlatTable like any other flat area's. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
@@ -40,7 +42,7 @@ import type {
   ArchiveMilestone,
   ArchivePersonalEffectType,
   ArchiveProcedure,
-  ArchiveProcedureConsult,
+  ArchiveAppointment,
   ArchiveProcedurePhoto,
   ArchivePhoto,
   ArchivePreset,
@@ -69,11 +71,16 @@ export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string 
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
 export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
+/** A document's file, for the manifest alone (phase 8 features ticket 52).
+    Its rows travel through `readFlatTable` like any other flat area's; what
+    cannot come from there is the file manifest, which archive.ts assembles
+    by hand and which needs the names before the section is read. */
+export type DocumentFileRow = { file_path: string };
 /** A benchmark names two files, and the second one is absent on a take that
     skipped the vowel (phase 5 deepening ticket 15). */
 export type BenchmarkFileRow = { passage_file_path: string; vowel_file_path: string | null };
 
-/** What every section reader is given: the connection, and the eight
+/** What every section reader is given: the connection, and the nine
     file-owning tables read once up front. */
 export interface SectionRead {
   driver: SqliteDriver;
@@ -85,6 +92,7 @@ export interface SectionRead {
   procedurePhotos: ProcedurePhotoRow[];
   tryoutPhotos: TryoutPhotoRow[];
   benchmarkFiles: BenchmarkFileRow[];
+  documentFiles: DocumentFileRow[];
 }
 
 /** The shared reads, in one place so the manifest and the sections that name
@@ -128,7 +136,11 @@ export async function readRowContext(driver: SqliteDriver): Promise<SectionRead>
        JOIN entry e ON e.id = n.entry_id
        WHERE e.trashed_at IS NULL
        ORDER BY n.order_index, n.id`
-    )
+    ),
+    // The file names only. A document's own rows come out through
+    // readFlatTable below, from its descriptor; this read exists so the
+    // manifest and the section work from the same table in one pass.
+    documentFiles: await driver.query<DocumentFileRow>('SELECT file_path FROM document ORDER BY epoch_day, id')
   };
 }
 
@@ -608,15 +620,6 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
   }>(
     'SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
   );
-  const consults = await driver.query<{ uuid: string; procedure_id: number; epoch_day: number }>(
-    'SELECT uuid, procedure_id, epoch_day FROM procedure_consult ORDER BY epoch_day, id'
-  );
-
-  const consultsById = groupBy(
-    consults,
-    (consult) => consult.procedure_id,
-    (consult): ArchiveProcedureConsult => ({ id: consult.uuid, epochDay: consult.epoch_day })
-  );
   const photosById = groupBy(
     procedurePhotos,
     (photo) => photo.procedure_id,
@@ -627,9 +630,35 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     id: procedure.uuid,
     name: procedure.name,
     surgeryEpochDay: procedure.surgery_epoch_day,
-    consults: consultsById.get(procedure.id) ?? [],
     notes: procedure.notes,
     photos: photosById.get(procedure.id) ?? []
+  }));
+}
+
+/* The procedure link travels as the procedure's own uuid rather than its
+   rowid, which is this device's alone (ADR-0002) - the same join
+   readDoseSchedules makes for the same reason. */
+export async function readAppointments({ driver }: SectionRead): Promise<ArchiveAppointment[]> {
+  const rows = await driver.query<{
+    uuid: string;
+    epoch_day: number;
+    procedure_uuid: string | null;
+    kind: string | null;
+    place: string | null;
+    note: string | null;
+  }>(
+    `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
+            a.kind AS kind, a.place AS place, a.note AS note
+       FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
+      ORDER BY a.epoch_day, a.id`
+  );
+  return rows.map((row) => ({
+    id: row.uuid,
+    epochDay: row.epoch_day,
+    procedureId: row.procedure_uuid,
+    kind: row.kind,
+    place: row.place,
+    note: row.note
   }));
 }
 

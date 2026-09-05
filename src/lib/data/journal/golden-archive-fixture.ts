@@ -178,6 +178,15 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   // features ticket 48).
   await journal.wordIgnore.setWordIgnored('Kraków', true);
 
+  /* One document, dated years before this journal's own entries (phase 8
+     features ticket 52): the fixture is where the archive's file manifest
+     gets held to carrying a document's bytes as well as its row, and where
+     an out-of-range day proves the section's own ORDER BY. */
+  await journal.documents.addDocument(
+    { epochDay: 8766, title: 'Opinia psychiatryczna' },
+    { full: bytes('a scanned page'), thumb: bytes('its thumbnail') }
+  );
+
   const milestone = await journal.milestones.upsertMilestone({
     name: 'HRT start',
     epochDay: 19000,
@@ -337,6 +346,15 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     notes: 'drains out on day five'
   });
   await journal.procedures.addConsult(procedure, 19950);
+  /* One appointment on its own beside the consult above, so the section
+     carries both cases it has to (ticket 57). */
+  await journal.appointments.upsertAppointment({
+    epochDay: 20030,
+    procedureId: null,
+    kind: 'endokrynolog',
+    place: 'Poradnia, ul. Kopernika',
+    note: 'ask about the dose'
+  });
   await journal.procedures.addPhoto(procedure, 20052, { full: bytes('recovery'), thumb: bytes('rt') });
   const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);

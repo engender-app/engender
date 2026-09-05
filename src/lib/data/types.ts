@@ -1099,13 +1099,43 @@ export interface Procedure {
   notes: string;
 }
 
-/** One consult on the way to a procedure (phase 5 ticket 07): a date, and
-    the minted id that lets one mistyped date be dropped on its own
-    (ADR-0002). Carries nothing else - what was said at a consult goes in
-    an ordinary Entry or the procedure's notes. */
+/** One consult on the way to a procedure, as the procedure's own screen
+    reads it (phase 5 ticket 07): a date, and the minted id that lets one
+    mistyped date be dropped on its own (ADR-0002).
+
+    Since phase 8 features ticket 57 this is a projection of `Appointment`
+    rather than a record of its own - the same rows, narrowed to what the
+    surgery journey shows about them. The word survives because a procedure
+    still shows its consults (ADR-0066); the second table did not. */
 export interface ProcedureConsult {
   id: string;
   epochDay: number;
+}
+
+/** One appointment (phase 8 features ticket 57, ADR-0066, CONTEXT:
+    "Appointment"): the day, a kind the person names, where it was, a note,
+    and an optional link to the procedure it belongs to.
+
+    A consult is this record with `procedureId` filled in - not a different
+    kind of thing - which is why there is one table and one type rather than
+    a sibling for each. Everything but the day is optional, because an
+    appointment is usually written down before there is anything to say
+    about it.
+
+    `kind` is free text with nothing shipped in either language (ADR-0066):
+    a built-in list of endocrinologist, psychologist, surgeon would be a
+    picture of a medical path, and the app has no opinion about whether a
+    court hearing is an appointment. Its suggestions come off this journal's
+    own previous kinds (`getKinds`). */
+export interface Appointment {
+  id: string;
+  epochDay: number;
+  /** The procedure this belongs to, or null for an appointment that stands
+      on its own - which is most of them. */
+  procedureId: string | null;
+  kind: string | null;
+  place: string | null;
+  note: string | null;
 }
 
 /** One line in the pool the check-in draws its affirming line from (phase 5
@@ -1177,4 +1207,31 @@ export interface TaperSession {
   id: string;
   epochDay: number;
   note: string;
+}
+
+/** One piece of paper the person keeps (phase 8 features ticket 52,
+    ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court ruling,
+    a referral. The app never reads it - no OCR, no text extraction, no
+    search over what it says - so the three fields beside the file are the
+    whole record, and `title` is the person's own summary and the only handle
+    search has on it.
+
+    `JournalDocument` rather than `Document`, which is the DOM's own global:
+    a screen importing this type would shadow it, and a type that means one
+    thing in `data/` and another everywhere else is not worth the shorter
+    name.
+
+    `epochDay` is the day the paper is *from*, not the day it was scanned in,
+    which is what makes a shoebox of prints from 1994 importable.
+
+    `fileName` is the same opaque `<uuid>.jpg` a photo carries
+    (photos/names.ts) - an image document goes through the existing
+    normalisation, so it has a derived thumbnail beside it like any other
+    photo. ADR-0065's link to a goal, milestone, procedure or episode is
+    ticket 56's and is not part of this shape yet. */
+export interface JournalDocument {
+  id: string;
+  epochDay: number;
+  title: string;
+  fileName: string;
 }

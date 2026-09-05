@@ -206,6 +206,19 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'surgery_epoch_day' },
     columns: ['name', 'notes']
   }),
+  /* What the appointment was, where it was and what was noted afterwards
+     (ticket 57). The kind is a word this person chose, so it is matchable
+     the same way a tryout's name is; nothing here ships, so nothing here
+     matches a query in a language nobody wrote in. */
+  area({
+    key: 'appointments',
+    covers: ['appointments'],
+    tables: ['appointment'],
+    from: 'appointment',
+    uuid: 'uuid',
+    date: { kind: 'epochDay', column: 'epoch_day' },
+    columns: ['kind', 'place', 'note']
+  }),
   /* Every question anybody wrote for an appointment, and every line of a
      procedure's recovery checklist - one table, and the owner is what says
      which screen the hit belongs to (checklists.ts). Dated by the
@@ -452,6 +465,20 @@ const AREAS = [
     columns: ['mn.text'],
     context: 'CAST(e.id AS TEXT)',
     where: { sql: 'e.trashed_at IS NULL', params: () => [] }
+  }),
+  /* The title, and nothing else there is (phase 8 features ticket 52,
+     ADR-0065). The app never reads a document's contents - no OCR, no text
+     extraction - so `columns` here is not a shortened list but the whole of
+     the text this area holds. Indexing what a diagnosis says would put its
+     words behind a search box somebody might be looked at over. */
+  area({
+    key: 'documents',
+    covers: ['documents'],
+    tables: ['document'],
+    from: 'document',
+    uuid: 'uuid',
+    date: { kind: 'epochDay', column: 'epoch_day' },
+    columns: ['title']
   })
 ] as const;
 

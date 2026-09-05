@@ -12,7 +12,7 @@
    reading at all:
 
      read      the row reports its own areas' last write, out of the one
-               assembled read `journal/lastWrite.ts` answers with. Thirteen
+               assembled read `journal/lastWrite.ts` answers with. Fourteen
                rows, not the eighteen the ticket counted: a row can only
                report a last write where the registry has one, and seven of
                the rows it counted front an area that opted out of that
@@ -213,13 +213,17 @@ const ROWS = [
     line: 'read'
   },
   {
-    key: 'appointment-prep',
+    /* Renamed from `appointment-prep` by ticket 57 rather than joined by a
+       second row: prep, the record and the debrief were three descriptions
+       of one thing, and the one that names it is the one that stays
+       (ADR-0066). Keeps `check` - no new icon. */
+    key: 'appointments',
     icon: 'check',
-    href: '/health/appointment-prep',
+    href: '/health/appointments',
     group: 'health',
-    areas: [],
+    areas: ['appointments'],
     finishes: null,
-    line: 'written'
+    line: 'read'
   },
   {
     key: 'clinician-summary',
@@ -404,6 +408,33 @@ const ROWS = [
     areas: [],
     finishes: null,
     line: 'written'
+  },
+  {
+    /* Paper the person keeps (phase 8 features ticket 52, ADR-0065). The
+       media group's third row, and the first one in it that fronts an area
+       of its own - a document belongs to no entry and no milestone.
+
+       `line: 'read'`, against ticket 52's own line, which asked for
+       `written`. Two things in the file decided it. The row has to name its
+       area or `rowHidden` cannot see it, and a row that names an area the
+       last-write registry answers for is a reading row - the invariant
+       right below this list, total in both directions, with no exception
+       mechanism and no reason to grow one for this. And the registry entry
+       is what the ticket asks for in the same breath, because the return
+       surface has to count filing a diagnosis as having been here.
+
+       What the reading actually says is a date, and ADR-0065 puts a date
+       on every row of the list behind this one. What it keeps off both is
+       the page image. */
+    key: 'documents',
+    icon: 'documents',
+    href: '/media/documents',
+    group: 'media',
+    areas: ['documents'],
+    /* Paper keeps arriving - `NOT_FINISHABLE`'s own reason for this area
+       (areaState.ts). There is no group to front. */
+    finishes: null,
+    line: 'read'
   }
 ] as const satisfies readonly HubRowSpec[];
 

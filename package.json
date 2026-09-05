@@ -23,6 +23,8 @@
     "gallery:day": "node tests/day-gallery.mjs",
     "gallery:constellation": "VITE_DEMO=1 npm run build && node tests/constellation-gallery.mjs",
     "gallery:dose-sheet": "VITE_DEMO=1 npm run build && node tests/dose-sheet-gallery.mjs",
+    "gallery:appointments": "VITE_DEMO=1 npm run build && node tests/appointments-gallery.mjs",
+    "gallery:documents": "VITE_DEMO=1 npm run build && node tests/documents-gallery.mjs",
     "gallery:unprompted": "node tests/unprompted-gallery.mjs",
     "gallery:stats": "VITE_DEMO=1 npm run build && node tests/stats-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",

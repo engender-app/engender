@@ -135,7 +135,15 @@ export const PATHS: Record<string, string> = {
   // turned down, the way a person folds one to mark a place they came back
   // to - distinct from `book` (a whole journal or letter) and `pencil`
   // (editing what is already there).
-  note: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 12h6M8 16h4"/>'
+  note: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 12h6M8 16h4"/>',
+  // The documents area (phase 8 features ticket 52, ADR-0065): two plain
+  // sheets, one behind the other. Deliberately not `note`'s page - that one
+  // is a single sheet with its corner turned down and writing on it, which
+  // is a note somebody made, and this is paper that arrived. The sheet
+  // behind is drawn only where it shows, so the two outlines never cross
+  // through each other's middle.
+  documents:
+    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>'
 };
 
 /* The two parameters are constrained rather than escaped, because both have

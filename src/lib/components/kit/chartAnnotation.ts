@@ -32,6 +32,9 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   journalingPause: m.chart_annotation_journaling_pause,
   tryout: m.chart_annotation_tryout,
   era: m.chart_annotation_era,
+  /* Phase 8 features ticket 59, ADR-0066: what a past appointment is called
+     when the person typed no kind of their own. */
+  appointment: m.chart_annotation_appointment,
   /* Ticket 15's six. The four that stand for a day rather than for a record
      say so in the word itself, because a mark that read "misgendering" would
      claim there was misgendering that day and nothing else - which is true of

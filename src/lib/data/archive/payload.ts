@@ -435,9 +435,13 @@ export interface ArchiveProcedurePhoto {
   fileName: string;
 }
 
-/** One consult date (phase 5 ticket 07), nested under its procedure and
-    carrying its own uuid - which is what lets Merge tell a consult this
-    device already has from one only the archive holds. */
+/** One consult date, as an archive written before phase 8 features ticket
+    57 carried it: nested under its procedure, with its own uuid.
+
+    Kept because those archives have to keep restoring. `aliasLegacyConsults`
+    (archiveApply.ts) lifts them into `appointments` on the way in, which is
+    the whole of what an older backup costs. Nothing writes this shape any
+    more. */
 export interface ArchiveProcedureConsult {
   id: string;
   epochDay: number;
@@ -448,14 +452,34 @@ export interface ArchiveProcedureConsult {
     recovery checklist is not here: it is an ordinary `checklist` row
     carrying this procedure's id as its owner, so it travels in the
     `checklists` section. Neither section has to apply before the other -
-    an owner pair is matched by uuid, not resolved to a rowid. */
+    an owner pair is matched by uuid, not resolved to a rowid.
+
+    Nor are its consults, since ticket 57: those are appointments, and they
+    travel in the `appointments` section naming this procedure. `consults`
+    survives as an optional field only so an older archive parses - see
+    `ArchiveProcedureConsult` above. */
 export interface ArchiveProcedure {
   id: string;
   name: string;
   surgeryEpochDay: number | null;
-  consults: ArchiveProcedureConsult[];
+  /** Only ever present on an archive written before ticket 57. */
+  consults?: ArchiveProcedureConsult[];
   notes: string;
   photos: ArchiveProcedurePhoto[];
+}
+
+/** One appointment (phase 8 features ticket 57, ADR-0066). Its own section
+    rather than nested under a procedure the way a consult was: most
+    appointments belong to no procedure at all, and `procedureId` is the
+    link, carried as the procedure's travelling uuid so the applying device
+    resolves it against its own rowids. */
+export interface ArchiveAppointment {
+  id: string;
+  epochDay: number;
+  procedureId: string | null;
+  kind: string | null;
+  place: string | null;
+  note: string | null;
 }
 
 /** One counterevidence entry as it read at the moment its snapshot was
@@ -714,6 +738,23 @@ export interface ArchiveWordIgnore {
   word: string;
 }
 
+/** One piece of paper the person keeps (phase 8 features ticket 52,
+    ADR-0065). Its own interface rather than a reused ArchivePhoto, for the
+    reason this file's header gives: a rename on one must not silently change
+    what the other travels as. It carries a day and a title of its own, which
+    a photo does not - a document is a record, not content hanging off one.
+
+    ADR-0065's optional link to a goal, a milestone, a procedure or an
+    episode is ticket 56's and is not on the wire yet. */
+export interface ArchiveDocument {
+  id: string;
+  epochDay: number;
+  title: string;
+  /** The opaque `<uuid>.jpg` of photos/names.ts, whose bytes travel in the
+      archive's file manifest beside the photos. Never a path. */
+  fileName: string;
+}
+
 /** What a person last reported having of one drug, plus box 4's reminder
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
@@ -806,6 +847,7 @@ export interface ArchiveJournal {
   hairPhotos: ArchiveHairPhoto[];
   hairRemovalSessions: ArchiveHairRemovalSession[];
   procedures: ArchiveProcedure[];
+  appointments: ArchiveAppointment[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
   counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
@@ -833,6 +875,7 @@ export interface ArchiveJournal {
   revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
   wordIgnore: ArchiveWordIgnore[];
+  documents: ArchiveDocument[];
 }
 
 /** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,

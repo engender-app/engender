@@ -80,7 +80,7 @@ test('a row carries a reading exactly where its own areas have one', () => {
      `read` with nothing to read or `written` while sitting on a registered
      area. Seven rows front an area that opted out of the last-write registry
      on purpose - a sealed letter, a span, reference data - and those never
-     report a reading, for the same reason the five view-only rows do not. */
+     report a reading, for the same reason the four view-only rows do not. */
   for (const row of HUB_ROWS) {
     assert.equal(
       row.line === 'read',
@@ -90,11 +90,13 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows can report a reading and thirteen never can', () => {
+test('fifteen rows can report a reading and twelve never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
-  assert.equal(reads.length, 13);
-  assert.equal(HUB_ROWS.length - reads.length, 13);
+  // The fifteenth is documents (phase 8 features ticket 52): the media
+  // group's first row that fronts an area of its own.
+  assert.equal(reads.length, 15);
+  assert.equal(HUB_ROWS.length - reads.length, 12);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -372,11 +374,11 @@ test('a fresh journal draws every row, each saying what is behind it', () => {
   }
 });
 
-test('the media group is photos and voice memos, and body keeps the other four', () => {
+test('the media group is photos, voice memos and documents, and body keeps the other four', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  assert.deepEqual(group('media'), ['photos', 'voice']);
+  assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
   assert.deepEqual(group('body'), ['measurements', 'sizes', 'hair-progress', 'hair-removal']);
 });
