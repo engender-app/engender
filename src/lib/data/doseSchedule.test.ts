@@ -12,6 +12,7 @@ import {
   expectedSlots,
   lastInjectionBefore,
   matchDoseRoute,
+  nearestOpenSlotDistance,
   pauseCoversDay,
   siteRecency
 } from './doseSchedule.ts';
@@ -495,4 +496,37 @@ test('expectedAmountOn answers null for a schedule that tracks no amounts, and f
 
   const everyThirdDay = adherence(expectedSlots(schedule(3, 1, [{ dose: 2, doseUnit: 'mg' }]), 100, 100, 106), [], []);
   assert.equal(expectedAmountOn(everyThirdDay, 101), null);
+});
+
+test('nearestOpenSlotDistance is zero when today itself still has nothing logged', () => {
+  assert.equal(nearestOpenSlotDistance(schedule(1, 1), 100, [], [], 100, 30), 0);
+});
+
+test('nearestOpenSlotDistance skips today once it is logged and finds tomorrow\'s slot instead', () => {
+  assert.equal(nearestOpenSlotDistance(schedule(1, 1), 100, [dose(100, 8)], [], 100, 30), 1);
+});
+
+test('nearestOpenSlotDistance looks either side of today for the smaller distance', () => {
+  /* Every third day: day 99 (unlogged, 1 day back) and day 102 (3 days
+     forward) both fall in a 30-day radius - 99 is nearer. */
+  assert.equal(nearestOpenSlotDistance(schedule(3, 1), 99, [], [], 100, 30), 1);
+});
+
+test('nearestOpenSlotDistance is null once every slot in its radius is logged', () => {
+  assert.equal(nearestOpenSlotDistance(schedule(1, 1), 100, [dose(100, 8), dose(101, 8)], [], 100, 1), null);
+});
+
+test('nearestOpenSlotDistance is null for a schedule that expects nothing at all - an as-needed drug', () => {
+  assert.equal(nearestOpenSlotDistance(schedule(0, 1), 100, [], [], 100, 30), null);
+});
+
+test('nearestOpenSlotDistance caps its search to maxRadiusDays even when the schedule\'s own period is wider', () => {
+  /* Every 10 days, anchored on day 106 - 6 days past today - so a 6-day cap
+     just reaches it and a 3-day cap does not. */
+  assert.equal(nearestOpenSlotDistance(schedule(10, 1), 106, [], [], 100, 3), null);
+  assert.equal(nearestOpenSlotDistance(schedule(10, 1), 106, [], [], 100, 6), 6);
+});
+
+test('nearestOpenSlotDistance treats a paused day as not open: the next slot past the pause counts instead', () => {
+  assert.equal(nearestOpenSlotDistance(schedule(1, 1), 100, [], [pause(100, 100)], 100, 30), 1);
 });
