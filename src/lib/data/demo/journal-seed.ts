@@ -50,7 +50,8 @@ export async function clearJournal(journal: Journal): Promise<void> {
 }
 
 export async function seedPersonaJournal(journal: Journal, today: number = todayEpochDay()): Promise<void> {
-  const { customTag, presentations, entries, milestones, reminders, labResults, tallyEvents } = persona(today);
+  const { customTag, presentations, entries, milestones, reminders, appointments, documents, labResults, tallyEvents } =
+    persona(today);
 
   await journal.tags.addTag(customTag.groupKey, customTag.label);
 
@@ -79,6 +80,25 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
   }
 
   for (const reminder of reminders) await journal.reminders.upsertReminder(reminder);
+
+  /* The debrief is written through checklists.ts's pre-ticket-58 mechanism:
+     the standalone checklist's own `appointment_epoch_day` column, set here
+     and left on the past appointment's day rather than moved to the future
+     one - moving it would clear `debrief_entry_id` again (setAppointmentDate's
+     own rule), undoing the very thing this seeds. Ticket 58 is what makes
+     this column a read over the appointment table instead of a value set by
+     hand; until then, this is the real, current write path. */
+  for (const { debrief, ...appointment } of appointments) {
+    await journal.appointments.upsertAppointment(appointment);
+    if (debrief) {
+      const entryId = await journal.entries.upsertEntry({ epochDay: appointment.epochDay, ...debrief });
+      await journal.checklists.setAppointmentDate(appointment.epochDay);
+      await journal.checklists.recordDebriefEntry(entryId, appointment.epochDay);
+    }
+  }
+
+  for (const document of documents) await journal.documents.addDocument(document, await demoPhoto(document.epochDay));
+
   for (const result of labResults) await journal.labs.upsertResult(result);
   for (const event of tallyEvents) await journal.tally.log(event);
 }
