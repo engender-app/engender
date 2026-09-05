@@ -106,6 +106,10 @@
   const MOOD_VALUES = [1, 2, 3, 4, 5] as const;
 
   let query = $state('');
+  /** How long the search waits after the last keystroke before it asks
+      (phase 8 audit ticket 15) - long enough that typing at speed never
+      fires a run per key, short enough that a pause reads as instant. */
+  const SEARCH_DEBOUNCE_MS = 250;
   let filtersOpen = $state(false);
   let selectedTagIds = $state<string[]>([]);
   let selectedMoods = $state<number[]>([]);
@@ -176,7 +180,35 @@
       hasNote ||
       hasPhoto
   );
-  let hasCriteria = $derived(!!query.trim() || hasStructuredCriteria);
+  /* The typed query, waited out (phase 8 audit ticket 15). The two
+     liveQuery closures below read `debouncedQuery`, never `query` itself:
+     `query` changes once a keystroke, and the reactivity contract
+     (journal.svelte.ts: a closure's dependency is whatever it reads before
+     its first await) means a closure reading it re-runs once a keystroke
+     too - every one of the entry half's seven statements and the elsewhere
+     union's two, per character typed. Clearing the field is the one case
+     that is not waited out: an empty query drops the pending timer and
+     lands on `debouncedQuery` at once, so clearing clears the results
+     without the wait (the ticket's own acceptance criterion). */
+  let debouncedQuery = $state('');
+  $effect(() => {
+    const typed = query.trim();
+    if (!typed) {
+      debouncedQuery = '';
+      return;
+    }
+    const timer = setTimeout(() => {
+      debouncedQuery = typed;
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  });
+
+  /* Off the debounced query, not the box: what this gates - the idle/results
+     switch below, and the save-question button - all describe an answer, and
+     the box can hold a character or two nothing has answered for yet
+     (ticket 15). The lag this adds before the save button appears is the
+     debounce interval, not a wait anyone types through. */
+  let hasCriteria = $derived(!!debouncedQuery || hasStructuredCriteria);
 
   /* Back to the first page whenever the question changes. An effect rather
      than a line in each of the eight setters: every one of them would owe
@@ -209,7 +241,8 @@
   /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
      split: a built-in tag stores a key, so the words it was shown under only
      exist above the journal, over the mirrored vocabulary. Both halves and
-     the query itself are read before the first await, so typing re-runs it.
+     the debounced query itself are read before the first await, so a run
+     lands once the typist pauses rather than once a key.
 
      The count comes back separately from the page, because the screen states
      how many entries matched and shows a page of them: taking the count from
@@ -221,7 +254,7 @@
   const NOTHING_ASKED = { hits: [], total: 0 };
 
   let search = liveQuery((j) => {
-    const typed = query.trim();
+    const typed = debouncedQuery;
     const limit = PAGE * pages;
     if (!typed && !hasStructuredCriteria) return Promise.resolve(NOTHING_ASKED);
     const tagIds = tagIdsMatching(typed, vocabulary.tags);
@@ -231,16 +264,16 @@
     ]).then(([hits, total]) => ({ hits, total }));
   });
   /* Everything the journal holds that is not an entry, in one scan across
-     the registry (textSearch.ts). Reads the query, the range and the page
-     count before its first await, the same as the entry read above, so
-     typing re-runs it.
+     the registry (textSearch.ts). Reads the debounced query, the range and
+     the page count before its first await, the same as the entry read
+     above, so a run lands once per pause rather than once a key.
 
      `today` because a sealed letter is not searchable and the seal is a
      comparison against today, which no read below the journal seam makes
      for itself (ADR-0001). */
   const NOTHING_ELSEWHERE = { hits: [], total: 0 };
   let elsewhere = liveQuery((j) => {
-    const typed = query.trim();
+    const typed = debouncedQuery;
     const limit = PAGE * hitPages;
     const startEpochDay = filters.startEpochDay ?? null;
     const endEpochDay = filters.endEpochDay ?? null;
@@ -273,7 +306,7 @@
      and a heading over a card of one row is framework rather than structure
      (searchHitRows.ts carries the reasoning, and DayRecords.svelte made the
      same call about a day's sixteen). */
-  let hitRows = $derived(searchHitRows(elsewhereResults.hits, query.trim()));
+  let hitRows = $derived(searchHitRows(elsewhereResults.hits, debouncedQuery));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
   /* One count over both reads. Stating the entries' total alone while five
@@ -452,7 +485,7 @@
         icon="search"
         key="search-none"
         title={m.no_results()}
-        text={query.trim() ? m.no_results_body({ query }) : m.search_no_results_filtered()}
+        text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
       />
     {/if}
   </div>
