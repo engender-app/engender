@@ -23,11 +23,21 @@ export interface PickedArchive {
   bytes(): AsyncIterable<Uint8Array>;
 }
 
+/** A file came back from the picker, but with nothing in it - not a real
+    archive, whatever its name. Distinct from every other archive refusal
+    (archive/failure.ts), which all read the container first: this one is
+    caught before a single byte is decrypted. */
+export class EmptyArchiveFileError extends Error {}
+
 /** The archive the user chose, or null if they backed out - an ordinary
-    outcome, not an error. */
+    outcome, not an error. Android's `MimeTypeMap` only resolves an accept
+    entry that names a real MIME type (ticket 66); the extension alone
+    resolved to nothing and crashed the picker before it could open. */
 export async function pickArchive(): Promise<PickedArchive | null> {
-  const [file] = await chooseFiles(ARCHIVE_FILE_EXTENSION);
-  return file ? { name: file.name, bytes: () => blobBytes(file) } : null;
+  const [file] = await chooseFiles(`${ARCHIVE_FILE_EXTENSION},application/octet-stream`);
+  if (!file) return null;
+  if (file.size === 0) throw new EmptyArchiveFileError();
+  return { name: file.name, bytes: () => blobBytes(file) };
 }
 
 /** A Blob as byte pieces. Spelled out with a reader rather than iterating
