@@ -160,8 +160,9 @@ export interface AnalysedNote {
 }
 
 /** One pass over a note's text, and the only place in this module that
-    tokenises. */
-export function analyseNote(note: string): AnalysedNote {
+    tokenises. Not exported: a caller holds rows rather than one note, and
+    `analyseNotes` is what reads them. */
+function analyseNote(note: string): AnalysedNote {
   const words = tokenize(note);
   const language = languageOf(note, words);
   const stopwords = language === 'pl' ? STOPWORDS_PL : STOPWORDS_EN;
@@ -196,8 +197,11 @@ export function noteLanguage(note: string): NoteLanguage {
   return languageOf(note, tokenize(note));
 }
 
-/** Read and count in one call: the whole fold, for a caller holding raw
-    notes that does not go on to filter them. */
+/** Read and count in one call: the whole fold in one place. No screen calls
+    it - the one screen that counts words filters them too, so it holds the
+    two steps apart - and it is kept because it is what wordFrequency.test.ts
+    states the output of this module against, which is the thing that must
+    not move when the counting is rearranged underneath it. */
 export function wordFrequency(entries: readonly { note: string }[]): WordCount[] {
   return countWords(analyseNotes(entries));
 }

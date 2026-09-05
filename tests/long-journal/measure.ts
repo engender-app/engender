@@ -134,11 +134,13 @@ const CUSTOM_INTERVAL_DAYS = 28;
     `stats.ts` already uses for it. */
 const WHOLE_JOURNAL_FROM = Number.MIN_SAFE_INTEGER;
 
-/** What the word list renders, which is the literal `settings/words/
-    +page.svelte` slices its sorted counts to. The fold itself counts every
-    word, so this is a render limit rather than a narrower fold - it is here
-    because the screen pays for the slice on every filter tap too. */
-const WORDS_LIMIT = 40;
+/** What the word list renders: `settings/words/+page.svelte`'s own
+    `WORD_LIMIT`, restated here the way every screen literal in this file is
+    (see the mount block's note on why, and what it costs). The fold counts
+    every word regardless, so this is a render limit rather than a narrower
+    fold - it is here because the screen pays for the slice on every filter
+    tap too. */
+const WORD_LIST_LIMIT = 40;
 
 /** The gap the return surface is measured over. A season, which is the
     length of absence the screen exists for - long enough that letters have
@@ -729,23 +731,26 @@ export async function measureLongJournal(
 
      Timed over the unfiltered "All" list, which is the widest a tap can land
      on and the one the screen returns to when a picked presentation or era
-     is cleared.
+     is cleared. Picking a value in the picker is this same work over a
+     subset; switching the Segmented from presentation to era additionally
+     re-runs `groupByEra`, which ticket 17 did not touch and this does not
+     time.
 
      `analyseNotes` is outside the timer for the same reason the read is: it
      is the screen's own `$derived` on the query, which a filter tap does not
      invalidate. What it cost is carried in the detail line rather than
      dropped, since it is the once-per-read half of the same work. */
   const notes = await journal.entries.noteEntries();
+  const noteCharacters = notes.reduce((total, entry) => total + entry.note.length, 0);
   const analysedAt = performance.now();
   const analysed = analyseNotes(notes);
   const analyseMs = Math.round(performance.now() - analysedAt);
   await measure('words-filter-change', 'word list, one filter tap over every note in the journal', async () => {
-    const counts = countWords(analysed).slice(0, WORDS_LIMIT);
+    const counts = countWords(analysed).slice(0, WORD_LIST_LIMIT);
     const polish = analysed.some((entry) => entry.language === 'pl');
-    const characters = notes.reduce((total, entry) => total + entry.note.length, 0);
     return {
       result: [counts, polish],
-      detail: `${notes.length} notes, ${characters} characters, ${counts.length} words shown, analysed once in ${analyseMs}ms`
+      detail: `${notes.length} notes, ${noteCharacters} characters, ${counts.length} words shown, analysed once in ${analyseMs}ms`
     };
   });
 
