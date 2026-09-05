@@ -2665,7 +2665,8 @@ try {
        no longer exists anywhere - which would have made the check pass for
        free rather than fail. The voice screen's own walk is below. */
     ['/practice/wear', 'wear-empty'],
-    ['/settings/stock', 'stock-empty']
+    ['/settings/stock', 'stock-empty'],
+    ['/settings/reminders', 'reminders-empty']
   ];
   for (const [route, emptyKey] of NOT_EMPTY_ROUTES) {
     await page.goto(BASE + route, { waitUntil: 'networkidle' });
@@ -2758,6 +2759,28 @@ try {
 } catch (e) {
   fail('fill every feature', e);
 }
+
+/* Ticket 31: the web reminders list, once "Fill every feature" guarantees
+   it is not empty - rows with no navigation and a delete control, and a
+   wear-session's own elapsed reminder (`wear:` autoSource, fullFixture.ts's
+   "Binder check-in") that appears and can be cancelled from it, which is
+   ADR-0063's reasoning for why the web list carries a delete at all. */
+try {
+  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
+  if ((await page.locator('[data-list-row]').count()) === 0) throw new Error('no reminder rows shown on web');
+  if ((await page.locator('[data-list-row] a').count()) > 0) throw new Error('a reminder row navigates on web');
+  if ((await page.locator('[data-row-action]').count()) === 0) throw new Error('no delete control on a web reminder row');
+
+  const wearRow = page.locator('[data-list-row]', { hasText: 'wear session' }); // text-under-test: the only handle a wear-origin row carries is its provenance line
+  if ((await wearRow.count()) === 0) throw new Error('no wear-session reminder visible on web');
+
+  const wearRowId = await wearRow.first().getAttribute('data-list-row');
+  await page.locator(`[data-row-action="${wearRowId}"]`).click();
+  await page.locator('[data-confirm-delete-reminder]').click();
+  await page.waitForSelector(`[data-list-row="${wearRowId}"]`, { state: 'detached' });
+
+  ok('web reminders list shows rows with no navigation, and a wear-session reminder can be deleted from it');
+} catch (e) { fail('reminders list on web', e); }
 
 /* The hub reading its own data (phase 8 UX ticket 02).
 
