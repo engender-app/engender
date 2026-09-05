@@ -3407,7 +3407,11 @@ try {
 try {
   await openQuickAdd();
   await page.locator('[data-choose="another-day"]').click();
-  await page.waitForSelector('#backdate');
+  /* A disabled placeholder holds #backdate's id until the date-picker chunk
+     lands and swaps in the real, value-bound field (ticket au-21) - so wait
+     for a value rather than for the selector, the same shape as the skeleton
+     wait above. */
+  await page.waitForFunction(() => (document.querySelector('#backdate'))?.value, null, { timeout: 8000 });
   const wanted = await page.locator('#backdate').inputValue();
   if (!wanted) throw new Error('the backdate field was empty');
   await page.locator('[data-choose="date"]').click();
