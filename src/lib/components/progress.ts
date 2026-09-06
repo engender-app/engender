@@ -43,9 +43,19 @@ export function progressPercent(fraction: number | null): number | null {
   return fraction === null ? null : Math.round(fraction * 100);
 }
 
-/** How long to keep a visible bar up once its operation has finished:
-    the completion hold, or the rest of the minimum-visible floor if that
-    is still running. */
-export function settleDelay(visibleForMs: number, holdMs: number): number {
-  return Math.max(0, holdMs, PROGRESS_MIN_VISIBLE_MS - visibleForMs);
+/** How long to keep a visible bar up once its operation has finished.
+
+    The tween comes first and the hold is on top of it, not instead of it.
+    Snapping the fill to full starts a --dur-slow transition, so a wait of
+    --dur-med alone takes the bar off screen 140ms before it has finished
+    travelling to 100% - which is the instant cut ADR-0070 is about,
+    dressed up as a hold. The floor underneath both is the rest of the
+    minimum-visible time, for an operation that only just outlasted the
+    show delay.
+
+    Both durations arrive as 0 under reduced motion, because
+    motionDuration() already returns 0 there - which is the whole of this
+    module's reduced-motion behaviour, and why neither is read here. */
+export function settleDelay(visibleForMs: number, tweenMs: number, holdMs: number): number {
+  return Math.max(0, tweenMs + holdMs, PROGRESS_MIN_VISIBLE_MS - visibleForMs);
 }

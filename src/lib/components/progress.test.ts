@@ -42,26 +42,29 @@ describe('progressPercent', () => {
 });
 
 describe('settleDelay', () => {
-  it('holds at full for the completion hold', () => {
-    expect(settleDelay(4000, 240)).toBe(240);
+  it('lets the fill reach full and then holds it there', () => {
+    /* The tween and the hold, not one instead of the other: waiting
+       --dur-med alone would take the bar away 140ms before the fill had
+       finished travelling to 100%, which is the instant cut ADR-0070
+       exists to stop, wearing a hold's name. */
+    expect(settleDelay(4000, DURATION_FALLBACK['--dur-slow'], DURATION_FALLBACK['--dur-med'])).toBe(380 + 240);
   });
 
-  it('cuts the hold to nothing when motion is reduced', () => {
-    // motionDuration('--dur-med') is already 0 there, so the hold arrives
-    // as 0 rather than being decided a second time here.
-    expect(settleDelay(4000, 0)).toBe(0);
+  it('cuts both to nothing when motion is reduced', () => {
+    // motionDuration() already returns 0 there, so they arrive as 0 rather
+    // than being decided a second time here.
+    expect(settleDelay(4000, 0, 0)).toBe(0);
   });
 
   it('keeps a bar that has only just appeared for its minimum', () => {
     // The show delay stops a fast operation from flashing a bar at all;
     // this stops one that crossed the delay by a hair from flashing it for
     // two frames.
-    expect(settleDelay(50, 240)).toBe(PROGRESS_MIN_VISIBLE_MS - 50);
-    expect(settleDelay(50, 0)).toBe(PROGRESS_MIN_VISIBLE_MS - 50);
+    expect(settleDelay(50, 0, 0)).toBe(PROGRESS_MIN_VISIBLE_MS - 50);
   });
 
   it('never returns a negative wait', () => {
-    expect(settleDelay(PROGRESS_MIN_VISIBLE_MS + 1000, 0)).toBe(0);
+    expect(settleDelay(PROGRESS_MIN_VISIBLE_MS + 1000, 0, 0)).toBe(0);
   });
 });
 

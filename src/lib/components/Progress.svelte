@@ -57,7 +57,21 @@
       aria-valuemax={100}
       aria-valuenow={percent ?? undefined}
     >
-      <i style={run.fraction === null ? undefined : `transform: scaleX(${run.fraction})`}></i>
+      <!-- Two elements rather than one that swaps its transform. A run can
+           begin indeterminate and become determinate part way - the lab
+           scan does exactly that, sweeping while Tesseract loads and then
+           filling once it is reading - and cancelling a running animation
+           on an element that also carries a transform transition leaves
+           the transition's start value up to the browser. In Chromium's
+           reading the fill would flash to the track's full width for a
+           frame before collapsing back to the first real fraction. A
+           fresh element has no previous value to transition from, so it
+           takes the fraction directly. -->
+      {#if run.fraction === null}
+        <i></i>
+      {:else}
+        <i style={`transform: scaleX(${run.fraction})`}></i>
+      {/if}
     </div>
     {#if run.cancellable}
       <button
@@ -90,15 +104,28 @@
     color: var(--text-2);
     font-size: var(--text-sm);
   }
-  /* Tabular figures so the number does not shuffle the sentence beside it
-     every time it lands on a 1. */
+  /* At full text weight while the sentence beside it is secondary: the
+     number is the fact and the sentence is what the fact is about, and a
+     row where both are --text-2 makes the reader find the number rather
+     than land on it. Tabular figures so it does not shuffle the sentence
+     sideways every time it passes a 1. */
   .progress-percent {
-    color: var(--text-2);
+    color: var(--text);
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
   }
+  /* Under the bar and aligned to its right edge, where the percentage
+     already is: the eye is on that side of the bar reading the number, and
+     the way out belongs next to what it is a way out of rather than back
+     under the sentence. Trimmed to the secondary weight of a way out - a
+     `.btn`'s own padding is sized for a primary action and put "Stop"
+     visibly inside the bar's left edge, which read as a stray word. The
+     44px height is kept whole (SH-102): what shrinks is the padding and
+     the type, never the target. */
   .progress-stop {
-    align-self: flex-start;
+    align-self: flex-end;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
   }
 
   /* The mark moves, not its container (DIRECTION.md, tier 3): a segment
