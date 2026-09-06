@@ -4,8 +4,11 @@ import {
   TRACE_FLOOR,
   TRACE_HALF_LIFE,
   TRACE_WINDOW,
+  labelOffset,
+  labeledSlots,
   plotPoints,
   tracedThrough,
+  type ConstellationPoint,
   type ConstellationReading
 } from './constellationData';
 
@@ -162,5 +165,88 @@ describe('keying a stable window position', () => {
     const leaving = before[0];
     const entering = after[after.length - 1];
     expect(entering.slot).toBe(leaving.slot);
+  });
+});
+
+describe('where a label sits relative to its point', () => {
+  it('sits up and to the right of a point away from every edge', () => {
+    expect(labelOffset({ x: 0.5, y: 0.5 })).toEqual({ anchor: 'start', dx: 6, dy: -6 });
+  });
+
+  it('flips to the left once a point is close enough to the right edge to clip', () => {
+    expect(labelOffset({ x: 0.9, y: 0.5 })).toEqual({ anchor: 'end', dx: -6, dy: -6 });
+  });
+
+  it('flips below once a point is close enough to the top edge to clip', () => {
+    expect(labelOffset({ x: 0.5, y: 0.95 })).toEqual({ anchor: 'start', dx: 6, dy: 14 });
+  });
+});
+
+/* Ticket CARPET-07: a label per point, but not two labels close enough to
+   read as one. */
+describe('choosing which points earn a label', () => {
+  const point = (over: Partial<ConstellationPoint> = {}): ConstellationPoint => ({
+    id: 'e1',
+    day: 20100,
+    x: 0,
+    y: 0,
+    presentationId: null,
+    weight: 1,
+    slot: 0,
+    ...over
+  });
+
+  it('has nothing to label in an empty journal', () => {
+    expect(labeledSlots([], 300, 8, 20)).toEqual(new Set());
+  });
+
+  it('labels a single point', () => {
+    const slots = labeledSlots([point({ slot: 0 })], 300, 8, 20);
+    expect(slots).toEqual(new Set([0]));
+  });
+
+  it('labels two points far enough apart', () => {
+    const points = [point({ slot: 0, x: 0, y: 0 }), point({ slot: 1, x: 1, y: 1 })];
+    expect(labeledSlots(points, 300, 8, 20)).toEqual(new Set([0, 1]));
+  });
+
+  /* Two readings at nearly the same spot: the newer, fuller-weight one - the
+     one the dots themselves already draw stronger - keeps its label, and
+     nothing shifts a point to make room for the other's. */
+  it('drops the fainter label when two points sit within the gap', () => {
+    const points = [
+      point({ slot: 0, x: 0.5, y: 0.5, weight: 0.4 }),
+      point({ slot: 1, x: 0.501, y: 0.5, weight: 0.9 })
+    ];
+    expect(labeledSlots(points, 300, 8, 20)).toEqual(new Set([1]));
+  });
+
+  it('keeps every point once it has claimed its label, not just the last two', () => {
+    // Three readings on a line 4px apart: the first and third are 8px
+    // apart, past a 6px gap, so both keep their label once the middle one
+    // (same weight, so first by original order) has claimed the gap around it.
+    const points = [
+      point({ slot: 0, x: 0, y: 0.5, weight: 1 }),
+      point({ slot: 1, x: 4 / 284, y: 0.5, weight: 1 }),
+      point({ slot: 2, x: 8 / 284, y: 0.5, weight: 1 })
+    ];
+    expect(labeledSlots(points, 300, 8, 6)).toEqual(new Set([0, 2]));
+  });
+
+  /* The gap two points' own dots are drawn at is not the gap their labels
+     land at, once one of them sits past labelOffset's flip threshold: a
+     label anchored to the left of its point and one anchored to its right
+     can close on each other even though the dots underneath stayed put.
+     Measuring collisions off the dot alone - what an earlier version of
+     this function did - would have kept both labels here. */
+  it('catches a collision the flip creates, even where the dots themselves cleared the gap', () => {
+    const points = [
+      point({ slot: 0, x: 0.8, y: 0.5, weight: 1 }), // below the flip: anchors right, dx +6
+      point({ slot: 1, x: 0.9, y: 0.5, weight: 0.5 }) // past the flip: anchors left, dx -6
+    ];
+    // Dots are 30px apart on a 300px plot - clear of a 20px gap - but the
+    // two labels' anchored positions close to 18px apart once each point's
+    // own offset is applied.
+    expect(labeledSlots(points, 300, 8, 20)).toEqual(new Set([0]));
   });
 });
