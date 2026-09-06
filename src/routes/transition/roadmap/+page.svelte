@@ -218,10 +218,21 @@
       : Promise.resolve(undefined)
   );
 
+  /* Held once rather than restated on the button: the walkthrough asserts on
+     the disabled state, so the two must not be able to drift apart. */
+  let goalRewording = $derived(goalDraft.trim());
+  let canSaveGoal = $derived(
+    selectedGoal !== null && !selectedGoal.builtin && goalRewording !== '' && goalRewording !== selectedTitle
+  );
+
+  /* On the confirm button as a handle rather than left for a test to read
+     out of the sentence: the walkthrough has to be able to check the count
+     without gripping the plural copy that carries it (ADR-0029). */
+  let unfiledByDelete = $derived(goalDocuments.rows.length);
+
   const saveGoalText = () => {
-    const text = goalDraft.trim();
-    if (!selectedGoal || selectedGoal.builtin || text === '' || text === selectedTitle) return;
-    journal.roadmap.updateCustomGoalText(selectedGoal.key, text);
+    if (!canSaveGoal) return;
+    journal.roadmap.updateCustomGoalText(selectedGoal!.key, goalRewording);
   };
 
   /* The sheet closes before the write, the same order `answerMilestoneOffer`
@@ -505,24 +516,23 @@
       <div class="goal-edit">
         <Field label={m.roadmap_goal_text_label()} id="goal-text">
           {#snippet children(id)}
-            <input
-              class="input"
-              {id}
-              name="goal-text"
-              placeholder={m.roadmap_goal_placeholder()}
-              bind:value={goalDraft}
-            />
+            <!-- No placeholder: this field opens holding the goal's own
+                 text, so one would only ever restate the label above it. -->
+            <input class="input" {id} name="goal-text" bind:value={goalDraft} />
           {/snippet}
         </Field>
-        <button
-          class="btn btn-primary press"
-          data-save-goal
-          disabled={goalDraft.trim() === '' || goalDraft.trim() === selectedTitle}
-          onclick={saveGoalText}
-        >
+        <button class="btn btn-primary press" data-save-goal disabled={!canSaveGoal} onclick={saveGoalText}>
           <span>{m.roadmap_goal_save()}</span>
         </button>
-        <button class="btn btn-ghost press" data-delete-goal onclick={() => (confirmingDelete = true)}>
+        <!-- Disabled until the documents read lands: a confirmation that
+             cannot yet count what it is about to unfile would understate the
+             delete, and `rows` is empty while a read is still in flight. -->
+        <button
+          class="btn btn-ghost press"
+          data-delete-goal
+          disabled={goalDocuments.loading}
+          onclick={() => (confirmingDelete = true)}
+        >
           <Icon name="trash" size={18} />
           <span>{m.roadmap_goal_delete()}</span>
         </button>
@@ -539,12 +549,12 @@
   open={confirmingDelete}
   title={m.roadmap_goal_delete_sheet()}
   question={m.roadmap_goal_delete_q({ goal: selectedTitle })}
-  hint={goalDocuments.rows.length > 0
-    ? m.roadmap_goal_delete_documents({ count: goalDocuments.rows.length })
+  hint={unfiledByDelete > 0
+    ? m.roadmap_goal_delete_documents({ count: unfiledByDelete })
     : m.roadmap_goal_delete_hint()}
   confirmLabel={m.roadmap_goal_delete()}
   cancelLabel={m.keep_it()}
-  confirmAttrs={{ 'data-confirm-delete-goal': '' }}
+  confirmAttrs={{ 'data-confirm-delete-goal': '', 'data-unfiles': String(unfiledByDelete) }}
   onConfirm={deleteGoal}
   onCancel={() => (confirmingDelete = false)}
 />

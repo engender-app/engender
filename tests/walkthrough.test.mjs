@@ -4245,8 +4245,7 @@ try {
   await page.getByPlaceholder('Your step').fill('Get the referal reissued');
   await page.getByRole('button', { name: 'Add goal' }).click();
 
-  // The typo just typed is the only thing telling this row from the rest.
-  const misspelt = page.locator('[data-goal]').filter({ hasText: 'Get the referal reissued' }); // text-under-test
+  const misspelt = page.locator('[data-goal]').filter({ hasText: 'Get the referal reissued' }); // text-under-test: fixture text, typed by this flow two lines up
   await misspelt.waitFor();
   const goalId = await misspelt.getAttribute('data-goal');
 
@@ -4278,7 +4277,7 @@ try {
   await page.locator('#document-title').fill('Referral, reissued');
   await page.locator('[data-save-document]').click();
   await page.waitForSelector('[data-list-row]');
-  await page.locator('[data-list-row]').filter({ hasText: 'Referral, reissued' }).click(); // text-under-test: the title just typed
+  await page.locator('[data-list-row]').filter({ hasText: 'Referral, reissued' }).click(); // text-under-test: fixture text, the title typed above
   await page.waitForSelector('[data-pick-document-target]');
   await page.locator('[data-pick-document-target]').click();
   await page.locator(`[data-pick-target="goal:${goalId}"]`).click();
@@ -4294,11 +4293,14 @@ try {
   await page.locator(`[data-open-goal="${goalId}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.locator('[data-delete-goal]').click();
+  /* The count is the whole reason this confirmation says more than "this
+     cannot be undone", and it is read off the button's own handle rather
+     than out of the sentence: gripping the plural copy would let a rewording
+     of it pass this flow for free (ADR-0029). */
   await page.waitForSelector('[data-confirm-delete-goal]');
-  // The count is the whole reason this confirmation says more than "this
-  // cannot be undone".
-  if (!(await page.getByText('1 document filed here is kept').count())) { // text-under-test
-    throw new Error('the confirmation does not count the paper it is about to unfile');
+  const unfiles = await page.locator('[data-confirm-delete-goal]').getAttribute('data-unfiles');
+  if (unfiles !== '1') {
+    throw new Error(`the confirmation counts ${unfiles} documents to unfile, not the one filed here`);
   }
   await page.locator('[data-confirm-delete-goal]').click();
   await page.waitForFunction((id) => !document.querySelector(`[data-goal="${id}"]`), goalId);
@@ -4322,7 +4324,18 @@ try {
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
 
-  ok('a custom goal is reworded from its sheet, and deleting it unfiles the paper filed against it without destroying it');
+  /* Neither control on a built-in goal, ever (ADR-0068). Asserted against a
+     sheet that is provably open - `[data-goal-sheet-status]` is the handle
+     that says so - since an absence checked against a screen that never
+     rendered proves nothing. */
+  await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-open-goal="pl-medical-keep-opinions"]').click();
+  await page.waitForSelector('[data-goal-sheet-status="pl-medical-keep-opinions"]');
+  if (await page.locator('[data-save-goal]').count()) throw new Error('a built-in goal offers a way to reword it');
+  if (await page.locator('[data-delete-goal]').count()) throw new Error('a built-in goal offers a way to delete it');
+
+  ok('a custom goal is reworded from its sheet, deleting it unfiles the paper filed against it without destroying it, and a built-in goal has neither control');
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
