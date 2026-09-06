@@ -63,10 +63,11 @@
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { smartBack } from '$lib/navigation/smart-back';
-  import { scrollToHash } from '$lib/navigation/scroll-region';
+  import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -133,6 +134,17 @@
      reversed copy was rebuilt with it. */
   let logRows = $derived(
     [...doses].reverse().map((dose) => ({ dose, attribution: attributeDose(episodes, dose) }))
+  );
+
+  /* The clinician summary links a dose across a hash (phase 8 features
+     ticket 67) - read once, the same "one visit to one screen" rule
+     BatchedList's own `path` follows, since a hash arriving mid-visit would
+     mean a fresh navigation had already replaced this component. Resolved to
+     a position in `logRows` because that is what BatchedList's `focusIndex`
+     wants: the same array the list slices from, not the id itself. */
+  const deepLinkedDoseId = hashRowId();
+  let deepLinkedDoseIndex = $derived(
+    deepLinkedDoseId ? logRows.findIndex(({ dose }) => dose.id === deepLinkedDoseId) : -1
   );
 
   let view = $state<'log' | 'schedule'>('log');
@@ -245,8 +257,9 @@
   /* Same story as the regimen screen's: the clinician summary links a dose
      across a hash, the browser's anchor scroll fires before the log's
      liveQuery answers, and this is the second chance that actually sees the
-     row. On logRows' length as well as loading, because the rows mount over
-     more than one frame and the first may not have the one the hash names. */
+     row. `deepLinkedDoseIndex` above is what gets the row into the DOM at
+     all once the log batches (ticket 67) - this only has to wait for the
+     layout scrollToHash's own settle loop already handles. */
   $effect(() => {
     if (!loading && view === 'log') scrollToHash();
   });
@@ -569,55 +582,62 @@
     {#if doses.length}
       <div class="screen-part">
         <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: WINDOW_DAYS })}</p>
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
-          {#each logRows as { dose, attribution } (dose.id)}
-            {@const site = siteOf(dose)}
-            <ListRow
-              key={dose.id}
-              data-dose={dose.id}
-              id={dose.id}
-              icon="clock"
-              title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
-              subtitle={[
-                whenOf(dose),
-                site,
-                isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : ''
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-              chevron={false}
-              onclick={() => openEditor(dose)}
-            >
-              {#snippet trailing()}
-                <!-- The bookkeeping, at the end of the row rather than as
-                     two more lines under the dose: which episode the app
-                     attributed it to, whether it was taken as logged, and
-                     what a schedule had asked for. All three are about the
-                     record rather than about the dose. -->
-                <span class="dose-trail">
-                  {#if dose.status !== 'taken'}
-                    <span class="dose-status">{statusLabel(dose.status)}</span>
-                  {/if}
-                  <span>
-                    {#if attribution.episode}
-                      {m.doses_under_episode({ drug: attribution.episode.drug })}
-                    {:else if attribution.ambiguous}
-                      {m.doses_ambiguous_episode()}
-                    {:else}
-                      {m.doses_no_episode()}
+        <BatchedList
+          items={logRows}
+          key="doses"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
+          focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
+        >
+          {#snippet rows(shownRows)}
+            {#each shownRows as { dose, attribution } (dose.id)}
+              {@const site = siteOf(dose)}
+              <ListRow
+                key={dose.id}
+                data-dose={dose.id}
+                id={dose.id}
+                icon="clock"
+                title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                subtitle={[
+                  whenOf(dose),
+                  site,
+                  isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : ''
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                chevron={false}
+                onclick={() => openEditor(dose)}
+              >
+                {#snippet trailing()}
+                  <!-- The bookkeeping, at the end of the row rather than as
+                       two more lines under the dose: which episode the app
+                       attributed it to, whether it was taken as logged, and
+                       what a schedule had asked for. All three are about the
+                       record rather than about the dose. -->
+                  <span class="dose-trail">
+                    {#if dose.status !== 'taken'}
+                      <span class="dose-status">{statusLabel(dose.status)}</span>
+                    {/if}
+                    <span>
+                      {#if attribution.episode}
+                        {m.doses_under_episode({ drug: attribution.episode.drug })}
+                      {:else if attribution.ambiguous}
+                        {m.doses_ambiguous_episode()}
+                      {:else}
+                        {m.doses_no_episode()}
+                      {/if}
+                    </span>
+                    {#if dose.scheduled}
+                      <span>
+                        {m.dose_scheduled_legend()}: {dose.scheduled.dose}
+                        {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
+                      </span>
                     {/if}
                   </span>
-                  {#if dose.scheduled}
-                    <span>
-                      {m.dose_scheduled_legend()}: {dose.scheduled.dose}
-                      {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
-                    </span>
-                  {/if}
-                </span>
-              {/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
+                {/snippet}
+              </ListRow>
+            {/each}
+          {/snippet}
+        </BatchedList>
       </div>
     {:else}
       <div class="screen-part">

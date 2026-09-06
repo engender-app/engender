@@ -73,6 +73,32 @@ publishFixture('batched-list', async () => {
     await until(() => rendered() >= TOTAL, 500);
   }
 
+  /* Ticket 67: a deep link's row, past the first batch, rendered in one step
+     rather than by growing a batch at a time. A second, independent mount -
+     the fixture's own `key` keeps its remembered count apart from the one
+     above, the same way a screen with two batched lists does. */
+  const FOCUS_INDEX = 47; // second batch of thirty: rows 30-59.
+  const focusTarget = document.createElement('div');
+  document.body.append(focusTarget);
+  const focusRendered = () => focusTarget.querySelectorAll('[data-probe-row]').length;
+  const focusMount = mountInto(Fixture, { items, key: 'probe-focus', focusIndex: FOCUS_INDEX }, focusTarget);
+  await until(() => focusRendered() > 0);
+  const onFocusArrival = focusRendered();
+  await focusMount.remove();
+  focusTarget.remove();
+
+  /* Left that screen and come back with no link in hand - the count a link
+     expanded to must not have stuck around for this, only whatever was
+     actually grown and remembered. */
+  const returnTarget = document.createElement('div');
+  document.body.append(returnTarget);
+  const returnRendered = () => returnTarget.querySelectorAll('[data-probe-row]').length;
+  const returnMount = mountInto(Fixture, { items, key: 'probe-focus' }, returnTarget);
+  await until(() => returnRendered() > 0);
+  const onReturnAfterFocus = returnRendered();
+  await returnMount.remove();
+  returnTarget.remove();
+
   return {
     total: TOTAL,
     onArrival,
@@ -81,6 +107,8 @@ publishFixture('batched-list', async () => {
     grewOnPress,
     afterPress,
     exhaustedCount: rendered(),
-    controlGoneWhenExhausted: control() === null
+    controlGoneWhenExhausted: control() === null,
+    onFocusArrival,
+    onReturnAfterFocus
   };
 });

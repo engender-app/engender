@@ -2873,6 +2873,40 @@ try {
   fail('wear log renders in batches', e);
 }
 
+/* Ticket 67: a deep link into a batched log expands to the row before
+   scrolling to it, rather than landing short of a row the first batch
+   never rendered. The clinician summary's dossier links every regimen and
+   dose row back to its own record - restored by this ticket after the
+   phase 5 ticket 09 rewrite dropped it - and its dosage-log table reads
+   oldest first, so the first row's link is the one link on demo data that
+   is guaranteed to sit past the dose log's own newest-first first batch. */
+try {
+  await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
+  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+
+  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const href = await firstDoseLink.getAttribute('href');
+  if (!href) throw new Error('no dose link found in the clinician summary');
+  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+
+  await firstDoseLink.click();
+  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const renderedDoseRows = await page.locator('[data-dose]').count();
+  if (renderedDoseRows <= 30) {
+    throw new Error(`expected the deep link to expand the log past its first batch, got ${renderedDoseRows} rows`);
+  }
+
+  const linkedRow = page.locator(`[data-dose="${doseId}"]`);
+  if ((await linkedRow.count()) !== 1) throw new Error('the linked dose is not in the DOM after the deep link');
+  if (!(await linkedRow.isVisible())) throw new Error('the linked dose exists but is not visible');
+
+  ok('a clinician-summary link into a dose past the first batch expands the log and lands on it');
+} catch (e) {
+  fail('deep-linked row expands the batched dose log', e);
+}
+
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
    field for it - checked against fullFixture's own "Binder check-in"
