@@ -20,23 +20,30 @@
 
    The coupling the audit read off the source is real even though the symptom
    was not, and what made it harmless was a bundler decision nothing states or
-   holds: Rollup groups modules by which entries import them, and next month's
-   grouping is not this month's promise. This file is the promise instead. It
-   is a source rule, not a bundle assertion, because it costs a file read
-   rather than a production build - the bundle side of it belongs to ticket 01,
-   which is building a budget over what a first visit downloads.
+   holds: Rollup groups modules by which entries import them and folds the
+   small leftovers into larger chunks, and next month's grouping is not this
+   month's promise. Two things came out of that, and only together:
 
-   The fix taken alongside it was to move the one function that needs d3,
-   `areaPath`, into `charts/areaPath.ts` and leave `charts/geometry.ts`
-   importing nothing, rather than to move `share` out or to pin d3 with a
-   `manualChunks` entry. Five of geometry's six exports and four of its five
-   importers are arithmetic that loads nothing, so moving the single library
-   user out is the smaller edit, it keeps both halves testable in this tier
-   (ADR-0016), and it leaves the bundler's own decisions alone. A
-   `manualChunks` entry would have pinned the symptom shut for every future
-   case of this shape, which is worth having - but it fixes chunking for a
-   library, where the rule below fixes it for every library, including the
-   next one somebody imports for three lines of arithmetic.
+   `areaPath` moved to charts/areaPath.ts, leaving charts/geometry.ts
+   importing nothing, so that arithmetic cannot carry a library. And `share`
+   moved to charts/share.ts, because moving the library user out was not on
+   its own enough - with `share` still in geometry.ts, Rollup folded that
+   module into the chunk AreaChart.svelte and d3-shape's monotone curve were
+   already in, and the bar row's chunk went on importing it. Once `share` is
+   a module no chart imports, the chunk holding barRow.ts and BarRows.svelte
+   reaches no chunk carrying d3 at all, which the build says and the source
+   alone could not.
+
+   A `manualChunks` entry pinning d3 was the other fix on offer and is not
+   here. It puts the library in a chunk of its own, which is not what was
+   wrong: a chunk holding a non-chart helper would still import the chart
+   chunk that imports it. What decides this is which modules share an owner,
+   and that is what the rule below is about - including for the next library
+   somebody imports three lines of arithmetic out of.
+
+   First-load figures either side of the change, same production build:
+   107 scripts, 810,248 raw and 273,064 gzipped before, 810,244 and 273,065
+   after. No saving, because there was nothing there to save.
 
    Static imports only. A dynamic `import()` is the escape hatch by design -
    it is its own chunk, fetched when a page asks for it - and counting one
