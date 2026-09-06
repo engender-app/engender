@@ -10,12 +10,24 @@
    for photos. This module never learns which one ran. */
 
 import { m } from '$lib/paraglide/messages';
-import { acceptDocumentFile, DocumentRefusedError, type DocumentFile } from '../data/documents/accept';
+import {
+  acceptDocumentFile,
+  DocumentRefusedError,
+  type DocumentFile,
+  type DocumentRefusalKind
+} from '../data/documents/accept';
 import { documentPicker } from '../data/photos/picker';
 import { UnsupportedImageError } from '../data/photos/normalize';
 import { toast } from './toasts.svelte';
 
 const picker = documentPicker();
+
+/** DocumentRefusedError's own two messages, by kind - shared by both catch
+    blocks below, which reach a DocumentRefusedError by two different
+    routes (the picker's own ceiling, and acceptDocumentFile()'s). */
+function toastDocumentRefusal(kind: DocumentRefusalKind): void {
+  toast(kind === 'too-large' ? m.document_too_large() : m.document_unsupported_file());
+}
 
 /** Whatever the user chose, accepted and ready to store - or null if they
     backed out or the file was refused, both reported the same way
@@ -27,7 +39,7 @@ export async function pickDocument(): Promise<DocumentFile | null> {
     files = await picker.pick();
   } catch (error) {
     if (error instanceof DocumentRefusedError) {
-      toast(error.kind === 'too-large' ? m.document_too_large() : m.document_unsupported_file());
+      toastDocumentRefusal(error.kind);
     } else {
       console.error('the document picker failed', error);
       toast(m.document_picker_failed());
@@ -46,7 +58,7 @@ export async function pickDocument(): Promise<DocumentFile | null> {
       // the same wording the photo picker shows for the same file.
       toast(m.photo_heic());
     } else if (error instanceof DocumentRefusedError) {
-      toast(error.kind === 'too-large' ? m.document_too_large() : m.document_unsupported_file());
+      toastDocumentRefusal(error.kind);
     } else {
       console.error('a picked document could not be read', error);
       toast(m.document_unsupported_file());
