@@ -977,6 +977,8 @@
   "photo_remove": "Remove photo",
   "photo_alt": "Photo",
   "photo_review_title": "Review photo",
+  "photo_view_title": "Photo",
+  "photo_view_label": "View photo",
   "photo_review_compare_label": "Compare with last photo",
   "photo_review_use": "Use this photo",
   "photo_review_retake": "Retake",
