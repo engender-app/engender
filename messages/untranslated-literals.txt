@@ -5,8 +5,7 @@
 # `node scripts/check-copy.mjs --update`.
 #
 # Phase 0 and phase 1 left these behind, and tickets 19 and 23 work them
-# down. DemoBar.svelte is the one entry that stays: it is compiled out of
-# production builds, so its copy never reaches a reader.
+# down. Files the ratchet does not read at all are named in the script,
+# under UNSCANNED, each with the reason it is not a screen's copy.
 
-15 src/lib/components/DemoBar.svelte
 2 src/routes/settings/export/+page.svelte
