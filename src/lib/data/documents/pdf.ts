@@ -58,15 +58,15 @@ function pdfjs(): Promise<PdfjsModule> {
     the floor patch inside the worker's realm and the worker's bytes in the
     offline shell.
 
-    One each, rather than one shared port, because closing a document
-    terminates the worker it was opened with: pdf.js's own `destroy()` ends
-    the port as well as the transport, so a second document opened on a
-    shared port would find a dead worker, and two open at once would kill
-    each other's. */
+    One each, rather than one shared port, because two documents open at
+    once would fight over it (`PDFWorker.fromPort` refuses a port already
+    claimed). `PDFWorker.destroy()` does not terminate this `port` itself,
+    though - it only reaches `_webWorker`, which `fromPort` never sets - so
+    the raw `Worker` comes back too, and this module is the one that has to
+    call `terminate()` on it. */
 function workerFor(module: PdfjsModule) {
-  return module.PDFWorker.fromPort({
-    port: new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' })
-  });
+  const port = new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' });
+  return { worker: module.PDFWorker.fromPort({ port }), port };
 }
 
 /** An open document: how many pages it has, and any one of them as pixels.
@@ -83,7 +83,7 @@ export interface OpenPdf {
 
 export async function openPdf(bytes: Uint8Array): Promise<OpenPdf> {
   const module = await pdfjs();
-  const worker = workerFor(module);
+  const { worker, port } = workerFor(module);
 
   let document;
   try {
@@ -104,6 +104,7 @@ export async function openPdf(bytes: Uint8Array): Promise<OpenPdf> {
     // one (a scan somebody re-saved, an encrypted export), and each one
     // arrives with a live worker that nothing else will ever close.
     worker.destroy();
+    port.terminate();
     throw error;
   }
 
@@ -134,7 +135,13 @@ export async function openPdf(bytes: Uint8Array): Promise<OpenPdf> {
     },
 
     close() {
-      void document.destroy();
+      // The document first, so the parsed state is released cleanly - then
+      // the thread, which pdf.js's own destroy() never reaches (see
+      // workerFor's comment above).
+      void document.destroy().then(() => {
+        worker.destroy();
+        port.terminate();
+      });
     }
   };
 }

@@ -35,7 +35,7 @@
      direction is the scale's direction, so the entrance says the same
      thing the drawing does - and five segments growing in place would
      open gaps in a bar whose whole point is that it is continuous. */
-  import { share } from '$lib/charts/geometry';
+  import { share } from '$lib/charts/share';
 
   export interface StripStep {
     /** 1-5 on the mood ramp - the step's place in the scale's own order. */
