@@ -12,7 +12,19 @@
 
      The rows stay written out rather than built from ListRow: a row here
      is a three-state tick whose accessible name is the goal and its state
-     together, and a ListRow announces a title and goes somewhere. */
+     together, and a ListRow announces a title and goes somewhere.
+
+     Ticket 56/ADR-0068 splits the row in two rather than reaching for
+     ListRow anyway: the tap that cycles the tick keeps `.kit-row-main`,
+     and a trailing `.kit-row-act` opens the goal's own sheet - the same two
+     classes ListRow's own `action` prop draws from, borrowed for their
+     structure and CSS rather than through the component, since the box and
+     the done/skip title colouring still don't fit ListRow's plain string
+     title (ticket 16's own reason for hand-rolling these rows at all). The
+     control shows on every row, ticked or not - ADR-0068: the Polish pack's
+     "keep opinions" goal is exactly the case where paper arrives before a
+     tick ever could. */
+  import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
@@ -21,6 +33,7 @@
   import { rankByLean } from '$lib/data/lean';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { RoadmapGoalStatus } from '$lib/data/types';
+  import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import {
     roadmapGoalNote,
     roadmapGoalNoteSecondary,
@@ -46,6 +59,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
@@ -148,6 +162,47 @@
 
   let addTrack = $state<RoadmapTrack | null>(null);
   let newGoalText = $state('');
+
+  /* The goal sheet (ticket 56, ADR-0068): identity only, never a status
+     snapshot, so the sheet keeps reading the live tick after it opens
+     rather than showing what the status was the moment it was tapped. */
+  let selectedGoal = $state<{ key: string; title: string; builtin: boolean } | null>(null);
+  let selectedStatus = $derived<RoadmapGoalStatus>(
+    !selectedGoal
+      ? 'unchecked'
+      : selectedGoal.builtin
+        ? (statuses[selectedGoal.key] ?? 'unchecked')
+        : (customGoals.find((goal) => goal.id === selectedGoal!.key)?.status ?? 'unchecked')
+  );
+  let selectedMilestone = $derived(selectedGoal ? milestoneMintedByGoal(vocabulary.milestones, selectedGoal.key) : null);
+
+  const openBuiltInGoal = (key: RoadmapGoalKey) => (selectedGoal = { key, title: roadmapGoalTitle(key), builtin: true });
+  const openCustomGoal = (goal: { id: string; text: string }) =>
+    (selectedGoal = { key: goal.id, title: goal.text, builtin: false });
+
+  /* A document's own screen links here as `?goal=<key>`, since a goal has
+     no route of its own to link to more precisely (ADR-0068). `dismissedKey`
+     stops a closed sheet reopening itself: without it, closing the sheet
+     while the query param is still in the URL would fire this effect again
+     on the next unrelated reactive change and pop it straight back. */
+  let dismissedKey = $state<string | null>(null);
+  $effect(() => {
+    const key = page.url.searchParams.get('goal');
+    if (!key || key === dismissedKey) return;
+    const builtinGoal = pack.goals.find((goal) => goal.key === key);
+    if (builtinGoal) {
+      openBuiltInGoal(builtinGoal.key);
+      return;
+    }
+    if (customQuery.loading) return;
+    const custom = customGoals.find((goal) => goal.id === key);
+    if (custom) openCustomGoal(custom);
+  });
+
+  function closeGoalSheet() {
+    if (selectedGoal) dismissedKey = selectedGoal.key;
+    selectedGoal = null;
+  }
 </script>
 
 <div class="screen">
@@ -203,69 +258,99 @@
              .roadmap-box is a three-state control (checked/not-my-path/
              unchecked, two different glyphs), which ListRow's binary
              `checked` has no room for, and the done/skip title styling
-             needs a class ListRow's plain `title` string can't carry. -->
+             needs a class ListRow's plain `title` string can't carry.
+
+             The split shape (ticket 56, ADR-0068) is still ListRow's own,
+             borrowed for its classes rather than the component: the tap
+             that cycles the tick is `.kit-row-main`, and `.kit-row-act`
+             opens the goal's own sheet, on every row whether ticked or
+             not - the "keep opinions" goal is exactly the case where paper
+             arrives before a tick ever could. The glyph on it is a chevron
+             rather than the paper one: the sheet holds the tick, the
+             milestone and the documents, and an icon naming one of the
+             three reads as though it were all of it. -->
         {#each rankByLean(section.goals, lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
-          <button
-            class="kit-row"
-            data-goal={goal.key}
-            data-status={status}
-            aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
-            onclick={() => toggleBuiltIn(goal.key)}
-          >
-            <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
-              {#if status === 'checked'}
-                <Icon name="check" size={20} />
-              {:else if status === 'not-my-path'}
-                <Icon name="x" size={16} />
-              {/if}
-            </span>
-            <span class="kit-row-text">
-              <span
-                class="kit-row-title"
-                class:roadmap-done={status === 'checked'}
-                class:roadmap-skip-text={status === 'not-my-path'}
-              >
-                {roadmapGoalTitle(goal.key)}
+          <div class="kit-row is-split" data-goal={goal.key} data-status={status}>
+            <button
+              type="button"
+              class="kit-row-main"
+              aria-label={`${roadmapGoalTitle(goal.key)} — ${stateLabel(status)}`}
+              onclick={() => toggleBuiltIn(goal.key)}
+            >
+              <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
+                {#if status === 'checked'}
+                  <Icon name="check" size={20} />
+                {:else if status === 'not-my-path'}
+                  <Icon name="x" size={16} />
+                {/if}
               </span>
-              {#if roadmapGoalNote(goal.key)}
-                <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
-              {/if}
-              {#if roadmapGoalNoteSecondary(goal.key)}
-                <span class="kit-row-sub">{roadmapGoalNoteSecondary(goal.key)}</span>
-              {/if}
-            </span>
-          </button>
+              <span class="kit-row-text">
+                <span
+                  class="kit-row-title"
+                  class:roadmap-done={status === 'checked'}
+                  class:roadmap-skip-text={status === 'not-my-path'}
+                >
+                  {roadmapGoalTitle(goal.key)}
+                </span>
+                {#if roadmapGoalNote(goal.key)}
+                  <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
+                {/if}
+                {#if roadmapGoalNoteSecondary(goal.key)}
+                  <span class="kit-row-sub">{roadmapGoalNoteSecondary(goal.key)}</span>
+                {/if}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="kit-row-act press"
+              data-open-goal={goal.key}
+              aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(goal.key) })}
+              onclick={() => openBuiltInGoal(goal.key)}
+            >
+              <Icon name="chevronRight" size={18} />
+            </button>
+          </div>
         {/each}
         {#each section.customGoals as goal (goal.id)}
-          <button
-            class="kit-row"
-            data-goal={goal.id}
-            data-status={goal.status}
-            aria-label={`${goal.text} — ${stateLabel(goal.status)}`}
-            onclick={() => toggleCustom(goal)}
-          >
-            <span
-              class="roadmap-box"
-              class:roadmap-ticked={goal.status === 'checked'}
-              class:roadmap-skip={goal.status === 'not-my-path'}
+          <div class="kit-row is-split" data-goal={goal.id} data-status={goal.status}>
+            <button
+              type="button"
+              class="kit-row-main"
+              aria-label={`${goal.text} — ${stateLabel(goal.status)}`}
+              onclick={() => toggleCustom(goal)}
             >
-              {#if goal.status === 'checked'}
-                <Icon name="check" size={20} />
-              {:else if goal.status === 'not-my-path'}
-                <Icon name="x" size={16} />
-              {/if}
-            </span>
-            <span class="kit-row-text">
               <span
-                class="kit-row-title"
-                class:roadmap-done={goal.status === 'checked'}
-                class:roadmap-skip-text={goal.status === 'not-my-path'}
+                class="roadmap-box"
+                class:roadmap-ticked={goal.status === 'checked'}
+                class:roadmap-skip={goal.status === 'not-my-path'}
               >
-                {goal.text}
+                {#if goal.status === 'checked'}
+                  <Icon name="check" size={20} />
+                {:else if goal.status === 'not-my-path'}
+                  <Icon name="x" size={16} />
+                {/if}
               </span>
-            </span>
-          </button>
+              <span class="kit-row-text">
+                <span
+                  class="kit-row-title"
+                  class:roadmap-done={goal.status === 'checked'}
+                  class:roadmap-skip-text={goal.status === 'not-my-path'}
+                >
+                  {goal.text}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="kit-row-act press"
+              data-open-goal={goal.id}
+              aria-label={m.roadmap_goal_open_aria({ goal: goal.text })}
+              onclick={() => openCustomGoal(goal)}
+            >
+              <Icon name="chevronRight" size={18} />
+            </button>
+          </div>
         {/each}
         <button
           class="kit-row"
@@ -316,6 +401,45 @@
   onConfirm={(data) => answerMilestoneOffer('confirm', data)}
   onDismiss={() => void answerMilestoneOffer('decline', null)}
 />
+
+<!-- The goal sheet (ticket 56, ADR-0068): a step, not a record. It holds
+     the tick, the documents filed against it, and a link out to the
+     milestone it minted - and nothing a person wrote, because a built-in
+     goal has nowhere to write it and a custom one's own text editing is
+     ticket 69's. -->
+<Sheet open={selectedGoal !== null} title={selectedGoal?.title ?? ''} onClose={closeGoalSheet}>
+  {#if selectedGoal}
+    <h3>{selectedGoal.title}</h3>
+    <div class="kit-row is-static" data-goal-sheet-status={selectedGoal.key}>
+      <span
+        class="roadmap-box"
+        class:roadmap-ticked={selectedStatus === 'checked'}
+        class:roadmap-skip={selectedStatus === 'not-my-path'}
+      >
+        {#if selectedStatus === 'checked'}
+          <Icon name="check" size={20} />
+        {:else if selectedStatus === 'not-my-path'}
+          <Icon name="x" size={16} />
+        {/if}
+      </span>
+      <span class="kit-row-text"><span class="kit-row-title">{stateLabel(selectedStatus)}</span></span>
+    </div>
+
+    {#if selectedMilestone}
+      <ListCard>
+        <ListRow
+          key="goal-milestone"
+          icon="sparkle"
+          title={selectedMilestone.name}
+          subtitle={m.roadmap_goal_milestone_sub()}
+          href="/transition/milestones"
+        />
+      </ListCard>
+    {/if}
+
+    <LinkedDocuments kind="goal" id={selectedGoal.key} />
+  {/if}
+</Sheet>
 
 <style>
   .roadmap-provenance {

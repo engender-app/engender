@@ -19,6 +19,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
+  import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -578,6 +579,12 @@
 
         {@render checklistBlock(m.surgery_checklist_title(), true)}
       {/if}
+
+      <!-- Outside the phase chain on purpose (ticket 56, ADR-0065): a
+           document filed against a procedure stays visible whichever phase
+           the procedure is in now. The procedure stores nothing about the
+           link. -->
+      <LinkedDocuments kind="procedure" id={selected.id} />
     </div>
   {/if}
 

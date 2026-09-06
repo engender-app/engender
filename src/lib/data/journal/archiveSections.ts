@@ -345,7 +345,16 @@ const SECTIONS = [
       uuid: 'id',
       epoch_day: 'epochDay',
       title: 'title',
-      file_path: 'fileName'
+      file_path: 'fileName',
+      // `whenAbsent: null` for the reason `passage_key`/`pitch_track` (v67,
+      // v74) have one: an archive written before ticket 56 carries no
+      // target at all, and the CHECK the schema puts over the pair (schema
+      // v77) is exactly "both or neither". No FK to resolve against another
+      // section, and no `after` either - `target_id` is a plain uuid (or,
+      // for a 'goal' target, a pack-and-key string) rather than a rowid, so
+      // it survives a restore unresolved either way, dangling or not.
+      target_kind: { field: 'targetKind', whenAbsent: null },
+      target_id: { field: 'targetId', whenAbsent: null }
     }
   }),
   section({
