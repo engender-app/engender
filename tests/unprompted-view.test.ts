@@ -126,7 +126,7 @@ describe('the notify column on web', () => {
 
 describe('the old address', () => {
   it('redirects rather than 404s (ADR-0043\'s bookmark precedent)', () => {
-    expect(redirect).toContain("goto('/settings/notifications'");
+    expect(redirect).toContain("replaceRoute('/settings/notifications')");
     expect(redirect).not.toContain('UNPROMPTED_ROWS');
     expect(redirect).not.toContain('RegistryRow');
   });
