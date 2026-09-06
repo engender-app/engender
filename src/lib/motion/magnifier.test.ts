@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GAZE_REACH, MAGNIFIER_SPREAD, gazeRow, gazeToCell, magnify } from './magnifier';
+import { GAZE_REACH, MAGNIFIER_SPREAD, gazeRow, gazeToCell, magnify, magnifyRow } from './magnifier';
 
 describe('magnify', () => {
   /* The literal rather than the module's own constant, which would have made
@@ -55,13 +55,59 @@ describe('magnify', () => {
   });
 });
 
+/* magnifyRow had no test until phase 9 carpet ticket 01, and what it was
+   doing was almost nothing. MAGNIFIER_SPREAD is 1.7 CELLS - the fan's own
+   copy of this loop multiplies it by a cell width before handing it over -
+   and this passed the bare 1.7 to `magnify`, whose `spread` is in the same
+   units as the coordinates, so it meant 1.7 pixels. A face grew only while
+   the pointer was within 1.7px of its exact centre, which on a 65px cell is
+   about three per cent of it; the `cell` the function computed for the job
+   went unused.
+
+   That is very likely the bug behind "still no sliding zoom animation like
+   in quick add" (Alicja, phase 5 ticket 99, round 4). The answer at the time
+   was to raise the bare rows' peak from 1.24 to 1.6, which made an effect
+   that almost never ran bigger on the rare frames it did. */
+const ROW = { left: 100, width: 500 } as DOMRect;
+
+describe('magnifyRow', () => {
+  it('peaks on the face the finger is actually over', () => {
+    /* Cell centres at 150, 250, 350, 450, 550. */
+    expect(magnifyRow(350, ROW, 5)[2]).toBeCloseTo(1.6, 5);
+  });
+
+  it('reaches its neighbours, which is the whole point of a row answering at all', () => {
+    const scales = magnifyRow(350, ROW, 5);
+    expect(scales[1]).toBeGreaterThan(1.2);
+    expect(scales[1]).toBeLessThan(scales[2]);
+    expect(scales[1]).toBeCloseTo(scales[3], 10);
+  });
+
+  /* The spread is measured in cells, so it has to reach a real fraction of a
+     real cell. A spread read as pixels leaves this flat for any row wider
+     than a few pixels, which is every row. */
+  it('answers a finger anywhere near a face, not only on its exact centre', () => {
+    const cell = ROW.width / 5;
+    expect(magnifyRow(350 + cell * 0.4, ROW, 5)[2]).toBeGreaterThan(1.2);
+  });
+
+  it('leaves the far end of the row at rest', () => {
+    expect(magnifyRow(150, ROW, 5)[4]).toBe(1);
+  });
+
+  it('reaches about as far as MAGNIFIER_SPREAD says and no further', () => {
+    const cell = ROW.width / 5;
+    expect(magnifyRow(350 + cell * (MAGNIFIER_SPREAD - 0.05), ROW, 5)[2]).toBeGreaterThan(1);
+    expect(magnifyRow(350 + cell * (MAGNIFIER_SPREAD + 0.05), ROW, 5)[2]).toBe(1);
+  });
+});
+
 /* The gaze is the magnifier's second channel (phase 9 carpet ticket 01). The
    magnifier answers the finger with size, which only the face under it can
    show; the gaze answers with direction, which every face in the row can show
    at once. That is the whole reason it exists: a row of five that all turn
    toward the finger says the row is being crossed, from four faces that the
    scale leaves at rest. */
-const ROW = { left: 100, width: 500 } as DOMRect;
 
 describe('gazeRow', () => {
   it('turns every face toward the finger, whichever side it is on', () => {
