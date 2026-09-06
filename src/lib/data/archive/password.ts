@@ -21,7 +21,7 @@ import { MIN_PASSPHRASE_LENGTH } from '../journal-passphrase';
 /** Which refusal, not which sentence: the export field, the backup switch
     and the backup button each already have their own wording for an empty
     field, and only the floor is shared. */
-export type ArchivePasswordProblem = 'missing' | 'too-short';
+type ArchivePasswordProblem = 'missing' | 'too-short';
 
 export function archivePasswordProblem(password: string): ArchivePasswordProblem | null {
   if (!password) return 'missing';

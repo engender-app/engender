@@ -87,7 +87,7 @@ export const JOURNAL_BOOK_DEFAULT_INCLUSION: JournalBookInclusion = {
     fields a book has no page for - dimension values, body regions,
     recordings, video notes, the starred flag - are not carried at all, so
     the only way one reaches paper is a later ticket widening this type. */
-export interface JournalBookEntry {
+interface JournalBookEntry {
   id: number;
   epochDay: number;
   timestamp: number;
@@ -103,12 +103,12 @@ export interface JournalBookEntry {
 /** The wrapped-style opening page's numbers (ticket 16's card takes stats,
     not a journal). Read off the recap seam so the cover of a book says what
     the wrapped screens say about the same range. */
-export interface JournalBookOpening {
+interface JournalBookOpening {
   entryCount: number;
   milestoneCount: number;
 }
 
-export interface JournalBook {
+interface JournalBook {
   fromEpochDay: number;
   toEpochDay: number;
   /** Oldest first, all of them: a book is bound in the order it was lived,
@@ -120,7 +120,7 @@ export interface JournalBook {
   opening: JournalBookOpening | null;
 }
 
-export interface JournalBookAreas {
+interface JournalBookAreas {
   entries: EntriesArea;
   milestones: MilestonesArea;
   sideEffects: SideEffectsArea;

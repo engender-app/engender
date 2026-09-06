@@ -23,6 +23,7 @@ import { MAX_POSITIONS, atGrain, foldPositionGroup, type Grain } from './grain';
 /** A procedure that can anchor an axis: one with a surgery date set. The
     name is the screen's business, so only what the arithmetic needs is
     here. */
+/* SurgeryAnchor stays exported only for its own test (AU-09 test-only review). */
 export interface SurgeryAnchor {
   id: string;
   surgeryEpochDay: number;
@@ -44,7 +45,7 @@ export const CALENDAR_AXIS: DayAxis = 'calendar';
 const SINCE_PREFIX = 'since:';
 
 /** The anchored axis for `anchorId`. */
-export const sinceAxis = (anchorId: string): DayAxis => `${SINCE_PREFIX}${anchorId}`;
+const sinceAxis = (anchorId: string): DayAxis => `${SINCE_PREFIX}${anchorId}`;
 
 /** Which anchor `axis` is keyed to, or `null` if it is not an anchored
     axis at all. */

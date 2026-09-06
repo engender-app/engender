@@ -31,6 +31,8 @@ export interface WebSqlite {
   requestPersistentStorage: () => Promise<boolean>;
 }
 
+/* createWebSqlite stays exported only for archive-cross-probe.ts,
+   conversion-probe.ts, which cross-check against it (AU-09 test-only review). */
 export function createWebSqlite(databasePath: string): WebSqlite {
   const primary = new SQLocal(databasePath);
   const backupPath = `${databasePath}.pre-migration-backup`;

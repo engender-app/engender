@@ -34,11 +34,10 @@
    the limit forms. A guard that cannot fire would just be a claim that this
    was checked, so the check is written down here instead. */
 
-import { doseMilligrams } from './hormoneCurveFit';
+import { doseMilligrams, fractionalEpochDay } from './hormoneCurveFit';
 import { curveUnit, type CurveDrug } from './hormoneDrug';
 import { INJECTABLE_ESTERS, resolveInjectableEster, type InjectableEster } from './hormoneEster';
 import { ESTER_POSTERIORS, type PkSample } from './hormoneCurveModels';
-import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { attributeDose } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -57,6 +56,8 @@ export const CURVE_ANALYTE: CurveDrug = 'estradiol';
 /** The percentiles the band's edges are. estrannaise publishes its own
     ranges as p5/p95 (menstrualCycleData), so the band matches the source's
     own way of expressing one. */
+/* BAND_PERCENTILES stays exported only for its own test (AU-09 test-only
+   review). */
 export const BAND_PERCENTILES: readonly [number, number] = [5, 95];
 
 /** How many points the band is sampled at, across whatever window was
@@ -66,12 +67,10 @@ export const BAND_PERCENTILES: readonly [number, number] = [5, 95];
     every six hours. */
 const BAND_SAMPLES = 361;
 
-const DAY_MS = 86400000;
-
 /** One sampled slice of the band. Three fields and no fourth: a `value` or
     `median` here is how a single-line presentation would get built by
     accident, and this ticket rules one out. */
-export interface CurveBandPoint {
+interface CurveBandPoint {
   /** Fractional epoch day. */
   day: number;
   lower: number;
@@ -100,25 +99,11 @@ export interface HormoneCurves {
   subcutaneousDoses: number;
 }
 
-export interface CurveInput {
+interface CurveInput {
   doses: readonly DoseEvent[];
   episodes: readonly RegimenEpisode[];
   fromEpochDay: number;
   toEpochDay: number;
-}
-
-/** Where a moment falls on the curve's time axis: the epoch day it belongs
-    to plus how far through that day it is. Local, because an epoch day is a
-    local calendar day (ADR-0001) and a dose's timestamp is a real instant.
-
-    Not in epochDay.ts: an epoch day there is a whole local day by
-    definition, and a fractional one is a different idea that only the
-    pharmacokinetics needs - hours matter to a curve and to nothing else in
-    the app. Exported because the curve's own axis is the one a lab point has
-    to be placed on too (journal/hormoneCurve.ts). */
-export function fractionalEpochDay(timestamp: number): number {
-  const day = epochDayFromTimestamp(timestamp);
-  return day + (timestamp - startOfDayTimestamp(day)) / DAY_MS;
 }
 
 /** The cascade's single-dose solution, in pg/mL, milligrams in and days
@@ -140,6 +125,7 @@ function singleDose(milligrams: number, [d, k1, k2, k3]: PkSample, days: number)
     contribution is under 4% of its peak and the curve has effectively
     returned to where it started. The basis for CURVE_LOOKBACK_DAYS below,
     and asserted against every published sample in hormoneCurve.test.ts. */
+/* settlingDays stays exported only for its own test (AU-09 test-only review). */
 export function settlingDays([, k1, k2, k3]: PkSample): number {
   return (5 * Math.LN2) / Math.min(k1, k2, k3);
 }

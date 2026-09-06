@@ -67,6 +67,7 @@ function tier2(css: (t: number, u: number) => string, direction?: Direction): Tr
  * Use as `in:fadeThrough` and `out:fadeThrough`; a bare `transition:`
  * cannot tell the two apart and gets the incoming shape both ways.
  */
+/* fadeThrough stays exported only for its own test (AU-09 test-only review). */
 export function fadeThrough(
   _node: Element,
   _params: Record<string, never> = {},
@@ -131,10 +132,13 @@ const [send, receive] = crossfade({
  * Under reduced motion both halves stop deferring to each other and just
  * crossfade, because a FLIP between two boxes is nothing but movement.
  */
+/* containerSend stays exported only for its own test (AU-09 test-only review). */
 export function containerSend(node: Element, params: { key: unknown }) {
   return isReducedMotion() ? crossfadeOnly() : send(node, params);
 }
 
+/* containerReceive stays exported only for its own test (AU-09 test-only
+   review). */
 export function containerReceive(node: Element, params: { key: unknown }) {
   return isReducedMotion() ? crossfadeOnly() : receive(node, params);
 }

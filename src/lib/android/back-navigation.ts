@@ -3,7 +3,7 @@
    testable without a WebView - unlike the previous version of this seam,
    which a test could only grep for in +layout.svelte's source text. */
 
-export type AndroidBackAction = 'minimize' | 'history-back' | 'go-home';
+type AndroidBackAction = 'minimize' | 'history-back' | 'go-home';
 
 export function resolveAndroidBackAction(currentPath: string, historyLength: number): AndroidBackAction {
   if (currentPath === '/' || currentPath === '') return 'minimize';

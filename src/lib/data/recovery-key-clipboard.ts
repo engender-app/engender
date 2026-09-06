@@ -24,6 +24,8 @@ import { sensitiveClipboard } from './recovery-key-clipboard-bridge';
 /** How long the key may stay on the Android clipboard. Named in the copy
     beside the button as a minute, in both catalogues, so a change here is a
     change to two strings as well. */
+/* RECOVERY_KEY_CLIPBOARD_CLEAR_MS stays exported only for its own test (AU-09
+   test-only review). */
 export const RECOVERY_KEY_CLIPBOARD_CLEAR_MS = 60_000;
 
 /** Puts the key on the clipboard. Rejects if the platform refuses, which is

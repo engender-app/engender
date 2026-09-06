@@ -33,7 +33,7 @@ import { POLISH_PACK, type RoadmapGoalKey } from './roadmap';
 import { roadmapGoalTitle } from './vocabulary/roadmapLabels';
 import type { Milestone, Reminder } from './types';
 
-export interface Origin {
+interface Origin {
   text: string;
   /** Where the line links back to, or null where there is nowhere honest to
       send someone - the shared fallback below, and a reminder auto_source
@@ -63,7 +63,7 @@ export function resolveMilestoneOrigin(milestone: Milestone): Origin | null {
   return null;
 }
 
-export interface ReminderOrigin extends Origin {
+interface ReminderOrigin extends Origin {
   hint: string;
   /** The action label for `href`, kept beside it rather than left for each
       caller to re-derive from which prefix matched - "View stock" and

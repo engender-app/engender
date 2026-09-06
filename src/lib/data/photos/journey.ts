@@ -23,7 +23,7 @@ import { nameSlug } from '../fold';
     image, a timelapse a video of the same photos in the same order. */
 export type JourneyOutput = 'collage' | 'timelapse';
 
-export interface JourneyRange {
+interface JourneyRange {
   start: number;
   end: number;
 }
@@ -75,11 +75,13 @@ export function journeyRangeBounds(photos: DatedPhoto[]): JourneyRange | null {
     was not - the grid is near square, so a 101-photo journey landed at
     4020x4087, which is 16.4M and inside the limit by two per cent. 12M keeps
     a real margin and still gives a 100-photo journey 300px cells. */
+/* COLLAGE_MAX_AREA stays exported only for its own test (AU-09 test-only
+   review). */
 export const COLLAGE_MAX_AREA = 12_000_000;
 
 const NOMINAL = { cell: 360, caption: 44, gap: 12, pad: 20, fontSize: 26 } as const;
 
-export interface CollageLayout {
+interface CollageLayout {
   columns: number;
   rows: number;
   /** The square photo area in a cell. */

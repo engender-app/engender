@@ -8,7 +8,7 @@
    by construction, and a vowel built from two resonators has the formants it
    was built from. */
 
-export interface Signal {
+interface Signal {
   samples: Float32Array;
   sampleRate: number;
 }
@@ -60,7 +60,7 @@ function resonate(input: Float32Array, hz: number, bandwidthHz: number, sampleRa
   return out;
 }
 
-export interface VowelSpec {
+interface VowelSpec {
   f0Hz: number;
   formants: { hz: number; bandwidthHz?: number }[];
   seconds: number;

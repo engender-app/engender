@@ -32,8 +32,8 @@ const enc = new TextEncoder();
 export const PHOTO_1_BYTES = new Uint8Array(Array.from({ length: 40 }, (_, i) => i));
 export const PHOTO_2_BYTES = new Uint8Array(Array.from({ length: 25 }, (_, i) => 255 - i));
 
-export const PHOTO_1_IDENTIFIER = 'EDB1A0F6331C453C8D2F43EFEE47F4FD';
-export const PHOTO_2_IDENTIFIER = 'AA11BB22CC33DD44EE55FF6600112233';
+const PHOTO_1_IDENTIFIER = 'EDB1A0F6331C453C8D2F43EFEE47F4FD';
+const PHOTO_2_IDENTIFIER = 'AA11BB22CC33DD44EE55FF6600112233';
 
 async function journalPayload(): Promise<Record<string, unknown>> {
   const photo1Md5 = await md5(PHOTO_1_BYTES);

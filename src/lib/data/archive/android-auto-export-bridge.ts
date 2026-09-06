@@ -1,7 +1,7 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 import type { Argon2Params } from '$lib/crypto/params';
 
-export type AutoExportSchedule = 'weekly' | 'monthly';
+type AutoExportSchedule = 'weekly' | 'monthly';
 
 export interface AutoExportStatus {
   enabled: boolean;
@@ -15,7 +15,7 @@ export interface AutoExportStatus {
   lastFailureReason: string | null;
 }
 
-export interface AndroidAutoExportBridge {
+interface AndroidAutoExportBridge {
   status(): Promise<AutoExportStatus>;
   pickDestination(): Promise<{ picked: boolean; destinationUri: string | null; destinationLabel: string | null }>;
   configure(options: { enabled: boolean; schedule: AutoExportSchedule }): Promise<AutoExportStatus>;

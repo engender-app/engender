@@ -21,9 +21,9 @@
    photo (on-this-day, Wrapped) render it through ResurfacedPhoto.svelte
    rather than PhotoThumb directly. */
 
-export type ResurfacingSurface = 'on-this-day' | 'on-this-day-home-card' | 'wrapped' | 'wrapped-home-card';
+type ResurfacingSurface = 'on-this-day' | 'on-this-day-home-card' | 'wrapped' | 'wrapped-home-card';
 
-export interface ResurfacingSurfaceRow {
+interface ResurfacingSurfaceRow {
   key: ResurfacingSurface;
   /** Required rather than optional: a surface with nothing to say about the
       mute layer does not belong in this list at all - the same reason
@@ -53,16 +53,22 @@ const ROWS = [
    `EveryKindRegistered` gives it. */
 type Unregistered = Exclude<ResurfacingSurface, (typeof ROWS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EverySurfaceRegistered = AssertNoneUnregistered<Unregistered>;
+type EverySurfaceRegistered = AssertNoneUnregistered<Unregistered>;
 
+/* RESURFACING_SURFACE_ROWS stays exported only for its own test (AU-09
+   test-only review). */
 export const RESURFACING_SURFACE_ROWS: readonly ResurfacingSurfaceRow[] = ROWS;
 
+/* RESURFACING_SURFACES stays exported only for its own test (AU-09 test-only
+   review). */
 export const RESURFACING_SURFACES: readonly ResurfacingSurface[] = ROWS.map((row) => row.key);
 
 /** The runtime half of `EverySurfaceRegistered`, the same shape
     registry.ts's `unregisteredKinds` gives its own list - so
     resurfacing.test.ts can show the completeness rule actually failing on a
     named, shortened registry. */
+/* unregisteredSurfaces stays exported only for its own test (AU-09 test-only
+   review). */
 export function unregisteredSurfaces(rows: readonly Pick<ResurfacingSurfaceRow, 'key'>[]): ResurfacingSurface[] {
   const present = new Set(rows.map((row) => row.key));
   return RESURFACING_SURFACES.filter((key) => !present.has(key));

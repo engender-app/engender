@@ -35,7 +35,7 @@ export interface AndroidReminderStatus {
   exactAlarms: 'granted' | 'denied' | 'not-required';
 }
 
-export interface AndroidRemindersBridge {
+interface AndroidRemindersBridge {
   sync(payload: AndroidReminderSyncPayload): Promise<void>;
   getStatus(): Promise<AndroidReminderStatus>;
   requestNotificationPermission(): Promise<AndroidReminderStatus>;

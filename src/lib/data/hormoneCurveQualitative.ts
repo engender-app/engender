@@ -29,11 +29,10 @@
    anywhere but this file: there is no source line for it on screen, unlike
    the injectable model's estrannaise.js credit. */
 
-import { doseMilligrams } from './hormoneCurveFit';
+import { doseMilligrams, fractionalEpochDay } from './hormoneCurveFit';
 import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
 import { resolveInjectableEster } from './hormoneEster';
 import { resolveTestosteroneEster } from './hormoneTestosteroneEster';
-import { fractionalEpochDay } from './hormoneCurve';
 import { attributeDose } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -52,6 +51,8 @@ import type { DoseEvent, RegimenEpisode } from './types';
     Estradiol has no `injected` key and never will: its injections have a real
     published posterior and get hormoneCurve.ts's fitted band. Testosterone's do
     not, which is the whole reason its injections are here instead. */
+/* QUALITATIVE_CURVE_KEYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const QUALITATIVE_CURVE_KEYS = [
   'estradiol:oral',
   'estradiol:sublingual',
@@ -145,7 +146,7 @@ export function resolveQualitativeKey(
 /** One sampled slice of the curve. Two fields and no third: a `lower` or
     `upper` here is how the band this ticket rules out would get built by
     accident later. */
-export interface QualitativeCurvePoint {
+interface QualitativeCurvePoint {
   /** Fractional epoch day, the same axis hormoneCurve.ts's band uses. */
   day: number;
   value: number;
@@ -169,7 +170,7 @@ export interface QualitativeCurves {
   dosesWithoutMilligrams: number;
 }
 
-export interface QualitativeCurveInput {
+interface QualitativeCurveInput {
   /** Which hormone to draw. One call answers for one drug, because almost
       everything downstream of a curve differs between the two: the unit its
       height means anything in, the analyte a scale factor is fitted against,
@@ -337,9 +338,12 @@ export function latestQualitativeValue(curve: QualitativeCurve): number | null {
     Counts doses, not esters, because that is what the reader recognizes: they
     know how many injections they gave, not how many vocabularies missed.
 
-    Here rather than beside the band it also asks about, because hormoneCurve.ts
-    cannot import this module - this one already imports it for
-    fractionalEpochDay, and the cycle would be immediate. */
+    Here rather than beside the band it also asks about, because answering it
+    needs `resolveQualitativeKey`, which is this module's. Putting it there
+    would make hormoneCurve.ts import this module, and hormoneCurve.ts is the
+    one that drags in the 1,352-line posterior table - so anything that only
+    wants a qualitative key would start paying for the band's parameters.
+    That is what phase 9 audit ticket 03 was undoing. */
 export function dosesWithNoCurve(input: Omit<QualitativeCurveInput, 'drug'>): number {
   const { doses, episodes, fromEpochDay, toEpochDay } = input;
   let count = 0;

@@ -5,7 +5,7 @@
 
 import type { LiveList } from '$lib/data/live/journal.svelte';
 
-export type GateBranch = 'loading' | 'rows' | 'empty' | 'failed';
+type GateBranch = 'loading' | 'rows' | 'empty' | 'failed';
 
 /** The branch to render.
 

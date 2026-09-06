@@ -31,7 +31,7 @@ export function appWordmark(disguised: boolean, appName: string): string {
   return disguised ? DECOY_NAME : appName;
 }
 
-export interface TabState {
+interface TabState {
   disguised: boolean;
   /** Quick exit is holding the tab over the app. */
   blanked: boolean;
@@ -44,7 +44,7 @@ export interface TabState {
   icon: string;
 }
 
-export interface TabIdentity {
+interface TabIdentity {
   title: string;
   icon: string;
 }

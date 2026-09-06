@@ -7,7 +7,7 @@ import type { HairRemovalMethod, HairRemovalSession, HairStage, Measurement } fr
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { bool, entryPresentationFilter } from './support';
 
-export interface RegionFeelingTrajectory {
+interface RegionFeelingTrajectory {
   entryId: number;
   epochDay: number;
   dysphoria: number | null;
@@ -15,7 +15,7 @@ export interface RegionFeelingTrajectory {
   note?: string;
 }
 
-export interface RegionSomaticPhoto {
+interface RegionSomaticPhoto {
   id: string;
   fileName: string;
   epochDay: number;
@@ -38,7 +38,7 @@ export interface RegionSomaticBreakdown {
   isEmpty: boolean;
 }
 
-export const REGION_LINKED_MEASUREMENTS_MAP: Record<string, string[]> = {
+const REGION_LINKED_MEASUREMENTS_MAP: Record<string, string[]> = {
   chest: ['chest', 'underbust'],
   hips_waist: ['waist', 'hips'],
   face_jaw: ['facial_hair_density', 'face_jaw', 'jaw', 'face'],
@@ -51,13 +51,15 @@ export const REGION_LINKED_MEASUREMENTS_MAP: Record<string, string[]> = {
   whole_body: ['waist', 'hips', 'chest', 'underbust', 'weight', 'height']
 };
 
+/* linkedMeasurementTypesForRegion stays exported only for its own test (AU-09
+   test-only review). */
 export function linkedMeasurementTypesForRegion(region: string): string[] {
   const linked = REGION_LINKED_MEASUREMENTS_MAP[region];
   if (linked) return linked;
   return [region];
 }
 
-export const REGION_HAIR_REMOVAL_AREAS_MAP: Record<string, string[]> = {
+const REGION_HAIR_REMOVAL_AREAS_MAP: Record<string, string[]> = {
   face_jaw: ['upper_lip', 'chin', 'neck'],
   chest: ['chest'],
   body_facial_hair: [...HAIR_REMOVAL_AREAS],
@@ -66,6 +68,8 @@ export const REGION_HAIR_REMOVAL_AREAS_MAP: Record<string, string[]> = {
   whole_body: [...HAIR_REMOVAL_AREAS]
 };
 
+/* linkedHairRemovalAreasForRegion stays exported only for its own test (AU-09
+   test-only review). */
 export function linkedHairRemovalAreasForRegion(region: string): string[] {
   const linked = REGION_HAIR_REMOVAL_AREAS_MAP[region];
   if (linked) return linked;

@@ -8,7 +8,7 @@
 
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
-export interface QuickExitBridge {
+interface QuickExitBridge {
   setEnabled(options: { enabled: boolean }): Promise<void>;
 }
 

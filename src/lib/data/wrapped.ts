@@ -43,6 +43,8 @@ export const WRAPPED_ENTRY_FLOOR = 5;
     still news. The week's window can never expire - the previous
     Monday-to-Sunday week always ended one to seven days ago - so it is the
     fallback the other two displace while they are fresh. */
+/* WRAPPED_FRESH_DAYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const WRAPPED_FRESH_DAYS: Record<WrappedCadence, number> = {
   week: 7,
   month: 14,

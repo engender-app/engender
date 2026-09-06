@@ -35,7 +35,7 @@ export interface LabDraw {
     is measured from. Route comes from the dose event, whose DoseRoute is a
     closed union - not from the regimen episode, whose route is free text
     and could say anything. */
-export interface TimingDose {
+interface TimingDose {
   timestamp: number;
   route: DoseRoute;
 }
@@ -157,7 +157,7 @@ export function selectTimingDose(
     rule labels.ts sets out: an axis added here without a message for it is
     then a typecheck failure (labContextLabel.ts) instead of an axis that
     silently never reports. */
-export const COMPARABILITY_AXES = ['position', 'route', 'provider'] as const;
+const COMPARABILITY_AXES = ['position', 'route', 'provider'] as const;
 
 export type ComparabilityAxis = (typeof COMPARABILITY_AXES)[number];
 
