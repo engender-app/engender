@@ -14,7 +14,7 @@
 import { epochDayFromLocalDate } from '../data/epochDay';
 import { moodStep } from '../data/metricRange';
 
-export interface MoodCell {
+interface MoodCell {
   epochDay: number;
   /** 0 to 11 - which row. */
   month: number;
@@ -38,7 +38,7 @@ export interface MoodYear {
 }
 
 /** The widest a month gets, and so how many columns the grid has. */
-export const MOOD_YEAR_COLUMNS = 31;
+const MOOD_YEAR_COLUMNS = 31;
 
 /** One year of days, a row per month, with whatever mood each carried.
 

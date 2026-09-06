@@ -90,11 +90,14 @@ export interface ConstellationPoint extends PlottedPoint {
 /** How many readings back a reading's strength halves. Twelve is about a
     fortnight of daily journalling, which is the stretch a path has to hold
     for a trajectory to be readable at all. */
+/* TRACE_HALF_LIFE stays exported only for its own test (AU-09 test-only
+   review). */
 export const TRACE_HALF_LIFE = 12;
 
 /** How many readings are on the plot at once. About four months of daily
     journalling, which is long enough for a season to be visible in it and
     short enough that the oldest marks are still separate marks. */
+/* TRACE_WINDOW stays exported only for its own test (AU-09 test-only review). */
 export const TRACE_WINDOW = 120;
 
 /** The strength an old reading never drops below. Low enough that a year of
@@ -107,6 +110,7 @@ export const TRACE_WINDOW = 120;
     the flags' pale stripes - trans's pink and blue, agender's grey - are
     within a few percent of a white card before any alpha is applied to them,
     so the floor has to clear a ground the dark theme never tested. */
+/* TRACE_FLOOR stays exported only for its own test (AU-09 test-only review). */
 export const TRACE_FLOOR = 0.25;
 
 /** Each reading's position on the plane, both values held inside their own

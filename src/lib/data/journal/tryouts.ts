@@ -33,7 +33,7 @@ import { todayEpochDay } from '../epochDay';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
 
-export interface TryoutInput {
+interface TryoutInput {
   id?: string;
   kind: TryoutKind;
   label: string;
@@ -42,14 +42,14 @@ export interface TryoutInput {
   endEpochDay: number | null;
 }
 
-export interface AdoptTryoutOptions {
+interface AdoptTryoutOptions {
   endEpochDay?: number;
   createMilestone?: boolean;
   milestoneTitle?: string;
   milestoneEpochDay?: number;
 }
 
-export interface AdoptTryoutResult {
+interface AdoptTryoutResult {
   tryoutId: string;
   milestoneId?: string;
 }

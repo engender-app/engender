@@ -56,6 +56,8 @@ export const CURVE_ANALYTE: CurveDrug = 'estradiol';
 /** The percentiles the band's edges are. estrannaise publishes its own
     ranges as p5/p95 (menstrualCycleData), so the band matches the source's
     own way of expressing one. */
+/* BAND_PERCENTILES stays exported only for its own test (AU-09 test-only
+   review). */
 export const BAND_PERCENTILES: readonly [number, number] = [5, 95];
 
 /** How many points the band is sampled at, across whatever window was
@@ -68,7 +70,7 @@ const BAND_SAMPLES = 361;
 /** One sampled slice of the band. Three fields and no fourth: a `value` or
     `median` here is how a single-line presentation would get built by
     accident, and this ticket rules one out. */
-export interface CurveBandPoint {
+interface CurveBandPoint {
   /** Fractional epoch day. */
   day: number;
   lower: number;
@@ -97,7 +99,7 @@ export interface HormoneCurves {
   subcutaneousDoses: number;
 }
 
-export interface CurveInput {
+interface CurveInput {
   doses: readonly DoseEvent[];
   episodes: readonly RegimenEpisode[];
   fromEpochDay: number;
@@ -123,6 +125,7 @@ function singleDose(milligrams: number, [d, k1, k2, k3]: PkSample, days: number)
     contribution is under 4% of its peak and the curve has effectively
     returned to where it started. The basis for CURVE_LOOKBACK_DAYS below,
     and asserted against every published sample in hormoneCurve.test.ts. */
+/* settlingDays stays exported only for its own test (AU-09 test-only review). */
 export function settlingDays([, k1, k2, k3]: PkSample): number {
   return (5 * Math.LN2) / Math.min(k1, k2, k3);
 }

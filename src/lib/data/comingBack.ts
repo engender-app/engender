@@ -85,6 +85,8 @@ import type { Era, Letter, Milestone, WearKind, WearSession } from './types';
     reached once per gap (ADR-0062), it is never a notification, and every
     row on it can be left alone. Wrong by a few days means one screen shown
     a little early or a little late, once. */
+/* RETURN_GAP_DAYS stays exported for its own test, and cross-checked in
+   comingBackReads.test.ts (AU-09 test-only review). */
 export const RETURN_GAP_DAYS = 21;
 
 /** How many rows one kind may contribute.
@@ -98,6 +100,8 @@ export const RETURN_GAP_DAYS = 21;
     Deliberately no "and four more": that is a count, and a count of what
     was waiting is one editing pass away from a count of what was
     missed. */
+/* WAITING_PER_KIND stays exported only for its own test (AU-09 test-only
+   review). */
 export const WAITING_PER_KIND = 3;
 
 /** One thing the journal is holding. Each arm carries only what its own
@@ -172,7 +176,7 @@ export function waitingItemKey(item: WaitingItem): string {
 /** Everything `whatIsWaiting` reads. Rows arrive already fetched, the way
     every `shouldShow*` predicate takes them, and each one is narrowed to
     the fields the selection actually uses. */
-export interface ComingBackInput {
+interface ComingBackInput {
   todayEpochDay: number;
   /** The gap being reported, from `returnGap` below - the day of the last
       write before it.
@@ -210,6 +214,7 @@ export interface ComingBack {
     so the gap is the newest write anywhere and not any one area's. An area
     that answers null - nothing ever written there, or a deliberate opt-out
     from the registry - does not drag the gap backwards. */
+/* lastWriteDay stays exported only for its own test (AU-09 test-only review). */
 export function lastWriteDay(lastWrites: Partial<Record<string, number | null>>): number | null {
   let newest: number | null = null;
   for (const day of Object.values(lastWrites)) {
@@ -250,6 +255,7 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
     registry answers the question it says it answers, and this is the one
     consumer for which "the newest dated record" and "the last time somebody
     wrote something" are different questions. */
+/* PLANNED_AREAS stays exported only for its own test (AU-09 test-only review). */
 export const PLANNED_AREAS = ['milestones', 'procedures', 'appointments'] as const;
 
 /** The registry with `PLANNED_AREAS` dropped - what both the gap itself and
@@ -296,6 +302,8 @@ const MIN_WRITE_DAYS_FOR_MEDIAN = 5;
     `PLANNED_AREAS` drop out here for the same reason `returnGap` drops them
     from the gap itself: a milestone dated ahead is not a moment somebody
     wrote something, so it is not a beat in this rhythm either. */
+/* medianWriteGap stays exported only for its own test (AU-09 test-only
+   review). */
 export function medianWriteGap(
   lastWrites: Partial<Record<string, number | null>>,
   todayEpochDay: number

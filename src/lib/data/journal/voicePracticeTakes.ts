@@ -17,7 +17,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { VoicePracticeTake } from '../types';
 import { flatArea } from './flatArea';
 
-export interface VoicePracticeTakeInput {
+interface VoicePracticeTakeInput {
   epochDay: number;
   minHz: number;
   maxHz: number;

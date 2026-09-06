@@ -27,6 +27,8 @@ import { openZip, type ZipReader } from './zipReader';
 
 const KNOWN_TOP_LEVEL_KEYS = ['settings', 'photos', 'milestones'] as const;
 
+/* TransTracksBackupError stays exported only for its own test (AU-09 test-only
+   review). */
 export class TransTracksBackupError extends Error {
   constructor(message: string) {
     super(`TransTracks backup ${message}`);

@@ -17,7 +17,7 @@
    handle for a record called `confirm`. */
 const PREFIXES = ['data-confirm-delete-', 'data-delete-', 'data-save-'] as const;
 
-export type RecordHandles = {
+type RecordHandles = {
   /** The editor sheet's primary button. */
   save: string;
   /** The editor sheet's delete button, which opens the confirm sheet. */
@@ -48,6 +48,8 @@ export function recordHandles(slug: string): RecordHandles {
 
 /** The slug behind a generated handle, or null if no record sheet could
     have produced it. */
+/* recordHandleSlug stays exported for its own test, and cross-checked in
+   walkthrough-handles-exist.test.ts (AU-09 test-only review). */
 export function recordHandleSlug(handle: string): string | null {
   for (const prefix of PREFIXES) {
     if (!handle.startsWith(prefix)) continue;

@@ -45,6 +45,8 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { contentUuid, mintUuid } from '../journal/support';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTagGroup } from './payload';
 
+/* PixelsBackupError stays exported only for its own test (AU-09 test-only
+   review). */
 export class PixelsBackupError extends Error {
   constructor(message: string) {
     super(`Pixels backup ${message}`);

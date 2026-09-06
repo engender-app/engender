@@ -30,7 +30,7 @@ import { openJournal } from './journal.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 
-export interface ContractCheck {
+interface ContractCheck {
   name: string;
   ok: boolean;
   /** What went wrong, or what the value was when it was right. */

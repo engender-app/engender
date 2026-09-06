@@ -13,12 +13,14 @@
    perceptual: nudging L moves a colour toward or away from its background
    without dragging its hue with it. */
 
-export interface Rgb {
+interface Rgb {
   r: number;
   g: number;
   b: number;
 }
 
+/* toRgb stays exported only for kit-roles.test.ts, palette-contrast.test.ts,
+   which cross-check against it (AU-09 test-only review). */
 export function toRgb(hex: string): Rgb {
   const raw = hex.trim().replace('#', '');
   return {
@@ -38,6 +40,8 @@ function linearToSrgb(c: number): number {
   return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
 }
 
+/* luminance stays exported only for palette-contrast.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export function luminance(hex: string): number {
   const { r, g, b } = toRgb(hex);
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);

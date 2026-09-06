@@ -69,16 +69,16 @@ export type RecordingRow = { uuid: string; file_path: string; entry_id: number }
 export type VideoRow = { uuid: string; file_path: string; entry_id: number };
 export type HairPhotoRow = { uuid: string; epoch_day: number; file_path: string };
 export type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
-export type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
-export type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
+type ProcedurePhotoRow = { uuid: string; procedure_id: number; epoch_day: number; file_path: string };
+type TryoutPhotoRow = { uuid: string; tryout_id: number; epoch_day: number; file_path: string };
 /** A document's file, for the manifest alone (phase 8 features ticket 52).
     Its rows travel through `readFlatTable` like any other flat area's; what
     cannot come from there is the file manifest, which archive.ts assembles
     by hand and which needs the names before the section is read. */
-export type DocumentFileRow = { file_path: string };
+type DocumentFileRow = { file_path: string };
 /** A benchmark names two files, and the second one is absent on a take that
     skipped the vowel (phase 5 deepening ticket 15). */
-export type BenchmarkFileRow = { passage_file_path: string; vowel_file_path: string | null };
+type BenchmarkFileRow = { passage_file_path: string; vowel_file_path: string | null };
 
 /** What every section reader is given: the connection, and the nine
     file-owning tables read once up front. */

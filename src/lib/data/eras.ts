@@ -56,7 +56,7 @@ export function eraForDay<T extends EraSpan>(eras: readonly T[], day: number): T
     back forever share every day before the earlier one's end - but they are
     reported apart because "only one era can have no start" is the thing the
     person did, and "this overlaps first year" is not how it looks to them. */
-export type EraConflict =
+type EraConflict =
   | { kind: 'inverted' }
   | { kind: 'openStart'; with: EraSpan }
   | { kind: 'openEnd'; with: EraSpan }

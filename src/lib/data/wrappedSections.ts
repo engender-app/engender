@@ -28,6 +28,8 @@ import type { DayAverage, Recap, TagInsight } from './journal/stats';
     on a retrospective. Four is what the recap photo row settled on for the
     same reason - a handful rather than a list - and a fifth bar adds a row
     without adding a reading. */
+/* WRAPPED_TAG_INSIGHT_CAP stays exported only for its own test (AU-09
+   test-only review). */
 export const WRAPPED_TAG_INSIGHT_CAP = 4;
 
 export interface WrappedTagInsight {

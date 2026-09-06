@@ -7,7 +7,7 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 
-export interface EntryFixture {
+interface EntryFixture {
   epochDay: number;
   timestamp?: number;
   mood?: number | null;

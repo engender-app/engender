@@ -16,14 +16,14 @@
 import { area as d3area, line as d3line, curveLinear, curveMonotoneX } from 'd3-shape';
 import type { Point, Sample } from './geometry';
 
-export interface AreaBox {
+interface AreaBox {
   width: number;
   height: number;
   min: number;
   max: number;
 }
 
-export interface AreaPath {
+interface AreaPath {
   line: string;
   /** The same line, closed down to the baseline. */
   fill: string;

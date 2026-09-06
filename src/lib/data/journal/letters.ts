@@ -17,7 +17,7 @@ import { mintUuid, now } from './support';
     before the person opens it. */
 export type LetterSeal = Omit<Letter, 'text'>;
 
-export interface LetterInput {
+interface LetterInput {
   epochDay: number;
   text: string;
   unlockEpochDay: number;

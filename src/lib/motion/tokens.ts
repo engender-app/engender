@@ -70,6 +70,8 @@ export const DURATION_FALLBACK: Record<DurationToken, number> = {
   '--dur-authored': 700
 };
 
+/* DISTANCE_FALLBACK stays exported only for its own test (AU-09 test-only
+   review). */
 export const DISTANCE_FALLBACK: Record<DistanceToken, number> = {
   '--motion-distance-sm': 10,
   '--motion-distance-md': 24

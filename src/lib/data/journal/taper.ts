@@ -19,14 +19,14 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Taper, TaperSession, TaperStage } from '../types';
 import { flatArea } from './flatArea';
 
-export interface TaperInput {
+interface TaperInput {
   id?: string;
   surgeryEpochDay: number;
   startEpochDay: number;
   stages: TaperStage[];
 }
 
-export interface TaperSessionInput {
+interface TaperSessionInput {
   id?: string;
   epochDay: number;
   /** Defaults to ''. Nothing is required beyond the day (ticket 12: this is

@@ -64,7 +64,7 @@ export interface DayAheadMark {
 
 /** The areas a mark's read may reach through: the ones `openJournal`
     already built, so a read asks exactly what its own screen would. */
-export interface DayAheadAreas {
+interface DayAheadAreas {
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
   milestones: MilestonesArea;
@@ -75,7 +75,7 @@ export interface DayAheadAreas {
 
 /** What every kind's read is given: the areas, the range asked for, and the
     day nothing may be dated before. */
-export interface DayAheadReading extends DayAheadAreas {
+interface DayAheadReading extends DayAheadAreas {
   fromEpochDay: number;
   toEpochDay: number;
   todayEpochDay: number;
@@ -85,6 +85,8 @@ export interface DayAheadReading extends DayAheadAreas {
     over its own area dependency, the same reason `DaySection` and
     `LastWriteEntry` are: the list holds every kind at once, and a test
     registers a kind this file has never named. */
+/* DayAheadSection stays exported only for its own test (AU-09 test-only
+   review). */
 export interface DayAheadSection {
   key: string;
   covers: readonly string[];
@@ -258,6 +260,8 @@ type Covered = (typeof SECTIONS)[number]['covers'][number];
     with no day at all has no day already passed to report. Where a reason
     is this registry's own rather than a restatement, a comment says so -
     the six the ADR spends a paragraph on each get one. */
+/* DAY_AHEAD_OPT_OUTS stays exported only for its own test (AU-09 test-only
+   review). */
 export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data, not a day still to come',
   presets: 'reference data, not a day still to come',
@@ -335,6 +339,8 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   wordIgnore: 'reference data, not a day still to come'
 };
 
+/* DAY_AHEAD_SECTIONS stays exported only for its own test (AU-09 test-only
+   review). */
 export const DAY_AHEAD_SECTIONS: readonly DayAheadSection[] = SECTIONS;
 
 /** Every table any section reads, de-duplicated - the same single-sourcing

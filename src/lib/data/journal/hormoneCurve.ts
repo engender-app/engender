@@ -99,12 +99,12 @@ export interface CurveLabPoint {
     own to break a tie the way a dose's optional `drug` can (types.ts), so
     null covers three cases alike - no episode covers the draw, more than one
     does, or the one that resolved has no ester this app knows. */
-export interface EsterLabPoint extends CurveLabPoint {
+interface EsterLabPoint extends CurveLabPoint {
   ester: InjectableEster | null;
 }
 
 /** One ester's chart: the band, and the results that belong on it. */
-export interface EsterChart extends EsterCurve {
+interface EsterChart extends EsterCurve {
   /** Those drawn while this ester was the one being injected, plus any the
       dose log cannot attribute to an ester at all - those belong to no chart
       in particular, so they go on all of them rather than disappearing. With
@@ -112,7 +112,7 @@ export interface EsterChart extends EsterCurve {
   labPoints: EsterLabPoint[];
 }
 
-export interface InjectableCurves {
+interface InjectableCurves {
   charts: EsterChart[];
   /** One scale across every chart here, so two esters drawn one under the
       other can be read against each other. Headroom above the tallest thing
@@ -171,7 +171,7 @@ export interface QualitativeSection {
   labPoints: CurveLabPoint[];
 }
 
-export interface HormoneCurveView {
+interface HormoneCurveView {
   injectable: InjectableCurves;
   /** One entry per hormone with something to draw, in CURVE_DRUGS order. */
   qualitative: {

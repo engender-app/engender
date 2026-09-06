@@ -24,10 +24,10 @@ import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { assertChanged, mintUuid, now } from './support';
 
-export const MIN_PAIN_RATING = 1;
-export const MAX_PAIN_RATING = 5;
+const MIN_PAIN_RATING = 1;
+const MAX_PAIN_RATING = 5;
 
-export interface HairRemovalSessionInput {
+interface HairRemovalSessionInput {
   id?: string;
   epochDay: number;
   area: string;

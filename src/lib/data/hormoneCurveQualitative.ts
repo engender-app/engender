@@ -51,6 +51,8 @@ import type { DoseEvent, RegimenEpisode } from './types';
     Estradiol has no `injected` key and never will: its injections have a real
     published posterior and get hormoneCurve.ts's fitted band. Testosterone's do
     not, which is the whole reason its injections are here instead. */
+/* QUALITATIVE_CURVE_KEYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const QUALITATIVE_CURVE_KEYS = [
   'estradiol:oral',
   'estradiol:sublingual',
@@ -144,7 +146,7 @@ export function resolveQualitativeKey(
 /** One sampled slice of the curve. Two fields and no third: a `lower` or
     `upper` here is how the band this ticket rules out would get built by
     accident later. */
-export interface QualitativeCurvePoint {
+interface QualitativeCurvePoint {
   /** Fractional epoch day, the same axis hormoneCurve.ts's band uses. */
   day: number;
   value: number;
@@ -168,7 +170,7 @@ export interface QualitativeCurves {
   dosesWithoutMilligrams: number;
 }
 
-export interface QualitativeCurveInput {
+interface QualitativeCurveInput {
   /** Which hormone to draw. One call answers for one drug, because almost
       everything downstream of a curve differs between the two: the unit its
       height means anything in, the analyte a scale factor is fitted against,

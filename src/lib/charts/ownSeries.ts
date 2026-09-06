@@ -66,7 +66,7 @@ export interface OwnSeriesRun {
   second: Sample[] | null;
 }
 
-export interface OwnSeries {
+interface OwnSeries {
   /** Oldest first, each one a run of benchmarks that share a passage and a
       chain. Empty under two readings: there is no line to draw. */
   runs: OwnSeriesRun[];
