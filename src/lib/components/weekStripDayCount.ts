@@ -9,8 +9,9 @@
 
    The threshold matches app.css's `@container app (min-width: 1024px)`, the
    one breakpoint the shell already switches its whole layout on (left rail,
-   centred column) - a second breakpoint invented here would drift from that
-   one the first time either changed. */
+   centred column), and kit.css's own copy of that query for the cell-shrink
+   rule - weekStripDayCount.test.ts greps both files for this exact number
+   so the three can't drift apart silently. */
 export const WEEK_STRIP_DESKTOP_BREAKPOINT = 1024;
 
 export function weekStripDayCount(containerWidth: number, isAndroidPlatform: boolean): number {
