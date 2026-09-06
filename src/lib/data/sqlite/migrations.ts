@@ -2306,8 +2306,8 @@ ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
    built-in list of endocrinologist, psychologist, surgeon is a picture of a
    medical path the app has no business drawing.
 
-   `checklist.appointment_epoch_day` is untouched here and still written -
-   ticket 58 retires it to a read. */
+   `checklist.appointment_epoch_day` is untouched here and was still
+   written when this migration landed - ticket 58 retires it to a read. */
 const SCHEMA_V75 = `
 CREATE TABLE appointment (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2415,6 +2415,38 @@ ALTER TABLE document_v77 RENAME TO document;
 CREATE INDEX idx_document_epoch_day ON document(epoch_day);
 `;
 
+/* Ticket 58 rekeys the debrief from a date to an appointment id (ADR-0066):
+   both new columns hold a travelling `appointment.uuid`, never the rowid,
+   the same reason `checklist.owner_uuid` does.
+
+   Two id columns rather than one, because there is no longer a single
+   settable "current appointment" whose date-change the app can use as the
+   moment to clear a stale dismissal or entry link (`setAppointmentDate` is
+   retired) - "the most recent past appointment" now moves forward on its
+   own as new appointments are added. Comparing the appointment id a read
+   asks about against the id stored here is what used to be handled by
+   clearing on write; checklists.ts does the comparing now; a
+   `debrief_dismissed`/`debrief_entry` row that answers a since-superseded
+   appointment simply fails the comparison and reads as unset, rather than
+   needing to be cleared at write time.
+
+   `debrief_entry_id` (migrations.ts v56) is untouched: which entry debriefs
+   an appointment does not change shape, only which appointment a stored
+   entry id is read against does.
+
+   `appointment_epoch_day` and `debrief_dismissed_epoch_day` are retained,
+   unwritten from here on (the first travels in archives and older ones
+   must restore; the second never travelled and simply has nothing left to
+   read it), the same "stops being written" treatment this repo has given
+   every column a ticket takes out of use.
+
+   Numbered v78 rather than v76: ticket 52's documents area claimed v76 and
+   then ticket 56's document link claimed v77, both on main while this
+   branch was open, so this renumbered at each merge. */
+const SCHEMA_V78 = `
+ALTER TABLE checklist ADD COLUMN debrief_entry_appointment_id TEXT;
+ALTER TABLE checklist ADD COLUMN debrief_dismissed_appointment_id TEXT;`;
+
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
   { version: 2, sql: SCHEMA_V2 },
@@ -2492,5 +2524,6 @@ export const migrations: Migration[] = [
   { version: 74, sql: SCHEMA_V74 },
   { version: 75, sql: SCHEMA_V75 },
   { version: 76, sql: SCHEMA_V76 },
-  { version: 77, sql: SCHEMA_V77 }
+  { version: 77, sql: SCHEMA_V77 },
+  { version: 78, sql: SCHEMA_V78 }
 ];

@@ -160,42 +160,38 @@ test('a template carrying a presentation replaces the draft\'s', () => {
   expect(merged.presentationId).toBe('p2');
 });
 
-/* The debrief offer predicate (phase 6 ticket 08). A ready-to-offer state,
-   mutated one field at a time per test, is the shape a registry test needs
-   to actually be able to fail - the same discipline the reconcile tests
-   above follow. */
+/* The debrief offer predicate (phase 6 ticket 08, rekeyed to an appointment
+   id by ticket 58). A ready-to-offer state, mutated one field at a time per
+   test, is the shape a registry test needs to actually be able to fail -
+   the same discipline the reconcile tests above follow. `dismissed` and
+   `debriefEntryId` arrive here already resolved against `appointmentId`
+   (checklists.ts's `getDebriefState` does the id comparison), so this
+   predicate has nothing left to compare - which is itself the case ticket
+   58 wanted: a dismissal or entry belonging to a since-superseded
+   appointment never reaches here as anything but "not dismissed"/"no
+   entry", so there is no separate test for it at this level. */
 const ready = (overrides: Partial<DebriefOfferState> = {}): DebriefOfferState => ({
-  appointmentEpochDay: 100,
+  appointmentId: 'appt-1',
   itemCount: 1,
-  todayEpochDay: 105,
-  dismissedEpochDay: null,
+  dismissed: false,
   debriefEntryId: null,
   ...overrides
 });
 
-test('offers the debrief once a date is on record, has passed, and there was something to prepare for', () => {
+test('offers the debrief once there is a most recent past appointment and something to prepare for', () => {
   expect(debriefOfferVisible(ready())).toBe(true);
 });
 
-test('no appointment date on record makes no offer', () => {
-  expect(debriefOfferVisible(ready({ appointmentEpochDay: null }))).toBe(false);
+test('no most recent past appointment makes no offer', () => {
+  expect(debriefOfferVisible(ready({ appointmentId: null }))).toBe(false);
 });
 
 test('an appointment with no prep item produces no offer', () => {
   expect(debriefOfferVisible(ready({ itemCount: 0 }))).toBe(false);
 });
 
-test('an appointment later today, or still ahead, produces no offer', () => {
-  expect(debriefOfferVisible(ready({ appointmentEpochDay: 105, todayEpochDay: 105 }))).toBe(false);
-  expect(debriefOfferVisible(ready({ appointmentEpochDay: 110, todayEpochDay: 105 }))).toBe(false);
-});
-
 test('dismissing this appointment stops the offer for good', () => {
-  expect(debriefOfferVisible(ready({ dismissedEpochDay: 100 }))).toBe(false);
-});
-
-test('a dismissal recorded for a since-superseded appointment does not suppress the current one', () => {
-  expect(debriefOfferVisible(ready({ dismissedEpochDay: 40 }))).toBe(true);
+  expect(debriefOfferVisible(ready({ dismissed: true }))).toBe(false);
 });
 
 test('an entry already recorded as the debrief stops the offer for good', () => {

@@ -221,15 +221,24 @@ const AREAS = [
   }),
   /* Every question anybody wrote for an appointment, and every line of a
      procedure's recovery checklist - one table, and the owner is what says
-     which screen the hit belongs to (checklists.ts). Dated by the
-     appointment where there is one. */
+     which screen the hit belongs to (checklists.ts).
+
+     `date: null`, for both kinds of item. A procedure's recovery checklist
+     was never dated - it has no `appointment_epoch_day` of its own
+     (checklists.ts). The standing appointment prep list used to borrow that
+     same column's manually-set value; ticket 58 (ADR-0066) retires writing
+     to it, since the list itself is standing and unowned by any one
+     appointment. Referencing the now-frozen column here would silently
+     date every future question by whichever appointment happened to be on
+     record before that ticket, or leave it null forever for a journal
+     started after - neither is a date this hit can honestly claim. */
   area({
     key: 'checklistItems',
     covers: ['checklists'],
     tables: ['checklist'],
     from: 'checklist_item ci JOIN checklist c ON c.id = ci.checklist_id',
     uuid: 'ci.uuid',
-    date: { kind: 'epochDay', column: 'c.appointment_epoch_day' },
+    date: null,
     columns: ['ci.content'],
     context: 'c.owner_kind'
   }),
