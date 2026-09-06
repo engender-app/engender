@@ -68,7 +68,7 @@ let openError: Error | null = null;
 // across reloads for a given database and distinct across databases, but
 // hashed rather than embedding the path itself - this driver exists to
 // keep the journal's contents unreadable at rest (ADR-0018), and a
-// directory literally named after "gender-diary.sqlite3" would defeat the
+// directory literally named after "engender.sqlite3" would defeat the
 // same closed-app OPFS scan that proves nothing plaintext survives there.
 /* poolDirectory stays exported only for legacy-cipher-worker.ts, which
    cross-checks against it (AU-09 test-only review). */
