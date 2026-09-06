@@ -1,13 +1,11 @@
 /* One reading's length against another, and nothing else.
 
-   Its own module because its three callers are not one another's: two are
-   the kit's bars (components/kit/barRow.ts and kit/OrderedStrip.svelte) and
-   one is the ring's arithmetic (charts/parts.ts), and none of them draws a
-   line. It sat in charts/geometry.ts until phase 9 audit ticket 02, which is
-   how a kit helper that draws no chart came to carry d3-shape in its import
-   graph for three lines of arithmetic. Nothing is imported here, and that is
-   the point - tests/chart-library-graph.test.ts holds the rule that came out
-   of it. */
+   Its own module because none of its three callers draws a line: two are the
+   kit's bars (components/kit/barRow.ts and kit/OrderedStrip.svelte) and one
+   is the ring's arithmetic (charts/parts.ts). It lived in charts/geometry.ts
+   until phase 9 audit ticket 02, back when that module opened with a
+   d3-shape import. Nothing is imported here, and that is the point -
+   tests/chart-library-graph.test.ts holds the rule and the reasoning. */
 
 /** A bar's width as a percentage of the largest value beside it. The bars
     carry their own values as text, so this is length only. */

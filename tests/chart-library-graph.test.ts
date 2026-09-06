@@ -60,9 +60,23 @@ const rootPath = fileURLToPath(new URL('../', import.meta.url));
     about the shape of the dependency, not about which one it is. */
 const CHART_LIBRARY = /^d3(-|$)/;
 
-/** The one module allowed to load one. Its importers are chart components,
-    and adding a second entry here is a decision, not a formality. */
-const CARRIERS = ['src/lib/charts/areaPath.ts'];
+/** Everything allowed to import one, which is the charts and nothing else.
+    Adding a line here is a decision, not a formality: a module on this list
+    hands the library to everything that imports it. */
+const LOADERS = [
+  'src/lib/charts/areaPath.ts',
+  'src/lib/components/CycleEventChart.svelte',
+  'src/lib/components/EffectsTimeline.svelte',
+  'src/lib/components/HormoneBandChart.svelte',
+  'src/lib/components/LineChart.svelte',
+  'src/lib/components/QualitativeCurveChart.svelte',
+  'src/lib/components/WearTrendChart.svelte'
+];
+
+/** Of those, the ones that are not components. A `.ts` module is the shape
+    this rule exists for: a helper is imported for what it computes, by
+    callers that have no idea a library came with it. */
+const HELPERS_THAT_LOAD = ['src/lib/charts/areaPath.ts'];
 
 /** What a first visit runs before anything is chosen: the shell, its data
     load, and the screen it opens on. */
@@ -91,9 +105,14 @@ function code(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 }
 
-/** Everything a module pulls in before it runs, re-exports included. */
+/** Everything a module pulls in before it runs, re-exports included.
+
+    `import type` is not one of them: the compiler erases it, so it puts
+    nothing in a chunk and a rule that counted it would demand a move the
+    build has no use for. An inline `{ type Point }` inside a value import
+    is left alone - the statement it rides in is a real edge anyway. */
 function specifiers(text: string): string[] {
-  const statement = /(?<![\w$.])(?:import|export)\s+(?:[^'"()]*?\bfrom\s*)?['"]([^'"]+)['"]/g;
+  const statement = /(?<![\w$.])(?:import|export)\s+(?!type\s)(?:[^'"()]*?\bfrom\s*)?['"]([^'"]+)['"]/g;
   return [...code(text).matchAll(statement)].map((match) => match[1]);
 }
 
@@ -111,55 +130,69 @@ function resolve(from: string, specifier: string, files: Sources): string | null
 }
 
 /** Every module whose static imports reach a charting library, mapped to the
-    chain that gets there - so a failure names the carrier and the hop that
-    picked it up rather than only the module that has to answer for it. */
-function carriers(files: Sources): Map<string, string[]> {
+    chain that gets there - so a failure names the module that loads it and
+    the hop that picked it up, not only the module answering for it. */
+function reach(files: Sources): Map<string, string[]> {
   const graph = new Map<string, string[]>();
-  const found = new Map<string, string[]>();
+  const chains = new Map<string, string[]>();
   for (const [path, text] of files) {
     const specs = specifiers(text);
-    if (specs.some((spec) => CHART_LIBRARY.test(spec))) found.set(path, [path]);
+    if (specs.some((spec) => CHART_LIBRARY.test(spec))) chains.set(path, [path]);
     graph.set(
       path,
       specs.map((spec) => resolve(path, spec, files)).filter((dep): dep is string => dep !== null)
     );
   }
-  for (let spreading = true; spreading; ) {
+  let spreading = true;
+  while (spreading) {
     spreading = false;
     for (const [path, deps] of graph) {
-      if (found.has(path)) continue;
-      const carrier = deps.find((dep) => found.has(dep));
-      if (carrier === undefined) continue;
-      found.set(path, [path, ...(found.get(carrier) as string[])]);
+      if (chains.has(path)) continue;
+      const through = deps.map((dep) => chains.get(dep)).find((chain) => chain !== undefined);
+      if (through === undefined) continue;
+      chains.set(path, [path, ...through]);
       spreading = true;
     }
   }
-  return found;
+  return chains;
 }
 
 test('no module a first visit runs reaches a charting library', () => {
-  const found = carriers(sources());
-  const reached = FIRST_SCREENS.filter((path) => found.has(path)).map((path) =>
-    (found.get(path) as string[]).join(' -> ')
-  );
+  const files = sources();
+  // A renamed route would otherwise leave this asserting over nothing.
+  expect(FIRST_SCREENS.filter((path) => !files.has(path))).toEqual([]);
+
+  const chains = reach(files);
+  const reached = FIRST_SCREENS.map((path) => chains.get(path))
+    .filter((chain): chain is string[] => chain !== undefined)
+    .map((chain) => chain.join(' -> '));
 
   expect(reached).toEqual([]);
 });
 
-test('only a chart component loads a charting library', () => {
-  const found = carriers(sources());
-  const helpers = [...found.keys()].filter((path) => path.endsWith('.ts')).sort();
+test('a charting library is imported by the charts and by nothing else', () => {
+  const files = sources();
+  const direct = [...files]
+    .filter(([, text]) => specifiers(text).some((spec) => CHART_LIBRARY.test(spec)))
+    .map(([path]) => path)
+    .sort();
 
-  expect(helpers).toEqual(CARRIERS);
+  expect(direct).toEqual(LOADERS);
 });
 
-/* The two above pass on a tree that has nothing wrong with it, which is also
-   what they would do if `carriers` never found anything. This runs the same
+test('no helper module reaches a charting library', () => {
+  const helpers = [...reach(sources()).keys()].filter((path) => path.endsWith('.ts')).sort();
+
+  expect(helpers).toEqual(HELPERS_THAT_LOAD);
+});
+
+/* The three above pass on a tree that has nothing wrong with it, which is
+   also what they would do if `reach` never found anything. This runs the same
    rule over the shape ticket 02 described - a kit helper importing three lines
    of arithmetic out of the module that loads the library, and a shell that
    reaches the helper - and both have to fail. */
 test('the rule catches a helper that imports out of a module holding a library', () => {
-  const found = carriers(
+  const chains = reach(
     new Map([
       ['src/routes/+layout.svelte', `<script>import { rows } from '$lib/components/kit/barRow';</script>`],
       ['src/lib/components/kit/barRow.ts', `import { share } from '../../charts/geometry';\nexport const rows = share;`],
@@ -167,11 +200,11 @@ test('the rule catches a helper that imports out of a module holding a library',
     ])
   );
 
-  expect([...found.keys()].filter((path) => path.endsWith('.ts')).sort()).toEqual([
+  expect([...chains.keys()].filter((path) => path.endsWith('.ts')).sort()).toEqual([
     'src/lib/charts/geometry.ts',
     'src/lib/components/kit/barRow.ts'
   ]);
-  expect(found.get('src/routes/+layout.svelte')).toEqual([
+  expect(chains.get('src/routes/+layout.svelte')).toEqual([
     'src/routes/+layout.svelte',
     'src/lib/components/kit/barRow.ts',
     'src/lib/charts/geometry.ts'

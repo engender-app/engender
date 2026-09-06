@@ -8,10 +8,9 @@
    only by an eye on a gallery render (ADR-0016, the Node tier cannot reach a
    component), and it had already been got wrong twice that way. Same split
    kit/role.ts already makes: the drawing is the component's, what a share is
-   of is not. The length itself, `share`, is charts/share.ts: three callers
-   want it, two of them here in the kit and one in the ring's arithmetic,
-   and until phase 9 audit ticket 02 it was imported out of the module that
-   loads d3-shape. */
+   of is not. The length itself, `share`, is charts/share.ts - two callers
+   here in the kit and one in the ring's arithmetic, and none of the three
+   wants what tests/chart-library-graph.test.ts keeps out of their way. */
 
 import { share } from '../../charts/share';
 
