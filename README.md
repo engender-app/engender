@@ -1,5 +1,7 @@
 # Gender Diary
 
+[![Checks](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml)
+
 enGender keeps a person's gender transition in one place, on their own
 device: moods, gender feelings on configurable scales, quick tags, notes,
 photos, milestones. Web PWA + Android (Capacitor) from one SvelteKit
