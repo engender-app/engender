@@ -28,6 +28,9 @@ export interface NavigationFacts {
   isAndroid: boolean;
   /** The gates and onboarding, which have no chrome and no peers. */
   isChromeless: boolean;
+  /** Whether a sheet was open over the screen the navigation left from, so
+      whatever was tapped was inside a modal rather than on the screen. */
+  fromSheet: boolean;
 }
 
 /**
@@ -41,7 +44,7 @@ export interface NavigationFacts {
  * animation played on top of that is worse than no animation at all.
  */
 export function screenTransition(facts: NavigationFacts): ScreenTransition {
-  const { from, to, type, delta, isAndroid, isChromeless } = facts;
+  const { from, to, type, delta, isAndroid, isChromeless, fromSheet } = facts;
 
   /* A cold start has nothing to come from, and the gates are not part of
      the app's navigation - they render instead of it. */
@@ -86,6 +89,21 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
      already fades through the tab rule at the bottom, since /entry lights
      the calendar tab and / is no tab's step. */
   if (isEntryEditor(to)) {
+    /* Out of a sheet it is a fade-through whatever screen the sheet was
+       over. The tag insights on /stats open a sheet of the entries carrying
+       a tag, and those cards are a correct source by the rule above - so
+       the card's box grew out of an open modal into the whole screen while
+       the sheet sat behind it, which is item 23's complaint arriving on a
+       second surface (Alicja, carpet ticket 10). A sheet is not a place a
+       screen grows out of: what happened is that a modal was dismissed and
+       a screen replaced the one underneath it, and the transform says the
+       card became the screen instead.
+
+       A fact and not a route, unlike the two carve-outs below. /stats draws
+       entry cards only inside that sheet today, so naming the route would
+       be right by accident and wrong the day a screen draws them both
+       ways. */
+    if (fromSheet) return 'fade-through';
     if (from === NO_CONTAINER) return 'shared-axis';
     if (from === '/') return 'fade-through';
     return 'container';

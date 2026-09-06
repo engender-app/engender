@@ -232,7 +232,15 @@
       type: navigation.type,
       delta: navigation.delta,
       isAndroid: isAndroid(),
-      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname)
+      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname),
+      /* Asked of the DOM, like the other two environment facts above and
+         for the same reason: whether a sheet is open over the outgoing
+         screen is not something the two URLs can answer. Read here rather
+         than plumbed down from Sheet, because a navigation out of a sheet
+         is started by whatever is inside it and none of those callers know
+         they are in one. Still open at this point - the sheet unmounts with
+         the screen it belongs to, which happens inside the capture below. */
+      fromSheet: document.querySelector('[data-sheet]') !== null
     });
     /* Before the capture below, and on every navigation rather than only the
        animated ones: a card left wearing the container name is pulled out of
