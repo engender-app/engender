@@ -9,8 +9,10 @@ type TabRoute = { key: string; prefixes: string[] };
 const TAB_ROUTES: TabRoute[] = [
   /* Doubt is reached from a persistent Home affordance, deliberately apart
      from the normal entry flow (CONTEXT: "Doubt entry") - it stays with
-     Home rather than joining Calendar's entries. */
-  { key: 'home', prefixes: ['/doubt'] },
+     Home rather than joining Calendar's entries. Coming-back joins it for
+     the same reason: the layout opens it on arriving at Home and links it
+     from nowhere else (ticket 10, ADR-0062, ADR-0045). */
+  { key: 'home', prefixes: ['/doubt', '/coming-back'] },
   { key: 'calendar', prefixes: ['/calendar', '/day', '/search', '/entry'] },
   /* SH-001: Timeline used to light no tab at all, which read as having left
      the app's structure. It groups with Stats as a look-back view over the

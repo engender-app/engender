@@ -72,6 +72,10 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/doubt')).toBe('home');
   });
 
+  it('lights home for the return surface', () => {
+    expect(activeTabKey('/coming-back')).toBe('home');
+  });
+
   it('lights calendar for an open entry', () => {
     expect(activeTabKey('/entry/123')).toBe('calendar');
     expect(activeTabKey('/entry/new/12345')).toBe('calendar');
