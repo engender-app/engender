@@ -244,10 +244,17 @@
             signal: stop.signal,
             onProgress: (done, total) => {
               /* The pack is the countable half. What follows it - base64
-                 across the bridge and the SAF write - has no unit of work
-                 to report, so the bar sweeps through it under a sentence
-                 that says which half this is. */
-              if (done === total) autoLabel = m.exp_auto_running_writing();
+                 across the bridge and the SAF write of a multi-megabyte
+                 archive - has no unit of work to report, so the bar goes
+                 back to sweeping under a sentence that says which half
+                 this is. Leaving it parked at 100% through the slower half
+                 would be the bar lying, which is the whole thing ADR-0070
+                 is about. */
+              if (done === total) {
+                autoLabel = m.exp_auto_running_writing();
+                autoProgress.report(0, 0);
+                return;
+              }
               autoProgress.report(done, total);
             }
           }
