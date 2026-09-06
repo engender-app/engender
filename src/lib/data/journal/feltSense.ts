@@ -17,7 +17,7 @@ import { mintUuid, now, rowidByUuid } from './support';
     (schema.ts) and PhotoOwner's own shape (photos.ts). */
 export type FeltSenseOwner = { tryoutId: string; milestoneId?: never } | { milestoneId: string; tryoutId?: never };
 
-export interface FeltSenseInput {
+interface FeltSenseInput {
   epochDay: number;
   mood: number;
   note?: string | null;

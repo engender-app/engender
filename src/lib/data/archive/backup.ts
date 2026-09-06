@@ -88,7 +88,7 @@ const PRODUCERS: Record<ExportPath, (source: ExportSource) => OutgoingFile> = {
   })
 };
 
-export interface ExportDeps {
+interface ExportDeps {
   /** Called with epoch millis once a file has actually left. */
   recordBackup(at: number): void;
   /** The share sheet and the download (deliver.ts), which is what this

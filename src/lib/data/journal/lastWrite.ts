@@ -79,7 +79,7 @@ import type { WearSessionsArea } from './wearSessions';
 
 /** The areas a last-write read may reach through: the ones `openJournal`
     already built, so a read asks exactly what its own screen would. */
-export interface LastWriteAreas {
+interface LastWriteAreas {
   entries: EntriesArea;
   milestones: MilestonesArea;
   doses: DosesArea;
@@ -104,7 +104,7 @@ export interface LastWriteAreas {
 
 /** What every entry's read is given: the areas, and the day nothing may be
     dated after. */
-export interface LastWriteReading extends LastWriteAreas {
+interface LastWriteReading extends LastWriteAreas {
   todayEpochDay: number;
 }
 

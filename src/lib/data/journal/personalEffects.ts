@@ -22,7 +22,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { PersonalEffect, PersonalEffectCatalogEntry, PersonalEffectType } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
 
-export interface PersonalEffectInput {
+interface PersonalEffectInput {
   effect: PersonalEffectType;
   firstNoticedEpochDay: number;
 }

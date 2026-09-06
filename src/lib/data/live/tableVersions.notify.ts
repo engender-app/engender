@@ -14,9 +14,9 @@
 
 import type { TableName } from './writes';
 
-export type TablesListener = (tables: TableName[]) => void;
+type TablesListener = (tables: TableName[]) => void;
 
-export interface WriteAnnouncer {
+interface WriteAnnouncer {
   /** Register a listener called after every announced write. */
   onTablesWritten(listener: TablesListener): void;
   /** Tell every listener which tables a write just touched. */

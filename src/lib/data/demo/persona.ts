@@ -38,7 +38,7 @@ const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice' };
 /** An entry plus how many photos hang off it. The journal mints photo
     identity and stores files, so the persona says how many rather than
     inventing rows (ADR-0002, ADR-0008). */
-export interface PersonaEntry extends EntryInput {
+interface PersonaEntry extends EntryInput {
   epochDay: number;
   photoCount: number;
   /** Which persona presentation this entry carries, by the name in
@@ -50,12 +50,12 @@ export interface PersonaEntry extends EntryInput {
   presentationName?: string;
 }
 
-export interface PersonaPresentation {
+interface PersonaPresentation {
   name: string;
   roleIndex: number;
 }
 
-export interface PersonaMilestone extends MilestoneInput {
+interface PersonaMilestone extends MilestoneInput {
   hasPhoto: boolean;
 }
 
@@ -64,7 +64,7 @@ export interface PersonaMilestone extends MilestoneInput {
     appointment's own id since ticket 58 (checklists.ts's
     `recordDebriefEntry`), which is also what retired the date-keyed
     mechanism this was first written against. */
-export interface PersonaAppointment extends AppointmentInput {
+interface PersonaAppointment extends AppointmentInput {
   procedureId: null;
   debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };
 }

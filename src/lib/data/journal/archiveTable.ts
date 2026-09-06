@@ -63,7 +63,7 @@ export interface FlatTable<Row> {
 
 /** One column with its declaration read out in full, whichever of the two
     forms it was written in. */
-export interface DeclaredColumn {
+interface DeclaredColumn {
   column: string;
   field: string;
   bool: boolean;

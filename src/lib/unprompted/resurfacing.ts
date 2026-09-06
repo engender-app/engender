@@ -21,9 +21,9 @@
    photo (on-this-day, Wrapped) render it through ResurfacedPhoto.svelte
    rather than PhotoThumb directly. */
 
-export type ResurfacingSurface = 'on-this-day' | 'on-this-day-home-card' | 'wrapped' | 'wrapped-home-card';
+type ResurfacingSurface = 'on-this-day' | 'on-this-day-home-card' | 'wrapped' | 'wrapped-home-card';
 
-export interface ResurfacingSurfaceRow {
+interface ResurfacingSurfaceRow {
   key: ResurfacingSurface;
   /** Required rather than optional: a surface with nothing to say about the
       mute layer does not belong in this list at all - the same reason
@@ -53,7 +53,7 @@ const ROWS = [
    `EveryKindRegistered` gives it. */
 type Unregistered = Exclude<ResurfacingSurface, (typeof ROWS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EverySurfaceRegistered = AssertNoneUnregistered<Unregistered>;
+type EverySurfaceRegistered = AssertNoneUnregistered<Unregistered>;
 
 export const RESURFACING_SURFACE_ROWS: readonly ResurfacingSurfaceRow[] = ROWS;
 

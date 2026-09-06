@@ -9,7 +9,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { EntryTemplate } from '../types';
 import { assertChanged, bool, domainIdOf, mintUuid, now } from './support';
 
-export interface EntryTemplateInput {
+interface EntryTemplateInput {
   name: string;
   tags: string[];
   dims: Record<string, number>;

@@ -41,7 +41,7 @@ import {
   type LiveTileKind
 } from './liveTiles';
 
-export interface HomeTileGrid {
+interface HomeTileGrid {
   /** Ordered, preference-gated, snooze-checked, uncapped. */
   readonly tiles: readonly HomeTile[];
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose

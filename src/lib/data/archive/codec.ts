@@ -12,7 +12,7 @@ import { CorruptArchiveError, u32 } from './wire';
 
 const JSON_LENGTH_PREFIX = 4;
 
-export interface EncodedArchiveBody {
+interface EncodedArchiveBody {
   bodyLength: number;
   body: AsyncGenerator<Uint8Array>;
 }
@@ -56,7 +56,7 @@ const archiveCodecV1: ArchiveCodec = {
    still has to decode as v1 before the ladder walks it. */
 const archiveCodecV2: ArchiveCodec = { ...archiveCodecV1, formatVersion: 2 };
 
-export const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1, archiveCodecV2];
+const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1, archiveCodecV2];
 
 export function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
   const current = codecs[codecs.length - 1];

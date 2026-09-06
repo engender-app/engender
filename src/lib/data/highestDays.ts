@@ -27,7 +27,7 @@ import type { DayArea, DayRecords } from './journal/day';
     bottom ten. */
 export const HIGHEST_DAYS_CAP = 10;
 
-export interface HighestDay {
+interface HighestDay {
   epochDay: number;
   value: number;
   records: DayRecords;

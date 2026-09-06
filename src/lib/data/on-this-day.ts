@@ -23,7 +23,7 @@ export const ON_THIS_DAY_LOOKBACKS: { key: OnThisDayLookback; months: number }[]
   { key: 'month', months: 1 }
 ];
 
-export interface OnThisDayCandidate {
+interface OnThisDayCandidate {
   key: OnThisDayLookback;
   epochDay: number;
 }

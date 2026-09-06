@@ -1,8 +1,8 @@
 import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
-export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf' | 'recovery-key';
+type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf' | 'recovery-key';
 
-export type CredentialConsumer =
+type CredentialConsumer =
   | 'journal-passphrase-setup'
   | 'journal-passphrase-add'
   | 'journal-passphrase-unlock'
@@ -26,7 +26,7 @@ interface CredentialProfileRegistration {
   params: Argon2Params;
 }
 
-export interface CredentialConsumerRegistration {
+interface CredentialConsumerRegistration {
   consumer: CredentialConsumer;
   profile: CredentialProfile;
   selectionRule: SelectionRule;

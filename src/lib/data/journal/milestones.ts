@@ -22,7 +22,7 @@ import {
 } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
 
-export type MilestonePhotoChange =
+type MilestonePhotoChange =
   | { action: 'preserve' }
   | { action: 'remove' }
   | { action: 'replace'; photo: NormalizedPhoto };

@@ -8,7 +8,7 @@
 import { capturePhoto, type ReferencePhoto } from './photoPicking';
 import type { NormalizedPhoto } from '../data/journal/photos';
 
-export interface PhotoReview {
+interface PhotoReview {
   /** The shot waiting on a decision, or null when there's nothing to
       review. Drives PhotoAlignmentReview's `open`. */
   readonly photo: NormalizedPhoto | null;

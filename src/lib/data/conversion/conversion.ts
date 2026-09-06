@@ -87,7 +87,7 @@ export async function censusOf(
   return counts;
 }
 
-export interface SourceJournal {
+interface SourceJournal {
   /** The whole database file. Small by design - photos are separate files,
       which is ADR-0006's own argument for copying it at all. */
   bytes: Uint8Array;
@@ -176,7 +176,7 @@ export type PrecheckResult = { ok: true } | ({ ok: false } & ConversionRefusal);
     floor, so a tiny Journal on a nearly-full disk is refused up front
     rather than started and killed halfway. Photos are converted in place
     and grow by a nonce and a tag each, which the floor also covers. */
-export const CONVERSION_SPACE_FLOOR = 4 * 1024 * 1024;
+const CONVERSION_SPACE_FLOOR = 4 * 1024 * 1024;
 
 export function spaceRequiredFor(sourceSizeBytes: number): number {
   return Math.ceil(sourceSizeBytes * 2.5) + CONVERSION_SPACE_FLOOR;

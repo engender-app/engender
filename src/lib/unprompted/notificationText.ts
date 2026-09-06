@@ -18,7 +18,7 @@
    when a notification is posted, so the preference applies unconditionally
    rather than trusting a guess (ticket 15's reasoning, unchanged). */
 
-export interface NotificationText {
+interface NotificationText {
   title: string;
   body: string;
 }

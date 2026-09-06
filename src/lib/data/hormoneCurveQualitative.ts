@@ -145,7 +145,7 @@ export function resolveQualitativeKey(
 /** One sampled slice of the curve. Two fields and no third: a `lower` or
     `upper` here is how the band this ticket rules out would get built by
     accident later. */
-export interface QualitativeCurvePoint {
+interface QualitativeCurvePoint {
   /** Fractional epoch day, the same axis hormoneCurve.ts's band uses. */
   day: number;
   value: number;
@@ -169,7 +169,7 @@ export interface QualitativeCurves {
   dosesWithoutMilligrams: number;
 }
 
-export interface QualitativeCurveInput {
+interface QualitativeCurveInput {
   /** Which hormone to draw. One call answers for one drug, because almost
       everything downstream of a curve differs between the two: the unit its
       height means anything in, the analyte a scale factor is fitted against,

@@ -439,7 +439,7 @@ export type EntryTemplateKey = (typeof ENTRY_TEMPLATES)[number]['key'];
    ones in the shape the rest of the code already expects, names left for
    vocabulary.ts to fill in. */
 
-export function builtInPresetRows(): GenderPreset[] {
+function builtInPresetRows(): GenderPreset[] {
   return BUILT_IN_PRESETS.map((p) => ({ id: p.key, name: '', builtIn: true, dims: [...p.dims] }));
 }
 

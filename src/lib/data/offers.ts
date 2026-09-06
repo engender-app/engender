@@ -118,7 +118,7 @@ export type OfferKey =
 /** What the person is being offered. One record, named by the archive
     section that holds it, so an offer cannot claim to write something the
     journal has no home for. */
-export type OfferedRecord = 'milestones' | 'feltSenseEntries' | 'areaStates' | 'doseEvents' | 'wearSessions';
+type OfferedRecord = 'milestones' | 'feltSenseEntries' | 'areaStates' | 'doseEvents' | 'wearSessions';
 
 /** How the person answered. `'decline'` is a real answer and not the
     absence of one: it closes the offer and writes nothing. */
@@ -152,7 +152,7 @@ export interface OfferJournal {
     subject is the one thing that genuinely differs between the five - a
     goal and a date, a procedure id, a tryout being closed, a mood - so it
     is a type parameter rather than a union every entry has to narrow. */
-export interface OfferRow<Subject> {
+interface OfferRow<Subject> {
   key: OfferKey;
   trigger: string;
   offers: OfferedRecord;

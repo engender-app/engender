@@ -23,7 +23,7 @@ import { nameSlug } from '../fold';
     image, a timelapse a video of the same photos in the same order. */
 export type JourneyOutput = 'collage' | 'timelapse';
 
-export interface JourneyRange {
+interface JourneyRange {
   start: number;
   end: number;
 }
@@ -79,7 +79,7 @@ export const COLLAGE_MAX_AREA = 12_000_000;
 
 const NOMINAL = { cell: 360, caption: 44, gap: 12, pad: 20, fontSize: 26 } as const;
 
-export interface CollageLayout {
+interface CollageLayout {
   columns: number;
   rows: number;
   /** The square photo area in a cell. */

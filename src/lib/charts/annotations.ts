@@ -223,7 +223,7 @@ export interface ChartAnnotation {
   endReason?: EpisodeEndReason | null;
 }
 
-export interface AnnotationRange {
+interface AnnotationRange {
   from: number;
   to: number;
   /** Where an unfinished stretch reaches to. Nothing is stored about it,
@@ -338,7 +338,7 @@ export interface AnnotationEdge {
 }
 
 /** A stretch, as a rectangle behind the plot. */
-export interface AnnotationBand {
+interface AnnotationBand {
   key: string;
   x1: number;
   x2: number;

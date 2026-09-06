@@ -13,7 +13,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { JournalingPause } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 
-export type JournalingPauseInput = FlatInput<JournalingPause>;
+type JournalingPauseInput = FlatInput<JournalingPause>;
 
 export interface JournalingPausesArea {
   /** Every pause, oldest start first. */

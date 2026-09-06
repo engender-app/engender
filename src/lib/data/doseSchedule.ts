@@ -109,7 +109,7 @@ export function matchDoseRoute(text: string, routeWords: readonly RouteOption[])
     written out again. labels.ts documents why that matters: a record typed
     against a derived union makes adding a region without adding its message
     a typecheck failure instead of a raw key on screen. */
-export const INJECTION_SITE_REGIONS = [
+const INJECTION_SITE_REGIONS = [
   'ventrogluteal',
   'dorsogluteal',
   'thigh',
@@ -119,7 +119,7 @@ export const INJECTION_SITE_REGIONS = [
 ] as const;
 
 export type InjectionSiteRegion = (typeof INJECTION_SITE_REGIONS)[number];
-export type InjectionSiteSide = 'left' | 'right';
+type InjectionSiteSide = 'left' | 'right';
 export type InjectionSiteKey = `${InjectionSiteRegion}-${InjectionSiteSide}`;
 
 /** One region of the injection rotation body map. Sided, because rotating
@@ -319,7 +319,7 @@ export function expectedSlots(
     against it, or null if nothing was. A `skipped` dose fills its slot -
     that is the difference between a gap someone recorded and one they
     never mentioned. */
-export interface AdherenceRow {
+interface AdherenceRow {
   slot: DoseSlot;
   dose: DoseEvent | null;
 }

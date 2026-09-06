@@ -148,7 +148,7 @@ export function isTestosteroneDrug(drug: string): boolean {
     Order is the order screens list them in. */
 export const INJECTABLE_TESTOSTERONE_ESTERS = ['cypionate', 'enanthate'] as const;
 
-export type InjectableTestosteroneEster = (typeof INJECTABLE_TESTOSTERONE_ESTERS)[number];
+type InjectableTestosteroneEster = (typeof INJECTABLE_TESTOSTERONE_ESTERS)[number];
 
 /** Names matched the way hormoneEster.ts matches estradiol's: the full word
     anywhere, the abbreviation only as a whole word. The Polish forms are their

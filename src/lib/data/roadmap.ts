@@ -112,7 +112,7 @@ const POLISH_GOALS = [
   { key: 'pl-medical-keep-opinions', track: 'medical', lean: 'neutral' }
 ] as const satisfies readonly RoadmapGoal[];
 
-export type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
+type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
 
 export const POLISH_PACK = {
   key: 'pl',
@@ -143,7 +143,7 @@ export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: Road
 
 /** One track as the screen draws it: the track itself, whether the person
     has said it is not their path, and the goals left to show. */
-export interface RoadmapSection<K extends string, C> {
+interface RoadmapSection<K extends string, C> {
   readonly track: RoadmapTrack;
   readonly dismissed: boolean;
   /** Empty for a dismissed track. The stored ticks are untouched - putting

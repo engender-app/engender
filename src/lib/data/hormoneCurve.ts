@@ -71,7 +71,7 @@ const DAY_MS = 86400000;
 /** One sampled slice of the band. Three fields and no fourth: a `value` or
     `median` here is how a single-line presentation would get built by
     accident, and this ticket rules one out. */
-export interface CurveBandPoint {
+interface CurveBandPoint {
   /** Fractional epoch day. */
   day: number;
   lower: number;
@@ -100,7 +100,7 @@ export interface HormoneCurves {
   subcutaneousDoses: number;
 }
 
-export interface CurveInput {
+interface CurveInput {
   doses: readonly DoseEvent[];
   episodes: readonly RegimenEpisode[];
   fromEpochDay: number;

@@ -28,7 +28,7 @@ import { seedPersonaJournal } from './journal-seed';
 import { seedFullFixture } from './fullFixture';
 
 /** How far back the journal stops. */
-export const DEMO_GAP_DAYS = 35;
+const DEMO_GAP_DAYS = 35;
 
 export async function seedReturnGap(journal: Journal, today: number = todayEpochDay()): Promise<void> {
   const anchor = today - DEMO_GAP_DAYS;

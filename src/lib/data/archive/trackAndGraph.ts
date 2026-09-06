@@ -188,7 +188,7 @@ function localDay(timestamp: string, rowNumber: number): number {
   return epochDay;
 }
 
-export interface TrackAndGraphValue {
+interface TrackAndGraphValue {
   value: number;
   /** `seconds` for a duration, by construction; empty for everything else -
       this source has no unit anywhere in its own format (spec's own

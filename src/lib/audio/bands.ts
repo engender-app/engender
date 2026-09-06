@@ -59,10 +59,10 @@
     back rather than inventing a band (`bandLanguageOf`). */
 export type BandLanguage = 'en' | 'pl';
 
-export type PopulationKey = 'cisMan' | 'cisWoman';
-export type PitchBandKey = PopulationKey | 'between';
+type PopulationKey = 'cisMan' | 'cisWoman';
+type PitchBandKey = PopulationKey | 'between';
 
-export interface PopulationBand {
+interface PopulationBand {
   key: PopulationKey;
   lowHz: number;
   highHz: number;

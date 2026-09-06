@@ -70,7 +70,7 @@ export function withBuiltInEntryTemplates(existing: EntryTemplate[]): EntryTempl
 /** The entry draft's own shape, narrowed to what a template can seed - kept
     local rather than importing `EntryDraft` so this stays free of every
     other field the real draft carries (photos, mood, and so on). */
-export interface TemplateableDraft {
+interface TemplateableDraft {
   tags: string[];
   dims: Record<string, number>;
   note: string;

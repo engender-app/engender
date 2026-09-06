@@ -64,7 +64,7 @@ export interface DayAheadMark {
 
 /** The areas a mark's read may reach through: the ones `openJournal`
     already built, so a read asks exactly what its own screen would. */
-export interface DayAheadAreas {
+interface DayAheadAreas {
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
   milestones: MilestonesArea;
@@ -75,7 +75,7 @@ export interface DayAheadAreas {
 
 /** What every kind's read is given: the areas, the range asked for, and the
     day nothing may be dated before. */
-export interface DayAheadReading extends DayAheadAreas {
+interface DayAheadReading extends DayAheadAreas {
   fromEpochDay: number;
   toEpochDay: number;
   todayEpochDay: number;

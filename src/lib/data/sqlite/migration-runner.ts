@@ -15,7 +15,7 @@ export interface Migration {
     integer, and the array itself behind a loader only a journal that is behind
     the schema ever pays for. The list is 27KB of SQL text, and a journal on the
     current version needs one integer comparison to know it has nothing to do. */
-export type MigrationSource =
+type MigrationSource =
   | Migration[]
   | {
       latestVersion: number;

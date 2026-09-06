@@ -19,7 +19,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { SavedQuestion } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 
-export type SavedQuestionInput = FlatInput<SavedQuestion>;
+type SavedQuestionInput = FlatInput<SavedQuestion>;
 
 export interface SavedQuestionsArea {
   /** Every saved question, most recently touched first - the one somebody

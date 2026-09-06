@@ -38,10 +38,10 @@ import { androidKeystore } from '../lock/keystore-bridge';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import type { BootEffect, BootEvent } from './boot-machine';
 
-export type BootDispatch = (event: BootEvent) => void;
+type BootDispatch = (event: BootEvent) => void;
 
 /** Everything the reducer can ask for that needs no rune and no open journal. */
-export type PlatformEffect = Extract<
+type PlatformEffect = Extract<
   BootEffect,
   {
     type:

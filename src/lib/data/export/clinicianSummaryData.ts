@@ -27,7 +27,7 @@ import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
 import { spanCoversDay } from '../span';
 
-export interface PatientDemographics {
+interface PatientDemographics {
   name: string;
   pronouns: string | null;
   dob: string | null;
@@ -74,7 +74,7 @@ export const DEFAULT_CLINICIAN_DOSSIER_INCLUSION: ClinicianDossierInclusion = {
   finishedAreas: true
 };
 
-export interface ClinicianDossierRegimenData {
+interface ClinicianDossierRegimenData {
   current: RegimenEpisode[];
   history: RegimenEpisode[];
   doses: DoseEvent[];
@@ -96,7 +96,7 @@ export interface ClinicianDossier {
   inclusion: ClinicianDossierInclusion;
 }
 
-export interface AssembleClinicianDossierParams {
+interface AssembleClinicianDossierParams {
   fromEpochDay: number;
   toEpochDay: number;
   generatedAtEpochDay?: number;

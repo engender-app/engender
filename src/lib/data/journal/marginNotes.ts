@@ -29,7 +29,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { MarginNote } from '../types';
 import { assertChanged, mintUuid, now } from './support';
 
-export interface MarginNoteInput {
+interface MarginNoteInput {
   entryId: number;
   epochDay: number;
   text: string;

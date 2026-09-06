@@ -52,7 +52,7 @@ export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp:
     kind of exclusion (ticket 38's "counted and surfaced") without
     changing what an existing single-episode journal already showed for
     the old kind. */
-export type DoseAttribution =
+type DoseAttribution =
   | { episode: RegimenEpisode; ambiguous: false }
   | { episode: null; ambiguous: boolean };
 
@@ -111,7 +111,7 @@ export function attributeDrug(
 /** One stretch of days over which a dose naming no drug of its own
     attributes the same way. `drug` and `ambiguous` carry exactly what
     `attributeDrug` answers for such a dose on any day in the stretch. */
-export interface DrugSpan {
+interface DrugSpan {
   fromEpochDay: number;
   toEpochDay: number;
   drug: string | null;

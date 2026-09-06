@@ -67,7 +67,7 @@ export const AREA_GROUPS = {
 type Grouped = (typeof AREA_GROUPS)[AreaGroupKey][number];
 type Ungrouped = Exclude<FinishableArea, Grouped>;
 type AssertNoneUngrouped<Missing extends never> = Missing;
-export type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
+type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
 
 /** `AreaGroupKey` as a value, read off `AREA_GROUPS` rather than typed out a
     second time. */
@@ -202,7 +202,7 @@ export function groupLastWrite(
     asking a little early or a little late, once. */
 export const FINISH_SUGGESTION_QUIET_DAYS = 180;
 
-export interface FinishOfferInput {
+interface FinishOfferInput {
   states: AreaStates;
   /** From `journal/lastWrite.ts`, which is where the fact lives. */
   lastWrites: Partial<Record<FinishableArea, number | null>>;

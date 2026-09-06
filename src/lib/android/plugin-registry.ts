@@ -27,7 +27,7 @@ interface AndroidPluginRegistryEntry {
   owner: AndroidPluginOwner;
 }
 
-export const androidPluginRegistry = [
+const androidPluginRegistry = [
   { name: 'Sqlite', owner: androidPluginOwners.sqlite },
   { name: 'Keystore', owner: androidPluginOwners.keystore },
   { name: 'PinBinding', owner: androidPluginOwners.pinBinding },

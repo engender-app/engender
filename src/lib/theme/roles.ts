@@ -61,7 +61,7 @@ export interface Role {
   heat: HeatStep[];
 }
 
-export interface HeatStep {
+interface HeatStep {
   /** The cell's fill: the stripe at this step's strength, undiluted by any
       contrast floor, the same as every other fill a role paints. */
   fill: string;

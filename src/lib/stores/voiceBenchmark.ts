@@ -40,7 +40,7 @@ const POLL_MS = 100;
     so a poll that arrives late still finds the samples it missed. */
 const ANALYSER_FFT_SIZE = 2048;
 
-export interface BenchmarkTake {
+interface BenchmarkTake {
   /** The recorded file, as stored. */
   bytes: Uint8Array;
   /** The same take decoded at the analysis rate. */

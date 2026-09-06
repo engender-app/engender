@@ -24,7 +24,7 @@ import { CALENDAR_AXIS, availableAxes, keyingFor, type DayAxis } from '$lib/char
 import type { Keying } from '$lib/data/dayKeying';
 import type { AnchorOption } from './dayAxisLabel';
 
-export interface DayAxisState {
+interface DayAxisState {
   /** The axis in force. Assignable, so a picker's `onPick` writes it. */
   axis: DayAxis;
   /** Every axis this journal can answer, calendar first. One entry means

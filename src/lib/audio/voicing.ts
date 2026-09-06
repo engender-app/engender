@@ -30,7 +30,7 @@ import type { PitchFrame } from './pitch';
     there, which is a mark. */
 export const MIN_SPAN_FRACTION = 0.02;
 
-export interface VoicedSpan {
+interface VoicedSpan {
   /** Fraction of the window where the stretch starts, 0 at the oldest
       frame on screen and 1 at the newest. */
   from: number;

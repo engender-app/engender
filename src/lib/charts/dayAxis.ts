@@ -44,7 +44,7 @@ export const CALENDAR_AXIS: DayAxis = 'calendar';
 const SINCE_PREFIX = 'since:';
 
 /** The anchored axis for `anchorId`. */
-export const sinceAxis = (anchorId: string): DayAxis => `${SINCE_PREFIX}${anchorId}`;
+const sinceAxis = (anchorId: string): DayAxis => `${SINCE_PREFIX}${anchorId}`;
 
 /** Which anchor `axis` is keyed to, or `null` if it is not an anchored
     axis at all. */

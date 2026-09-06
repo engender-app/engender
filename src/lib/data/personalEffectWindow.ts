@@ -77,7 +77,7 @@ interface MonthRange {
   max: number;
 }
 
-export interface EffectLiteratureWindow {
+interface EffectLiteratureWindow {
   direction: EffectDirection;
   onsetMonths: MonthRange;
   /** Null when the literature reports no defined ceiling at all (skin).
@@ -189,17 +189,17 @@ export function literatureWindow(effect: PersonalEffectType): EffectLiteratureWi
 /** Onset always has a definite end - only a completion window can be
     open-ended (hair_changes' ">3 years"), so the two get their own types
     rather than one sharing a nullable `end` neither caller actually wants. */
-export interface OnsetDayRange {
+interface OnsetDayRange {
   start: number;
   end: number;
 }
 
-export interface CompletionDayRange {
+interface CompletionDayRange {
   start: number;
   end: number | null;
 }
 
-export interface EffectWindowDays {
+interface EffectWindowDays {
   onset: OnsetDayRange;
   completion: CompletionDayRange | null;
 }
@@ -305,7 +305,7 @@ export function effectTier(effect: { key: PersonalEffectType; builtIn: boolean }
 
     `none` for any key with no tier-1 window - a tier 2 or tier 3 effect -
     which is the ordinary case. */
-export type EffectWindowShape = 'none' | 'no-completion' | 'open-completion' | 'bounded';
+type EffectWindowShape = 'none' | 'no-completion' | 'open-completion' | 'bounded';
 
 export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape {
   const window = EFFECT_LITERATURE_WINDOW[effect];

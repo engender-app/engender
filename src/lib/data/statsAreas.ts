@@ -79,13 +79,13 @@ import { hubRow, rowScreen, type HubRowKey } from './hubRows';
 import type { LastWriteKey } from './journal/lastWrite';
 
 /** The More hub's four groups, in the More hub's order. */
-export type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
+type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
 
 export const STATS_AREA_GROUPS = ['body', 'health', 'transition', 'practice'] as const satisfies readonly StatsAreaGroup[];
 
 /** A card as the screen draws it: what the panel declared, plus the identity
     it read off its hub row. */
-export interface StatsAreaPanel {
+interface StatsAreaPanel {
   key: string;
   group: StatsAreaGroup;
   covers: readonly LastWriteKey[];
@@ -219,7 +219,7 @@ export const STATS_AREA_PANELS: readonly (StatsAreaPanel & { key: StatsAreaKey }
    direction of the same join. */
 type Shadowing = Extract<Rowless['key'], HubRowKey>;
 type AssertNoneShadowing<Shadowed extends never> = Shadowed;
-export type NoRowlessCardShadowsARow = AssertNoneShadowing<Shadowing>;
+type NoRowlessCardShadowsARow = AssertNoneShadowing<Shadowing>;
 
 /** Every card with no hub row behind it, and why - the full `Record` over
     whatever `PANELS` declares that the hub does not front, the shape

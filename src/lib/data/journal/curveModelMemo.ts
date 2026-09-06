@@ -30,7 +30,7 @@
    was added to DoseEvent or RegimenEpisode without this file's own author
    knowing to update it. */
 
-export interface ModelMemo<Result> {
+interface ModelMemo<Result> {
   /** Returns the cached `Result` for `key` when `inputs` encodes the same as
       the last call for that key; otherwise calls `compute`, caches it under
       `key` and returns it. */

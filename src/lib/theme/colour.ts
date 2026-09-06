@@ -13,7 +13,7 @@
    perceptual: nudging L moves a colour toward or away from its background
    without dragging its hue with it. */
 
-export interface Rgb {
+interface Rgb {
   r: number;
   g: number;
   b: number;

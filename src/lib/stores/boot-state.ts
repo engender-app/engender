@@ -3,7 +3,7 @@ import type { JournalAccessMode } from '../data/journal-access-mode.ts';
 import type { Journal } from '../data/journal/journal.ts';
 import type { AndroidKeyRefusal } from '../lock/android-key.ts';
 
-export type BootStatus =
+type BootStatus =
   | 'booting'
   | 'needs-setup'
   | 'needs-unlock'
@@ -15,8 +15,8 @@ export type BootStatus =
   | 'schema-too-new'
   | 'error';
 
-export type PendingConversion = { progress: null };
-export type ConversionState = { progress: ConversionProgress | null };
+type PendingConversion = { progress: null };
+type ConversionState = { progress: ConversionProgress | null };
 
 interface BootShape {
   status: BootStatus;
@@ -30,7 +30,7 @@ interface BootShape {
   androidKey: AndroidKeyRefusal | null;
 }
 
-export type BootingState = BootShape & {
+type BootingState = BootShape & {
   status: 'booting';
   error: null;
   recoverable: false;
@@ -41,7 +41,7 @@ export type BootingState = BootShape & {
   androidKey: null;
 };
 
-export type NeedsSetupState = BootShape & {
+type NeedsSetupState = BootShape & {
   status: 'needs-setup';
   error: null;
   recoverable: false;
@@ -52,7 +52,7 @@ export type NeedsSetupState = BootShape & {
   androidKey: null;
 };
 
-export type NeedsUnlockState = BootShape & {
+type NeedsUnlockState = BootShape & {
   status: 'needs-unlock';
   error: null;
   recoverable: false;
@@ -63,7 +63,7 @@ export type NeedsUnlockState = BootShape & {
   androidKey: null;
 };
 
-export type NeedsAuthenticationState = BootShape & {
+type NeedsAuthenticationState = BootShape & {
   status: 'needs-authentication';
   error: null;
   recoverable: false;
@@ -73,7 +73,7 @@ export type NeedsAuthenticationState = BootShape & {
   conversionRefusal: null;
 };
 
-export type NeedsDeviceRecoveryState = BootShape & {
+type NeedsDeviceRecoveryState = BootShape & {
   status: 'needs-device-recovery';
   error: null;
   recoverable: false;
@@ -84,7 +84,7 @@ export type NeedsDeviceRecoveryState = BootShape & {
   androidKey: null;
 };
 
-export type ConvertingState = BootShape & {
+type ConvertingState = BootShape & {
   status: 'converting';
   error: null;
   recoverable: false;
@@ -95,7 +95,7 @@ export type ConvertingState = BootShape & {
   androidKey: null;
 };
 
-export type ConversionRefusedState = BootShape & {
+type ConversionRefusedState = BootShape & {
   status: 'conversion-refused';
   error: null;
   recoverable: false;
@@ -106,7 +106,7 @@ export type ConversionRefusedState = BootShape & {
   androidKey: null;
 };
 
-export type ReadyState = BootShape & {
+type ReadyState = BootShape & {
   status: 'ready';
   error: null;
   recoverable: false;
@@ -116,7 +116,7 @@ export type ReadyState = BootShape & {
   androidKey: null;
 };
 
-export type SchemaTooNewState = BootShape & {
+type SchemaTooNewState = BootShape & {
   status: 'schema-too-new';
   error: null;
   recoverable: false;
@@ -127,7 +127,7 @@ export type SchemaTooNewState = BootShape & {
   androidKey: null;
 };
 
-export type ErrorState = BootShape & {
+type ErrorState = BootShape & {
   status: 'error';
   error: string;
   journal: null;
@@ -315,10 +315,10 @@ export function isErrorState(state: BootState): state is ErrorState {
   return state.status === 'error';
 }
 
-export type BootGate = 'none' | 'passphrase' | 'authentication' | 'device-recovery' | 'schema-too-new';
+type BootGate = 'none' | 'passphrase' | 'authentication' | 'device-recovery' | 'schema-too-new';
 
-export type PassphraseMode = 'setup' | 'unlock';
-export type PassphraseScreen = 'none' | 'form' | 'converting' | 'conversion-refused';
+type PassphraseMode = 'setup' | 'unlock';
+type PassphraseScreen = 'none' | 'form' | 'converting' | 'conversion-refused';
 
 export function bootGate(state: BootState): BootGate {
   switch (state.status) {

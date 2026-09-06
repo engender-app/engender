@@ -48,22 +48,22 @@ import { readArchiveJournal } from './archiveSections';
 import { IMPORT_LOG_COLUMNS, importLogRow } from './archiveApply';
 import { mintUuid, now } from './support';
 
-export interface TransTracksCommitResult {
+interface TransTracksCommitResult {
   milestonesAdded: number;
   photosAdded: number;
 }
 
-export interface DayOneCommitResult {
+interface DayOneCommitResult {
   entriesAdded: number;
   photosAdded: number;
 }
 
-export interface TrackAndGraphCommitResult {
+interface TrackAndGraphCommitResult {
   measurementsAdded: number;
   typesAdded: number;
 }
 
-export interface PixelsCommitResult {
+interface PixelsCommitResult {
   entriesAdded: number;
   tagsAdded: number;
 }
@@ -84,7 +84,7 @@ export interface ArchiveSnapshot {
     work a commit performs, and re-reading the whole journal twice to
     subtract seven numbers would be a second answer to a question that
     already has one. */
-export interface DaylioBackupCommitResult {
+interface DaylioBackupCommitResult {
   entriesAdded: number;
   milestonesAdded: number;
   tagsAdded: number;

@@ -84,7 +84,7 @@ export interface SpineMark {
   lane: number;
 }
 
-export interface CareSpine {
+interface CareSpine {
   fromEpochDay: number;
   toEpochDay: number;
   /** Left to right. */
@@ -126,7 +126,7 @@ function positionOf(epochDay: number, todayEpochDay: number, fromEpochDay: numbe
     nothing to draw: no dose logged yet, no schedule to expect one from, no
     lab result, no stock entry. Today is not among them - the rail always
     has today. */
-export interface SpineFacts {
+interface SpineFacts {
   lastDoseEpochDay: number | null;
   nextDoseEpochDay: number | null;
   labDrawEpochDay: number | null;

@@ -85,7 +85,7 @@ export interface PhotosArea {
 type PhotoRow = { uuid: string; file_path: string; starred: number };
 
 export type StagedPhoto = { id: string; fileName: string };
-export type PhotoColumns = { entryId: number | null; milestoneId: number | null };
+type PhotoColumns = { entryId: number | null; milestoneId: number | null };
 
 const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_path, starred: bool(row.starred) });
 
@@ -349,7 +349,7 @@ export async function insertStagedPhoto(
   return photo.id;
 }
 
-export async function attachPhoto(
+async function attachPhoto(
   driver: SqliteDriver,
   files: PhotoFileStore,
   owner: PhotoOwner,

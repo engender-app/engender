@@ -44,7 +44,7 @@ export interface AttemptStore {
   clear(): void;
 }
 
-export interface AttemptThrottle {
+interface AttemptThrottle {
   /** Milliseconds still to wait at `now` before another attempt counts. */
   remainingMs(now: number): number;
   recordWrong(now: number): void;

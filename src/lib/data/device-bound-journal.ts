@@ -5,7 +5,7 @@ const DEVICE_BOUND_DB = 'gender-diary-device-key';
 const DEVICE_BOUND_STORE = 'keys';
 const DEVICE_BOUND_SLOT = 'journal-device-key';
 
-export interface DeviceBoundMetadata {
+interface DeviceBoundMetadata {
   version: typeof DEVICE_BOUND_VERSION;
   kind: 'device-bound';
   nonce: Uint8Array<ArrayBuffer>;
@@ -25,7 +25,7 @@ export class DeviceBoundKeyUnavailableError extends Error {
   }
 }
 
-export class DeviceBoundMetadataUnreadableError extends Error {
+class DeviceBoundMetadataUnreadableError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'DeviceBoundMetadataUnreadableError';

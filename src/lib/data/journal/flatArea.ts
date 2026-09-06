@@ -56,7 +56,7 @@ export type FlatRow = Record<string, unknown> & { uuid: string };
     input type cannot drift from the row it writes. */
 export type FlatInput<Domain extends { id: string }> = Omit<Domain, 'id'> & { id?: string };
 
-export interface FlatAreaSpec<Domain extends { id: string }> {
+interface FlatAreaSpec<Domain extends { id: string }> {
   table: string;
   /** Every field but `id`, in the column it is stored in. Exhaustive on
       purpose: a field added to the domain type does not compile until it is

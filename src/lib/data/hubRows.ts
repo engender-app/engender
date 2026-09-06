@@ -479,7 +479,7 @@ export function rowScreen(row: HubRowSpec): string {
 type Fronted = (typeof ROWS)[number]['finishes'];
 type Unfronted = Exclude<AreaGroupKey, Fronted>;
 type AssertNoneUnfronted<Missing extends never> = Missing;
-export type EveryAreaGroupFrontedByARow = AssertNoneUnfronted<Unfronted>;
+type EveryAreaGroupFrontedByARow = AssertNoneUnfronted<Unfronted>;
 
 /** Every area with a last write that **no** row reports, and why - the full
     `Record` over whatever the rows above do not claim, the shape
@@ -573,7 +573,7 @@ export interface HubReading {
 /** The day a row's group ended, or null while it has not. A row fronting two
     sections reads as finished only when both are, which is `groupFinishedOn`'s
     own rule; a row fronting no group never reads as finished. */
-export function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: number): number | null {
+function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: number): number | null {
   if (spec.finishes === null) return null;
   const day = groupFinishedOn(spec.finishes, states);
   /* Clamped against today rather than trusted as a flag, which is the rule
@@ -587,7 +587,7 @@ export function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDa
 /** The day a row's group was paused, or null while it has not been -
     `rowFinishedOn`'s own rule, read off `groupSuspendedOn` instead (phase 8
     features ticket 51). */
-export function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: number): number | null {
+function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: number): number | null {
   if (spec.finishes === null) return null;
   const day = groupSuspendedOn(spec.finishes, states);
   return day !== null && day <= todayEpochDay ? day : null;

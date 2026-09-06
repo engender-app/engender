@@ -27,7 +27,7 @@ import {
 import { detectPixels, pixelsPreview } from './pixels';
 import type { ArchiveJournal } from './payload';
 
-export type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'dayone' | 'transtracks' | 'trackAndGraph' | 'pixels';
+type ArchiveSourceName = 'daylio' | 'daylio-backup' | 'dayone' | 'transtracks' | 'trackAndGraph' | 'pixels';
 
 export interface ArchiveSource {
   name: ArchiveSourceName;
@@ -129,7 +129,7 @@ const SOURCES = [
    sections. */
 type Unregistered = Exclude<ArchiveSourceName, (typeof SOURCES)[number]['name']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EverySourceRegistered = AssertNoneUnregistered<Unregistered>;
+type EverySourceRegistered = AssertNoneUnregistered<Unregistered>;
 
 export const ARCHIVE_SOURCES: readonly ArchiveSource[] = SOURCES;
 

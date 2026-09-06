@@ -60,7 +60,7 @@ export function bucketStart(epochDay: number, grain: Grain): number {
   return epochDayFromLocalDate(new Date(date.getFullYear(), date.getMonth(), 1));
 }
 
-export interface GrainPoint {
+interface GrainPoint {
   /** The epoch day the bucket starts on. */
   x: number;
   /** The bucket's days averaged. */
@@ -113,7 +113,7 @@ export function atGrain(
     between two buckets still crosses the positions in between, and
     bridgeGaps in charts/geometry is what puts it there; a number a person
     is shown has to be one they logged. */
-export interface AlignedPoint {
+interface AlignedPoint {
   x: number;
   a: number | null;
   b: number | null;
