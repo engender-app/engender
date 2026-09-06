@@ -79,7 +79,9 @@
      link past that count is rendered in one step rather than one batch at a
      time. */
   // svelte-ignore state_referenced_locally
-  let batches = $state(Math.max(restoredBatches(path, key), focusIndex !== null ? batchesFor(focusIndex) : 1));
+  let batches = $state(
+    focusIndex !== null ? Math.max(restoredBatches(path, key), batchesFor(focusIndex)) : restoredBatches(path, key)
+  );
   let shown = $derived(items.slice(0, shownCount(batches, items.length)));
   let remaining = $derived(remainingCount(batches, items.length));
 
