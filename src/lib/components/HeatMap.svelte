@@ -231,6 +231,10 @@
           anything landed here at all: which kind, and how many, is the day
           view's own business once it reads `dayAhead` too (ticket 62). */
       hasMark: boolean;
+      /** Whether an empty cell opens a new entry for the day (ticket 99 item
+          13): true for today and every day behind it, never for a day still
+          ahead, since there is nothing yet to log there. */
+      isPastOrToday: boolean;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;
@@ -273,7 +277,8 @@
         eraName: covering?.era.name ?? null,
         eraMark: covering?.role.mark ?? null,
         highlightMark: highlight && highlightedDays.has(epochDay) ? highlight.role.mark : null,
-        hasMark
+        hasMark,
+        isPastOrToday: epochDay <= today
       });
     }
     return { startDow, days: out };
@@ -314,6 +319,15 @@
            `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
            this cell only says that there is something. -->
       <a class="cal-day has-mark press" data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+        {@render swatch(c)}
+        <span class="cal-num">{c.day}</span>
+      </a>
+    {:else if c.isPastOrToday}
+      <!-- A past or today cell with nothing on it opens a new entry for
+           that day (ticket 99 item 13) - the same route the "+" affordances
+           elsewhere in the app seed a day for, rather than leaving an empty
+           cell with nothing to tap. -->
+      <a class="cal-day press" data-hm-cell-empty class:is-today={c.isToday} href="/entry/new/{c.epochDay}" aria-label={c.label}>
         {@render swatch(c)}
         <span class="cal-num">{c.day}</span>
       </a>

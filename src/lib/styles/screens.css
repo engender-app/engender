@@ -933,6 +933,19 @@
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
   text-align: center;
+  /* text-align: center only centres the text within whatever room is left
+     after the browser's own up/down spin buttons (ticket 99 item 35) - they
+     ate the right side of the pill, so the number sat left of the pill's
+     true centre. This is a plain digit count, not a value worth stepping
+     one at a time, so the buttons buy nothing here. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.stats-interval-input::-webkit-inner-spin-button,
+.stats-interval-input::-webkit-outer-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .stats-interval-input:focus-visible {

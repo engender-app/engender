@@ -540,7 +540,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .mood-picker { position: relative; }
 .mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
@@ -571,6 +571,21 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      card clips at 20px, the bare rows answer with more. */
   translate: 0 calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px));
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+}
+/* Standalone scale/translate shipped in Chrome 104; the WebView floor is
+   Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
+   gap) - seventeen versions short, so the whole magnifier silently did
+   nothing there. No hover/press growth on any device at or under that
+   floor is ticket 99 items 1 and 2's report, round two of the same "phase 5
+   ticket 99" bug above, this time in the property rather than the border.
+   transform is the one form every engine back to Chrome 1 reads, so the
+   fallback trades that for losing composition with .mood-btn.is-selected's
+   own transform below - which only an engine this old would ever notice. */
+@supports not (scale: 1) {
+  .mood-face {
+    transform: translateY(calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px))) scale(var(--mood-mag, 1));
+    transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+  }
 }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
    already-similar surface tones. A mood face sits straight on the bare app
@@ -855,7 +870,21 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    instead of appearing with it. */
 .body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
-.tag-chip-wrap .tag-info-btn { margin-left: -6px; color: var(--text-2); }
+/* Shrunk from .icon-btn's 48px hover circle (ticket 99 item 17): a 14px
+   glyph inline after a chip's label read as an oversized highlight the
+   moment the pointer neared it. 24px visual, 48px hit area restored by
+   ::after the same way .tag-chip already extends past its own pill. */
+.tag-chip-wrap .tag-info-btn {
+  width: 24px; height: 24px;
+  margin-left: -6px;
+  color: var(--text-2);
+  position: relative;
+}
+.tag-chip-wrap .tag-info-btn::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
    checking the controls it does own. What is fixed here is the floor, not the
    chip: the pill stays 36px because a chip is a 36px pill in every reference
@@ -1038,10 +1067,21 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    here is to not transition it at all: the blur snaps with `inert`, and
    the scrim's own opacity fade is what still carries the felt sense of the
    withdrawal arriving gradually. */
+/* Opacity alongside the blur (ticket 99 item 40): confirmed against the
+   rail, this rule's filter never painted on .app-nav - computed style
+   reports the blur applied, on-screen it stayed full sharpness, so the
+   floating bar read as sitting in front of an open sheet rather than
+   behind it. Filter compositing is the thing failing, not the withdrawal
+   itself, and opacity is the one part of this material with no known
+   compositing gap - it carries the "not this" on its own wherever the
+   blur silently does not. */
 @supports (backdrop-filter: blur(1px)) {
   [data-app-root] > [inert] {
     filter: blur(var(--blur-withdraw));
   }
+}
+[data-app-root] > [inert] {
+  opacity: 0.5;
 }
 html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   filter: none;

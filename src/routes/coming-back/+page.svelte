@@ -282,9 +282,10 @@
   }
 </script>
 
-<ScreenHeader title={m.coming_back_title()} back="/" screen="coming-back" />
+<div class="screen">
+  <ScreenHeader title={m.coming_back_title()} back="/" screen="coming-back" />
 
-<ReadGate read={waitingRows} variant="card" count={3}>
+  <ReadGate read={waitingRows} variant="card" count={3}>
   {#snippet empty()}
     <!-- A remark rather than a titled notice, which is Notice's own
          distinction: reached by hand with nothing waiting, a heading here
@@ -396,6 +397,7 @@
     </div>
   {/snippet}
 </ReadGate>
+</div>
 
 <Sheet bind:open={() => doseDraft !== null, (open) => !open && (doseDraft = null)} title={DOSE_OFFER.copy.title()}>
   {#if doseDraft}
