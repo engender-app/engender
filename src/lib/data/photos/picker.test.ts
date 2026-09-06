@@ -11,14 +11,15 @@ vi.mock('../../platform.ts', () => ({
 vi.mock('./android-bridge.ts', () => ({
   androidPhotos: {
     pickImages: vi.fn(),
-    captureImage: vi.fn()
+    captureImage: vi.fn(),
+    pickDocument: vi.fn()
   }
 }));
 
 import { chooseFiles } from '../fileDialog.ts';
 import { isAndroid } from '../../platform.ts';
 import { androidPhotos } from './android-bridge.ts';
-import { cameraPhotoPicker, filePhotoPicker } from './picker.ts';
+import { cameraPhotoPicker, documentPicker, filePhotoPicker } from './picker.ts';
 
 describe('filePhotoPicker', () => {
   beforeEach(() => {
@@ -98,6 +99,57 @@ describe('cameraPhotoPicker', () => {
     vi.mocked(chooseFiles).mockResolvedValue([]);
 
     const picked = await cameraPhotoPicker().pick();
+
+    expect(picked).toEqual([]);
+  });
+});
+
+describe('documentPicker', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  test('uses the Android document pick on Android', async () => {
+    vi.mocked(isAndroid).mockReturnValue(true);
+    vi.mocked(androidPhotos.pickDocument).mockResolvedValue({
+      bytes: btoa(String.fromCharCode(1, 2, 3))
+    });
+
+    const picked = await documentPicker().pick();
+
+    expect(picked).toEqual([new Uint8Array([1, 2, 3])]);
+    expect(vi.mocked(chooseFiles)).not.toHaveBeenCalled();
+  });
+
+  test('returns nothing if the Android picker is backed out of', async () => {
+    vi.mocked(isAndroid).mockReturnValue(true);
+    vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ bytes: null });
+
+    const picked = await documentPicker().pick();
+
+    expect(picked).toEqual([]);
+  });
+
+  test('opens the file input for both PDFs and images on the web', async () => {
+    vi.mocked(isAndroid).mockReturnValue(false);
+    vi.mocked(chooseFiles).mockResolvedValue([
+      {
+        arrayBuffer: async () => new Uint8Array([9]).buffer
+      }
+    ] as File[]);
+
+    const picked = await documentPicker().pick();
+
+    expect(picked).toEqual([new Uint8Array([9])]);
+    expect(vi.mocked(chooseFiles)).toHaveBeenCalledWith('application/pdf,image/*');
+    expect(vi.mocked(androidPhotos.pickDocument)).not.toHaveBeenCalled();
+  });
+
+  test('returns nothing if the web file dialog is dismissed', async () => {
+    vi.mocked(isAndroid).mockReturnValue(false);
+    vi.mocked(chooseFiles).mockResolvedValue([]);
+
+    const picked = await documentPicker().pick();
 
     expect(picked).toEqual([]);
   });
