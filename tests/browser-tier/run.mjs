@@ -1946,7 +1946,7 @@ await block('phase 8 audit ticket 25 entry editor', 4, async () => {
    fixture names a standard face it does not carry), and that the two
    failures the screen has copy for really are the two the module
    produces. */
-await block('phase 8 features ticket 55 PDF renderer', 6, async () => {
+await block('phase 8 features ticket 55 PDF renderer', 8, async () => {
   const r = await load('/pdf.html', 'pdf');
   if (r.error) throw new Error(r.error);
 
@@ -1989,6 +1989,21 @@ await block('phase 8 features ticket 55 PDF renderer', 6, async () => {
     fail(
       'an undrawable file answers with no thumbnail, and a page that is not there rejects',
       JSON.stringify({ unreadableThumbIsNull: r.unreadableThumbIsNull, refusedMissingPage: r.refusedMissingPage })
+    );
+
+  // Ticket 04 (phase 9 audit): every Worker this probe's opens constructed
+  // is terminated - the leak no other tier here would ever notice.
+  const { created, terminated } = r.workerCounts;
+  if (created > 0 && terminated === created)
+    ok(`every PDF worker opened is terminated (${created} created, ${terminated} terminated)`);
+  else fail('every PDF worker opened is terminated', JSON.stringify(r.workerCounts));
+
+  const stillAttached = page.workers();
+  if (stillAttached.length === 0) ok('no PDF worker is still attached to the page once every document is closed');
+  else
+    fail(
+      'no PDF worker is still attached to the page once every document is closed',
+      stillAttached.map((w) => w.url()).join(', ')
     );
 });
 
