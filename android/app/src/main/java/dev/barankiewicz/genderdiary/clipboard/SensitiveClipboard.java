@@ -17,8 +17,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * A clipboard copy that hides itself and then takes itself back (phase 8
- * audit ticket 09).
+ * A clipboard copy that hides itself and then takes itself back.
  *
  * Android's clipboard is not a private buffer. Whatever is on it is offered
  * by the keyboard's own clipboard history to anyone who long-presses in any
@@ -190,7 +189,7 @@ public final class SensitiveClipboard {
         }
     }
 
-    /** The reset path (ADR-0014). What is here is a digest of something that
+    /** The reset path. What is here is a digest of something that
         may still be on the clipboard, which is not the journal but is a
         record the reset claims to have left nothing of. */
     public static void wipe(Context context) {

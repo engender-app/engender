@@ -73,11 +73,11 @@ public class ReminderSchedulerStoreTest {
 
     @Test
     public void wipeCancelsTheAlarmsAndTakesTheTitlesWithThem() throws Exception {
-        /* Phase 5 security ticket 01 (F-01). Nothing used to cancel these:
-           a wiped phone kept posting the person's own reminder titles on
-           schedule, read out of a preference file the reset never touched,
-           and the next app open is what cancelled them - on a phone nobody
-           opens again, never. */
+        /* Nothing used to cancel these: a wiped phone kept posting the
+           person's own reminder titles on schedule, read out of a
+           preference file the reset never touched, and the next app open
+           is what cancelled them - on a phone nobody opens again, never
+           (audit finding F-01). */
         ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
         assertTrue("nothing was scheduled to begin with", reminderAlarmExists());
 
@@ -212,7 +212,7 @@ public class ReminderSchedulerStoreTest {
 
     @Test
     public void alarmsComeBackAfterEveryRescheduleEventWithTheJournalNeverOpened() throws Exception {
-        /* Phase 5 security ticket 02 (G-02). Each of these three events
+        /* Audit finding G-02. Each of these three events
            takes the alarms with it, and the payload the receiver reads back
            afterwards is now wrapped - so this is the path that would break
            if reading it needed the data key. Nothing in this process has

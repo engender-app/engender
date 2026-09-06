@@ -15,8 +15,8 @@ import dev.barankiewicz.genderdiary.widgets.QuickLogWidgetProvider;
 import dev.barankiewicz.genderdiary.widgets.TallyWidgetProvider;
 
 /**
- * Mirrors the disguise preference (ticket 15) into the launcher alias
- * PackageManager reads. Called from a Svelte effect on every change to
+ * Mirrors the disguise preference into the launcher alias PackageManager
+ * reads. Called from a Svelte effect on every change to
  * prefs.disguise, including one that arrives through Archive restore rather
  * than the Settings toggle - restoring a disguised backup has to leave the
  * launcher disguised too, not just the in-app preference.

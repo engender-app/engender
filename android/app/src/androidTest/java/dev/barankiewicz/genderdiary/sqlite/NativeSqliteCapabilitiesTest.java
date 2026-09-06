@@ -21,26 +21,25 @@ import org.junit.runner.RunWith;
 import java.io.File;
 
 /**
- * What the native SQLite build actually has, asserted rather than assumed
- * (ticket 11's acceptance).
+ * What the native SQLite build actually has, asserted rather than assumed.
  *
- * <p>The risk this covers is real and was measured: ticket 08 found the
- * framework SQLite on the API 35 emulator has no FTS5 at all, which is one
- * of the two reasons the journal is on SQLCipher (ADR-0020). A build missing
- * FTS5 or the window functions would fail in search or in the streak and
- * nowhere else, on a device, long after this ticket.
+ * <p>The risk this covers is real and was measured: the framework SQLite on
+ * the API 35 emulator has no FTS5 at all, which is one of the two reasons
+ * the journal is on SQLCipher. A build missing FTS5 or the window functions
+ * would fail in search or in the streak and nowhere else, on a device, long
+ * after the fact.
  *
- * <p>The raw-key open is here for a different reason. Ticket 08's probe
+ * <p>The raw-key open is here for a different reason. An earlier probe
  * opened with a passphrase and let SQLCipher run its KDF, and recorded the
  * raw-key path as documented rather than exercised - and the raw key is the
  * whole argument for writing this bridge instead of taking
- * {@code @capacitor-community/sqlite} (ADR-0020's ticket 11 amendment). So
- * it is demonstrated here, three tickets before ticket 13 builds on it.
+ * {@code @capacitor-community/sqlite}. So it is demonstrated here, ahead of
+ * the Keystore work that builds on it.
  */
 @RunWith(AndroidJUnit4.class)
 public class NativeSqliteCapabilitiesTest {
 
-    /** 32 bytes, the size ADR-0018's data key is. Fixed, so a failure repeats. */
+    /** 32 bytes, the size the data key is. Fixed, so a failure repeats. */
     private static final String RAW_KEY =
         "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
@@ -78,7 +77,7 @@ public class NativeSqliteCapabilitiesTest {
 
     /**
      * Migration v3's option, without which an edited or deleted entry cannot
-     * leave the index (ticket 09).
+     * leave the index.
      */
     @Test
     public void theBuildHasContentlessDelete() {
@@ -90,7 +89,7 @@ public class NativeSqliteCapabilitiesTest {
         }
     }
 
-    /** ADR-0012's streak is the codebase's only window function. */
+    /** The streak calculation is the codebase's only window function. */
     @Test
     public void theBuildHasWindowFunctions() {
         try (SQLiteDatabase db = open(null)) {
@@ -110,8 +109,8 @@ public class NativeSqliteCapabilitiesTest {
 
     /**
      * The whole reason this bridge exists instead of a plugin that takes a
-     * passphrase: ADR-0018 hands SQLCipher a random data key with no KDF pass
-     * over it, and ADR-0013 keeps the single stretching step in the layer above.
+     * passphrase: SQLCipher gets a random data key with no KDF pass over it,
+     * and the single stretching step stays in the layer above.
      */
     @Test
     public void aRawKeyOpensAndReopensTheDatabase() {

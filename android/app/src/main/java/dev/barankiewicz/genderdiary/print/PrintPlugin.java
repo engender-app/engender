@@ -12,8 +12,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * Hands the WebView's current page to Android's print stack (phase 5 ticket
- * 17).
+ * Hands the WebView's current page to Android's print stack.
  *
  * `window.print()` is a Chrome method, not a WebView one: inside a Capacitor
  * app it returns without doing anything and without failing, so the clinician

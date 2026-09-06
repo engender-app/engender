@@ -23,8 +23,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 
 /**
- * PIN mode's binding key on a device, because none of what the ticket claims
- * is true anywhere else (phase 5 security ticket sec-02-06).
+ * PIN mode's binding key on a device, because none of what this class claims
+ * is true anywhere else.
  *
  * <p>Whether a key is really in Android Keystore, whether the platform really
  * refuses to hand out its material, and whether it really needs no
@@ -122,7 +122,7 @@ public class PinBindingKeystoreTest {
         Log.i(TAG, "binding key inside secure hardware: " + info.isInsideSecureHardware());
     }
 
-    /** The reset (ADR-0014), and a move out of PIN mode: the alias goes, and
+    /** The reset, and a move out of PIN mode: the alias goes, and
         what it produced is not reachable afterwards. */
     @Test
     public void erasingTakesTheAliasAndTheSecretWithIt() throws Exception {

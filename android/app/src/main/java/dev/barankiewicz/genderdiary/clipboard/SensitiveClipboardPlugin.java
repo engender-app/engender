@@ -6,9 +6,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * The one bridge call {@link SensitiveClipboard} exists for (phase 8 audit
- * ticket 09): copy this string, marked sensitive, and take it back off the
- * clipboard afterwards.
+ * The one bridge call {@link SensitiveClipboard} exists for: copy this
+ * string, marked sensitive, and take it back off the clipboard afterwards.
  *
  * One method, and deliberately no second one. There is nothing here that
  * reads the clipboard, so a compromise of the WebView cannot ask this plugin

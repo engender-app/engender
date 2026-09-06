@@ -22,9 +22,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Ticket 15's fourth acceptance box, on a device: the notification
- * hideNotificationTitles actually produces, through the real
- * NotificationManager, rather than the string
+ * The notification hideNotificationTitles actually produces, on a device,
+ * through the real NotificationManager, rather than the string
  * ReminderAlarmReceiverTest.resolveNotificationTitle predicts one would. A
  * locked device shows exactly what NotificationManager was handed, so this
  * is the closest a test gets to the lock screen itself without one.
@@ -84,14 +83,13 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(SENSITIVE_TITLE, notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
     }
 
-    /* Phase 5 security ticket 01 (F-05), corrected by audit ticket 07.
-       hideNotificationTitles above is about the shade, where the OS shows
-       everything whatever the app asks for. The two tests below assert
-       that VISIBILITY_PRIVATE is set on the notification, not that a
-       locked screen is actually empty - see the comment beside
-       .setVisibility in ReminderAlarmReceiver.java for what that flag
-       does and does not buy, and for the field that hides a title on
-       every default lock screen unconditionally. */
+    /* Audit finding F-05, corrected by a later audit pass. hideNotificationTitles
+       above is about the shade, where the OS shows everything whatever the
+       app asks for. The two tests below assert that VISIBILITY_PRIVATE is
+       set on the notification, not that a locked screen is actually empty -
+       see the comment beside .setVisibility in ReminderAlarmReceiver.java
+       for what that flag does and does not buy, and for the field that
+       hides a title on every default lock screen unconditionally. */
 
     @Test
     public void reminderNotificationsAreHiddenOnALockedScreen() throws Exception {

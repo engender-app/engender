@@ -20,10 +20,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Pins {@link TallyWidgetProvider#buildViews}'s rendered output before
- * ticket 06's base-class extraction, on a device: header visibility and
- * every button's content description under both disguise states. This is
- * the baseline the refactor is required to reproduce exactly.
+ * Pins {@link TallyWidgetProvider#buildViews}'s rendered output before a
+ * base-class extraction, on a device: header visibility and every button's
+ * content description under both disguise states. This is the baseline the
+ * refactor is required to reproduce exactly.
  */
 @RunWith(AndroidJUnit4.class)
 public class TallyWidgetProviderRenderTest {

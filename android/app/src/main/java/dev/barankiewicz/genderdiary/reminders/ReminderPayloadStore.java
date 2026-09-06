@@ -17,8 +17,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 /**
- * The reminder payload on disk (phase 5 security ticket 02, audit finding
- * G-02): every reminder's title and time, the check-in affirmation pool, the
+ * The reminder payload on disk (audit finding G-02): every reminder's
+ * title and time, the check-in affirmation pool, the
  * hide-titles preference and the epoch day of the latest entry, wrapped under
  * a Keystore AES-GCM key instead of written as a JSON string anyone holding
  * the app's directory can read.

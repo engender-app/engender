@@ -20,8 +20,8 @@ import java.security.UnrecoverableKeyException;
 import javax.crypto.Cipher;
 
 /**
- * The bridge half of ticket 13: Android Keystore and the biometric prompt, as
- * five calls that {@code src/lib/lock/android-key.ts} reads.
+ * The bridge to Android Keystore and the biometric prompt, as five calls
+ * that {@code src/lib/lock/android-key.ts} reads.
  *
  * <p>Every answer is an outcome string from {@link BiometricOutcomes}, and a
  * data key rides along only with {@code authenticated}. Nothing here decides
@@ -127,11 +127,11 @@ public class KeystorePlugin extends Plugin {
 
     /**
      * The same prompt with no key behind it, for the app-lock screen reached
-     * mid-session (ticket 17's gate).
+     * mid-session.
      *
      * <p>Nothing cryptographic happens here, and nothing should: by then the
      * data key is already unwrapped and in memory, and app lock is a
-     * casual-access gate rather than an encryption credential (ADR-0014).
+     * casual-access gate rather than an encryption credential.
      * What this answers is whether the platform recognises the person holding
      * the phone, which is the question the PIN pad beside it asks too.
      */
@@ -152,7 +152,7 @@ public class KeystorePlugin extends Plugin {
             (answered, result) -> answered.resolve(outcome(BiometricOutcomes.AUTHENTICATED, null)));
     }
 
-    /** The reset path (ADR-0014), and the half of it that is not in OPFS. */
+    /** The reset path, and the half of it that is not in OPFS. */
     @PluginMethod
     public void erase(PluginCall call) {
         try {
