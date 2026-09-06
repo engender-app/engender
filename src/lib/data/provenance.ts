@@ -7,10 +7,12 @@
    also what a since-cleared link (procedures.ts, tryouts.ts) leaves behind,
    so "no line" already covers both without a second check.
 
-   A roadmap goal key is the one link that is never cleared - nothing can
-   delete a roadmap goal today (CONTEXT.md) - so it is also the one case
-   that can still be set while failing to resolve: a key from a pack or a
-   custom goal this journal no longer has. That earns the single shared
+   A roadmap goal key is the one link that is never cleared - deleting a
+   custom goal leaves the milestone it minted whole, link and all
+   (ADR-0068) - so it is also the one case that can still be set while
+   failing to resolve: a key from a pack, or a custom goal this journal no
+   longer has because it was deleted or because the key arrived in an
+   archive from a device that still had it. That earns the single shared
    fallback line below rather than three near-duplicates, since the other
    two links can't dangle in practice (milestones.ts, tryouts.ts null them
    out on delete) and a defensive string for an unreachable case would be

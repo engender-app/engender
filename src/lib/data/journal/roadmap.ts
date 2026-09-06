@@ -50,10 +50,10 @@ export interface RoadmapArea {
       (ADR-0053). A milestone minted by this goal keeps its link rather
       than having it nulled - provenance.ts already renders a fallback for
       a goal key that fails to resolve, and a deleted custom goal is simply
-      a second way to reach it. A document filed against the goal is ticket
-      56's link, and this delete gains the one statement that clears it
-      once that lands. A built-in goal has no counterpart to any of this:
-      there is no row, so there is nothing to delete. */
+      a second way to reach it. A document filed against the goal is
+      unfiled rather than deleted: the paper is the person's, and only the
+      note about where it belonged goes. A built-in goal has no counterpart
+      to any of this: there is no row, so there is nothing to delete. */
   deleteCustomGoal(id: string): Promise<void>;
 
   /** Which tracks the person has said are not their path (phase 8 features
@@ -129,7 +129,19 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
     },
 
     async deleteCustomGoal(id) {
-      await driver.run('DELETE FROM roadmap_goal WHERE uuid = ?', [id]);
+      await driver.transaction(async () => {
+        // A document's link is a (kind, id) pair rather than a foreign key
+        // (documents.ts), so nothing cascades it - the same UPDATE before
+        // the DELETE that deleteMilestone and deleteProcedure run. Matched
+        // on the id as well as the kind: a goal link's id is a custom
+        // goal's uuid or a built-in goal's pack-and-key string in one
+        // column (types.ts), and only the former can be deleted.
+        await driver.run(
+          "UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'goal' AND target_id = ?",
+          [id]
+        );
+        await driver.run('DELETE FROM roadmap_goal WHERE uuid = ?', [id]);
+      });
     },
 
     async getDismissedTracks() {

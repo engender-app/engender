@@ -2388,14 +2388,13 @@ CREATE INDEX idx_document_epoch_day ON document(epoch_day);
    pack-prefixed key or a custom goal's own uuid for 'goal' - the same
    duality `milestone.roadmap_goal_key` (v43) already stores in one column.
 
-   The link is nulled by the two deletes that exist for these four kinds -
-   `deleteMilestone`, `deleteProcedure` - the same UPDATE-before-DELETE
-   order those two already use for `milestone.procedure_id`/`tryout_id`.
-   The other two kinds have no delete to null it from: regimen.ts's header
-   states "episodes are never deleted", and provenance.ts's already states
-   "nothing can delete a roadmap goal today" - so a document linked to
-   either can never dangle in practice, the same standing fact that lets
-   a roadmap goal key go un-nulled on milestone. */
+   The link is nulled by every delete that can reach it: `deleteMilestone`
+   and `deleteProcedure` at v77, and `deleteCustomGoal` from ticket 69
+   (ADR-0068) - the same UPDATE-before-DELETE order the first two already
+   use for `milestone.procedure_id`/`tryout_id`. What is left cannot dangle
+   in practice either: regimen.ts's header states "episodes are never
+   deleted", and a built-in goal is a pack-and-key string with no row to
+   delete. */
 const SCHEMA_V77 = `
 CREATE TABLE document_v77 (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
