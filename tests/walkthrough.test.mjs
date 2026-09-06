@@ -4276,7 +4276,14 @@ try {
    detail screen and a confirm - so nothing below the screens can prove it,
    which is what this flow is for. The page itself is drawn on a canvas and
    handed to the real input, so it goes through normalizePhoto and the
-   encrypted store the way a scan would. */
+   encrypted store the way a scan would.
+
+   Phase 8 features ticket 70: this used to open on an asserted-empty
+   list, which the persona document seeded by ticket 64 broke the same
+   way it broke the PDF flow below - see that flow's own comment for the
+   mechanism. Fixed by joining the seeded row rather than unseeding it
+   (ticket 64 put it there on purpose), so this flow ends back at its
+   starting row count instead of an empty notice. */
 try {
   await fresh('/media/documents');
   await page.locator('[data-add]').waitFor();
@@ -4326,8 +4333,8 @@ try {
   await page.locator('[data-delete-document]').click();
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
-  // Back to what was there before this flow filed anything, which is the
-  // list being empty on a journal that had no paper of its own.
+  // Back to the row count this flow started with - the seeded persona
+  // document, not an empty list.
   await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, paperBefore);
 
   ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it takes it off the list');
