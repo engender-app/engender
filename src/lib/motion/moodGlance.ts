@@ -5,7 +5,7 @@
    DIRECTION.md's budget was one: the flag sun's 7s breath, on the one element
    that carries identity, and ADR-0051 refused a second one after four rounds
    of form failed to earn it. This is the second one, and it is deliberate
-   (ADR-0072, Alicja 2026-09-07). It does not cite ADR-0050, which the budget
+   (ADR-0071, Alicja 2026-09-07). It does not cite ADR-0050, which the budget
    forbids; the argument is its own and it is about what was already there.
 
    The faces were never still. `face-blink` ran forever on five of them
