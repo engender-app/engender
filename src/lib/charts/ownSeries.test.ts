@@ -180,11 +180,11 @@ test('a semitone figure and a decibel figure are read in their own units', () =>
   assert.deepEqual(room.runs[0].points.map((point) => point.y), [30, 40]);
 });
 
-/* The ticket's first acceptance box, over the registry rather than over a
-   list written here: every figure ticket 27 filed as Own-series draws a
-   trend. The literal key list beside it is the review gate - a sixth
-   Own-series figure fails this test on the way in, which is where the
-   question "does it have a trend, and in what units" belongs. */
+/* Checked over the registry rather than over a list written here: every
+   figure filed as Own-series draws a trend. The literal key list beside it
+   is the review gate - a sixth Own-series figure fails this test on the
+   way in, which is where the question "does it have a trend, and in what
+   units" belongs. */
 test('every Own-series figure in the registry draws a trend', () => {
   assert.deepEqual(
     OWN_SERIES_METRICS.map((metric) => metric.key),

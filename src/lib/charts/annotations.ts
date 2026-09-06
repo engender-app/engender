@@ -1,5 +1,4 @@
-/* What was happening around the numbers a chart draws (phase 5 deepening
-   ticket 23, ADR-0001, ADR-0010).
+/* What was happening around the numbers a chart draws.
 
    Every time chart in the app plots the person's own readings against a date
    axis and draws nothing else. A dysphoria line that dropped in March does
@@ -24,20 +23,20 @@
    Pure, and above the journal seam the way milestoneStatus.ts and
    regimenEpisode.ts are: nothing here reads a clock or a database. `today`
    arrives as an argument because an unfinished episode reaches to today and
-   the schema stores no end for it (ADR-0010). Node-tier safe, so it imports
+   the schema stores no end for it. Node-tier safe, so it imports
    no paraglide: the words an annotation is written with live in
    components/kit/chartAnnotation.ts, the same split day.ts keeps from
    vocabulary/dayLabels.ts.
 
    ## Which charts take annotations, and which take none
 
-   The ticket asks for this to be decided per chart rather than switched on
-   everywhere, and for the ones that take nothing to be named with a reason.
+   This is decided per chart rather than switched on everywhere, and the
+   ones that take nothing are named with a reason.
 
    Taking them:
 
      /stats, the values chart      a scale over a date range, which is the
-                                   case the ticket is written about
+                                   central case this rule is built around
      /settings/labs, per analyte   "where did the schedule change" is the
                                    question a lab series is read with
      /body-map, both trajectories  a region's dysphoria and euphoria over a
@@ -48,8 +47,8 @@
 
    Taking none:
 
-     Safe Space's 30-day timeline  it is a crisis screen (ADR-0040). The
-                                   window would clip out old milestones on
+     Safe Space's 30-day timeline  it is a crisis screen. The window would
+                                   clip out old milestones on
                                    its own, but the ones it would keep are
                                    the surgery dates and recovery windows of
                                    the last month, and a screen someone opens
@@ -63,18 +62,17 @@
                                    interval.
      /settings/exposure            has no chart. Its counters are list rows.
      /body/measurements            a time chart, and it would fit - but it is
-                                   not in this ticket's screen list, and
-                                   wiring it here would be a decision taken
-                                   in the wrong ticket. Named so the next
-                                   person knows it was looked at.
+                                   not wired in yet, and doing so here would
+                                   be a decision made in the wrong place.
+                                   Named so the next person knows it was
+                                   looked at.
 
    One thing the app stores dates for and this deliberately does not draw:
    entries themselves - every logged day would be an annotation, which is
    the line already on the chart. A consult used to be excluded for the same
    reason recorded here once, back when it lived only inside a procedure's
-   own history; phase 8 features ticket 59 gave every appointment a row of
-   its own (ADR-0066), and a consult is one of those rows, so it draws like
-   any other appointment now. */
+   own history; every appointment later got a row of its own, and a consult
+   is one of those rows, so it draws like any other appointment now. */
 
 import type { EpisodeEndReason } from '../data/types';
 import { spanOverlapsRange } from '../data/span';
@@ -86,8 +84,8 @@ import { spanOverlapsRange } from '../data/span';
     stretch after it - because a chart wants to show the operation and the
     weeks it was recovered through as two different marks.
 
-    The last six are phase 8 features ticket 15's, and they are the hormone
-    curve's alone - `getCurveMarkers` rather than `getAnnotations`
+    The last six are the hormone curve's alone - `getCurveMarkers` rather
+    than `getAnnotations`
     (journal/chartAnnotations.ts), so no chart picks them up by having opted
     into annotations. They split finer than the record types behind them for
     one reason: a kind is the only thing a mark is worded from
@@ -100,16 +98,16 @@ import { spanOverlapsRange } from '../data/span';
     recent spread and not every day with a count or a reading on it: the
     threshold, and the reason for it, are in data/ownSpread.ts.
 
-    `finishedArea` is phase 8 features ticket 04's, and it is a point on the
-    day somebody said a stream of theirs ended (ADR-0052). It belongs in
+    `finishedArea` is a point on the day somebody said a stream of theirs
+    ended. It belongs in
     `getAnnotations` rather than beside the six above, because that day is
     exactly what a flat stretch on any chart covering it needs explaining
     with: without it the reader cannot tell a practice that ended from a
     month nobody logged. Its `name` is the area's own key, resolved by
     kit/chartAnnotation.ts.
 
-    `appointment` is phase 8 features ticket 59's (ADR-0066). One point per
-    past appointment, named by the person's own kind where they typed one -
+    `appointment` is one point per past appointment, named by the person's
+    own kind where they typed one -
     the same rule `name` already follows everywhere else, so no fallback
     lives here. A consult is an appointment whose procedureId is set and
     carries no kind of its own here: it draws exactly like any other
@@ -137,10 +135,10 @@ export type ChartAnnotationKind =
 /** Whether a kind is a moment or a stretch. Here rather than on each record,
     so no caller can hand in a milestone that claims to be a period.
 
-    `era` is a point rather than a span (phase 6 ticket 03): the mark is the
-    boundary an era's start draws, not the stretch itself - the calendar
-    shades the stretch, and a chart would need a wash in every era's colour
-    to do the same, which is a second mechanism the ticket rules out. */
+    `era` is a point rather than a span: the mark is the boundary an era's
+    start draws, not the stretch itself - the calendar shades the stretch,
+    and a chart would need a wash in every era's colour to do the same,
+    which this avoids as a second mechanism. */
 const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   milestone: 'point',
   surgery: 'point',
@@ -158,10 +156,10 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   bodyRegionDysphoria: 'point',
   bodyRegionEuphoria: 'point',
   finishedArea: 'point',
-  /* Phase 8 features ticket 51. A point, the same reason `finishedArea` is
-     one: the day the pause started is what a flat stretch after it needs
-     explaining with, not a stretch of its own - the app has no stored day
-     the pause ended (that is what resuming clears, not sets). */
+  /* A point, the same reason `finishedArea` is one: the day the pause
+     started is what a flat stretch after it needs explaining with, not a
+     stretch of its own - the app has no stored day the pause ended (that
+     is what resuming clears, not sets). */
   suspendedArea: 'point'
 };
 
@@ -180,12 +178,12 @@ export interface ChartAnnotationSource {
   startEpochDay: number;
   endEpochDay: number | null;
   /** Where the record this stands for is read, for a mark somebody can tap
-      through (ticket 15). Absent on the seven kinds that had none: a
-      journaling pause is a stretch nothing owns a screen for, and a milestone
-      mark on a chart was never meant to be a way out of the chart. */
+      through. Absent on the seven kinds that had none: a journaling pause
+      is a stretch nothing owns a screen for, and a milestone mark on a
+      chart was never meant to be a way out of the chart. */
   href?: string;
   /** Which of a screen's several charts this belongs on, or absent for all
-      of them (ticket 15).
+      of them.
 
       The hormone curve screen draws a chart per ester and a chart per
       illustrative shape, and each one is built from only the doses that
@@ -195,9 +193,9 @@ export interface ChartAnnotationSource {
       effect, a day that stood out - is about the person rather than about
       one drug, and belongs under all of them. */
   series?: string;
-  /** Why a `regimen` episode ended (ticket 43). Absent on every other kind,
-      and null on a `regimen` source that is still open or that ended
-      before this ticket. */
+  /** Why a `regimen` episode ended. Absent on every other kind, and null
+      on a `regimen` source that is still open or that ended before this
+      field existed. */
   endReason?: EpisodeEndReason | null;
 }
 
@@ -228,8 +226,8 @@ export interface ChartAnnotation {
 export interface AnnotationRange {
   from: number;
   to: number;
-  /** Where an unfinished stretch reaches to. Nothing is stored about it
-      (ADR-0010), so it is asked of the caller rather than of a clock. */
+  /** Where an unfinished stretch reaches to. Nothing is stored about it,
+      so it is asked of the caller rather than of a clock. */
   today: number;
 }
 

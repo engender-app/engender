@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-// vitest.config.ts has no SvelteKit plugin (ADR-0017), so the `$lib` alias
+// vitest.config.ts has no SvelteKit plugin, so the `$lib` alias
 // platform-sync.ts uses for buildAndroidReminderPayload does not resolve here.
 // payload.test.ts already pins its copy semantics; this mock keeps that
 // resolution-only, an identity pass-through so assembleReminderSyncPayload's
@@ -31,8 +31,8 @@ const TEXTS = {
 const ALL_ON = {
   remindersEnabled: true,
   wearElapsedEnabled: true,
-  /* No area is hidden or finished (phase 8 features ticket 04) - the tests
-     that are about the cascade say so themselves. */
+  /* No area is hidden or finished - the tests that are about the cascade
+     say so themselves. */
   areaStates: {},
   todayEpochDay: 20309,
   quietHours: { enabled: false, start: '22:00', end: '07:00' }
@@ -154,7 +154,7 @@ describe('assembleReminderSyncPayload', () => {
     expect(payload.checkInEnabled).toBe(false);
   });
 
-  test('a fresh install hides both the reminder title and the check-in affirmation (ticket AU-07)', () => {
+  test('a fresh install hides both the reminder title and the check-in affirmation', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
@@ -171,7 +171,7 @@ describe('assembleReminderSyncPayload', () => {
     expect(payload.hideNotificationTitles).toBe(true);
   });
 
-  test('an install that has explicitly turned titles back on keeps that choice (ticket AU-07)', () => {
+  test('an install that has explicitly turned titles back on keeps that choice', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
@@ -189,7 +189,7 @@ describe('assembleReminderSyncPayload', () => {
   });
 });
 
-describe('schedulableReminders (phase 6 ticket 04)', () => {
+describe('schedulableReminders', () => {
   const WEAR = { ...REMINDER, id: 'r-2', title: 'Binder', autoSource: 'wear:session-1' };
   const STOCK = { ...REMINDER, id: 'r-3', title: 'Estradiol', autoSource: 'stock:estradiol' };
   /** No area hidden or finished, which is what every case below but the last
@@ -225,8 +225,8 @@ describe('schedulableReminders (phase 6 ticket 04)', () => {
     expect(rows).toEqual([REMINDER, WEAR]);
   });
 
-  /* Phase 8 features ticket 04: finishing the wear log silences its prompts
-     the same way the switch does, and takes nothing else with it. */
+  /* Finishing the wear log silences its prompts the same way the switch
+     does, and takes nothing else with it. */
   test('drops the wear prompts once the wear log is finished, switch on or not', () => {
     const finished = {
       areaStates: { wearSessions: { hidden: false, finishedEpochDay: 20000, suspendedEpochDay: null } },
@@ -250,7 +250,7 @@ describe('schedulableReminders (phase 6 ticket 04)', () => {
   });
 });
 
-describe('what the payload carries about the registry (phase 6 ticket 04)', () => {
+describe('what the payload carries about the registry', () => {
   const assemble = (over: Record<string, unknown>) =>
     assembleReminderSyncPayload({
       reminders: [REMINDER, { ...REMINDER, id: 'r-2', autoSource: 'wear:session-1' }],

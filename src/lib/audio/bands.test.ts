@@ -17,12 +17,12 @@ import {
   typicalRanges
 } from './bands.ts';
 
-/* The absolute axis and the bands on it (phase 8 features ticket 09,
-   seam 2, ADR-0059). The figures themselves are the ADR's; what is proved
-   here is that they are per language and derived from the published mean
-   and SD, that the middle band is computed rather than asserted, that the
-   axis always contains the bands, and that the mapping is semitone-linear
-   so a fixed pitch change is a fixed distance wherever it happens. */
+/* The absolute axis and the bands on it. The figures themselves are the
+   cited papers'; what is proved here is that they are per language and
+   derived from the published mean and SD, that the middle band is
+   computed rather than asserted, that the axis always contains the bands,
+   and that the mapping is semitone-linear so a fixed pitch change is a
+   fixed distance wherever it happens. */
 
 test('the ranges are mean +/- one SD of the cited population, per language', () => {
   // Leung, Oates, Papp & Chan 2022: 115 (21) and 199 (28).

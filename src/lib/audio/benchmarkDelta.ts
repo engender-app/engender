@@ -1,5 +1,4 @@
-/* What changed between two voice benchmarks (phase 5 deepening ticket 16,
-   CONTEXT: "Voice benchmark").
+/* What changed between two voice benchmarks (CONTEXT: "Voice benchmark").
 
    Descriptive only (PRODUCT.md:109): a difference in Hz, a difference in
    semitones, a difference in F1/F2. No direction is named as better or
@@ -12,8 +11,8 @@
    rather than in the page, so a caller cannot compute a delta across
    passages by forgetting to check first.
 
-   The second gate is the capture chain, and it is narrower (phase 8
-   features ticket 28, ADR-0061). A change of passage leaves nothing to
+   The second gate is the capture chain, and it is narrower. A change of
+   passage leaves nothing to
    compare; a change of phone leaves the pitch figures intact and takes the
    resonance ones away, because mean F0 shows no significant effect of
    recording device while smartphone formants failed test-retest outright.
@@ -30,7 +29,7 @@ import { captureChainBreak, type ChainBreak } from './captureChain';
 export interface ComparableTake {
   passageKey: string;
   /** What recorded it (audio/captureChain.ts). Null on a benchmark from
-      before ADR-0061, which is a chain nothing knows. */
+      before capture chains were tracked, which is a chain nothing knows. */
   captureChain: string | null;
 }
 
@@ -39,12 +38,12 @@ export interface ComparableTake {
     Passage first, where both changed at once: two passages leave nothing to
     compare - a rate over 98 English words and over 82 Polish ones are
     different numbers - while a change of phone leaves each figure meaning
-    what it meant and only takes the join away (ADR-0060, ADR-0061). Naming
-    the narrower reason would understate what happened.
+    what it meant and only takes the join away. Naming the narrower reason
+    would understate what happened.
 
-    One function rather than a check per caller, which is ADR-0061's own
-    instruction about the chain gate: it lives beside `acousticDelta` so a
-    caller cannot compare across chains by forgetting to look. */
+    One function rather than a check per caller, so the chain gate is
+    enforced once: it lives beside `acousticDelta` so a caller cannot
+    compare across chains by forgetting to look. */
 export type SeriesBreak = ChainBreak | 'passage';
 
 export function comparabilityBreak(from: ComparableTake, to: ComparableTake): SeriesBreak | null {

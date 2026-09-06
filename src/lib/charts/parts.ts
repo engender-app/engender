@@ -1,13 +1,12 @@
-/* Parts of a whole (phase 8 UX ticket 04, ADR-0058), for the ring that
-   draws the unordered case.
+/* Parts of a whole, for the ring that draws the unordered case.
 
    Beside geometry.ts rather than inside Donut.svelte for the reason the
-   header there gives: the two decisions this ticket had to make before
-   anything was drawn - where the cap falls and what happens to what it
-   drops - are arithmetic, and arithmetic is worth holding to values
-   without a DOM in the way. The ordered strip needs none of this: its
-   segments are the scale's own steps, all of them, in the scale's own
-   order, so there is nothing to cap and nothing to sort. */
+   header there gives: the two decisions to make before anything was
+   drawn - where the cap falls and what happens to what it drops - are
+   arithmetic, and arithmetic is worth holding to values without a DOM in
+   the way. The ordered strip needs none of this: its segments are the
+   scale's own steps, all of them, in the scale's own order, so there is
+   nothing to cap and nothing to sort. */
 
 import { share } from './geometry';
 
@@ -31,10 +30,9 @@ export interface Slice extends Part {
 
     Five, which is the count the legend under it can be read down without
     scanning and the count the tint ladder has distinguishable steps for.
-    The ticket's own warning is the reason there is a number here at all: a
-    nine-slice ring with a legend is worse than the horizontal bars it
+    A nine-slice ring with a legend is worse than the horizontal bars it
     replaced, because at nine the arcs stop being comparable and the legend
-    becomes the chart. */
+    becomes the chart - which is the reason there is a number here at all. */
 export const MAX_SLICES = 5;
 
 /** The break between two arcs, in the ring's own path units, so a ring
@@ -67,8 +65,8 @@ export const MIN_ARC = 3;
 
     A part nothing was logged against is dropped rather than drawn: a
     zero-length arc with a name in the legend is a category the person does
-    not have, and the whole point of the emptiness rule this phase writes
-    is that nothing is shown for a practice nobody uses. */
+    not have, and the whole point of the app's emptiness rule is that
+    nothing is shown for a practice nobody uses. */
 export function slices(parts: Part[], restName: string, cap: number = MAX_SLICES): Slice[] {
   const real = parts.filter((p) => p.amount > 0);
   const whole = real.reduce((sum, p) => sum + p.amount, 0);

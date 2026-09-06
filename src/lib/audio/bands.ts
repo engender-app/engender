@@ -1,5 +1,4 @@
-/* The absolute pitch axis, and the reference bands drawn on it (phase 8
-   features ticket 09, ADR-0059).
+/* The absolute pitch axis, and the reference bands drawn on it.
 
    **Why this exists at all.** The live gauge used to plot semitones against
    a rolling median of whatever was on screen, chosen so the figure could
@@ -9,13 +8,13 @@
    nothing can be drawn against - no reference band, no comfort band, no
    comparison between two takes months apart.
 
-   So the axis is absolute Hz, and ADR-0059 narrows PRODUCT.md's rule to
-   allow two typical speaking-pitch ranges on it, with their figures, their
-   source and a caveat. The narrowing stops there: it is the pitch graph and
+   So the axis is absolute Hz, narrowing PRODUCT.md's rule to allow two
+   typical speaking-pitch ranges on it, with their figures, their source
+   and a caveat. The narrowing stops there: it is the pitch graph and
    nothing else. There is still no verdict, no score, no label on a voice and
    no direction of travel. Formant search windows are untouched
-   (resonance.ts), and the semitone spread never gets a band at all - the
-   reason is in the ADR and it is a measurement, not a preference.
+   (resonance.ts), and the semitone spread never gets a band at all - it is
+   a measurement, not a preference.
 
    **The bands are per language, because pitch is.** They were English
    figures on both passages until 2026-09-04, which was wrong in the
@@ -31,7 +30,7 @@
 
    **Each range is mean +/- one standard deviation** of its published
    population, computed here rather than written down as bounds, so what the
-   ADR cites and what the figure draws cannot drift apart. One SD is about
+   sources say and what the figure draws cannot drift apart. One SD is about
    two thirds of the speakers measured; it is the tightest claim the sources
    support, and widening it to two would put "typical cis man" on a range
    from 73 to 157 Hz, which is not a typical anything.
@@ -52,8 +51,8 @@
    component holding it owns its own pixels.
 
    Pure arithmetic, like its siblings: no clock, no database, nothing from
-   paraglide (ADR-0016). The band captions and the caveat are the screen's,
-   because they are copy. */
+   paraglide. The band captions and the caveat are the screen's, because
+   they are copy. */
 
 /** The languages there are published read-passage figures for. Not "the
     languages the app speaks": a passage in a language with no figures falls
@@ -82,8 +81,7 @@ export interface MiddleBand {
 export type PitchBand = PopulationBand | MiddleBand;
 
 /** Mean and standard deviation of speaking f0 over a read passage, by
-    language and population. ADR-0059 carries the citations and the
-    corpus caveat; these are the numbers those papers report.
+    language and population. These are the numbers those papers report.
 
       en  Leung, Oates, Papp & Chan (2022), Journal of Voice 36(3):
           379 speakers of Australian English aged 18-60 reading a passage,

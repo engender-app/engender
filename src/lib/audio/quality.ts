@@ -1,5 +1,5 @@
 /* The quality gate a take has to get through before its numbers mean
-   anything (phase 5 deepening ticket 15, CONTEXT: "Voice benchmark").
+   anything (CONTEXT: "Voice benchmark").
 
    A benchmark is comparable to the ones before it only if the conditions
    were the same, so this is the module that decides a take is not worth
@@ -9,9 +9,9 @@
 
    Nothing here is a judgement about a voice (PRODUCT.md:109). Every check is
    about the recording - level, room, length, steadiness - and a take that
-   fails one is a take to make again, never a voice that fell short. ADR-0059
-   narrowed that rule for the pitch graph's reference bands and for nothing
-   else: no check in here gained a range, and none will.
+   fails one is a take to make again, never a voice that fell short. The
+   pitch graph's reference bands are the one narrowing of that rule, and
+   for nothing else: no check in here gained a range, and none will.
 
    Pure, like its siblings, and it takes the pitch track rather than
    recomputing it (see resonance.ts's header for why).

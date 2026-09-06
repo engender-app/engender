@@ -3,9 +3,9 @@ import { test } from 'vitest';
 import { concat, mix, noise, silence, sine, vowel, wobblingSine } from './test-support/synth.ts';
 import { noteName, trackPitch, wordsPerMinute } from './pitch.ts';
 
-/* YIN accuracy (ticket 15's first acceptance criterion): a synthesized sine
-   has the frequency it was built at, so the tolerance is arithmetic rather
-   than a fixture's claim about somebody's voice. */
+/* YIN accuracy: a synthesized sine has the frequency it was built at, so
+   the tolerance is arithmetic rather than a fixture's claim about
+   somebody's voice. */
 
 test('a sine comes back within 1 Hz across the speaking range', () => {
   for (const hz of [85, 110, 145, 180, 220, 265, 310, 350]) {

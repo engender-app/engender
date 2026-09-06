@@ -1,5 +1,4 @@
-/* What each of a benchmark's two takes is worth (phase 5 deepening ticket 15,
-   CONTEXT: "Voice benchmark").
+/* What each of a benchmark's two takes is worth (CONTEXT: "Voice benchmark").
 
    The engine's three modules answer three separate questions; this is the
    one place that says which questions get asked of which take, so the
@@ -33,7 +32,7 @@ export interface PassageTake {
   quality: QualityReport;
   figures: PassageFigures | null;
   /** The passage's pitch over time, downsampled and encoded for the row's
-      own column (track.ts, phase 8 features ticket 09). Null where nothing
+      own column (track.ts). Null where nothing
       was voiced. It is produced here rather than on the screen for the
       reason this module exists at all: the recording screen holds no
       analysis of its own, and a second caller downsampling its own copy of

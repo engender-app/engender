@@ -10,8 +10,8 @@ import { analyseFormants } from './resonance.ts';
 const formantsOf = (signal: { samples: Float32Array; sampleRate: number }) =>
   analyseFormants(signal.samples, signal.sampleRate, trackPitch(signal.samples, signal.sampleRate));
 
-/* LPC formants (ticket 15's first acceptance criterion). A synthesized vowel
-   is a harmonic source through one resonator per formant, so the formants it
+/* LPC formants: a synthesized vowel is a harmonic source through one
+   resonator per formant, so the formants it
    has are the ones it was built from, and the tolerance is how close the
    envelope's peaks land to them. */
 

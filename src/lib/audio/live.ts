@@ -1,5 +1,4 @@
-/* The gate, running while the take is still being made (phase 5 deepening
-   ticket 15, seam 3).
+/* The gate, running while the take is still being made.
 
    The recording screen shows the four checks live during three seconds of
    held breath, which means the analysis has to keep up with the microphone
@@ -10,8 +9,8 @@
    So the frames are computed once each, as the samples that complete them
    arrive, and never again.
 
-   **Nothing here reads the take twice** (phase 8 audit ticket AU-05). The
-   poll used to re-aggregate every sample captured so far - a peak loop and a
+   **Nothing here reads the take twice.** The poll used to re-aggregate
+   every sample captured so far - a peak loop and a
    level walk over the whole buffer, ten times a second - so it cost thirty
    times as much at five minutes as at ten seconds and ate the phone's whole
    frame budget somewhere around a minute in. Every one of those aggregates
