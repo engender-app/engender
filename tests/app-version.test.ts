@@ -53,12 +53,12 @@ describe('resolveAppVersion', () => {
     /* The web bundle, the release notes and the Android build each need the
        one string, and only one of them can practically shell out to git. The
        pipeline reads the tag once and passes it down. */
-    expect(resolveAppVersion({ GENDER_DIARY_VERSION: '2.0.0' }, untagged())).toBe('2.0.0');
+    expect(resolveAppVersion({ ENGENDER_VERSION: '2.0.0' }, untagged())).toBe('2.0.0');
   });
 
   it('ignores an empty override rather than releasing as the empty string', () => {
     // An unset CI variable expands to '' far more often than it is missing.
-    expect(resolveAppVersion({ GENDER_DIARY_VERSION: '  ' }, untagged())).toBe('0.0.0-dev+g1a2b3c4d');
+    expect(resolveAppVersion({ ENGENDER_VERSION: '  ' }, untagged())).toBe('0.0.0-dev+g1a2b3c4d');
   });
 });
 

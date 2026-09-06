@@ -18,7 +18,7 @@
    a release: put them in the directory before this runs.
 
    Run `node scripts/package-release.mjs`. On a checkout with no signed tag,
-   GENDER_DIARY_VERSION=<version> is the deliberate way in (ADR-0022) and a dry
+   ENGENDER_VERSION=<version> is the deliberate way in (ADR-0022) and a dry
    run of the whole path. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -46,7 +46,7 @@ const version = appVersion();
 if (!isReleaseVersion(version)) {
   console.error(
     `Refusing to package ${version}. A release needs a signed v<semver> tag on an ` +
-      'unedited tree, or GENDER_DIARY_VERSION set deliberately (ADR-0022).'
+      'unedited tree, or ENGENDER_VERSION set deliberately (ADR-0022).'
   );
   process.exit(1);
 }
@@ -68,7 +68,7 @@ function walk(path, files = []) {
 
 /** `npm run build`, told which version it is building. */
 function build() {
-  run('npm', ['run', 'build'], { GENDER_DIARY_VERSION: version });
+  run('npm', ['run', 'build'], { ENGENDER_VERSION: version });
 }
 
 /**
@@ -90,7 +90,7 @@ function packWebBundle(path) {
 function packSource(path) {
   run('sh', [
     '-c',
-    `git archive --format=tar --prefix=gender-diary-${version}/ HEAD | gzip --no-name --best > ${JSON.stringify(path)}`
+    `git archive --format=tar --prefix=engender-${version}/ HEAD | gzip --no-name --best > ${JSON.stringify(path)}`
   ]);
 }
 
@@ -118,13 +118,13 @@ mkdirSync(out, { recursive: true });
    version's tarballs alongside its own, while anything ticket 18 left in the
    directory has to survive. */
 for (const name of readdirSync(out)) {
-  if (/^(gender-diary-(web|src)-.*\.tar\.gz|SHA256SUMS|\.reproducibility-check\.tar\.gz)$/.test(name)) {
+  if (/^(engender-(web|src)-.*\.tar\.gz|SHA256SUMS|\.reproducibility-check\.tar\.gz)$/.test(name)) {
     rmSync(join(out, name));
   }
 }
 
-const webBundle = join(out, `gender-diary-web-${version}.tar.gz`);
-const sourceArchive = join(out, `gender-diary-src-${version}.tar.gz`);
+const webBundle = join(out, `engender-web-${version}.tar.gz`);
+const sourceArchive = join(out, `engender-src-${version}.tar.gz`);
 
 console.log(`\n=== Building ${version} ===`);
 build();

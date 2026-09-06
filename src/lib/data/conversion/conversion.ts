@@ -1,6 +1,6 @@
 /* Converting a plaintext-era Journal into an encrypted one (ticket 10).
 
-   Every Journal written before ticket 09 is a `gender-diary.sqlite3` file in
+   Every Journal written before ticket 09 is a `engender.sqlite3` file in
    the OPFS root with a directory of plaintext photos beside it. This module
    is the state machine that turns one into the encrypted Journal ticket 09
    defined, on a phone, where the process can be killed between any two
@@ -155,7 +155,7 @@ export function describeJournalState(survey: JournalSurvey): JournalState {
   /* No marker and both kinds of Journal present. Nothing in this app
      produces that state - the marker is written before the keystore and
      cleared after the last plaintext file goes - but the answer it deserves
-     is not ambiguous: a root `gender-diary.sqlite3` is pre-encryption by
+     is not ambiguous: a root `engender.sqlite3` is pre-encryption by
      construction, and the encrypted Journal beside it is the live one. */
   if (survey.keystoreExists) return survey.plaintextJournalPresent ? 'retire' : 'unlock';
 
