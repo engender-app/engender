@@ -72,6 +72,19 @@ test('a roadmap goal key that resolves to nothing degrades to the shared honest 
   assert.deepEqual(origin, { text: "From something that's since been removed.", href: null });
 });
 
+test('a milestone whose custom goal has since been deleted falls to that same fallback', () => {
+  /* Phase 8 features ticket 69, ADR-0068: `deleteCustomGoal` leaves the
+     milestone's `roadmapGoalKey` alone rather than nulling it, so what a
+     delete leaves behind is exactly this row - a key that is still set and
+     a joined text that has gone null (roadmap.test.ts pins that the delete
+     produces it). The second way to reach a line written for a key
+     arriving from a stale archive, and it needs no second string. */
+  const origin = resolveMilestoneOrigin(
+    milestone({ roadmapGoalKey: 'custom-goal-uuid', customRoadmapGoalText: null })
+  );
+  assert.deepEqual(origin, { text: "From something that's since been removed.", href: null });
+});
+
 test('a milestone adopted from a tryout names it and links to that tryout', () => {
   const origin = resolveMilestoneOrigin(milestone({ tryoutId: 't-1', tryoutLabel: 'Alicja' }));
   assert.deepEqual(origin, { text: 'From adopting Alicja', href: '/transition/tryouts/t-1' });
