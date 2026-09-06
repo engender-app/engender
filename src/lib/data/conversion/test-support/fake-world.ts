@@ -52,8 +52,8 @@ export const KILL_POINTS = [
 
 export type KillPoint = (typeof KILL_POINTS)[number];
 
-const SOURCE = 'gender-diary.sqlite3';
-const SOURCE_BACKUP = 'gender-diary.sqlite3.pre-migration-backup';
+const SOURCE = 'engender.sqlite3';
+const SOURCE_BACKUP = 'engender.sqlite3.pre-migration-backup';
 const ENCRYPTED = 'encrypted-journal.sqlite3';
 
 export interface FakeWorld {
@@ -104,7 +104,7 @@ export async function fakeWorld(options: FakeWorldOptions = {}): Promise<FakeWor
   const notes = options.notes ?? ['woke up early', 'zażółć gęślą jaźń', 'first appointment'];
   const photoNames = options.photoNames ?? ['aaa.jpg', 'bbb.jpg', 'ccc.jpg', 'ddd.jpg'];
 
-  const dir = mkdtempSync(join(tmpdir(), 'gender-diary-conversion-'));
+  const dir = mkdtempSync(join(tmpdir(), 'engender-conversion-'));
   const path = (name: string) => join(dir, name);
 
   let killPoint: KillPoint | null = null;

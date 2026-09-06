@@ -33,7 +33,7 @@ import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'migration-probe';
-const DATABASE = 'gender-diary.sqlite3';
+const DATABASE = 'engender.sqlite3';
 
 /** The release after this one, as a database sees it: everything shipped plus
     one more step. */

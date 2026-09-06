@@ -16,7 +16,7 @@ function targets(
   } = {}
 ) {
   const log: string[] = [];
-  const entries = options.entries ?? ['gender-diary.sqlite3', 'gender-diary.sqlite3.pre-migration-backup', 'photos'];
+  const entries = options.entries ?? ['engender.sqlite3', 'engender.sqlite3.pre-migration-backup', 'photos'];
 
   const root = {
     async *keys() {
@@ -59,8 +59,8 @@ test('closes the database, empties its storage, then drops the mirror', async ()
 
   expect(log).toEqual([
     'close',
-    'remove gender-diary.sqlite3 (recursive)',
-    'remove gender-diary.sqlite3.pre-migration-backup (recursive)',
+    'remove engender.sqlite3 (recursive)',
+    'remove engender.sqlite3.pre-migration-backup (recursive)',
     'remove photos (recursive)',
     'clear mirrors',
     'clear cache'
@@ -83,7 +83,7 @@ test('a database that will not close is no reason to leave the data', async () =
    list of known names has to fail here. */
 test('a reset takes the recovery key with everything else under the root', async () => {
   const { deps, log } = targets({
-    entries: ['gender-diary.sqlite3', 'keystore.json', RECOVERY_KEY_FILE, '.opfs-sahpool']
+    entries: ['engender.sqlite3', 'keystore.json', RECOVERY_KEY_FILE, '.opfs-sahpool']
   });
   await wipeLocalData(deps);
 
@@ -100,8 +100,8 @@ test('a reset during an interrupted conversion takes the plaintext journal and t
      or a conversion to resume with no key to resume it under. */
   const { deps, log } = targets({
     entries: [
-      'gender-diary.sqlite3',
-      'gender-diary.sqlite3.pre-migration-backup',
+      'engender.sqlite3',
+      'engender.sqlite3.pre-migration-backup',
       'photos',
       'keystore.json',
       'conversion.json',
@@ -110,7 +110,7 @@ test('a reset during an interrupted conversion takes the plaintext journal and t
   });
   await wipeLocalData(deps);
 
-  expect(log).toContain('remove gender-diary.sqlite3 (recursive)');
+  expect(log).toContain('remove engender.sqlite3 (recursive)');
   expect(log).toContain('remove conversion.json (recursive)');
   expect(log).toContain('remove keystore.json (recursive)');
   expect(log).toContain('remove .opfs-sahpool (recursive)');
@@ -118,7 +118,7 @@ test('a reset during an interrupted conversion takes the plaintext journal and t
 });
 
 test('storage that will not empty fails loudly, with the mirror left alone', async () => {
-  const { deps, log } = targets({ removeFails: 'gender-diary.sqlite3' });
+  const { deps, log } = targets({ removeFails: 'engender.sqlite3' });
   await expect(wipeLocalData(deps)).rejects.toThrow('still open');
   expect(log).not.toContain('clear cache');
 });
@@ -186,8 +186,8 @@ test('a completed reset leaves no key of this app behind in localStorage', async
      body regions of the entry the process died on, and the whole claim of
      the reset screen is that none of that is still here afterwards. */
   const storage = fakeStorage({
-    'gender-diary-entry-draft': '{"note":"first day on the patch"}',
-    'gender-diary-pin-attempts': '{"failures":3}',
+    'engender-entry-draft': '{"note":"first day on the patch"}',
+    'engender-pin-attempts': '{"failures":3}',
     [BOOT_CACHE_KEY]: '{"theme":"dark"}',
     'unrelated-app-key': 'not ours to take'
   });
@@ -200,7 +200,7 @@ test('a completed reset leaves no key of this app behind in localStorage', async
   });
 
   const left = Array.from({ length: storage.length }, (_, index) => storage.key(index));
-  expect(left.filter((key) => key?.startsWith('gender-diary-'))).toEqual([]);
+  expect(left.filter((key) => key?.startsWith('engender-'))).toEqual([]);
   expect(left).toEqual(['unrelated-app-key']);
 });
 
@@ -209,12 +209,12 @@ test('the sweep leaves the boot mirror for clearBootCache to take last', async (
      mirror is the one key whose early removal would hand the journal back
      unlocked. */
   const storage = fakeStorage({
-    'gender-diary-entry-draft': '{}',
+    'engender-entry-draft': '{}',
     [BOOT_CACHE_KEY]: '{"theme":"dark"}'
   });
 
   clearBrowserMirrors(storage);
 
-  expect(storage.getItem('gender-diary-entry-draft')).toBeNull();
+  expect(storage.getItem('engender-entry-draft')).toBeNull();
   expect(storage.getItem(BOOT_CACHE_KEY)).not.toBeNull();
 });

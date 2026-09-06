@@ -30,7 +30,7 @@ export const ON_DEMAND_PREFIX = '/tesseract/';
     because two sides delete by it: the worker drops previous releases on
     activate, and register.ts drops all of them on Android, where an install
     that predates this ticket left a worker behind. */
-export const SHELL_CACHE_PREFIX = 'gender-diary-shell-';
+export const SHELL_CACHE_PREFIX = 'engender-shell-';
 
 /** Splits the release's asset paths into the set an install precaches and the
     set a page has to ask for. `base` is the path the app is served under,

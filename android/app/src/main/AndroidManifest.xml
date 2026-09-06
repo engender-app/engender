@@ -76,7 +76,7 @@
              lives on these aliases rather than on MainActivity itself, so
              which icon and label the system shows is a matter of which
              alias is enabled, not a string this app renders. Exactly one
-             is enabled at a time - dev.barankiewicz.genderdiary.disguise.DisguiseAlias
+             is enabled at a time - dev.engender.app.disguise.DisguiseAlias
              is what flips that - and Android kills and restarts the app
              process when it does, which is the "closes briefly to switch"
              disguise_app_sub_android warns about. -->

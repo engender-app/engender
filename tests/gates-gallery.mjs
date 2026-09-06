@@ -273,7 +273,7 @@ const base = `http://localhost:${address.port}`;
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.disguise === true;
   });
 
