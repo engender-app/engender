@@ -25,7 +25,20 @@ describe('android back button routing', () => {
   });
 
   it('falls back home when there is no history to walk, instead of exiting', () => {
-    expect(resolveAndroidBackAction('/settings', 1)).toBe('go-home');
+    expect(resolveAndroidBackAction('/settings', 0)).toBe('go-home');
+  });
+
+  it('counts pushes the app made, not entries the browser is holding', () => {
+    /* CARPET-05: this used to be handed `window.history.length`, where one
+       push reads as 2 and the boot entry reads as 1 - and which only ever
+       grows. Open the app on a notification's screen, walk into another one
+       and walk back, and the length is still 2 while the app is sitting on
+       the entry it booted on with nothing behind it, so back reported
+       `history-back` and stepped out of the WebView. The count in
+       `smart-back.ts` follows a popstate back down, and it is the same
+       number every back control in the web half of the app decides on. A
+       depth of 1 is therefore one screen to return to, not none. */
+    expect(resolveAndroidBackAction('/settings', 1)).toBe('history-back');
   });
 });
 

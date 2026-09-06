@@ -40,7 +40,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import { smartBack } from '$lib/navigation/smart-back';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -207,7 +206,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.safe_space_title()} back={() => smartBack('/more')} />
+  <ScreenHeader title={m.safe_space_title()} back="/more" />
 
   <SectionHeading text={m.safe_space_calm_title()} />
   <BreathingExercise role={roleAt(activeFlag.roles, 0)} />

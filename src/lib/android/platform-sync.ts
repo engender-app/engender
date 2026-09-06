@@ -95,7 +95,12 @@ export interface PlatformSyncDeps {
   reminderTexts: () => AndroidReminderTexts;
   isValidLaunchRoute: (route: string) => boolean;
   currentPathname: () => string;
-  goto: (path: string, options?: { replaceState?: boolean }) => Promise<void> | void;
+  goto: (path: string) => Promise<void> | void;
+  /* Both from $lib/navigation/smart-back, injected rather than imported for
+     the reason every other SvelteKit-shaped thing here is: this module runs
+     in the Node tier, which has no `$app/*` (ADR-0017). */
+  replaceRoute: (path: string) => Promise<void> | void;
+  navigationDepth: () => number;
 }
 
 /** Wraps `run` so a call while one is already in flight is queued rather than
@@ -308,7 +313,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   let removeBackButtonListener: (() => void) | null = null;
   void deps.androidBackButton
     .addListener('backButton', () => {
-      switch (resolveAndroidBackAction(window.location.pathname, window.history.length)) {
+      switch (resolveAndroidBackAction(window.location.pathname, deps.navigationDepth())) {
         case 'minimize':
           void deps.androidBackButton.minimizeApp();
           return;
@@ -316,7 +321,10 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
           window.history.back();
           return;
         case 'go-home':
-          void deps.goto('/', { replaceState: true });
+          /* Replaces rather than pushes: this is the app running out of
+             history, so home should be the entry it runs out on, not a
+             second one stacked on the screen it could not go back from. */
+          void deps.replaceRoute('/');
       }
     })
     .then((handle) => {

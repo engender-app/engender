@@ -1087,7 +1087,37 @@ try {
   ok('a custom scale previews, saves ticked, and appears like a built-in');
 } catch (e) { fail('custom dimension', e); }
 
-/* 10b. Home's stale-backup notice (ticket 15, F21). Before the export
+/* 10b. Back returns to the screen you were actually on (CARPET-05).
+
+   Home's stale-backup notice is the case that names it. The notice is a
+   deep link out of Home into the export screen, whose header names
+   /settings as where it sits - so back used to land on a Settings screen
+   nobody had opened. Run before the notice is dismissed below, because the
+   notice is the only link into that screen from anywhere but Settings.
+
+   The pair of flows is the whole decision: with an entry behind this one,
+   back walks history; on the entry the app booted onto there is nothing to
+   walk to and the header's href is what is left to offer. Asserting only
+   the first would pass just as well on a back control that had stopped
+   being a link at all. */
+try {
+  await fresh('/');
+  await page.locator('[data-backup-notice] [data-notice-action]').click();
+  await page.waitForURL(BASE + '/settings/export');
+  await booted();
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL(BASE + '/');
+  ok('back from a screen a notice linked into returns to the notice, not to the menu above it');
+} catch (e) { fail('back to where you came from', e); }
+
+try {
+  await fresh('/settings/export');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL(BASE + '/settings');
+  ok('back on the screen the app booted onto takes the parent the header names');
+} catch (e) { fail('back with nothing behind it', e); }
+
+/* 10c. Home's stale-backup notice (ticket 15, F21). Before the export
    flows below, because they are what stops the journal being stale: the
    demo persona's last backup is 34 days old, and the number in the notice
    is what proves the age was read as epoch millis rather than as an epoch
