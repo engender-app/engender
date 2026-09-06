@@ -668,17 +668,22 @@ try {
    The handles moved with ticket 23's rebuild: the range is the shared
    Segmented control's, the period is the header's subtitle rather than half
    of its title, the values open from their own control instead of by
-   pressing a chart, and a tag insight is a bar rather than a list row. */
+   pressing a chart, and a tag insight is a bar rather than a list row. The
+   values control itself went in ticket 99 item 26; what it used to open is
+   a hidden list now. */
 try {
   await fresh('/stats');
   await page.locator('[data-segment="90"]').click();
   const period = await page.locator('[data-screen-subtitle]').textContent();
   if (!period.includes('90')) throw new Error('period: ' + period);
-  await page.locator('[data-values-open]').click();
-  /* The sheet is the screen's own bar rows now: a row per day, the date
-     naming it and the value on it as text. */
-  await page.waitForSelector('[data-bar-row] [data-bar-value]');
-  await page.locator('[data-sheet-scrim]').first().click();
+  /* The values are a visually hidden list on the screen itself since ticket
+     99 item 26 removed the "All values" link and its sheet - no control to
+     press, and the numbers still there in text for anything that reads the
+     page rather than looks at it. Counted rather than clicked, since a
+     hidden node cannot be interacted with. */
+  if (!(await page.locator('[data-values-list] li').count())) {
+    throw new Error('the stats series is no longer readable as text');
+  }
   /* Tag insights name a built-in tag, so a blank label means the key never
      got resolved. */
   const insight = await page

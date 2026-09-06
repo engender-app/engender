@@ -90,8 +90,6 @@
   import Donut from '$lib/components/kit/Donut.svelte';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { rankHighestDays } from '$lib/data/highestDays';
-  import { cardsInGroup, statsAreaCards, STATS_AREA_GROUPS, type StatsAreaCard } from '$lib/data/statsAreas';
-  import { statsAreaName } from '$lib/data/vocabulary/statsAreaLabels';
   import type { Part } from '$lib/charts/parts';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -126,16 +124,6 @@
      own index, which is the hub's own line. Somebody who has learned that
      Body is the first stripe on one screen finds it the first stripe on the
      other, and the two surfaces recolour together on a palette switch. */
-  const groupRole = (group: (typeof STATS_AREA_GROUPS)[number]) =>
-    roleAt(activeFlag.roles, STATS_AREA_GROUPS.indexOf(group));
-
-  const GROUP_NAME: Record<(typeof STATS_AREA_GROUPS)[number], () => string> = {
-    body: m.hub_group_body,
-    health: m.hub_group_health,
-    transition: m.hub_group_transition,
-    practice: m.hub_group_practice
-  };
-
   let range = $state(30);
 
   /* A range is a length on screen and two epoch days to the journal, which
@@ -187,7 +175,6 @@
   let lastMonth = $derived(previousCalendarMonthRange(today));
   let lastYear = $derived(previousCalendarYearRange(today).year);
 
-  let valueSheet = $state(false);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
   // Native units both ways (ADR-0012), from $lib/data/wrappedDisplay so this
@@ -478,35 +465,6 @@
      finished. A row with nothing written never reaches the DOM, so an area
      somebody does not use costs this screen nothing beyond its slot in a
      `Record` that was already fetched. */
-  let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
-  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  let areaCards = $derived(
-    lastWritesQuery.value && areaStatesQuery.value
-      ? statsAreaCards(lastWritesQuery.value, areaStatesQuery.value)
-      : []
-  );
-  /* What a row says under its title: the day it ended where the person has
-     said it ended, and the last thing written there otherwise. Never a gap,
-     never a nudge - the hub is where an area that has gone quiet gets asked
-     about. */
-  const areaLine = (card: StatsAreaCard) => {
-    if (card.finishedEpochDay !== null) {
-      return m.area_finish_done_title({
-        date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-      });
-    }
-    if (card.suspendedEpochDay !== null) {
-      return m.area_suspend_done_title({
-        date: fmtDay(card.suspendedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-      });
-    }
-    return m.stats_area_last({
-      date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-    });
-  };
-
-  const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
-
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
   const occurrenceLabel = (card: CorrelationCard) =>
@@ -613,6 +571,14 @@
      off the query, because a scale can hold readings that all fall outside
      the range the screen is showing. */
   let comparedHasReadings = $derived(aligned?.some((row) => row.b !== null) ?? false);
+  /* Named after both scales while both are on the chart: the numbers are
+     one series read two ways - the plot and the hidden list under it - and
+     a name that mentioned one of them would be hiding the other's. */
+  let valuesLabel = $derived(
+    compared && comparedHasReadings
+      ? m.values_two_title({ first: shown.name, second: compared.name })
+      : m.values_title({ name: shown.name })
+  );
   /* One role along from the card's own, so the two lines are two stripes of
      the same flag and a palette switch recolours both. */
   let compareRole = $derived(roleAt(activeFlag.roles, AREA_ROLE.charts + 1));
@@ -781,9 +747,7 @@
         formatValue={(v) => fmtNativeValue(shown.key, v)}
         scrubLabel={grainLabel(plotted.grain)}
         annotations={annotationsQuery.rows}
-        ariaLabel={compared && comparedHasReadings
-          ? m.values_two_title({ first: shown.name, second: compared.name })
-          : m.values_title({ name: shown.name })}
+        ariaLabel={valuesLabel}
       />
       {#if compared && !comparedHasReadings}
         <p class="stats-inline-note">{m.stats_compare_empty()}</p>
@@ -833,13 +797,19 @@
        ends of the scale are and the marks carry the shape; this is the one
        place an exact number for a given day can be read, and it is also the
        path a screen reader takes through the series. -->
-  <!-- Only where there is something behind it. An "All values" link opening
-       an empty sheet was one of the five panels this screen rendered for
-       somebody who had logged nothing (ADR-0056). -->
+  <!-- The link and the sheet it opened are gone (ticket 99 item 26, "get rid
+       of the 'all values'"), but not the numbers themselves: this list was
+       also the only path a screen reader had through the series - the
+       chart's own hidden list covers its annotations and says so - and a
+       chart that is a picture to everybody and nothing to anybody else is
+       not what removing a link was meant to buy. Visually hidden, so it
+       costs nothing on the screen Alicja was looking at. -->
   {#if valueRows.length}
-    <button class="stats-open" data-values-open onclick={() => (valueSheet = true)}>
-      {m.stats_values_open()}
-    </button>
+    <ul class="visually-hidden" data-values-list aria-label={valuesLabel}>
+      {#each valueRows as row (row.key)}
+        <li>{row.name}: {row.value}{row.note ? `, ${row.note}` : ''}</li>
+      {/each}
+    </ul>
   {/if}
 
   <ChartCard
@@ -1109,39 +1079,13 @@
       {/snippet}
     </ReadGate>
   </ChartCard>
-  <!-- The area index (ADR-0056). One row per area the person actually uses,
-       in the More hub's own four groups in the More hub's own order, so
-       somebody learns one organising idea rather than two.
-
-       A row appears where the area has ever been written and is not hidden,
-       decided once in `statsAreas.ts` over one `getLastWrites` call. An area
-       nobody uses is not in the DOM at all - no row, no heading, no footer
-       offering it. Discovery stays the hub's job, and somebody who has never
-       logged a dose is not told the app could have charted one.
-
-       Rows and no charts, which is Alicja's call on the rendered screen:
-       every one of these areas owns its chart on its own screen, and a
-       second drawing of it here is a second thing to keep in agreement for
-       the sake of a preview nobody asked to read twice. The wear trend lives
-       on the wear screen. What this block is for is knowing which parts of
-       your own life the app is holding, and getting to them. -->
-  {#each STATS_AREA_GROUPS as group (group)}
-    {#if groupCards(group).length}
-      <SectionHeading text={GROUP_NAME[group]()} />
-      <ListCard role={groupRole(group)}>
-        {#each groupCards(group) as card (card.panel.key)}
-          <ListRow
-            key={card.panel.key}
-            icon={card.panel.icon}
-            title={statsAreaName(card.panel.key)}
-            subtitle={areaLine(card)}
-            href={card.panel.href}
-          />
-        {/each}
-      </ListCard>
-    {/if}
-  {/each}
-
+  <!-- The area index that used to sit here is gone (ticket 99 item 36,
+       "stats shouldnt have the 'more' list at the end. it is only the stats
+       tab"): it was one row per area the person uses, in the More hub's own
+       four groups and order, and it made the bottom of this tab a second
+       copy of that hub. Discovery is the hub's job; this tab is the
+       numbers. What is left below is the look-back list, which goes
+       somewhere no hub row does. -->
   <!-- The six deeper screens as one list rather than six cards. Four
        same-size icon-plus-heading-plus-text tiles were what the slop audit
        took off this screen; a destination with nothing to show on it is a
@@ -1173,27 +1117,6 @@
       href="/compare"
     />
   </ListCard>
-
-  <!-- Every reading in the range, as numbers. It was three columns of text
-       per row, which is a table of one column that matters (Alicja,
-       2026-08-25: "crowded and boring"). It is the bar rows the rest of the
-       screen is drawn in: the date names the row, the value is the reading,
-       and the bar puts it where it sits in the scale - so a run of quiet days
-       is visible in the list and not only in the chart above it. Newest
-       first, because that is the end of the range you came from. -->
-  <!-- Named after both scales while both are on the chart: this is where
-       their numbers are read, and a sheet titled after one of them would be
-       hiding the other's. -->
-  <Sheet
-    open={valueSheet}
-    title={compared ? m.values_two_title({ first: shown.name, second: compared.name }) : shown.name}
-    onClose={() => (valueSheet = false)}
-  >
-    <BarRows rows={valueRows} measure="track" />
-    <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
-      <span>{m.done()}</span>
-    </button>
-  </Sheet>
 
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>
     {#if insightSheet}
