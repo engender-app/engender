@@ -118,6 +118,7 @@
     <p class="gallery-note">It presses now. Colour alone made a mistap on the active one read as nothing.</p>
     <Segmented
       name="Range"
+      key="range"
       options={[
         { value: 'week', label: 'Week' },
         { value: 'month', label: 'Month' },
