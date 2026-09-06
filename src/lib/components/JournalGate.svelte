@@ -29,6 +29,8 @@
      mode is not a free choice, since it has to survive the rewrite. */
 
   import { m } from '$lib/paraglide/messages';
+  import Progress from '$lib/components/Progress.svelte';
+  import { createProgress } from '$lib/components/progress.svelte';
   import {
     bootState,
     submitAccessModeSetup,
@@ -116,14 +118,6 @@
   );
 
   let progress = $derived(bootState.conversion?.progress ?? null);
-  /** The photo stage, and only where there is something to divide by: the
-      other two stages have no count, and a journal with no photos reports a
-      total of zero. */
-  let photoProgress = $derived(
-    progress?.stage === 'photos' && progress.total > 0
-      ? { done: progress.done, total: progress.total }
-      : null
-  );
   let progressLine = $derived(
     progress === null
       ? m.pp_converting_preparing()
@@ -132,9 +126,40 @@
         : progress.stage === 'photos'
           ? progress.total === 0
             ? m.pp_converting_no_photos()
-            : m.pp_converting_photos({ done: String(progress.done), total: String(progress.total) })
+            : m.pp_converting_photos()
           : m.pp_converting_retire()
   );
+
+  /* Conversion on the shared bar (phase 9 audit ticket 11, ADR-0070). It
+     had the app's first honest progress bar and keeps its shape; what it
+     gains is the throttle and the hold at full, and what it loses is the
+     instant cut - reaching 100% and having the screen replaced in the same
+     frame reads as the bar having lied about how much was left. */
+  const conversion = createProgress();
+  /** The converting screen outliving the conversion by the length of that
+      hold. Without this the gate swaps to the unlock form the moment boot
+      says the conversion is done, and finish() would be holding a bar
+      nothing is rendering. */
+  let settling = $state(false);
+  let showConverting = $derived(screen === 'converting' || settling);
+
+  $effect(() => {
+    if (screen !== 'converting') return;
+    // No show delay: this screen exists for the conversion and nothing
+    // else, so there is nothing for a bar to flash over.
+    conversion.start({ immediate: true });
+    return () => {
+      settling = true;
+      void conversion.finish().then(() => (settling = false));
+    };
+  });
+
+  /* The photo stage, and only where there is something to divide by: the
+     other two stages have no count to report, so the bar sweeps through
+     them, and a journal with no photos reports a total of zero. */
+  $effect(() => {
+    if (progress?.stage === 'photos' && progress.total > 0) conversion.report(progress.done, progress.total);
+  });
 
   /* The way-out sheet says which secret is missing, and biometric mode has
      none to have forgotten - what it has is a device that will not answer.
@@ -251,27 +276,16 @@
   <GateScreen icon="alert" tone="alert" title={m.pp_convert_refused_title()}>
     <p class={gateBodyClass(refusalBody)} data-conversion-refusal>{refusalBody}</p>
   </GateScreen>
-{:else if screen === 'converting'}
+{:else if showConverting}
   <GateScreen icon="lock" title={m.pp_converting_title()}>
     <!-- SF-004: conversion used to advance through stages with no
-         announcement - a silent content swap for anyone not watching
-         the screen during a process that can take a while. -->
-    <p class="gate-body" role="status" data-conversion-progress>{progressLine}</p>
-    {#if photoProgress}
-      <!-- The one stage that knows how far along it is. It was spending that
-           on a sentence alone, on a screen that can hold someone for
-           minutes; the bar is the same two numbers as a length. -->
-      <div
-        class="rail gate-progress"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={photoProgress.total}
-        aria-valuenow={photoProgress.done}
-        data-conversion-bar
-      >
-        <i style={`transform: scaleX(${photoProgress.done / photoProgress.total})`}></i>
-      </div>
-    {/if}
+         announcement - a silent content swap for anyone not watching the
+         screen during a process that can take a while. The sentence is the
+         bar's own label now, and Progress.svelte makes it the live region,
+         so the announcement it added survives the retrofit. -->
+    <div class="gate-progress">
+      <Progress run={conversion} label={progressLine} handle="conversion" />
+    </div>
     <!-- True, and worth saying: every step is written down before it
          happens, so a closed tab or a dead battery resumes rather than
          starts over (conversion.ts). -->

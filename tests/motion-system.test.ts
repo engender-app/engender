@@ -170,7 +170,17 @@ function stoppedUnderReduce() {
     for (const selector of rule.prelude.split(',').map((s) => s.trim())) {
       if (rule.context.some((at) => at.includes('prefers-reduced-motion'))) viaMedia.add(selector);
       if (selector.includes("data-a11y-motion='reduce'")) {
-        viaToggle.add(selector.replace(/^html\[data-a11y-motion='reduce'\]\s*/, ''));
+        /* Two spellings of the same escape. A shared stylesheet writes the
+           toggle bare; a component's <style> has to wrap it in :global(),
+           because the html element is not in the component and Svelte
+           would otherwise scope the selector onto it. Both mean "this
+           animation is cancelled under the toggle", so both have to strip
+           back to the selector the media-query rule names, or the
+           component form silently fails to pair with it (phase 9 audit
+           ticket 11, found by Progress.svelte's indeterminate sweep). */
+        viaToggle.add(
+          selector.replace(/^(?::global\(html\[data-a11y-motion='reduce'\]\)|html\[data-a11y-motion='reduce'\])\s*/, '')
+        );
       }
     }
   }

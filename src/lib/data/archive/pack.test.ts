@@ -458,3 +458,57 @@ test('packArchive accepts a custom KeyDerivation function', async () => {
   const opened = await openArchive(oneShot(archive), 'custom-derivation-pass');
   assert.equal(opened.payload.preferences.name, 'Alicja');
 });
+
+/* Phase 9 audit ticket 11: an export is the one operation in the app that
+   can hold somebody for minutes, and until this it reported nothing. The
+   unit is body bytes rather than photos: the count is settled before the
+   first chunk is encrypted (ADR-0007), and it covers a journal whose
+   photos are all thumbnails as honestly as one that is mostly JPEG. */
+test('packArchive reports how much of the body has been packed', async () => {
+  const { contents } = await contentsOf();
+  const reports: { done: number; total: number }[] = [];
+
+  await collect(
+    packArchive(contents, 'correct horse', CHEAP_KDF, {
+      onProgress: (done, total) => reports.push({ done, total })
+    })
+  );
+
+  assert.ok(reports.length > 0, 'the pack reported at least once');
+  const total = reports[0].total;
+  assert.ok(total > 0, 'the total is known before the first report');
+  assert.ok(
+    reports.every((report) => report.total === total),
+    'the total does not move once packing has started'
+  );
+  const dones = reports.map((report) => report.done);
+  assert.deepEqual(dones, [...dones].sort((a, b) => a - b), 'progress only goes forwards');
+  assert.equal(dones[dones.length - 1], total, 'the last report is the whole body');
+});
+
+test('packArchive stops when its caller aborts', async () => {
+  const { contents } = await contentsOf();
+  const stop = new AbortController();
+  let packed = 0;
+
+  const packing = packArchive(contents, 'correct horse', CHEAP_KDF, {
+    signal: stop.signal,
+    onProgress: () => {
+      packed += 1;
+      if (packed === 1) stop.abort();
+    }
+  });
+
+  await assert.rejects(collect(packing), (error: unknown) => (error as Error).name === 'AbortError');
+});
+
+test('packArchive refuses to start once its signal is already aborted', async () => {
+  const { contents } = await contentsOf();
+  const stop = new AbortController();
+  stop.abort();
+
+  await assert.rejects(
+    collect(packArchive(contents, 'correct horse', CHEAP_KDF, { signal: stop.signal })),
+    (error: unknown) => (error as Error).name === 'AbortError'
+  );
+});
