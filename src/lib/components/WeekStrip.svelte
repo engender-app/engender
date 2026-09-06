@@ -1,29 +1,53 @@
 <script lang="ts">
-  /* The last seven days, as the kit's bare strip (phase 5 ticket 20's
-     surface, wired to the journal here). This component is the
-     journal-connected caller BareStrip.svelte names: it owns the query, the
-     locale's day letters and the heat level, and the strip owns how a week
-     is drawn. */
+  /* The last seven days on a phone, more on a wide-enough web viewport
+     (CARPET-02), as the kit's bare strip (phase 5 ticket 20's surface,
+     wired to the journal here). This component is the journal-connected
+     caller BareStrip.svelte names: it owns the query, the locale's day
+     letters and the heat level, and the strip owns how a week is drawn. */
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { heatLevel } from '$lib/data/metricRange';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { isAndroid } from '$lib/platform';
+  import { weekStripDayCount } from './weekStripDayCount';
   import BareStrip from './kit/BareStrip.svelte';
   import type { Role } from '$lib/theme/roles';
 
   let { metric, role }: { metric: string; role?: Role } = $props();
 
+  /* The container the shell's own desktop breakpoint measures
+     (`data-app-viewport`, app.css's `@container app`), read the same way
+     QuickAdd and Sheet already read the app frame - `[data-app-root]` a
+     level down from it - since no JS-visible form of that container query
+     exists to ask instead. Zero until the observer's first callback, which
+     reads as "phone" and never as "desktop": the wider count is an addition,
+     never a flash of grey cells the query then has to shrink away from. */
+  let containerWidth = $state(0);
+
+  $effect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const el = document.querySelector('[data-app-viewport]');
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      containerWidth = entry.contentRect.width;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+
+  let dayCount = $derived(weekStripDayCount(containerWidth, isAndroid()));
+
   /* Read on every recompute rather than captured once, so a session left open
      across midnight moves the strip on with the next write instead of holding
      yesterday's week. */
-  let week = $derived({ first: todayEpochDay() - 6, last: todayEpochDay() });
+  let week = $derived({ first: todayEpochDay() - (dayCount - 1), last: todayEpochDay() });
 
-  /* One query for the week rather than one per day: seven round trips
-     through the worker to draw seven squares is the shape of read the port
-     exists to avoid. Empty until it lands, so the strip draws at its full
-     size with every day at level 0 and never reflows. */
+  /* One query for the whole span rather than one per day: dayCount round
+     trips through the worker to draw dayCount squares is the shape of read
+     the port exists to avoid. Empty until it lands, so the strip draws at
+     its full size with every day at level 0 and never reflows. */
   let averages = liveList((j) => j.stats.dayAverages(metric, week.first, week.last));
 
   let days = $derived.by(() => {
@@ -31,7 +55,7 @@
     // same day the same way whatever the metric's range is (ADR-0012).
     const range = vocabulary.rangeOf(metric);
     const byDay = new Map(averages.rows.map((point) => [point.day, point.value]));
-    return Array.from({ length: 7 }, (_, idx) => {
+    return Array.from({ length: dayCount }, (_, idx) => {
       const day = week.first + idx;
       const level = heatLevel(byDay.get(day) ?? null, range);
       return {

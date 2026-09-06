@@ -1187,7 +1187,7 @@ a.kit-entry:active {
    and a calendar cell still read as the same scale. */
 .kit-strip {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--strip-count, 7), minmax(0, 1fr));
   gap: var(--space-2);
   padding: 0 var(--space-1);
 }
@@ -1212,6 +1212,18 @@ a.kit-entry:active {
 .kit-strip-day.is-today .kit-strip-cell {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* CARPET-02: the desktop breakpoint app.css already switches the whole
+   shell on - the column WeekStrip.svelte counts 1024px by is the same
+   640px `--content-max` this shrinks into. 14 cells at 44px plus their gaps
+   would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap
+   that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
+   --strip-count says there is more than a week to draw. */
+@container app (min-width: 1024px) {
+  .kit-strip[data-strip-count='14'] .kit-strip-cell {
+    max-width: 38px;
+  }
 }
 
 .kit-strip-name {
