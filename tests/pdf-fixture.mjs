@@ -19,7 +19,7 @@
  * @param {string[]} lines one page per line, drawn near the top of it
  * @returns {Uint8Array}
  */
-export function makePdf(lines = ['Page one', 'Page two']) {
+export function makePdf(lines) {
   // 48pt, and black on the white the viewer fills behind it: the browser
   // tier reads pixels back to prove the glyphs were really drawn.
   return pdfFromStreams(lines.map((line) => `BT /F1 48 Tf 60 700 Td (${line}) Tj ET`));
