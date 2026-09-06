@@ -2136,6 +2136,65 @@ a.kit-entry:active {
   background: var(--role-draw);
 }
 
+/* The inline row: name, track and value on one line (phase 9 UX carpet
+   ticket 11).
+
+   The highest days card is what this exists for. Ten days ranked on one
+   0-to-100 scale come out within a few points of each other, so ten
+   full-width tracks were ten near-identical lengths - and they cost 870px
+   at 390px wide, which is more than a viewport for a list of ten numbers.
+   The bar keeps its honest `track` measure and stops pretending to be the
+   reading: the number is, and it now sits on the same line as the day it
+   belongs to.
+
+   Grid rather than flex, because the value column has to line up down the
+   card - a ranking read as a column of numbers is the whole point, and
+   three flex rows with different name lengths put the numbers in three
+   different places. `auto` for the name and `max-content` for the value, so
+   the track takes what is left and every row's track starts and ends on the
+   same two x positions. */
+.kit-bars.is-inline {
+  gap: var(--space-1);
+}
+
+.kit-bars.is-inline .kit-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+/* The touch floor (48dp, PRODUCT.md) is what sets the row's height now that
+   its content no longer does. Only where the row opens something: a row
+   that is a drawing owes no target and would just be air. */
+.kit-bars.is-inline .kit-bar.is-open {
+  min-height: var(--touch-target);
+}
+
+.kit-bars.is-inline .kit-bar-track {
+  height: 10px;
+  margin-top: 0;
+}
+
+/* Slim, and a pill rather than the 8px corner the stacked track takes: at
+   10px a 8px radius is nearly a pill already, and rounding it the rest of
+   the way keeps the short bars from reading as squares. */
+.kit-bars.is-inline .kit-bar-mark {
+  height: 10px;
+  border-radius: var(--radius-pill);
+}
+
+.kit-bars.is-inline .kit-bar-value {
+  margin-left: 0;
+}
+
+/* Spanning all three columns, under them. Rare here - it prints where a day
+   holds more than one reading - so it costs the set nothing on most rows. */
+.kit-bars.is-inline .kit-bar-note {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
 /* --- a year of moods ---
 
    Three rows per month, eleven columns, and the month named above its own

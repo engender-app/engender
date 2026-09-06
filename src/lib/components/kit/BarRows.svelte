@@ -32,7 +32,8 @@
   let {
     rows,
     onPick,
-    measure = 'leader'
+    measure = 'leader',
+    form = 'stacked'
   }: {
     rows: BarRow[];
     /** What the row's key opens, where a row goes anywhere. Omitted, the
@@ -61,27 +62,56 @@
         gender dimension (docs/ui-copy.md), and `scale="track"` on a card of
         scale bars read as though it took one. */
     measure?: 'leader' | 'track';
+    /** How much vertical room a row takes, which follows from how much of
+        the reading the bar is carrying.
+
+        `stacked` is the drawing: label and value on one line, a 26px track
+        on the next. The length is the point, so it gets a line of its own
+        and the full width of the card to be read across.
+
+        `inline` puts all three on one line over a slim track, for a set
+        where the bar supports a reading the number already gives. The
+        highest days are that set: ten days ranked on a 0-to-100 scale land
+        within a few points of each other, so ten full-width tracks are ten
+        near-identical lengths taking 870px to say what the column of
+        numbers beside them says exactly. Same data, same honest `track`
+        measure, half the height, and the ranking readable without
+        scrolling - "tighter, not airier". */
+    form?: 'stacked' | 'inline';
   } = $props();
 
   let drawn = $derived(drawBars(rows, measure));
 </script>
 
-{#snippet bar(row: DrawnBar)}
-  <div class="kit-bar-label">
-    <span class="kit-bar-name" data-bar-name>{row.name}</span>
-    <span class="kit-bar-value" data-bar-value>{row.value}</span>
-  </div>
-  <!-- On its own line rather than between the name and the value. Inline, a
-       note as long as "7 entries · avg 4.4 with · 3.3 without" took the
-       whole row and ellipsised the name down to "social eu..." - the label
-       is the one part of a bar that cannot be guessed from the drawing. -->
-  {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+{#snippet track(row: DrawnBar)}
   <div class="kit-bar-track">
     <span class="kit-bar-mark" class:is-leader={row.isLeader} style={`--bar-share: ${row.share}`}></span>
   </div>
 {/snippet}
 
-<div class="kit-bars" data-chart="bars">
+{#snippet bar(row: DrawnBar)}
+  {#if form === 'inline'}
+    <span class="kit-bar-name" data-bar-name>{row.name}</span>
+    {@render track(row)}
+    <span class="kit-bar-value" data-bar-value>{row.value}</span>
+    <!-- Under all three columns rather than beside them: a note is a
+         sentence, and the one column with room for one is the row. -->
+    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+  {:else}
+    <div class="kit-bar-label">
+      <span class="kit-bar-name" data-bar-name>{row.name}</span>
+      <span class="kit-bar-value" data-bar-value>{row.value}</span>
+    </div>
+    <!-- On its own line rather than between the name and the value. Inline, a
+         note as long as "7 entries · avg 4.4 with · 3.3 without" took the
+         whole row and ellipsised the name down to "social eu..." - the label
+         is the one part of a bar that cannot be guessed from the drawing. -->
+    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+    {@render track(row)}
+  {/if}
+{/snippet}
+
+<div class="kit-bars" class:is-inline={form === 'inline'} data-chart="bars">
   {#each drawn as row, i (row.key)}
     {#if onPick}
       <button
