@@ -207,6 +207,17 @@ public class PhotosPlugin extends Plugin {
      * than through a {@code byte[]} first - the fallback path is the one
      * already paying for three copies of the file, and there is no reason
      * to make it four.
+     *
+     * <p><b>It can still run out of heap at the ceiling.</b>
+     * {@code encodeBase64}'s {@code toString("US-ASCII")} materialises the
+     * whole encoding as a Java String, which is two bytes a character, so a
+     * 25 MB file asks for 34 MB in one allocation; on the API 35 emulator
+     * (192 MB growth limit) it fails, and the pick is rejected with a toast
+     * rather than filed. That is not new and not fixable here - a plugin
+     * response is one string by construction - but it is now only reachable
+     * on the WebView versions {@link PhotoPickChannel} cannot register on,
+     * where before this ticket it was every pick's path.
+     * {@code PhotoPickChannelTest} records the figures.
      */
     @PluginMethod
     public void readPickedBase64(PluginCall call) {
