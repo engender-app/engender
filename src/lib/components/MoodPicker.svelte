@@ -19,6 +19,16 @@
      the face it went down on and every move bubbles up through the row.
      The release puts every face back. */
   const magnifier = moodMagnifier(5);
+
+  /* The row hears about the pick before the caller does: the beat afterwards -
+     the four unpicked faces turning to look at the chosen one - is addressed
+     by cell index, and the index is a thing only the row knows. Clearing a
+     mood sends null, and null is the row letting go. */
+  function choose(i: number) {
+    const next = moods[i].value === value ? null : moods[i].value;
+    magnifier.onPick(next === null ? null : i);
+    onPick(next);
+  }
 </script>
 
 <div class="mood-picker" class:is-compact={compact} role="radiogroup" aria-label={m.mood()}>
@@ -39,9 +49,9 @@
         data-mood={mood.value}
         aria-label={mood.label}
         style:--mood-mag={magnifier.moodScale[i]}
-        onclick={() => onPick(mood.value === value ? null : mood.value)}
+        onclick={() => choose(i)}
       >
-        <MoodFace step={mood.value} size={44} blink />
+        <MoodFace step={mood.value} size={44} alive gaze={magnifier.moodGaze[i]} />
         <span class="mood-label">{mood.label}</span>
       </button>
     {/each}
