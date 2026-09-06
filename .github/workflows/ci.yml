@@ -69,6 +69,12 @@ jobs:
         run: npm run check:licences
       - name: screens.css single-consumer classes
         run: npm run check:screens-classes
+      # Reads the build the "Production build" step above already wrote -
+      # every /_app/immutable URL build/index.html asks for, gzipped
+      # (phase 9 audit ticket 01). No browser needed, so this job rather
+      # than the browser tier's.
+      - name: First-load budget
+        run: npm run check:first-load-budget
       # The other half of the dependency policy the spec asks of CI - no
       # Firebase, Play Services, analytics or proprietary runtime SDK in the
       # Android graph - runs in the Android job where Gradle can resolve the

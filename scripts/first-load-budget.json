@@ -1,0 +1,17 @@
+{
+  "measuredOn": "AMD Ryzen 7 9800X3D, 16 threads, Fedora 44, Node v24.14.1, npm run build. Unlike tests/long-journal/budgets.json's timing budgets this carries no machine-speed multiplier - the same source and the same lockfile gzip to close to the same byte count on any machine - but it is not bit-for-bit reproducible either: five straight rebuilds of one commit, no source change between them, gzipped to 295868-295884B. Vite/Rollup's content hashing is not fully deterministic run to run. gzipBytesBudget carries a 1024B floor over the baseline for exactly that (GZIP_WOBBLE_FLOOR_BYTES in check-first-load-budget.mjs), the same job FLOOR_MS does for the timing budgets. filesBudget carries none - the file count was the same 111 across all five rebuilds. Seeded at today's numbers for phase 9 audit ticket 01, which is the ratchet tickets 02 and 03 tighten rather than a target anybody has agreed. Re-record with `node scripts/check-first-load-budget.mjs --record` after a change that is meant to grow the first-load graph, and paste the printed block in here.",
+  "firstLoad": {
+    "what": "every /_app/immutable URL build/index.html asks for, gzipped",
+    "recordedOn": "2026-09-06",
+    "filesBaseline": 111,
+    "filesBudget": 111,
+    "gzipBytesBaseline": 295873,
+    "gzipBytesBudget": 296897
+  },
+  "onDemand": {
+    "what": "the OCR engine and the standard PDF fonts - not first-load, but the largest thing the app can ask for. Recorded rather than gated: nothing on a first visit waits on it.",
+    "recordedOn": "2026-09-06",
+    "files": 21,
+    "gzipBytes": 22866526
+  }
+}
