@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { weekStripDayCount, WEEK_STRIP_DESKTOP_BREAKPOINT } from './weekStripDayCount';
+import {
+  weekStripDayCount,
+  WEEK_STRIP_DESKTOP_BREAKPOINT,
+  WEEK_STRIP_DESKTOP_DAY_COUNT
+} from './weekStripDayCount';
 
 describe('weekStripDayCount', () => {
   it('holds at 7 below the desktop breakpoint', () => {
@@ -27,5 +31,13 @@ describe('weekStripDayCount', () => {
     const query = `@container app (min-width: ${WEEK_STRIP_DESKTOP_BREAKPOINT}px)`;
     expect(readFileSync('src/lib/styles/app.css', 'utf8')).toContain(query);
     expect(readFileSync('src/lib/styles/kit.css', 'utf8')).toContain(query);
+  });
+
+  it('matches the cell-shrink selector kit.css keys off this count', () => {
+    /* Same drift guard as the breakpoint above: kit.css's cell-shrink rule
+       only fires for `data-strip-count='14'`, and nothing but this test ties
+       that string to the value this function returns. */
+    const selector = `[data-strip-count='${WEEK_STRIP_DESKTOP_DAY_COUNT}']`;
+    expect(readFileSync('src/lib/styles/kit.css', 'utf8')).toContain(selector);
   });
 });

@@ -14,7 +14,12 @@
    so the three can't drift apart silently. */
 export const WEEK_STRIP_DESKTOP_BREAKPOINT = 1024;
 
+/* kit.css's cell-shrink rule keys off this same number
+   (`[data-strip-count='14']`) - weekStripDayCount.test.ts greps it there too,
+   the same anti-drift shape as the breakpoint above. */
+export const WEEK_STRIP_DESKTOP_DAY_COUNT = 14;
+
 export function weekStripDayCount(containerWidth: number, isAndroidPlatform: boolean): number {
   if (isAndroidPlatform) return 7;
-  return containerWidth >= WEEK_STRIP_DESKTOP_BREAKPOINT ? 14 : 7;
+  return containerWidth >= WEEK_STRIP_DESKTOP_BREAKPOINT ? WEEK_STRIP_DESKTOP_DAY_COUNT : 7;
 }
