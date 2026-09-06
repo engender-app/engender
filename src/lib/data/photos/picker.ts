@@ -42,6 +42,25 @@ export function filePhotoPicker(): PhotoPicker {
   };
 }
 
+/** A document to file, one at a time - PDF or image (ticket 54). Same split
+    as filePhotoPicker(): Capacitor's native `ACTION_OPEN_DOCUMENT` pick on
+    Android, so a document never takes the WebView file input's crash path
+    (ticket 66); the same web file input elsewhere. Bytes only, same as
+    every other picker here - accept.ts is what tells a PDF from an image. */
+export function documentPicker(): PhotoPicker {
+  return {
+    async pick() {
+      if (isAndroid()) {
+        const { bytes } = await androidPhotos.pickDocument();
+        return bytes ? [base64ToBytes(bytes)] : [];
+      }
+
+      const [file] = await chooseFiles('application/pdf,image/*');
+      return file ? [new Uint8Array(await file.arrayBuffer())] : [];
+    }
+  };
+}
+
 /** Bytes straight from the device camera rather than the gallery, one shot
     at a time. Same PhotoPicker shape as above, so photoPicking.ts's
     normalize step doesn't need to know which one supplied the bytes.

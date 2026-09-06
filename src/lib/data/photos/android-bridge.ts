@@ -3,6 +3,7 @@ import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-
 export interface AndroidPhotosBridge {
   pickImages(): Promise<{ images: string[] }>;
   captureImage(): Promise<{ image: string | null }>;
+  pickDocument(): Promise<{ bytes: string | null }>;
   writeFile(options: { name: string; base64: string; directory?: string }): Promise<void>;
   sizeFile(options: { name: string; directory?: string }): Promise<{ size: number | null }>;
   sizeFiles(options: { names: string[]; directory?: string }): Promise<{ sizes: (number | null)[] }>;
