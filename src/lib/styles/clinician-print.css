@@ -106,6 +106,27 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A regimen or dose row's link back to its own record (phase 8 features
+   ticket 67). Underlined rather than colour-only, since the table is
+   monochrome-friendly by design and a link that reads only as a colour
+   would fail that on its own page.
+
+   The table's own row is a dense, print-shaped read (this is a clinical
+   report, not a list of controls), so the visible text is one line at
+   `--text-sm`. The negative margin pads the tap target out to
+   `--touch-target` without pulling the row's own height along with it -
+   computed against the token rather than a measured pixel figure, the
+   same shape kit.css's `.kit-notice-x` centring uses, and padding and
+   margin cancel exactly so nothing about the printed or on-screen layout
+   moves. */
+.dossier-row-link {
+  display: inline-block;
+  margin: calc((var(--text-sm) * var(--leading-body) - var(--touch-target)) / 2) 0;
+  padding: calc((var(--touch-target) - var(--text-sm) * var(--leading-body)) / 2) 0;
+  color: inherit;
+  text-decoration: underline;
+}
+
 .dossier-sub-list {
   display: flex;
   flex-direction: column;
@@ -207,6 +228,14 @@
   .dossier-table tr {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  /* On paper the link has nowhere to go, so it reads as the plain text it
+     always was - the href stays (a PDF export keeps it clickable), only the
+     on-screen affordance goes. */
+  .dossier-row-link {
+    color: #000000 !important;
+    text-decoration: none !important;
   }
 
   .dossier-timing-badge {

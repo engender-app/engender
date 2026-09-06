@@ -102,6 +102,16 @@ export function restoredBatches(path: string, list: string): number {
   return Math.max(1, batches.get(batchKey(path, list)) ?? 1);
 }
 
+/** The id a navigation's hash names, decoded - or null when there is none.
+
+    Shared by `scrollToHash` below and by a batched screen deciding how far to
+    expand before it renders a link's row at all (phase 8 features ticket
+    67): both are asking about the same hash, and reading it twice with two
+    different decodings would answer the question two different ways. */
+export function hashRowId(hash: string = location.hash): string | null {
+  return hash ? decodeURIComponent(hash.slice(1)) : null;
+}
+
 /** Scrolls the element a navigation's hash names into view, once it exists.
 
     The browser's own anchor scroll gives up before this app's data does: the
@@ -112,6 +122,12 @@ export function restoredBatches(path: string, list: string): number {
     an unscrolled landing is nowhere near the record). Called by the target
     screen once its rows are in the DOM, not by the layout, because only the
     screen knows when that is.
+
+    A batched list's row exists in the DOM only once the screen has expanded
+    it far enough (ticket 67's own `batchesFor`) - this waits for the element
+    the same way regardless of why it was missing a moment ago, so nothing
+    here has to know whether the row was behind a slow read or behind a
+    batch.
 
     Not inline, and not on a fixed delay: the first frames after the rows'
     query resolves still have the rest of the list mounting underneath them -
@@ -127,8 +143,9 @@ export function restoredBatches(path: string, list: string): number {
     for a caller to run on every row change: the second run is a no-op instead
     of a second yank to the same row while the person reads. */
 export function scrollToHash(hash: string = location.hash): void {
-  if (!hash) return;
-  const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+  const id = hashRowId(hash);
+  if (!id) return;
+  const el = document.getElementById(id);
   if (!el) return;
   const region = el.closest<HTMLElement>('[data-app-scroll-region]');
   let last: number | null = null;

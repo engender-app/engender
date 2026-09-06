@@ -7,11 +7,23 @@
   import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
 
-  let { items }: { items: { id: string; title: string }[] } = $props();
+  let {
+    items,
+    key = 'probe',
+    focusIndex = null
+  }: {
+    items: { id: string; title: string }[];
+    key?: string;
+    /** A deep link's row index (phase 8 features ticket 67), passed straight
+        through to `BatchedList` - the probe's own way of mounting the same
+        fixture as a screen would after finding a hash's row in its own
+        ordered array. */
+    focusIndex?: number | null;
+  } = $props();
 </script>
 
 <div class="region" data-app-scroll-region>
-  <BatchedList {items} key="probe">
+  <BatchedList {items} {key} {focusIndex}>
     {#snippet rows(shown)}
       {#each shown as item (item.id)}
         <ListRow key={item.id} data-probe-row={item.id} title={item.title} static={true} />
