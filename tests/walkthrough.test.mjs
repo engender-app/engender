@@ -13,6 +13,7 @@
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
+import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 
 const { ok, fail, finish } = createReporter();
 
@@ -4278,7 +4279,8 @@ try {
    encrypted store the way a scan would. */
 try {
   await fresh('/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  await page.locator('[data-add]').waitFor();
+  const paperBefore = await page.locator('[data-list-row]').count();
 
   const page1994 = await labSlipImage(['CITY HOSPITAL', 'Diagnosis, 1994']);
   page.once('filechooser', (chooser) =>
@@ -4298,13 +4300,16 @@ try {
   // editable date exists for.
   await fillDate(page, '#document-day', '1994-06-30');
   await page.locator('[data-save-document]').click();
-  await page.waitForSelector('[data-list-row]');
-
-  const row = page.locator('[data-list-row]').first();
-  if (!(await row.textContent()).includes('1994')) {
-    throw new Error(`the row does not carry the day on the paper: ${await row.textContent()}`);
-  }
-  await row.click();
+  /* Counted rather than waited for, and found by its own text in JS, for
+     the reason the flow below spells out: the demo persona files paper of
+     its own (ticket 64), so a bare `[data-list-row]` wait is already
+     satisfied and `first()` is somebody else's document - this one is
+     dated 1994 and sorts last. */
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, paperBefore);
+  const paperRows = page.locator('[data-list-row]');
+  const filed = (await paperRows.allTextContents()).findIndex((text) => text.includes('1994'));
+  if (filed === -1) throw new Error('the row does not carry the day on the paper');
+  await paperRows.nth(filed).click();
   await page.waitForSelector('[data-document-page]', { timeout: 15000 });
 
   /* The page is drawn here and nowhere else (ADR-0065), so the list it came
@@ -4315,20 +4320,24 @@ try {
     throw new Error('the documents list is drawing a page image');
   }
 
-  await page.locator('[data-list-row]').first().click();
+  const stillThere = (await page.locator('[data-list-row]').allTextContents()).findIndex((text) => text.includes('1994'));
+  await page.locator('[data-list-row]').nth(stillThere).click();
   await page.waitForSelector('[data-delete-document]');
   await page.locator('[data-delete-document]').click();
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  // Back to what was there before this flow filed anything, which is the
+  // list being empty on a journal that had no paper of its own.
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, paperBefore);
 
-  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
+  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it takes it off the list');
 } catch (e) { fail('a place for paper', e); }
 
-/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, which
-   draws no page at all - the paper icon, its size and the export action
-   are what its own screen has instead. Type is decided by reading the
-   bytes: this file is named .png in the chooser and is a PDF anyway.
+/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, one the
+   renderer cannot read (ticket 55) - the paper icon, the line that says
+   so, its size and the export action are what its own screen has instead.
+   Type is decided by reading the bytes: this file is named .png in the
+   chooser and is a PDF anyway.
 
    Not asserting the list starts empty here (unlike "a place for paper"
    above): ticket 64 seeded the demo persona with a document of its own,
@@ -4344,8 +4353,7 @@ try {
   await fresh('/media/documents');
   await page.locator('[data-add]').waitFor();
   const rowCountBefore = await page.locator('[data-list-row]').count();
-
-  const pdfBytes = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(2048, 0x20)]);
+  const pdfBytes = Buffer.from(makeUnreadablePdf());
   page.once('filechooser', (chooser) =>
     chooser.setFiles({ name: 'scan_0143.png', mimeType: 'image/png', buffer: pdfBytes })
   );
@@ -4363,9 +4371,8 @@ try {
   const ourIndex = (await rows.allTextContents()).findIndex((text) => text.includes('Postanowienie sądu'));
   if (ourIndex === -1) throw new Error('the newly filed document does not appear in the list');
   await rows.nth(ourIndex).click();
-  await page.waitForFunction(() => document.querySelector('[data-document-size]')?.textContent?.trim());
-  if (await page.locator('[data-document-page]').count()) {
-    throw new Error('a PDF document is drawing a page image');
+  await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
+    throw new Error('a PDF nothing could draw is showing a page image');
   }
   const sizeText = await page.locator('[data-document-size]').textContent();
   if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
@@ -4389,8 +4396,104 @@ try {
     throw new Error('the deleted PDF document is still in the list');
   }
 
-  ok('a PDF, named .png by the picker, is filed by its real bytes, shows no page, and exports unchanged');
+  ok('a PDF, named .png by the picker, is filed by its real bytes, says it cannot be drawn, and exports unchanged');
 } catch (e) { fail('a document can be a PDF', e); }
+
+/* Phase 8 features ticket 55, ADR-0065: a PDF this renderer can read.
+   Its first page is drawn at import and stored, so the screen has
+   something to show at once, and the pager turns the rest. Three pages
+   rather than two, so "next, next, back" lands somewhere it has been and
+   somewhere it has not.
+
+   The page number is read off the indicator and the pixels off the
+   canvas: a viewer that ignored the button would keep the same picture,
+   and both pages here are the same layout with different words on
+   them. */
+try {
+  await fresh('/media/documents');
+  await page.locator('[data-add]').waitFor();
+  const readableBefore = await page.locator('[data-list-row]').count();
+
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'opinia.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from(makePdf(['Page one', 'Page two', 'Page three']))
+    })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  await page.locator('#document-title').fill('Opinia psychiatryczna');
+  await fillDate(page, '#document-day', '2025-06-02');
+  await page.locator('[data-save-document]').click();
+  // Counted, and found by its own text, for the reason the two flows above
+  // give: the persona's own paper is already in this list.
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, readableBefore);
+
+  /* The list is still text, deliberately (ADR-0065): the page a document
+     carries never appears in it, however drawable that page turned out. */
+  if (await page.locator('[data-list-row] img').count()) {
+    throw new Error('the documents list is drawing page images');
+  }
+
+  const opinionRows = page.locator('[data-list-row]');
+  const opinion = (await opinionRows.allTextContents()).findIndex((text) => text.includes('Opinia psychiatryczna'));
+  if (opinion === -1) throw new Error('the PDF that was just filed does not appear in the list');
+  await opinionRows.nth(opinion).click();
+  // The thumbnail stored at import, which is what the screen has before a
+  // megabyte of renderer has even loaded.
+  await page.waitForSelector('[data-document-page]');
+  await page.waitForSelector('[data-document-page-canvas="drawn"]');
+
+  const pageInk = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('[data-document-page-canvas]');
+      const context = canvas.getContext('2d');
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return dark;
+    });
+
+  const count = () => page.locator('[data-page-count]').textContent();
+  if (!/1.*3/.test(await count())) throw new Error(`the page indicator does not read as page 1 of 3: ${await count()}`);
+  const firstInk = await pageInk();
+  if (firstInk === 0) throw new Error('the first page drew nothing at all');
+
+  await page.locator('[data-page-forward]').click();
+  await page.waitForFunction(
+    (ink) => {
+      const canvas = document.querySelector('[data-document-page-canvas]');
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return dark !== ink;
+    },
+    firstInk,
+    { timeout: 15000 }
+  );
+  if (!/2.*3/.test(await count())) throw new Error(`the page indicator did not follow to page 2: ${await count()}`);
+
+  await page.locator('[data-page-back]').click();
+  await page.waitForFunction(() => /1/.test(document.querySelector('[data-page-count]')?.textContent ?? ''));
+
+  // No text layer anywhere on the screen (ADR-0065): the page is pixels,
+  // so there is nothing on it to select and nothing to read back.
+  const pageText = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-document-page-canvas]');
+    return canvas.parentElement.innerText.trim();
+  });
+  if (pageText.includes('Page one') || pageText.includes('Page two')) {
+    throw new Error(`the viewer has a text layer: ${pageText}`);
+  }
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, readableBefore);
+
+  ok('a PDF draws its first page at import, turns to page 2 and back, and has no text layer on any of them');
+} catch (e) { fail('looking at a PDF', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).

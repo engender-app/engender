@@ -109,6 +109,17 @@ export async function readThumbnail(fileName: string): Promise<Uint8Array | null
   return enqueue(thumbFileName(fileName));
 }
 
+/** The same read, for a thumbnail whose name the caller has already worked
+    out. A document is the one owner that needs it: a PDF's page is named
+    off its own `.pdf` (journal/documents.ts's `documentThumbName`), and
+    asking for it through `readThumbnail` above would hand back the whole
+    document under a name that only rewrites `.jpg`. Batched with every
+    other thumbnail read in the same turn, since a screen showing paper
+    beside photographs should still make one round trip. */
+export async function readThumbnailFile(name: string): Promise<Uint8Array | null> {
+  return enqueue(name);
+}
+
 /** A stored photo's full bytes, on the same terms. Only the journey export
     (ticket 27) reads these: a screen drawing a photo wants the thumbnail,
     and a composed collage at 360px a cell would show the difference. Not

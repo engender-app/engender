@@ -1936,6 +1936,62 @@ await block('phase 8 audit ticket 25 entry editor', 4, async () => {
   else fail('the hidden presentation is a real row', JSON.stringify(r));
 });
 
+/* Phase 8 features ticket 55: the PDF renderer.
+
+   Node cannot run any of this - the worker, the canvases and the font
+   directory are all browser-side - and the walkthrough drives the screen
+   rather than the renderer. What is left, and what is here, is that the
+   library the app pinned actually draws a page from bytes, that its text
+   comes out (which is a check on the local font directory, since the
+   fixture names a standard face it does not carry), and that the two
+   failures the screen has copy for really are the two the module
+   produces. */
+await block('phase 8 features ticket 55 PDF renderer', 6, async () => {
+  const r = await load('/pdf.html', 'pdf');
+  if (r.error) throw new Error(r.error);
+
+  const { rendered, thumbnail } = r;
+
+  if (rendered.pageCount === 3) ok('a PDF opens and counts its pages');
+  else fail('a PDF opens and counts its pages', `${rendered.pageCount} pages`);
+
+  if (rendered.longEdge === 800 && Math.abs(rendered.aspect - 0.707) < 0.01)
+    ok(`a page draws at the size asked for, in the paper's own shape (${rendered.longEdge}px, ${rendered.aspect})`);
+  else fail("a page draws at the size asked for, in the paper's own shape", JSON.stringify(rendered));
+
+  /* Ink on both pages, and not the same page twice: page three says
+     "Page three", which is wider than "Page one", so a viewer stuck on
+     page one would report two identical fractions. */
+  if (rendered.firstInk > 0.001 && rendered.thirdInk > rendered.firstInk)
+    ok(
+      `standard-font text draws from the app's own /pdf-fonts/, and page 3 is not page 1 again ` +
+        `(${(rendered.firstInk * 100).toFixed(2)}% vs ${(rendered.thirdInk * 100).toFixed(2)}% ink)`
+    );
+  else
+    fail(
+      "standard-font text draws from the app's own /pdf-fonts/, and page 3 is not page 1 again",
+      `${JSON.stringify(rendered)} - a blank page means the fonts were not found`
+    );
+
+  if (thumbnail?.jpeg && Math.max(thumbnail.width, thumbnail.height) === 320)
+    ok(`the first page is stored as the same JPEG shape a photo's thumbnail is (${thumbnail.bytes} bytes)`);
+  else fail("the first page is stored as the same JPEG shape a photo's thumbnail is", JSON.stringify(thumbnail));
+
+  if (!r.openedUnreadable) ok('a file that only says %PDF- is refused rather than opened');
+  else fail('a file that only says %PDF- is refused rather than opened', 'it opened');
+
+  /* The half the import depends on: a document whose page cannot be drawn
+     is still filed, so the thumbnail call answers null instead of
+     throwing (documents/accept.ts). */
+  if (r.unreadableThumbIsNull && r.refusedMissingPage)
+    ok('an undrawable file answers with no thumbnail, and a page that is not there rejects');
+  else
+    fail(
+      'an undrawable file answers with no thumbnail, and a page that is not there rejects',
+      JSON.stringify({ unreadableThumbIsNull: r.unreadableThumbIsNull, refusedMissingPage: r.refusedMissingPage })
+    );
+});
+
 // --- Phase 8 features ticket 66: a long list renders a batch at a time ----
 await block('phase 8 features ticket 66 batched list', 8, async () => {
   const r = await load('/batched-list.html', 'batched-list');

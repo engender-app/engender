@@ -43,15 +43,20 @@
    (ticket 53, ADR-0065) cannot go through that path - canvas normalisation
    is image-only - so it is stored exactly as it arrived, as `<uuid>.pdf`.
    That extension is this module's own doing, never trusted from the file
-   that arrived, and it is what tells the two kinds apart afterwards: a
-   `.pdf` name has no derived thumbnail beside it the way a `.jpg` one
-   does, which is what `documentFilesOf` and `isPdfDocument` below exist
-   to make a decision instead of a convention every caller has to
-   remember. */
+   that arrived, and it is what tells the two kinds apart afterwards.
+
+   Both kinds have a thumbnail beside them: an image's falls out of
+   normalisation, and a PDF's is its first page drawn once at import
+   (ticket 55, documents/pdf.ts). The names differ only in what they are
+   derived from, which `documentThumbName` below owns so that the sweep,
+   the archive and the screen cannot each have their own idea of it. A PDF
+   the renderer could not read has no thumbnail file at all, and every one
+   of those readers already treats a missing file as nothing to show
+   rather than as an error. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DocumentTarget, JournalDocument } from '../types';
-import { filesOf, photoFileName } from '../photos/names';
+import { filesOf, photoFileName, thumbFileName } from '../photos/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { DocumentFile } from '../documents/accept';
 export type { DocumentFile } from '../documents/accept';
@@ -60,21 +65,25 @@ import { assertChanged, mintUuid, now } from './support';
 
 /** Whether a document's stored file is a PDF rather than an image - read
     off the extension `addDocument` mints below, never off anything the
-    picker claimed. A PDF has no derived thumbnail (unlike a photo's
-    `<uuid>.jpg`), which is the one thing every reader of a document's file
-    name needs to know before touching it. */
+    picker claimed. It decides which renderer a screen needs and how the
+    thumbnail beside it is named. */
 export const isPdfDocument = (fileName: string): boolean => fileName.endsWith('.pdf');
 
-/** Every file one document row owns. An image document is a photo in
-    every sense that matters here, so `filesOf` expands it to its derived
-    thumbnail; a PDF is the one file it arrived as and has no thumbnail to
-    invent - calling `filesOf` on a `.pdf` name would not match its `.jpg`
-    suffix rewrite and would add the same name twice for no reason
-    (photos/names.ts's own `thumbFileName`). Shared by `deleteDocument`
-    below and by the orphan sweep and the archive's file manifest
-    (photos.ts, archive.ts), which both own a document row's files without
-    owning the area itself. */
-export const documentFilesOf = (fileName: string): string[] => (isPdfDocument(fileName) ? [fileName] : filesOf(fileName));
+/** The name of the thumbnail stored beside a document. A photo's is
+    `photos/names.ts`'s `.jpg` rewrite; a PDF's is the same shape spelled
+    off a `.pdf`, because that rewrite only matches a `.jpg` suffix and
+    would otherwise hand back the document's own name - which is how a
+    reader ends up decoding a whole PDF as if it were a JPEG. */
+export const documentThumbName = (fileName: string): string =>
+  isPdfDocument(fileName) ? fileName.replace(/\.pdf$/, '-thumb.jpg') : thumbFileName(fileName);
+
+/** Every file one document row owns. Shared by `deleteDocument` below and
+    by the orphan sweep and the archive's file manifest (photos.ts,
+    archive.ts), which both own a document row's files without owning the
+    area itself - and both of which are content to name a thumbnail that
+    was never written, since a missing file is nothing to delete and
+    nothing to pack. */
+export const documentFilesOf = (fileName: string): string[] => [fileName, documentThumbName(fileName)];
 
 /** What a person types when they file a piece of paper: the day it is from,
     and their own name for it. The file arrives beside this rather than in
@@ -191,6 +200,10 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
       if ('pdfBytes' in content) {
         const fileName = `${uuid}.pdf`;
         await files.write(fileName, content.pdfBytes);
+        // No page where the renderer could not read the file (ticket 55).
+        // The document is still filed: what it holds is the person's, and
+        // it can still be written back out from its own screen.
+        if (content.thumb) await files.write(documentThumbName(fileName), content.thumb);
         return documents.upsert({ epochDay: input.epochDay, title, fileName, targetKind: null, targetId: null });
       }
 

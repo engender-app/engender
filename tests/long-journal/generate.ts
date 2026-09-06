@@ -806,9 +806,13 @@ export async function generateLongJournal(
   const DOCUMENT_PDF_SIZES_MB = [3, 5, 4, 6, 5];
   for (const [i, sizeMb] of DOCUMENT_PDF_SIZES_MB.entries()) {
     const pdfBytes = new Uint8Array(sizeMb * 1024 * 1024).fill(between(1, 254));
+    // The first page, as a real import produces one (ticket 55): a
+    // thumbnail-sized fill, since what the archive measures is the byte
+    // count either way.
+    const thumb = new Uint8Array(28 * 1024).fill(between(1, 254));
     await journal.documents.addDocument(
       { epochDay: firstEpochDay + Math.floor(days * ((i + 2) / (DOCUMENT_PDF_SIZES_MB.length + 2))), title: `Dokumentacja ${i + 1}` },
-      { pdfBytes }
+      { pdfBytes, thumb }
     );
     summary.documents++;
   }
