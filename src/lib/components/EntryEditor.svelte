@@ -56,6 +56,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
@@ -858,7 +859,15 @@
 
   <!-- Contextual Inline Cards (ticket 04, ADR-0044) -->
   {#if prefs.entryTryoutPromptEnabled && activeTryout}
-    <div class="contextual-panel" data-contextual="tryout-felt-sense">
+    <!-- All three contextual cards open their own height rather than
+         appearing at full size in one frame (ticket 99 item 18, "tryout
+         felt sense comes out without an animation"). None of them is on
+         screen when the editor mounts - each waits on a read the journal
+         has not answered yet - so they arrive into a screen the person is
+         already looking at, which is what tier 3 is for. A Svelte
+         transition is local and does not play on first render, so this
+         stays out of the way of the screen's own arrival. -->
+    <div class="contextual-panel" data-contextual="tryout-felt-sense" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_tryout_felt_sense_title({ name: activeTryout.label })}</span>
       </div>
@@ -955,7 +964,7 @@
   {/if}
 
   {#if prefs.entryProcedureRecoveryEnabled && recoveringProcedure}
-    <div class="contextual-panel" data-contextual="procedure-recovery">
+    <div class="contextual-panel" data-contextual="procedure-recovery" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">
           {m.entry_procedure_recovery_title({ day: recoveringProcedure.postOpDays, name: recoveringProcedure.proc.name })}
@@ -1032,7 +1041,7 @@
   {/if}
 
   {#if cycleTrackingActive}
-    <div class="contextual-panel" data-contextual="cycle-event">
+    <div class="contextual-panel" data-contextual="cycle-event" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_cycle_event_title()}</span>
       </div>
