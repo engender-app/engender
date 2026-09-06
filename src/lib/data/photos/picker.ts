@@ -7,11 +7,15 @@
    that the call sites above never learn which one they got.
 
    Bytes, not File objects or URIs: a File is a web type and a content://
-   URI is an Android one, and normalize() takes neither. */
+   URI is an Android one, and normalize() takes neither. On Android the
+   bytes arrive in two steps - the pick answers with a token and the bytes
+   follow over the pick channel - and that is internal to this module too:
+   a token is an Android type as much as a content:// URI is. */
 
 import { chooseFiles } from '../fileDialog';
 import { isAndroid } from '../../platform';
 import { androidPhotos } from './android-bridge';
+import { readPickedOverChannel } from './android-pick-channel';
 import { refuseAboveCeiling, refuseTooLarge } from '../documents/accept';
 
 export interface PhotoPicker {
@@ -20,10 +24,31 @@ export interface PhotoPicker {
   pick(): Promise<Uint8Array[]>;
 }
 
-// What the Android bridge hands back for a photo: base64, because that is
-// what crosses the bridge as JSON.
+// The fallback transport's own decode: a bridge response crosses as JSON,
+// so on a WebView too old for the pick channel a picked file is still a
+// base64 string and this is still what it costs (phase 9 audit ticket 06).
 function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+}
+
+/** The bytes of one file an Android pick handed back a token for.
+
+    Two transports, chosen the same way android-file-store.ts chooses one
+    for a write: the message channel when the WebView can carry a
+    structured clone, the base64 bridge call when it cannot
+    (android-pick-channel.ts returns null to say so). The fast path is the
+    default and the slow one is the floor's - a 25 MB scan measured 1054ms
+    of blocked main thread through base64 against 4ms through a typed
+    decode, and held three copies of itself live while it did it.
+
+    Exported because the OCR lab picks an image through the same bridge
+    without going through the pickers below (labs/ocr-adapters.ts), and
+    one place deciding which transport a token is read over is the point. */
+export async function androidPickedBytes(token: string): Promise<Uint8Array> {
+  const viaChannel = readPickedOverChannel(token);
+  if (viaChannel) return viaChannel;
+  const { base64 } = await androidPhotos.readPickedBase64({ token });
+  return base64ToBytes(base64);
 }
 
 /** Runs an Android bridge pick, turning the native side's own too-large
@@ -56,8 +81,13 @@ export function filePhotoPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { images } = await pickOnAndroid(() => androidPhotos.pickImages());
-        return images.map(base64ToBytes);
+        const { tokens } = await pickOnAndroid(() => androidPhotos.pickImages());
+        // One at a time rather than all at once: a multi-pick can be
+        // several files at the ceiling, and fetching them concurrently
+        // would hold every one of them in the heap together.
+        const picked: Uint8Array[] = [];
+        for (const token of tokens) picked.push(await androidPickedBytes(token));
+        return picked;
       }
 
       // Whatever the OS decides matches "image/*", HEIC included: the bytes
@@ -82,8 +112,8 @@ export function documentPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { bytes } = await pickOnAndroid(() => androidPhotos.pickDocument());
-        return bytes ? [base64ToBytes(bytes)] : [];
+        const { token } = await pickOnAndroid(() => androidPhotos.pickDocument());
+        return token ? [await androidPickedBytes(token)] : [];
       }
 
       return pickOneFile('application/pdf,image/*');
@@ -104,8 +134,8 @@ export function cameraPhotoPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { image } = await androidPhotos.captureImage();
-        return image ? [base64ToBytes(image)] : [];
+        const { token } = await androidPhotos.captureImage();
+        return token ? [await androidPickedBytes(token)] : [];
       }
 
       return pickOneFile('image/*', { capture: 'environment' });
