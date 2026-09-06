@@ -321,7 +321,10 @@
         {m.document_page_alt({ title: stored.title })}
       </canvas>
       {#if !pageDrawn}
-        {#if pageUrl}
+        <!-- Not the thumbnail when a page failed: that thumbnail is page
+             one, and page one under a line about page five is a worse
+             answer than the empty sheet. -->
+        {#if pageUrl && !pageFailed}
           <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
         {:else}
           <div class="doc-page-empty"><Icon name="documents" size={28} /></div>

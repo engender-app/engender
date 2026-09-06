@@ -83,17 +83,29 @@ export interface OpenPdf {
 
 export async function openPdf(bytes: Uint8Array): Promise<OpenPdf> {
   const module = await pdfjs();
-  const document = await module.getDocument({
-    worker: workerFor(module),
-    /* A copy, because pdf.js transfers the buffer to the worker and leaves
-       the caller holding a detached one - and the caller here is a screen
-       that still has to be able to write the original file back out. */
-    data: bytes.slice(),
-    standardFontDataUrl: STANDARD_FONTS,
-    disableFontFace: true,
-    isEvalSupported: false,
-    useSystemFonts: false
-  }).promise;
+  const worker = workerFor(module);
+
+  let document;
+  try {
+    document = await module.getDocument({
+      worker,
+      /* A copy, because pdf.js transfers the buffer to the worker and
+         leaves the caller holding a detached one - and the caller here is
+         a screen that still has to be able to write the original file
+         back out. */
+      data: bytes.slice(),
+      standardFontDataUrl: STANDARD_FONTS,
+      disableFontFace: true,
+      isEvalSupported: false,
+      useSystemFonts: false
+    }).promise;
+  } catch (error) {
+    // A file pdf.js refuses is the common case here, not an exceptional
+    // one (a scan somebody re-saved, an encrypted export), and each one
+    // arrives with a live worker that nothing else will ever close.
+    worker.destroy();
+    throw error;
+  }
 
   return {
     pageCount: document.numPages,
