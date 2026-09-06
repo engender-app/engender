@@ -29,10 +29,10 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import type { DocumentFile } from '$lib/data/documents/accept';
   import type { JournalDocument } from '$lib/data/types';
   import { documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
-  import { pickPhotos } from '$lib/stores/photoPicking';
+  import { pickDocument } from '$lib/stores/documentPicking';
   import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -42,19 +42,20 @@
   /* The bytes waiting for a title. Held here rather than in the draft
      because they are not a field somebody edits, and because a sheet closed
      without them saved would otherwise look like a document with no file. */
-  let picked = $state<NormalizedPhoto | null>(null);
+  let picked = $state<DocumentFile | null>(null);
   let title = $state('');
   let day = $state(dateInputValueFromEpochDay(todayEpochDay()));
   let saving = $state(false);
 
   async function startImport() {
-    const [image] = await pickPhotos(1);
-    // Backing out of the picker is an ordinary outcome (picker.ts), so
-    // nothing opens and nothing is said about it.
-    if (!image) return;
+    const content = await pickDocument();
+    // Backing out of the picker, and a refused file, both leave nothing
+    // open (picker.ts's own "backing out is an ordinary outcome"; a
+    // refusal already raised its own toast in documentPicking.ts).
+    if (!content) return;
     title = '';
     day = dateInputValueFromEpochDay(todayEpochDay());
-    picked = image;
+    picked = content;
   }
 
   async function saveImport() {

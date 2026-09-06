@@ -14,9 +14,14 @@
    put 49.7 MB of the shell's 54.1 MB behind a feature most first visits will
    not touch.
 
-   scripts/prepare-tesseract-assets.mjs is what writes the directory, and
+   scripts/prepare-vendor-assets.mjs is what writes the directory, and
    ocr-engine.ts is what reads it. Both agree with the worker through the
-   constant below rather than through three copies of the same string. */
+   constant below rather than through three copies of the same string.
+
+   That script also writes static/pdf-fonts/, which is not an exception and
+   is precached with everything else: the fourteen standard PDF faces are
+   800 KB rather than 50 MB, and a document viewer that only draws its text
+   online would defeat what the store is for (ADR-0065). */
 
 /** The one directory in static/ that the shell does not precache. */
 export const ON_DEMAND_PREFIX = '/tesseract/';

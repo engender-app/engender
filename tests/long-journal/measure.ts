@@ -17,6 +17,7 @@
    number is acceptable. It reports; budgets.json judges. */
 
 import type { Journal, PhotoFileStore } from '../../src/lib/data/journal/journal.ts';
+import { mostRecentPastAppointment } from '../../src/lib/data/journal/appointments.ts';
 import { packArchive } from '../../src/lib/data/archive/pack.ts';
 import { portablePreferences } from '../../src/lib/data/archive/payload.ts';
 import { dateInputValueFromEpochDay } from '../../src/lib/data/epochDay.ts';
@@ -811,6 +812,12 @@ export async function measureLongJournal(
     const activeTryoutIds = journal.tryouts
       .getTryouts()
       .then((rows) => rows.filter((tryout) => spanCoversDay(tryout, today)).map((tryout) => tryout.id));
+    /* The debrief offer's own most-recent-past-appointment lookup (ticket
+       58) is a second, dependent read - Home's own liveQuery cannot ask
+       getDebriefState until this one has answered, the same reason it is
+       not folded into `together` below. */
+    const appointments = await journal.appointments.getAppointments();
+    const mostRecentPastAppointmentId = mostRecentPastAppointment(appointments, today)?.id ?? null;
 
     const reads = await together({
       runningWear: journal.wearSessions.getRunningSession(),
@@ -837,7 +844,7 @@ export async function measureLongJournal(
       latestMeasurementDay: journal.measurements.lastWriteEpochDay(today),
       entryCount: journal.entries.countAll(),
       journalBounds: journal.eras.getJournalBounds(),
-      debriefState: journal.checklists.getDebriefState(),
+      debriefState: journal.checklists.getDebriefState(mostRecentPastAppointmentId),
       projections: journal.stock.getProjections(today),
       recent: journal.entries.recentDays(HOME_RECENT_DAYS),
       // The wrapped card, which asks the mute layer before it asks for a

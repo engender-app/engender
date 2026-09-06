@@ -122,6 +122,12 @@ export interface LongJournalSummary {
       density ADR-0066 describes: "somebody four years into endocrinology
       has roughly sixteen of these". */
   appointments: number;
+  /** One image document plus several PDFs (phase 8 features ticket 53,
+      ADR-0065), the latter sized to put tens of megabytes of
+      un-normalisable bytes through the archive - a scale this fixture had
+      never carried, since an image document is normalised down to
+      essentially nothing and ticket 52 never added one here at all. */
+  documents: number;
   /** The start day of the earliest open-ended tryout (`endEpochDay: null`) -
       the widest possible span `searchEntries` can be asked to read for one
       tryout's detail screen. */
@@ -357,6 +363,7 @@ export async function generateLongJournal(
     checklistItems: 0,
     voiceRecordings: 0,
     appointments: 0,
+    documents: 0,
     tryoutWideOpenStartEpochDay: 0,
     lastSingleEpisodeEpochDay: 0
   };
@@ -780,6 +787,34 @@ export async function generateLongJournal(
   for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
     await journal.checklists.addToStandaloneChecklist(item);
     summary.checklistItems++;
+  }
+
+  // Documents (phase 8 features ticket 53, ADR-0065): one image, which goes
+  // through the same normalisation a photo does and so weighs almost
+  // nothing, and several PDFs sized in whole megabytes - the container
+  // chunks at 1 MB (archive/container.ts) and had never been measured
+  // against tens of megabytes of a single un-normalisable file kind before
+  // this. The bytes are a flat fill rather than real PDF structure: nothing
+  // reads a document's contents (ADR-0065), so what the archive and its
+  // benchmark see is only ever the byte count.
+  await journal.documents.addDocument(
+    { epochDay: firstEpochDay + Math.floor(days * 0.1), title: 'Opinia psychiatryczna' },
+    await makePhoto(hairPhotoIndex + hairRemovalPhotoIndex + 5000)
+  );
+  summary.documents++;
+
+  const DOCUMENT_PDF_SIZES_MB = [3, 5, 4, 6, 5];
+  for (const [i, sizeMb] of DOCUMENT_PDF_SIZES_MB.entries()) {
+    const pdfBytes = new Uint8Array(sizeMb * 1024 * 1024).fill(between(1, 254));
+    // The first page, as a real import produces one (ticket 55): a
+    // thumbnail-sized fill, since what the archive measures is the byte
+    // count either way.
+    const thumb = new Uint8Array(28 * 1024).fill(between(1, 254));
+    await journal.documents.addDocument(
+      { epochDay: firstEpochDay + Math.floor(days * ((i + 2) / (DOCUMENT_PDF_SIZES_MB.length + 2))), title: `Dokumentacja ${i + 1}` },
+      { pdfBytes, thumb }
+    );
+    summary.documents++;
   }
 
   // Stock: current supply reported for the two drugs in regimen. Estradiol's

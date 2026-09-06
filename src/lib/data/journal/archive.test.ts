@@ -570,6 +570,51 @@ test('the manifest carries a document’s page and its thumbnail, not just its r
   assert.ok(files.names().includes(document.fileName));
 });
 
+/* Phase 8 features tickets 53 and 55. A PDF document's two files are the
+   file itself and the first page drawn at import, whose name is spelled
+   off the `.pdf` - the same reasoning as above, over the kind `filesOf()`
+   alone gets wrong. */
+test('the manifest carries a PDF document’s file and the page drawn at import', async () => {
+  const { journal } = await populated();
+  const id = await journal.documents.addDocument(
+    { epochDay: 8766, title: 'Court ruling' },
+    { pdfBytes: bytes('%PDF-1.4 a whole ruling'), thumb: bytes('its first page') }
+  );
+  const document = (await journal.documents.getDocument(id))!;
+  const thumbName = document.fileName.replace(/\.pdf$/, '-thumb.jpg');
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(
+    snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
+    [
+      { name: document.fileName, length: bytes('%PDF-1.4 a whole ruling').length },
+      { name: thumbName, length: bytes('its first page').length }
+    ],
+    'a PDF document travels as its file and its page'
+  );
+  assert.deepEqual(await snapshot.readFile(document.fileName), bytes('%PDF-1.4 a whole ruling'));
+});
+
+/* The other half of it: a PDF the renderer could not read has no page
+   file at all, and the manifest names what is there rather than what the
+   name says could be. */
+test('the manifest leaves out a page a PDF never had', async () => {
+  const { journal } = await populated();
+  const id = await journal.documents.addDocument(
+    { epochDay: 8766, title: 'Something scanned oddly' },
+    { pdfBytes: bytes('%PDF-1.4 unreadable'), thumb: null }
+  );
+  const document = (await journal.documents.getDocument(id))!;
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(
+    snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
+    [{ name: document.fileName, length: bytes('%PDF-1.4 unreadable').length }]
+  );
+});
+
 test('a trashed entry, and its photo, recording and video-note files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
   const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;
@@ -863,10 +908,13 @@ const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CAR
    to the row), and every other table's own `hidden` column stays carried
    as before - this is scoped to `regimen_episode` alone by the per-table
    CARRIED lists above, not by this flat list. */
-// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08): device-
+// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08) and their
+// appointment-id-keyed successors (migrations.ts v78, ticket 58): device-
 // local bookkeeping for the appointment debrief offer, scoped to `checklist`
-// alone by migrations.ts v54's own comment - never part of what the
-// checklist travels, the same reason `id` and `updated_at` never are.
+// alone - never part of what the checklist travels, the same reason `id`
+// and `updated_at` never are. debrief_dismissed_epoch_day itself is also
+// retained-but-unwritten now (ticket 58 rekeys dismissal to an appointment
+// id), which changes nothing about it belonging on this list.
 const LEFT_BEHIND = [
   'id',
   'updated_at',
@@ -874,7 +922,9 @@ const LEFT_BEHIND = [
   'context',
   'hidden',
   'debrief_entry_id',
-  'debrief_dismissed_epoch_day'
+  'debrief_entry_appointment_id',
+  'debrief_dismissed_epoch_day',
+  'debrief_dismissed_appointment_id'
 ];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {

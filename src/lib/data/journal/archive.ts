@@ -26,6 +26,7 @@
    (ADR-0011) is long enough to be worth reading on its own. */
 
 import { filesOf, thumbFileName } from '../photos/names';
+import { documentFilesOf } from './documents';
 import type { RestoreContents, RestoreMode } from './restore';
 import {
   daylioPreview,
@@ -248,7 +249,12 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async importLog() {
-      return (await readImportLog(driver)).toReversed();
+      // Copied before reversing rather than reversed in place: `toReversed`
+      // is above the WebView floor (ADR-0023, ticket 55) and this is what
+      // replaced it, so it has to keep the same promise not to touch what
+      // it was handed - the read's array is its own today, and a reader
+      // that started sharing one would be a bug nobody would look for here.
+      return [...(await readImportLog(driver))].reverse();
     },
 
     async previewDaylioBackupImport(file, naming) {
@@ -411,15 +417,19 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
           ...reading.hairPhotos,
           ...reading.hairRemovalPhotos,
           ...reading.procedurePhotos,
-          ...reading.tryoutPhotos,
-          /* A document's image went through the same normalisation a
-             photo's did (documents.ts), so it has the derived thumbnail
-             beside it that `filesOf` expands to - which is why it is in
-             this list rather than in a `manifestNames` call of its own
-             (phase 8 features ticket 52). Without it a document travels as
-             a row with no bytes and restores into a broken reference. */
-          ...reading.documentFiles
+          ...reading.tryoutPhotos
         ])),
+        /* A document's own manifestNames() call rather than folded into
+           `manifest()` above: every other owner there is an image and
+           `filesOf` is always right for it, but a document can be a PDF,
+           whose page beside it is named off the `.pdf` rather than off a
+           `.jpg` (phase 8 features tickets 53 and 55) - `documentFilesOf`
+           is what tells the two kinds apart. Without this a document
+           travels as a row with no bytes and restores into a broken
+           reference (phase 8 features ticket 52). A PDF the renderer
+           could not read names a page that was never written, and
+           manifestNames() leaves out what the store has no size for. */
+        ...(await manifestNames(reading.documentFiles.flatMap((d) => documentFilesOf(d.file_path)))),
         ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
         ...(await manifestNames(reading.videos.map((v) => v.file_path))),
         // Two per benchmark, one where the vowel step was skipped (ticket 15).

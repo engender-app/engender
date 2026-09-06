@@ -13,6 +13,7 @@
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
+import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 
 const { ok, fail, finish } = createReporter();
 
@@ -2873,6 +2874,103 @@ try {
   fail('wear log renders in batches', e);
 }
 
+/* Ticket 67 acceptance: the dose log and the regimen screen each arrive
+   with one batch rendered, not the whole log - the wear log's own check
+   above, for the other two screens ticket 67 adopts BatchedList onto.
+   The regimen screen's demo data never exceeds thirty episodes, so a row
+   count there cannot tell "batched, under one batch" from "never
+   batched" apart - `[data-batched-list]` is BatchedList's own wrapper, so
+   its presence is what actually proves the adoption on a screen a count
+   can't. */
+try {
+  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+  const onArrival = await page.locator('[data-dose]').count();
+  if (onArrival !== 30) throw new Error(`the dose log rendered ${onArrival} rows on arrival, not one batch of 30`);
+  if ((await page.locator('[data-batched-list="doses"]').count()) !== 1) {
+    throw new Error('the dose log is not wrapped in BatchedList');
+  }
+  ok('the dose log arrives with one batch of thirty, same as the wear log');
+} catch (e) {
+  fail('dose log arrives batched', e);
+}
+
+try {
+  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+  if ((await page.locator('[data-batched-list="episodes"]').count()) !== 1) {
+    throw new Error('the regimen episode list is not wrapped in BatchedList');
+  }
+  ok('the regimen screen adopts BatchedList for its episode list');
+} catch (e) {
+  fail('regimen screen arrives batched', e);
+}
+
+/* Ticket 67: a deep link into a batched log expands to the row before
+   scrolling to it, rather than landing short of a row the first batch
+   never rendered. The clinician summary's dossier links every regimen and
+   dose row back to its own record - restored by this ticket after the
+   phase 5 ticket 09 rewrite dropped it - and its dosage-log table reads
+   oldest first, so the first row's link is the one link on demo data that
+   is guaranteed to sit past the dose log's own newest-first first batch. */
+try {
+  await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
+  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+
+  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const href = await firstDoseLink.getAttribute('href');
+  if (!href) throw new Error('no dose link found in the clinician summary');
+  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+
+  await firstDoseLink.click();
+  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const renderedDoseRows = await page.locator('[data-dose]').count();
+  if (renderedDoseRows <= 30) {
+    throw new Error(`expected the deep link to expand the log past its first batch, got ${renderedDoseRows} rows`);
+  }
+
+  const linkedRow = page.locator(`[data-dose="${doseId}"]`);
+  if ((await linkedRow.count()) !== 1) throw new Error('the linked dose is not in the DOM after the deep link');
+  if (!(await linkedRow.isVisible())) throw new Error('the linked dose exists but is not visible');
+
+  ok('a clinician-summary link into a dose past the first batch expands the log and lands on it');
+} catch (e) {
+  fail('deep-linked row expands the batched dose log', e);
+}
+
+/* Ticket 67 acceptance: "the same link to a record inside the first batch
+   behaves as it does today". The dossier's dosage log reads oldest first,
+   so its last row is the most recent dose - always within the log's own
+   newest-first first batch - and following it must not expand anything. */
+try {
+  await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
+  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+
+  const lastDoseLink = page.locator('a[href^="/doses#"]').last();
+  const href = await lastDoseLink.getAttribute('href');
+  if (!href) throw new Error('no dose link found in the clinician summary');
+  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+
+  await lastDoseLink.click();
+  await page.waitForURL(BASE + '/doses', { timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const renderedDoseRows = await page.locator('[data-dose]').count();
+  if (renderedDoseRows !== 30) {
+    throw new Error(`a link already inside the first batch should not expand it, got ${renderedDoseRows} rows`);
+  }
+
+  const linkedRow = page.locator(`[data-dose="${doseId}"]`);
+  if ((await linkedRow.count()) !== 1) throw new Error('the linked dose is not in the DOM');
+  if (!(await linkedRow.isVisible())) throw new Error('the linked dose exists but is not visible');
+
+  ok('a clinician-summary link into a dose already inside the first batch behaves as it did before batching');
+} catch (e) {
+  fail('deep-linked row inside the first batch is unchanged', e);
+}
+
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
    field for it - checked against fullFixture's own "Binder check-in"
@@ -4181,7 +4279,8 @@ try {
    encrypted store the way a scan would. */
 try {
   await fresh('/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  await page.locator('[data-add]').waitFor();
+  const paperBefore = await page.locator('[data-list-row]').count();
 
   const page1994 = await labSlipImage(['CITY HOSPITAL', 'Diagnosis, 1994']);
   page.once('filechooser', (chooser) =>
@@ -4201,13 +4300,16 @@ try {
   // editable date exists for.
   await fillDate(page, '#document-day', '1994-06-30');
   await page.locator('[data-save-document]').click();
-  await page.waitForSelector('[data-list-row]');
-
-  const row = page.locator('[data-list-row]').first();
-  if (!(await row.textContent()).includes('1994')) {
-    throw new Error(`the row does not carry the day on the paper: ${await row.textContent()}`);
-  }
-  await row.click();
+  /* Counted rather than waited for, and found by its own text in JS, for
+     the reason the flow below spells out: the demo persona files paper of
+     its own (ticket 64), so a bare `[data-list-row]` wait is already
+     satisfied and `first()` is somebody else's document - this one is
+     dated 1994 and sorts last. */
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, paperBefore);
+  const paperRows = page.locator('[data-list-row]');
+  const filed = (await paperRows.allTextContents()).findIndex((text) => text.includes('1994'));
+  if (filed === -1) throw new Error('the row does not carry the day on the paper');
+  await paperRows.nth(filed).click();
   await page.waitForSelector('[data-document-page]', { timeout: 15000 });
 
   /* The page is drawn here and nowhere else (ADR-0065), so the list it came
@@ -4218,16 +4320,180 @@ try {
     throw new Error('the documents list is drawing a page image');
   }
 
-  await page.locator('[data-list-row]').first().click();
+  const stillThere = (await page.locator('[data-list-row]').allTextContents()).findIndex((text) => text.includes('1994'));
+  await page.locator('[data-list-row]').nth(stillThere).click();
   await page.waitForSelector('[data-delete-document]');
   await page.locator('[data-delete-document]').click();
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  // Back to what was there before this flow filed anything, which is the
+  // list being empty on a journal that had no paper of its own.
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, paperBefore);
 
-  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
+  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it takes it off the list');
 } catch (e) { fail('a place for paper', e); }
 
+/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, one the
+   renderer cannot read (ticket 55) - the paper icon, the line that says
+   so, its size and the export action are what its own screen has instead.
+   Type is decided by reading the bytes: this file is named .png in the
+   chooser and is a PDF anyway.
+
+   Not asserting the list starts empty here (unlike "a place for paper"
+   above): ticket 64 seeded the demo persona with a document of its own,
+   which `fresh()` cannot clear - it lives in SQLite, not localStorage - so
+   the list already carries that row before this flow ever saves its own.
+   Our own row is found by counting (a plain increase proves the save
+   landed, race-free against the seeded row already satisfying a bare
+   `[data-list-row]` wait) and then by reading each row's own text in JS
+   rather than a Playwright text locator - `walkthrough-locators.test.ts`
+   reserves those for a deliberate exception, and there is nothing
+   deliberate about a title used only to tell two rows apart. */
+try {
+  await fresh('/media/documents');
+  await page.locator('[data-add]').waitFor();
+  const rowCountBefore = await page.locator('[data-list-row]').count();
+  const pdfBytes = Buffer.from(makeUnreadablePdf());
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: 'scan_0143.png', mimeType: 'image/png', buffer: pdfBytes })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  await page.locator('#document-title').fill('Postanowienie sądu');
+  await fillDate(page, '#document-day', '2025-02-14');
+  await page.locator('[data-save-document]').click();
+
+  await page.waitForFunction(
+    (before) => document.querySelectorAll('[data-list-row]').length > before,
+    rowCountBefore
+  );
+  const rows = page.locator('[data-list-row]');
+  const ourIndex = (await rows.allTextContents()).findIndex((text) => text.includes('Postanowienie sądu'));
+  if (ourIndex === -1) throw new Error('the newly filed document does not appear in the list');
+  await rows.nth(ourIndex).click();
+  await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
+    throw new Error('a PDF nothing could draw is showing a page image');
+  }
+  const sizeText = await page.locator('[data-document-size]').textContent();
+  if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-export-document]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.pdf')) {
+    throw new Error(`the exported file is not named as a PDF: ${download.suggestedFilename()}`);
+  }
+  const exported = await readFile(await download.path());
+  if (!exported.equals(pdfBytes)) throw new Error('the exported bytes do not match what was filed');
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  // Not the empty notice (the seeded document is still there) - just that
+  // ours is gone, read the same way it was found above.
+  if ((await page.locator('[data-list-row]').allTextContents()).some((text) => text.includes('Postanowienie sądu'))) {
+    throw new Error('the deleted PDF document is still in the list');
+  }
+
+  ok('a PDF, named .png by the picker, is filed by its real bytes, says it cannot be drawn, and exports unchanged');
+} catch (e) { fail('a document can be a PDF', e); }
+
+/* Phase 8 features ticket 55, ADR-0065: a PDF this renderer can read.
+   Its first page is drawn at import and stored, so the screen has
+   something to show at once, and the pager turns the rest. Three pages
+   rather than two, so "next, next, back" lands somewhere it has been and
+   somewhere it has not.
+
+   The page number is read off the indicator and the pixels off the
+   canvas: a viewer that ignored the button would keep the same picture,
+   and both pages here are the same layout with different words on
+   them. */
+try {
+  await fresh('/media/documents');
+  await page.locator('[data-add]').waitFor();
+  const readableBefore = await page.locator('[data-list-row]').count();
+
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'opinia.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from(makePdf(['Page one', 'Page two', 'Page three']))
+    })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  await page.locator('#document-title').fill('Opinia psychiatryczna');
+  await fillDate(page, '#document-day', '2025-06-02');
+  await page.locator('[data-save-document]').click();
+  // Counted, and found by its own text, for the reason the two flows above
+  // give: the persona's own paper is already in this list.
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, readableBefore);
+
+  /* The list is still text, deliberately (ADR-0065): the page a document
+     carries never appears in it, however drawable that page turned out. */
+  if (await page.locator('[data-list-row] img').count()) {
+    throw new Error('the documents list is drawing page images');
+  }
+
+  const opinionRows = page.locator('[data-list-row]');
+  const opinion = (await opinionRows.allTextContents()).findIndex((text) => text.includes('Opinia psychiatryczna'));
+  if (opinion === -1) throw new Error('the PDF that was just filed does not appear in the list');
+  await opinionRows.nth(opinion).click();
+  // The thumbnail stored at import, which is what the screen has before a
+  // megabyte of renderer has even loaded.
+  await page.waitForSelector('[data-document-page]');
+  await page.waitForSelector('[data-document-page-canvas="drawn"]');
+
+  const pageInk = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('[data-document-page-canvas]');
+      const context = canvas.getContext('2d');
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return dark;
+    });
+
+  const count = () => page.locator('[data-page-count]').textContent();
+  if (!/1.*3/.test(await count())) throw new Error(`the page indicator does not read as page 1 of 3: ${await count()}`);
+  const firstInk = await pageInk();
+  if (firstInk === 0) throw new Error('the first page drew nothing at all');
+
+  await page.locator('[data-page-forward]').click();
+  await page.waitForFunction(
+    (ink) => {
+      const canvas = document.querySelector('[data-document-page-canvas]');
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return dark !== ink;
+    },
+    firstInk,
+    { timeout: 15000 }
+  );
+  if (!/2.*3/.test(await count())) throw new Error(`the page indicator did not follow to page 2: ${await count()}`);
+
+  await page.locator('[data-page-back]').click();
+  await page.waitForFunction(() => /1/.test(document.querySelector('[data-page-count]')?.textContent ?? ''));
+
+  // No text layer anywhere on the screen (ADR-0065): the page is pixels,
+  // so there is nothing on it to select and nothing to read back.
+  const pageText = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-document-page-canvas]');
+    return canvas.parentElement.innerText.trim();
+  });
+  if (pageText.includes('Page one') || pageText.includes('Page two')) {
+    throw new Error(`the viewer has a text layer: ${pageText}`);
+  }
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, readableBefore);
+
+  ok('a PDF draws its first page at import, turns to page 2 and back, and has no text layer on any of them');
+} catch (e) { fail('looking at a PDF', e); }
 /* Phase 8 features ticket 69, ADR-0068: a custom goal is the person's own
    words, so it can be reworded and it can be removed - and removing it
    unfiles the paper filed against it without destroying the paper.

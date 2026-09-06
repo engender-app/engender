@@ -2660,12 +2660,11 @@
   "appointment_prep_delete_q": "Usunąć tę pozycję?",
   "appointment_prep_delete": "Usuń",
   "appointment_prep_context_heading": "Na tę wizytę",
-  "appointment_prep_last_appointment_label": "Ostatnia wizyta",
+  "appointment_prep_next_appointment_label": "Najbliższa wizyta",
   "appointment_debrief_row": "Twoje podsumowanie",
-  "appointment_prep_last_appointment_unset": "Nie ustawiono",
-  "appointment_prep_last_appointment_aria": "Data ostatniej wizyty",
-  "appointment_prep_labs_heading": "Badania od tamtej wizyty",
-  "appointment_prep_side_effects_heading": "Skutki uboczne od tamtej wizyty",
+  "appointment_prep_next_appointment_unset": "Nie ustawiono",
+  "appointment_prep_labs_heading": "Badania od ostatniej wizyty, {day}",
+  "appointment_prep_side_effects_heading": "Skutki uboczne od ostatniej wizyty, {day}",
   "clinician_summary_appointment_prep_empty": "Brak pozycji na liście pytań na wizytę.",
   "appointment_prep_add_button": "Dodaj do listy pytań na wizytę",
   "appointment_prep_added_toast": "Dodano do listy pytań na wizytę",
@@ -3392,6 +3391,11 @@
   "day_document": "Dokument",
   "hub_sub_documents": "Opinie, skierowania i postanowienia, które dostajesz",
   "document_page_alt": "Kartka: {title}",
+  "document_page_count": "Strona {page} z {pages}",
+  "document_page_prev": "Poprzednia strona",
+  "document_page_next": "Następna strona",
+  "document_page_failed": "Ta strona się nie narysowała. Reszta pliku jest cała, a sam plik możesz wysłać taki, jaki jest.",
+  "document_pdf_unreadable": "Aplikacja nie narysuje tego PDF-a. Leży dokładnie taki, jaki przyszedł, i stąd możesz go wysłać.",
   "document_save_failed": "Nie udało się zapisać tego dokumentu. Nic nie zostało zachowane.",
   "document_edit_failed": "Nie udało się zapisać tej zmiany. Dokument został bez zmian.",
   "document_link_label": "Powiązany z",
@@ -3432,5 +3436,9 @@
         "countPlural=other": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć."
       }
     }
-  ]
-}
+  ],
+  "document_unsupported_file": "Tego pliku aplikacja nie odczyta. To nie jest ani PDF, ani obraz. Spróbuj z PDF-em, JPEG-iem albo PNG-iem.",
+  "document_too_large": "Ten plik jest za duży, żeby go zapisać. Maksymalnie 25 MB.",
+  "document_picker_failed": "Nie udało się otworzyć wyboru pliku.",
+  "document_export": "Wyślij albo zapisz",
+  "document_export_hint": "Plik wtedy opuszcza szyfrowanie aplikacji."}

@@ -806,10 +806,9 @@ beforeAll(async () => {
     journal.checklists.addToStandaloneChecklist('ask about spironolactone dose')
   )) as { id: string };
   await drive('checklists', 'deleteItem', () => journal.checklists.deleteItem(standaloneItem.id));
-  await drive('checklists', 'setAppointmentDate', () => journal.checklists.setAppointmentDate(20200));
-  await drive('checklists', 'setDebriefDismissed', () => journal.checklists.setDebriefDismissed(20200));
+  await drive('checklists', 'setDebriefDismissed', () => journal.checklists.setDebriefDismissed('appt-1'));
   await drive('checklists', 'recordDebriefEntry', () =>
-    journal.checklists.recordDebriefEntry(secondEntryId, 20200)
+    journal.checklists.recordDebriefEntry(secondEntryId, 'appt-1')
   );
   await drive('checklists', 'deleteChecklist', () => journal.checklists.deleteChecklist(ownedChecklist!.id));
 
@@ -1051,6 +1050,7 @@ beforeAll(async () => {
   await driveRead('procedures', 'getChecklist', () => journal.procedures.getChecklist(procedureId));
   await driveRead('procedures', 'getMilestone', () => journal.procedures.getMilestone(procedureId));
   await driveRead('appointments', 'getAppointments', () => journal.appointments.getAppointments());
+  await driveRead('appointments', 'getAppointment', () => journal.appointments.getAppointment(appointmentId));
   await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
   await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
   await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));
@@ -1058,10 +1058,8 @@ beforeAll(async () => {
   await driveRead('checklists', 'getChecklist', () => journal.checklists.getChecklist(ownedChecklist!.id));
   await driveRead('checklists', 'getChecklistByOwner', () => journal.checklists.getChecklistByOwner(owner));
   await driveRead('checklists', 'getStandaloneChecklist', () => journal.checklists.getStandaloneChecklist());
-  await driveRead('checklists', 'getAppointmentDate', () => journal.checklists.getAppointmentDate());
-  await driveRead('checklists', 'getDebriefState', () => journal.checklists.getDebriefState());
-  await driveRead('checklists', 'getDebriefDismissedEpochDay', () => journal.checklists.getDebriefDismissedEpochDay());
-  await driveRead('checklists', 'getDebriefEntryId', () => journal.checklists.getDebriefEntryId());
+  await driveRead('checklists', 'getDebriefState', () => journal.checklists.getDebriefState('appt-1'));
+  await driveRead('checklists', 'getDebriefEntryId', () => journal.checklists.getDebriefEntryId('appt-1'));
   await driveRead('doubtJournal', 'getSnapshots', () => journal.doubtJournal.getSnapshots(10));
   await driveRead('areaStates', 'getAreaStates', () => journal.areaStates.getAreaStates());
   await driveRead('comfortItems', 'getItems', () => journal.comfortItems.getItems());

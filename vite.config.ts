@@ -4,6 +4,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vite';
 import sqlocal from 'sqlocal/vite';
 import { appVersion } from './scripts/app-version.mjs';
+import capacitorConfig from './capacitor.config';
 
 /* What the client build actually emitted, written where src/service-worker.ts
    can import it (phase 2 ticket 03; ADR-0021 for why the shell cannot be
@@ -51,7 +52,25 @@ function writeEmittedClientAssets() {
   };
 }
 
+/* The syntax floor, taken from the number the Android shell refuses to run
+   below rather than written down twice (phase 8 features ticket 55).
+
+   ADR-0023 says what this is for: 87 was Vite's own default module target,
+   inherited rather than chosen, so a Vite upgrade that moved it would have
+   moved what the app runs on with nobody deciding to - and the number in
+   capacitor.config.ts would have gone on claiming the old one. Deriving it
+   from that number is what keeps the two from drifting apart at all.
+
+   The other four are Vite's default list unchanged. This app ships to a
+   browser as well as into a WebView, and dropping them would let esbuild
+   emit something Safari 14 cannot read the moment Chrome is the only name
+   here. */
+const { minWebViewVersion } = capacitorConfig.android ?? {};
+if (!minWebViewVersion) throw new Error('capacitor.config.ts names no minWebViewVersion to compile the bundle to');
+const BUILD_TARGET = ['es2020', 'edge88', `chrome${minWebViewVersion}`, 'firefox78', 'safari14'];
+
 export default defineConfig(({ command }) => ({
+  build: { target: BUILD_TARGET },
   // A literal, not an exported const, so Rollup can fold `if (__DEMO__)`
   // and drop the Alice persona and the demo bar from a production bundle
   // rather than shipping them behind a runtime flag (ticket 05). True

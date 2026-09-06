@@ -19,7 +19,20 @@
      reactively - a `const id = page.params.id` goes stale when SvelteKit
      reuses this component across two ids. There is no `new` here: a
      document cannot exist before its file does, so it is always born on the
-     list screen's import. */
+     list screen's import.
+
+     A PDF (tickets 53 and 55, ADR-0065) shows its first page the same way,
+     from the thumbnail drawn once at import, and then the page itself as
+     the renderer finishes it - which is what the thumbnail is for: the
+     screen has something to show in the moment before a megabyte of
+     library has even loaded. Pages after that are turned here, and there
+     is no text layer on any of them (ADR-0065): what a document says is
+     not something this app reads.
+
+     It keeps its size and its export, which is the honest fallback for a
+     file the renderer cannot read: written back out unchanged through the
+     share sheet or a download (archive/deliver.ts), the only way this app
+     hands a file to anything outside its own encryption. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -34,14 +47,19 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
+  import { deliverBlob } from '$lib/data/archive/deliver';
+  import { nameSlug } from '$lib/data/fold';
+  import { openPdf, type OpenPdf } from '$lib/data/documents/pdf';
+  import { documentThumbName, isPdfDocument } from '$lib/data/journal/documents';
   import { journal } from '$lib/data/live/journal.svelte';
-  import { readThumbnail } from '$lib/stores/photoFiles';
+  import { readPhoto, readThumbnailFile } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import { documentTarget } from '$lib/data/journal/documents';
   import { DOCUMENT_TARGET_ICON, documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
   import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -78,6 +96,8 @@
     }
   }
 
+  let isPdf = $derived(stored ? isPdfDocument(stored.fileName) : false);
+
   /* The page, drawn at whatever shape it is rather than through PhotoThumb.
      That primitive is a fixed square tile with a caption across the bottom,
      which is right for a grid of photographs and wrong for one sheet of
@@ -85,9 +105,12 @@
      already in the field below. So the read and the blob's lifetime are
      here, the same two moves PhotoThumb makes, with the aspect left alone.
 
-     It is the thumbnail rather than the full page. What it is for is
-     recognising which document this is; reading one is ticket 55's viewer,
-     which is also where the zoom lives. */
+     The thumbnail, for either kind of document: an image's from
+     normalisation, a PDF's its first page drawn at import (ticket 55).
+     Read under the name the area derives rather than through
+     `readThumbnail`, whose `.jpg` rewrite would hand a PDF its own bytes
+     back under a JPEG's type (photos/names.ts). For a PDF this is what is
+     on screen until the renderer has a page of its own. */
   let pageUrl = $state<string | null>(null);
 
   $effect(() => {
@@ -96,7 +119,7 @@
 
     let stale = false;
     let objectUrl: string | null = null;
-    readThumbnail(fileName).then(
+    readThumbnailFile(documentThumbName(fileName)).then(
       (bytes) => {
         if (stale || !bytes) return;
         objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
@@ -115,6 +138,210 @@
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   });
+
+  /* A PDF's own bytes, read once and held for as long as this screen is
+     open: the size line needs its length, and the export action needs the
+     same bytes right after - reading twice would cost a second decrypt of
+     a file that can be tens of megabytes (ticket 53's own ceiling). */
+  let pdfBytes = $state<Uint8Array | null>(null);
+
+  $effect(() => {
+    const fileName = stored?.fileName;
+    if (!fileName || !isPdfDocument(fileName)) return;
+
+    let stale = false;
+    readPhoto(fileName).then(
+      (bytes) => {
+        if (!stale) pdfBytes = bytes;
+      },
+      () => {}
+    );
+
+    return () => {
+      stale = true;
+      pdfBytes = null;
+    };
+  });
+
+  /* The renderer, opened on the bytes this screen already holds and closed
+     when the screen goes. Only a PDF ever reaches it, and only once
+     somebody has opened the document: that tap is the whole of what wakes
+     a megabyte of library (ADR-0065's "nothing wakes it until somebody
+     opens a document").
+
+     `unreadable` is a whole file the renderer refused - encrypted,
+     truncated, or not the PDF its header claimed. The screen says so in a
+     line and keeps the export, which is the honest thing to offer for a
+     file this app cannot draw. */
+  let pages = $state<OpenPdf | null>(null);
+  let pageNumber = $state(1);
+  let unreadable = $state(false);
+
+  $effect(() => {
+    const bytes = pdfBytes;
+    if (!bytes) return;
+
+    let stale = false;
+    let opened: OpenPdf | null = null;
+    openPdf(bytes).then(
+      (open) => {
+        if (stale) return open.close();
+        opened = open;
+        pages = open;
+        pageNumber = 1;
+      },
+      (error) => {
+        if (stale) return;
+        console.error('a document could not be opened for reading', error);
+        unreadable = true;
+      }
+    );
+
+    /* Everything the last document put on this screen goes with it,
+       including what went wrong on it. SvelteKit reuses this component
+       across two ids (detailDraft's own reason for reading the route
+       parameter reactively), so a page that failed on one document would
+       otherwise leave the next one's screen saying so, hiding its
+       thumbnail behind a line about a page it never had - and `shownPage`
+       surviving would make the next document's first page read as the
+       same page it already had, which is what decides whether it
+       animates. */
+    return () => {
+      stale = true;
+      opened?.close();
+      pages = null;
+      pageDrawn = false;
+      pageFailed = false;
+      unreadable = false;
+      shownPage = 0;
+      turnedBy = 0;
+    };
+  });
+
+  /* Where the page is drawn, and how big it is drawn. The canvas stays
+     mounted whether or not there is anything on it yet, because a page
+     cannot be rendered into an element that only appears once the page has
+     rendered; `pageDrawn` is what decides whether it is the thing on
+     screen or the thumbnail behind it still is.
+
+     The size is the sheet's own box in device pixels, rounded to a step so
+     that a keyboard opening or an address bar collapsing does not re-render
+     the page for the sake of four pixels. Capped, because a page is vector
+     and would otherwise happily rasterise at whatever a desktop window
+     asks for. */
+  let canvas = $state<HTMLCanvasElement | null>(null);
+  let frameWidth = $state(0);
+  let pageDrawn = $state(false);
+  let pageFailed = $state(false);
+
+  const RENDER_STEP = 64;
+  const RENDER_CAP = 2048;
+  /** How much of the screen's height one sheet may take. Declared here and
+      handed to the stylesheet below as a custom property, rather than
+      written as a number in the CSS and again as a fraction here: the two
+      have to agree for the page to be rendered at the size it is drawn at,
+      and nothing but this line would have made them. */
+  const SHEET_VIEWPORT_SHARE = 0.44;
+
+  let renderEdge = $derived.by(() => {
+    if (frameWidth === 0 || typeof window === 'undefined') return 0;
+    const sheetHeight = window.innerHeight * SHEET_VIEWPORT_SHARE;
+    const devicePixels = Math.max(frameWidth, sheetHeight) * (window.devicePixelRatio || 1);
+    return Math.min(RENDER_CAP, Math.ceil(devicePixels / RENDER_STEP) * RENDER_STEP);
+  });
+
+  $effect(() => {
+    const open = pages;
+    const target = canvas;
+    const number = pageNumber;
+    const edge = renderEdge;
+    if (!open || !target || edge === 0) return;
+
+    let stale = false;
+    open.page(number, edge).then(
+      (bitmap) => {
+        if (stale) return bitmap.close();
+        target.width = bitmap.width;
+        target.height = bitmap.height;
+        target.getContext('2d')?.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        const arrived = number !== shownPage;
+        shownPage = number;
+        pageDrawn = true;
+        pageFailed = false;
+        // A re-render at a new size is the same page again, and animating
+        // it would make a rotation or a keyboard opening look like a turn.
+        if (arrived) sheetArrives(target);
+      },
+      (error) => {
+        if (stale) return;
+        // One page of a file the rest of which is fine: a scanned page in
+        // a format the renderer choked on, or a damaged object. Said in a
+        // line rather than left as an empty canvas.
+        console.error('a page of a document could not be drawn', error);
+        pageFailed = true;
+        pageDrawn = false;
+      }
+    );
+
+    return () => {
+      stale = true;
+    };
+  });
+
+  /* The page's own two moments, both authored here rather than in CSS: a
+     class-driven animation cannot be replayed for a canvas whose pixels
+     changed under it, and this is the same WAAPI shape the resize
+     primitive uses (motion/reveal.ts), on the same easing token.
+
+     The first page fades in over the thumbnail it replaces - the same
+     picture at a better resolution, so the motion says "sharpened" rather
+     than "something new". A turn adds the small travel the tap implies:
+     the page comes in from the side the thumb reached for, which is what
+     tells a person the sheet moved rather than redrew. Both come out at
+     zero under reduced motion, where `motionDuration` returns 0. */
+  let shownPage = 0;
+  let turnedBy = 0;
+
+  function sheetArrives(target: HTMLCanvasElement) {
+    const duration = motionDuration('--dur-med');
+    const travel = turnedBy === 0 ? 0 : motionDistance('--motion-distance-sm') * turnedBy;
+    turnedBy = 0;
+    if (duration === 0) return;
+    target.animate([{ opacity: 0, transform: `translateX(${travel}px)` }, { opacity: 1, transform: 'none' }], {
+      duration,
+      easing: EASE_OUT_CSS
+    });
+  }
+
+  const turnPage = (by: number) => {
+    if (!pages) return;
+    const next = pageNumber + by;
+    if (next < 1 || next > pages.pageCount) return;
+    turnedBy = by;
+    pageNumber = next;
+  };
+
+  const fileSize = (bytes: number): string =>
+    bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+  async function exportPdf() {
+    if (!stored || !pdfBytes) return;
+    try {
+      const delivery = await deliverBlob(
+        `${nameSlug(stored.title) || 'document'}.pdf`,
+        new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
+      );
+      if (delivery === 'cancelled') {
+        toast(m.exp_cancelled());
+        return;
+      }
+      toast(delivery === 'shared' ? m.pj_shared() : m.pj_downloaded());
+    } catch (error) {
+      console.error('a document could not be exported', error);
+      toast(m.pj_failed());
+    }
+  }
 
   let saving = $state(false);
 
@@ -153,14 +380,99 @@
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <!-- The page itself, at the top of the screen the tap opened. -->
-    <div class="screen-part doc-page">
-      {#if pageUrl}
-        <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
-      {:else}
-        <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
-      {/if}
+    <!-- The page itself, at the top of the screen the tap opened. The
+         canvas is always mounted and only sometimes the thing on screen:
+         a page cannot be drawn into an element that appears once it has
+         been drawn. Behind it, in order, the thumbnail from import and
+         then the paper icon, which is what a document whose page could
+         not be drawn at all is left with. -->
+    <div
+      class="screen-part doc-page"
+      style="--doc-sheet-height: {SHEET_VIEWPORT_SHARE * 100}vh"
+      bind:clientWidth={frameWidth}
+    >
+      <!-- The sheet and the control that turns it are one column, so the
+           pager is exactly as wide as the page it belongs to rather than
+           as wide as the screen. -->
+      <div class="doc-sheet">
+        <canvas
+          class="doc-page-canvas"
+          class:drawn={pageDrawn}
+          data-document-page-canvas={pageDrawn ? 'drawn' : 'blank'}
+          bind:this={canvas}
+          aria-label={m.document_page_alt({ title: stored.title })}
+        >
+          <!-- A canvas's own children are what a screen reader is offered
+               in place of the pixels, so the page says what it is there
+               too. -->
+          {m.document_page_alt({ title: stored.title })}
+        </canvas>
+        {#if !pageDrawn}
+          <!-- Not the thumbnail when a page failed: that thumbnail is page
+               one, and page one under a line about page five is a worse
+               answer than the empty sheet. -->
+          {#if pageUrl && !pageFailed}
+            <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
+          {:else}
+            <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
+          {/if}
+        {/if}
+
+        {#if pages}
+          <!-- Pages and nothing else (ADR-0065): no zoom, no rotation, no
+               grid of every page, and no text under any of them.
+
+               The count shows for a one-page document too, because "Page 1
+               of 1" is how a person knows they have seen the whole thing;
+               the two chevrons are what a single page does not get, since
+               a control that can never do anything is not worth the two
+               places it would take under every e-recepta. -->
+          <div class="doc-pager" class:one-page={pages.pageCount === 1}>
+            {#if pages.pageCount > 1}
+              <button
+                class="icon-btn press"
+                data-page-back
+                aria-label={m.document_page_prev()}
+                disabled={pageNumber <= 1}
+                onclick={() => turnPage(-1)}
+              >
+                <Icon name="chevronLeft" size={22} />
+              </button>
+            {/if}
+            <p class="doc-page-count" data-page-count aria-live="polite">
+              {m.document_page_count({ page: pageNumber, pages: pages.pageCount })}
+            </p>
+            {#if pages.pageCount > 1}
+              <button
+                class="icon-btn press"
+                data-page-forward
+                aria-label={m.document_page_next()}
+                disabled={pageNumber >= pages.pageCount}
+                onclick={() => turnPage(1)}
+              >
+                <Icon name="chevronRight" size={22} />
+              </button>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
+
+    {#if isPdf}
+      <div class="screen-part stack-3">
+        {#if unreadable}
+          <p class="muted small" data-document-unreadable>{m.document_pdf_unreadable()}</p>
+        {:else if pageFailed}
+          <p class="muted small" data-document-page-failed>{m.document_page_failed()}</p>
+        {/if}
+
+        <p data-document-size>{pdfBytes ? fileSize(pdfBytes.byteLength) : ''}</p>
+        <button class="btn btn-soft press" data-export-document disabled={!pdfBytes} onclick={exportPdf}>
+          <Icon name="share" size={20} /><span>{m.document_export()}</span>
+        </button>
+        <p class="muted small">{m.document_export_hint()}</p>
+      </div>
+    {/if}
 
     <div class="editor-section">
       <Field label={m.document_title_label()} id="document-title">
@@ -295,9 +607,12 @@
      sheet scaled to the screen's width would push both fields and the
      delete off the bottom on a 390px phone. */
   .doc-page-image,
+  .doc-page-canvas,
   .doc-page-empty {
     max-width: 100%;
-    max-height: 44vh;
+    /* The share the renderer draws to, handed down from the script so the
+       page is never rasterised at one size and capped at another. */
+    max-height: var(--doc-sheet-height);
     border-radius: var(--radius-md);
     /* A scan of white paper on a light background has no edge of its own -
        in the light theme the sheet and the screen behind it are within a
@@ -310,6 +625,55 @@
   .doc-page-image {
     width: auto;
     height: auto;
+  }
+
+  /* The sheet and its pager as one column, which is what keeps the
+     control the width of the page rather than the width of the screen.
+     The gap is tight on purpose: the pager belongs to the page above it,
+     and the file's own block below is a screen-part away. */
+  .doc-sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+  }
+
+  /* Mounted from the start and hidden until there is a page on it, so that
+     the render has somewhere to go. display:none rather than opacity,
+     because an invisible sheet still standing in the layout would hold the
+     thumbnail's own place open beside it. */
+  .doc-page-canvas {
+    display: none;
+    width: auto;
+    height: auto;
+  }
+
+  .doc-page-canvas.drawn {
+    display: block;
+  }
+
+  /* The pager reads as one control rather than three: the count is what
+     the eye lands on, and the two chevrons sit at the ends of the page's
+     own width so a thumb finds them in the same place on every page. */
+  .doc-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  /* With nothing to turn, the count is the only thing in the row, and a
+     lone label pushed to one end would read as a label that lost its
+     control. */
+  .doc-pager.one-page {
+    justify-content: center;
+  }
+
+  .doc-page-count {
+    /* Tabular, so a page number growing a digit does not shift the
+       chevrons under the thumb that is tapping them. */
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
   }
 
   .doc-page-empty {
