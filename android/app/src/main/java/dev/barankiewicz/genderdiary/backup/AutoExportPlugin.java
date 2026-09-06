@@ -41,17 +41,17 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 /**
- * Android side of scheduled encrypted backup destination management
- * (ticket 16): a SAF tree the person picks, verified writes into it,
- * and the wrapped backup password the schedule reuses.
+ * Android side of scheduled encrypted backup destination management: a SAF
+ * tree the person picks, verified writes into it, and the wrapped backup
+ * password the schedule reuses.
  */
 @CapacitorPlugin(name = "AutoExport")
 public class AutoExportPlugin extends Plugin {
     private static final int DAY_MS = 24 * 60 * 60 * 1000;
 
     /** Named rather than private because the reset has to prove it cleared
-        this file and deleted that alias (phase 5 security ticket 01), and a
-        test that spelled either out itself would pass while the app moved. */
+        this file and deleted that alias, and a test that spelled either
+        out itself would pass while the app moved. */
     public static final String PREFS = "gender-diary-auto-export";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_SCHEDULE = "schedule";
@@ -110,7 +110,7 @@ public class AutoExportPlugin extends Plugin {
 
     /**
      * The saved backup password, handed back to the scheduler and to nobody
-     * else (phase 5 security ticket 02, F-04).
+     * else (audit finding F-04).
      *
      * <p>The audit asked for one of two things here: a
      * {@code KeystorePlugin.confirm} prompt in front of this, or no reveal
@@ -302,7 +302,7 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /**
-     * The reset path (ADR-0014): the destination URI and its label, the
+     * The reset path: the destination URI and its label, the
      * wrapped backup password, and - the part a preference clear does not
      * reach - the Keystore alias it was wrapped under. An alias left behind
      * is a key left behind, and the ciphertext beside it is only gone

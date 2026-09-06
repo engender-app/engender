@@ -1,4 +1,4 @@
-# Everything that has to be true before code lands (phase 2 ticket 06).
+# Everything that has to be true before code lands.
 #
 # The release workflow calls this same file rather than repeating the list, so
 # what a tag is verified against is what a change was verified against.
@@ -14,8 +14,8 @@ on:
   workflow_call:
 
 # No job here is given a secret. Nothing in it needs one, and a pull request
-# from a fork must not be able to reach the signing credentials ticket 18 puts
-# in the release environment.
+# from a fork must not be able to reach the signing credentials the release
+# environment holds.
 permissions:
   contents: read
 
@@ -121,7 +121,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          # Name cannot collide with the release APK ticket 18 publishes.
+          # Name cannot collide with the release APK the release workflow publishes.
           name: gender-diary-android-debug-${{ github.run_id }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7

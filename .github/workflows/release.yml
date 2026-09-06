@@ -1,9 +1,9 @@
-# A signed version tag becomes a GitHub Release (phase 2 ticket 06).
+# A signed version tag becomes a GitHub Release.
 #
 # The tag is the only thing that names the release: this workflow reads it once
 # through scripts/app-version.mjs and hands the same string to the notes, the
-# bundle and - once ticket 18 lands - the Android artifacts, through
-# GENDER_DIARY_VERSION (ADR-0022). Nothing here re-derives a version.
+# bundle and the Android artifacts, through GENDER_DIARY_VERSION. Nothing here
+# re-derives a version.
 name: Release
 
 on:
@@ -28,7 +28,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # The protected environment. Ticket 18's signing credentials belong here,
+    # The protected environment. The Android signing credentials belong here,
     # and this is the only job that will ever be able to read them.
     environment: release
     permissions:
@@ -131,7 +131,7 @@ jobs:
           track: internal
           status: completed
 
-      # Android artifacts (ticket 18) join the release here: a job holding the
+      # Android artifacts join the release here: a job holding the
       # signing key builds the APK and the App Bundle in this same protected
       # environment, and puts them in dist/release/ before the step above runs.
       # The checksums cover everything in that directory and the publish step

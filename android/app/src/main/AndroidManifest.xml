@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Predictive back (phase 5 ticket 18). Opting in is what lets the
+    <!-- Predictive back. Opting in is what lets the
          system draw the back gesture itself: as the finger drags from the
          edge, Android shows where the gesture is going and lets it be
          cancelled by dragging back. Without this flag the app is on the
@@ -19,8 +19,8 @@
          resolveAndroidBackAction; this changes how the gesture is drawn,
          not where it goes. -->
 
-    <!-- The platform's backup service, phase 5 security ticket 01 (F-02).
-         Off, by both of the two attributes it takes.
+    <!-- The platform's backup service (F-02). Off, by both of the two
+         attributes it takes.
 
          The default is on, and with no dataExtractionRules or
          fullBackupContent to narrow it the whole private directory was
@@ -72,7 +72,7 @@
 
         </activity>
 
-        <!-- Disguise's launcher identity (ticket 15). The LAUNCHER category
+        <!-- Disguise's launcher identity. The LAUNCHER category
              lives on these aliases rather than on MainActivity itself, so
              which icon and label the system shows is a matter of which
              alias is enabled, not a string this app renders. Exactly one
@@ -122,7 +122,7 @@
             android:name=".reminders.ReminderAlarmReceiver"
             android:exported="false" />
 
-        <!-- The quick-log widget (ticket 26). Exported, unlike the reminder
+        <!-- The quick-log widget. Exported, unlike the reminder
              alarm receiver above: APPWIDGET_UPDATE comes from the launcher,
              a different app, not a broadcast this app sends itself. -->
         <receiver
@@ -136,7 +136,7 @@
                 android:resource="@xml/quick_log_widget_info" />
         </receiver>
 
-        <!-- The tally widget (ticket 33), same reasoning as the quick-log
+        <!-- The tally widget, same reasoning as the quick-log
              widget above: exported so the launcher can deliver
              APPWIDGET_UPDATE. -->
         <receiver
@@ -150,7 +150,7 @@
                 android:resource="@xml/tally_widget_info" />
         </receiver>
 
-        <!-- The doubt-entry widget (ticket 34), same reasoning as the
+        <!-- The doubt-entry widget, same reasoning as the
              quick-log widget above: exported so the launcher can deliver
              APPWIDGET_UPDATE. -->
         <receiver
@@ -178,8 +178,8 @@
 
     <!-- Permissions -->
 
-    <!-- No android.permission.INTERNET, and that absence is the point (phase 5
-         security ticket 03). The app makes no off-origin request anywhere -
+    <!-- No android.permission.INTERNET, and that absence is the point. The
+         app makes no off-origin request anywhere -
          tests/browser-tier/verify-build.mjs asserts that online and offline -
          and the bundle it runs is served out of the APK by Capacitor's asset
          loader, which intercepts the request before any socket exists. So the
@@ -214,7 +214,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Voice notes (ticket 24). Recording itself needs no native code: it
+    <!-- Voice notes. Recording itself needs no native code: it
          is plain getUserMedia/MediaRecorder, the same as the web build, and
          Capacitor's own BridgeWebChromeClient.onPermissionRequest already
          requests these two at the OS level and grants the WebView's
@@ -223,7 +223,7 @@
          Declared here only so that runtime request has something to grant. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <!-- Video notes (phase 5 ticket 22), by the same route: the same
+    <!-- Video notes, by the same route: the same
          onPermissionRequest maps the WebView's VIDEO_CAPTURE resource to
          CAMERA (BridgeWebChromeClient.java lines 104-105), so getUserMedia
          asking for video is all it takes and there is no native bridge here

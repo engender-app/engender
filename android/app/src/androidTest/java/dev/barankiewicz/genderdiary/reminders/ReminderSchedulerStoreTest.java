@@ -65,11 +65,11 @@ public class ReminderSchedulerStoreTest {
 
     @Test
     public void wipeCancelsTheAlarmsAndTakesTheTitlesWithThem() throws Exception {
-        /* Phase 5 security ticket 01 (F-01). Nothing used to cancel these:
-           a wiped phone kept posting the person's own reminder titles on
-           schedule, read out of a preference file the reset never touched,
-           and the next app open is what cancelled them - on a phone nobody
-           opens again, never. */
+        /* Nothing used to cancel these: a wiped phone kept posting the
+           person's own reminder titles on schedule, read out of a
+           preference file the reset never touched, and the next app open
+           is what cancelled them - on a phone nobody opens again, never
+           (audit finding F-01). */
         ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
         assertTrue("nothing was scheduled to begin with", reminderAlarmExists());
 

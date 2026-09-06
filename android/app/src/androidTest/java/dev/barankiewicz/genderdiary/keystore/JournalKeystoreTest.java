@@ -32,8 +32,8 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.Cipher;
 
 /**
- * The Keystore half of ticket 13, on a device, because none of it is true
- * anywhere else. Whether a key is really in Android Keystore, whether it is
+ * The Keystore half of the encryption claim, on a device, because none of it
+ * is true anywhere else. Whether a key is really in Android Keystore, whether it is
  * really bound to the lock screen, and what the platform does when that lock
  * screen is removed are properties of the platform rather than of this code.
  *
@@ -120,7 +120,7 @@ public class JournalKeystoreTest {
         assertFalse("a fresh device should hold no key", keystore.hasKey());
 
         byte[] dataKey = keystore.create();
-        assertEquals("ADR-0018's data key is 32 bytes", 32, dataKey.length);
+        assertEquals("the data key is 32 bytes", 32, dataKey.length);
         assertTrue(keystore.hasKey());
 
         KeyStore androidKeystore = KeyStore.getInstance("AndroidKeyStore");
@@ -211,8 +211,8 @@ public class JournalKeystoreTest {
 
     /**
      * Removing the lock screen destroys the key, and the app reports that as
-     * its own state rather than as a finger that did not match (ticket 13's
-     * third box - a retry loop here would be a trap with no way out).
+     * its own state rather than as a finger that did not match - a retry loop
+     * here would be a trap with no way out.
      */
     @Test
     public void removingTheLockScreenDestroysTheKeyAndIsReportedAsItself() throws Exception {
@@ -252,7 +252,7 @@ public class JournalKeystoreTest {
         setLockScreen();
     }
 
-    /** The reset path (ADR-0014): both halves go. */
+    /** The reset path: both halves go. */
     @Test
     public void eraseTakesTheKeyAndTheBlob() throws Exception {
         keystore.create();

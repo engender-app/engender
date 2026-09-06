@@ -22,9 +22,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Ticket 15's fourth acceptance box, on a device: the notification
- * hideNotificationTitles actually produces, through the real
- * NotificationManager, rather than the string
+ * The notification hideNotificationTitles actually produces, on a device,
+ * through the real NotificationManager, rather than the string
  * ReminderAlarmReceiverTest.resolveNotificationTitle predicts one would. A
  * locked device shows exactly what NotificationManager was handed, so this
  * is the closest a test gets to the lock screen itself without one.
@@ -84,12 +83,12 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(SENSITIVE_TITLE, notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
     }
 
-    /* Phase 5 security ticket 01 (F-05). hideNotificationTitles above is
-       about the shade, where the OS shows everything whatever the app asks
-       for. This is about the lock screen, where it does not: a notification
-       posted at the default VISIBILITY_PUBLIC shows its title and text to
-       anyone holding the phone, and the title is the reminder the person
-       wrote. The two cover different screens and both are needed. */
+    /* hideNotificationTitles above is about the shade, where the OS shows
+       everything whatever the app asks for. This is about the lock screen,
+       where it does not: a notification posted at the default
+       VISIBILITY_PUBLIC shows its title and text to anyone holding the
+       phone, and the title is the reminder the person wrote. The two cover
+       different screens and both are needed (audit finding F-05). */
 
     @Test
     public void reminderNotificationsAreHiddenOnALockedScreen() throws Exception {
