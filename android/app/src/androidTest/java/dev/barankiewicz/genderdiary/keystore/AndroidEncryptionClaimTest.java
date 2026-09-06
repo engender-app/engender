@@ -33,16 +33,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * The at-rest encryption claim on Android (ticket 13's sixth box), proved the
- * way ticket 09 proved it on the web: seed protected content of every kind
- * the claim names, close the app, and then read the raw bytes of everything
- * it left behind.
+ * The at-rest encryption claim on Android, proved the same way it was proved
+ * on the web: seed protected content of every kind the claim names, close the
+ * app, and then read the raw bytes of everything it left behind.
  *
  * <p>The reading is why this is a Java test rather than another WebView
  * probe. What has to be scanned is the app's own private directory - the
- * SQLCipher database, its side files, ADR-0006's copy, and app-private photo
- * files written through the Photos plugin - and a WebView cannot see any of
- * that.
+ * SQLCipher database, its side files, the pre-migration backup copy, and
+ * app-private photo files written through the Photos plugin - and a WebView
+ * cannot see any of that.
  * So {@code tests/android-tier/encryption/encryption-probe.ts} seeds and
  * closes, and this walks the directory afterwards.
  *
@@ -131,7 +130,7 @@ public class AndroidEncryptionClaimTest {
             "the encrypted database was not among the scanned files: " + scanned,
             scanned.stream().anyMatch(path -> path.endsWith(PROBE_DATABASE)));
         assertTrue(
-            "ADR-0006's pre-migration copy was not among the scanned files: " + scanned,
+            "the pre-migration backup copy was not among the scanned files: " + scanned,
             scanned.stream().anyMatch(path -> path.contains(PROBE_DATABASE + ".pre-migration-backup")));
 
         assertTrue("protected content is readable on disk: " + leaks, leaks.isEmpty());

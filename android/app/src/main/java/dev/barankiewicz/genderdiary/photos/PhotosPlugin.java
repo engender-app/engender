@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 
 /**
- * Android half of the photo seam (ticket 12): one picker call and one
+ * Android half of the photo seam: one picker call and one
  * app-private file store, both behind a bridge that keeps web types and
  * Android types out of the journal code.
  */

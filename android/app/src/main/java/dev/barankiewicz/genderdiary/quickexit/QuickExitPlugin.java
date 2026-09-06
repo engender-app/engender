@@ -9,7 +9,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * Mirrors prefs.quickExit (ticket 15) into SharedPreferences, where
+ * Mirrors prefs.quickExit into SharedPreferences, where
  * MainActivity.onUserLeaveHint can read it without a round trip through the
  * WebView's JS thread - the whole point being that leaving the app locks it
  * before the system takes its recents snapshot, not sometime after.
@@ -34,7 +34,7 @@ public class QuickExitPlugin extends Plugin {
         return prefs(context).getBoolean(KEY_ENABLED, false);
     }
 
-    /** The reset path (ADR-0014). Whether quick exit was on says something
+    /** The reset path. Whether quick exit was on says something
         about the person's situation, and the reset claims to leave nothing. */
     public static void wipe(Context context) {
         prefs(context).edit().clear().commit();

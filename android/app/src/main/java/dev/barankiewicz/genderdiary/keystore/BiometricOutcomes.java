@@ -5,7 +5,7 @@ import androidx.biometric.BiometricPrompt;
 
 /**
  * Android's two biometric vocabularies, folded into the one the app reads
- * (ticket 13; src/lib/lock/biometric-outcome.ts is the other end of it).
+ * (src/lib/lock/biometric-outcome.ts is the other end of it).
  *
  * <p>There are two because Android asks the question twice. {@link
  * BiometricManager#canAuthenticate(int)} answers before a prompt is shown -

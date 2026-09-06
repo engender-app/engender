@@ -13,9 +13,9 @@ import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 
 /**
  * The whole Android application. Everything above the driver seam is the same
- * static bundle the web release serves (ADR-0017), so the only Android-specific
- * things here are the platform bridges: SQLite, Keystore, and the Storage
- * Access Framework bridge for backup destinations.
+ * static bundle the web release serves, so the only Android-specific things
+ * here are the platform bridges: SQLite, Keystore, and the Storage Access
+ * Framework bridge for backup destinations.
  */
 public class MainActivity extends BridgeActivity {
     // Matches capacitor.config.ts's server.androidScheme/hostname, which is
@@ -25,9 +25,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Unconditional, not toggled with lock state: a recents thumbnail
-        // of the Journal is the leak ticket 15's third acceptance box
-        // names, and a flag flipped at lock time is a race against
-        // whatever the system snapshots the moment this app backgrounds.
+        // of the Journal is the leak this guards against, and a flag
+        // flipped at lock time is a race against whatever the system
+        // snapshots the moment this app backgrounds.
         // Before super.onCreate, so the window never has a frame without it.
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         // Before super.onCreate: the bridge is built there, and a plugin
@@ -38,7 +38,7 @@ public class MainActivity extends BridgeActivity {
         }
         super.onCreate(savedInstanceState);
         // After super.onCreate, not before: the WebView this needs does not
-        // exist until the bridge builds it there (ticket 19).
+        // exist until the bridge builds it there.
         if (bridge != null && bridge.getWebView() != null) {
             PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
         }

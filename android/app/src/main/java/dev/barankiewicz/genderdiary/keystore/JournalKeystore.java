@@ -22,7 +22,7 @@ import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
 
 /**
- * Where the Journal's data key lives on Android (ticket 13, ADR-0018).
+ * Where the Journal's data key lives on Android.
  *
  * <p>The key itself is 32 random bytes, the same key the web mints and wraps
  * under a passphrase. Here it is wrapped by a key pair that Android Keystore
@@ -30,8 +30,8 @@ import javax.crypto.spec.PSource;
  * platform's keystore, and it is bound to the device's lock screen, so it
  * cannot be used until Android says somebody authenticated. A copy of the
  * app's files therefore yields the wrapped blob and nothing that opens it,
- * which is the claim ADR-0018 makes and {@code AndroidEncryptionClaimTest}
- * proves by reading the bytes.
+ * which is the claim {@code AndroidEncryptionClaimTest} proves by reading
+ * the bytes.
  *
  * <p><b>Why a key pair rather than AES.</b> A user-authentication-bound
  * symmetric key requires authentication for encryption as well as
@@ -53,8 +53,8 @@ import javax.crypto.spec.PSource;
  * <p><b>The cliff, stated once.</b> A Keystore key bound to the lock screen
  * is destroyed by the platform when that lock screen is removed. There is no
  * recovery: the wrapped blob outlives the key that opens it. That is the
- * Android shape of ADR-0018's "forgotten credentials have no data-preserving
- * recovery", it is reported as its own state rather than as a failed finger
+ * Android shape of "forgotten credentials have no data-preserving recovery",
+ * it is reported as its own state rather than as a failed finger
  * (BiometricOutcomes.KEY_INVALIDATED), and the copy that tells people to keep
  * a screen lock and export Archives is the mitigation.
  */
@@ -66,7 +66,7 @@ public final class JournalKeystore {
     /** The wrapped data key, in app-private storage beside the database. */
     private static final String WRAPPED_KEY_FILE = "journal-key.wrapped";
 
-    /** ADR-0018's data key: 32 bytes, handed to SQLCipher raw. */
+    /** The data key: 32 bytes, handed to SQLCipher raw. */
     private static final int DATA_KEY_BYTES = 32;
 
     /** How long a successful prompt authorizes the key for, below API 30.
@@ -172,7 +172,7 @@ public final class JournalKeystore {
     }
 
     /**
-     * The reset path (ADR-0014): the wrapped key goes with the Journal.
+     * The reset path: the wrapped key goes with the Journal.
      *
      * <p>Both halves, and the blob first. A blob left behind after the entry
      * went is the one order that could survive as an unopenable Journal key;

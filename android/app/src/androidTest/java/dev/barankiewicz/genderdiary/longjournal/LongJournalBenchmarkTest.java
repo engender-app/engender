@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Runs the ten-year Journal benchmark over the native Android driver (ticket 20).
+ * Runs the ten-year Journal benchmark over the native Android driver.
  *
  * <p>Generates 3231 entries over 3653 days, 375 photos, 122 lab results and 12
  * milestones through the same probe generate.ts and measure.ts use on the web, then

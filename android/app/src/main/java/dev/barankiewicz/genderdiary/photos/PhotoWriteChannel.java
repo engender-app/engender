@@ -21,8 +21,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The write half of the photo bridge (ticket 19), moved off the Capacitor
- * plugin-call queue the same way ticket 07 moved reads off it. Reads escaped
+ * The write half of the photo bridge, moved off the Capacitor
+ * plugin-call queue the same way reads were moved off it earlier. Reads escaped
  * by fetching from Capacitor's local server, but that server only serves
  * files - it has no matching path for the WebView to hand bytes back in - so
  * writes need a transport of their own rather than the read fix's mirror
@@ -30,8 +30,8 @@ import java.util.concurrent.Executors;
  *
  * <p>A {@code WebMessageListener} carries a JS {@code ArrayBuffer} across as
  * a structured-clone byte array. That is the mechanism: it never becomes a
- * JSON string, so it never pays the cost ticket 07 measured at 0.8MB/s
- * regardless of encoding. The protocol is a small handshake per write,
+ * JSON string, so it never pays the cost the base64 bridge measured at
+ * 0.8MB/s regardless of encoding. The protocol is a small handshake per write,
  * because a single WebMessage carries either a string or bytes, never both:
  *
  * <ol>
@@ -47,13 +47,12 @@ import java.util.concurrent.Executors;
  *   <li>The port replies with a small JSON ack, {@code {"ok":true}} or
  *       {@code {"ok":false,"error":...}}, once the bytes are on disk - so a
  *       caller that awaits the reply never sees success before the write
- *       lands, which is what keeps restore's ordering guarantee (ADR-0011)
- *       intact.</li>
+ *       lands, which is what keeps restore's ordering guarantee intact.</li>
  * </ol>
  *
  * <p>{@link #registerIfSupported} is a no-op below the WebView versions that
  * carry {@code WEB_MESSAGE_LISTENER} and {@code WEB_MESSAGE_ARRAY_BUFFER}.
- * ADR-0023 puts the app's floor at WebView 87, below both, so
+ * The app's floor is WebView 87, below both, so
  * {@code window.androidPhotoWriteChannel} is not always there - exactly the
  * gap {@code Object.hasOwn} and {@code crypto.randomUUID} left, closed the
  * same way: {@code android-file-store.ts} falls back to the base64 bridge

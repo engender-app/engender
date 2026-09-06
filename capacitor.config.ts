@@ -1,7 +1,7 @@
-/* The Android shell (ticket 11). Capacitor wraps the same static bundle the
-   web release serves - `npm run build` writes it to build/ and `cap sync`
-   copies it into the APK - so there is no Android-specific application code
-   above the driver seam (ADR-0017).
+/* The Android shell. Capacitor wraps the same static bundle the web release
+   serves - `npm run build` writes it to build/ and `cap sync` copies it into
+   the APK - so there is no Android-specific application code above the
+   driver seam.
 
    The scheme and hostname matter more than they look. Capacitor serves the
    bundle from https://localhost by default on Android, and that origin is a
@@ -10,6 +10,8 @@
    different origin and orphan whatever a previous version stored there. */
 
 import type { CapacitorConfig } from '@capacitor/cli';
+
+export const JOURNAL_ORIGIN = 'app.genderdiary.barankiewicz.dev';
 
 const config: CapacitorConfig = {
   appId: 'dev.barankiewicz.genderdiary',
@@ -20,8 +22,8 @@ const config: CapacitorConfig = {
        WebView, so nothing here needs a mixed-content or cleartext exception. */
     allowMixedContent: false,
     /* Android updates its WebView separately from the OS, so the API level
-       does not tell you what the app is running in (ADR-0023). This is the
-       number that decides whether it runs at all.
+       does not tell you what the app is running in. This is the number that
+       decides whether it runs at all.
 
        87 is where Vite compiles the bundle to - its default module target -
        so below it the app is syntax the WebView cannot parse. Everything the

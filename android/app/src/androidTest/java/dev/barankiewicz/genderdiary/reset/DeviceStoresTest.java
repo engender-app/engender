@@ -24,8 +24,8 @@ import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 
 /**
- * Phase 5 security ticket 01, the Android half of "nothing outlives a
- * reset" (F-01), on a device rather than against a fake.
+ * The Android half of "nothing outlives a reset" (F-01), on a device rather
+ * than against a fake.
  *
  * <p>Everything here was left behind by the reset as shipped: the reminder
  * titles, the auto-export destination and the Keystore alias its password
