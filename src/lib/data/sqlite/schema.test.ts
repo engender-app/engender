@@ -5,11 +5,49 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
 import { runMigrations } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
+import { dumpSchema } from './test-support/schema-dump.ts';
+
+/* The version the squash landed on (ticket 34): one baseline statement in
+   place of the 78 steps that used to build up to it, keeping the number those
+   steps had reached so a journal already on the current schema opens without
+   anything running against it. Hardcoded rather than read off
+   LATEST_SCHEMA_VERSION, which moves on as migrations are added after it. */
+const SQUASH_BASELINE_VERSION = 78;
+
+test('the squashed baseline builds the schema the 78-step chain built', async () => {
+  /* The ground truth is a dump taken from a database the real 78-step chain
+     built, frozen at the commit that retired the chain - the chain itself is
+     in git history from there, not in the tree, so this file is the only thing
+     left that remembers what it produced. Compared through dumpSchema, which
+     forgives comments, whitespace and the quoting ALTER TABLE leaves behind,
+     so the baseline is free to be written as a readable column list rather
+     than as the appended-column text SQLite happened to store. */
+  const expected = readFileSync(new URL('./test-support/pre-squash-schema.txt', import.meta.url), 'utf8');
+
+  const db = makeNodeSqliteDb();
+  await runMigrations(
+    db,
+    noopFileOps(),
+    migrations.filter((m) => m.version <= SQUASH_BASELINE_VERSION)
+  );
+
+  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
+  assert.equal(dumpSchema(db.raw) + '\n', expected);
+});
+
+test('the squash left one migration standing where there were 78', async () => {
+  const upToBaseline = migrations.filter((m) => m.version <= SQUASH_BASELINE_VERSION);
+  assert.deepEqual(
+    upToBaseline.map((m) => m.version),
+    [SQUASH_BASELINE_VERSION]
+  );
+});
 
 test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
@@ -293,7 +331,7 @@ test('v21 cycle_event carries no episode reference and accepts only its three ki
   assert.throws(() => insert('irregular'));
 });
 
-test('v11 side_effect carries no episode reference and rejects severity outside 1-5', async () => {
+test('side_effect carries no episode reference, takes a blank severity and rejects one outside 1-5', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(side_effect)').all() as Array<{ name: string }>).map(
     (c) => c.name
@@ -303,59 +341,39 @@ test('v11 side_effect carries no episode reference and rejects severity outside 
   assert.doesNotThrow(() =>
     db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s1', 'nausea', 1, 100, 1000)")
   );
-  assert.throws(() =>
-    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s2', 'nausea', 0, 100, 1000)")
-  );
-  assert.throws(() =>
-    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'nausea', 6, 100, 1000)")
-  );
-});
-
-test('v63 makes severity nullable, still rejects out-of-range values, and carries pre-existing rows across unchanged', async () => {
-  const preV63 = migrations.filter((m) => m.version <= 11);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV63);
-  db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s1', 'nausea', 3, 100, 1000)");
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT severity FROM side_effect WHERE uuid = ?').get('s1') as { severity: number };
-  assert.equal(row.severity, 3);
-
+  // Blank is a real answer: the screen introduces itself as "no grading and
+  // no advice", so an ungraded record must not be forced to a number.
   assert.doesNotThrow(() =>
     db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s2', 'headache', NULL, 100, 1000)")
   );
   assert.throws(() =>
-    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'headache', 0, 100, 1000)")
+    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s3', 'nausea', 0, 100, 1000)")
   );
   assert.throws(() =>
-    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s4', 'headache', 6, 100, 1000)")
+    db.raw.exec("INSERT INTO side_effect (uuid, name, severity, epoch_day, updated_at) VALUES ('s4', 'nausea', 6, 100, 1000)")
   );
 });
 
-test('v36 splits a body region into two axes, leaving every stored intensity as the dysphoria it was', async () => {
-  const preV36 = migrations.filter((m) => m.version <= 35);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV36);
+test('a body region says dysphoria, euphoria or both, and the two are independent', async () => {
+  const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
-  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'chest', 70)");
-  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, intensity) VALUES (1, 'hairline', 0)");
 
-  await runMigrations(db, noopFileOps(), migrations);
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', 70, NULL)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'hair', NULL, 40)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'hips', 20, 60)");
 
-  // What a person logged as distress is still distress, at the same number.
-  // Nothing is reinterpreted, nothing is signed, and the new axis starts
-  // empty rather than at zero - a 0 here would claim they said something.
   const rows = db.raw
     .prepare('SELECT region, dysphoria, euphoria FROM entry_body_region ORDER BY region')
     .all()
-    // Rebuilt: node:sqlite hands back null-prototype rows, which deepEqual
-    // will not match against a plain object literal.
+    // node:sqlite hands back null-prototype rows, which deepEqual will not
+    // match against a plain object literal.
     .map((r) => ({ ...(r as { region: string; dysphoria: number | null; euphoria: number | null }) }));
+  // An axis left out reads null rather than 0 - a 0 would claim they said
+  // something about it.
   assert.deepEqual(rows, [
     { region: 'chest', dysphoria: 70, euphoria: null },
-    { region: 'hairline', dysphoria: 0, euphoria: null }
+    { region: 'hair', dysphoria: null, euphoria: 40 },
+    { region: 'hips', dysphoria: 20, euphoria: 60 }
   ]);
 });
 
@@ -368,60 +386,13 @@ test('v36 refuses a body region that says nothing on either axis', async () => {
   );
 });
 
-test('v19 widens personal_effect to eight markers, preserving rows the v12 table already held', async () => {
-  const preV19 = migrations.filter((m) => m.version <= 12);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV19);
-  db.raw.exec(
-    "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe1', 'breast_development', 19180, 1000)"
-  );
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+test('measurement.type is open past the built-in four, with no CHECK to reopen', async () => {
+  const db = await migratedDb();
 
-  const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
-    effect: string;
-    first_noticed_epoch_day: number;
-    updated_at: number;
-  };
-  assert.deepEqual(row.effect, 'breast_development');
-  assert.equal(row.first_noticed_epoch_day, 19180);
-  assert.equal(row.updated_at, 1000);
-
-  for (const effect of ['voice_drop', 'facial_body_hair', 'masculinizing_fat_redistribution', 'cycle_cessation']) {
-    assert.doesNotThrow(() =>
-      db.raw.exec(
-        `INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe-${effect}', '${effect}', 100, 1000)`
-      )
-    );
-  }
-  // v19's own CHECK on the closed eight no longer holds once the full
-  // migrations list runs - v37 drops it, the same way this test's sibling
-  // below shows v34 dropping measurement.type's. See the v37 test.
-});
-
-test('v34 drops the CHECK on measurement.type, preserving rows the v5 table already held', async () => {
-  const preV34 = migrations.filter((m) => m.version <= 5);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV34);
-  db.raw.exec(
-    "INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m1', 19180, 'waist', 78, 'cm', 1000)"
-  );
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT * FROM measurement WHERE uuid = ?').get('m1') as {
-    type: string;
-    value: number;
-    unit: string;
-  };
-  assert.deepEqual(row.type, 'waist');
-  assert.equal(row.value, 78);
-  assert.equal(row.unit, 'cm');
-
-  // The CHECK is gone: a key that was never in the closed set - including
-  // one shaped like a custom type's minted uuid - now inserts cleanly.
+  // The closed four became a reference-data vocabulary: a key outside them -
+  // including one shaped like a custom type's minted uuid - inserts cleanly,
+  // and what may be there is decided a layer up, by measurement_type.
   assert.doesNotThrow(() =>
     db.raw.exec(
       "INSERT INTO measurement (uuid, epoch_day, type, value, unit, updated_at) VALUES ('m2', 19180, 'a1b2c3d4-uuid', 30, 'cm', 1000)"
@@ -429,28 +400,11 @@ test('v34 drops the CHECK on measurement.type, preserving rows the v5 table alre
   );
 });
 
-test('v39 drops the CHECK on personal_effect.effect and adds effect_category/personal_effect_type, preserving rows the v19 table already held', async () => {
-  const preV39 = migrations.filter((m) => m.version <= 19);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV39);
-  db.raw.exec(
-    "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe1', 'breast_development', 19180, 1000)"
-  );
+test('personal_effect.effect is an open catalogue, and effect_category/personal_effect_type hold it', async () => {
+  const db = await migratedDb();
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT * FROM personal_effect WHERE uuid = ?').get('pe1') as {
-    effect: string;
-    first_noticed_epoch_day: number;
-    updated_at: number;
-  };
-  assert.deepEqual(row.effect, 'breast_development');
-  assert.equal(row.first_noticed_epoch_day, 19180);
-  assert.equal(row.updated_at, 1000);
-
-  // The CHECK is gone: a key outside the old eight - including one shaped
-  // like a custom effect type's minted uuid - now inserts cleanly.
+  // No CHECK: a key outside the old closed eight - including one shaped like
+  // a custom effect type's minted uuid - inserts cleanly.
   assert.doesNotThrow(() =>
     db.raw.exec(
       "INSERT INTO personal_effect (uuid, effect, first_noticed_epoch_day, updated_at) VALUES ('pe2', 'a1b2c3d4-uuid', 100, 1000)"
@@ -515,59 +469,33 @@ test('v37 hair_stage keeps a free-text description to the scale that has no grad
   assert.throws(() => insert('h4', 'norwood_hamilton', '3', 'and some prose'));
 });
 
-test('v37 carries the v13 table across as Norwood-Hamilton stagings', async () => {
-  const preV37 = migrations.filter((m) => m.version <= 13);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV37);
-  db.raw.exec("INSERT INTO hair_stage (uuid, epoch_day, stage, updated_at) VALUES ('h1', 19180, '3a', 1000)");
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT * FROM hair_stage WHERE uuid = ?').get('h1') as {
-    epoch_day: number;
-    scale: string;
-    stage: string;
-    description: string;
-    updated_at: number;
-  };
-  // Norwood-Hamilton was the only vocabulary there was, so every row that
-  // predates this migration is one, and its stage goes on meaning what it
-  // meant.
-  assert.equal(row.scale, 'norwood_hamilton');
-  assert.equal(row.stage, '3a');
-  assert.equal(row.description, '');
-  assert.equal(row.epoch_day, 19180);
-  assert.equal(row.updated_at, 1000);
-});
-
-test('v38 carries the v8 dose_schedule table across as everyNDays, with no weekday or amount rows', async () => {
-  const preV38 = migrations.filter((m) => m.version <= 8);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV38);
+test('a dose schedule cannot claim one recurrence shape while carrying the other one data', async () => {
+  const db = await migratedDb();
   db.raw.exec(
     "INSERT INTO regimen_episode (uuid, drug, dose, dose_unit, route, interval, start_epoch_day, updated_at) VALUES ('e1', 'estradiol valerate', 4, 'mg', 'im', 'every 2 weeks', 19000, 1000)"
   );
-  db.raw.exec(
-    "INSERT INTO dose_schedule (uuid, episode_id, every_n_days, doses_per_day, updated_at) VALUES ('s1', 1, 14, 1, 1000)"
+
+  // The discriminated union, enforced in SQL as well as in code: the
+  // every-N-days arm needs its step, and the weekdays arm must not carry one.
+  assert.doesNotThrow(() =>
+    db.raw.exec(
+      "INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at) VALUES ('s1', 1, 'everyNDays', 14, 1, 1000)"
+    )
+  );
+  assert.throws(() =>
+    db.raw.exec(
+      "INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at) VALUES ('s2', 1, 'weekdays', 14, 1, 1000)"
+    )
+  );
+  assert.throws(() =>
+    db.raw.exec(
+      "INSERT INTO dose_schedule (uuid, episode_id, recurrence_kind, every_n_days, doses_per_day, updated_at) VALUES ('s3', 1, 'everyNDays', NULL, 1, 1000)"
+    )
   );
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT * FROM dose_schedule WHERE uuid = ?').get('s1') as {
-    recurrence_kind: string;
-    every_n_days: number;
-    doses_per_day: number;
-    updated_at: number;
-  };
-  // Every-N-days was the only shape there was, so a row that predates this
-  // migration keeps meaning exactly what it meant - no reinterpreting, and
-  // nothing invents a weekday or a dose amount it never had.
-  assert.equal(row.recurrence_kind, 'everyNDays');
-  assert.equal(row.every_n_days, 14);
-  assert.equal(row.doses_per_day, 1);
-  assert.equal(row.updated_at, 1000);
+  // Weekdays and amounts are child tables, so a schedule that does not use
+  // the shape they belong to simply has none of them.
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM dose_schedule_weekday').get() as { n: number }).n, 0);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM dose_schedule_dose_amount').get() as { n: number }).n, 0);
 });
@@ -633,13 +561,8 @@ test('v24 entry gets a nullable trashed_at column, indexed, defaulting to NULL',
   assert.ok(indexes.includes('idx_entry_trashed_at'));
 });
 
-test('v40 backfills end_epoch_day from the pre-v40 next-episode inference, and adds dose_event.drug as null', async () => {
-  const preV40 = migrations.filter((m) => m.version <= 39);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV40);
-  // A switch history exactly like the ticket's own motivating case:
-  // estradiol from day 100, spironolactone added on day 200 - which, under
-  // the pre-v40 model, ended the estradiol episode the day before.
+test('an episode ends only when it is ended, and a dose names its own drug or nothing', async () => {
+  const db = await migratedDb();
   db.raw.exec(
     "INSERT INTO regimen_episode (uuid, drug, dose, dose_unit, route, interval, start_epoch_day, updated_at) VALUES ('e1', 'estradiol', 4, 'mg', 'oral', 'daily', 100, 1000)"
   );
@@ -650,55 +573,27 @@ test('v40 backfills end_epoch_day from the pre-v40 next-episode inference, and a
     "INSERT INTO dose_event (uuid, timestamp, route, dose, dose_unit, status, updated_at) VALUES ('d1', 8640000000, 'oral', 4, 'mg', 'taken', 1000)"
   );
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
+  /* Two episodes for different drugs may overlap on purpose, so nothing
+     infers one episode's end from the next one's start: an end is the day
+     the person ended it, or null. Writing e2's start does not close e1. */
   const episodes = (
-    db.raw.prepare('SELECT uuid, end_epoch_day FROM regimen_episode ORDER BY start_epoch_day').all() as Array<{
+    db.raw.prepare('SELECT uuid, end_epoch_day, end_reason FROM regimen_episode ORDER BY start_epoch_day').all() as Array<{
       uuid: string;
       end_epoch_day: number | null;
+      end_reason: string | null;
     }>
-  ).map((row) => ({ uuid: row.uuid, end_epoch_day: row.end_epoch_day }));
+  ).map((row) => ({ ...row }));
   assert.deepEqual(episodes, [
-    { uuid: 'e1', end_epoch_day: 199 },
-    { uuid: 'e2', end_epoch_day: null }
+    { uuid: 'e1', end_epoch_day: null, end_reason: null },
+    { uuid: 'e2', end_epoch_day: null, end_reason: null }
   ]);
 
+  // A dose carries its own drug only once it needs one; unattributed is the
+  // resting state, not a gap.
   const dose = db.raw.prepare('SELECT drug FROM dose_event WHERE uuid = ?').get('d1') as { drug: string | null };
   assert.equal(dose.drug, null);
 });
 
-test('v41 drops doubt_entry and every row it held, leaving doubt_snapshot and its items untouched', async () => {
-  const preV41 = migrations.filter((m) => m.version <= 40);
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), preV41);
-  db.raw.exec(
-    "INSERT INTO doubt_entry (uuid, epoch_day, timestamp, text, updated_at) VALUES ('d1', 20000, 1000, 'am I even trans enough for this', 1000)"
-  );
-  db.raw.exec("INSERT INTO doubt_snapshot (uuid, epoch_day, timestamp, updated_at) VALUES ('s1', 20000, 1000, 1000)");
-  db.raw.exec(
-    "INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note) VALUES (1, 0, 19500, 5, 'euphoric at the appointment')"
-  );
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const tables = db.raw
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'doubt%'")
-    .all()
-    .map((r) => (r as { name: string }).name);
-  assert.deepEqual(tables.sort(), ['doubt_snapshot', 'doubt_snapshot_entry']);
-
-  const snapshot = db.raw.prepare('SELECT uuid, epoch_day FROM doubt_snapshot WHERE uuid = ?').get('s1') as
-    | { uuid: string; epoch_day: number }
-    | undefined;
-  assert.equal(snapshot?.uuid, 's1');
-  assert.equal(snapshot?.epoch_day, 20000);
-  const item = db.raw.prepare('SELECT note FROM doubt_snapshot_entry WHERE snapshot_id = 1').get() as
-    | { note: string }
-    | undefined;
-  assert.equal(item?.note, 'euphoric at the appointment');
-});
 
 test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {
   const db = await migratedDb();
@@ -720,172 +615,42 @@ test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {
   );
 });
 
-/* Ticket 35 replaced the `activePreset` preference with `activeScales`, the
-   list of dimension keys the preset used to stand for. The three tests below
-   are the whole of that translation: a built-in preset, a custom one, and an
-   install that never wrote the preference at all. */
 
-/** The rows a v41 database would hold for one preset - the shape reconcile
-    seeds for a built-in and dimensions.ts writes for a custom one. */
-function seedPreset(
-  db: Awaited<ReturnType<typeof migratedDb>>,
-  preset: { key?: string; uuid?: string; dims: string[] }
-) {
-  const exec = (sql: string) => db.raw.exec(sql);
-  for (const [i, dim] of preset.dims.entries()) {
-    exec(
-      `INSERT OR IGNORE INTO gender_dimension (key, name, low_label, high_label, min_value, max_value, is_built_in, updated_at)
-       VALUES ('${dim}', '', '', '', 0, 100, 1, 1000)`
-    );
-    if (i === 0) {
-      exec(
-        `INSERT INTO gender_preset (uuid, key, name, is_built_in, updated_at)
-         VALUES (${preset.uuid ? `'${preset.uuid}'` : 'NULL'}, ${preset.key ? `'${preset.key}'` : 'NULL'}, '', ${preset.key ? 1 : 0}, 1000)`
-      );
-    }
-    exec(
-      `INSERT INTO preset_dimension (preset_id, dimension_id, order_index)
-       SELECT gp.id, gd.id, ${i} FROM gender_preset gp, gender_dimension gd
-       WHERE gd.key = '${dim}' AND COALESCE(gp.key, gp.uuid) = '${preset.key ?? preset.uuid}'`
-    );
-  }
-}
 
-async function migratedToV41() {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 41)
-  );
-  return db;
-}
 
-function activeScales(db: Awaited<ReturnType<typeof migratedDb>>): string[] | null {
-  const row = db.raw.prepare("SELECT value FROM pref WHERE key = 'activeScales'").get() as
-    | { value: string }
-    | undefined;
-  return row ? (JSON.parse(row.value) as string[]) : null;
-}
 
-test('v42 turns a built-in preset into the list of scales it stood for', async () => {
-  const db = await migratedToV41();
-  seedPreset(db, { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] });
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('activePreset', '"p-fem-masc"')`);
 
-  await runMigrations(db, noopFileOps(), migrations);
 
-  // Sorted, because the order group_concat lands them in is not part of the
-  // contract - nothing reads the stored order, and the editor draws its
-  // sliders in catalogue order.
-  assert.deepEqual(activeScales(db)?.sort(), ['euphoria_dysphoria', 'femininity', 'masculinity']);
-  // The value has been read and translated, so the row is not left behind
-  // for a build that no longer has a key for it.
-  assert.equal(db.raw.prepare("SELECT value FROM pref WHERE key = 'activePreset'").get(), undefined);
-});
 
-test('v42 translates a custom preset by its uuid, not only the built-in keys', async () => {
-  const db = await migratedToV41();
-  seedPreset(db, { uuid: 'custom-1', dims: ['euphoria_dysphoria', 'agender_gendered'] });
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('activePreset', '"custom-1"')`);
 
-  await runMigrations(db, noopFileOps(), migrations);
 
-  assert.deepEqual(activeScales(db)?.sort(), ['agender_gendered', 'euphoria_dysphoria']);
-});
-
-test('v42 leaves an install that never chose a preset on the default set', async () => {
-  const db = await migratedToV41();
-  seedPreset(db, { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity'] });
-
-  await runMigrations(db, noopFileOps(), migrations);
-
-  // No row rather than an empty list: an empty list is a person who unticked
-  // everything, and this install has said nothing at all, so the preference
-  assert.equal(activeScales(db), null);
-});
-
-async function migratedToV42() {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 42)
-  );
-  return db;
-}
-
-test('v43 adds roadmap_goal_key column to milestone table', async () => {
-  const db = await migratedToV42();
-  const beforeCols = await db.query<{ name: string }>('PRAGMA table_info(milestone)');
-  assert.equal(beforeCols.some((c) => c.name === 'roadmap_goal_key'), false);
-
-  await runMigrations(db, noopFileOps(), migrations);
-
-  const afterCols = await db.query<{ name: string }>('PRAGMA table_info(milestone)');
-  assert.equal(afterCols.some((c) => c.name === 'roadmap_goal_key'), true);
-});
-
-test('v44 adds procedure_id to milestone table, preserving existing milestones', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 43)
-  );
-
+test('a milestone records where it came from in three nullable columns, all unset by default', async () => {
+  const db = await migratedDb();
   db.raw.exec(
     "INSERT INTO milestone (uuid, name, epoch_day, updated_at) VALUES ('m-1', 'HRT Start', 20000, 0)"
   );
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT uuid, name, procedure_id FROM milestone WHERE uuid = ?').get('m-1') as {
+  const row = db.raw
+    .prepare('SELECT uuid, name, roadmap_goal_key, procedure_id, tryout_id FROM milestone WHERE uuid = ?')
+    .get('m-1') as {
     uuid: string;
     name: string;
+    roadmap_goal_key: string | null;
     procedure_id: string | null;
-  };
-  assert.equal(row.uuid, 'm-1');
-  assert.equal(row.name, 'HRT Start');
-  assert.equal(row.procedure_id, null);
-});
-
-test('v47 adds tryout_id to milestone table, preserving existing milestones', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 46)
-  );
-
-  db.raw.exec("INSERT INTO milestone (uuid, name, epoch_day, updated_at) VALUES ('m-1', 'HRT Start', 20000, 0)");
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw.prepare('SELECT uuid, name, tryout_id FROM milestone WHERE uuid = ?').get('m-1') as {
-    uuid: string;
-    name: string;
     tryout_id: string | null;
   };
   assert.equal(row.uuid, 'm-1');
   assert.equal(row.name, 'HRT Start');
+  // A milestone someone typed for themselves came from nowhere, which is a
+  // resting state rather than three gaps (ADR-0045).
+  assert.equal(row.roadmap_goal_key, null);
+  assert.equal(row.procedure_id, null);
   assert.equal(row.tryout_id, null);
 });
 
-test('v49 adds the presentation table and entry.presentation_id, both nullable/unfilled by default', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 48)
-  );
-
+test('the presentation table and entry.presentation_id are both nullable and unfilled by default', async () => {
+  const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e-1', 100, 1000, '', 1000)");
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const entryRow = db.raw.prepare("SELECT presentation_id FROM entry WHERE uuid = 'e-1'").get() as {
     presentation_id: string | null;
@@ -912,15 +677,7 @@ test('v49 adds the presentation table and entry.presentation_id, both nullable/u
 });
 
 test('v50 adds the era table, with both bounds nullable and no fifth column', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 49)
-  );
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+  const db = await migratedDb();
 
   db.raw.exec("INSERT INTO era (uuid, name, start_epoch_day, end_epoch_day, updated_at) VALUES ('era-1', 'before I knew', NULL, 19000, 1000)");
   const row = db.raw.prepare("SELECT name, start_epoch_day, end_epoch_day FROM era WHERE uuid = 'era-1'").get() as {
@@ -948,15 +705,7 @@ test('v50 adds the era table, with both bounds nullable and no fifth column', as
 });
 
 test('v51 adds era_mute, presence keyed by era_uuid alone', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 50)
-  );
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
+  const db = await migratedDb();
 
   db.raw.exec("INSERT INTO era_mute (era_uuid, updated_at) VALUES ('era-1', 1000)");
   const row = db.raw.prepare("SELECT era_uuid FROM era_mute WHERE era_uuid = 'era-1'").get() as {
@@ -977,146 +726,65 @@ test('v51 adds era_mute, presence keyed by era_uuid alone', async () => {
   assert.deepEqual(columns, ['id', 'era_uuid', 'updated_at']);
 });
 
-test('v58 adds the pitch track column, and a benchmark from before it has none', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 57)
-  );
+test('the three late benchmark columns are optional, and a take without them reads null', async () => {
+  const db = await migratedDb();
 
-  /* A benchmark recorded before the column existed. The point of writing it
-     at v57 rather than after the upgrade is that this is the only state the
-     screen cannot produce for itself: the frames it would draw were thrown
-     away, so `pitch_track` reads null and the take is undrawable forever
-     (ticket 09, ADR-0059). */
+  /* A benchmark whose extras were never captured - the frames a pitch graph
+     would draw, the equipment the resonance figures depend on, the second
+     vowel a scale factor is fitted against. None can be reconstructed after
+     the fact, so each reads null forever and the surfaces that need it
+     decline to draw or compare that take rather than assuming one
+     (ADR-0059, ADR-0061). */
   db.raw.exec(`INSERT INTO voice_benchmark
     (uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
      f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute,
      f1_hz, f2_hz, snr_db, note, updated_at)
-    VALUES ('vb-old', 20000, 1000, 'builtin', 'a.webm', NULL,
-     180, 168, 205, 2.4, 140, NULL, NULL, NULL, NULL, 1000)`);
+    VALUES ('vb-bare', 20000, 1000, 'builtin', 'a.webm', NULL,
+     180, 168, 205, 2.4, 140, 700, 1260, 24.5, NULL, 1000)`);
 
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw
-    .prepare("SELECT pitch_track, f0_median_hz FROM voice_benchmark WHERE uuid = 'vb-old'")
-    .get() as { pitch_track: string | null; f0_median_hz: number };
-  assert.equal(row.pitch_track, null);
-  // The figures the old row did keep are untouched by the upgrade.
-  assert.equal(row.f0_median_hz, 180);
-
-  db.raw.exec("UPDATE voice_benchmark SET pitch_track = '180.4,,176.2' WHERE uuid = 'vb-old'");
-  assert.equal(
-    (
-      db.raw.prepare("SELECT pitch_track FROM voice_benchmark WHERE uuid = 'vb-old'").get() as {
-        pitch_track: string;
-      }
-    ).pitch_track,
-    '180.4,,176.2'
-  );
-});
-
-test('v65 adds the capture chain column, and a benchmark from before it has none', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 64)
-  );
-
-  /* A benchmark recorded before the column existed. Nothing about the
-     equipment was kept then and none of it can be reconstructed, so the
-     chain reads null forever and the device-sensitive figures decline to
-     compare this take rather than assuming it shares a phone with the next
-     one (ticket 28, ADR-0061). */
-  db.raw.exec(`INSERT INTO voice_benchmark
-    (uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
-     f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute,
-     f1_hz, f2_hz, snr_db, note, pitch_track, updated_at)
-    VALUES ('vb-chainless', 20000, 1000, 'builtin', 'a.webm', NULL,
-     180, 168, 205, 2.4, 140, 700, 1260, 24.5, NULL, '180.4,,176.2', 1000)`);
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw
-    .prepare("SELECT capture_chain, f1_hz FROM voice_benchmark WHERE uuid = 'vb-chainless'")
-    .get() as { capture_chain: string | null; f1_hz: number };
-  assert.equal(row.capture_chain, null);
-  // The figures the old row did keep are untouched by the upgrade.
-  assert.equal(row.f1_hz, 700);
+  const bare = db.raw
+    .prepare("SELECT pitch_track, capture_chain, resonance_scale, f0_median_hz, f1_hz FROM voice_benchmark WHERE uuid = 'vb-bare'")
+    .get() as {
+    pitch_track: string | null;
+    capture_chain: string | null;
+    resonance_scale: number | null;
+    f0_median_hz: number;
+    f1_hz: number;
+  };
+  assert.equal(bare.pitch_track, null);
+  assert.equal(bare.capture_chain, null);
+  assert.equal(bare.resonance_scale, null);
+  // The figures a bare take does keep are ordinary NOT NULL columns.
+  assert.equal(bare.f0_median_hz, 180);
+  assert.equal(bare.f1_hz, 700);
 
   const chain = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
-  db.raw.prepare('UPDATE voice_benchmark SET capture_chain = ? WHERE uuid = ?').run(chain, 'vb-chainless');
-  assert.equal(
-    (
-      db.raw.prepare("SELECT capture_chain FROM voice_benchmark WHERE uuid = 'vb-chainless'").get() as {
-        capture_chain: string;
-      }
-    ).capture_chain,
-    chain
-  );
+  db.raw
+    .prepare('UPDATE voice_benchmark SET pitch_track = ?, capture_chain = ?, resonance_scale = ? WHERE uuid = ?')
+    .run('180.4,,176.2', chain, 0.94, 'vb-bare');
+  const filled = db.raw
+    .prepare("SELECT pitch_track, capture_chain, resonance_scale FROM voice_benchmark WHERE uuid = 'vb-bare'")
+    .get() as { pitch_track: string; capture_chain: string; resonance_scale: number };
+  assert.equal(filled.pitch_track, '180.4,,176.2');
+  assert.equal(filled.capture_chain, chain);
+  assert.equal(filled.resonance_scale, 0.94);
 });
 
-test('v67 adds the corner-vowel scale column, and a benchmark from before it has none', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 66)
-  );
+test('one appointment record, and a consult is the case of it that names a procedure', async () => {
+  const db = await migratedDb();
 
-  /* A benchmark recorded before the column existed asked for one vowel
-     only, so there was never a second to fit a factor against - it reads
-     null forever rather than a fit run against a single formant pair
-     (ticket 30). */
-  db.raw.exec(`INSERT INTO voice_benchmark
-    (uuid, epoch_day, timestamp, passage_key, passage_file_path, vowel_file_path,
-     f0_median_hz, f0_p10_hz, f0_p90_hz, semitone_sd, words_per_minute,
-     f1_hz, f2_hz, snr_db, note, pitch_track, capture_chain, updated_at)
-    VALUES ('vb-scaleless', 20000, 1000, 'builtin', 'a.webm', NULL,
-     180, 168, 205, 2.4, 140, 700, 1260, 24.5, NULL, '180.4,,176.2',
-     'Pixel 10a | Bottom microphone | ec=off ns=off agc=off', 1000)`);
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-
-  const row = db.raw
-    .prepare("SELECT resonance_scale, f1_hz FROM voice_benchmark WHERE uuid = 'vb-scaleless'")
-    .get() as { resonance_scale: number | null; f1_hz: number };
-  assert.equal(row.resonance_scale, null);
-  // The figures the old row did keep are untouched by the upgrade.
-  assert.equal(row.f1_hz, 700);
-
-  db.raw.prepare('UPDATE voice_benchmark SET resonance_scale = ? WHERE uuid = ?').run(0.94, 'vb-scaleless');
+  // There is no second table for a consult (ADR-0066): two tables for one
+  // concept is what the glossary exists to refuse.
   assert.equal(
-    (
-      db.raw.prepare("SELECT resonance_scale FROM voice_benchmark WHERE uuid = 'vb-scaleless'").get() as {
-        resonance_scale: number;
-      }
-    ).resonance_scale,
-    0.94
-  );
-});
-
-test('v75 turns a consult into an appointment, keeping its procedure and its id', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 74)
+    db.raw.prepare("SELECT name FROM sqlite_master WHERE name = 'procedure_consult'").get(),
+    undefined
   );
 
   db.raw.exec("INSERT INTO procedure (uuid, name, notes, updated_at) VALUES ('p-1', 'Vaginoplasty', '', 0)");
   const procedureId = (db.raw.prepare("SELECT id FROM procedure WHERE uuid = 'p-1'").get() as { id: number }).id;
   db.raw
-    .prepare('INSERT INTO procedure_consult (uuid, procedure_id, epoch_day, updated_at) VALUES (?, ?, ?, ?)')
+    .prepare('INSERT INTO appointment (uuid, procedure_id, epoch_day, updated_at) VALUES (?, ?, ?, ?)')
     .run('c-1', procedureId, 20000, 0);
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw
     .prepare('SELECT uuid, procedure_id, epoch_day, kind, place, note FROM appointment WHERE uuid = ?')
@@ -1130,13 +798,13 @@ test('v75 turns a consult into an appointment, keeping its procedure and its id'
   };
   assert.equal(row.procedure_id, procedureId);
   assert.equal(row.epoch_day, 20000);
-  // The three new columns are unfilled rather than defaulted: a consult
-  // carried across says nothing about what kind of appointment it was.
+  // Unfilled rather than defaulted: nothing ships a list of appointment kinds
+  // in either language, so an unanswered one says nothing.
   assert.equal(row.kind, null);
   assert.equal(row.place, null);
   assert.equal(row.note, null);
 
-  // Nothing has to name a procedure any more, which is the whole rename.
+  // Nothing has to name a procedure, which is the whole of the generalisation.
   db.raw
     .prepare('INSERT INTO appointment (uuid, epoch_day, kind, updated_at) VALUES (?, ?, ?, ?)')
     .run('a-1', 20010, 'endocrinologist', 0);
@@ -1154,20 +822,12 @@ test('v75 turns a consult into an appointment, keeping its procedure and its id'
   assert.equal(survivor.uuid, 'a-1');
 });
 
-test('v77 gives a document an optional link, and an old row reads back with neither half set', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 76)
-  );
+test('a document link is optional, and an unlinked one reads back with neither half set', async () => {
+  const db = await migratedDb();
 
   db.raw.exec(
     "INSERT INTO document (uuid, epoch_day, title, file_path, updated_at) VALUES ('d-1', 20000, 'Referral', 'f.jpg', 0)"
   );
-
-  await runMigrations(db, noopFileOps(), migrations);
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
 
   const row = db.raw.prepare('SELECT target_kind, target_id FROM document WHERE uuid = ?').get('d-1') as {
     target_kind: string | null;
@@ -1209,82 +869,35 @@ test('the hand-written latest version and the migration list agree', async () =>
      migration appended without the constant moving - including the merge
      case, where two branches each add a version and the loser renumbers. */
   assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
+
+  /* Contiguous from the squashed baseline rather than from 1 (ticket 34): the
+     versions below it were retired into one statement and no longer exist to
+     be applied, so a gap there is the squash and a gap above it is a
+     migration that went missing. */
   assert.deepEqual(
     migrations.map((migration) => migration.version),
-    Array.from({ length: LATEST_SCHEMA_VERSION }, (_, index) => index + 1),
-    'the list is contiguous from 1, in order, with no version applied twice'
+    Array.from(
+      { length: LATEST_SCHEMA_VERSION - SQUASH_BASELINE_VERSION + 1 },
+      (_, index) => SQUASH_BASELINE_VERSION + index
+    ),
+    'the list is contiguous from the baseline, in order, with no version applied twice'
   );
 });
 
-/* Ticket 53 retires the app-lock PIN gate, as v45. The acceptance criterion is about
-   what an upgrading installation keeps rather than about what goes: the PIN
-   was never the encryption credential (ADR-0014), so dropping it must leave
-   the journal's real protection exactly where it was. */
 
-/* main already defines migratedToV41 and migratedToV42 for its own
-   migrations, so this is the same shape one pair of versions further on -
-   and it has to be, or the two tests below would be exercising 43 and 44
-   rather than 45. */
-async function migratedToV44() {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 44)
-  );
-  return db;
-}
 
-const pref = (db: Awaited<ReturnType<typeof migratedDb>>, key: string): string | undefined =>
-  (db.raw.prepare('SELECT value FROM pref WHERE key = ?').get(key) as { value: string } | undefined)?.value;
 
-test('v45 takes the retired PIN gate\'s preferences and leaves everything else alone', async () => {
-  const db = await migratedToV44();
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('pinHash', '"v1$8192$1$1$32$c2FsdA==$aGFzaA=="')`);
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('appLock', 'true')`);
-  /* The two mid-session triggers outlive the gate: they now re-ask whatever
-     secret the access mode has (ADR-0041), so they are not the PIN's. */
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('lockOnLeave', 'true')`);
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('quickExit', 'true')`);
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('name', '"Alicja"')`);
 
-  await runMigrations(db, noopFileOps(), migrations);
 
-  // A PIN hash is credential material, and it does not outlive its gate.
-  assert.equal(pref(db, 'pinHash'), undefined);
-  assert.equal(pref(db, 'appLock'), undefined);
-  assert.equal(pref(db, 'lockOnLeave'), 'true');
-  assert.equal(pref(db, 'quickExit'), 'true');
-  assert.equal(pref(db, 'name'), '"Alicja"');
-});
+test('every wear session has a kind, and a write that names none gets the default', async () => {
+  const db = await migratedDb();
 
-test('v45 is a no-op for an installation that never set a PIN', async () => {
-  const db = await migratedToV44();
-  db.raw.exec(`INSERT INTO pref (key, value) VALUES ('name', '"Alicja"')`);
-
-  await runMigrations(db, noopFileOps(), migrations);
-
-  assert.equal(pref(db, 'pinHash'), undefined);
-  assert.equal(pref(db, 'name'), '"Alicja"');
-  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
-});
-
-test('v74 gives every wear session a kind, and a row from before it reads back as a binder', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 73)
-  );
-
-  /* Written when the table had no column telling binding from tucking apart
-     at all (v22), so nothing about this row says which it was. The app is
-     unpublished and ticket 50 leaves what happens to such a row open; the
-     column's own default is what it gets. */
+  /* NOT NULL because every user-facing string on that screen is picked by the
+     kind (ADR-0064), so there is no wording to draw without one. The default
+     is what a write that says nothing gets - and what the rows written before
+     the column existed became. */
   db.raw.exec(`INSERT INTO wear_session (uuid, start_timestamp, duration_ms, note, updated_at)
     VALUES ('ws-old', 1700000000000, 21600000, 'a bit tight by the end', 1000)`);
-
-  await runMigrations(db, noopFileOps(), migrations);
 
   const row = db.raw.prepare("SELECT kind, note FROM wear_session WHERE uuid = 'ws-old'").get() as {
     kind: string;

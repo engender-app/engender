@@ -1,0 +1,428 @@
+index idx_affirmation_language on affirmation
+  CREATE INDEX idx_affirmation_language ON affirmation(language)
+index idx_appointment_epoch_day on appointment
+  CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day)
+index idx_appointment_procedure on appointment
+  CREATE INDEX idx_appointment_procedure ON appointment(procedure_id)
+index idx_checklist_item_checklist on checklist_item
+  CREATE INDEX idx_checklist_item_checklist ON checklist_item(checklist_id)
+index idx_checklist_owner on checklist
+  CREATE INDEX idx_checklist_owner ON checklist(owner_kind,owner_uuid)
+index idx_cycle_event_epoch_day on cycle_event
+  CREATE INDEX idx_cycle_event_epoch_day ON cycle_event(epoch_day)
+index idx_document_epoch_day on document
+  CREATE INDEX idx_document_epoch_day ON document(epoch_day)
+index idx_dose_event_timestamp on dose_event
+  CREATE INDEX idx_dose_event_timestamp ON dose_event(timestamp)
+index idx_dose_pause_episode on dose_pause
+  CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id)
+index idx_doubt_snapshot_entry_snapshot on doubt_snapshot_entry
+  CREATE INDEX idx_doubt_snapshot_entry_snapshot ON doubt_snapshot_entry(snapshot_id)
+index idx_doubt_snapshot_epoch_day on doubt_snapshot
+  CREATE INDEX idx_doubt_snapshot_epoch_day ON doubt_snapshot(epoch_day)
+index idx_ebr_region on entry_body_region
+  CREATE INDEX idx_ebr_region ON entry_body_region(region)
+index idx_edv_dimension on entry_dimension_value
+  CREATE INDEX idx_edv_dimension ON entry_dimension_value(dimension_id)
+index idx_entry_epoch_day on entry
+  CREATE INDEX idx_entry_epoch_day ON entry(epoch_day)
+index idx_entry_presentation_id on entry
+  CREATE INDEX idx_entry_presentation_id ON entry(presentation_id,timestamp)
+index idx_entry_tag_tag_id on entry_tag
+  CREATE INDEX idx_entry_tag_tag_id ON entry_tag(tag_id)
+index idx_entry_trashed_at on entry
+  CREATE INDEX idx_entry_trashed_at ON entry(trashed_at)
+index idx_felt_sense_epoch_day on felt_sense
+  CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day)
+index idx_felt_sense_milestone on felt_sense
+  CREATE INDEX idx_felt_sense_milestone ON felt_sense(milestone_id)
+index idx_felt_sense_tryout on felt_sense
+  CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id)
+index idx_hair_photo_epoch_day on hair_photo
+  CREATE INDEX idx_hair_photo_epoch_day ON hair_photo(epoch_day)
+index idx_hair_removal_photo_session on hair_removal_photo
+  CREATE INDEX idx_hair_removal_photo_session ON hair_removal_photo(session_id)
+index idx_hair_removal_session_area on hair_removal_session
+  CREATE INDEX idx_hair_removal_session_area ON hair_removal_session(area)
+index idx_hair_removal_session_epoch_day on hair_removal_session
+  CREATE INDEX idx_hair_removal_session_epoch_day ON hair_removal_session(epoch_day)
+index idx_hair_stage_epoch_day on hair_stage
+  CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day)
+index idx_hair_stage_scale on hair_stage
+  CREATE INDEX idx_hair_stage_scale ON hair_stage(scale,epoch_day)
+index idx_journaling_pause_start on journaling_pause
+  CREATE INDEX idx_journaling_pause_start ON journaling_pause(start_epoch_day)
+index idx_lab_analyte on lab_result
+  CREATE INDEX idx_lab_analyte ON lab_result(analyte,epoch_day)
+index idx_letter_epoch_day on letter
+  CREATE INDEX idx_letter_epoch_day ON letter(epoch_day)
+index idx_margin_note_entry_id on margin_note
+  CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id)
+index idx_measurement_epoch_day on measurement
+  CREATE INDEX idx_measurement_epoch_day ON measurement(epoch_day)
+index idx_measurement_type on measurement
+  CREATE INDEX idx_measurement_type ON measurement(type,epoch_day)
+index idx_milestone_epoch_day on milestone
+  CREATE INDEX idx_milestone_epoch_day ON milestone(epoch_day)
+index idx_photo_entry on photo
+  CREATE INDEX idx_photo_entry ON photo(entry_id)
+index idx_photo_milestone on photo
+  CREATE INDEX idx_photo_milestone ON photo(milestone_id)
+index idx_procedure_photo_procedure on procedure_photo
+  CREATE INDEX idx_procedure_photo_procedure ON procedure_photo(procedure_id,epoch_day)
+index idx_procedure_surgery_epoch_day on procedure
+  CREATE INDEX idx_procedure_surgery_epoch_day ON procedure(surgery_epoch_day)
+index idx_regimen_episode_start on regimen_episode
+  CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day)
+index idx_revisit_target_epoch_day on revisit
+  CREATE INDEX idx_revisit_target_epoch_day ON revisit(target_epoch_day)
+index idx_side_effect_epoch_day on side_effect
+  CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day)
+index idx_size_record_category on size_record
+  CREATE INDEX idx_size_record_category ON size_record(category)
+index idx_size_record_epoch_day on size_record
+  CREATE INDEX idx_size_record_epoch_day ON size_record(epoch_day)
+index idx_tally_kind_day on tally_event
+  CREATE INDEX idx_tally_kind_day ON tally_event(kind,epoch_day)
+index idx_taper_session_epoch_day on taper_session
+  CREATE INDEX idx_taper_session_epoch_day ON taper_session(epoch_day)
+index idx_tryout_photo_tryout on tryout_photo
+  CREATE INDEX idx_tryout_photo_tryout ON tryout_photo(tryout_id,epoch_day)
+index idx_tryout_start on tryout
+  CREATE INDEX idx_tryout_start ON tryout(start_epoch_day)
+index idx_video_note_entry on video_note
+  CREATE INDEX idx_video_note_entry ON video_note(entry_id)
+index idx_voice_benchmark_epoch_day on voice_benchmark
+  CREATE INDEX idx_voice_benchmark_epoch_day ON voice_benchmark(epoch_day)
+index idx_voice_practice_take_epoch_day on voice_practice_take
+  CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day)
+index idx_voice_recording_entry on voice_recording
+  CREATE INDEX idx_voice_recording_entry ON voice_recording(entry_id)
+index idx_wear_session_start on wear_session
+  CREATE INDEX idx_wear_session_start ON wear_session(start_timestamp)
+index sqlite_autoindex_affirmation_1 on affirmation
+  (implicit)
+index sqlite_autoindex_affirmation_2 on affirmation
+  (implicit)
+index sqlite_autoindex_appointment_1 on appointment
+  (implicit)
+index sqlite_autoindex_area_state_1 on area_state
+  (implicit)
+index sqlite_autoindex_body_region_1 on body_region
+  (implicit)
+index sqlite_autoindex_body_region_2 on body_region
+  (implicit)
+index sqlite_autoindex_checklist_1 on checklist
+  (implicit)
+index sqlite_autoindex_checklist_item_1 on checklist_item
+  (implicit)
+index sqlite_autoindex_comfort_item_1 on comfort_item
+  (implicit)
+index sqlite_autoindex_cycle_event_1 on cycle_event
+  (implicit)
+index sqlite_autoindex_document_1 on document
+  (implicit)
+index sqlite_autoindex_dose_event_1 on dose_event
+  (implicit)
+index sqlite_autoindex_dose_pause_1 on dose_pause
+  (implicit)
+index sqlite_autoindex_dose_schedule_1 on dose_schedule
+  (implicit)
+index sqlite_autoindex_dose_schedule_2 on dose_schedule
+  (implicit)
+index sqlite_autoindex_dose_schedule_dose_amount_1 on dose_schedule_dose_amount
+  (implicit)
+index sqlite_autoindex_dose_schedule_weekday_1 on dose_schedule_weekday
+  (implicit)
+index sqlite_autoindex_doubt_snapshot_1 on doubt_snapshot
+  (implicit)
+index sqlite_autoindex_effect_category_1 on effect_category
+  (implicit)
+index sqlite_autoindex_entry_1 on entry
+  (implicit)
+index sqlite_autoindex_entry_body_region_1 on entry_body_region
+  (implicit)
+index sqlite_autoindex_entry_dimension_value_1 on entry_dimension_value
+  (implicit)
+index sqlite_autoindex_entry_tag_1 on entry_tag
+  (implicit)
+index sqlite_autoindex_entry_template_1 on entry_template
+  (implicit)
+index sqlite_autoindex_entry_template_2 on entry_template
+  (implicit)
+index sqlite_autoindex_entry_template_dimension_value_1 on entry_template_dimension_value
+  (implicit)
+index sqlite_autoindex_entry_template_tag_1 on entry_template_tag
+  (implicit)
+index sqlite_autoindex_era_1 on era
+  (implicit)
+index sqlite_autoindex_era_mute_1 on era_mute
+  (implicit)
+index sqlite_autoindex_felt_sense_1 on felt_sense
+  (implicit)
+index sqlite_autoindex_gender_dimension_1 on gender_dimension
+  (implicit)
+index sqlite_autoindex_gender_dimension_2 on gender_dimension
+  (implicit)
+index sqlite_autoindex_gender_preset_1 on gender_preset
+  (implicit)
+index sqlite_autoindex_gender_preset_2 on gender_preset
+  (implicit)
+index sqlite_autoindex_hair_photo_1 on hair_photo
+  (implicit)
+index sqlite_autoindex_hair_removal_photo_1 on hair_removal_photo
+  (implicit)
+index sqlite_autoindex_hair_removal_session_1 on hair_removal_session
+  (implicit)
+index sqlite_autoindex_hair_stage_1 on hair_stage
+  (implicit)
+index sqlite_autoindex_import_log_1 on import_log
+  (implicit)
+index sqlite_autoindex_journaling_pause_1 on journaling_pause
+  (implicit)
+index sqlite_autoindex_lab_result_1 on lab_result
+  (implicit)
+index sqlite_autoindex_letter_1 on letter
+  (implicit)
+index sqlite_autoindex_margin_note_1 on margin_note
+  (implicit)
+index sqlite_autoindex_measurement_1 on measurement
+  (implicit)
+index sqlite_autoindex_measurement_type_1 on measurement_type
+  (implicit)
+index sqlite_autoindex_measurement_type_2 on measurement_type
+  (implicit)
+index sqlite_autoindex_medication_stock_1 on medication_stock
+  (implicit)
+index sqlite_autoindex_medication_stock_2 on medication_stock
+  (implicit)
+index sqlite_autoindex_milestone_1 on milestone
+  (implicit)
+index sqlite_autoindex_personal_effect_1 on personal_effect
+  (implicit)
+index sqlite_autoindex_personal_effect_2 on personal_effect
+  (implicit)
+index sqlite_autoindex_personal_effect_type_1 on personal_effect_type
+  (implicit)
+index sqlite_autoindex_personal_effect_type_2 on personal_effect_type
+  (implicit)
+index sqlite_autoindex_photo_1 on photo
+  (implicit)
+index sqlite_autoindex_pref_1 on pref
+  (implicit)
+index sqlite_autoindex_presentation_1 on presentation
+  (implicit)
+index sqlite_autoindex_preset_dimension_1 on preset_dimension
+  (implicit)
+index sqlite_autoindex_procedure_1 on procedure
+  (implicit)
+index sqlite_autoindex_procedure_photo_1 on procedure_photo
+  (implicit)
+index sqlite_autoindex_regimen_episode_1 on regimen_episode
+  (implicit)
+index sqlite_autoindex_reminder_1 on reminder
+  (implicit)
+index sqlite_autoindex_revisit_1 on revisit
+  (implicit)
+index sqlite_autoindex_revisit_2 on revisit
+  (implicit)
+index sqlite_autoindex_roadmap_check_1 on roadmap_check
+  (implicit)
+index sqlite_autoindex_roadmap_goal_1 on roadmap_goal
+  (implicit)
+index sqlite_autoindex_roadmap_track_1 on roadmap_track
+  (implicit)
+index sqlite_autoindex_saved_question_1 on saved_question
+  (implicit)
+index sqlite_autoindex_side_effect_1 on side_effect
+  (implicit)
+index sqlite_autoindex_size_record_1 on size_record
+  (implicit)
+index sqlite_autoindex_tag_1 on tag
+  (implicit)
+index sqlite_autoindex_tag_2 on tag
+  (implicit)
+index sqlite_autoindex_tag_group_1 on tag_group
+  (implicit)
+index sqlite_autoindex_tag_group_2 on tag_group
+  (implicit)
+index sqlite_autoindex_tally_event_1 on tally_event
+  (implicit)
+index sqlite_autoindex_taper_1 on taper
+  (implicit)
+index sqlite_autoindex_taper_session_1 on taper_session
+  (implicit)
+index sqlite_autoindex_tryout_1 on tryout
+  (implicit)
+index sqlite_autoindex_tryout_photo_1 on tryout_photo
+  (implicit)
+index sqlite_autoindex_video_note_1 on video_note
+  (implicit)
+index sqlite_autoindex_voice_benchmark_1 on voice_benchmark
+  (implicit)
+index sqlite_autoindex_voice_practice_take_1 on voice_practice_take
+  (implicit)
+index sqlite_autoindex_voice_recording_1 on voice_recording
+  (implicit)
+index sqlite_autoindex_wear_session_1 on wear_session
+  (implicit)
+index sqlite_autoindex_word_frequency_ignore_1 on word_frequency_ignore
+  (implicit)
+table affirmation on affirmation
+  CREATE TABLE affirmation(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,language TEXT CHECK(language IN('en','pl')),text TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table appointment on appointment
+  CREATE TABLE appointment(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER REFERENCES procedure(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,kind TEXT,place TEXT,note TEXT,updated_at INTEGER NOT NULL)
+table area_state on area_state
+  CREATE TABLE area_state(area TEXT PRIMARY KEY,hidden INTEGER NOT NULL DEFAULT 0,finished_epoch_day INTEGER,updated_at INTEGER NOT NULL,suspended_epoch_day INTEGER)
+table body_region on body_region
+  CREATE TABLE body_region(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,name TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table checklist on checklist
+  CREATE TABLE checklist(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,owner_kind TEXT,owner_uuid TEXT,updated_at INTEGER NOT NULL,appointment_epoch_day INTEGER,debrief_entry_id INTEGER REFERENCES entry(id)ON DELETE SET NULL,debrief_dismissed_epoch_day INTEGER,debrief_entry_appointment_id TEXT,debrief_dismissed_appointment_id TEXT,CHECK((owner_kind IS NULL)=(owner_uuid IS NULL)))
+table checklist_item on checklist_item
+  CREATE TABLE checklist_item(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,checklist_id INTEGER NOT NULL REFERENCES checklist(id)ON DELETE CASCADE,content TEXT NOT NULL,checked INTEGER NOT NULL DEFAULT 0,carried_forward INTEGER NOT NULL DEFAULT 0,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table comfort_item on comfort_item
+  CREATE TABLE comfort_item(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,text TEXT NOT NULL,position INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table cycle_event on cycle_event
+  CREATE TABLE cycle_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,kind TEXT NOT NULL CHECK(kind IN('period_occurred','spotting','nothing_this_month')),updated_at INTEGER NOT NULL)
+table document on document
+  CREATE TABLE document(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,title TEXT NOT NULL,file_path TEXT NOT NULL,target_kind TEXT CHECK(target_kind IN('goal','milestone','procedure','episode')),target_id TEXT,updated_at INTEGER NOT NULL,CHECK((target_kind IS NULL)=(target_id IS NULL)))
+table dose_event on dose_event
+  CREATE TABLE dose_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,timestamp INTEGER NOT NULL,route TEXT NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,injection_site TEXT,vehicle TEXT,application_site TEXT,status TEXT NOT NULL,scheduled_dose REAL,scheduled_route TEXT,scheduled_timestamp INTEGER,updated_at INTEGER NOT NULL,drug TEXT)
+table dose_pause on dose_pause
+  CREATE TABLE dose_pause(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL REFERENCES regimen_episode(id)ON DELETE CASCADE,start_epoch_day INTEGER NOT NULL,end_epoch_day INTEGER,reason TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table dose_schedule on dose_schedule
+  CREATE TABLE dose_schedule(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL UNIQUE REFERENCES regimen_episode(id)ON DELETE CASCADE,recurrence_kind TEXT NOT NULL DEFAULT 'everyNDays' CHECK(recurrence_kind IN('everyNDays','weekdays')),every_n_days INTEGER,doses_per_day INTEGER NOT NULL,updated_at INTEGER NOT NULL,CHECK((recurrence_kind = 'everyNDays')=(every_n_days IS NOT NULL)))
+table dose_schedule_dose_amount on dose_schedule_dose_amount
+  CREATE TABLE dose_schedule_dose_amount(schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id)ON DELETE CASCADE,position INTEGER NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,PRIMARY KEY(schedule_id,position))
+table dose_schedule_weekday on dose_schedule_weekday
+  CREATE TABLE dose_schedule_weekday(schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id)ON DELETE CASCADE,weekday INTEGER NOT NULL CHECK(weekday BETWEEN 0 AND 6),PRIMARY KEY(schedule_id,weekday))
+table doubt_snapshot on doubt_snapshot
+  CREATE TABLE doubt_snapshot(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,timestamp INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table doubt_snapshot_entry on doubt_snapshot_entry
+  CREATE TABLE doubt_snapshot_entry(id INTEGER PRIMARY KEY AUTOINCREMENT,snapshot_id INTEGER NOT NULL REFERENCES doubt_snapshot(id),order_index INTEGER NOT NULL,epoch_day INTEGER NOT NULL,mood INTEGER,note TEXT NOT NULL)
+table effect_category on effect_category
+  CREATE TABLE effect_category(id INTEGER PRIMARY KEY AUTOINCREMENT,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL DEFAULT '',enabled INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL)
+table entry on entry
+  CREATE TABLE entry(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,timestamp INTEGER NOT NULL,mood INTEGER,note TEXT,updated_at INTEGER NOT NULL,trashed_at INTEGER,starred INTEGER NOT NULL DEFAULT 0,presentation_id TEXT REFERENCES presentation(uuid))
+table entry_body_region on entry_body_region
+  CREATE TABLE entry_body_region(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,region TEXT NOT NULL,dysphoria INTEGER,euphoria INTEGER,PRIMARY KEY(entry_id,region),CHECK(dysphoria IS NOT NULL OR euphoria IS NOT NULL))
+table entry_dimension_value on entry_dimension_value
+  CREATE TABLE entry_dimension_value(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,value INTEGER NOT NULL,PRIMARY KEY(entry_id,dimension_id))
+table entry_fts on entry_fts
+  CREATE VIRTUAL TABLE entry_fts USING fts5(folded_text,content='',contentless_delete=1)
+table entry_fts_config on entry_fts_config
+  CREATE TABLE 'entry_fts_config'(k PRIMARY KEY,v)WITHOUT ROWID
+table entry_fts_data on entry_fts_data
+  CREATE TABLE 'entry_fts_data'(id INTEGER PRIMARY KEY,block BLOB)
+table entry_fts_docsize on entry_fts_docsize
+  CREATE TABLE 'entry_fts_docsize'(id INTEGER PRIMARY KEY,sz BLOB,origin INTEGER)
+table entry_fts_idx on entry_fts_idx
+  CREATE TABLE 'entry_fts_idx'(segid,term,pgno,PRIMARY KEY(segid,term))WITHOUT ROWID
+table entry_tag on entry_tag
+  CREATE TABLE entry_tag(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,tag_id INTEGER NOT NULL REFERENCES tag(id)ON DELETE CASCADE,PRIMARY KEY(entry_id,tag_id))
+table entry_template on entry_template
+  CREATE TABLE entry_template(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,name TEXT NOT NULL,note_scaffold TEXT NOT NULL DEFAULT '',presentation_id TEXT,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table entry_template_dimension_value on entry_template_dimension_value
+  CREATE TABLE entry_template_dimension_value(template_id INTEGER NOT NULL REFERENCES entry_template(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,value INTEGER NOT NULL,PRIMARY KEY(template_id,dimension_id))
+table entry_template_tag on entry_template_tag
+  CREATE TABLE entry_template_tag(template_id INTEGER NOT NULL REFERENCES entry_template(id)ON DELETE CASCADE,tag_id INTEGER NOT NULL REFERENCES tag(id)ON DELETE CASCADE,PRIMARY KEY(template_id,tag_id))
+table era on era
+  CREATE TABLE era(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,start_epoch_day INTEGER,end_epoch_day INTEGER,updated_at INTEGER NOT NULL)
+table era_mute on era_mute
+  CREATE TABLE era_mute(id INTEGER PRIMARY KEY AUTOINCREMENT,era_uuid TEXT NOT NULL UNIQUE,updated_at INTEGER NOT NULL)
+table felt_sense on felt_sense
+  CREATE TABLE felt_sense(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,tryout_id INTEGER REFERENCES tryout(id)ON DELETE CASCADE,milestone_id INTEGER REFERENCES milestone(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,mood INTEGER NOT NULL CHECK(mood BETWEEN 1 AND 5),note TEXT,updated_at INTEGER NOT NULL,CHECK((tryout_id IS NOT NULL)+(milestone_id IS NOT NULL)= 1))
+table gender_dimension on gender_dimension
+  CREATE TABLE gender_dimension(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL,low_label TEXT NOT NULL,high_label TEXT NOT NULL,min_value INTEGER NOT NULL DEFAULT 0,max_value INTEGER NOT NULL DEFAULT 100,is_built_in INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0)
+table gender_preset on gender_preset
+  CREATE TABLE gender_preset(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,name TEXT NOT NULL,is_built_in INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table hair_photo on hair_photo
+  CREATE TABLE hair_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table hair_removal_photo on hair_removal_photo
+  CREATE TABLE hair_removal_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,session_id INTEGER NOT NULL REFERENCES hair_removal_session(id)ON DELETE CASCADE,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table hair_removal_session on hair_removal_session
+  CREATE TABLE hair_removal_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,area TEXT NOT NULL CHECK(area IN('upper_lip','chin','neck','underarms','chest','abdomen','back','arms','legs','bikini_line')),method TEXT NOT NULL CHECK(method IN('laser','electrolysis','other')),pain_rating INTEGER NOT NULL CHECK(pain_rating BETWEEN 1 AND 5),cost TEXT NOT NULL,provider TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table hair_stage on hair_stage
+  CREATE TABLE hair_stage(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,scale TEXT NOT NULL,stage TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',updated_at INTEGER NOT NULL,CHECK((scale = 'norwood_hamilton' AND description = '' AND stage IN('1','2','2a','3','3v','3a','4','4a','5','5a','6','7'))OR(scale = 'sinclair' AND description = '' AND stage IN('1','2','3','4','5'))OR(scale = 'other' AND stage = '')))
+table import_log on import_log
+  CREATE TABLE import_log(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE NOT NULL,source TEXT NOT NULL,counts TEXT NOT NULL,imported_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table journaling_pause on journaling_pause
+  CREATE TABLE journaling_pause(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,start_epoch_day INTEGER NOT NULL,end_epoch_day INTEGER,updated_at INTEGER NOT NULL)
+table lab_result on lab_result
+  CREATE TABLE lab_result(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,analyte TEXT NOT NULL,value REAL NOT NULL,unit TEXT NOT NULL,note TEXT,updated_at INTEGER NOT NULL,provider TEXT NOT NULL DEFAULT '',draw_time TEXT,timing_route TEXT,timing_hours REAL,timing_day_of_interval INTEGER)
+table letter on letter
+  CREATE TABLE letter(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,text TEXT NOT NULL,unlock_epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table margin_note on margin_note
+  CREATE TABLE margin_note(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,text TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table measurement on measurement
+  CREATE TABLE measurement(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,type TEXT NOT NULL,value REAL NOT NULL,unit TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table measurement_type on measurement_type
+  CREATE TABLE measurement_type(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL,is_built_in INTEGER NOT NULL DEFAULT 0,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table medication_stock on medication_stock
+  CREATE TABLE medication_stock(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,drug TEXT NOT NULL UNIQUE,quantity REAL NOT NULL,unit TEXT NOT NULL,recorded_epoch_day INTEGER NOT NULL,reminder_ever_created INTEGER NOT NULL DEFAULT 0,reminder_dismissed INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,opened_epoch_day INTEGER,in_use_window_days INTEGER,in_use_end_epoch_day INTEGER)
+table milestone on milestone
+  CREATE TABLE milestone(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,epoch_day INTEGER NOT NULL,template_key TEXT,updated_at INTEGER NOT NULL,roadmap_goal_key TEXT,procedure_id TEXT REFERENCES procedure(uuid),tryout_id TEXT REFERENCES tryout(uuid),description TEXT NOT NULL DEFAULT '')
+table personal_effect on personal_effect
+  CREATE TABLE personal_effect(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,effect TEXT NOT NULL UNIQUE,first_noticed_epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table personal_effect_type on personal_effect_type
+  CREATE TABLE personal_effect_type(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL DEFAULT '',is_built_in INTEGER NOT NULL DEFAULT 0,category_key TEXT REFERENCES effect_category(key),direction TEXT CHECK(direction IN('feminizing','masculinizing')OR direction IS NULL),hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table photo on photo
+  CREATE TABLE photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER REFERENCES entry(id)ON DELETE CASCADE,milestone_id INTEGER REFERENCES milestone(id)ON DELETE CASCADE,file_path TEXT NOT NULL,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,starred INTEGER NOT NULL DEFAULT 0,epoch_day_override INTEGER,CHECK((entry_id IS NOT NULL)+(milestone_id IS NOT NULL)= 1))
+table pref on pref
+  CREATE TABLE pref(key TEXT PRIMARY KEY,value TEXT NOT NULL)
+table presentation on presentation
+  CREATE TABLE presentation(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,role_index INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table preset_dimension on preset_dimension
+  CREATE TABLE preset_dimension(preset_id INTEGER NOT NULL REFERENCES gender_preset(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,order_index INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(preset_id,dimension_id))
+table procedure on procedure
+  CREATE TABLE procedure(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,surgery_epoch_day INTEGER,notes TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table procedure_photo on procedure_photo
+  CREATE TABLE procedure_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER NOT NULL REFERENCES procedure(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table regimen_episode on regimen_episode
+  CREATE TABLE regimen_episode(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,drug TEXT NOT NULL,ester TEXT,dose REAL NOT NULL,dose_unit TEXT NOT NULL,route TEXT NOT NULL,interval TEXT NOT NULL,start_epoch_day INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,end_epoch_day INTEGER,end_reason TEXT)
+table reminder on reminder
+  CREATE TABLE reminder(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,title TEXT NOT NULL,type TEXT NOT NULL CHECK(type IN('med','injection','appointment','other')),time TEXT NOT NULL,recurrence TEXT CHECK(recurrence IN('DAILY','WEEKLY','EVERY_N_DAYS')),interval INTEGER,anchor_epoch_day INTEGER,epoch_day INTEGER,enabled INTEGER NOT NULL DEFAULT 1,updated_at INTEGER NOT NULL,auto_source TEXT,CHECK((recurrence IS NULL AND epoch_day IS NOT NULL AND interval IS NULL AND anchor_epoch_day IS NULL)OR(recurrence IS 'EVERY_N_DAYS' AND interval IS NOT NULL AND anchor_epoch_day IS NOT NULL AND epoch_day IS NULL)OR((recurrence IS 'DAILY' OR recurrence IS 'WEEKLY')AND interval IS NULL AND anchor_epoch_day IS NULL AND epoch_day IS NULL)))
+table revisit on revisit
+  CREATE TABLE revisit(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id TEXT NOT NULL UNIQUE REFERENCES entry(uuid),entry_epoch_day INTEGER NOT NULL,created_epoch_day INTEGER NOT NULL,target_epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table roadmap_check on roadmap_check
+  CREATE TABLE roadmap_check(id INTEGER PRIMARY KEY AUTOINCREMENT,pack_key TEXT NOT NULL,goal_key TEXT NOT NULL,updated_at INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'checked',UNIQUE(pack_key,goal_key))
+table roadmap_goal on roadmap_goal
+  CREATE TABLE roadmap_goal(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,track TEXT NOT NULL,text TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'unchecked',updated_at INTEGER NOT NULL)
+table roadmap_track on roadmap_track
+  CREATE TABLE roadmap_track(track TEXT PRIMARY KEY,updated_at INTEGER NOT NULL)
+table saved_question on saved_question
+  CREATE TABLE saved_question(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,query_text TEXT NOT NULL DEFAULT '',tag_ids TEXT NOT NULL DEFAULT '',moods TEXT NOT NULL DEFAULT '',start_epoch_day INTEGER,end_epoch_day INTEGER,has_note INTEGER NOT NULL DEFAULT 0,has_photo INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table side_effect on side_effect
+  CREATE TABLE side_effect(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,severity INTEGER CHECK(severity IS NULL OR severity BETWEEN 1 AND 5),epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
+table size_record on size_record
+  CREATE TABLE size_record(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,category TEXT NOT NULL CHECK(category IN('shirts','pants','dresses','skirts','bras','underwear','shoes','outerwear')),size TEXT NOT NULL,brand TEXT NOT NULL DEFAULT '',fit_note TEXT NOT NULL DEFAULT '',updated_at INTEGER NOT NULL)
+table sqlite_sequence on sqlite_sequence
+  CREATE TABLE sqlite_sequence(name,seq)
+table tag on tag
+  CREATE TABLE tag(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT UNIQUE,group_id INTEGER NOT NULL REFERENCES tag_group(id)ON DELETE CASCADE,label TEXT NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table tag_group on tag_group
+  CREATE TABLE tag_group(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table tally_event on tally_event
+  CREATE TABLE tally_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,kind TEXT NOT NULL CHECK(kind IN('misgendered','correctly_gendered')),context TEXT,updated_at INTEGER NOT NULL)
+table taper on taper
+  CREATE TABLE taper(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,surgery_epoch_day INTEGER NOT NULL,start_epoch_day INTEGER NOT NULL,stages TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table taper_session on taper_session
+  CREATE TABLE taper_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,note TEXT NOT NULL DEFAULT '',updated_at INTEGER NOT NULL)
+table tryout on tryout
+  CREATE TABLE tryout(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,kind TEXT NOT NULL CHECK(kind IN('name','pronouns','style','garment','makeup','presentation_step')),label TEXT NOT NULL,description TEXT,start_epoch_day INTEGER NOT NULL,end_epoch_day INTEGER,updated_at INTEGER NOT NULL)
+table tryout_photo on tryout_photo
+  CREATE TABLE tryout_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,tryout_id INTEGER NOT NULL REFERENCES tryout(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
+table video_note on video_note
+  CREATE TABLE video_note(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,file_path TEXT NOT NULL,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table voice_benchmark on voice_benchmark
+  CREATE TABLE voice_benchmark(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,timestamp INTEGER NOT NULL,passage_key TEXT NOT NULL,passage_file_path TEXT NOT NULL,vowel_file_path TEXT,f0_median_hz REAL NOT NULL,f0_p10_hz REAL NOT NULL,f0_p90_hz REAL NOT NULL,semitone_sd REAL NOT NULL,words_per_minute REAL NOT NULL,f1_hz REAL,f2_hz REAL,snr_db REAL,note TEXT,updated_at INTEGER NOT NULL,pitch_track TEXT,capture_chain TEXT,resonance_scale REAL)
+table voice_practice_take on voice_practice_take
+  CREATE TABLE voice_practice_take(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,min_hz REAL NOT NULL,max_hz REAL NOT NULL,median_hz REAL NOT NULL,felt_sense INTEGER,updated_at INTEGER NOT NULL)
+table voice_recording on voice_recording
+  CREATE TABLE voice_recording(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,file_path TEXT NOT NULL,order_index INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+table wear_session on wear_session
+  CREATE TABLE wear_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,start_timestamp INTEGER NOT NULL,duration_ms INTEGER,note TEXT,updated_at INTEGER NOT NULL,kind TEXT NOT NULL DEFAULT 'binder')
+table word_frequency_ignore on word_frequency_ignore
+  CREATE TABLE word_frequency_ignore(id INTEGER PRIMARY KEY AUTOINCREMENT,word TEXT NOT NULL UNIQUE,updated_at INTEGER NOT NULL)
+trigger entry_fts_after_delete on entry
+  CREATE TRIGGER entry_fts_after_delete AFTER DELETE ON entry BEGIN DELETE FROM entry_fts WHERE rowid = old.id; END
