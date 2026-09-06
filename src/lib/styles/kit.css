@@ -1781,13 +1781,13 @@ a.kit-entry:active {
    buttons and rows take, it holds its padding at any height, and on a
    single-line readout 14px still reads as a chip.
 
-   What it does not get is a shadow: DIRECTION.md's decision 2 gives this
-   app two surfaces rather than a stack of planes, and the single shadow in
-   it belongs to the shell's floating nav. The plate is an opaque
-   --surface-2 inside a line, which is how everything else here separates
-   from what is behind it - and now that the corner picks itself, that line
-   is what still reads if a plate ever does land near a mark it did not
-   choose to clear (two series' marks pulling the choice two ways). */
+   What it does not get is a shadow. It can still land close to a mark even
+   once picking its own corner (two series' marks pulling the choice two
+   ways), and lifting it off with one is the obvious move and the wrong
+   one: DIRECTION.md's decision 2 gives this app two surfaces rather than a
+   stack of planes, and the single shadow in it belongs to the shell's
+   floating nav. The plate is an opaque --surface-2 inside a line, which is
+   how everything else here separates from what is behind it. */
 .kit-area-readout {
   position: absolute;
   top: 0;
@@ -1841,6 +1841,11 @@ a.kit-entry:active {
 
 .kit-area-readout-value {
   display: flex;
+  /* Lets the row itself shrink under the plate's own width cap above -
+     without it a flex item won't shrink past its content's width even
+     when its container is narrower, and .kit-area-readout-text's own
+     min-width: 0 would have nothing to hand its own shrink down to. */
+  min-width: 0;
   align-items: baseline;
   gap: var(--space-2);
 }
@@ -1857,7 +1862,13 @@ a.kit-entry:active {
    off the right it read as a third value with no label. */
 .kit-area-readout-pair {
   display: grid;
-  grid-template-columns: auto auto;
+  /* Lets the grid itself shrink under the plate's own width cap above, the
+     same reason .kit-area-readout-value takes it. */
+  min-width: 0;
+  /* The name column can shrink - `minmax(0, ...)`, the same escape the
+     outer `.kit-area` grid takes for its own second column - so a long one
+     ellipsizes instead of forcing the plate past the width cap above it. */
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   gap: 1px var(--space-2);
 }
@@ -1871,6 +1882,20 @@ a.kit-entry:active {
   /* A step away from the pair above, so the plate reads as two readings and
      when they were taken rather than as three rows of the same weight. */
   margin-top: 2px;
+}
+
+/* The free-text half of a reading - a metric's own name, or when it was
+   taken - next to a number that is never allowed to shrink. Capped and
+   ellipsized like an annotation's own name (below): the plate around it is
+   now held to half the plot, and an unbounded name could otherwise still
+   force it wider than that. `min-width: 0` overrides the flex/grid default
+   that would rather overflow than shrink a line below its own content. */
+.kit-area-readout-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Which line is which (phase 6 ticket 12). The app's second legend, and the

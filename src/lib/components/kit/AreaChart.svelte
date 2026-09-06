@@ -597,20 +597,20 @@
             <span class="kit-area-readout-pair">
               {#if at.value !== null}
                 <b>{formatValue(at.value)}</b>
-                <span>{name ?? ''}</span>
+                <span class="kit-area-readout-text">{name ?? ''}</span>
               {/if}
               {#if at.overlayValue !== null && overlay}
                 <b>{overlay.formatValue(at.overlayValue)}</b>
-                <span>{overlay.name}</span>
+                <span class="kit-area-readout-text">{overlay.name}</span>
               {/if}
               {#if scrubLabel && scrub !== null}
-                <span class="kit-area-readout-at">{scrubLabel(at.point, scrub)}</span>
+                <span class="kit-area-readout-at kit-area-readout-text">{scrubLabel(at.point, scrub)}</span>
               {/if}
             </span>
           {:else if at.value !== null}
             <span class="kit-area-readout-value">
               <b>{formatValue(at.value)}</b>
-              {#if scrubLabel && scrub !== null}<span>{scrubLabel(at.point, scrub)}</span>{/if}
+              {#if scrubLabel && scrub !== null}<span class="kit-area-readout-text">{scrubLabel(at.point, scrub)}</span>{/if}
             </span>
           {/if}
           <!-- What was going on at the position under the finger, stated
