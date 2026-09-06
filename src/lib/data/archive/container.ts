@@ -64,7 +64,7 @@ export const ARCHIVE_FILE_EXTENSION = '.ttbackup';
     rather than from the message: the message is a diagnostic and stays
     English for the console, while the sentence a person reads has to exist
     in both catalogues (docs/ui-copy.md). */
-export type UnsupportedArchiveKind = 'not-an-archive' | 'newer-version';
+type UnsupportedArchiveKind = 'not-an-archive' | 'newer-version';
 
 export class UnsupportedArchiveError extends Error {
   readonly kind: UnsupportedArchiveKind;
@@ -187,7 +187,7 @@ function fromBase64(text: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
-export function encodeHeader(header: ArchiveHeader): Uint8Array<ArrayBuffer> {
+function encodeHeader(header: ArchiveHeader): Uint8Array<ArrayBuffer> {
   const json = new TextEncoder().encode(
     JSON.stringify({
       kdf: header.kdf,

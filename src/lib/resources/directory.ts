@@ -144,7 +144,7 @@ export type ResourceKey = (typeof ENTRIES)[number]['key'];
    property to read at all. The key stays narrow through that widening, which
    is what lets labels.ts index its maps directly instead of casting them back
    to strings and carrying a fallback for a key that cannot exist. */
-export interface Resource extends ResourceShape {
+interface Resource extends ResourceShape {
   key: ResourceKey;
 }
 

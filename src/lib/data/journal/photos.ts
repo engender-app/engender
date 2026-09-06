@@ -48,7 +48,7 @@ export interface NormalizedPhoto {
 /** Exactly one owner, mirroring the photo table's CHECK constraint. An
     entry is addressed by its rowid and a milestone by its uuid, which is
     what each area already speaks (ADR-0002). */
-export type PhotoOwner = { entryId: number; milestoneId?: never } | { milestoneId: string; entryId?: never };
+type PhotoOwner = { entryId: number; milestoneId?: never } | { milestoneId: string; entryId?: never };
 
 /** A photo placed in time, for the Progress screen (PRD F27). The date comes
     from whichever owner the row hangs off, and `milestoneName` is that
