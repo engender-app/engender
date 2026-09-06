@@ -80,6 +80,7 @@ describe('the surfaces', () => {
       'AreaChart.svelte',
       'BarRows.svelte',
       'BareStrip.svelte',
+      'BatchedList.svelte',
       /* Not a surface: a `<g>` the area chart composes into its own plot,
          drawing what was happening around the readings (phase 5 deepening
          ticket 23). Beside the chart kit rather than inside any one screen,

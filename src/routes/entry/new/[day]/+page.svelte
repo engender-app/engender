@@ -12,16 +12,15 @@
     const mood = Number(raw);
     return Number.isInteger(mood) && mood >= 1 && mood <= 5 ? mood : null;
   });
-  /* The appointment debrief offer's deep link (phase 6 ticket 08), the same
-     query-param shape `seedMood` already has. Any non-integer is treated as
-     absent rather than passed through - the offer's own predicate is the
-     source of truth for which day this can legitimately be, and a bad
-     param should open a blank entry, not a broken one. */
+  /* The appointment debrief offer's deep link (phase 6 ticket 08, rekeyed
+     to an appointment id by ticket 58), the same query-param shape
+     `seedMood` already has. An empty param is treated as absent rather than
+     passed through - the offer's own predicate is the source of truth for
+     which appointment this can legitimately be, and a bad param should open
+     a blank entry, not a broken one. */
   let debriefForAppointment = $derived.by(() => {
     const raw = page.url.searchParams.get('debriefFor');
-    if (raw == null) return undefined;
-    const day = Number(raw);
-    return Number.isInteger(day) ? day : undefined;
+    return raw ? raw : undefined;
   });
 </script>
 

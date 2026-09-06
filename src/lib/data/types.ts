@@ -1209,11 +1209,26 @@ export interface TaperSession {
   note: string;
 }
 
+/** The four kinds of thing a document can link to (phase 8 features ticket
+    56, ADR-0065). Closed rather than `ChecklistOwner`'s open `kind: string`:
+    the ticket refuses a fifth kind, so the type refuses one too. */
+export type DocumentTargetKind = 'goal' | 'milestone' | 'procedure' | 'episode';
+
+/** A document's own link (ticket 56): at most one, to a roadmap goal, a
+    milestone, a procedure or a regimen episode. `id` is that thing's own
+    uuid for three of the four kinds, and for 'goal' is either a pack-and-key
+    string or a custom goal's uuid - the same duality
+    `Milestone.roadmapGoalKey` already stores in one column. */
+export interface DocumentTarget {
+  kind: DocumentTargetKind;
+  id: string;
+}
+
 /** One piece of paper the person keeps (phase 8 features ticket 52,
     ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court ruling,
     a referral. The app never reads it - no OCR, no text extraction, no
-    search over what it says - so the three fields beside the file are the
-    whole record, and `title` is the person's own summary and the only handle
+    search over what it says - so the fields beside the file are the whole
+    record, and `title` is the person's own summary and the only handle
     search has on it.
 
     `JournalDocument` rather than `Document`, which is the DOM's own global:
@@ -1231,11 +1246,24 @@ export interface TaperSession {
     thumbnail beside them - an image's from normalisation, a PDF's its first
     page drawn once at import (ticket 55) - and
     `isPdfDocument`/`documentThumbName`/`documentFilesOf`
-    (journal/documents.ts) are what tell the two apart from the name alone. ADR-0065's link to a goal, milestone,
-    procedure or episode is ticket 56's and is not part of this shape yet. */
+    (journal/documents.ts) are what tell the two apart from the name alone.
+
+    `targetKind`/`targetId` are the checklist owner pair (`ChecklistOwner`)
+    over the fixed `DocumentTargetKind` set instead of that type's open
+    string, kept as two flat fields rather than one nested `DocumentTarget`
+    because `flatArea` (this area's own writer, documents.ts) maps one
+    domain field to one column and has no join to offer; `documentTarget()`
+    (documents.ts) is the combined read a caller wants instead. Both null
+    until the person files this under something (ticket 56), both set
+    together (schema CHECK). Deleting a milestone or a procedure nulls them
+    (documents.ts); a regimen episode and a roadmap goal have no delete to
+    null them from (regimen.ts, provenance.ts), so a link to either cannot
+    dangle in practice today. */
 export interface JournalDocument {
   id: string;
   epochDay: number;
   title: string;
   fileName: string;
+  targetKind: DocumentTargetKind | null;
+  targetId: string | null;
 }

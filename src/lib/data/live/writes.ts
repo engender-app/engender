@@ -401,8 +401,9 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       // A milestone save can preserve, remove or replace its photo.
       upsertMilestone: ['milestone', 'photo'],
-      // Takes its felt-sense history along too (phase 5 ticket 24).
-      deleteMilestone: ['milestone', 'photo', 'feltSense']
+      // Takes its felt-sense history along too (phase 5 ticket 24), and
+      // nulls a document's link to it (ticket 56).
+      deleteMilestone: ['milestone', 'photo', 'feltSense', 'document']
     },
     // A milestone is read back with its photos on it, the same way an entry
     // is.
@@ -441,12 +442,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       addDocument: ['document'],
       updateDocument: ['document'],
-      deleteDocument: ['document']
+      deleteDocument: ['document'],
+      // Ticket 56: the target lives on the same row as everything else.
+      setDocumentTarget: ['document']
     },
     reads: {
       getDocuments: ['document'],
       getDocument: ['document'],
       getDocumentsOnDay: ['document'],
+      getDocumentsLinkedTo: ['document'],
       lastWriteEpochDay: ['document']
     }
   }),
@@ -656,7 +660,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   procedures: classify<Journal['procedures']>()({
     writes: {
       upsertProcedure: ['procedure'],
-      deleteProcedure: ['procedure', 'appointment', 'checklist', 'milestone'],
+      // Ticket 56: also nulls a document's link to it.
+      deleteProcedure: ['procedure', 'appointment', 'checklist', 'milestone', 'document'],
       setNotes: ['procedure'],
       addConsult: ['appointment'],
       deleteConsult: ['appointment'],
@@ -686,6 +691,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // so a renamed journey redraws them.
     reads: {
       getAppointments: ['appointment', 'procedure'],
+      getAppointment: ['appointment', 'procedure'],
       getKinds: ['appointment'],
       getDayRecords: ['appointment', 'procedure'],
       lastWriteEpochDay: ['appointment'],
@@ -794,7 +800,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       setItemCarriedForward: ['checklist'],
       deleteItem: ['checklist'],
       reorder: ['checklist'],
-      setAppointmentDate: ['checklist'],
       setDebriefDismissed: ['checklist'],
       recordDebriefEntry: ['checklist']
     },
@@ -802,9 +807,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getChecklist: ['checklist'],
       getChecklistByOwner: ['checklist'],
       getStandaloneChecklist: ['checklist'],
-      getAppointmentDate: ['checklist'],
       getDebriefState: ['checklist'],
-      getDebriefDismissedEpochDay: ['checklist'],
       getDebriefEntryId: ['checklist']
     }
   }),

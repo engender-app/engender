@@ -425,7 +425,7 @@
           {/each}
           {#if entriesRemaining > 0}
             <button class="btn btn-soft search-more" data-tryout-entries-more onclick={() => (pages += 1)}>
-              <span>{m.search_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
+              <span>{m.list_more({ count: Math.min(PAGE, entriesRemaining) })}</span>
             </button>
           {/if}
         </div>

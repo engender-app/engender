@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { nearestScrollLeft } from './segmentedTrack';
 
   /* A choice among a few peers. The pill behind the chosen one is a single
      element that slides between them rather than a background that appears on
@@ -154,10 +155,19 @@
        reason to scroll before this ran, so nothing had brought it into view -
        the pill sat correctly positioned past the visible edge, and only the
        track's own clip made it look like the highlight had not reached the
-       end of the background (Alicja, 2026-08-28). `inline: 'nearest'` moves
-       the track only as far as the segment needs and never touches the
-       page's own scroll. */
-    target.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+       end of the background (Alicja, 2026-08-28).
+
+       This was `target.scrollIntoView({ inline: 'nearest', block: 'nearest' })`
+       and the comment beside it claimed that never touches the page's own
+       scroll. It does, whenever the control is below the fold: `block:
+       'nearest'` scrolls every scrollable ancestor the least amount that
+       brings the element into view, and the app's own scroll region is one
+       of those. Arriving on the wear log - a switcher under a long list -
+       scrolled the screen down to the switcher before the person had
+       touched anything (phase 8 features ticket 66). Moving the track's own
+       scrollLeft is what this always meant, and it cannot move an ancestor
+       at all. */
+    if (track) track.scrollLeft = nearestScrollLeft(track, target);
     const next = { x: target.offsetLeft, w: target.offsetWidth };
     if (next.x === pill.x && next.w === pill.w) return;
     if (placed) sliding = true;

@@ -36,11 +36,15 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import DocumentTargetPicker from '$lib/components/DocumentTargetPicker.svelte';
+  import { documentTargets } from '$lib/components/documentTargets.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
@@ -51,7 +55,9 @@
   import { readPhoto, readThumbnailFile } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import type { JournalDocument } from '$lib/data/types';
+  import { documentTarget } from '$lib/data/journal/documents';
+  import { DOCUMENT_TARGET_ICON, documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
+  import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { EASE_OUT_CSS, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -68,6 +74,27 @@
   let stored = $derived(detail.record);
 
   let confirming = $state(false);
+
+  /* What the document is filed under (ticket 56, ADR-0065). The four reads
+     behind the name are documentTargets.svelte.ts's, shared with the picker
+     the pencil opens, and they answer in three states rather than two: a
+     read still in flight is not a target that is gone. */
+  let target = $derived(stored ? documentTarget(stored) : null);
+
+  const targets = documentTargets();
+  let resolved = $derived(target ? targets.resolve(target) : null);
+
+  let pickingTarget = $state(false);
+
+  async function pickTarget(next: DocumentTarget | null) {
+    if (!stored) return;
+    try {
+      await journal.documents.setDocumentTarget(stored.id, next);
+    } catch (error) {
+      console.error('a document link could not be saved', error);
+      toast(m.document_edit_failed());
+    }
+  }
 
   let isPdf = $derived(stored ? isPdfDocument(stored.fileName) : false);
 
@@ -458,6 +485,68 @@
           <DatePicker name="document-day" bind:value={draft.day} {id} />
         {/snippet}
       </Field>
+      <!-- The link is a row of the same list card the rest of the app files
+           things in, rather than a line of text with a button beside it: it
+           goes to the target the way any row goes to what it names, and the
+           trailing control is the row's own `action` - which is what keeps a
+           button out of the middle of a link (ListRow's own reason for the
+           split shape). Unlinked, the row has nowhere to go, so it acts. -->
+      <Field label={m.document_link_label()} legend>
+        {#snippet children()}
+          <ListCard>
+            {#if resolved?.state === 'found'}
+              <ListRow
+                key="document-target"
+                data-document-link
+                icon={DOCUMENT_TARGET_ICON[target!.kind]}
+                title={resolved.text}
+                subtitle={documentTargetKindLabel(target!.kind)}
+                href={resolved.href}
+                action={{
+                  icon: 'pencil',
+                  label: m.document_link_change(),
+                  onclick: () => (pickingTarget = true),
+                  attrs: { 'data-pick-document-target': 'true' }
+                }}
+              />
+            {:else if resolved?.state === 'loading'}
+              <!-- The lists behind the name have not landed yet, so no row:
+                   a name still coming and a target that is gone read nothing
+                   alike, and one of the two would have to be guessed. -->
+              <Skeleton variant="line" count={1} />
+            {:else if resolved}
+              <!-- A link whose target is gone, which a restored archive can
+                   carry (ADR-0065): the paper outlives what it was filed
+                   under, so the row states that and offers the picker rather
+                   than pointing at nothing. -->
+              <ListRow
+                key="document-target"
+                data-document-link
+                static
+                icon={DOCUMENT_TARGET_ICON[target!.kind]}
+                title={m.document_target_gone()}
+                action={{
+                  icon: 'pencil',
+                  label: m.document_link_change(),
+                  onclick: () => (pickingTarget = true),
+                  attrs: { 'data-pick-document-target': 'true' }
+                }}
+              />
+            {:else}
+              <ListRow
+                key="document-target"
+                data-document-link
+                data-pick-document-target="true"
+                icon="plus"
+                title={m.document_link_add()}
+                subtitle={m.document_link_none()}
+                chevron={false}
+                onclick={() => (pickingTarget = true)}
+              />
+            {/if}
+          </ListCard>
+        {/snippet}
+      </Field>
       <button
         class="btn btn-primary press"
         data-save-document
@@ -494,6 +583,13 @@
     confirmAttrs={{ 'data-confirm-delete-document': '' }}
     onConfirm={deleteDocument}
     onCancel={() => (confirming = false)}
+  />
+
+  <DocumentTargetPicker
+    open={pickingTarget}
+    current={target}
+    onPick={(next) => pickTarget(next)}
+    onClose={() => (pickingTarget = false)}
   />
 </div>
 

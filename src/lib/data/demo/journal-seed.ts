@@ -81,19 +81,17 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
 
   for (const reminder of reminders) await journal.reminders.upsertReminder(reminder);
 
-  /* The debrief is written through checklists.ts's pre-ticket-58 mechanism:
-     the standalone checklist's own `appointment_epoch_day` column, set here
-     and left on the past appointment's day rather than moved to the future
-     one - moving it would clear `debrief_entry_id` again (setAppointmentDate's
-     own rule), undoing the very thing this seeds. Ticket 58 is what makes
-     this column a read over the appointment table instead of a value set by
-     hand; until then, this is the real, current write path. */
+  /* The debrief is linked by the appointment's own id (ticket 58), the same
+     link `recordDebriefEntry` makes for a person who wrote it through the
+     real offer. Unlike that person, the persona has no standing prep list
+     for the link to land on, which is why `recordDebriefEntry` creates the
+     standalone checklist on first use (checklists.ts) rather than assuming
+     one exists. */
   for (const { debrief, ...appointment } of appointments) {
-    await journal.appointments.upsertAppointment(appointment);
+    const appointmentId = await journal.appointments.upsertAppointment(appointment);
     if (debrief) {
       const entryId = await journal.entries.upsertEntry({ epochDay: appointment.epochDay, ...debrief });
-      await journal.checklists.setAppointmentDate(appointment.epochDay);
-      await journal.checklists.recordDebriefEntry(entryId, appointment.epochDay);
+      await journal.checklists.recordDebriefEntry(entryId, appointmentId);
     }
   }
 

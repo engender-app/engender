@@ -451,7 +451,7 @@
         <EntryDays {groups} {role} {marginNotesByEntry} />
         {#if remaining > 0}
           <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
-            <span>{m.search_more({ count: Math.min(PAGE, remaining) })}</span>
+            <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
           </button>
         {/if}
       {/if}
@@ -477,7 +477,7 @@
       {/if}
       {#if hitsRemaining > 0}
         <button class="btn btn-soft search-more" data-search-hits-more onclick={() => (hitPages += 1)}>
-          <span>{m.search_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
+          <span>{m.list_more({ count: Math.min(PAGE, hitsRemaining) })}</span>
         </button>
       {/if}
     {:else}

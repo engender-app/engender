@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { EpisodeEndReason, WearKind } from '../types';
+import type { DocumentTargetKind, EpisodeEndReason, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
@@ -753,6 +753,14 @@ export interface ArchiveDocument {
   /** The opaque `<uuid>.jpg` of photos/names.ts, whose bytes travel in the
       archive's file manifest beside the photos. Never a path. */
   fileName: string;
+  /** The document's link (ticket 56, ADR-0065), both null or both set - a
+      plain uuid for three of the four kinds, and for 'goal' either a
+      pack-and-key string or a custom goal's own uuid. No rowid to resolve:
+      it travels as given and can dangle, which is the point (a document
+      outlives the thing it was filed under). Absent on an archive written
+      before this ticket, read as null (archiveSections.ts). */
+  targetKind: DocumentTargetKind | null;
+  targetId: string | null;
 }
 
 /** What a person last reported having of one drug, plus box 4's reminder

@@ -5,8 +5,23 @@
 
    Flat, so its three writes come from flatArea.ts and only the reads are its
    own - and with them ADR-0053's delete contract by construction. The record
-   is a day, a title and a stored file; ADR-0065's optional link to a goal, a
-   milestone, a procedure or an episode is ticket 56's and is not here.
+   is a day, a title, a stored file, and (ticket 56) an optional link to a
+   goal, a milestone, a procedure or an episode.
+
+   The link travels as two flat columns, `targetKind`/`targetId`, rather than
+   one nested field: `flatArea` maps one domain field to one column with no
+   join to offer (flatArea.ts's own header), the same reason `milestone`'s
+   `procedureId`/`tryoutId` are flat fields on `Milestone` rather than a
+   nested owner. `documentTarget()` below is the combined read a caller
+   wants instead of the two apart.
+
+   The link is nulled by the two deletes that can reach it - `deleteMilestone`,
+   `deleteProcedure` - each running a cross-table UPDATE before its own row's
+   DELETE, the same order those two already use for `milestone.procedure_id`/
+   `tryout_id`. A regimen episode and a roadmap goal have no delete to null it
+   from (regimen.ts: "episodes are never deleted"; provenance.ts: "nothing can
+   delete a roadmap goal today"), so a link to either cannot dangle in
+   practice today - schema v77's own comment says the same.
 
    **The app never reads a document.** No OCR, no text extraction, nothing
    about what the page says (ADR-0065). That is why there is no method here
@@ -40,13 +55,13 @@
    rather than as an error. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { JournalDocument } from '../types';
+import type { DocumentTarget, JournalDocument } from '../types';
 import { filesOf, photoFileName, thumbFileName } from '../photos/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { DocumentFile } from '../documents/accept';
 export type { DocumentFile } from '../documents/accept';
 import { flatArea } from './flatArea';
-import { mintUuid } from './support';
+import { assertChanged, mintUuid, now } from './support';
 
 /** Whether a document's stored file is a PDF rather than an image - read
     off the extension `addDocument` mints below, never off anything the
@@ -104,6 +119,23 @@ export interface DocumentsArea {
   /** Idempotent, like the journal's other deletes (ADR-0053), and it takes
       the stored file and its thumbnail with it. */
   deleteDocument(id: string): Promise<void>;
+  /** Documents whose link names this exact (kind, id) pair, newest first -
+      what a target's own screen draws under "documents pointing here".
+      Reads only: the target stores nothing (ADR-0065). */
+  getDocumentsLinkedTo(kind: DocumentTarget['kind'], id: string): Promise<JournalDocument[]>;
+  /** Sets or clears a document's link. `null` clears it - as cheap as
+      setting one (ADR-0065). Throws on an unknown document id (ADR-0053),
+      the same as `updateDocument`. */
+  setDocumentTarget(id: string, target: DocumentTarget | null): Promise<void>;
+}
+
+/** `document.targetKind`/`targetId` combined, or null when either is - which
+    by the schema CHECK means both are. Pure, no driver: every screen that
+    wants "what is this linked to" wants the pair together, not the two flat
+    fields apart. */
+export function documentTarget(document: JournalDocument): DocumentTarget | null {
+  const { targetKind, targetId } = document;
+  return targetKind !== null && targetId !== null ? { kind: targetKind, id: targetId } : null;
 }
 
 /** The title as it will be stored, or a throw.
@@ -129,7 +161,13 @@ function titled(title: string): string {
 export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): DocumentsArea {
   const documents = flatArea<JournalDocument>(driver, {
     table: 'document',
-    columns: { epochDay: 'epoch_day', title: 'title', fileName: 'file_path' }
+    columns: {
+      epochDay: 'epoch_day',
+      title: 'title',
+      fileName: 'file_path',
+      targetKind: 'target_kind',
+      targetId: 'target_id'
+    }
   });
 
   /** One document or none, by its travelling id. Shared by the read and the
@@ -166,14 +204,14 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
         // The document is still filed: what it holds is the person's, and
         // it can still be written back out from its own screen.
         if (content.thumb) await files.write(documentThumbName(fileName), content.thumb);
-        return documents.upsert({ epochDay: input.epochDay, title, fileName });
+        return documents.upsert({ epochDay: input.epochDay, title, fileName, targetKind: null, targetId: null });
       }
 
       const fileName = photoFileName(uuid);
       const [full, thumb] = filesOf(fileName);
       await files.write(full, content.full);
       await files.write(thumb, content.thumb);
-      return documents.upsert({ epochDay: input.epochDay, title, fileName });
+      return documents.upsert({ epochDay: input.epochDay, title, fileName, targetKind: null, targetId: null });
     },
 
     async updateDocument(document) {
@@ -184,6 +222,23 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
       const document = await byId(id);
       await documents.delete(id);
       if (document) for (const name of documentFilesOf(document.fileName)) await files.remove(name);
+    },
+
+    getDocumentsLinkedTo: (kind, id) =>
+      documents.read('WHERE target_kind = ? AND target_id = ? ORDER BY epoch_day DESC, id DESC', [kind, id]),
+
+    /* The pair alone, by hand rather than through `flatArea.upsert`: that
+       writes every column the area has, so filing a document under something
+       would re-write its title, its day and its file name from whatever a
+       read a moment earlier said they were. `assertChanged` on this UPDATE's
+       own result is what makes an unknown id throw (ADR-0053), the same as
+       every other update in the journal. */
+    async setDocumentTarget(id, target) {
+      const result = await driver.run(
+        'UPDATE document SET target_kind = ?, target_id = ?, updated_at = ? WHERE uuid = ?',
+        [target?.kind ?? null, target?.id ?? null, now(), id]
+      );
+      assertChanged(result, `document: ${id}`);
     }
   };
 }

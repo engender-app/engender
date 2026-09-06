@@ -2306,8 +2306,8 @@ ALTER TABLE wear_session ADD COLUMN kind TEXT NOT NULL DEFAULT 'binder';
    built-in list of endocrinologist, psychologist, surgeon is a picture of a
    medical path the app has no business drawing.
 
-   `checklist.appointment_epoch_day` is untouched here and still written -
-   ticket 58 retires it to a read. */
+   `checklist.appointment_epoch_day` is untouched here and was still
+   written when this migration landed - ticket 58 retires it to a read. */
 const SCHEMA_V75 = `
 CREATE TABLE appointment (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2368,6 +2368,84 @@ CREATE TABLE document (
 );
 CREATE INDEX idx_document_epoch_day ON document(epoch_day);
 `;
+
+/* v77: a document's optional link (phase 8 features ticket 56, ADR-0065):
+   at most one, to a roadmap goal, a milestone, a procedure or a regimen
+   episode. The same closed pair `checklist.owner_kind`/`owner_uuid` (v10)
+   already uses, both set or both null - except this pair is a fixed set of
+   four kinds rather than an open string, so `target_kind` also carries a
+   CHECK over the four.
+
+   A rebuild rather than two ADD COLUMNs: v13's header gives the reason -
+   SQLite cannot ALTER a table-level CHECK in place, and the pair's CHECK
+   needs both new columns to exist first.
+
+   No foreign key on `target_id`: it names a row in whichever of four
+   different tables `target_kind` says, which a single REFERENCES clause
+   cannot express, and a built-in roadmap goal is not a row at all (it is a
+   pack-and-key string compiled from roadmap.ts, never persisted). So
+   `target_id` is a plain uuid for the other three kinds and either a
+   pack-prefixed key or a custom goal's own uuid for 'goal' - the same
+   duality `milestone.roadmap_goal_key` (v43) already stores in one column.
+
+   The link is nulled by the two deletes that exist for these four kinds -
+   `deleteMilestone`, `deleteProcedure` - the same UPDATE-before-DELETE
+   order those two already use for `milestone.procedure_id`/`tryout_id`.
+   The other two kinds have no delete to null it from: regimen.ts's header
+   states "episodes are never deleted", and provenance.ts's already states
+   "nothing can delete a roadmap goal today" - so a document linked to
+   either can never dangle in practice, the same standing fact that lets
+   a roadmap goal key go un-nulled on milestone. */
+const SCHEMA_V77 = `
+CREATE TABLE document_v77 (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  epoch_day   INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  file_path   TEXT NOT NULL,
+  target_kind TEXT CHECK (target_kind IN ('goal', 'milestone', 'procedure', 'episode')),
+  target_id   TEXT,
+  updated_at  INTEGER NOT NULL,
+  CHECK ((target_kind IS NULL) = (target_id IS NULL))
+);
+INSERT INTO document_v77 (id, uuid, epoch_day, title, file_path, target_kind, target_id, updated_at)
+  SELECT id, uuid, epoch_day, title, file_path, NULL, NULL, updated_at FROM document;
+DROP TABLE document;
+ALTER TABLE document_v77 RENAME TO document;
+CREATE INDEX idx_document_epoch_day ON document(epoch_day);
+`;
+
+/* Ticket 58 rekeys the debrief from a date to an appointment id (ADR-0066):
+   both new columns hold a travelling `appointment.uuid`, never the rowid,
+   the same reason `checklist.owner_uuid` does.
+
+   Two id columns rather than one, because there is no longer a single
+   settable "current appointment" whose date-change the app can use as the
+   moment to clear a stale dismissal or entry link (`setAppointmentDate` is
+   retired) - "the most recent past appointment" now moves forward on its
+   own as new appointments are added. Comparing the appointment id a read
+   asks about against the id stored here is what used to be handled by
+   clearing on write; checklists.ts does the comparing now; a
+   `debrief_dismissed`/`debrief_entry` row that answers a since-superseded
+   appointment simply fails the comparison and reads as unset, rather than
+   needing to be cleared at write time.
+
+   `debrief_entry_id` (migrations.ts v56) is untouched: which entry debriefs
+   an appointment does not change shape, only which appointment a stored
+   entry id is read against does.
+
+   `appointment_epoch_day` and `debrief_dismissed_epoch_day` are retained,
+   unwritten from here on (the first travels in archives and older ones
+   must restore; the second never travelled and simply has nothing left to
+   read it), the same "stops being written" treatment this repo has given
+   every column a ticket takes out of use.
+
+   Numbered v78 rather than v76: ticket 52's documents area claimed v76 and
+   then ticket 56's document link claimed v77, both on main while this
+   branch was open, so this renumbered at each merge. */
+const SCHEMA_V78 = `
+ALTER TABLE checklist ADD COLUMN debrief_entry_appointment_id TEXT;
+ALTER TABLE checklist ADD COLUMN debrief_dismissed_appointment_id TEXT;`;
 
 export const migrations: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
@@ -2445,5 +2523,7 @@ export const migrations: Migration[] = [
   { version: 73, sql: SCHEMA_V73 },
   { version: 74, sql: SCHEMA_V74 },
   { version: 75, sql: SCHEMA_V75 },
-  { version: 76, sql: SCHEMA_V76 }
+  { version: 76, sql: SCHEMA_V76 },
+  { version: 77, sql: SCHEMA_V77 },
+  { version: 78, sql: SCHEMA_V78 }
 ];

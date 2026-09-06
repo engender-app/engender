@@ -267,8 +267,9 @@ const SECTIONS = [
     key: 'procedures',
     // 'appointment' because a journey prints its consults, which are
     // appointments pointing at it (ticket 57). The summary's own "since
-    // your last appointment" range is not this section's and still reads
-    // the checklist column until ticket 58 moves it.
+    // your last appointment" range is not this section's - it lives in the
+    // route itself (clinician-summary/+page.svelte), reading
+    // appointments.ts's mostRecentPastAppointment since ticket 58.
     //
     // The recovery checklist as well as the procedure: an item ticked off on
     // it changes what this section prints, and that checklist is an ordinary

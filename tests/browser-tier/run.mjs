@@ -1992,6 +1992,34 @@ await block('phase 8 features ticket 55 PDF renderer', 6, async () => {
     );
 });
 
+// --- Phase 8 features ticket 66: a long list renders a batch at a time ----
+await block('phase 8 features ticket 66 batched list', 6, async () => {
+  const r = await load('/batched-list.html', 'batched-list');
+  if (r.error) throw new Error(r.error);
+
+  const eq = (label, actual, expected) => {
+    if (JSON.stringify(actual) === JSON.stringify(expected)) ok(label);
+    else fail(label, `got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+  };
+
+  /* Thirty of a hundred, which is the whole point: the rest of the list is
+     read and in hand, and what is bounded is the DOM. */
+  eq('a hundred rows arrive as one batch of thirty', r.onArrival, 30);
+
+  if (r.grewOnScroll) ok('scrolling to the end of the rendered rows brings the next batch, unpressed');
+  else fail('scrolling brings the next batch', JSON.stringify(r));
+  eq('and brings exactly one batch, not the rest of the list', r.afterScroll, 60);
+
+  if (r.grewOnPress) ok('the control at the end of the list brings a batch too');
+  else fail('the control brings a batch', JSON.stringify(r));
+  eq('and also exactly one', r.afterPress, 90);
+
+  /* The exhausted state is reached rather than assumed: a list that never
+     runs out would pass every check above while the control never left. */
+  if (r.exhaustedCount === r.total && r.controlGoneWhenExhausted)
+    ok('the list runs out at its own length and the control goes with it');
+  else fail('the list exhausts and drops its control', JSON.stringify(r));});
+
 await browser.close();
 await server.close();
 
