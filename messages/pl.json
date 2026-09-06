@@ -3402,6 +3402,6 @@
   "document_link_kind_procedure": "Operacja",
   "document_link_kind_episode": "Kuracja",
   "document_link_kind_goal": "Krok z mapy tranzycji",
-  "roadmap_goal_open_aria": "Otwórz",
+  "roadmap_goal_open_aria": "Otwórz: {goal}",
   "roadmap_goal_milestone_sub": "Kamień milowy tego kroku"
 }
