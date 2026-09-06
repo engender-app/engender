@@ -2,7 +2,7 @@
    ticket 01). A signed version tag is the source: the build reads it, the
    About screen shows what the build read, and the release pipeline hands the
    same string to the release notes and the Android artifacts through
-   GENDER_DIARY_VERSION rather than each of them asking git a slightly
+   ENGENDER_VERSION rather than each of them asking git a slightly
    different question.
 
    Anything that is not a signed version tag on an unedited tree is a
@@ -66,7 +66,7 @@ export function readGitFacts(run = git) {
  * @returns {string}
  */
 export function resolveAppVersion(env, facts) {
-  const given = env.GENDER_DIARY_VERSION?.trim();
+  const given = env.ENGENDER_VERSION?.trim();
   if (given) return given;
 
   const release = facts.tag && facts.signed && !facts.dirty ? RELEASE_TAG.exec(facts.tag) : null;
@@ -103,7 +103,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.argv.includes('--release') && !isReleaseVersion(version)) {
     console.error(
       `${version} is not a release. That needs a signed v<semver> tag on a tree ` +
-        'with no edits and no untracked files, or GENDER_DIARY_VERSION set deliberately (ADR-0022).'
+        'with no edits and no untracked files, or ENGENDER_VERSION set deliberately (ADR-0022).'
     );
     process.exit(1);
   }

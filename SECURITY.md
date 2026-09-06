@@ -1,6 +1,6 @@
 # Security policy
 
-Gender Diary keeps journal data on the device and encrypts it at rest. Security
+enGender keeps journal data on the device and encrypts it at rest. Security
 reports still matter, and a report should be possible without posting the
 details in public first.
 

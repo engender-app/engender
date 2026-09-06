@@ -49,7 +49,7 @@ export const PIN_BINDING_SLOT = 'journal-pin-binding';
 
 /** Signed to produce the secret. Versioned, so a later scheme can derive a
     different value from the same key rather than needing a second key. */
-const BINDING_LABEL = 'gender-diary/pin-binding/v1';
+const BINDING_LABEL = 'engender/pin-binding/v1';
 
 /** Separates the PIN from the device secret. A character no PIN contains, so
     no pair of (PIN, secret) can run together into another pair's string - a

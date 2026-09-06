@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # Name cannot collide with the release APK the release workflow publishes.
-          name: gender-diary-android-debug-${{ github.run_id }}
+          name: engender-android-debug-${{ github.run_id }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
 
