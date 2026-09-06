@@ -4,7 +4,7 @@
    give for standing alone.
 
    A session's photos are their own table (hair_removal_photo) rather than a
-   third owner arm on `photo` (migrations.ts v13 explains why for hair_photo:
+   third owner arm on `photo` (schema.ts explains why for hair_photo:
    SQLite cannot widen that table's exactly-one-owner CHECK without a full
    rebuild). Unlike hair_photo, though, a session photo genuinely belongs to
    one session - a before/after picture of that treatment, not an

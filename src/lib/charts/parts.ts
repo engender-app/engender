@@ -8,7 +8,7 @@
    scale's own steps, all of them, in the scale's own order, so there is
    nothing to cap and nothing to sort. */
 
-import { share } from './geometry';
+import { share } from './share';
 
 /** One category and how much of the whole it holds. The caller's own
     counting: entries, days, doses - the ring never reads the unit. */

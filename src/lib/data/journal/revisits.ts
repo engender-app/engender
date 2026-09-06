@@ -4,7 +4,7 @@
    "own record type" reasoning letters.ts gives a letter.
 
    `entry_id` is stored as the owning entry's uuid rather than its local row
-   id (migrations.ts v61 has the reasoning), so every read here joins against
+   id (schema.ts has the reasoning), so every read here joins against
    `entry` to hand the app-facing `Revisit.entryId` back as the ordinary
    numeric id every other screen already addresses an entry by. */
 

@@ -2,9 +2,13 @@
    reason $lib/motion/flagSun.ts is: the re-tween between datasets is worth
    testing without a DOM. The point cap that used to live here moved to
    charts/grain.ts's MAX_POSITIONS/atGrain, which chooses how coarse a
-   chart draws instead of averaging its real points down. */
+   chart draws instead of averaging its real points down.
 
-import { area as d3area, line as d3line, curveLinear, curveMonotoneX } from 'd3-shape';
+   This module imports nothing, and that is a rule rather than an accident:
+   its callers want arithmetic and should not have a charting library come
+   with it. Path building is charts/areaPath.ts and the bar length is
+   charts/share.ts for that reason alone. tests/chart-library-graph.test.ts
+   holds the rule and carries the measurement behind it. */
 
 export interface Point {
   /** Domain position - an epoch day, an index, whatever the caller counts in. */
@@ -107,91 +111,6 @@ export function bridgeGaps(values: Sample[]): Sample[] {
   return out;
 }
 
-export interface AreaBox {
-  width: number;
-  height: number;
-  min: number;
-  max: number;
-}
-
-export interface AreaPath {
-  line: string;
-  /** The same line, closed down to the baseline. */
-  fill: string;
-  /** Where each value sits, for the marks a finger scrolls between. `null`
-      at a position this series has no reading at - the slot is kept rather
-      than dropped, because its index is how the scrub finds a position and
-      two series on one plot have to agree about which index is where. */
-  dots: ({ x: number; y: number } | null)[];
-  /** The latest reading, for the ring the area chart puts on it. The latest
-      one there is, which on a series that stops early is not the last
-      position on the plot. */
-  last: { x: number; y: number } | null;
-}
-
-export function areaPath(values: Sample[], box: AreaBox, smooth: boolean = true): AreaPath {
-  if (values.length === 0) return { line: '', fill: '', dots: [], last: null };
-
-  const span = box.max - box.min;
-  const xs = (i: number) => (values.length === 1 ? box.width / 2 : (box.width * i) / (values.length - 1));
-  const ys = (v: number) => {
-    // A scale with no span - one dimension pinned to a single value - sits
-    // on the baseline rather than dividing by zero.
-    if (span === 0) return box.height;
-    const clamped = Math.min(box.max, Math.max(box.min, v));
-    return box.height - ((clamped - box.min) / span) * box.height;
-  };
-
-  const dots = values.map((v, i) => (v === null ? null : { x: round(xs(i)), y: round(ys(v)) }));
-
-  /* Monotone rather than straight segments or a plain spline: it rounds the
-     corners a reading turns without inventing a peak between two days that
-     were never that far apart, which a Catmull-Rom or a cardinal curve
-     will. A chart of someone's own history has no business overshooting a
-     value they logged.
-
-     Straight segments while a tween is playing, though. A monotone path
-     over a year is three cubic control points per day where a polyline is
-     one position, and on a Pixel 10a rebuilding the smoothed version every
-     frame put the p95 frame at 33.3ms against a 16.7ms baseline - visibly
-     dropped frames, in the one direction that matters. At 14px a point the
-     difference between the two curves is a fraction of the stroke width
-     while the line is moving, and the smoothing arrives when it stops. */
-  const curve = smooth ? curveMonotoneX : curveLinear;
-  /* `defined` is what keeps a gap a gap: a stretch this metric was not
-     logged over comes out as a break in the path rather than as a segment
-     drawn straight across it. On a single series nothing is ever undefined
-     and the path is what it always was. */
-  const defined = (p: { x: number; y: number | null }): p is Point => p.y !== null;
-  const line = d3line<{ x: number; y: number | null }>()
-    .defined(defined)
-    .x((p) => p.x)
-    .y((p) => p.y as number)
-    .curve(curve);
-  const fill = d3area<{ x: number; y: number | null }>()
-    .defined(defined)
-    .x((p) => p.x)
-    .y0(box.height)
-    .y1((p) => p.y as number)
-    .curve(curve);
-  const shape = dots.map((d, i) => ({ x: round(xs(i)), y: d ? d.y : null }));
-  const read = dots.filter((d) => d !== null);
-
-  return {
-    line: line(shape) ?? '',
-    fill: fill(shape) ?? '',
-    dots,
-    last: read[read.length - 1] ?? null
-  };
-}
-
-/** A bar's width as a percentage of the largest value beside it. The bars
-    carry their own values as text, so this is length only. */
-export function share(value: number, max: number): number {
-  if (max <= 0 || value <= 0) return 0;
-  return (value / max) * 100;
-}
-
 export interface PaddedRange {
   min: number;
   max: number;
@@ -237,10 +156,4 @@ export function paddedSeries(points: Point[], minPad: number): PaddedSeries | nu
   const range = points.length < 2 ? null : paddedRange(points.map((p) => p.y), minPad);
   if (range === null) return null;
   return { points, ...range, from: points[0].x, to: points[points.length - 1].x };
-}
-
-/** Three decimals is finer than a device pixel at any chart size the app
-    draws, and it keeps the path strings short enough to diff by eye. */
-function round(n: number): number {
-  return Math.round(n * 1000) / 1000;
 }
