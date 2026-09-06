@@ -1149,7 +1149,7 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
    stop for the group - this is the keyboard half a unit test can't see,
    since it needs a real DOM giving out real focus. */
 await block('phase 9 audit ticket 07 segmented keyboard nav', 4, async () => {
-  const group = page.locator('[data-case="segmented"] [role="radiogroup"][aria-label="Range"]');
+  const group = page.locator('[data-segmented="range"]');
   const week = group.locator('[data-segment="week"]');
   const month = group.locator('[data-segment="month"]');
   const year = group.locator('[data-segment="year"]');
