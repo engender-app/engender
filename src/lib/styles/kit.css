@@ -827,46 +827,54 @@ a.kit-entry:active {
    the lazy page scaffold, and the first prototype round shipped it before
    the slop audit caught it. A tile shows a title and the number or line
    that is the reason to go there. */
+/* Flex rather than a two-column grid, and the reason is motion (phase 9
+   carpet ticket 04). A grid column holds its width whatever the child inside
+   it is doing, so a tile leaving could shrink all it liked and the tile
+   beside it stayed at half width until the frame the node was finally
+   removed - then jumped to full. The yank landed *after* the animation
+   looked finished, which is the worst place for one. A flex line has no
+   columns to hold: the survivor's own `flex-grow` absorbs whatever the
+   leaving tile gives up, on every frame, and lands on full width with
+   nothing left to snap. $lib/motion/reveal.ts's `collapse` is the other
+   half.
+
+   The basis is half the line less the gap, so two tiles plus the gap between
+   them come to exactly the line - the arithmetic the two-column grid was
+   doing. `flex-grow: 1` is what makes a lone tile take the whole width
+   instead, which is the `:only-child` rule this replaces: where a grid's two
+   destinations are each gated on their own - Home's look back, where wrapped
+   and on-this-day qualify independently - the lone survivor sat in the left
+   column with a hole beside it, and read as a tile that failed to load
+   rather than as the only offer there is. A third tile wraps to its own line
+   and takes all of it for the same reason.
+
+   `min-width: 0`, because a flex item's automatic minimum is its content and
+   a tile whose title will not wrap would otherwise refuse to shrink. */
 .kit-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   align-items: stretch;
 }
 
-.kit-tiles[data-live-tile-grid] {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.kit-tiles[data-live-tile-grid] > * {
+.kit-tiles > * {
+  flex: 1 1 calc(50% - var(--space-2));
   min-width: 0;
 }
 
-/* `data-rows`: one column, for a grid whose tiles are rows rather than a
-   pair. Home's bound-to-today tiles take the whole width because that is
-   their weight (phase 8 UX ticket 01); the two-up default above is what a
+/* `data-rows`: one tile per line, for a grid whose tiles are rows rather
+   than a pair. Home's bound-to-today tiles take the whole width because that
+   is their weight (phase 8 UX ticket 01); the two-up default above is what a
    pair of destinations gets. */
-.kit-tiles[data-rows] {
-  grid-template-columns: minmax(0, 1fr);
+.kit-tiles[data-rows] > * {
+  flex-basis: 100%;
 }
 
-/* One tile is not half a pair. Where a grid's two destinations are each
-   gated on their own - Home's look back, where wrapped and on-this-day
-   qualify independently - the lone survivor sat in the left column with a
-   hole beside it, which reads as a tile that failed to load rather than as
-   the only offer there is. It takes the row.
-
-   Two-up is the shape, not the rule. At 200% zoom on a phone the CSS
+/* Two-up is the shape, not the rule. At 200% zoom on a phone the CSS
    viewport is around 195px, which leaves a tile about 76px wide and turns
    its note into an ellipsis - the reading that is the reason to go there,
    truncated. Below that the pair stacks and each tile gets the whole width.
    The threshold is where the note stops fitting rather than a device size. */
-.kit-tiles > :only-child,
-.kit-tiles[data-live-tile-grid] > :only-child {
-  grid-column: 1 / -1;
-}
 
 /* `data-tight`: opt-in for a pair the 390px floor's protection is
    overcautious for. Two of them so far. Safe Space's stats, whose notes are
@@ -880,18 +888,14 @@ a.kit-entry:active {
    the default above stays the floor for any pair that has not confirmed its
    notes are this short. */
 @media (max-width: 300px) {
-  .kit-tiles[data-tight] {
-    grid-template-columns: minmax(0, 1fr);
+  .kit-tiles[data-tight] > * {
+    flex-basis: 100%;
   }
 }
 
 @media (max-width: 390px) {
-  .kit-tiles:not([data-tight]),
-  /* Same guard as the plain kit-tiles selector above - a live-tile grid
-     that also opts into data-tight (none does yet) must not be stacked
-     here just because this selector forgot to check for it too. */
-  .kit-tiles[data-live-tile-grid]:not([data-tight]) {
-    grid-template-columns: minmax(0, 1fr);
+  .kit-tiles:not([data-tight]) > * {
+    flex-basis: 100%;
   }
 }
 

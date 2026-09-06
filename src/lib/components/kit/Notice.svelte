@@ -46,7 +46,7 @@
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { roleAttrs } from './role';
-  import { disclose, resize } from '$lib/motion/reveal';
+  import { collapse, resize } from '$lib/motion/reveal';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -85,19 +85,25 @@
   } = $props();
 </script>
 
-<!-- out: only, never in:. A notice arrives with tier 4's "content is simply
-     there" - no entrance animation is DIRECTION.md's own rule, and every
-     other kit surface already follows it. Leaving is different: whatever
-     unmounts this - the dismiss button, or a caller's own condition going
-     false, the same shape a dismiss produces - used to drop the space it
-     held in one frame and throw the content below up to meet it (phase 5
-     ticket 32.17, "clicking 'x' on a panel should close it with a nice
-     animation, the content below shouldnt just jump up immediately").
-     `disclose` already shrinks a box to nothing by measuring its own
-     height rather than guessing at one; it runs the same way backwards
-     for a leaving node as it does forwards for an arriving one.
+<!-- Leaving: whatever unmounts this - the dismiss button, or a caller's own
+     condition going false, the same shape a dismiss produces - used to drop
+     the space it held in one frame and throw the content below up to meet it
+     (phase 5 ticket 32.17, "clicking 'x' on a panel should close it with a
+     nice animation, the content below shouldnt just jump up immediately").
+     `collapse` shrinks a box to nothing by measuring its own box rather than
+     guessing at one; it runs the same way backwards for a leaving node as it
+     does forwards for an arriving one.
 
-     `skip`: without it this same shrink replayed whenever the *page*
+     Arriving is `collapse`'s own arrival window rather than the flat "no
+     entrance animation" this carried until phase 9 carpet ticket 04. Tier
+     4's "content is simply there" is about a screen assembling itself, and
+     that is exactly what the window suppresses; a notice that appears while
+     somebody is already looking at a settled screen is a change within it,
+     and opening its own height is what stops it shoving the rows below in
+     one frame - the same defect on the way in that the paragraph above
+     names on the way out.
+
+     `skip`: without it this shrink replayed whenever the *page*
      unmounts the notice - navigating away from a screen that never sets
      `dismiss` at all (the roadmap's provenance notice, phase 5 ticket 99
      item 16) still collapsed it to nothing over the outgoing screen's
@@ -116,18 +122,18 @@
      own title/text (the measurements screen's protocol tip, switched with
      the segmented control) used to jump the same way on the way in. One
      primitive per shape - `resize` cannot see a node arriving or leaving,
-     which is `disclose`'s job, and `disclose` cannot see a node's own
+     which is `collapse`'s job, and `collapse` cannot see a node's own
      content changing size while it stays put, which is `resize`'s. -->
 <div
   class="kit-notice"
   data-kit-surface
   data-notice={key}
-  out:disclose={{ skip: navigating.to !== null }}
+  transition:collapse={{ skip: navigating.to !== null }}
   {...roleAttrs(role)}
   {...rest}
 >
   <span class="kit-notice-ico"><Icon name={icon} size={22} /></span>
-  <!-- Not the root: `disclose`'s own out-transition animates the root's
+  <!-- Not the root: `collapse`'s own out-transition animates the root's
        height too, on the way out, and ResizeObserver cannot tell that
        apart from a genuine content change - the two fought over the same
        property, and the height oscillated rather than settling. The body

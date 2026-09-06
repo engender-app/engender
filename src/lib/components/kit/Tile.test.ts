@@ -27,6 +27,17 @@ describe('Tile component contract', () => {
   });
 
   it('renders single press anchor when action is absent', () => {
-    expect(tileFile).toContain('<a class="kit-tile press" data-tile={key} data-weight={weight} {href} {...rest}>');
+    expect(tileFile).toContain('<a class="kit-tile press" data-tile={key} data-weight={weight} {href}');
+  });
+
+  /* Phase 9 carpet ticket 04: a tile joins and leaves its grid through the
+     one panel primitive, on every branch - a tile that forgot it would be
+     the one that snapped, and the branch a tile takes is decided by which
+     controls its caller passed rather than by anything about the motion. */
+  it('collapses through the panel primitive on all three branches', () => {
+    expect((tileFile.match(/transition:collapse=\{panel\}/g) ?? []).length).toBe(3);
+    expect(tileFile).toContain("from '$lib/motion/reveal'");
+    // The `skip` that stops a screen folding its own tiles up as it leaves.
+    expect(tileFile).toContain('navigating.to !== null');
   });
 });
