@@ -172,12 +172,32 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
      * chasing each margin-bearing surface that uses it. */
   const marginTop = parseFloat(style.marginTop) || 0;
   const marginBottom = parseFloat(style.marginBottom) || 0;
+  /* A grid box lays its own content out again on every frame of the
+     collapse, and that is what stopped this reading as a mask. Its `auto`
+     tracks compress once the container's height is definite and smaller
+     than they are, and `align-items: center` then re-centres each item in
+     whatever is left of its track - so Notice.svelte's title climbed
+     steadily toward the top edge while the icon beside it was clipped from
+     the bottom, which is a box squashing its contents rather than a box
+     being covered over (Alicja, ticket 99 item 23: "it looks like a scale
+     animation, whereas it should be a mask animation").
+
+     Pinning the tracks at what they measure right now takes the relayout
+     out of it: the content stays exactly where it was and `overflow:
+     hidden` above does the covering, which is the mask. The used value
+     getComputedStyle returns here is already a px list, so writing it back
+     is the same layout the box has at rest.
+
+     Grid only. A block container's content is top-anchored already, which
+     is why every `.disclosed` caller looked right without this. */
+  const rows = style.display.includes('grid') ? style.gridTemplateRows : '';
 
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
     css: (t) =>
       `overflow: hidden;` +
+      (rows ? `grid-template-rows: ${rows};` : '') +
       `height: ${t * height}px;` +
       `padding-top: ${t * paddingTop}px;` +
       `padding-bottom: ${t * paddingBottom}px;` +
