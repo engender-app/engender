@@ -26,6 +26,7 @@
     "gallery:dose-sheet": "VITE_DEMO=1 npm run build && node tests/dose-sheet-gallery.mjs",
     "gallery:appointments": "VITE_DEMO=1 npm run build && node tests/appointments-gallery.mjs",
     "gallery:in-the-room": "VITE_DEMO=1 npm run build && node tests/in-the-room-gallery.mjs",
+    "gallery:prep-visits": "VITE_DEMO=1 npm run build && node tests/prep-visits-gallery.mjs",
     "gallery:documents": "VITE_DEMO=1 npm run build && node tests/documents-gallery.mjs",
     "gallery:roadmap-goal": "VITE_DEMO=1 npm run build && node tests/roadmap-goal-gallery.mjs",
     "gallery:unprompted": "node tests/unprompted-gallery.mjs",
