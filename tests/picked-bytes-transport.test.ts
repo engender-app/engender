@@ -7,7 +7,7 @@
    copied the base64 decode rather than reusing it. Two decoders is how the
    first one survives a fix to the other.
 
-   So: `readPickedOverChannel` is the fast transport and `readPickedBase64`
+   So: `readPickedOverChannel` is the fast transport and `readPickedChunk`
    is the floor's fallback, and only `picker.ts` gets to choose between
    them, through the `androidPickedBytes` it exports for everyone else.
    Anything else naming either transport is a third decode being written,
@@ -29,7 +29,7 @@ const TRANSPORTS: [name: string, allowed: string[]][] = [
     'readPickedOverChannel',
     ['lib/data/photos/android-pick-channel.ts', 'lib/data/photos/picker.ts']
   ],
-  ['readPickedBase64', ['lib/data/photos/android-bridge.ts', 'lib/data/photos/picker.ts']]
+  ['readPickedChunk', ['lib/data/photos/android-bridge.ts', 'lib/data/photos/picker.ts']]
 ];
 
 /** The code with its comments taken out, the same crude pass and for the
