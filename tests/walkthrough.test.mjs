@@ -4141,6 +4141,28 @@ try {
   ok('one screen over one registry: notify column absent on web, Home column still whole');
 } catch (e) { fail('the unprompted registry view', e); }
 
+/* The demo persona files paper of its own since ticket 64, and every flow
+   below was written against a list with nothing in it - a row dated 1994
+   is the last row rather than the first one the moment anything else is
+   there, so `first()` opens somebody else's document. Emptying the list
+   through the app's own delete is what makes the three flows below say
+   what they mean again, and it exercises the same path they end on. */
+async function emptyTheDocumentsList() {
+  // The list reads from the journal, so counting rows before it has
+  // answered would find none and leave the persona's paper behind.
+  const settled = () => page.waitForSelector('[data-list-row], [data-notice="documents-empty"]');
+  await settled();
+  for (let guard = 0; guard < 12 && (await page.locator('[data-list-row]').count()); guard++) {
+    await page.locator('[data-list-row]').first().click();
+    await page.waitForSelector('[data-delete-document]');
+    await page.locator('[data-delete-document]').click();
+    await page.locator('[data-confirm-delete-document]').click();
+    await page.waitForURL('**/media/documents');
+    await settled();
+  }
+  await page.waitForSelector('[data-notice="documents-empty"]');
+}
+
 /* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
    opened and thrown away.
 
@@ -4151,7 +4173,7 @@ try {
    encrypted store the way a scan would. */
 try {
   await fresh('/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  await emptyTheDocumentsList();
 
   const page1994 = await labSlipImage(['CITY HOSPITAL', 'Diagnosis, 1994']);
   page.once('filechooser', (chooser) =>
@@ -4206,7 +4228,7 @@ try {
    bytes: this file is named .png in the chooser and is a PDF anyway. */
 try {
   await fresh('/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  await emptyTheDocumentsList();
 
   const pdfBytes = Buffer.from(makeUnreadablePdf());
   page.once('filechooser', (chooser) =>
@@ -4257,7 +4279,7 @@ try {
    them. */
 try {
   await fresh('/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  await emptyTheDocumentsList();
 
   page.once('filechooser', (chooser) =>
     chooser.setFiles({
