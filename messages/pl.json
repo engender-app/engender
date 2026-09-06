@@ -178,7 +178,7 @@
   "search": "Szukaj",
   "search_placeholder": "Szukaj w całym dzienniku…",
   "search_hint": "Notatki, tagi, listy, pytania, wszystko, co ma słowa. Z polskimi znakami lub bez: „lozko” znajdzie „łóżko”.",
-  "search_more": [
+  "list_more": [
     {
       "declarations": [
         "input count",

@@ -76,6 +76,7 @@
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -413,23 +414,32 @@
       {/if}
 
       {#if completed.length}
+        <!-- A batch at a time (ticket 66). Ninety days of wear time is the
+             app's first list long enough that rendering all of it left the
+             scrollbar too small to use. -->
         <div class="screen-part">
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-            {#each completed as session (session.id)}
-              {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
-              <ListRow
-                key={session.id}
-                data-wear-session={session.id}
-                icon="clock"
-                title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
-                subtitle={session.note
-                  ? `${fmtDayLong(epochDayFromTimestamp(session.startTimestamp))} · ${session.note}`
-                  : fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}
-                chevron={false}
-                onclick={() => record.openEditor(session)}
-              />
-            {/each}
-          </ListCard>
+          <BatchedList
+            items={completed}
+            key="wear-sessions"
+            role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          >
+            {#snippet rows(shown)}
+              {#each shown as session (session.id)}
+                {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
+                <ListRow
+                  key={session.id}
+                  data-wear-session={session.id}
+                  icon="clock"
+                  title={`${wearKindLabel(session.kind)} · ${m.wear_session_duration_hm({ hours: String(parts.hours), minutes: String(parts.minutes) })}`}
+                  subtitle={session.note
+                    ? `${fmtDayLong(epochDayFromTimestamp(session.startTimestamp))} · ${session.note}`
+                    : fmtDayLong(epochDayFromTimestamp(session.startTimestamp))}
+                  chevron={false}
+                  onclick={() => record.openEditor(session)}
+                />
+              {/each}
+            {/snippet}
+          </BatchedList>
         </div>
       {:else if !running}
         <Notice
