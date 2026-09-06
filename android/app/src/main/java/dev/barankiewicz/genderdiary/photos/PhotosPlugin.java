@@ -2,11 +2,13 @@ package dev.barankiewicz.genderdiary.photos;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.util.Base64OutputStream;
 
@@ -23,6 +25,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
@@ -34,6 +37,12 @@ import java.util.Arrays;
  */
 @CapacitorPlugin(name = "Photos")
 public class PhotosPlugin extends Plugin {
+
+    /** Sits beside documents/limits.ts's DOCUMENT_SIZE_CEILING (25 MB) - the
+        JS side has no File to ask a size of for a bridge pick, so this is
+        the number readBase64() checks a content provider's declared size
+        against before it ever opens the file. */
+    private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
 
     @PluginMethod
     public void pickImages(PluginCall call) {
@@ -313,7 +322,27 @@ public class PhotosPlugin extends Plugin {
         return PhotoFiles.fileFor(getContext(), call.getString("directory", PhotoFiles.DEFAULT_DIRECTORY), name);
     }
 
+    /** The size a content provider declares for a Uri, queried rather than
+        read - OpenableColumns.SIZE is a column on the same cursor a file
+        picker's own display row comes from, not a stream. -1 where the
+        provider does not report one, which readBase64() takes as "unknown"
+        rather than "refuse": a provider that cannot say is not evidence the
+        file is oversized. */
+    private long querySize(Uri uri) {
+        try (Cursor cursor = getContext().getContentResolver()
+                .query(uri, new String[] { OpenableColumns.SIZE }, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (index != -1 && !cursor.isNull(index)) return cursor.getLong(index);
+            }
+        }
+        return -1;
+    }
+
     private String readBase64(Uri uri) throws Exception {
+        long size = querySize(uri);
+        if (size > DOCUMENT_SIZE_CEILING) throw new IOException("too-large");
+
         try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
             if (input == null) throw new IllegalStateException("could not read selected file");
             return encodeBase64(input, 8192);

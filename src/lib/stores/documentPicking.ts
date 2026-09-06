@@ -26,8 +26,12 @@ export async function pickDocument(): Promise<DocumentFile | null> {
   try {
     files = await picker.pick();
   } catch (error) {
-    console.error('the document picker failed', error);
-    toast(m.document_picker_failed());
+    if (error instanceof DocumentRefusedError) {
+      toast(error.kind === 'too-large' ? m.document_too_large() : m.document_unsupported_file());
+    } else {
+      console.error('the document picker failed', error);
+      toast(m.document_picker_failed());
+    }
     return null;
   }
 

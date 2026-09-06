@@ -85,6 +85,18 @@ describe('pickDocument', () => {
     expect(toast).toHaveBeenCalledWith('picker-failed');
   });
 
+  test('toasts the too-large message and returns null when the picker itself refuses an oversized file', async () => {
+    // The ceiling check now runs before the read, in picker.ts (web) and
+    // PhotosPlugin.java (Android) - so the rejection can arrive here too,
+    // not only from acceptDocumentFile() below.
+    pick.mockRejectedValue(new FakeDocumentRefusedError('too-large'));
+
+    const picked = await pickDocument();
+
+    expect(picked).toBeNull();
+    expect(toast).toHaveBeenCalledWith('too-large');
+  });
+
   test('toasts the HEIC message and returns null for an unreadable HEIC file', async () => {
     pick.mockResolvedValue([new Uint8Array([9])]);
     acceptDocumentFile.mockRejectedValue(new FakeUnsupportedImageError('heic'));
