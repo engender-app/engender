@@ -31,7 +31,19 @@
      next to each other.
 
      The centre carries the total rather than being decorative, which is
-     the other thing a ring has that bars do not: a hole. */
+     the other thing a ring has that bars do not: a hole.
+
+     Hover/tap highlights a slice and pops its arc out slightly, and
+     reveals the count its share was worked out from beside the legend's
+     own percentage (ticket 09). Either the arc or its legend row can
+     start it - the legend for a target no thinner than a touch, the arc
+     for whoever is already pointing at it - and both answer to the one
+     `active` key. The legend row is the keyboard path in (a real button,
+     unlike the ring, which the outer svg already marks aria-hidden and
+     which stays that way: the count is new information nothing else
+     carries, so unlike ChartAnnotations' own hover this one earns a
+     tabbable control rather than pointer-only sugar over a reading
+     already written out in full elsewhere). */
   import { MAX_SLICES, arcs, slices, type Part } from '$lib/charts/parts';
 
   let {
@@ -94,6 +106,38 @@
   const pct = (share: number) => (share > 0 && share < 1 ? '<1%' : `${Math.round(share)}%`);
 
   const round = (n: number) => Math.round(n * 1000) / 1000;
+
+  /* A plain function call rather than a template literal inline in the
+     markup: kit-surfaces.test.ts reads a component's copy with a regex
+     that cannot see past a nested brace, so a `${...}` inside the `{...}`
+     it is already stripping reads as text left over rather than an
+     expression it consumed - the same trap ChartAnnotations.svelte's own
+     hover target notes and avoids the same way. */
+  function legendShare(slice: Part & { share: number }): string {
+    return active === slice.key ? `${pct(slice.share)} · ${slice.amount}` : pct(slice.share);
+  }
+
+  let active = $state<string | null>(null);
+
+  function enter(e: PointerEvent, key: string) {
+    if (e.pointerType === 'mouse') active = key;
+  }
+  function leave(e: PointerEvent, key: string) {
+    if (e.pointerType === 'mouse' && active === key) active = null;
+  }
+  /* A finger has no hover, so its own pointerup is the toggle - the same
+     touch equivalent OrderedStrip's own tooltip decided on. */
+  function tap(e: PointerEvent, key: string) {
+    if (e.pointerType !== 'mouse') active = active === key ? null : key;
+  }
+  /* The legend row's own button fires a click on Enter/Space too, with no
+     pointer event under it at all - detail is 0 only for that case, never
+     for a click a mouse or a touch generated, so this is the one branch
+     tap() above cannot reach: a keyboard toggling what a pointer's enter
+     and leave already handle for anyone with one. */
+  function keyboardToggle(e: MouseEvent, key: string) {
+    if (e.detail === 0) active = active === key ? null : key;
+  }
 </script>
 
 <div class="kit-donut" data-chart="donut">
@@ -108,12 +152,24 @@
              breaks and a faint arc still sits on something. -->
         <circle class="kit-donut-track" cx="50" cy="50" r={R} />
         {#each drawn as slice, i (slice.key)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <!-- No role: the ring stays aria-hidden (the svg above already
+               says so), and every word an arc could carry is already in
+               its legend row, which is the real, tabbable control. This
+               pointer trio is a bonus for whoever is already pointing at
+               the ring, the same reasoning ChartAnnotations.svelte gives
+               its own hover targets. -->
           <circle
             class="kit-donut-arc"
+            class:is-hovered={active === slice.key}
+            data-donut-arc={slice.key}
             cx="50"
             cy="50"
             r={R}
             style={`--arc-dash: ${round(ring[i].dash)}; --arc-rest: ${round(ring[i].rest)}; --arc-offset: ${round(ring[i].offset)}; --circ: ${round(CIRC)}; --slice-weight: ${WEIGHTS[i]}; --bar-index: ${i}`}
+            onpointerenter={(e) => enter(e, slice.key)}
+            onpointerleave={(e) => leave(e, slice.key)}
+            onpointerup={(e) => tap(e, slice.key)}
           ></circle>
         {/each}
         <!-- The band's own two edges. A fill answers to no contrast ratio,
@@ -135,10 +191,21 @@
 
   <ul class="kit-donut-legend">
     {#each drawn as slice, i (slice.key)}
-      <li class="kit-donut-item" data-donut-slice={slice.key}>
-        <span class="kit-donut-swatch" style={`--slice-weight: ${WEIGHTS[i]}`}></span>
-        <span class="kit-donut-name">{slice.name}</span>
-        <span class="kit-donut-share">{pct(slice.share)}</span>
+      <li class="kit-donut-item">
+        <button
+          type="button"
+          class="kit-donut-item-btn"
+          class:is-hovered={active === slice.key}
+          data-donut-slice={slice.key}
+          onpointerenter={(e) => enter(e, slice.key)}
+          onpointerleave={(e) => leave(e, slice.key)}
+          onpointerup={(e) => tap(e, slice.key)}
+          onclick={(e) => keyboardToggle(e, slice.key)}
+        >
+          <span class="kit-donut-swatch" style={`--slice-weight: ${WEIGHTS[i]}`}></span>
+          <span class="kit-donut-name">{slice.name}</span>
+          <span class="kit-donut-share">{legendShare(slice)}</span>
+        </button>
       </li>
     {/each}
   </ul>
@@ -212,16 +279,41 @@
        where there is no segment at all. */
     animation: kit-donut-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--bar-index, 0) * var(--stagger-step));
+    /* Scaling happens around the circle's own centre rather than the
+       svg's corner a bounding-box origin would default to - a circle's
+       fill-box is the square around the whole circle, so 50% 50% of it
+       is (cx, cy) either way. */
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
     /* And carries from one dataset's shares to the next, the way a bar
        carries its width - a picker changing what the ring counts is a
-       re-tween, not a redraw. */
-    transition-property: stroke-dasharray, stroke-dashoffset;
-    transition-duration: var(--dur-slow);
-    transition-timing-function: var(--ease-out);
+       re-tween, not a redraw. Stroke and transform answer a hover instead,
+       which is a pointer waiting on the frame rather than a value changing
+       under it, so they read at the quicker of the two durations. */
+    transition:
+      stroke-dasharray var(--dur-slow) var(--ease-out),
+      stroke-dashoffset var(--dur-slow) var(--ease-out),
+      stroke var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
   }
 
   @keyframes kit-donut-in {
     from { stroke-dasharray: 0 var(--circ); }
+  }
+
+  /* The hovered arc: popped out a few percent of its own radius, the way
+     a wedge pulled from a pie is, and blended toward the app's own ink
+     rather than brightened - the same reasoning and the same idiom
+     OrderedStrip's own hover uses, since the ladder's five stops already
+     span from the full stripe to nearly the card and a flat multiplier
+     lands differently on each step. */
+  .kit-donut-arc.is-hovered {
+    stroke: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--role-draw) var(--slice-weight), var(--surface-2)) 85%,
+      var(--text) 15%
+    );
+    transform: scale(1.045);
   }
 
   /* The hole, carrying the whole the arcs are shares of. Inset by a fifth
@@ -268,10 +360,40 @@
   }
 
   .kit-donut-item {
+    min-width: 0;
+  }
+
+  /* The row's own control (ticket 09): a button rather than the `<li>`
+     itself, since a list item cannot be one and stay valid inside the
+     `<ul>` above it. Out to the legend's own edge and back, the same
+     "cover the whole reading" reasoning .kit-bar.is-open gives for a
+     pressable bar row - half a legend row answering to a pointer and
+     half not would read as an accident here too. */
+  .kit-donut-item-btn {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    width: 100%;
     min-width: 0;
+    margin: -2px calc(var(--space-1) * -1);
+    padding: 2px var(--space-1);
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .kit-donut-item-btn.is-hovered {
+    background: var(--role-wash);
+  }
+
+  .kit-donut-item-btn:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .kit-donut-swatch {

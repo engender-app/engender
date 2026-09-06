@@ -34,7 +34,21 @@
      One wipe left to right rather than five segments arriving. The
      direction is the scale's direction, so the entrance says the same
      thing the drawing does - and five segments growing in place would
-     open gaps in a bar whose whole point is that it is continuous. */
+     open gaps in a bar whose whole point is that it is continuous.
+
+     Hover/tap reveals the count a segment's share is computed from
+     (ticket 09), beside the percentage this already prints under narrow
+     shares too where MIN_LABEL_SHARE would print nothing. Mouse-only for
+     the enter/leave pair, the same gate Segmented.svelte's drag uses,
+     because a touch has no hover to leave - its own pointerup is what
+     toggles the tooltip instead, which is the "touch equivalent" ticket 09
+     asks to have decided. Kept a decorative `role="img"` rather than a
+     real button, same reasoning ChartAnnotations.svelte gives for its own
+     hover: the full reading (name, share, count) already sits in the one
+     aria-label whether or not anyone is pointing at it, so there is
+     nothing behind the tooltip a keyboard-only reader is missing. */
+  import { fly } from 'svelte/transition';
+  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import { share } from '$lib/charts/share';
 
   export interface StripStep {
@@ -67,11 +81,41 @@
      worthwhile. */
   let drawn = $derived.by(() => {
     const total = steps.reduce((sum, s) => sum + s.count, 0);
+    let at = 0;
     return steps.map((step) => {
       const percent = share(step.count, total);
-      return { ...step, percent, label: `${Math.round(percent)}%` };
+      const from = at;
+      at += percent;
+      return { ...step, percent, label: `${Math.round(percent)}%`, from };
     });
   });
+
+  let hovered = $state<number | null>(null);
+
+  function enter(e: PointerEvent, step: number) {
+    if (e.pointerType === 'mouse') hovered = step;
+  }
+  function leave(e: PointerEvent, step: number) {
+    if (e.pointerType === 'mouse' && hovered === step) hovered = null;
+  }
+  /* A finger has no hover, so its own pointerup is the toggle: tap a
+     segment to show the tooltip, tap it again to hide it. Gated off
+     'mouse' so a mouse click - already answered by the hover it followed -
+     does not also fight the state the leave above is about to clear. */
+  function tap(e: PointerEvent, step: number) {
+    if (e.pointerType !== 'mouse') hovered = hovered === step ? null : step;
+  }
+
+  /* The tooltip's own left edge, in percent of the track: the hovered
+     segment's midpoint, kept off the track's own edges so a pill near
+     either end still reads on the card rather than running past it. */
+  const TOOLTIP_MARGIN = 15;
+  let hoveredStep = $derived(drawn.find((s) => s.step === hovered) ?? null);
+  let tooltipLeft = $derived(
+    hoveredStep
+      ? Math.min(Math.max(hoveredStep.from + hoveredStep.percent / 2, TOOLTIP_MARGIN), 100 - TOOLTIP_MARGIN)
+      : 0
+  );
 </script>
 
 <div class="kit-ordered" data-chart="ordered-strip">
@@ -82,13 +126,37 @@
            caption below names two of the five. -->
       <span
         class="kit-ordered-seg"
+        class:is-hovered={hovered === step.step}
         data-strip-step={step.step}
         role="img"
-        aria-label={`${step.name} ${step.label}`}
+        aria-label={`${step.name} ${step.label} · ${step.count}`}
         style={`--bar-share: ${step.percent}; --dist-fill: var(--mood-${step.step})`}
+        onpointerenter={(e) => enter(e, step.step)}
+        onpointerleave={(e) => leave(e, step.step)}
+        onpointerup={(e) => tap(e, step.step)}
       ></span>
     {/each}
   </div>
+
+  {#if hoveredStep}
+    <!-- Outside the track rather than inside it: the track clips to its
+         own rounded corners (overflow: hidden), and a pill rising off the
+         segment it names would clip with it. Positioned against this
+         wrapper instead, which shares the track's own width and has
+         nothing of its own to clip against. Beside the segment rather
+         than in a corner, the same rule AreaChart's own hover label
+         follows: a hover is somebody pointing at one thing, and count
+         sits with percent so pointing at a share too narrow to print its
+         own label under the track still answers both questions. -->
+    <div
+      class="kit-ordered-tooltip"
+      data-strip-tooltip
+      style={`left: ${tooltipLeft}%`}
+      in:fly={{ y: 4, duration: motionDuration('--dur-fast'), easing: EASE_OUT }}
+    >
+      {hoveredStep.count} · {hoveredStep.label}
+    </div>
+  {/if}
 
   <p class="kit-ordered-shares" aria-hidden="true">
     {#each drawn as step (step.step)}
@@ -112,6 +180,19 @@
      tests/kit-surfaces.test.ts reads the kit components' style blocks
      alongside the shared sheet. */
   .kit-ordered {
+    /* The tooltip's own positioning context: it has to sit above the
+       track without the track's overflow: hidden clipping it, and this
+       wrapper's own top edge is the track's, since the track is its
+       first child with nothing above it. */
+    position: relative;
+    /* ChartCard's own head-to-body gap (--space-3, 12px) collapses with
+       this margin rather than adding to it (both are top margins with
+       nothing - no border, no padding - between them), so this has to be
+       the tooltip's whole clearance on its own, not a top-up: without it
+       the tooltip overlapped the card's heading text (ticket 09 gallery
+       screenshots). --space-7 covers the tooltip's own height (26px) plus
+       its --space-1 gap above the track, with a couple of pixels left over. */
+    margin-top: var(--space-7);
     animation: kit-ordered-in var(--dur-slow) var(--ease-out) both;
   }
 
@@ -145,10 +226,45 @@
        height: five segments have to add up to the track, and a transform
        scales one over its neighbour instead of pushing it along. The cost
        is a layout pass on five 26px boxes when the range changes, which is
-       not the shape that thrashes. */
-    transition-property: width;
-    transition-duration: var(--dur-slow);
-    transition-timing-function: var(--ease-out);
+       not the shape that thrashes. background is here too, at its own
+       shorter duration for the hover blend below: a share re-tweening is
+       the slow entrance-grade motion, and a hover answering a pointer is
+       not. */
+    transition:
+      width var(--dur-slow) var(--ease-out),
+      background var(--dur-fast) var(--ease-out);
+  }
+
+  /* The hovered segment, blended toward the app's own ink rather than
+     brightened: mood's ramp is picked to be sat on across four presets
+     and two themes (ADR-0025), and a flat brightness multiplier reads
+     right on some of those and washes out on others. Blending in --text
+     instead darkens it on a light theme and lightens it on a dark one,
+     which is a highlight either way - the same idiom
+     .kit-annotation-mark.is-hovered already reads for the same reason. */
+  .kit-ordered-seg.is-hovered {
+    background: color-mix(in oklab, var(--dist-fill, var(--role-draw)) 85%, var(--text) 15%);
+  }
+
+  /* The pill a hover or a tap raises: name's already read off the segment
+     below, so this carries what the track alone cannot - the count a
+     share this narrow has no room to print for itself. Same recipe as
+     kit.css's .kit-area-annotation-label, kept local rather than shared
+     with it since this is still the surface kit's one-consumer-per-class
+     rule and the two charts differ in every other way. */
+  .kit-ordered-tooltip {
+    position: absolute;
+    bottom: calc(100% + var(--space-1));
+    transform: translateX(-50%);
+    padding: 3px var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    white-space: nowrap;
+    pointer-events: none;
   }
 
   /* The percentages, under their own segments rather than inside them: the
