@@ -946,11 +946,17 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-mark) 14%, transparent);
 }
 
+/* Named areas rather than relying on source order (ticket 99 item 9): the
+   note is a DOM sibling of .kit-tile-main so it can be its own row instead
+   of stretching that row's height, but auto-placement would otherwise slot
+   the action button wherever the flow cursor lands after a full-width note,
+   not necessarily beside main. Areas pin all three regardless of order. */
 .kit-tile.is-split {
   display: grid;
   grid-template-columns: 1fr auto;
+  grid-template-areas: 'main act' 'note note';
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-height: 108px;
   height: 100%;
   padding: var(--space-4);
@@ -958,6 +964,9 @@ a.kit-entry:active {
   border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
   border-radius: var(--r-card);
 }
+
+.kit-tile.is-split > .kit-tile-main { grid-area: main; }
+.kit-tile.is-split > .kit-tile-act { grid-area: act; }
 
 .kit-tile-main {
   display: grid;
@@ -1008,7 +1017,6 @@ a.kit-entry:active {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   column-gap: var(--space-3);
-  row-gap: var(--space-1);
 }
 
 .kit-tile[data-weight='row'] .kit-tile-value {
@@ -1016,9 +1024,13 @@ a.kit-entry:active {
   justify-self: end;
 }
 
-/* The note runs under both of them rather than under the title alone. */
-.kit-tile[data-weight='row'] .kit-tile-note {
-  grid-column: 1 / -1;
+/* The note runs under both of them rather than under the title alone - a
+   direct child of the split tile now (ticket 99 item 9), not nested in
+   .kit-tile-main, so it is its own grid row (card weight and row weight
+   alike) and never part of what .kit-tile.is-split centres against the
+   action button. */
+.kit-tile.is-split > .kit-tile-note {
+  grid-area: note;
 }
 
 /* A row with no value has nothing in the second column, so the title takes
@@ -1190,6 +1202,14 @@ a.kit-entry:active {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--space-2);
   padding: 0 var(--space-1);
+  /* Caps the row at its own seven cells' natural width (ticket 99 item 5):
+     without this, a wide web viewport gives each of the seven columns far
+     more than a 44px cell wants, and .kit-strip-day's justify-items: center
+     floats every cell away from its column's true edge - worst at the two
+     ends, which is what read as "too far from the content edge". On mobile
+     the strip is already narrower than this cap, so nothing changes there. */
+  max-width: calc(7 * 44px + 6 * var(--space-2) + 2 * var(--space-1));
+  margin-inline: auto;
 }
 
 .kit-strip-day {

@@ -15,6 +15,8 @@
      is what a row with an editor behind it means everywhere else in the
      app; the delete stays as the row's own one control. */
   import { m } from '$lib/paraglide/messages';
+  import { page } from '$app/state';
+  import { replaceState } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
@@ -147,6 +149,17 @@
     template = seed;
     record.openEditor(existing);
   }
+
+  /* The timeline screen's deep link (ticket 99 item 4): a milestone card
+     there opens straight into this same editor rather than a detail page
+     of its own. Same one-shot-param shape as /doses' `add`. */
+  $effect(() => {
+    const id = page.url.searchParams.get('edit');
+    if (!id) return;
+    const existing = vocabulary.milestones.find((mi) => mi.id === id);
+    if (existing) openEditor(existing, null);
+    replaceState('/transition/milestones', {});
+  });
 
   /* A milestone shows at most one photo, so its "list" is that one slot or
      none - the same shape a stored photo's own id would have, whether it
