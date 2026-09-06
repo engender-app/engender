@@ -38,6 +38,14 @@ const THEMES = ['light', 'dark'];
    nothing moved. The width stays at the 390px floor, which is the one that
    decides whether a pair is side by side at all. */
 const VIEWPORT = { width: 390, height: 1340 };
+/* And one pass wider than the floor. Below 390px `.kit-tiles` is one tile per
+   line, so the only pair standing side by side on a phone is the look-back
+   one - and that pair is deliberately not closable (ADR-0071). Above it the
+   live-tile grid is two-up, which is where a dismissible tile actually has
+   something beside it, and therefore the only place the row axis can be seen
+   rather than unit-tested. Still short of 1024px, where the rail takes over
+   and the column narrows again. */
+const WIDE = { width: 700, height: 900 };
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
@@ -116,7 +124,7 @@ async function record(name, note, act) {
     }
   };
   cdp.on('Page.screencastFrame', onFrame);
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 70, everyNthFrame: 1 });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 48, everyNthFrame: 1 });
   await page.waitForTimeout(80);
   await act();
   await page.waitForTimeout(SCENE_MS);
@@ -180,12 +188,12 @@ try {
     const dismiss = pairedDismiss();
     if (await dismiss.count()) {
       await record(
-        `close-pair-${theme}`,
-        'Closing one of two side-by-side live tiles.',
+        `close-stacked-${theme}`,
+        'Closing a live tile at the 390px floor, where the grid is one tile per line.',
         () => dismiss.click()
       );
     } else {
-      console.warn(`no two-up dismissible pair on Home (${theme}) - close scene skipped`);
+      console.warn(`no dismissible live tile on Home (${theme}) - close scene skipped`);
     }
 
     /* Back from the calendar, which is the navigation the ticket names.
@@ -203,6 +211,32 @@ try {
       'Returning to Home from the calendar.',
       () => page.locator('[data-nav-item="home"]').first().click()
     );
+
+    /* The row axis, at the one width where a dismissible tile has something
+       beside it. Light only: the axis is a layout fact and does not change
+       with the palette, and a second theme here would double the frames a
+       review page has to carry for nothing. */
+    if (theme !== 'light') continue;
+    await page.setViewportSize(WIDE);
+    await settle('/');
+    await page.locator('[data-fill-every-feature]').click();
+    await page.waitForURL('**/more');
+    await settle('/');
+    await page.waitForSelector('[data-home-count]');
+    await stripDemoBar();
+    await page.waitForTimeout(400);
+
+    const wideDismiss = pairedDismiss();
+    if (await wideDismiss.count()) {
+      await record(
+        'close-side-by-side',
+        'Closing one of two live tiles standing side by side, at 700px.',
+        () => wideDismiss.click()
+      );
+    } else {
+      console.warn('no dismissible tile in the two-up grid - side-by-side scene skipped');
+    }
+    await page.setViewportSize(VIEWPORT);
   }
 } finally {
   await writeFile(resolve(outDir, 'manifest.json'), JSON.stringify({ sceneMs: SCENE_MS, scenes }, null, 2));
