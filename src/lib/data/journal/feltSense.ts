@@ -1,7 +1,7 @@
 /* The felt-sense area (phase 5 ticket 24, CONTEXT: "Felt-sense entry"). One
    table and one code path for both owners, the same reasoning photos.ts
    gives for its own table: a tryout's felt-sense history and a milestone's
-   differ only in which column a row hangs off (migrations.ts v32), so
+   differ only in which column a row hangs off (schema.ts), so
    there is no second implementation for milestones to drift from this one.
 
    Offering one - at a milestone's own creation, and again on each
@@ -14,7 +14,7 @@ import type { FeltSenseEntry } from '../types';
 import { mintUuid, now, rowidByUuid } from './support';
 
 /** Exactly one owner, mirroring the felt_sense table's CHECK constraint
-    (migrations.ts v32) and PhotoOwner's own shape (photos.ts). */
+    (schema.ts) and PhotoOwner's own shape (photos.ts). */
 export type FeltSenseOwner = { tryoutId: string; milestoneId?: never } | { milestoneId: string; tryoutId?: never };
 
 export interface FeltSenseInput {

@@ -1,5 +1,5 @@
 /* The personal effects timeline area (phase 4 ticket 07). One row per
-   effect (migrations.ts v12, `effect` UNIQUE), matched exactly the way
+   effect (schema.ts, `effect` UNIQUE), matched exactly the way
    medication_stock is matched by drug (stock.ts): a person is always
    answering "when did I first notice this", never logging a series of
    sightings, so a fresh date replaces the old one in place. No episode
@@ -40,7 +40,7 @@ export interface PersonalEffectsArea {
       before `todayEpochDay`, or null if nothing is marked yet (phase 8
       features ticket 03, lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
-  /** One row per effect (migrations.ts v12): a second call for an effect
+  /** One row per effect (schema.ts): a second call for an effect
       already marked replaces its date rather than adding a row. Returns
       the row's id. */
   upsertMarker(input: PersonalEffectInput): Promise<string>;
@@ -111,7 +111,7 @@ export function makePersonalEffectsArea(driver: SqliteDriver): PersonalEffectsAr
     },
 
     async upsertMarker(input) {
-      // migrations.ts v37 dropped the CHECK that used to enumerate a valid
+      // The schema carries no CHECK enumerating a valid
       // effect; this is that validation's replacement, reading the open
       // catalogue instead of a hardcoded union. A hidden effect still
       // validates - hiding removes it from the picker, not from what a
