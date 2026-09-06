@@ -48,7 +48,7 @@ import { filesOf, photoFileName } from '../photos/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { NormalizedPhoto } from './photos';
 import { flatArea } from './flatArea';
-import { assertChanged, mintUuid } from './support';
+import { assertChanged, mintUuid, now } from './support';
 
 /** What a person types when they file a piece of paper: the day it is from,
     and their own name for it. The file arrives beside this rather than in
@@ -180,14 +180,18 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
     getDocumentsLinkedTo: (kind, id) =>
       documents.read('WHERE target_kind = ? AND target_id = ? ORDER BY epoch_day DESC, id DESC', [kind, id]),
 
+    /* The pair alone, by hand rather than through `flatArea.upsert`: that
+       writes every column the area has, so filing a document under something
+       would re-write its title, its day and its file name from whatever a
+       read a moment earlier said they were. `assertChanged` on this UPDATE's
+       own result is what makes an unknown id throw (ADR-0053), the same as
+       every other update in the journal. */
     async setDocumentTarget(id, target) {
-      const document = await byId(id);
-      assertChanged({ changes: document ? 1 : 0 }, `document: ${id}`);
-      await documents.upsert({
-        ...document!,
-        targetKind: target?.kind ?? null,
-        targetId: target?.id ?? null
-      });
+      const result = await driver.run(
+        'UPDATE document SET target_kind = ?, target_id = ?, updated_at = ? WHERE uuid = ?',
+        [target?.kind ?? null, target?.id ?? null, now(), id]
+      );
+      assertChanged(result, `document: ${id}`);
     }
   };
 }

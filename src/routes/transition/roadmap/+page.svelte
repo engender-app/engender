@@ -305,7 +305,7 @@
               type="button"
               class="kit-row-act press"
               data-open-goal={goal.key}
-              aria-label={`${roadmapGoalTitle(goal.key)}: ${m.roadmap_goal_open_aria()}`}
+              aria-label={m.roadmap_goal_open_aria({ goal: roadmapGoalTitle(goal.key) })}
               onclick={() => openBuiltInGoal(goal.key)}
             >
               <Icon name="chevronRight" size={18} />
@@ -345,7 +345,7 @@
               type="button"
               class="kit-row-act press"
               data-open-goal={goal.id}
-              aria-label={`${goal.text}: ${m.roadmap_goal_open_aria()}`}
+              aria-label={m.roadmap_goal_open_aria({ goal: goal.text })}
               onclick={() => openCustomGoal(goal)}
             >
               <Icon name="chevronRight" size={18} />

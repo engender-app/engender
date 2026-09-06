@@ -24,6 +24,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import DocumentTargetPicker from '$lib/components/DocumentTargetPicker.svelte';
+  import { documentTargets } from '$lib/components/documentTargets.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -33,13 +34,11 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal } from '$lib/data/live/journal.svelte';
   import { readThumbnail } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import { documentTarget } from '$lib/data/journal/documents';
-  import { POLISH_PACK } from '$lib/data/roadmap';
-  import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
   import { DOCUMENT_TARGET_ICON, documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
   import type { DocumentTarget, JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
@@ -58,39 +57,14 @@
 
   let confirming = $state(false);
 
-  /* The target's own name and where to find it (ticket 56, ADR-0065): the
-     document names its target and links to it. Milestone, procedure and
-     episode have no per-record route (RecordSheet/Sheet editors on their
-     own list screens rather than a `[id]` page), so this links to the
-     owning list screen the same way provenance.ts already does for a
-     procedure or a roadmap goal - the person taps the row there. A goal
-     links to its own sheet through the `?goal=` query param ADR-0068 adds. */
+  /* What the document is filed under (ticket 56, ADR-0065). The four reads
+     behind the name are documentTargets.svelte.ts's, shared with the picker
+     the pencil opens, and they answer in three states rather than two: a
+     read still in flight is not a target that is gone. */
   let target = $derived(stored ? documentTarget(stored) : null);
 
-  let milestonesQuery = liveList((j) => j.milestones.getMilestones());
-  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
-  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
-  let customGoalsQuery = liveList((j) => j.roadmap.getCustomGoals());
-
-  let targetLabel = $derived.by((): { text: string; href: string } | null => {
-    if (!target) return null;
-    if (target.kind === 'milestone') {
-      const milestone = milestonesQuery.rows.find((m) => m.id === target.id);
-      return milestone ? { text: milestone.name, href: '/transition/milestones' } : null;
-    }
-    if (target.kind === 'procedure') {
-      const procedure = proceduresQuery.rows.find((p) => p.id === target.id);
-      return procedure ? { text: procedure.name, href: '/health/surgery' } : null;
-    }
-    if (target.kind === 'episode') {
-      const episode = episodesQuery.rows.find((e) => e.id === target.id);
-      return episode ? { text: episode.drug, href: '/settings/regimen' } : null;
-    }
-    const builtinGoal = POLISH_PACK.goals.find((g) => g.key === target.id);
-    if (builtinGoal) return { text: roadmapGoalTitle(builtinGoal.key), href: `/transition/roadmap?goal=${target.id}` };
-    const customGoal = customGoalsQuery.rows.find((g) => g.id === target.id);
-    return customGoal ? { text: customGoal.text, href: `/transition/roadmap?goal=${target.id}` } : null;
-  });
+  const targets = documentTargets();
+  let resolved = $derived(target ? targets.resolve(target) : null);
 
   let pickingTarget = $state(false);
 
@@ -208,14 +182,14 @@
       <Field label={m.document_link_label()} legend>
         {#snippet children()}
           <ListCard>
-            {#if target && targetLabel}
+            {#if resolved?.state === 'found'}
               <ListRow
                 key="document-target"
                 data-document-link
-                icon={DOCUMENT_TARGET_ICON[target.kind]}
-                title={targetLabel.text}
-                subtitle={documentTargetKindLabel(target.kind)}
-                href={targetLabel.href}
+                icon={DOCUMENT_TARGET_ICON[target!.kind]}
+                title={resolved.text}
+                subtitle={documentTargetKindLabel(target!.kind)}
+                href={resolved.href}
                 action={{
                   icon: 'pencil',
                   label: m.document_link_change(),
@@ -223,7 +197,12 @@
                   attrs: { 'data-pick-document-target': 'true' }
                 }}
               />
-            {:else if target}
+            {:else if resolved?.state === 'loading'}
+              <!-- The lists behind the name have not landed yet, so no row:
+                   a name still coming and a target that is gone read nothing
+                   alike, and one of the two would have to be guessed. -->
+              <Skeleton variant="line" count={1} />
+            {:else if resolved}
               <!-- A link whose target is gone, which a restored archive can
                    carry (ADR-0065): the paper outlives what it was filed
                    under, so the row states that and offers the picker rather
@@ -232,7 +211,7 @@
                 key="document-target"
                 data-document-link
                 static
-                icon={DOCUMENT_TARGET_ICON[target.kind]}
+                icon={DOCUMENT_TARGET_ICON[target!.kind]}
                 title={m.document_target_gone()}
                 action={{
                   icon: 'pencil',

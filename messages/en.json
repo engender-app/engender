@@ -3346,6 +3346,6 @@
   "document_link_kind_procedure": "Procedure",
   "document_link_kind_episode": "Regimen",
   "document_link_kind_goal": "Roadmap step",
-  "roadmap_goal_open_aria": "Open",
+  "roadmap_goal_open_aria": "Open: {goal}",
   "roadmap_goal_milestone_sub": "This step’s milestone"
 }
