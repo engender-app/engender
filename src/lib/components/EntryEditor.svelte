@@ -38,7 +38,6 @@
   import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import { smartBack } from '$lib/navigation/smart-back';
   import Field from '$lib/components/kit/Field.svelte';
   import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -729,12 +728,12 @@
        tryout and in the counterevidence journal, and every one of those sent
        you to /day/... on the way back - a screen you may never have been on
        (Alicja, 2026-08-26, from the counterevidence journal). The day stays
-       as the fallback for a deep link or a reload, which is what smartBack
-       is for (NAV-005). -->
+       as the href the header falls back to on a deep link or a reload
+       (NAV-005, CARPET-05). -->
   <ScreenHeader
     title={existing ? m.entry() : m.new_entry()}
     screen="entry"
-    back={() => smartBack(existing ? `/day/${day}` : '/')}
+    back={existing ? `/day/${day}` : '/'}
   >
     {#snippet actions()}
       {#if existing}

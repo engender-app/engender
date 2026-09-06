@@ -47,7 +47,7 @@
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
-  import { recordNavigation } from '$lib/navigation/smart-back';
+  import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
@@ -511,7 +511,9 @@
       }),
       isValidLaunchRoute: isValidAndroidLaunchRoute,
       currentPathname: () => page.url.pathname,
-      goto
+      goto,
+      replaceRoute,
+      navigationDepth
     });
   });
 </script>
