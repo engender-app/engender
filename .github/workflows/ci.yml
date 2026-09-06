@@ -80,9 +80,13 @@ jobs:
       # Android graph - runs in the Android job where Gradle can resolve the
       # release runtime classpath.
       #
-      # `npm audit` advisory verdict, checked 2026-09-01, six open, none
-      # reachable, nothing to patch - same two paths as the 2026-08-27
-      # check, re-verified rather than assumed still true:
+      # `npm audit` advisory verdict, checked 2026-09-06, six open, none
+      # reachable, nothing to patch - same two paths as the 2026-09-01
+      # check, re-verified rather than assumed still true. A seventh,
+      # @xmldom/xmldom (moderate, through @capacitor/cli -> plist), showed
+      # up between the two checks and got closed with a plain
+      # `npm audit fix`, since unlike the six below its fix wasn't a major
+      # bump (phase 9 audit ticket 08):
       #   - cookie <0.7.0, low, arrives through @sveltejs/kit ->
       #     adapter-static. The advisory is about server-side cookie
       #     parsing; this app builds with adapter-static, has no server and
