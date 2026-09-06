@@ -39,7 +39,7 @@ export class DocumentRefusedError extends Error {
   }
 }
 
-const TOO_LARGE_MESSAGE = `This file is too large to store. Up to ${DOCUMENT_SIZE_CEILING / (1024 * 1024)} MB.`;
+const TOO_LARGE_MESSAGE = `That file is too large to store. Up to ${DOCUMENT_SIZE_CEILING / (1024 * 1024)} MB.`;
 
 const UNSUPPORTED_MESSAGE = "This file isn't a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.";
 

@@ -3388,7 +3388,7 @@
   "document_page_alt": "Kartka: {title}",
   "document_save_failed": "Nie udało się zapisać tego dokumentu. Nic nie zostało zachowane.",
   "document_edit_failed": "Nie udało się zapisać tej zmiany. Dokument został bez zmian.",
-  "document_unsupported_file": "Tego pliku aplikacja nie odczyta - to nie jest ani PDF, ani obraz. Spróbuj z PDF-em, JPEG-iem albo PNG-iem.",
+  "document_unsupported_file": "Tego pliku aplikacja nie odczyta. To nie jest ani PDF, ani obraz. Spróbuj z PDF-em, JPEG-iem albo PNG-iem.",
   "document_too_large": "Ten plik jest za duży, żeby go zapisać. Maksymalnie 25 MB.",
   "document_picker_failed": "Nie udało się otworzyć wyboru pliku.",
   "document_export": "Wyślij albo zapisz",
