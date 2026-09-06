@@ -2,7 +2,9 @@ package dev.barankiewicz.genderdiary.photos;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
@@ -71,7 +73,7 @@ public class PickedFilesTest {
         String fresh = PickedFiles.hold(Collections.singletonList(bytes(2))).get(0);
 
         assertNull(PickedFiles.take(stale));
-        assertEquals(true, PickedFiles.take(fresh) != null);
+        assertNotNull(PickedFiles.take(fresh));
     }
 
     /** A source is a supplier of a stream rather than the bytes, so nothing
@@ -85,6 +87,6 @@ public class PickedFilesTest {
             return new ByteArrayInputStream(new byte[] { 1 });
         }));
 
-        assertEquals(false, opened[0]);
+        assertFalse(opened[0]);
     }
 }

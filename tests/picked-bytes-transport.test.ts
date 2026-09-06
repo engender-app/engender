@@ -32,6 +32,14 @@ const TRANSPORTS: [name: string, allowed: string[]][] = [
   ['readPickedBase64', ['lib/data/photos/android-bridge.ts', 'lib/data/photos/picker.ts']]
 ];
 
+/** The code with its comments taken out, the same crude pass and for the
+    same reason tests/webview-floor.test.ts gives: this repo's comments
+    discuss these transports by name - android-pick-channel.ts's header is
+    about which one it is and what the other costs - and a rule that read
+    comments would have to be argued with rather than fixed. */
+const withoutComments = (code: string): string =>
+  code.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
 function sources(dir: string, found: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -46,7 +54,7 @@ test('only picker.ts chooses which transport a picked file arrives over', () => 
 
   for (const file of sources(src)) {
     const relative = file.slice(src.length);
-    const code = readFileSync(file, 'utf8');
+    const code = withoutComments(readFileSync(file, 'utf8'));
     for (const [name, allowed] of TRANSPORTS) {
       if (allowed.includes(relative)) continue;
       if (code.includes(name)) offences.push(`${relative} names ${name}`);
@@ -62,10 +70,12 @@ test('only picker.ts chooses which transport a picked file arrives over', () => 
 
 /** The companion check every registry rule in this repo carries: the rule
     above can fail. Without this, a typo in either transport's name would
-    make it pass over a tree that has three decoders in it. */
+    make it pass over a tree that has three decoders in it - and the same
+    comment-stripping, so a name that survived only in prose could not
+    stand in for the real thing either. */
 test('the rule can fail', () => {
   const named = TRANSPORTS.map(([name, allowed]) => {
-    const owner = readFileSync(join(src, allowed[0]), 'utf8');
+    const owner = withoutComments(readFileSync(join(src, allowed[0]), 'utf8'));
     return owner.includes(name);
   });
 

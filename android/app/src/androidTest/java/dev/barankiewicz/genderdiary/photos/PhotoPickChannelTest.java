@@ -1,6 +1,7 @@
 package dev.barankiewicz.genderdiary.photos;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.util.Log;
@@ -36,6 +37,24 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>Plain {@code evaluateJavascript} rather than a built probe bundle, for
  * the reason {@code PhotoWriteChannelTest} gives: this needs only the
  * WebView's own APIs and the plugins {@code MainActivity} already registers.
+ *
+ * <p><b>What it measured, on tracker35 (API 35 emulator, WebView 124),
+ * 2026-09-06.</b> These are the ticket's before-and-after, kept here rather
+ * than only in logcat so the next reader has the numbers without a device:
+ *
+ * <ul>
+ *   <li>25 MB over the channel: 0.0ms decode, 91.6ms round trip.</li>
+ *   <li>4 MB, both transports: 0.0ms against 257.3ms of decode, 25.3ms
+ *       against 1040.3ms of round trip.</li>
+ *   <li>25 MB through base64: does not complete. {@code encodeBase64}'s
+ *       {@code toString("US-ASCII")} asks for 34 MB in one allocation
+ *       against this emulator's 192 MB growth limit and the allocation
+ *       fails, so the pick is refused rather than filed.</li>
+ * </ul>
+ *
+ * <p>A phone's own figures will be better and are
+ * {@code .scratch/pre-production-human-steps/04}'s to take; these are
+ * enough to say which transport costs what.
  */
 @RunWith(AndroidJUnit4.class)
 public class PhotoPickChannelTest {
@@ -80,7 +99,7 @@ public class PhotoPickChannelTest {
                     + "    JSON.stringify({token:'" + token + "'}), [channel.port2]);"
                     + "})();";
 
-            JSONObject result = new JSONObject(awaitResult(scenario, script));
+            JSONObject result = new JSONObject(awaitTestResult(scenario, script));
 
             assertEquals("bytes", result.getString("stage"));
             assertEquals(5, result.getInt("length"));
@@ -105,9 +124,9 @@ public class PhotoPickChannelTest {
                     + "    JSON.stringify({token:'not-a-token'}), [channel.port2]);"
                     + "})();";
 
-            JSONObject reply = new JSONObject(awaitResult(scenario, script));
+            JSONObject reply = new JSONObject(awaitTestResult(scenario, script));
 
-            assertEquals(false, reply.getBoolean("ok"));
+            assertFalse(reply.getBoolean("ok"));
             assertEquals("unknown picked file", reply.getString("error"));
         }
     }
@@ -140,10 +159,9 @@ public class PhotoPickChannelTest {
         String token = hold(payload(CEILING));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            JSONObject report = new JSONObject(awaitResult(scenario, channelCostScript(token), 180));
+            JSONObject report = new JSONObject(awaitCostReport(scenario, channelCostScript(token), 180));
 
-            assertEquals(
-                "the channel reported " + report.optString("error"), false, report.has("error"));
+            assertFalse("the channel reported " + report.optString("error"), report.has("error"));
             assertEquals(CEILING, report.getInt("length"));
 
             double decode = report.getDouble("decodeMs");
@@ -210,10 +228,9 @@ public class PhotoPickChannelTest {
                     + "})();";
 
             JSONObject report =
-                new JSONObject(awaitResult(scenario, script, "window.__pickChannelCostResult", 180));
+                new JSONObject(awaitCostReport(scenario, script, 180));
 
-            assertEquals(
-                "the transports reported " + report.optString("error"), false, report.has("error"));
+            assertFalse("the transports reported " + report.optString("error"), report.has("error"));
             assertEquals(COMPARABLE, report.getInt("channelLength"));
             assertEquals(COMPARABLE, report.getInt("base64Length"));
 
@@ -271,11 +288,15 @@ public class PhotoPickChannelTest {
         return PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(payload))).get(0);
     }
 
-    private String awaitResult(ActivityScenario<MainActivity> scenario, String script) throws InterruptedException {
+    /** Named for the global it polls rather than overloaded on arity: the
+        two scripts report into different globals, and a timeout argument is
+        no way to say which. */
+    private String awaitTestResult(ActivityScenario<MainActivity> scenario, String script)
+        throws InterruptedException {
         return awaitResult(scenario, script, "window.__pickChannelTestResult", 30);
     }
 
-    private String awaitResult(ActivityScenario<MainActivity> scenario, String script, int timeoutSeconds)
+    private String awaitCostReport(ActivityScenario<MainActivity> scenario, String script, int timeoutSeconds)
         throws InterruptedException {
         return awaitResult(scenario, script, "window.__pickChannelCostResult", timeoutSeconds);
     }

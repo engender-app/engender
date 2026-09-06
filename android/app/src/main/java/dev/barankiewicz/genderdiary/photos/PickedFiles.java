@@ -20,10 +20,13 @@ import java.util.UUID;
  * document: the ceiling is 25 MB and a scan reaches it.
  *
  * <p>A source is a supplier of a fresh stream rather than the bytes
- * themselves, so nothing sits in the Java heap between the pick and the
- * read, and so either transport can consume the same entry its own way -
- * the base64 path still streams straight into a {@code Base64OutputStream}
- * exactly as it did before this indirection existed.
+ * themselves. Two things follow. Nothing sits in the Java heap for the
+ * interval between the pick and the read - the read itself still buffers the
+ * whole file, once for {@link PhotoPickChannel} and twice for the base64
+ * fallback, which is the floor's price and not this store's. And either
+ * transport can consume the same entry its own way: the base64 path streams
+ * straight into a {@code Base64OutputStream} exactly as it did before this
+ * indirection existed.
  *
  * <p><b>Only the most recent pick is held.</b> A pick is one user gesture
  * at a time - Capacitor delivers one activity result at a time, and
@@ -64,7 +67,14 @@ public final class PickedFiles {
         read per pick is all either transport needs, and an entry that
         outlived its read would be a picked file the app is still holding
         open for no reason. Null for a token that was never held, was
-        already taken, or belonged to an earlier pick. */
+        already taken, or belonged to an earlier pick.
+
+        Removed before the read rather than after it, so a read that fails
+        (an unmounted card, a file deleted from under the picker) leaves no
+        token to try again with. That is deliberate: the recovery is to pick
+        again, which is also what the web half does when a File's
+        arrayBuffer() rejects, and holding a token open for a retry nobody
+        makes is the leak this store exists to avoid. */
     public static synchronized Source take(String token) {
         return token == null ? null : HELD.remove(token);
     }

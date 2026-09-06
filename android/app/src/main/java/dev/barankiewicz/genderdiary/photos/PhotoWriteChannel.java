@@ -98,7 +98,7 @@ public final class PhotoWriteChannel {
     private void onHeader(WebMessageCompat message) {
         WebMessagePortCompat[] ports = message.getPorts();
         if (ports == null || ports.length == 0) {
-            Log.w(TAG, "write header arrived without a reply port; dropping it");
+            WebMessageReplies.dropped(TAG, "a write header");
             return;
         }
         WebMessagePortCompat port = ports[0];
@@ -110,7 +110,7 @@ public final class PhotoWriteChannel {
             name = header.getString("name");
             directory = header.optString("directory", PhotoFiles.DEFAULT_DIRECTORY);
         } catch (JSONException e) {
-            replyError(port, "invalid write header");
+            WebMessageReplies.replyError(port, "invalid write header");
             return;
         }
 
@@ -122,7 +122,7 @@ public final class PhotoWriteChannel {
             @Override
             public void onMessage(@NonNull WebMessagePortCompat p, @Nullable WebMessageCompat payload) {
                 if (payload == null || payload.getType() != WebMessageCompat.TYPE_ARRAY_BUFFER) {
-                    replyError(port, "expected a binary payload");
+                    WebMessageReplies.replyError(port, "expected a binary payload");
                     return;
                 }
                 byte[] bytes = payload.getArrayBuffer();
@@ -139,18 +139,7 @@ public final class PhotoWriteChannel {
             }
             port.postMessage(new WebMessageCompat("{\"ok\":true}"));
         } catch (Exception e) {
-            replyError(port, PhotoFiles.message(e));
+            WebMessageReplies.replyError(port, PhotoFiles.message(e));
         }
-    }
-
-    private void replyError(WebMessagePortCompat port, String error) {
-        JSONObject body = new JSONObject();
-        try {
-            body.put("ok", false);
-            body.put("error", error);
-        } catch (JSONException ignored) {
-            // "ok" and a string are always representable; this cannot fire.
-        }
-        port.postMessage(new WebMessageCompat(body.toString()));
     }
 }

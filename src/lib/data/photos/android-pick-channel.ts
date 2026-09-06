@@ -11,6 +11,28 @@
    typed decode, and held the base64 string, atob's intermediate binary
    string and the final array live at once.
 
+   **The other shape, and why not.** The alternative was to have native put
+   the picked file into the app-private directory and hand JavaScript a file
+   name, so the bytes never enter the JS heap at all - fetched afterwards
+   over Capacitor's local server, the way android-file-store.ts already
+   reads photos. It loses on two counts. Files at rest here are encrypted
+   per-file in JavaScript (encrypted-file-store.ts, ADR-0018/ADR-0020), so a
+   name would mean writing a picked file to disk in plaintext and deleting
+   it after - a scan of medical paperwork readable on disk for as long as
+   the encrypt takes, and past a crash. And the callers need the bytes
+   regardless: `acceptDocumentFile` sniffs the PDF signature and
+   `normalizePhoto` re-encodes, so a name would be read straight back into
+   the heap anyway, for two disk trips instead of none. Its one real
+   advantage - working at the WebView floor, where this channel does not -
+   is the cost recorded below.
+
+   **What that cost is.** `WEB_MESSAGE_ARRAY_BUFFER` arrives in WebView 105
+   and the app's floor is 87 (ADR-0023), so between the two the base64
+   fallback is the real path, with the ceiling behaviour PhotosPlugin's
+   `readPickedBase64` documents: a 25 MB pick can run out of heap there and
+   be refused. Not a regression - that was every WebView's path before this
+   ticket - but it is the half the other shape would have fixed.
+
    `globalThis` rather than `window`, for the reason android-write-channel.ts
    gives: they are the same object in a WebView, and this keeps the module
    reachable from a plain Node test with `vi.stubGlobal`. */

@@ -44,9 +44,11 @@ import java.util.concurrent.Executors;
  *       file on a worker thread, and posts the bytes back on the transferred
  *       port as an {@code ArrayBuffer}.</li>
  *   <li>A failure comes back on the same port as a JSON string,
- *       {@code {"ok":false,"error":...}}. A WebMessage carries either bytes
- *       or a string and never both, so the reply's own type is what tells
- *       the two apart - no envelope, and no copy of the bytes into one.</li>
+ *       {@code {"ok":false,"error":...}} ({@link WebMessageReplies}, shared
+ *       with the write channel). A WebMessage carries either bytes or a
+ *       string and never both, so the reply's own type is what tells success
+ *       from failure - which means the bytes need no envelope, and no copy
+ *       into one.</li>
  * </ol>
  *
  * <p>{@link #registerIfSupported} is a no-op below the WebView versions that
@@ -91,7 +93,7 @@ public final class PhotoPickChannel {
     private void onRequest(WebMessageCompat message) {
         WebMessagePortCompat[] ports = message.getPorts();
         if (ports == null || ports.length == 0) {
-            Log.w(TAG, "pick request arrived without a reply port; dropping it");
+            WebMessageReplies.dropped(TAG, "a pick request");
             return;
         }
         WebMessagePortCompat port = ports[0];
@@ -100,13 +102,13 @@ public final class PhotoPickChannel {
         try {
             token = new JSONObject(message.getData()).getString("token");
         } catch (JSONException e) {
-            replyError(port, "invalid pick request");
+            WebMessageReplies.replyError(port, "invalid pick request");
             return;
         }
 
         PickedFiles.Source source = PickedFiles.take(token);
         if (source == null) {
-            replyError(port, "unknown picked file");
+            WebMessageReplies.replyError(port, "unknown picked file");
             return;
         }
 
@@ -118,7 +120,7 @@ public final class PhotoPickChannel {
             if (input == null) throw new IllegalStateException("could not read selected file");
             port.postMessage(new WebMessageCompat(readFully(input)));
         } catch (Exception e) {
-            replyError(port, PhotoFiles.message(e));
+            WebMessageReplies.replyError(port, PhotoFiles.message(e));
         }
     }
 
@@ -133,16 +135,5 @@ public final class PhotoPickChannel {
         int read;
         while ((read = input.read(buffer)) != -1) collected.write(buffer, 0, read);
         return collected.toByteArray();
-    }
-
-    private void replyError(WebMessagePortCompat port, String error) {
-        JSONObject body = new JSONObject();
-        try {
-            body.put("ok", false);
-            body.put("error", error);
-        } catch (JSONException ignored) {
-            // "ok" and a string are always representable; this cannot fire.
-        }
-        port.postMessage(new WebMessageCompat(body.toString()));
     }
 }
