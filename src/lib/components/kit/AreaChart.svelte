@@ -684,4 +684,28 @@
   .kit-area.no-gutter {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
+     ring around a reading already drawn, in the chosen presentation's own
+     colour rather than the chart's. Hollow, so the dot or line underneath
+     still shows through - the chip highlights, it never redraws what was
+     there. `--highlight` is set once, on the plot's own wrapper, by
+     whichever presentation is chosen; unset it draws nothing, which is
+     "choosing none" reading exactly as it did before this existed.
+
+     Dashed rather than solid: a presentation's role and the chart's own
+     section role are both resolved through roleAt() and can land on the
+     same stripe - the first presentation anyone creates defaults to role
+     0, the same role most single-value charts take - and a solid ring in
+     the same colour as the mark it rings would vanish into it. The dash is
+     what still reads once colour cannot be relied on to.
+
+     Here rather than in kit.css for the reason the collapsed gutter above
+     is: one consumer, and this circle is that consumer's own markup. */
+  .kit-area-highlight {
+    fill: none;
+    stroke: var(--highlight);
+    stroke-width: 2;
+    stroke-dasharray: 2 2;
+  }
 </style>
