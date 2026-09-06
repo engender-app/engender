@@ -23,13 +23,18 @@ import { goto } from '$app/navigation';
 /** Navigations pushed since the entry the app booted on. */
 let depth = 0;
 
+/** Set by `replaceRoute`, spent by the `recordNavigation` it causes. */
+let replacing = false;
+
 /**
  * Called by the shell for every settled navigation.
  *
  * `enter` is the app arriving on its first entry, which is the floor: from
  * there, back leaves the app. Anything that pushes an entry adds one, and a
  * popstate moves by its own delta - negative going back, positive going
- * forward again.
+ * forward again. A navigation that replaced the current entry instead of
+ * pushing one adds nothing, which is what `replaceRoute` is for: SvelteKit
+ * reports it as an ordinary `goto`, so the app has to say so itself.
  *
  * Clamped at zero because the browser's history holds entries from before
  * the app was opened, so a back gesture can walk off the bottom of what this
@@ -38,9 +43,45 @@ let depth = 0;
  * return to.
  */
 export function recordNavigation(type: string, delta?: number | null): void {
+  const replaced = replacing;
+  replacing = false;
   if (type === 'enter') depth = 0;
   else if (type === 'popstate') depth = Math.max(0, depth + (delta ?? 0));
-  else depth += 1;
+  else if (!replaced) depth += 1;
+}
+
+/** How deep the app is in its own history, for callers outside this module. */
+export function navigationDepth(): number {
+  return depth;
+}
+
+/**
+ * Navigate by replacing the current history entry rather than pushing one.
+ *
+ * The screens that do this are swapping a view of themselves - wrapped's
+ * seven periods, a filter dropping out of a URL - and a pushed entry per
+ * swap made back walk the switcher instead of leaving the screen. That part
+ * `goto(url, { replaceState: true })` already did. What it could not do is
+ * tell the count above, which sees `afterNavigate` report type `goto` and
+ * has no way to know no entry was added; so a screen the app booted onto and
+ * then replaced looked one deep, and its back control walked out of the app
+ * instead of taking its fallback.
+ *
+ * Going through here rather than passing the option at the call site is what
+ * keeps the two facts together. `tests/replace-route-is-the-only-replace.test.ts`
+ * holds the rest of the app to it.
+ *
+ * If the navigation never settles the mark is spent by whichever one settles
+ * next, which undercounts by one - back takes its fallback where it could
+ * have gone through history. That is the safe direction: a fallback stays
+ * inside the app, and walking out of it does not.
+ */
+export function replaceRoute(
+  url: string | URL,
+  options?: Omit<NonNullable<Parameters<typeof goto>[1]>, 'replaceState'>
+): Promise<void> {
+  replacing = true;
+  return goto(url, { ...options, replaceState: true });
 }
 
 export function smartBack(fallback: string): void {
