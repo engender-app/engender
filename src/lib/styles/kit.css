@@ -1888,14 +1888,11 @@ a.kit-entry:active {
    taken - next to a number that is never allowed to shrink. Capped and
    ellipsized like an annotation's own name (below): the plate around it is
    now held to half the plot, and an unbounded name could otherwise still
-   force it wider than that. `min-width: 0` overrides the flex/grid default
-   that would rather overflow than shrink a line below its own content. */
+   force it wider than that; the shared cap lives on the selector pair below.
+   `min-width: 0` here overrides the flex/grid default that would rather
+   overflow than shrink a line below its own content. */
 .kit-area-readout-text {
-  display: block;
   min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Which line is which (phase 6 ticket 12). The app's second legend, and the
@@ -1951,7 +1948,9 @@ a.kit-entry:active {
    clears the mark it names, and a name still allowed to reach a fixed 20ch
    of its own could grow past that half again - this ties the two caps
    together instead of guessing a `ch` count small enough for every plot
-   width the kit is asked to draw at. */
+   width the kit is asked to draw at. Shared with .kit-area-readout-text
+   above, which caps for the same reason. */
+.kit-area-readout-text,
 .kit-area-readout-annotation {
   display: block;
   max-width: 100%;
