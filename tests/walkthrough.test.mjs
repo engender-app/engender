@@ -4242,10 +4242,11 @@ try {
   await page.waitForSelector('[data-goal]');
 
   await page.locator('[data-add-goal="medical"]').click();
-  await page.getByPlaceholder('Your step').fill('Get the referal reissued'); // text-under-test: the typo this flow corrects
+  await page.getByPlaceholder('Your step').fill('Get the referal reissued');
   await page.getByRole('button', { name: 'Add goal' }).click();
 
-  const misspelt = page.locator('[data-goal]').filter({ hasText: 'Get the referal reissued' });
+  // The typo just typed is the only thing telling this row from the rest.
+  const misspelt = page.locator('[data-goal]').filter({ hasText: 'Get the referal reissued' }); // text-under-test
   await misspelt.waitFor();
   const goalId = await misspelt.getAttribute('data-goal');
 
@@ -4277,7 +4278,7 @@ try {
   await page.locator('#document-title').fill('Referral, reissued');
   await page.locator('[data-save-document]').click();
   await page.waitForSelector('[data-list-row]');
-  await page.locator('[data-list-row]').filter({ hasText: 'Referral, reissued' }).click();
+  await page.locator('[data-list-row]').filter({ hasText: 'Referral, reissued' }).click(); // text-under-test: the title just typed
   await page.waitForSelector('[data-pick-document-target]');
   await page.locator('[data-pick-document-target]').click();
   await page.locator(`[data-pick-target="goal:${goalId}"]`).click();
@@ -4294,9 +4295,9 @@ try {
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.locator('[data-delete-goal]').click();
   await page.waitForSelector('[data-confirm-delete-goal]');
-  // text-under-test: the count, which is the whole reason this confirmation
-  // says more than "this cannot be undone".
-  if (!(await page.getByText('1 document filed here is kept').count())) {
+  // The count is the whole reason this confirmation says more than "this
+  // cannot be undone".
+  if (!(await page.getByText('1 document filed here is kept').count())) { // text-under-test
     throw new Error('the confirmation does not count the paper it is about to unfile');
   }
   await page.locator('[data-confirm-delete-goal]').click();
