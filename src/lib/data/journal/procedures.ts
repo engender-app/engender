@@ -19,7 +19,7 @@
    cascade would do it.
 
    Recovery photos are their own table (procedure_photo) rather than a third
-   owner arm on `photo` (migrations.ts v13 explains why: `photo`'s
+   owner arm on `photo` (schema.ts explains why: `photo`'s
    exactly-one-owner CHECK cannot be widened in place). They carry both an
    owning procedure and their own date, unlike either existing photo table:
    a recovery photo belongs to one procedure the way hair_removal_photo

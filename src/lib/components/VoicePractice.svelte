@@ -10,7 +10,7 @@
      (ears improve faster than muscles, and one bad take is one data point)
      argue for asking how it felt before anything about the numbers is
      shown at all - the numbers stay behind the seal `journal.voicePracticeTakes`
-     puts on every take until tomorrow (migrations.ts's own note on why).
+     puts on every take until tomorrow (schema.ts's own note on why).
      Declining to save is still there; `stop()` calls `finish()` now rather
      than `discard()`, but nothing is written until Save is pressed, and
      nothing is asked if the take captured no voice at all.

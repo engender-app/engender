@@ -13,7 +13,7 @@
    THE HANDOFF. A one-off Reminder legitimately fits an approaching run-out
    - the schema's CHECK requires a concrete epoch_day when recurrence is
    NULL - but nothing about the row says "the stock projection put this
-   here, not you". That is `auto_source` (migrations.ts v7): a nullable
+   here, not you". That is `auto_source` (schema.ts): a nullable
    column the general reminders editor never sets, so any save from that
    screen clears it - the moment a person edits their own copy, this stops
    touching it. A person's own DELETE looks the same from in here: the

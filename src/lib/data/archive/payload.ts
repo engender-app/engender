@@ -408,10 +408,10 @@ export interface ArchiveChecklistItem {
 
 /** A checklist, standalone or scoped to an owner record (phase 5 ticket 05).
     `ownerKind`/`ownerId` travel as a pair, both present or both absent, the
-    same nullable pairing the row itself keeps (migrations.ts v20) - there is
+    same nullable pairing the row itself keeps (schema.ts) - there is
     no owner table to resolve either against yet.
 
-    `appointmentEpochDay` (migrations.ts v48, phase 5 deepening ticket 25) is
+    `appointmentEpochDay` (schema.ts, phase 5 deepening ticket 25) is
     the standalone checklist's own date, null on every owned one - the same
     column travels for both because there is one `checklist` table, not
     because an owned checklist has an appointment of its own. */
@@ -485,7 +485,7 @@ export interface ArchiveAppointment {
 /** One counterevidence entry as it read at the moment its snapshot was
     saved (phase 4 ticket 11) - copied fields, not a reference to the
     source entry's id, the same reasoning the snapshot table itself argues
-    (migrations.ts v14). */
+    (schema.ts). */
 export interface ArchiveCounterevidenceEntry {
   epochDay: number;
   mood: number | null;
@@ -503,7 +503,7 @@ export interface ArchiveCounterevidenceSnapshot {
 /** A "first noticed" marker against the open effect catalogue (phase 4
     ticket 07, widened phase 5 ticket 41). `effect` was already loosened
     from PersonalEffectType to a plain string before that type itself
-    opened up (migrations.ts v39 drops the CHECK that used to enforce it
+    opened up (the schema carries no CHECK to enforce it
     on the way back in); restore.ts now validates against
     ArchivePersonalEffectType rows carried in the same journal instead. */
 export interface ArchivePersonalEffect {
@@ -547,8 +547,7 @@ export interface ArchiveHairStage {
 
 /** One scheduled fixed-position hair photo (phase 4 ticket 09). Its own
     shape, not ArchivePhoto: it carries its own date rather than an owner's,
-    since a hair photo is not an entry's or a milestone's (migrations.ts
-    v13). */
+    since a hair photo is not an entry's or a milestone's (schema.ts). */
 export interface ArchiveHairPhoto {
   id: string;
   epochDay: number;
