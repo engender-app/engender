@@ -59,20 +59,31 @@ export function signedValue(value: number, format: (n: number) => string): strin
     Length comes from the size of the movement and never from its direction:
     the two ends of a scale are not better and worse, so a tag that went with
     lower days draws the same length as one that went with higher and says
-    which way in its own number. */
+    which way in its own number.
+
+    The metric is named on every row, and `metricLabel` is why the caller
+    passes the same metric twice: the key formats the numbers, the word says
+    what they are of. "9 entries · avg 1.9 with · 2.9 without" beside a
+    "−1.0" was six rows of arithmetic about a scale nothing on the card
+    named - on /stats the metric is whichever the day-by-day picker holds,
+    four cards up the screen, and in a wrapped it is whatever the stored
+    preference was (Alicja, on the screencast: what are 63 and 71). Named
+    per row rather than once, which is the shape the correlation cards next
+    door already use for the same sentence about the same reading. */
 export function tagInsightRows(
   insights: (WrappedTagInsight & { label: string })[],
-  metric: string
+  metric: string,
+  metricLabel: string
 ): BarRow[] {
   const format = (value: number) => nativeValue(metric, value);
   return insights.map((insight) => ({
     key: insight.id,
     name: insight.label,
-    note: m.insight_row_sub({
+    note: `${metricLabel} · ${m.insight_row_sub({
       count: String(insight.count),
       with: format(insight.withAvg),
       without: format(insight.withoutAvg)
-    }),
+    })}`,
     value: signedValue(insight.delta, format),
     amount: Math.abs(insight.delta)
   }));

@@ -29,6 +29,7 @@
   import { MOOD_RANGE } from '$lib/data/metricRange';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import {
     WRAPPED_AREA_ROLE,
     nativeValue,
@@ -110,7 +111,11 @@
     return step === null ? day : `${day} · ${moodName(step)}`;
   };
 
-  let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
+  /* Which scale the insight bars are of, said on every row: a wrapped
+     draws them against whichever metric the preference held, and the
+     screen has no picker to read that off. */
+  let metric = $derived(metricKey(prefs));
+  let insightRows = $derived(tagInsightRows(insights, metric, vocabulary.metricNameOf(metric)));
   let tally_rows = $derived(tallyRows(tally));
 
   let figures = $derived([
