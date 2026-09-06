@@ -91,7 +91,10 @@ describe('the summary panels wait for the floor', () => {
      all sat near the bottom drew the same near-full wall as one whose scales
      all sat near the top. */
   it('asks for the track where the bar is an absolute position', () => {
-    for (const rows of ['scaleRows', 'highestRows', 'valueRows']) {
+    /* `valueRows` was a third caller until ticket 99 item 26 took the values
+       sheet away; the rows it built are a hidden text list now and draw no
+       bar at all. */
+    for (const rows of ['scaleRows', 'highestRows']) {
       expect(stats).toMatch(new RegExp(`<BarRows rows=\\{${rows}\\}[^>]*measure="track"`));
     }
   });
@@ -100,8 +103,13 @@ describe('the summary panels wait for the floor', () => {
     expect(stats).toContain('{#if metrics.length > 1 && plotted.points.length}');
   });
 
-  it('offers the values sheet only where there are values', () => {
-    expect(stats).toMatch(/\{#if valueRows\.length\}\s*<button class="stats-open"/);
+  /* The sheet and the link that opened it went in ticket 99 item 26. The
+     gate did not: the series is still written out for a screen reader, and
+     an empty list under an empty chart would be as wrong as an empty sheet
+     was. tests/accessibility-audit.test.ts holds the other half - that the
+     numbers are still readable as text at all. */
+  it('writes the values out only where there are values', () => {
+    expect(stats).toMatch(/\{#if valueRows\.length\}\s*<ul class="visually-hidden" data-values-list/);
   });
 
   it('draws the highest days only where that scale is kept and the floor is cleared', () => {
@@ -110,28 +118,11 @@ describe('the summary panels wait for the floor', () => {
   });
 });
 
-describe('the area index', () => {
-  it('decides which cards exist through the shared seam, not a predicate of its own', () => {
-    expect(stats).toContain("import { cardsInGroup, statsAreaCards, STATS_AREA_GROUPS");
-    expect(stats).toContain('j.lastWrite.getLastWrites(today)');
-    expect(stats).toContain('j.areaStates.getAreaStates()');
-  });
-
-  it('renders no heading for a group the person uses nothing in', () => {
-    expect(stats).toMatch(/\{#if groupCards\(group\)\.length\}\s*<SectionHeading text=\{GROUP_NAME\[group\]\(\)\}/);
-  });
-
-  /* Alicja's call on the rendered screen: no graphs in this block. Every one
-     of these areas owns its chart on its own screen, and a second drawing
-     here is a second thing to keep in agreement. The index is rows, and each
-     row is the way to the screen that draws the real one. */
-  it('draws no chart in the index, only rows into the owning screens', () => {
-    const index = stats.slice(stats.indexOf('{#each STATS_AREA_GROUPS as group'));
-    expect(index).not.toContain('<AreaChart');
-    expect(index).not.toContain('<ChartCard');
-    expect(index).toMatch(/<ListRow[\s\S]{0,200}href=\{card\.panel\.href\}/);
-  });
-
+/* The area index - a row per area in the More hub's own four groups - was
+   removed by ticket 99 item 36: "stats shouldnt have the 'more' list at the
+   end. it is only the stats tab." What survives it is the rule the index was
+   held to, which outlives the block itself. */
+describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   it('asks for no per-area read at all', () => {
     for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'wearTimeTrend', 'tallyTrend']) {
       expect(stats).not.toContain(call);

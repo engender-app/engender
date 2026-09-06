@@ -189,8 +189,12 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
      is the same layout the box has at rest.
 
      Grid only. A block container's content is top-anchored already, which
-     is why every `.disclosed` caller looked right without this. */
-  const rows = style.display.includes('grid') ? style.gridTemplateRows : '';
+     is why every `.disclosed` caller looked right without this. Asked
+     defensively because a caller can hand this a stand-in for a computed
+     style that names only the properties it cares about - reveal.test.ts
+     does exactly that - and a missing `display` is "not a grid", not a
+     crash. */
+  const rows = style.display?.includes('grid') ? style.gridTemplateRows : '';
 
   return {
     duration: motionDuration('--dur-med'),

@@ -36,6 +36,8 @@
    icon-button tooltip makes. A designed tooltip, with its own placement and
    its own timing, is a component rather than a polish fix and is not this. */
 
+import type { Action } from 'svelte/action';
+
 /** Controls whose label lives only in `aria-label`, and that have not been
     given a `title` by their own author. */
 const CANDIDATES = 'button[aria-label], a[aria-label], [role="button"][aria-label]';
@@ -59,10 +61,12 @@ function fill(root: ParentNode): void {
  * Mirror `aria-label` into `title` on every icon-only control under `root`,
  * and keep doing it as screens replace each other.
  *
- * Returns a teardown, or nothing where this does not apply - a server, or a
- * device with no hovering pointer.
+ * A Svelte action, the same shape `resize` in $lib/motion/reveal takes: it
+ * returns its teardown as `destroy`, or nothing at all where this does not
+ * apply - a server, or a device with no hovering pointer, where there is
+ * nothing to tear down either.
  */
-export function hoverHints(root: HTMLElement): (() => void) | undefined {
+export const hoverHints: Action<HTMLElement> = (root) => {
   if (typeof window === 'undefined' || typeof MutationObserver === 'undefined') return;
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
@@ -87,5 +91,9 @@ export function hoverHints(root: HTMLElement): (() => void) | undefined {
     attributeFilter: ['aria-label']
   });
 
-  return () => observer.disconnect();
-}
+  return {
+    destroy() {
+      observer.disconnect();
+    }
+  };
+};
