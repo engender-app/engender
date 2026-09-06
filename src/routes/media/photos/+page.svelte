@@ -285,4 +285,23 @@
     width: 22px; height: 22px; border-radius: 50%;
     background: var(--surface); box-shadow: var(--shadow-1);
   }
+
+  /* The two-up progress-photo comparison. These lived in screens.css while
+     three screens read them; the compare screen moved to its own
+     `.compare-picker` because two date fields do not fit half of a 390px
+     screen, and voice practice moved off `.compare-side` for its own rows,
+     which left this screen as the only consumer and
+     scripts/check-screens-classes.mjs asking for them here.
+
+     `.photo-thumb` is PhotoThumb.svelte's own class, so reaching it from
+     here needs :global() - and it has to be reached, because the shared
+     rule sizes a thumbnail by a fixed pixel width and each side of this
+     grid is half a screen wide. */
+  .compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  .compare-side { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+  .compare-side :global(.photo-thumb) { width: 100% !important; aspect-ratio: 3/4; height: auto !important; }
+
+  @container app (min-width: 1024px) {
+    .compare-wrap { max-width: 560px; margin-left: auto; margin-right: auto; }
+  }
 </style>
