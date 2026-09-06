@@ -65,7 +65,7 @@ export function doseMilligrams(dose: number, doseUnit: string): number | null {
 
 /** One of the user's own lab results beside what the population-level curve
     said for that same moment. */
-export interface FitPair {
+interface FitPair {
   /** The band's midpoint at the draw, in the model's own unit. */
   modelled: number;
   /** The lab result, converted to the model's unit. */
@@ -76,7 +76,7 @@ export interface FitPair {
     The count comes back from here rather than being recounted by the caller:
     which pairs are usable is this function's rule, and a caller applying the
     same test separately would disagree with it the moment either changed. */
-export interface ScaleFit {
+interface ScaleFit {
   factor: number;
   pointsUsed: number;
 }
@@ -91,6 +91,8 @@ export interface ScaleFit {
     Deliberately not a refit of the per-ester compartment parameters. Those
     are the literature's (hormoneCurveModels.ts) and stay as published; this
     moves the amplitude and nothing else. */
+/* fitScaleFactor stays exported only for its own test (AU-09 test-only
+   review). */
 export function fitScaleFactor(pairs: readonly FitPair[]): ScaleFit | null {
   let numerator = 0;
   let denominator = 0;

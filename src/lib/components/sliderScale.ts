@@ -29,7 +29,7 @@ const MAX_STOPS = 21;
     wrong one. */
 const STEPS = [1, 5];
 
-export interface SliderScaleStops {
+interface SliderScaleStops {
   /** What one arrow key, or one drag detent, moves the value by. */
   step: number;
   /** Every value the thumb can rest on, low to high. Empty when the span

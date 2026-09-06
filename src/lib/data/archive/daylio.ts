@@ -22,7 +22,7 @@ export interface DaylioNaming {
   tagLabels(id: string): readonly string[];
 }
 
-export interface DaylioMoodMapping {
+interface DaylioMoodMapping {
   label: string;
   mood: number | null;
 }

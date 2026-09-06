@@ -53,6 +53,8 @@ export type WrappedRangeChoice = (typeof WRAPPED_RANGE_CHOICES)[number];
 /** The choice a wrapped opens on when the range view is reached with no
     parameters: the widest of the rolling windows that is still a window
     rather than a calendar period. */
+/* WRAPPED_RANGE_DEFAULT stays exported only for its own test (AU-09 test-only
+   review). */
 export const WRAPPED_RANGE_DEFAULT: WrappedRangeChoice = 'd30';
 
 /** How many days each rolling window covers, inclusive of today. */
@@ -62,7 +64,7 @@ const WINDOW_DAYS: Partial<Record<WrappedRangeChoice, number>> = {
   d90: 90
 };
 
-export interface WrappedRange {
+interface WrappedRange {
   /** Both ends inclusive, the way the recap seam takes a range. */
   start: number;
   end: number;
@@ -97,7 +99,7 @@ export function wrappedRangeCadence(choice: WrappedRangeChoice): WrappedCadence 
     ADR-0010). Fetched by the caller, the same way `custom`'s two dates
     arrive already read off the form - this stays a pure function of its
     arguments. */
-export interface WrappedEraContext {
+interface WrappedEraContext {
   eraId: string;
   eras: readonly EraSpan[];
   bounds: JournalBounds | null;
@@ -140,7 +142,7 @@ export function resolveWrappedRange(
   return { start: range.start, end: range.end };
 }
 
-export interface WrappedRangeParams {
+interface WrappedRangeParams {
   choice: WrappedRangeChoice;
   /** Date-input values, kept as the strings the two `<input type="date">`
       fields bind to rather than as epoch days: an empty field is a state the

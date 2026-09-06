@@ -89,7 +89,7 @@ export interface FakeWorld {
   dispose(): void;
 }
 
-export interface FakeWorldOptions {
+interface FakeWorldOptions {
   notes?: string[];
   photoNames?: string[];
   /** A preference row carried across verbatim, standing in for everything

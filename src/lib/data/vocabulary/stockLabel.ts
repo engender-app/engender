@@ -17,7 +17,7 @@ export function stockRemainingLabel(remaining: number, unit: string): string {
   return m.stock_remaining({ count: remaining, unit });
 }
 
-export interface StockRunOutLabel {
+interface StockRunOutLabel {
   text: string;
   /** Whether this reading takes the warn treatment - run out already, or
       inside RUN_OUT_LEAD_DAYS. Never true for a reading the chip shows,
@@ -44,14 +44,14 @@ const fmtWindowDay = (epochDay: number): string => fmtDay(epochDay, { day: 'nume
 
 /** "Opened {date}" - null when no opened date was typed, the same way a
     falsy line is one ListRow's subtitle does not have. */
-export function stockOpenedLabel(openedEpochDay: number | null): string | null {
+function stockOpenedLabel(openedEpochDay: number | null): string | null {
   return openedEpochDay === null ? null : m.stock_opened_line({ date: fmtWindowDay(openedEpochDay) });
 }
 
 /** The in-use window's own line, plain either side of it (ticket 13: no
     adjective for a container past its window, unlike stockRunOutLabel's
     `warn`). Null when nothing was typed to project from. */
-export function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | null {
+function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | null {
   const end = inUseWindowEndEpochDay(window);
   if (end === null) return null;
   const date = fmtWindowDay(end);

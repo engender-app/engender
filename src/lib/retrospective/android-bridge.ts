@@ -4,7 +4,7 @@ export interface AndroidRetrospectiveNotificationStatus {
   notifications: 'granted' | 'denied' | 'not-required';
 }
 
-export interface AndroidRetrospectiveNotifyPayload {
+interface AndroidRetrospectiveNotifyPayload {
   title: string;
   body: string;
   /** Sanitized and validated again on the Java side (ReminderScheduler.sanitizeLaunchRoute). */
@@ -13,7 +13,7 @@ export interface AndroidRetrospectiveNotifyPayload {
   channelName: string;
 }
 
-export interface AndroidRetrospectiveNotificationsBridge {
+interface AndroidRetrospectiveNotificationsBridge {
   getStatus(): Promise<AndroidRetrospectiveNotificationStatus>;
   requestNotificationPermission(): Promise<AndroidRetrospectiveNotificationStatus>;
   notifyWrapped(payload: AndroidRetrospectiveNotifyPayload): Promise<void>;

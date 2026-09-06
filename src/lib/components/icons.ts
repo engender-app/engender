@@ -53,6 +53,9 @@
    which is what four tiles say. `dots` stays as it is for the two places
    that do mean a row of dots, a drag handle and an entry's day count. */
 
+/* PATHS stays exported only for hubRows.test.ts, icons-gallery.svelte,
+   icon-geometry.test.ts, which cross-check against it (AU-09 test-only
+   review). */
 export const PATHS: Record<string, string> = {
   home: '<path d="M4 9.5 12 3.1l8 6.4"/><path d="M6 8.1V19.1h12V8.1"/><path d="M9.6 19.1v-5h4.8v5"/>',
   calendar: '<rect x="4" y="5.6" width="16" height="14.4" rx="2"/><path d="M8.5 4v3.2M15.5 4v3.2"/><path d="M4 10.6h16"/>',

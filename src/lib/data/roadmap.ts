@@ -32,7 +32,7 @@ export type RoadmapTrack = (typeof ROADMAP_TRACKS)[number];
    all the way to the screen, where roadmapLabels.ts needs them to look
    wording up. The default keeps every other reader - the tests, a future
    contributed pack - writing plain `RoadmapGoal`. */
-export interface RoadmapGoal<K extends string = string> {
+interface RoadmapGoal<K extends string = string> {
   readonly key: K;
   readonly track: RoadmapTrack;
   /** CONTEXT: "Lean" (phase 5 ticket 43). Most of the Polish pack is
@@ -44,6 +44,7 @@ export interface RoadmapGoal<K extends string = string> {
   readonly lean: Lean;
 }
 
+/* RoadmapPack stays exported only for its own test (AU-09 test-only review). */
 export interface RoadmapPack<K extends string = string> {
   /** Prefixes every goal key in the pack, and is what a stored tick names
       the pack by. */
@@ -112,7 +113,7 @@ const POLISH_GOALS = [
   { key: 'pl-medical-keep-opinions', track: 'medical', lean: 'neutral' }
 ] as const satisfies readonly RoadmapGoal[];
 
-export type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
+type PolishGoalKey = (typeof POLISH_GOALS)[number]['key'];
 
 export const POLISH_PACK = {
   key: 'pl',
@@ -124,6 +125,7 @@ export const POLISH_PACK = {
     session's scope decision (Q14): the structure holds a second country's
     content without a schema change, but populating one is separate content
     work. */
+/* ROADMAP_PACKS stays exported only for its own test (AU-09 test-only review). */
 export const ROADMAP_PACKS = [POLISH_PACK] as const satisfies readonly RoadmapPack[];
 
 /** Every goal key any bundled pack holds - what roadmapLabels.ts has to
@@ -138,12 +140,13 @@ export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['ke
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 
 /** One track's goals, in the order the pack lists them. */
+/* goalsInTrack stays exported only for its own test (AU-09 test-only review). */
 export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: RoadmapTrack): RoadmapGoal<K>[] =>
   pack.goals.filter((goal) => goal.track === track);
 
 /** One track as the screen draws it: the track itself, whether the person
     has said it is not their path, and the goals left to show. */
-export interface RoadmapSection<K extends string, C> {
+interface RoadmapSection<K extends string, C> {
   readonly track: RoadmapTrack;
   readonly dismissed: boolean;
   /** Empty for a dismissed track. The stored ticks are untouched - putting

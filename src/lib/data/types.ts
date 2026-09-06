@@ -22,7 +22,7 @@ export interface Photo {
 
 /** A photo the editor drafted but nothing has saved yet: identity is
     minted on write, by the repository, never in a screen. */
-export type DraftPhoto = Omit<Photo, 'id'>;
+type DraftPhoto = Omit<Photo, 'id'>;
 
 /** An in-app audio recording belonging to exactly one entry (phase 4 ticket
     24, CONTEXT: "Voice recording"). Entry-only, unlike Photo: no milestone

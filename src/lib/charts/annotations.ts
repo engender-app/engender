@@ -223,7 +223,7 @@ export interface ChartAnnotation {
   endReason?: EpisodeEndReason | null;
 }
 
-export interface AnnotationRange {
+interface AnnotationRange {
   from: number;
   to: number;
   /** Where an unfinished stretch reaches to. Nothing is stored about it,
@@ -245,6 +245,7 @@ export const MIN_PLOT_POSITIONS = 2;
     tick, which is the worst of both: it reads as one event and is drawn as
     three. Gathered instead, so one mark stands for what is really there and
     the readout names all of it. */
+/* MIN_MARK_GAP stays exported only for its own test (AU-09 test-only review). */
 export const MIN_MARK_GAP = 5;
 
 /** Everything in `sources` that falls inside the range, clipped to it and
@@ -338,7 +339,7 @@ export interface AnnotationEdge {
 }
 
 /** A stretch, as a rectangle behind the plot. */
-export interface AnnotationBand {
+interface AnnotationBand {
   key: string;
   x1: number;
   x2: number;

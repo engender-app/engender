@@ -9,7 +9,7 @@
 
 import type { AttemptStore, AttemptState } from './throttle.ts';
 
-export const ATTEMPT_STORE_KEY = 'gender-diary-pin-attempts';
+const ATTEMPT_STORE_KEY = 'gender-diary-pin-attempts';
 
 export function localStorageAttempts(): AttemptStore {
   return {

@@ -12,7 +12,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Revisit } from '../types';
 import { mintUuid, now } from './support';
 
-export interface RevisitInput {
+interface RevisitInput {
   entryId: number;
   /** The day the revisit was set - today's epoch day, handed in rather than
       read here (ADR-0001: today is a local calendar day, not the data

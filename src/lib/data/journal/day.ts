@@ -130,7 +130,7 @@ export type DaySectionKey = keyof DayRecords;
     built, so a section reads exactly what its own screen does. One type
     rather than seventeen parameters, because every section is handed all of
     them and the section that registers next will want an eighteenth. */
-export interface DayAreas {
+interface DayAreas {
   entries: EntriesArea;
   milestones: MilestonesArea;
   doses: DosesArea;
@@ -154,13 +154,14 @@ export interface DayAreas {
 }
 
 /** What every section's read is given: the areas, and the day to read. */
-export interface DayReading extends DayAreas {
+interface DayReading extends DayAreas {
   epochDay: number;
 }
 
 /** One area's declaration that its records show on a day. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `DayRecords` has never heard of. */
+/* DaySection stays exported only for its own test (AU-09 test-only review). */
 export interface DaySection {
   key: string;
   covers: readonly string[];
@@ -376,6 +377,7 @@ type Covered = (typeof SECTIONS)[number]['covers'][number];
     and video notes appear on none of these lists because they are not
     archive sections at all: they travel inside the entry or the milestone
     that owns them, which is exactly how they reach the day view too. */
+/* DAY_OPT_OUTS stays exported only for its own test (AU-09 test-only review). */
 export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data',
   presets: 'reference data',
@@ -451,6 +453,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   wordIgnore: 'reference data'
 };
 
+/* DAY_SECTIONS stays exported only for its own test (AU-09 test-only review). */
 export const DAY_SECTIONS: readonly DaySection[] = SECTIONS;
 
 /** Every section's key, in the order they read - what the screen walks to

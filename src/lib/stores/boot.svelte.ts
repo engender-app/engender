@@ -267,7 +267,7 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
 
 /** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
     this session, the same way a chosen passphrase does. */
-export async function submitPinSetup(pin: string): Promise<void> {
+async function submitPinSetup(pin: string): Promise<void> {
   const dataKey = await setupJournalPin(pin);
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
 }
@@ -286,7 +286,7 @@ export async function submitPinUnlock(pin: string): Promise<void> {
     this session as well as every later one. Throws BiometricUnavailableError
     at the screen when the authenticator will not answer, which is a
     different sentence from a failed setup. */
-export async function submitBiometricSetup(): Promise<void> {
+async function submitBiometricSetup(): Promise<void> {
   const dataKey = await setupJournalBiometric();
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
 }
@@ -338,7 +338,7 @@ export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
     This was `submitSkipSetup` until ticket 53. Device-bound is one of the
     module's equal choices now rather than the way past a wall, and the name
     was the last place the old framing survived. */
-export async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> {
+async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
     const result = await openAndroidDataKey(androidKeystore, {
       title: '',

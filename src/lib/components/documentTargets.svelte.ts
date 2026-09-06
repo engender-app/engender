@@ -25,7 +25,7 @@ import { documentTargetHref, orderedSections, type TargetSection } from './docum
 /** What a document's own link resolves to: still reading, the target's name
     and where it lives, or a target that is not there any more - which a
     restored archive can carry, since the link travels unresolved. */
-export type ResolvedTarget = { state: 'loading' } | { state: 'gone' } | { state: 'found'; text: string; href: string };
+type ResolvedTarget = { state: 'loading' } | { state: 'gone' } | { state: 'found'; text: string; href: string };
 
 export function documentTargets() {
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });

@@ -10,7 +10,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { EpisodeEndReason, RegimenEpisode } from '../types';
 import { assertChanged, mintUuid, now } from './support';
 
-export type RegimenEpisodeInput = Omit<RegimenEpisode, 'id'> & { id?: string };
+type RegimenEpisodeInput = Omit<RegimenEpisode, 'id'> & { id?: string };
 
 export interface RegimenArea {
   /** Ordered by start day, ties broken by insertion order - the order

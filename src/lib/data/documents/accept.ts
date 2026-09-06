@@ -34,7 +34,7 @@ import { renderPdfThumbnail } from './pdf';
 
 /** A stored PDF: the bytes exactly as they arrived, and its first page as
     a thumbnail - or null where the renderer could not read the file. */
-export interface StoredPdf {
+interface StoredPdf {
   pdfBytes: Uint8Array;
   thumb: Uint8Array | null;
 }

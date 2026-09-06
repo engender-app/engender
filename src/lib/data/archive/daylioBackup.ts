@@ -73,7 +73,7 @@ import { openZip, ZipTooLargeError, type ZipReader } from './zipReader';
     is not a damaged file: an iOS backup is a different schema, and a
     screen calling it unreadable sends somebody looking for a fix that
     does not exist. */
-export type DaylioBackupErrorKind = 'unreadable' | 'platform' | 'record';
+type DaylioBackupErrorKind = 'unreadable' | 'platform' | 'record';
 
 /** A backup this app will not read, with the record or the reason named.
     The structural half of the failure split: a caller shows a message,
@@ -120,7 +120,7 @@ export type DaylioSkipKind =
   | 'assets'
   | 'unnamed';
 
-export interface DaylioSkip {
+interface DaylioSkip {
   kind: DaylioSkipKind;
   count?: number;
 }
@@ -141,7 +141,7 @@ const OUT_OF_SCOPE: readonly (readonly [DaylioSkipKind, readonly string[]])[] = 
 /** One mood as the backup defines it: the person's own name where there
     is one, null for a built-in Daylio mood, whose name lives in Daylio's
     translations rather than in the file. */
-export interface DaylioMoodResolution {
+interface DaylioMoodResolution {
   name: string | null;
   mood: number | null;
 }
@@ -149,7 +149,7 @@ export interface DaylioMoodResolution {
 /** A photo or voice note the commit has to write, read from the zip on
     demand rather than held in memory: the backup is already one buffer,
     and a journal of 500 photos does not need to be a second one. */
-export interface DaylioAsset {
+interface DaylioAsset {
   /** The name the journal row carries, so a caller matches an asset to
       the row that names it. */
   fileName: string;

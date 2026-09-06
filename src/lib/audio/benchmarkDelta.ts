@@ -51,13 +51,15 @@ export function comparabilityBreak(from: ComparableTake, to: ComparableTake): Se
   return captureChainBreak(from.captureChain, to.captureChain);
 }
 
+/* BenchmarkForDelta stays exported only for its own test (AU-09 test-only
+   review). */
 export interface BenchmarkForDelta extends ComparableTake {
   f0MedianHz: number;
   f1Hz: number | null;
   f2Hz: number | null;
 }
 
-export interface AcousticDelta {
+interface AcousticDelta {
   f0DeltaHz: number;
   /** 12 * log2(ratio) - equal-tempered semitones, the same scale
       audio/pitch.ts's noteName is built on. Doubling the frequency is

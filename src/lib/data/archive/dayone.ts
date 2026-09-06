@@ -84,6 +84,8 @@ export interface DayOnePreview {
   rawPhotos: Map<string, Uint8Array>;
 }
 
+/* DayOneImportError stays exported only for its own test (AU-09 test-only
+   review). */
 export class DayOneImportError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(`Day One export ${message}`, options);
@@ -208,6 +210,8 @@ function noteFromRichText(richText: string, entryLabel: string): string {
     entirely. `Intl.DateTimeFormat` reads the calendar date in `timeZone`
     directly, so this never goes through a `Date`'s own (device-zoned)
     getters the way `epochDayFromLocalDate` does. */
+/* localDayInZone stays exported only for its own test (AU-09 test-only
+   review). */
 export function localDayInZone(instantMs: number, timeZone: string): number {
   let parts: Intl.DateTimeFormatPart[];
   try {
@@ -225,6 +229,8 @@ export function localDayInZone(instantMs: number, timeZone: string): number {
     directly (ADR-0002) rather than derived, only reshaped into this app's
     dashed, lowercase form. Deterministic, so importing the same file twice
     names the same row both times. */
+/* normalizeDayOneUuid stays exported only for its own test (AU-09 test-only
+   review). */
 export function normalizeDayOneUuid(raw: string, entryLabel: string): string {
   const hex = raw.toLowerCase();
   if (!/^[0-9a-f]{32}$/.test(hex)) {

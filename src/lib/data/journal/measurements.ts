@@ -24,14 +24,14 @@ import type { Measurement, MeasurementType } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 import { assertChanged, bool, mintUuid, now } from './support';
 
-export type MeasurementInput = FlatInput<Measurement>;
+type MeasurementInput = FlatInput<Measurement>;
 
 /** One chart line: the measurements of one type that share a unit, oldest
     first. A value logged in cm and one logged in inches differ by a
     factor of about 2.5, so drawing them as one line would invent a change
     that never happened; two units are two lines (mirrors labs.ts's
     LabSeries). */
-export interface MeasurementSeries {
+interface MeasurementSeries {
   unit: string;
   measurements: Measurement[];
 }

@@ -41,6 +41,7 @@ export interface QuietHours {
     cannot be read - the same fallback ReminderPlanner.parseTime makes, and
     for the same reason: a malformed preference must not take a scheduler
     down with it. */
+/* minuteOfDay stays exported only for its own test (AU-09 test-only review). */
 export function minuteOfDay(hhmm: string): number {
   const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
   if (!match) return 0;
@@ -60,6 +61,7 @@ export function minuteOfDay(hhmm: string): number {
     defensible and only one of them fails safe, since two equal times
     somebody scrolled past would otherwise hold every notification the app
     has, permanently, with nothing on screen saying so. */
+/* isQuiet stays exported only for its own test (AU-09 test-only review). */
 export function isQuiet(minute: number, quiet: QuietHours): boolean {
   if (!quiet.enabled) return false;
   const start = minuteOfDay(quiet.start);

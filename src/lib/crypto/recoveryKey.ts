@@ -40,6 +40,8 @@ const GROUP_SIZE = 5;
 
 /** The canonical length: the data symbols and the check symbol, with no
     separators. This is the form the KDF sees. */
+/* RECOVERY_KEY_LENGTH stays exported only for its own test (AU-09 test-only
+   review). */
 export const RECOVERY_KEY_LENGTH = DATA_SYMBOLS + 1;
 
 /** Thrown for a key that cannot be what was written down - a wrong length,

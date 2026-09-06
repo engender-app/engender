@@ -30,7 +30,7 @@
    choosing rather than recognising. Five different pairs of eyes would also
    be five different faces, and this is meant to be one face in five moods. */
 
-export type MoodDrawing = {
+type MoodDrawing = {
   /** The mouth, one stroked path spanning x 8 to x 16. */
   mouth: string;
   /** Present only on the two steps that draw lids instead of dots. */

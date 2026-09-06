@@ -29,6 +29,8 @@ import { onJournalBusyChange, journalIsBusy } from '../data/journal-busy';
 /** Just enough of ServiceWorkerRegistration for this. `waiting` is read
     afresh every time rather than remembered, so the browser stays the single
     source of truth for whether a release is there. */
+/* WatchedRegistration stays exported only for its own test (AU-09 test-only
+   review). */
 export interface WatchedRegistration {
   readonly waiting: { postMessage(message: unknown): void } | null;
   /** The release currently being fetched and precached, if any. */
@@ -45,7 +47,7 @@ interface InstallingWorker {
 
 /** What only a real page can do, injected so both test tiers can stand in
     for it. */
-export interface UpdateEnvironment {
+interface UpdateEnvironment {
   /** Calls back when a worker has taken control of this page. */
   onControllerChange(listener: () => void): void;
   /** Starts the release that just took control. */
