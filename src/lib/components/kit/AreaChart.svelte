@@ -43,6 +43,7 @@
   import {
     bridgeGaps,
     lerpSamples,
+    readoutCorner,
     resample,
     type Point,
     type Sample,
@@ -322,6 +323,10 @@
   let scrubTop = $derived(
     at ? Math.min(...[at.dot?.y, at.overlayDot?.y].filter((y) => y !== undefined)) : 0
   );
+  /* Which corner the readout takes - see geometry.ts's readoutCorner and
+     kit.css's note above .kit-area-readout for why it is a corner and not
+     the finger itself. */
+  let readoutAt = $derived(at ? readoutCorner(at.x, scrubTop, plotBox.width, plotBox.height) : null);
 
   /* Laid out against the plot's own positions rather than against the
      calendar: the chart draws its buckets evenly spaced whatever the days
@@ -576,7 +581,12 @@
       {/if}
 
       {#if at}
-        <output class="kit-area-readout" data-chart-readout>
+        <output
+          class="kit-area-readout"
+          class:is-left={readoutAt?.left}
+          class:is-below={readoutAt?.below}
+          data-chart-readout
+        >
           {#if overlaid}
             <!-- Each series' own number, in its own units, named. This is
                  where the value gutter went: the two lines are placed

@@ -8,7 +8,13 @@
 
 import { describe, expect, it } from 'vitest';
 import { areaPath } from '../src/lib/charts/areaPath';
-import { bridgeGaps, lerpSamples, paddedSeries, resample } from '../src/lib/charts/geometry';
+import {
+  bridgeGaps,
+  lerpSamples,
+  paddedSeries,
+  readoutCorner,
+  resample
+} from '../src/lib/charts/geometry';
 
 describe('resample', () => {
   it('reproduces a straight line exactly, whatever the count', () => {
@@ -250,5 +256,33 @@ describe('bridgeGaps', () => {
     const readings = [0, null, 100];
     bridgeGaps(readings);
     expect(readings).toEqual([0, null, 100]);
+  });
+});
+
+describe('readoutCorner', () => {
+  // Plot-local pixels: 0,0 is top-left, x grows right, y grows down. This
+  // only ever has to pick a half - kit.css's own 50%-of-the-plot cap on
+  // .kit-area-readout is what keeps the plate from growing back across
+  // whichever half it gave up (chart-library-graph.test.ts and
+  // kit-surfaces.test.ts hold that cap; it is not re-tested in pixels here,
+  // the same division tests/kit-gallery.mjs and chart-geometry.test.ts
+  // already keep between what an eye checks and what arithmetic can).
+  const width = 100;
+  const height = 100;
+
+  it('takes the bottom-left corner for a reading in the top-right', () => {
+    expect(readoutCorner(80, 10, width, height)).toEqual({ left: true, below: true });
+  });
+
+  it('takes the top-right corner for a reading in the bottom-left', () => {
+    expect(readoutCorner(10, 80, width, height)).toEqual({ left: false, below: false });
+  });
+
+  it('takes the bottom-right corner for a reading in the top-left', () => {
+    expect(readoutCorner(10, 10, width, height)).toEqual({ left: false, below: true });
+  });
+
+  it('takes the top-left corner for a reading in the bottom-right', () => {
+    expect(readoutCorner(80, 80, width, height)).toEqual({ left: true, below: false });
   });
 });
