@@ -307,6 +307,23 @@ export function collapse(
   params?: { skip?: boolean },
   options?: { direction?: 'in' | 'out' | 'both' }
 ): TransitionConfig {
+  /* Every caller reaches this through `transition:`, which is bidirectional,
+     and Svelte answers a bidirectional directive by calling the primitive
+     once with direction 'both'. A primitive that behaves differently coming
+     and going therefore has to hand back a function for Svelte to ask again
+     when it knows which way this is - which it does at the moment the
+     animation starts, so the measurements below still happen against the
+     layout the transition is actually running on. Without this the two
+     direction tests below are the only place the distinction existed: the
+     arrival gate had never once suppressed an entrance. */
+  if (options?.direction === 'both') {
+    /* Cast because the shape is Svelte's own and svelte2tsx's shim cannot
+       say it: the shim types the function form as nullary, and a signature
+       that took the direction it is actually called with would fail every
+       call site's type check instead. */
+    return ((each?: { direction: 'in' | 'out' }) =>
+      collapse(node, params, each)) as unknown as TransitionConfig;
+  }
   if (isReducedMotion() || params?.skip) return { duration: 0 };
   if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
   if (replacingSlot()) {

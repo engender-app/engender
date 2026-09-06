@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import type { TransitionConfig } from 'svelte/transition';
 
 import {
   collapse,
@@ -194,6 +195,23 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.8)).toContain('opacity: 0.692');
     expect(frame(css!, 0.35)).toContain('opacity: 0');
     expect(frame(css!, 0.1)).toContain('opacity: 0');
+  });
+
+  /* `transition:` is bidirectional, and Svelte answers one by calling the
+     primitive once with direction 'both' - so everything below that behaves
+     differently coming and going only works if a 'both' call hands back a
+     function for Svelte to ask again once it knows. It did not, which is why
+     the arrival gate above had never suppressed a single entrance: every
+     caller of this primitive uses `transition:`. */
+  it('defers to Svelte when a bidirectional directive asks', () => {
+    const node = panel({ beside: [[0, 100]] });
+    const both = collapse(node, undefined, { direction: 'both' }) as unknown;
+    expect(typeof both).toBe('function');
+
+    markScreenArrival();
+    const asked = both as (o: { direction: 'in' | 'out' }) => TransitionConfig;
+    expect(asked({ direction: 'in' }).duration).toBe(0);
+    expect(asked({ direction: 'out' }).duration).toBe(240);
   });
 
   /* A dismissal the fold fills in the same tick is a swap rather than a

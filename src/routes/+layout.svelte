@@ -242,6 +242,20 @@
     /* Before the capture, while the outgoing screen can still be measured. */
     rememberScroll(navigation.from?.url.pathname);
 
+    /* The arrival window opens here rather than only in `afterNavigate`
+       below, and the difference is most of the second defect this ticket was
+       filed for (phase 9 carpet ticket 04). A screen whose panels have their
+       reads cached draws them in the same tick it mounts, which is before
+       `afterNavigate` runs - so the window was still holding the *previous*
+       arrival, the panels read it as a change and played entrances, and
+       Home's tile block animated from a height measured while it was still
+       filling to a height 194px short of the one it settled at, then snapped
+       the rest in the frame the transition ended (measured on the demo
+       journal, returning from the calendar). Marking on the way out covers
+       the panels that are there on mount; the mark after arrival covers the
+       ones whose reads answer a few dozen milliseconds later. */
+    markScreenArrival();
+
     if (!navigation.to) return;
     const pattern = screenTransition({
       from: navigation.from?.url.pathname ?? null,
