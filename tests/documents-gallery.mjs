@@ -1,9 +1,13 @@
-/* Screenshots of the documents area (phase 8 features ticket 52, ADR-0065).
+/* Screenshots of the documents area (phase 8 features tickets 52, 53 and
+   55, ADR-0065).
 
-   Four states, which are the four a sign-off has to see: the empty screen,
-   the import sheet with a title typed into it, the list with several
-   documents on it, and one document's own screen - the only place in the
-   app that draws a page image at all.
+   Seven states, which are the seven a sign-off has to see: the empty
+   screen, the import sheet with a title typed into it, the list with
+   several documents on it, one document's own screen - the only place in
+   the app that draws a page at all - a PDF's first page with the pager
+   under it, the same PDF turned to page two, and a PDF the renderer could
+   not read (ticket 55), which is the paper icon, the line saying so, the
+   size and the export.
 
    The pages themselves are drawn in the browser and handed to the real file
    input, so what is on screen has been through normalizePhoto, the metadata
@@ -20,6 +24,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { makePaperPdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/documents-shots'));
@@ -150,6 +155,26 @@ for (const theme of ['light', 'dark']) {
     return bytes;
   };
 
+  /* Two PDFs, and the difference between them is the whole of what ticket
+     55 added to this screen: one the renderer draws, and one it cannot
+     read at all. Both are real files rather than padding - the drawable
+     one is pages of letterheaded paper (tests/pdf-fixture.mjs), which is
+     what a person actually files. */
+  const importPdf = async (title, day, bytes) => {
+    page.once('filechooser', (chooser) =>
+      chooser.setFiles({ name: 'court-ruling.pdf', mimeType: 'application/pdf', buffer: bytes })
+    );
+    await page.locator('[data-add]').click();
+    await page.waitForSelector('#document-title');
+    await page.locator('#document-title').fill(title);
+    await page.evaluate((iso) => {
+      const el = document.querySelector('#document-day');
+      const fp = el?._flatpickr ?? el?.flatpickr;
+      if (!fp) throw new Error('no flatpickr instance on #document-day');
+      fp.setDate(iso, true);
+    }, day);
+  };
+
   await settle('/');
   await page.getByRole('button', { name: 'Reset demo state' }).click();
   await page.waitForTimeout(1500);
@@ -187,7 +212,48 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1200);
   await shoot('04-one-document');
 
-  /* ---------- 05-07: the link (phase 8 features ticket 56). The seeded
+  /* ---------- 05 and 06: a PDF's own screen (ticket 55), on its first
+     page and then turned to its second. The page under the pager is the
+     canvas the renderer drew, not the thumbnail: the shot waits for the
+     class the screen only sets once a page is on it. ---------- */
+  await page.goBack();
+  await page.waitForSelector('[data-add]');
+  await importPdf(
+    'Postanowienie sądu',
+    '2025-02-14',
+    Buffer.from(
+      makePaperPdf([
+        { head: 'SĄD OKRĘGOWY', day: '20 stycznia 2025', note: 'Strona 1 z 3' },
+        { head: 'SĄD OKRĘGOWY', day: '20 stycznia 2025', note: 'Strona 2 z 3' },
+        { head: 'SĄD OKRĘGOWY', day: '20 stycznia 2025', note: 'Strona 3 z 3' }
+      ])
+    )
+  );
+  await page.locator('[data-save-document]').click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForSelector('[data-document-page-canvas="drawn"]');
+  await page.waitForTimeout(600);
+  await shoot('05-pdf-page-one');
+
+  await page.locator('[data-page-forward]').click();
+  await page.waitForTimeout(1200);
+  await shoot('06-pdf-page-two');
+
+  /* ---------- 07: the PDF nothing can draw (ticket 55). The paper icon,
+     the line that says so, the size and the export - which is the honest
+     thing to offer for a file this app cannot read. ---------- */
+  await page.goBack();
+  await page.waitForSelector('[data-add]');
+  await importPdf('Skan, którego nie da się odczytać', '2025-03-03', Buffer.from(makeUnreadablePdf()));
+  await page.locator('[data-save-document]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForSelector('[data-document-unreadable]');
+  await page.waitForTimeout(600);
+  await shoot('07-pdf-not-drawable');
+
+  /* ---------- 06-09: the link (phase 8 features ticket 56). The seeded
      persona is what the picker needs: "Reset demo state" leaves no
      procedures and no regimen episodes, so a picker shot taken against it
      would show one section of four. "Fill every feature" is the jump that
@@ -204,32 +270,32 @@ for (const theme of ['light', 'dark']) {
   await page.locator('[data-pick-document-target]').click();
   await page.waitForSelector('[data-pick-target]');
   await page.waitForTimeout(400);
-  await shootViewport('05-picker');
+  await shootViewport('06-picker');
 
   /* The goal the ticket was written around: paper arrives for "keep every
      opinion" long before that step could ever be ticked. */
   const GOAL = 'pl-medical-keep-opinions';
   await page.locator(`[data-pick-target="goal:${GOAL}"]`).click();
   await page.waitForTimeout(800);
-  await shoot('06-document-linked');
+  await shoot('07-document-linked');
 
-  /* ---------- 07: the picker again, now that the link is set: the row it
+  /* ---------- 08: the picker again, now that the link is set: the row it
      points at carries a tick, and there is a way out of the link at the top
      of the sheet. ---------- */
   await page.locator('[data-pick-document-target]').click();
   await page.waitForSelector('[data-clear-target]');
   await page.waitForTimeout(400);
-  await shootViewport('07-picker-linked');
+  await shootViewport('08-picker-linked');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
 
-  /* ---------- 08: the other end. The goal's own sheet lists what points at
+  /* ---------- 09: the other end. The goal's own sheet lists what points at
      it; the goal itself stores nothing. ---------- */
   await settle('/transition/roadmap');
   await page.locator(`[data-open-goal="${GOAL}"]`).click();
   await page.waitForSelector('[data-goal-sheet-status]');
   await page.waitForTimeout(600);
-  await shootViewport('08-goal-sheet');
+  await shootViewport('09-goal-sheet');
 
   await page.close();
 }

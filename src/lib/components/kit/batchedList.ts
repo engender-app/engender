@@ -47,3 +47,13 @@ export function remainingCount(batches: number, total: number): number {
 export function nextCount(batches: number, total: number): number {
   return Math.min(BATCH, remainingCount(batches, total));
 }
+
+/** Which batch count renders the row at this index (phase 8 features ticket
+    67). A deep link resolves to a position in the same ordered array `items`
+    is sliced from, so this is arithmetic over a position rather than a
+    search: index 0 falls in the first batch, index BATCH in the second, and
+    so on. Answers in one step what growing a batch at a time would otherwise
+    take up to `index / BATCH` renders to reach. */
+export function batchesFor(index: number): number {
+  return Math.floor(Math.max(0, index) / BATCH) + 1;
+}

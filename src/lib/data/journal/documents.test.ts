@@ -148,6 +148,43 @@ test('deleting takes the file and its thumbnail with it, and an unknown id chang
   await journal.documents.deleteDocument('7ac0ffee-0000-4000-8000-000000000000');
 });
 
+/* Phase 8 features ticket 55: a PDF keeps its own bytes and carries the
+   first page drawn at import beside them, under a name spelled off the
+   `.pdf` rather than off a `.jpg` that is not there. */
+const pdf = () => ({ pdfBytes: bytes('%PDF-1.4 a whole opinion'), thumb: bytes('its first page') });
+
+test('a PDF stores what arrived, and its first page beside it', async () => {
+  const { journal, files } = await device();
+  const id = await journal.documents.addDocument({ epochDay: 20000, title: 'E-recepta' }, pdf());
+  const document = (await journal.documents.getDocument(id))!;
+
+  assert.match(document.fileName, /\.pdf$/);
+  assert.deepEqual(files.names(), [document.fileName, document.fileName.replace('.pdf', '-thumb.jpg')].sort());
+  assert.deepEqual(await files.read(document.fileName), bytes('%PDF-1.4 a whole opinion'));
+  assert.deepEqual(await files.read(document.fileName.replace('.pdf', '-thumb.jpg')), bytes('its first page'));
+});
+
+test('a PDF the renderer could not read is filed as one file, and deletes as quietly', async () => {
+  const { journal, files } = await device();
+  const id = await journal.documents.addDocument(
+    { epochDay: 20000, title: 'A scan of something' },
+    { pdfBytes: bytes('%PDF-1.4 unreadable'), thumb: null }
+  );
+  const document = (await journal.documents.getDocument(id))!;
+  assert.deepEqual(files.names(), [document.fileName]);
+
+  await journal.documents.deleteDocument(id);
+  assert.deepEqual(files.names(), []);
+});
+
+test('deleting a PDF takes its page with it', async () => {
+  const { journal, files } = await device();
+  const id = await journal.documents.addDocument({ epochDay: 20000, title: 'Court ruling' }, pdf());
+
+  await journal.documents.deleteDocument(id);
+  assert.deepEqual(files.names(), []);
+});
+
 /* Ticket 56, ADR-0065: at most one link, cleared as cheaply as set. */
 test('a document starts with no link, and one can be set and cleared', async () => {
   const { journal } = await device();
@@ -213,5 +250,4 @@ test('a regimen episode still has no delete for a document link to dangle from',
   // The oracle first: an area that does delete is seen by the same read.
   assert.deepEqual(deletesIn(journal.documents), ['deleteDocument']);
 
-  assert.deepEqual(deletesIn(journal.regimen), []);
-});
+  assert.deepEqual(deletesIn(journal.regimen), []);});

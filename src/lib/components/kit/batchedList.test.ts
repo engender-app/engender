@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BATCH, nextCount, remainingCount, shownCount } from './batchedList';
+import { BATCH, batchesFor, nextCount, remainingCount, shownCount } from './batchedList';
 
 describe('shownCount', () => {
   it('renders one batch when one has been asked for', () => {
@@ -61,5 +61,27 @@ describe('nextCount', () => {
 
   it('offers nothing once the list is exhausted', () => {
     expect(nextCount(1, 10)).toBe(0);
+  });
+});
+
+describe('batchesFor', () => {
+  it('puts the first row in the first batch', () => {
+    expect(batchesFor(0)).toBe(1);
+  });
+
+  it('puts the last row of a batch in that batch, not the next one', () => {
+    expect(batchesFor(BATCH - 1)).toBe(1);
+  });
+
+  it('puts the first row past a batch boundary in the next batch', () => {
+    expect(batchesFor(BATCH)).toBe(2);
+  });
+
+  it('counts whole batches for a row several batches deep', () => {
+    expect(batchesFor(BATCH * 3)).toBe(4);
+  });
+
+  it('treats a negative index as the first row, never as fewer than one batch', () => {
+    expect(batchesFor(-1)).toBe(1);
   });
 });

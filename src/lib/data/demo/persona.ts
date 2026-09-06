@@ -60,10 +60,10 @@ export interface PersonaMilestone extends MilestoneInput {
 }
 
 /** An appointment plus the entry that debriefs it, for the one appointment
-    that carries one (phase 8 features ticket 64). Written through the
-    pre-ticket-58 date-keyed mechanism (checklists.ts's `setAppointmentDate`
-    and `recordDebriefEntry`), since ticket 58 - the one that keys a debrief
-    to the appointment's own id instead - has not landed. */
+    that carries one (phase 8 features ticket 64). Linked by the
+    appointment's own id since ticket 58 (checklists.ts's
+    `recordDebriefEntry`), which is also what retired the date-keyed
+    mechanism this was first written against. */
 export interface PersonaAppointment extends AppointmentInput {
   procedureId: null;
   debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };

@@ -2612,12 +2612,11 @@
   "appointment_prep_delete_q": "Delete this item?",
   "appointment_prep_delete": "Delete",
   "appointment_prep_context_heading": "For this visit",
-  "appointment_prep_last_appointment_label": "Last appointment",
+  "appointment_prep_next_appointment_label": "Next appointment",
   "appointment_debrief_row": "Your debrief",
-  "appointment_prep_last_appointment_unset": "Not set",
-  "appointment_prep_last_appointment_aria": "Last appointment date",
-  "appointment_prep_labs_heading": "Labs since then",
-  "appointment_prep_side_effects_heading": "Side effects since then",
+  "appointment_prep_next_appointment_unset": "Not set",
+  "appointment_prep_labs_heading": "Labs since your last appointment, {day}",
+  "appointment_prep_side_effects_heading": "Side effects since your last appointment, {day}",
   "clinician_summary_appointment_prep_empty": "Nothing on the appointment prep list.",
   "appointment_prep_add_button": "Add to appointment prep list",
   "appointment_prep_added_toast": "Added to appointment prep list",
@@ -3336,6 +3335,11 @@
   "day_document": "Document",
   "hub_sub_documents": "Opinions, referrals and rulings you have been given",
   "document_page_alt": "The page of {title}",
+  "document_page_count": "Page {page} of {pages}",
+  "document_page_prev": "Previous page",
+  "document_page_next": "Next page",
+  "document_page_failed": "This page didn’t draw. The rest of the file is fine, and you can send it out as it is.",
+  "document_pdf_unreadable": "This app can’t draw this PDF. It is kept exactly as it arrived, and you can send it out from here.",
   "document_save_failed": "Couldn’t file this document. Nothing was kept.",
   "document_edit_failed": "Couldn’t save that change. The document is as it was.",
   "document_link_label": "Linked to",
@@ -3374,5 +3378,9 @@
         "countPlural=other": "{count} documents filed here are kept and stop being filed under this step. This cannot be undone."
       }
     }
-  ]
-}
+  ],
+  "document_unsupported_file": "This file isn’t a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.",
+  "document_too_large": "That file is too large to store. Up to 25 MB.",
+  "document_picker_failed": "Couldn’t open the file picker.",
+  "document_export": "Share or save",
+  "document_export_hint": "This copies the file out of the app’s encryption."}

@@ -66,14 +66,14 @@
     epochDay?: number;
     entryId?: number;
     seedMood?: number | null;
-    /** The appointment date this new entry debriefs (phase 6 ticket 08),
-        arriving as a query param the same way `seedMood` does. Applies the
-        hidden `appointment_debrief` template once on mount and, once the
-        entry is first saved, links it back to the appointment
-        (`recordDebriefEntry`) - never on an edit of an existing entry,
-        the same "creation aid, not an editing one" rule the prompt and the
-        template sheet already follow. */
-    debriefForAppointment?: number;
+    /** The appointment this new entry debriefs, by id (phase 6 ticket 08,
+        rekeyed from a date by ticket 58), arriving as a query param the
+        same way `seedMood` does. Applies the hidden `appointment_debrief`
+        template once on mount and, once the entry is first saved, links it
+        back to the appointment (`recordDebriefEntry`) - never on an edit
+        of an existing entry, the same "creation aid, not an editing one"
+        rule the prompt and the template sheet already follow. */
+    debriefForAppointment?: string;
   } = $props();
 
   /* The editor is a writing surface rather than a set of areas to look at,
@@ -295,16 +295,24 @@
      started typing, both mean there is something here that is not this
      function's to overwrite - the offer "does not write" (ticket 19's own
      line), read as "does not clobber" too. Nothing is appended when the
-     range is empty; a blank line under a one-line prompt is not a list. */
-  async function fillDebriefList(appointmentEpochDay: number) {
+     range is empty; a blank line under a one-line prompt is not a list.
+
+     Takes the appointment's id (ticket 58) and resolves its own day first,
+     since the range this pre-fill wants starts there, not at some day the
+     caller already knew. Silently does nothing for an id the journal no
+     longer holds, the same "offer a blank entry rather than a broken one"
+     rule the deep link's own param parsing follows. */
+  async function fillDebriefList(appointmentId: string) {
     // Awaited first, deterministically: a restored process-death draft is
     // the person's own unsaved work and always wins the race against this
     // function's own two reads, rather than whichever happens to resolve
     // last.
     await persistedRestore;
+    const appointment = await journal.appointments.getAppointment(appointmentId);
+    if (!appointment) return;
     const [labs, sideEffects] = await Promise.all([
-      readLabResultsInRange(journal.labs, appointmentEpochDay, todayEpochDay()),
-      journal.sideEffects.getSideEffectsInRange(appointmentEpochDay, todayEpochDay())
+      readLabResultsInRange(journal.labs, appointment.epochDay, todayEpochDay()),
+      journal.sideEffects.getSideEffectsInRange(appointment.epochDay, todayEpochDay())
     ]);
     const items = debriefListItems(labs, sideEffects);
     if (!items.length) return;
@@ -490,7 +498,7 @@
   // The context is this entry: the last photo already in its own draft,
   // stored or just picked, not the journal's last photo overall.
   function lastDraftPhotoReference(): ReferencePhoto | null {
-    const last = entryDraft.photos.at(-1);
+    const last = entryDraft.photos[entryDraft.photos.length - 1];
     if (!last) return null;
     if (last.kind === 'picked') return { bytes: last.photo.full };
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
