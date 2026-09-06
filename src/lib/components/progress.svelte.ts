@@ -132,7 +132,14 @@ export function createProgress(): ProgressRun {
       // So the full bar and its 100% are in the DOM before the wait below,
       // which is 0 under reduced motion.
       await tick();
-      const wait = settleDelay(Date.now() - shownAt, motionDuration('--dur-med'));
+      const wait = settleDelay(
+        Date.now() - shownAt,
+        // The fill's own transition (components.css's `.rail i`), so the
+        // hold begins when the bar arrives at full rather than when it set
+        // off for it.
+        motionDuration('--dur-slow'),
+        motionDuration('--dur-med')
+      );
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
       run.abandon();
     },
