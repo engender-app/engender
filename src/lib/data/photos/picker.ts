@@ -12,6 +12,7 @@
 import { chooseFiles } from '../fileDialog';
 import { isAndroid } from '../../platform';
 import { androidPhotos } from './android-bridge';
+import { refuseAboveCeiling, refuseTooLarge } from '../documents/accept';
 
 export interface PhotoPicker {
   /** The bytes of everything the user chose, or an empty array if they
@@ -25,11 +26,37 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
+/** Runs an Android bridge pick, turning the native side's own too-large
+    refusal into the same DocumentRefusedError the web ceiling check throws
+    - PhotosPlugin.java queries the content provider's declared size and
+    rejects before it ever opens the file, the same "before it is read" this
+    ceiling means on the web. Anything else the bridge rejects with is
+    rethrown unchanged. */
+async function pickOnAndroid<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('too-large')) refuseTooLarge();
+    throw error;
+  }
+}
+
+/** The single-file half of documentPicker() and cameraPhotoPicker() on the
+    web: open the same file input, refuse by size before reading, read if
+    not. `chooseFiles`'s own arguments are the only difference between the
+    two callers. */
+async function pickOneFile(...args: Parameters<typeof chooseFiles>): Promise<Uint8Array[]> {
+  const [file] = await chooseFiles(...args);
+  if (!file) return [];
+  refuseAboveCeiling(file.size);
+  return [new Uint8Array(await file.arrayBuffer())];
+}
+
 export function filePhotoPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { images } = await androidPhotos.pickImages();
+        const { images } = await pickOnAndroid(() => androidPhotos.pickImages());
         return images.map(base64ToBytes);
       }
 
@@ -37,6 +64,10 @@ export function filePhotoPicker(): PhotoPicker {
       // still go through normalize(). An entry holds several photos, so one
       // trip through the dialog can bring back several.
       const files = await chooseFiles('image/*', { multiple: true });
+      // Every file's size is checked before any of them is read, so one
+      // oversized photo in a multi-pick refuses the batch before the others
+      // are read too - not partway through it.
+      for (const file of files) refuseAboveCeiling(file.size);
       return Promise.all(files.map(async (file) => new Uint8Array(await file.arrayBuffer())));
     }
   };
@@ -51,12 +82,11 @@ export function documentPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { bytes } = await androidPhotos.pickDocument();
+        const { bytes } = await pickOnAndroid(() => androidPhotos.pickDocument());
         return bytes ? [base64ToBytes(bytes)] : [];
       }
 
-      const [file] = await chooseFiles('application/pdf,image/*');
-      return file ? [new Uint8Array(await file.arrayBuffer())] : [];
+      return pickOneFile('application/pdf,image/*');
     }
   };
 }
@@ -78,8 +108,7 @@ export function cameraPhotoPicker(): PhotoPicker {
         return image ? [base64ToBytes(image)] : [];
       }
 
-      const [file] = await chooseFiles('image/*', { capture: 'environment' });
-      return file ? [new Uint8Array(await file.arrayBuffer())] : [];
+      return pickOneFile('image/*', { capture: 'environment' });
     }
   };
 }
