@@ -5,6 +5,7 @@
  */
 import { isAndroid } from '$lib/platform';
 import { androidPhotos } from '$lib/data/photos/android-bridge';
+import { androidPickedBytes } from '$lib/data/photos/picker';
 import { chooseFiles } from '$lib/data/fileDialog';
 import { tesseractLabOcrEngine } from './ocr-engine';
 import type { OcrImageSource, OcrRecognizer } from './ocr-machine';
@@ -13,14 +14,18 @@ export function platformImageSource(): OcrImageSource {
   return {
     async pickImage(source) {
       if (isAndroid()) {
+        /* The pickers in photos/picker.ts are not reused wholesale here -
+           they return an array and apply the document ceiling, and this
+           lab wants one image and reports its own failures - but the step
+           that turns a pick's token into bytes is theirs, so the OCR lab
+           takes the message channel rather than a second base64 decode of
+           its own (phase 9 audit ticket 06). */
         if (source === 'camera') {
-          const { image } = await androidPhotos.captureImage();
-          if (!image) return null;
-          return Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
+          const { token } = await androidPhotos.captureImage();
+          return token ? androidPickedBytes(token) : null;
         }
-        const { images } = await androidPhotos.pickImages();
-        if (!images.length) return null;
-        return Uint8Array.from(atob(images[0]), (c) => c.charCodeAt(0));
+        const { tokens } = await androidPhotos.pickImages();
+        return tokens.length ? androidPickedBytes(tokens[0]) : null;
       }
 
       const [file] = await chooseFiles('image/*', {
