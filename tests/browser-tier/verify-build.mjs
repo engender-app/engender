@@ -303,7 +303,7 @@ await browser.close();
    reasons: Chromium answers every installability question about an incognito
    profile with `in-incognito` and looks no further, and a restart that the
    browser remembers nothing about would not be much of a restart. */
-const profile = await mkdtemp(join(tmpdir(), 'gender-diary-install-'));
+const profile = await mkdtemp(join(tmpdir(), 'engender-install-'));
 let installed;
 let serving = true;
 const closeServer = async () => {
@@ -381,7 +381,7 @@ try {
   await cold.locator('[data-list-row="disguise"]').click();
   await cold.getByRole('switch', { name: 'Disguise app' }).click();
   await cold.waitForFunction(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.disguise === true;
   });
 
@@ -407,7 +407,7 @@ try {
      mirror the head script reads. */
   await cold.getByRole('switch', { name: 'Disguise app' }).click();
   await cold.waitForFunction(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.disguise === false;
   });
   await cold.keyboard.press('Escape');
@@ -423,7 +423,7 @@ try {
   const shell = await measureCache(cold);
   const megabytes = (shell.bytes / 1e6).toFixed(2);
 
-  if (shell.names.length === 1 && shell.names[0].startsWith('gender-diary-shell-'))
+  if (shell.names.length === 1 && shell.names[0].startsWith('engender-shell-'))
     ok(`the shell is one cache per release (${shell.names[0]}), ${shell.paths.length} entries, ${megabytes} MB`);
   else fail('the shell is one cache per release', JSON.stringify(shell.names));
 
@@ -456,7 +456,7 @@ try {
 
   /* Loading the engine, which is what puts it in the cache: the same files
      ocr-engine.ts fetches, then the same ask it sends afterwards. */
-  const online = await loadAndKeepOcrEngine(cold, OCR_ASSETS, 'gender-diary:cache-on-demand');
+  const online = await loadAndKeepOcrEngine(cold, OCR_ASSETS, 'engender:cache-on-demand');
   if (typeof online === 'string') fail('the OCR engine loads from the app origin', online);
   else ok('the OCR engine loads from the app origin');
   const onlineSizes = typeof online === 'string' ? {} : online.sizes;
@@ -583,7 +583,7 @@ try {
      build that stopped carrying its version, or carried a stale one. What it
      cannot prove is that the resolver itself is right, since both sides ask
      the same function. The walkthrough suite holds the other half - it
-     builds under a GENDER_DIARY_VERSION nobody derives and insists on seeing
+     builds under a ENGENDER_VERSION nobody derives and insists on seeing
      exactly that string - and the rules live in tests/app-version.test.ts. */
   await openScreen(cold, origin, '/settings');
   /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is

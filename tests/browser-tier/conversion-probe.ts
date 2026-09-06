@@ -1,5 +1,5 @@
 /* Ticket 10 on the real platform: build a Journal exactly as the app built
-   one before encryption existed - SQLocal, a `gender-diary.sqlite3` file in
+   one before encryption existed - SQLocal, a `engender.sqlite3` file in
    the OPFS root, plaintext photos in `photos/` - convert it, and then ask
    the disk what is left.
 

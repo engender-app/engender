@@ -1,11 +1,11 @@
 apply plugin: 'com.android.application'
 
 def requireReleaseVersion = (System.getenv('ANDROID_REQUIRE_RELEASE_VERSION') ?: '').toBoolean()
-def releaseVersionName = System.getenv('GENDER_DIARY_VERSION')?.trim() ?: '0.0.0-dev'
-def releaseVersionCodeRaw = System.getenv('GENDER_DIARY_VERSION_CODE')?.trim() ?: '1'
+def releaseVersionName = System.getenv('ENGENDER_VERSION')?.trim() ?: '0.0.0-dev'
+def releaseVersionCodeRaw = System.getenv('ENGENDER_VERSION_CODE')?.trim() ?: '1'
 def releaseVersionCode = (releaseVersionCodeRaw ==~ /^\d+$/) ? Integer.parseInt(releaseVersionCodeRaw) : 1
 if (requireReleaseVersion && (releaseVersionName == '0.0.0-dev' || releaseVersionCode == 1)) {
-    throw new GradleException('Release version variables are required: set GENDER_DIARY_VERSION and GENDER_DIARY_VERSION_CODE.')
+    throw new GradleException('Release version variables are required: set ENGENDER_VERSION and ENGENDER_VERSION_CODE.')
 }
 
 def requireSigning = (System.getenv('ANDROID_REQUIRE_SIGNING') ?: '').toBoolean()
@@ -21,7 +21,7 @@ if (requireSigning && !hasReleaseSigning) {
 }
 
 android {
-    namespace = "dev.barankiewicz.genderdiary"
+    namespace = "dev.engender.app"
     compileSdk = rootProject.ext.compileSdkVersion
     // Launch-route contract fixture: the JVM unit test reads the same
     // launch-routes.json the TypeScript test does, rather than a copy of it.
@@ -31,7 +31,7 @@ android {
         }
     }
     defaultConfig {
-        applicationId "dev.barankiewicz.genderdiary"
+        applicationId "dev.engender.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode releaseVersionCode
