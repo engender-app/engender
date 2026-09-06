@@ -596,13 +596,54 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   fill: none;
   stroke: var(--text); stroke-width: 1.6; stroke-linecap: round;
 }
-/* Only where a surface asked for it, and never on a day card: six entries
-   would be six blinking faces, and the app spends its one ambient loop on
-   the flag sun (DIRECTION.md, tier 0). The delay comes from the step, so a
-   row of five is staggered on any surface rather than only under .mood-btn. */
+/* ---------- the eyes ----------
+
+   Two groups, two authors, no argument between them (MoodFace.svelte). The
+   outer one takes the row's gaze; the inner one runs the face's own glance
+   and stops the moment the row has something to say.
+
+   Only where a surface asked for it, and never on a day card or a calendar
+   cell: six entries would be six faces looking around at a screen nobody is
+   choosing on, and 365 of them would be weather. The three surfaces that set
+   `alive` are the three where five faces are being chosen between. */
+
+/* The gaze. Tier 1, --dur-fast on --ease-out, the same filter-on-a-moving-
+   finger the magnifier's scale is: the value is re-aimed on every pointermove
+   and never more than a frame old, so the easing reads as the eyes following
+   rather than as a delay behind them. --gaze is -1 to 1 and --gaze-reach is
+   how far that is, set by the component off GAZE_REACH so one number governs
+   both the travel and the test that keeps it inside the disc. */
+.mood-face-gaze {
+  translate: calc(var(--gaze, 0) * var(--gaze-reach, 1.05px)) 0;
+  transition: translate var(--dur-fast) var(--ease-out);
+}
+
+/* The glance: three positions a cycle, each arrived at behind a closed lid.
+   The percentages are not round because they are not free - a blink is a
+   third of a glance and shuts hardest at 95% of itself, which lands at
+   31.67%, 65% and 98.33% of the cycle, and the eyes move across those instants
+   rather than near them. Move them and the saccade happens in the open, which
+   is the one thing a real eye never does. The travel is 1.4% of the cycle,
+   about 190ms: a real saccade is nearer 50, but at 44px an instant jump reads
+   as a dropped frame rather than as an eye. */
+.mood-face.is-alive .mood-face-look {
+  animation: face-glance var(--look-cycle, 13.8s) linear infinite;
+  animation-delay: var(--look-delay, 0s);
+}
+/* The row is being crossed, or a mood was just picked: the face has somewhere
+   to look and stops looking around on its own. Paused rather than cancelled,
+   so it resumes from where it was when the finger leaves instead of snapping
+   the eyes back to centre and then letting them drift out again. */
+.mood-face.is-held .mood-face-look { animation-play-state: paused; }
+@keyframes face-glance {
+  0%, 31% { translate: 0 0; }
+  32.4%, 64.3% { translate: calc(var(--look-dir, 1) * var(--gaze-reach, 1.05px)) 0.24px; }
+  65.7%, 97.6% { translate: calc(var(--look-dir, 1) * var(--gaze-reach, 1.05px) * -0.66) -0.28px; }
+  99%, 100% { translate: 0 0; }
+}
 .mood-face.is-alive .mood-face-eye {
-  animation: face-blink 4.6s infinite;
-  animation-delay: var(--blink-delay, 0s);
+  animation: face-blink var(--blink-cycle, 4.6s) infinite;
+  animation-delay: var(--look-delay, 0s);
 }
 @keyframes face-blink {
   0%, 92%, 100% { transform: scaleY(1); }
@@ -611,12 +652,20 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* MO-001: the global reduce rule below clamps every animation's duration to
    1ms, which turns an infinite loop into a restart-every-millisecond
    flicker rather than stillness - a photosensitivity hazard, not a comfort
-   feature. These five decorative loops stop outright instead; each rests on
+   feature. These decorative loops stop outright instead; each rests on
    a frame already inside its own keyframes (open eyes is face-blink's
-   resting frame with no transform applied at all). */
+   resting frame with no transform applied at all, and eyes front is
+   face-glance's).
+
+   The gaze needs no rule of its own: the rows never set --gaze under reduced
+   motion (moodMagnifier, QuickAdd both return early), so there is nothing to
+   undo, and the armed colour is the whole answer - the same substitution the
+   magnifier's scale makes. */
 html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: none; }
+html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .mood-face.is-alive .mood-face-eye { animation: none; }
+  .mood-face.is-alive .mood-face-look { animation: none; }
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
 /* The border is a ring OUTSIDE the circle, the same treatment Home's chips
@@ -644,10 +693,17 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    "no hover-dependent motion" is about inventing motion for hover, not
    about a hover pointer being denied the response a finger gets. */
 .mood-btn:hover .mood-face-disc { fill-opacity: 0.75; }
+/* The pick's own beat. It used to tilt the face 5 degrees at the top of the
+   swell, which was the one piece of this motion nothing could say the meaning
+   of - a mood does not lean. What carries the moment instead is the row: the
+   picked face looks straight out and the other four turn to look at it for a
+   beat before letting go (moodMagnifier), which is the gaze channel already
+   built for the finger, pointed at a cell. The scale is what is left here,
+   and it only has to say "this one". */
 .mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
   0% { transform: scale(0.9); }
-  55% { transform: scale(1.32) rotate(-5deg); }
+  55% { transform: scale(1.32); }
   100% { transform: scale(1.18); }
 }
 .mood-btn.is-selected .mood-face-disc { stroke: var(--text); stroke-width: 0.8; }

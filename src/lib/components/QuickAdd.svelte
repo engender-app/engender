@@ -62,7 +62,7 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
   import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
-  import { MAGNIFIER_SPREAD, magnify } from '$lib/motion/magnifier';
+  import { MAGNIFIER_SPREAD, gazeRow, magnify } from '$lib/motion/magnifier';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
   import MoodFace from './MoodFace.svelte';
@@ -79,7 +79,7 @@
   function close() {
     ui.chooserOpen = false;
     armed = null;
-    moodScale = RESTING;
+    restMoods();
   }
 
   /* Telling you it landed, for the two things that never leave the screen
@@ -456,18 +456,39 @@
      the moment it crosses the hairline. Approach is part of the gesture. */
   let moodScale = $state<number[]>(MOODS.map(() => 1));
 
+  /* The fan's faces answer the slide twice over (phase 9 carpet ticket 01):
+     with size, which only the one under the finger can do, and with a look,
+     which all five do at once. moodMagnifier.svelte.ts carries the same pair
+     for the two plain rows; the fan keeps its own copy of the loop because it
+     also arms a target mid-gesture.
+
+     Null rather than 0 is the resting value: 0 is a face being told the finger
+     is on it, and null is a fan nobody is sliding across, where the faces go
+     back to looking around on their own (MoodFace). */
+  let moodGaze = $state<(number | null)[]>(MOODS.map(() => null));
+
   const RESTING = MOODS.map(() => 1);
+  const NO_GAZE = MOODS.map(() => null);
+
+  /* One place both channels rest, so the fan cannot be left half-answering -
+     five faces still staring at a finger that lifted a second ago is worse
+     than either of them being wrong alone. */
+  function restMoods() {
+    moodScale = RESTING;
+    moodGaze = NO_GAZE;
+  }
 
   function magnifyMoods(e: PointerEvent) {
     if (isReducedMotion()) return;
     const row = document.querySelector('[data-fan-moods]')?.getBoundingClientRect();
     const cell = row ? row.width / MOODS.length : 0;
     if (!row || !cell || e.clientY < row.top - cell / 2 || e.clientY > row.bottom + cell / 2) {
-      if (moodScale.some((scale) => scale !== 1)) moodScale = RESTING;
+      if (moodScale.some((scale) => scale !== 1)) restMoods();
       return;
     }
     const spread = cell * MAGNIFIER_SPREAD;
     moodScale = MOODS.map((_, i) => magnify(e.clientX, row.left + cell * (i + 0.5), spread));
+    moodGaze = gazeRow(e.clientX, row, MOODS.length);
   }
 
   function slideMove(e: PointerEvent) {
@@ -510,7 +531,7 @@
   function slideEnd() {
     if (!ui.chooserPressing) return;
     ui.chooserPressing = false;
-    moodScale = RESTING;
+    restMoods();
     const key = armed;
     armed = null;
     if (key) runTarget(key);
@@ -528,7 +549,7 @@
   onpointercancel={() => {
     ui.chooserPressing = false;
     armed = null;
-    moodScale = RESTING;
+    restMoods();
   }}
 />
 
@@ -572,7 +593,7 @@
             style:--mood-mag={moodScale[i]}
             onclick={() => pickMood(value)}
           >
-            <MoodFace step={value} size={34} blink />
+            <MoodFace step={value} size={34} alive gaze={moodGaze[i]} />
             <span class="fan-mood-label">{moodName(value)}</span>
           </button>
         {/each}

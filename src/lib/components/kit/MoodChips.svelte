@@ -69,6 +69,16 @@
     return i === -1 ? 0 : i;
   });
 
+  /* The row hears about the pick before the caller does, because the beat it
+     runs afterwards - the four unpicked faces turning to look at the chosen
+     one - needs the cell index, and the index is a thing only the row knows.
+     Clearing a mood sends null, and null is the row letting go. */
+  function choose(i: number) {
+    const next = STEPS[i] === value ? null : STEPS[i];
+    magnifier.onPick(next === null ? null : i);
+    onPick(next);
+  }
+
   function onRadioKeydown(e: KeyboardEvent, i: number) {
     const next = nextRadioIndex(e.key, i, STEPS.length);
     if (next === null) return;
@@ -101,14 +111,14 @@
       tabindex={i === activeIndex ? 0 : -1}
       data-mood={step}
       style:--mood-mag={magnifier.moodScale[i]}
-      onclick={() => onPick(step === value ? null : step)}
+      onclick={() => choose(i)}
       onkeydown={(e) => onRadioKeydown(e, i)}
     >
       <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
            number as --touch-target, so the circle itself now clears the row
            item's own floor rather than the label beneath it being what gets
            it there. -->
-      <MoodFace {step} size={48} blink />
+      <MoodFace {step} size={48} alive gaze={magnifier.moodGaze[i]} />
       <span aria-hidden="true">{moodName(step)}</span>
     </button>
   {/each}
