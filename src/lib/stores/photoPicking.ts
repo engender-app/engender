@@ -14,6 +14,7 @@
 import { cameraPhotoPicker, filePhotoPicker } from '../data/photos/picker';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
+import { DocumentRefusedError } from '../data/documents/accept';
 import type { NormalizedPhoto } from '../data/journal/photos';
 import { toast } from './toasts.svelte';
 
@@ -32,6 +33,19 @@ export type ReferencePhoto = { fileName: string } | { bytes: Uint8Array };
 
 const picker = filePhotoPicker();
 const camera = cameraPhotoPicker();
+
+/** Reports a picker.pick() failure by toast: the ceiling's own refusal if
+    that's what it was, the generic picker-failed message (with its own log
+    line) otherwise. Shared by pickPhotos and capturePhoto, which differ only
+    in which log line the generic case gets. */
+function toastPickFailure(error: unknown, logMessage: string): void {
+  if (error instanceof DocumentRefusedError) {
+    toast(m.document_too_large());
+  } else {
+    console.error(logMessage, error);
+    toast(m.photo_picker_failed());
+  }
+}
 
 /** Normalizes whatever bytes a picker returned, dropping and reporting
     anything unreadable so picking four photos of which one is a HEIC still
@@ -68,8 +82,7 @@ export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
   try {
     picked = await picker.pick();
   } catch (error) {
-    console.error('the photo picker failed', error);
-    toast(m.photo_picker_failed());
+    toastPickFailure(error, 'the photo picker failed');
     return [];
   }
 
@@ -84,8 +97,7 @@ export async function capturePhoto(): Promise<NormalizedPhoto | null> {
   try {
     picked = await camera.pick();
   } catch (error) {
-    console.error('the camera failed', error);
-    toast(m.photo_picker_failed());
+    toastPickFailure(error, 'the camera failed');
     return null;
   }
 
