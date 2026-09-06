@@ -87,8 +87,14 @@
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
-      {#if note}<span class="kit-tile-note">{note}</span>{/if}
     </a>
+    <!-- Its own row rather than inside .kit-tile-main (ticket 99 item 9): the
+         note used to make .kit-tile-main a two-line block, which is-split's
+         align-items: center then centred as a whole - so the value, which
+         actually reads on the first of those two lines, sat visibly above
+         the action button's true centre. Out here, the title/value line and
+         the action button share one row and centre against each other. -->
+    {#if note}<span class="kit-tile-note">{note}</span>{/if}
     {#if action.href}
       <a
         class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
