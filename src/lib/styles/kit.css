@@ -72,6 +72,12 @@
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
   --role-mark: var(--role-mark-in, var(--role-ink));
+  /* What a label written on --role-draw is drawn in: the role's own answer
+     where a screen handed one over, and --on-accent where it did not, which
+     is the on-colour of the fill --role-c falls back to. No formula of our
+     own here - a ratio against the undiluted stripe is not something CSS
+     can work out, which is why it is computed in roles.ts and handed in. */
+  --role-fill-ink: var(--role-fill-ink-in, var(--on-accent));
   /* Fills are the flag's own stripe, undiluted by any contrast floor: a
      tinted disc and a shaded week cell carry no information and sit under
      nothing that has to be read, so nothing about them owes a ratio. This
@@ -2016,6 +2022,15 @@ a.kit-entry:active {
 .kit-bars {
   display: grid;
   gap: var(--space-2);
+  /* The entrance, held here because two rules draw it now: the mark paints
+     itself in the stacked form and a fill inside the mark paints it in the
+     inline one, where the mark has to stay unscaled to hold a label. The
+     numbers themselves are Alicja's, 2026-08-28: "longer fade in animation,
+     more ease-out" - longer than --dur-slow and a harder decelerate than
+     --ease-out, on purpose rather than borrowed, and kept off those two so
+     every press in the app does not inherit a bar's settling time. */
+  --dur-bar-in: 600ms;
+  --ease-bar-in: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* A bar row that opens what is behind it (the Stats hub's tag insights).
@@ -2104,14 +2119,10 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
   transform: scaleX(1);
   transform-origin: left center;
-  /* Longer than --dur-slow and a harder decelerate than the shared
-     --ease-out, on purpose rather than borrowed: a bar growing from nothing
-     is the one drawing in the kit with no value to answer to while it
-     moves, so it can spend longer settling than a control ever could
-     (Alicja, 2026-08-28: "longer fade in animation, more ease-out"). Kept
-     local rather than folded into --ease-out itself, which every press and
-     transition in the app also reads. */
-  animation: kit-bar-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* A bar growing from nothing is the one drawing in the kit with no value
+     to answer to while it moves, so it settles longer than a control ever
+     could. The two numbers are on .kit-bars, which both painters read. */
+  animation: kit-bar-in var(--dur-bar-in) var(--ease-bar-in) both;
   /* Capped, because the index is a row's place in the set and a set can be
      long: the values list is one row per day, and at 365 rows an uncapped
      stagger is eighteen seconds of bars arriving. Twelve steps is the point
@@ -2136,113 +2147,111 @@ a.kit-entry:active {
   background: var(--role-draw);
 }
 
-/* The inline row: name, track and value on one line (phase 9 UX carpet
-   ticket 11).
+/* The inline row: the bar is the row, and the day is written on it (phase
+   9 UX carpet ticket 11).
 
    The highest days card is what this exists for. Ten days ranked on one
    0-to-100 scale come out within a few points of each other, so ten
-   full-width tracks were ten near-identical lengths - and they cost 870px
-   at 390px wide, which is more than a viewport for a list of ten numbers.
-   The bar keeps its honest `track` measure and stops pretending to be the
-   reading: the number is, and it now sits on the same line as the day it
-   belongs to.
+   full-width tracks under ten lines of text were ten near-identical lengths
+   costing 870px at 390px wide, which is more than a viewport for a list of
+   ten numbers. Here the bar carries the day instead of standing under it,
+   and the set reads as one stack rather than as ten drawings.
 
-   Both side columns are a fixed width, and that is the whole reason this
-   reads as a chart rather than as ten unrelated bars. A row is its own
-   grid - the pressable row is a button, and a button cannot be
-   `display: contents` without losing the press wash and its own box - so
-   nothing lines these three columns up across rows on its own, and subgrid
-   is out at the WebView 87 floor the app supports. Sized to content, the
-   track's region then started and ended at a different x on every row, and
-   two days on the same reading drew visibly different lengths: 84 under
-   "Sat 5 Sept" came out 8px longer than 84 under "Sat 22 Aug". A bar chart
-   whose lengths are not comparable is worse than no bar at all.
+   40px of bar and nothing else in the row, so the 48dp touch floor the row
+   still owes is the only space between one bar and the next: 8px. That is
+   the whole of "much closer to each other" - the air came from the label
+   needing a line, not from the gap, which was already --space-1.
 
-   The widths are in em of the row's own `--text-sm`, so they follow the
-   type scale and the system font size rather than pinning px under it.
-   7em holds the longest short-format day in either language - measured,
-   not guessed: the widest of all 366 in English is "Wed 16 Sept" at 86px
-   and in Polish "niedz., 29 mar" at 92px, against 98px of column. 3.5em
-   holds four tabular figures, and the column gap absorbs a fifth before
-   anything touches the track. */
+   The bar keeps its honest `track` measure: its length is the reading's
+   place on the whole scale, not its share of the day at the top. The value
+   column beside it is fixed, so every bar starts and ends on the same two x
+   positions and two days on the same reading draw the same length. Each row
+   is its own grid - a pressable row is a button, and a button cannot be
+   `display: contents` without losing its box and its press wash - and
+   subgrid is out at the WebView 87 floor, so a shared geometry has to be a
+   fixed width rather than a shared track. 3.5em holds four tabular figures,
+   and the column gap absorbs a fifth before anything touches the bar. */
 .kit-bars.is-inline {
-  gap: var(--space-1);
+  gap: 0;
 }
 
 .kit-bars.is-inline .kit-bar {
   display: grid;
-  grid-template-columns: 7em minmax(0, 1fr) 3.5em;
+  grid-template-columns: minmax(0, 1fr) 3.5em;
   align-items: center;
   column-gap: var(--space-3);
+  padding-block: 0;
+  min-height: var(--touch-target);
   font-size: var(--text-sm);
 }
 
-/* The touch floor (48dp, PRODUCT.md) is what sets the row's height now that
-   its content no longer does. Only where the row opens something: a row
-   that is a drawing owes no target and would just be air. */
-.kit-bars.is-inline .kit-bar.is-open {
-  min-height: var(--touch-target);
-}
-
-/* Every cell placed by hand, and this is not belt and braces: the moment
-   the track and the value are told to span both rows for the note's sake,
-   auto-placement has nowhere left to put an unplaced name and drops it into
-   the second row's spare column, which draws the row inside out - value,
-   sliver, name.
-
-   `span 2` and not `1 / -1`: the note's row is implicit, and a negative
-   line number counts back from the explicit grid, which here has one row. */
-.kit-bars.is-inline .kit-bar-name {
-  grid-column: 1;
-  grid-row: 1;
-}
-
 .kit-bars.is-inline .kit-bar-track {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  height: 10px;
+  position: relative;
+  display: block;
+  grid-column: 1;
+  height: 40px;
   margin-top: 0;
+}
+
+/* The mark stops being the painted thing and becomes the window: it holds
+   its width and the width transition, clips what is drawn inside it, and
+   the fill under it takes the paint and the entrance. Painting and clipping
+   cannot be the same element here - the entrance scales the fill on its x
+   axis, and a label inside something being scaled is a label being
+   stretched. */
+.kit-bars.is-inline .kit-bar-mark {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--bar-share) * 1%);
+  height: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: none;
+  animation: none;
+}
+
+.kit-bars.is-inline .kit-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--role-draw);
+  transform-origin: left center;
+  animation: kit-bar-in var(--dur-bar-in) var(--ease-bar-in) both;
+  animation-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
+}
+
+/* The day and its note, at the same place in the row whichever copy this
+   is: the one on the card and the one the mark clips have to land on the
+   same pixel or the words look doubled at the bar's end. */
+.kit-bars.is-inline .kit-bar-inside {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.kit-bars.is-inline .kit-bar-mark .kit-bar-inside,
+.kit-bars.is-inline .kit-bar-mark .kit-bar-name,
+.kit-bars.is-inline .kit-bar-mark .kit-bar-note {
+  color: var(--role-fill-ink);
+}
+
+.kit-bars.is-inline .kit-bar-note {
+  margin-top: 0;
+  line-height: 1.2;
 }
 
 /* Right, so the figures line up on their last digit down the card: the
    column is fixed and 85 is a character narrower than 100. */
 .kit-bars.is-inline .kit-bar-value {
-  grid-column: 3;
-  grid-row: 1 / span 2;
+  grid-column: 2;
   margin-left: 0;
   text-align: right;
-}
-
-/* Slim, and a pill rather than the 8px corner the stacked track takes: at
-   10px a 8px radius is nearly a pill already, and rounding it the rest of
-   the way keeps the short bars from reading as squares. */
-.kit-bars.is-inline .kit-bar-mark {
-  height: 10px;
-  border-radius: var(--radius-pill);
-}
-
-/* Under the name and inside its column, rather than under all three: the
-   row is already 48dp for the touch floor and a one-line name leaves that
-   much room spare, so a note printed there costs the row no height at all
-   and the set keeps one rhythm down the card. The track and the value span
-   both lines so they stay centred on the row rather than riding up.
-
-   Truncated rather than wrapped, which is the one thing this form asks of
-   a note that the stacked form does not: wrapping would grow the row and
-   cost the set the rhythm this placement just bought it. The notes this
-   form is built for are counts - "avg of 2" - and a set whose notes are
-   sentences wants `form="stacked"`, where a note has the whole width. */
-.kit-bars.is-inline .kit-bar-note {
-  grid-column: 1;
-  grid-row: 2;
-  margin-top: 0;
-  /* The name's leading, not the body's: two tight lines and the row's own
-     padding come to just under the 48dp floor, so a row with a note is the
-     same height as every row without one. */
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* --- a year of moods ---
