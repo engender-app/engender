@@ -512,7 +512,6 @@
        thirty-odd cells and re-ask the journal for a picture it already has.
        --dur-med and --ease-out are the tier-3 pair, and the reduced-motion
        clamp in base.css takes both to 1ms without this rule knowing. */
-    transition: background-color var(--dur-med) var(--ease-out);
     /* The empty cells carry the same edge the shaded ones get from their
        fill, so a month reads as a grid rather than as scattered colour - and
        so a day with nothing logged is still a day. It is what separates one
@@ -521,6 +520,13 @@
   }
   .cal-card { left: calc(var(--card) * -3px); }
   .cal-swatch { background: var(--heat-0); }
+  /* Every piece of a cell that carries a fill, in one rule: the swatch, the
+     stacked cards of a deck behind it, and a split day's two halves. */
+  .cal-card,
+  .cal-swatch,
+  .cal-half {
+    transition: background-color var(--dur-med) var(--ease-out);
+  }
 
   /* A split is two pieces laid over each other rather than two halves butted
      together, which is the detail Alicja read off Daylio's month on
@@ -540,9 +546,6 @@
     left: 0;
     width: 50%;
     border-radius: var(--half-low);
-    /* A split day's two halves are fills like any other, and they travel
-       with the swatch under them. */
-    transition: background-color var(--dur-med) var(--ease-out);
   }
   .cal-half.is-later {
     left: auto;

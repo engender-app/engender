@@ -152,12 +152,26 @@
 
   /* The timeline screen's deep link (ticket 99 item 4): a milestone card
      there opens straight into this same editor rather than a detail page
-     of its own. Same one-shot-param shape as /doses' `add`. */
+     of its own. The one-shot-param shape /doses' `add` uses, with one
+     difference that matters: `add` needs no data, and this needs a
+     milestone to open.
+
+     So the param comes off only once the milestone has actually been
+     found, never on the way past. Reached from the timeline the mirror is
+     long since filled and the two happen in the same tick; opened cold, on
+     a link pasted into a fresh tab, this effect can run before boot has
+     filled `vocabulary.milestones` - and stripping the param there threw
+     the id away before anything could be done with it, so the editor never
+     opened at all and the URL kept a param nothing would look at again
+     (found by the ticket's own code review, reproduced by loading the deep
+     link in a fresh tab). Reading the list is what subscribes this effect
+     to it, so the arrival of the real data is what runs this again. */
   $effect(() => {
     const id = page.url.searchParams.get('edit');
     if (!id) return;
     const existing = vocabulary.milestones.find((mi) => mi.id === id);
-    if (existing) openEditor(existing, null);
+    if (!existing) return;
+    openEditor(existing, null);
     replaceState('/transition/milestones', {});
   });
 

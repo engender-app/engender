@@ -22,14 +22,13 @@
      holds too little, because it is the tab's own content and somebody
      arriving on day two should see what the tab becomes.
 
-     The block below it is one row per area the person actually uses, in the
-     More hub's four groups in the More hub's order. A row appears where the
-     area has ever been written and never otherwise, decided in
-     `$lib/data/statsAreas.ts` over one `getLastWrites` call. Rows and no
-     charts (Alicja, on the rendered screen): every one of these areas owns
-     its chart on its own screen, the wear trend included, and a second
-     drawing here is a second thing to keep in agreement for a reading you
-     get by tapping through.
+     Under it was an index: one row per area the person uses, in the More
+     hub's four groups and order. Ticket 99 item 36 took it off - "stats
+     shouldnt have the 'more' list at the end. it is only the stats tab" -
+     which reverses that half of ADR-0056. Discovery is the hub's job, and
+     this tab is the numbers. What is left below the charts is the
+     look-back list, which points at wrapped and the body map: destinations
+     no hub row covers.
 
      One floor, an existing constant and not restated: a summary panel needs
      `WRAPPED_ENTRY_FLOOR` entries in range, and the two folds want the same
@@ -119,11 +118,6 @@
      a stripe on that card would put two scales on one surface. */
   const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
 
-  /* The index's four groups take the four stripes the More hub gives the
-     same four groups, in the same order - `roleAt(roles, i)` over the group's
-     own index, which is the hub's own line. Somebody who has learned that
-     Body is the first stripe on one screen finds it the first stripe on the
-     other, and the two surfaces recolour together on a palette switch. */
   let range = $state(30);
 
   /* A range is a length on screen and two epoch days to the journal, which
@@ -456,15 +450,6 @@
       : []
   );
 
-  /* ---------------------------------------------------------------------
-     The area index (ADR-0056).
-
-     One query answers for every area at once - `lastWrite.ts` assembles its
-     nineteen bounded reads concurrently, which is the whole reason that seam
-     exists - and the area record says which of them the person has hidden or
-     finished. A row with nothing written never reaches the DOM, so an area
-     somebody does not use costs this screen nothing beyond its slot in a
-     `Record` that was already fetched. */
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
   const occurrenceLabel = (card: CorrelationCard) =>

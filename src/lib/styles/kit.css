@@ -1202,13 +1202,25 @@ a.kit-entry:active {
   grid-template-columns: repeat(var(--strip-count, 7), minmax(0, 1fr));
   gap: var(--space-2);
   padding: 0 var(--space-1);
-  /* Caps the row at its own seven cells' natural width (ticket 99 item 5):
-     without this, a wide web viewport gives each of the seven columns far
-     more than a 44px cell wants, and .kit-strip-day's justify-items: center
-     floats every cell away from its column's true edge - worst at the two
-     ends, which is what read as "too far from the content edge". On mobile
-     the strip is already narrower than this cap, so nothing changes there. */
-  max-width: calc(7 * 44px + 6 * var(--space-2) + 2 * var(--space-1));
+  /* Caps the row at its own cells' natural width (ticket 99 item 5):
+     without this, a wide web viewport gives each column far more than a
+     cell wants, and .kit-strip-day's justify-items: center floats every
+     cell away from its column's true edge - worst at the two ends, which
+     is what read as "too far from the content edge". On mobile the strip
+     is already narrower than this cap, so nothing changes there.
+
+     Counted from --strip-count rather than from a literal seven, and from
+     --strip-cell-max rather than a literal 44px, because neither is fixed
+     any more: CARPET-02 draws fourteen cells at 38px on a desktop-width
+     container, and a cap written for seven 44px cells would have squeezed
+     that strip into half the room it was designed for (the ticket's own
+     code review caught the collision before CARPET-02 and this met). The
+     two rules state the same numbers now, so they cannot drift apart. */
+  --strip-cell-max: 44px;
+  max-width: calc(
+    var(--strip-count, 7) * var(--strip-cell-max) + (var(--strip-count, 7) - 1) * var(--space-2) + 2 *
+      var(--space-1)
+  );
   margin-inline: auto;
 }
 
@@ -1241,6 +1253,12 @@ a.kit-entry:active {
    that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
    --strip-count says there is more than a week to draw. */
 @container app (min-width: 1024px) {
+  .kit-strip[data-strip-count='14'] {
+    /* The row's own cap reads this, so the two agree by construction
+       rather than by both being edited at the same time (ticket 99 item
+       5). */
+    --strip-cell-max: 38px;
+  }
   .kit-strip[data-strip-count='14'] .kit-strip-cell {
     max-width: 38px;
   }
