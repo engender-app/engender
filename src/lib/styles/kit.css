@@ -904,7 +904,6 @@ a.kit-entry:active {
   gap: var(--space-2);
   align-content: start;
   min-height: 108px;
-  height: 100%;
   padding: var(--space-4);
   background: var(--role-tint);
   /* The edge is the stripe rather than the app's grey outline: two tiles
@@ -950,13 +949,19 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-mark) 14%, transparent);
 }
 
+/* No `height: 100%` on either tile rule, and that is not an omission (phase
+   9 carpet ticket 04). It made a tile fill the grid cell it used to sit in,
+   which was one job `align-items: stretch` on the row above already does -
+   in flex as it did in grid. Left in place it resolved against the flex
+   container's own content-derived height instead of the line's, which made
+   every stacked tile as tall as the whole grid and let the section below it
+   overlap. */
 .kit-tile.is-split {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--space-3);
   min-height: 108px;
-  height: 100%;
   padding: var(--space-4);
   background: var(--role-tint);
   border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);

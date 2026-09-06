@@ -142,7 +142,7 @@ describe('Home ready-letter live tile rendering and behavior', () => {
     expect(LIVE_TILE_ORDER as readonly string[]).toContain('ready-letter');
     expect(homeMarkup).toContain('<TileGrid');
     expect(homeMarkup).not.toContain('transition:tileSlide');
-    expect(read('src/lib/components/kit/Tile.svelte')).toContain('transition:collapse={panel}');
+    expect(read('src/lib/components/kit/Tile.svelte')).toContain('transition:collapse|global={panel}');
   });
 
   it('provides dismiss sheet with 24h snooze and permanent disable actions', () => {

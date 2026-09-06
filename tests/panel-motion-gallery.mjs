@@ -45,7 +45,18 @@ await mkdir(outDir, { recursive: true });
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
-const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
+/* `reducedMotion` explicitly, and it is the difference between a recording
+   and a blank one: headless Chromium answers `prefers-reduced-motion: reduce`
+   by default, the shell reads that media query into `html[data-a11y-motion]`
+   (+layout.svelte), and every primitive in $lib/motion honours it by cutting
+   to zero. So the first run of this script recorded the app correctly
+   refusing to animate, which is a real state worth checking and not the one
+   a motion review is for. */
+const context = await browser.newContext({
+  viewport: VIEWPORT,
+  deviceScaleFactor: 1,
+  reducedMotion: 'no-preference'
+});
 /* Toasts are the app working correctly and they are noise here: the storage
    warning fires on every load in headless Chromium, sits over the panels
    being recorded, and animates on a clock of its own that has nothing to do
