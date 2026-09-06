@@ -2,7 +2,7 @@
 #
 # The tag is the only thing that names the release: this workflow reads it once
 # through scripts/app-version.mjs and hands the same string to the notes, the
-# bundle and the Android artifacts, through GENDER_DIARY_VERSION. Nothing here
+# bundle and the Android artifacts, through ENGENDER_VERSION. Nothing here
 # re-derives a version.
 name: Release
 
@@ -60,7 +60,7 @@ jobs:
           echo "Releasing $version"
           echo "value=$version" >> "$GITHUB_OUTPUT"
           # Every later step, and every artifact, is handed this same string.
-          echo "GENDER_DIARY_VERSION=$version" >> "$GITHUB_ENV"
+          echo "ENGENDER_VERSION=$version" >> "$GITHUB_ENV"
 
       # Before anything is built, so a tag cut without notes fails while
       # nothing has been published.
@@ -76,10 +76,10 @@ jobs:
           node scripts/android-version.mjs "${{ steps.version.outputs.value }}" > dist/android-version.env
           cat dist/android-version.env
           # android-version.mjs prints ANDROID_VERSION_CODE; build.gradle reads
-          # GENDER_DIARY_VERSION_CODE (GENDER_DIARY_VERSION is already set from
+          # ENGENDER_VERSION_CODE (ENGENDER_VERSION is already set from
           # the tag above, and matches ANDROID_VERSION_NAME by construction).
           version_code="$(grep '^ANDROID_VERSION_CODE=' dist/android-version.env | cut -d= -f2)"
-          echo "GENDER_DIARY_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+          echo "ENGENDER_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
 
       - name: Materialize Android signing key in the protected environment
         env:
@@ -107,9 +107,9 @@ jobs:
 
           mkdir -p dist/release
           cp android/app/build/outputs/apk/release/app-release.apk \
-             "dist/release/gender-diary-android-release-${{ steps.version.outputs.value }}.apk"
+             "dist/release/engender-android-release-${{ steps.version.outputs.value }}.apk"
           cp android/app/build/outputs/bundle/release/app-release.aab \
-             "dist/release/gender-diary-android-release-${{ steps.version.outputs.value }}.aab"
+             "dist/release/engender-android-release-${{ steps.version.outputs.value }}.aab"
 
       - name: Verify release artifacts before packaging
         run: node scripts/check-release-artifacts.mjs
@@ -126,8 +126,8 @@ jobs:
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: dev.barankiewicz.genderdiary
-          releaseFiles: dist/release/gender-diary-android-release-${{ steps.version.outputs.value }}.aab
+          packageName: dev.engender.app
+          releaseFiles: dist/release/engender-android-release-${{ steps.version.outputs.value }}.aab
           track: internal
           status: completed
 
@@ -148,6 +148,6 @@ jobs:
             printf '```\n'
           } > dist/release-body.md
           gh release create "${{ github.ref_name }}" \
-            --title "Gender Diary ${{ steps.version.outputs.value }}" \
+            --title "enGender ${{ steps.version.outputs.value }}" \
             --notes-file dist/release-body.md \
             dist/release/*

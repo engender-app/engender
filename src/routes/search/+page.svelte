@@ -76,7 +76,6 @@
   import { m } from '$lib/paraglide/messages';
   import { goto } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { smartBack } from '$lib/navigation/smart-back';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
@@ -361,7 +360,7 @@
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.search()} screen="search" back={() => smartBack('/calendar')}>
+  <ScreenHeader title={m.search()} screen="search" back="/calendar">
     {#snippet actions()}
       <a class="icon-btn" href="/search/starred" aria-label={m.starred_shelf_open()}>
         <Icon name="star" />

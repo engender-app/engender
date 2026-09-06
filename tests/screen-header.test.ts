@@ -43,6 +43,18 @@ describe('every screen gets its header from one component', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('leaves the back control to the header too', () => {
+    /* CARPET-05 put "back goes to the last screen you were actually on"
+       inside this one component, where a href becomes the fallback rather
+       than the destination. A screen that draws its own arrow gets none of
+       that, and the header's grep above would not notice, because it is
+       looking at the title and the block around it. */
+    const offenders = svelteFiles.filter(
+      (file) => file !== 'src/lib/components/ScreenHeader.svelte' && read(file).includes('data-screen-back')
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it('gives every route screen a header, or names why it has none', () => {
     const routes = svelteFiles.filter((file) => file.endsWith('+page.svelte'));
     const missing = routes.filter(

@@ -35,7 +35,7 @@
          owned by src/lib/data/prefs/boot-cache.ts and have to be changed
          in the two places together. */
       try {
-        const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+        const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
         const root = document.documentElement;
         if (boot.palette) root.dataset.palette = boot.palette;
         if (boot.moodPreset) root.dataset.moodPreset = boot.moodPreset;

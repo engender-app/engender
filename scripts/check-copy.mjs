@@ -87,6 +87,27 @@ const GENDERED_READER_ADJECTIVES = new Set(['dumna', 'zauważona']);
 const DEAD_ALLOW = new Map();
 
 /**
+ * Files the literal ratchet does not read, and why. Every entry needs a
+ * reason, the way DEAD_ALLOW above and the CSS ratchet's `SHARED` set do.
+ *
+ * The ratchet is a rule about screens, and a screen's literal is text a
+ * reader can end up looking at. DemoBar is not one: it is the review-only
+ * control strip, `__DEMO__` compiles it out of a production build, and
+ * verify-build.mjs greps the emitted JavaScript and CSS to prove its copy
+ * is not in there. Recorded rather than exempt until phase 9 audit ticket
+ * 12, which is when the cost showed: the count had climbed 15 -> 16 on a
+ * demo control added by another ticket, and a ratchet that turns "add a
+ * jump button" into "re-record a copy baseline" is asking sessions to
+ * update a number nobody reads instead of catching copy a reader could see.
+ */
+const UNSCANNED = new Map([
+  [
+    'src/lib/components/DemoBar.svelte',
+    'review-only, compiled out of production builds - verify-build.mjs proves its copy never ships'
+  ]
+]);
+
+/**
  * Keys one catalogue has and the other does not, in both directions.
  *
  * @param {Record<string, unknown>} en
@@ -258,8 +279,8 @@ function writeBaseline(counts) {
     '# `node scripts/check-copy.mjs --update`.',
     '#',
     '# Phase 0 and phase 1 left these behind, and tickets 19 and 23 work them',
-    '# down. DemoBar.svelte is the one entry that stays: it is compiled out of',
-    '# production builds, so its copy never reaches a reader.',
+    '# down. Files the ratchet does not read at all are named in the script,',
+    "# under UNSCANNED, each with the reason it is not a screen's copy.",
     ''
   ];
   const lines = Object.entries(counts)
@@ -272,7 +293,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const files = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
     .trim()
     .split('\n')
-    .filter((file) => file.endsWith('.svelte'));
+    .filter((file) => file.endsWith('.svelte') && !UNSCANNED.has(file));
 
   const refFiles = execFileSync('git', ['ls-files', 'src', 'tests', 'scripts'], { encoding: 'utf8' })
     .trim()
@@ -309,7 +330,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   console.log('PASS both catalogues hold the same keys');
-  console.log(`PASS no new user-facing literals (${total} known, in ${Object.keys(counts).length} file(s))`);
+  console.log(
+    `PASS no new user-facing literals (${total} known, in ${Object.keys(counts).length} file(s), ` +
+      `${UNSCANNED.size} file(s) not scanned)`
+  );
   console.log('PASS no Polish string genders the reader');
   console.log(`PASS no catalogue key sits with no caller (${referenced.size} referenced, ${DEAD_ALLOW.size} allow-listed)`);
 }

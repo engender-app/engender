@@ -1,4 +1,4 @@
-/* The licence check CI runs (phase 2 ticket 06). Gender Diary is GPL-3.0-only
+/* The licence check CI runs (phase 2 ticket 06). enGender is GPL-3.0-only
    and one channel - F-Droid, ticket 18 - rebuilds from source and rejects a
    dependency graph it cannot build freely. A dependency arriving under a
    licence nobody looked at is the way that turns into a rejected build long

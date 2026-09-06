@@ -78,7 +78,6 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { smartBack } from '$lib/navigation/smart-back';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
@@ -146,7 +145,7 @@
   <ScreenHeader
     title={isToday ? m.today() : fmtDay(epochDay, { weekday: 'long' })}
     screen="day"
-    back={() => smartBack('/calendar')}
+    back="/calendar"
   />
 
   <!-- What is coming (ADR-0067): today and a future day both read it, a

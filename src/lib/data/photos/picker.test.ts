@@ -13,7 +13,7 @@ vi.mock('./android-bridge.ts', () => ({
     pickImages: vi.fn(),
     captureImage: vi.fn(),
     pickDocument: vi.fn(),
-    readPickedBase64: vi.fn()
+    readPickedChunk: vi.fn()
   }
 }));
 
@@ -55,6 +55,19 @@ const noChannel = (): void => {
   vi.mocked(readPickedOverChannel).mockReturnValue(null);
 };
 
+/** The channel is absent and the bridge walks a picked file in pieces, one
+    per call, saying so on the last - which is the shape
+    PhotosPlugin.readPickedChunk answers in (phase 9 audit ticket 14). */
+const bridgeAnswers = (chunks: number[][]): void => {
+  noChannel();
+  let next = 0;
+  vi.mocked(androidPhotos.readPickedChunk).mockImplementation(async () => {
+    const chunk = chunks[next];
+    next += 1;
+    return { base64: btoa(String.fromCharCode(...chunk)), done: next === chunks.length };
+  });
+};
+
 describe('androidPickedBytes', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -65,19 +78,39 @@ describe('androidPickedBytes', () => {
 
     expect(await androidPickedBytes('a-token')).toEqual(new Uint8Array([1, 2, 3]));
     expect(vi.mocked(readPickedOverChannel)).toHaveBeenCalledWith('a-token');
-    expect(vi.mocked(androidPhotos.readPickedBase64)).not.toHaveBeenCalled();
+    expect(vi.mocked(androidPhotos.readPickedChunk)).not.toHaveBeenCalled();
   });
 
   /* The floor: below the WebView versions that carry a structured clone the
      channel does not exist, and base64 over the bridge is what is left. */
   test('falls back to the base64 bridge call where the channel does not exist', async () => {
-    noChannel();
-    vi.mocked(androidPhotos.readPickedBase64).mockResolvedValue({
-      base64: btoa(String.fromCharCode(4, 5, 6))
-    });
+    bridgeAnswers([[4, 5, 6]]);
 
     expect(await androidPickedBytes('a-token')).toEqual(new Uint8Array([4, 5, 6]));
-    expect(vi.mocked(androidPhotos.readPickedBase64)).toHaveBeenCalledWith({ token: 'a-token' });
+    expect(vi.mocked(androidPhotos.readPickedChunk)).toHaveBeenCalledWith({ token: 'a-token' });
+  });
+
+  /* The fallback's whole point after ticket 14: a 25 MB scan crosses as
+     several bounded strings rather than one 34 MB allocation, so what
+     arrives has to be the pieces in the order they came. */
+  test('joins the fallback chunks in the order the bridge answered them', async () => {
+    bridgeAnswers([
+      [1, 2],
+      [3, 4],
+      [5]
+    ]);
+
+    expect(await androidPickedBytes('a-token')).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+  });
+
+  /* `done` is what ends the loop, not an empty chunk: native ends a file
+     that divides evenly by its buffer on an empty last piece, and a reader
+     that stopped at the first short one would truncate every other file. */
+  test('asks for chunks until the bridge says the file is finished', async () => {
+    bridgeAnswers([[1, 2], [3], []]);
+
+    expect(await androidPickedBytes('a-token')).toEqual(new Uint8Array([1, 2, 3]));
+    expect(vi.mocked(androidPhotos.readPickedChunk)).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -172,7 +205,7 @@ describe('filePhotoPicker', () => {
       kind: 'too-large'
     });
     expect(vi.mocked(readPickedOverChannel)).not.toHaveBeenCalled();
-    expect(vi.mocked(androidPhotos.readPickedBase64)).not.toHaveBeenCalled();
+    expect(vi.mocked(androidPhotos.readPickedChunk)).not.toHaveBeenCalled();
   });
 });
 
@@ -261,10 +294,7 @@ describe('documentPicker', () => {
   test('falls back to base64 for a document on a WebView without the channel', async () => {
     vi.mocked(isAndroid).mockReturnValue(true);
     vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ token: 'doc' });
-    noChannel();
-    vi.mocked(androidPhotos.readPickedBase64).mockResolvedValue({
-      base64: btoa(String.fromCharCode(7, 7))
-    });
+    bridgeAnswers([[7], [7]]);
 
     expect(await documentPicker().pick()).toEqual([new Uint8Array([7, 7])]);
   });

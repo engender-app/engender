@@ -1,5 +1,5 @@
 /* Ticket 10 on the real platform: build a Journal exactly as the app built
-   one before encryption existed - SQLocal, a `gender-diary.sqlite3` file in
+   one before encryption existed - SQLocal, a `engender.sqlite3` file in
    the OPFS root, plaintext photos in `photos/` - convert it, and then ask
    the disk what is left.
 
@@ -176,6 +176,13 @@ async function run() {
   // --- the fixture is what it claims: all of it readable, in the clear ---
   const before = await scanOpfs(SENTINELS);
   result.plaintextScanFound = [...new Set(before.flatMap((file) => file.found))].sort();
+  /* What the fixture planted, published beside what the scan found so the
+     runner can compare them without holding its own copy of the list. The
+     copy it used to hold went stale the moment a sentinel changed: the pin
+     hash stopped being planted and a device-local preference started, the
+     count stayed at eight, and the assertion failed on main for weeks
+     naming neither (phase 9 audit ticket 12). */
+  result.plaintextScanExpected = SENTINELS.map((sentinel) => sentinel.label).sort();
   result.plaintextRootNames = before.map((file) => file.path).sort();
   result.stateBeforeConversion = describeJournalState(await survey());
 

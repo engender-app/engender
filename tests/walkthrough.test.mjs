@@ -1092,7 +1092,37 @@ try {
   ok('a custom scale previews, saves ticked, and appears like a built-in');
 } catch (e) { fail('custom dimension', e); }
 
-/* 10b. Home's stale-backup notice (ticket 15, F21). Before the export
+/* 10b. Back returns to the screen you were actually on (CARPET-05).
+
+   Home's stale-backup notice is the case that names it. The notice is a
+   deep link out of Home into the export screen, whose header names
+   /settings as where it sits - so back used to land on a Settings screen
+   nobody had opened. Run before the notice is dismissed below, because the
+   notice is the only link into that screen from anywhere but Settings.
+
+   The pair of flows is the whole decision: with an entry behind this one,
+   back walks history; on the entry the app booted onto there is nothing to
+   walk to and the header's href is what is left to offer. Asserting only
+   the first would pass just as well on a back control that had stopped
+   being a link at all. */
+try {
+  await fresh('/');
+  await page.locator('[data-backup-notice] [data-notice-action]').click();
+  await page.waitForURL(BASE + '/settings/export');
+  await booted();
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL(BASE + '/');
+  ok('back from a screen a notice linked into returns to the notice, not to the menu above it');
+} catch (e) { fail('back to where you came from', e); }
+
+try {
+  await fresh('/settings/export');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL(BASE + '/settings');
+  ok('back on the screen the app booted onto takes the parent the header names');
+} catch (e) { fail('back with nothing behind it', e); }
+
+/* 10c. Home's stale-backup notice (ticket 15, F21). Before the export
    flows below, because they are what stops the journal being stale: the
    demo persona's last backup is 34 days old, and the number in the notice
    is what proves the age was read as epoch millis rather than as an epoch
@@ -1627,7 +1657,7 @@ try {
      in-memory projection immediately, while the write to SQLite and the
      cache refresh behind it are a round-trip away. */
   await page.waitForFunction(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.theme === 'dark' && boot.palette === 'lesbian' && boot.disguise === true;
   });
 
@@ -1683,7 +1713,7 @@ try {
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => {
-    const boot = JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}');
+    const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.disguise === false;
   });
   const backToTheApp = await page.evaluate(() =>
@@ -1889,7 +1919,7 @@ try {
   await page.waitForSelector('[data-applock]', { state: 'detached', timeout: 60000 });
   await booted();
   if (await page.locator('[data-applock]').count()) throw new Error('still locked after the reset');
-  const mirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
+  const mirror = await page.evaluate(() => JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}'));
   /* Not "the mirror is empty": the reload that finishes a reset boots, and
      boot writes the defaults back, so empty is never the resting state. What
      has to be gone is what was set before - and this flow left disguise on
@@ -1908,7 +1938,7 @@ try {
 /* 19. the About screen shows the version the build was given (ticket 01).
 
    The literal is written twice on purpose: package.json's test:walkthrough
-   builds under GENDER_DIARY_VERSION=9.9.9-walkthrough, and this asks for
+   builds under ENGENDER_VERSION=9.9.9-walkthrough, and this asks for
    that exact string back. Deriving it here - reading the environment, or
    calling the resolver - would make the assertion agree with itself and pass
    against a build that shipped anything at all. A version nobody can derive
@@ -2257,10 +2287,10 @@ try {
      own write would satisfy the wait and the reload could beat the note into
      storage. That the mirror still carries this draft is what the reload
      below proves, which was always the point of the flow. */
-  await page.evaluate(() => localStorage.removeItem('gender-diary-entry-draft'));
+  await page.evaluate(() => localStorage.removeItem('engender-entry-draft'));
   await page.locator('#ed-note').fill('Killed mid-edit by Playwright.');
   await page.waitForFunction(() => {
-    const raw = localStorage.getItem('gender-diary-entry-draft');
+    const raw = localStorage.getItem('engender-entry-draft');
     return !!raw && !raw.includes('Killed mid-edit');
   });
 
@@ -4910,7 +4940,7 @@ try {
   /* The retired gate's preference is gone rather than merely unread: a
      4-digit hash in plaintext beside the encrypted journal was an
      offline-guessable secret, and ticket 53 deletes the row (migration v43). */
-  const bootMirror = await page.evaluate(() => JSON.parse(localStorage.getItem('gender-diary-boot-prefs') || '{}'));
+  const bootMirror = await page.evaluate(() => JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}'));
   if ('pinHash' in bootMirror) throw new Error('the retired PIN hash is in the plaintext boot mirror');
 
   /* A cold start, not a navigation: the PIN gate has to be what renders once
@@ -4941,19 +4971,19 @@ try {
   /* A reload is the cheapest thing a guesser can do, so the count has to
      outlive one. Forged rather than earned: waiting out a real doubling
      would make the assertion a race against the clock. */
-  if (!(await page.evaluate(() => localStorage.getItem('gender-diary-pin-attempts')))) {
+  if (!(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')))) {
     throw new Error('the wrong-attempt count never reached storage');
   }
   await page.evaluate(() =>
     localStorage.setItem(
-      'gender-diary-pin-attempts',
+      'engender-pin-attempts',
       JSON.stringify({ wrongAttempts: 6, acceptingFrom: Date.now() + 30000 })
     )
   );
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-pin-status="throttled"]');
 
-  await page.evaluate(() => localStorage.removeItem('gender-diary-pin-attempts'));
+  await page.evaluate(() => localStorage.removeItem('engender-pin-attempts'));
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-pin-pad]');
   await typePin('1234');

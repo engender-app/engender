@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # Name cannot collide with the release APK the release workflow publishes.
-          name: gender-diary-android-debug-${{ github.run_id }}
+          name: engender-android-debug-${{ github.run_id }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
 
@@ -167,6 +167,17 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      # tests/browser-tier/browser-tier.vite.config.ts has no paraglideVitePlugin
+      # of its own - it only serves probe pages over COOP/COEP and was never meant
+      # to run a full app build - so every probe that imports $lib/paraglide/messages
+      # needs the compiled runtime sitting on disk before this job's first request.
+      # The Checks job gets that for free from its own "Production build" step
+      # running first; this job never builds anything until "Walkthroughs" below,
+      # one step too late for "Browser tier" above it, which failed on every probe
+      # touching that import on every run until now (phase 9 audit ticket 12).
+      - name: Compile message catalogues
+        run: npx paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 
       # playwright-core ships no browser, and the three suites drive a real one
       # for OPFS, WASM SQLite and the service worker. Installing through the

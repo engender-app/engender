@@ -1,6 +1,6 @@
 /* The Android driver (ticket 11): the same SqliteDriver the web tier
    satisfies, over the local Capacitor plugin in
-   android/app/src/main/java/dev/barankiewicz/genderdiary/sqlite/.
+   android/app/src/main/java/dev/engender/app/sqlite/.
 
    Why a local plugin rather than @capacitor-community/sqlite is ADR-0020's
    ticket 11 amendment, and it comes down to the key: that plugin takes a

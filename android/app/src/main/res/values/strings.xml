@@ -7,8 +7,8 @@
          preview in Settings. -->
     <string name="app_name_disguised">Notes</string>
     <string name="title_activity_main">enGender</string>
-    <string name="package_name">dev.barankiewicz.genderdiary</string>
-    <string name="custom_url_scheme">dev.barankiewicz.genderdiary</string>
+    <string name="package_name">dev.engender.app</string>
+    <string name="custom_url_scheme">dev.engender.app</string>
 
     <!-- Quick-log widget (ticket 26). The header names what the buttons are
          for; QuickLogWidgetProvider hides it while disguise mode is on,
