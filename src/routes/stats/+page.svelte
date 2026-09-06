@@ -237,7 +237,11 @@
         withoutAvg: insight.withoutAvg,
         delta: insight.withAvg - insight.withoutAvg
       })),
-      vocabulary.activeMetric
+      vocabulary.activeMetric,
+      /* The word for it, on every row. The scale these bars are of is the
+         one the day-by-day picker holds four cards up the screen, and
+         nothing on this card said so. */
+      vocabulary.metricName
     )
   );
 
@@ -507,7 +511,7 @@
 
   const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
 
-  const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
+  const metricName = (key: string) => vocabulary.metricNameOf(key);
 
   const occurrenceLabel = (card: CorrelationCard) =>
     card.occurrence.kind === 'doseDay'
