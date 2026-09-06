@@ -26,7 +26,7 @@
      and a disabled save rather than an error thrown after a tap. The area
      asserts the same rule on the way to the table (journal/eras.ts), which
      is the backstop and not this screen's error path. */
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -162,7 +162,7 @@
     arrivingStart = dateInputValueFromEpochDay(day);
     record.openEditor(null);
     arrivingStart = '';
-    void goto('/transition/eras', { replaceState: true, noScroll: true, keepFocus: true });
+    void replaceRoute('/transition/eras', { noScroll: true, keepFocus: true });
   });
 </script>
 

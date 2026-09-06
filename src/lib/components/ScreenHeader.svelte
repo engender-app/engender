@@ -12,12 +12,24 @@
      inline margin repeated 24 times at two different values.
 
      `back` takes either a href or a callback because the app genuinely has
-     both, and the difference is not cosmetic: most screens go back to a
-     fixed parent and should be a real link that middle-clicks and shows a
-     target in the status bar, while a few call smartBack() or close a local
-     mode instead (NAV-005). One prop with two shapes keeps that a single
-     idea - "how this screen goes back" - rather than two props where every
-     call site has to pick the right one.
+     both, and the difference is not cosmetic: most screens name a fixed
+     parent and should be a real link that middle-clicks and shows a target
+     in the status bar, while a few close a local mode instead (NAV-005).
+     One prop with two shapes keeps that a single idea - "how this screen
+     goes back" - rather than two props where every call site has to pick
+     the right one.
+
+     CARPET-05: a href names where a screen sits, not where the person came
+     from, and those are the same place only when they walked down the menu
+     to get here. Arriving at the export screen from Home's stale-backup
+     notice and pressing back landed on Settings - a screen they had never
+     seen - and the same held for every deep link into the fifty-odd screens
+     hanging off /more. So the plain click goes through `smartBack`, which
+     returns to the entry behind this one and keeps the href as the fallback
+     for when there is none: a deep link, a reload, a notification tap. The
+     link stays a link for everything else - a modified click, a middle
+     click, the status bar, "open in new tab" - which is why this is still
+     an anchor with a handler on it rather than a button.
 
      A screen whose own tab already names it passes `titleHidden`: the title
      stays in the document for a screen reader and for the document outline,
@@ -25,6 +37,7 @@
      heading (DIRECTION.md 3d). The More hub is the case that motivates it. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { smartBack } from '$lib/navigation/smart-back';
   import Icon from './Icon.svelte';
 
   let {
@@ -49,6 +62,20 @@
     class?: string;
     actions?: Snippet;
   } = $props();
+
+  /* Everything the browser does with a click that is not "follow this link
+     here" is left alone: a middle click and ctrl/cmd open a tab, shift a
+     window, alt downloads, and a right-click never reaches this at all.
+     Only the plain one is ours to redirect. */
+  function goBack(event: MouseEvent) {
+    if (typeof back !== 'string') return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    /* Before SvelteKit's own document-level link handler, which reads this
+       flag and stands down - so the fallback below is the only navigation
+       either of us makes. */
+    event.preventDefault();
+    smartBack(back);
+  }
 </script>
 
 <header class="screen-header {klass}" class:is-collapsed={titleHidden && !back && !actions} data-screen-header>
@@ -69,7 +96,13 @@
        large-title pattern puts it there too. -->
   <div class="screen-header-row">
     {#if typeof back === 'string'}
-      <a class="icon-btn press screen-back" href={back} data-screen-back aria-label={backLabel ?? m.back()}>
+      <a
+        class="icon-btn press screen-back"
+        href={back}
+        data-screen-back
+        aria-label={backLabel ?? m.back()}
+        onclick={goBack}
+      >
         <Icon name="arrowLeft" />
       </a>
     {:else if back}
