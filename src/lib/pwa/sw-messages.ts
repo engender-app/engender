@@ -10,7 +10,7 @@
 /** Sent to a waiting worker to let it take over. The page only sends it when
     the journal is idle, which is the whole of the guard: the worker itself
     never calls skipWaiting() on its own schedule (ADR-0021). */
-export const SKIP_WAITING = 'gender-diary:skip-waiting';
+export const SKIP_WAITING = 'engender:skip-waiting';
 
 /** Sent once the lab scanner's OCR engine has loaded: the page asking for the
     set the shell deliberately left out to be added to this release's cache, so
@@ -18,7 +18,7 @@ export const SKIP_WAITING = 'gender-diary:skip-waiting';
     out). The ask carries no paths, and that is the point - the worker owns
     both the cache name and the list, so a page can start the download but
     cannot name what gets stored under the app's key. */
-export const CACHE_ON_DEMAND = 'gender-diary:cache-on-demand';
+export const CACHE_ON_DEMAND = 'engender:cache-on-demand';
 
 /** Just the part of ServiceWorkerGlobalScope these need, so the worker's own
     reference-lib declarations do not have to reach into here. `waitUntil` is

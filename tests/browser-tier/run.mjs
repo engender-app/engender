@@ -577,7 +577,7 @@ await block('ticket 10 (phase 2) browser tier', 14, async () => {
     ok(`closed-app scan after conversion: none of the 8 sentinels readable in any of ${r.scan.length} OPFS files`);
   else fail('closed-app scan after conversion finds no readable journal content', r.dirtyFiles.join('; ') || `only ${r.scan.length} files scanned`);
 
-  const remnants = r.rootNames.filter((p) => p.includes('gender-diary.sqlite3'));
+  const remnants = r.rootNames.filter((p) => p.includes('engender.sqlite3'));
   if (remnants.length === 0) ok('no plaintext database, pre-migration copy or side file survives in the OPFS root');
   else fail('no plaintext database or side file survives in the OPFS root', JSON.stringify(remnants));
 

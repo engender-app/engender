@@ -40,7 +40,7 @@ describe('liveTilesSnooze', () => {
   });
 
   it('generates predictable storage keys', () => {
-    expect(snoozeKey('active-tryout-tile')).toBe('gender-diary-tile-snooze-active-tryout-tile');
+    expect(snoozeKey('active-tryout-tile')).toBe('engender-tile-snooze-active-tryout-tile');
   });
 
   it('reports unsnoozed when nothing is stored', () => {

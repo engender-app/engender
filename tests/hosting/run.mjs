@@ -84,17 +84,17 @@ try {
   mkdirSync(confd, { recursive: true });
 
   cpSync('build', current, { recursive: true });
-  cpSync('deploy/nginx/journal-headers.conf', join(snippets, 'gender-diary-journal-headers.conf'));
-  cpSync('deploy/nginx/journal-site.conf', join(snippets, 'gender-diary-journal-site.conf'));
+  cpSync('deploy/nginx/journal-headers.conf', join(snippets, 'engender-journal-headers.conf'));
+  cpSync('deploy/nginx/journal-site.conf', join(snippets, 'engender-journal-site.conf'));
 
   writeFileSync(
     join(confd, 'default.conf'),
     [
       'server {',
       '    listen 8080;',
-      '    server_name app.genderdiary.barankiewicz.dev;',
+      '    server_name app.engender.dev;',
       '    root /srv/current;',
-      '    include /etc/nginx/snippets/gender-diary-journal-site.conf;',
+      '    include /etc/nginx/snippets/engender-journal-site.conf;',
       '}'
     ].join('\n') + '\n'
   );

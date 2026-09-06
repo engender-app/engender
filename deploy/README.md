@@ -1,7 +1,7 @@
 # Production hosting and release switch
 
 Ticket 05 serves the Journal from one decided origin:
-`app.gender-diary.barankiewicz.dev`.
+`app.engender.dev`.
 
 The VPS keeps immutable release directories and one symlink:
 
@@ -15,9 +15,9 @@ traffic with no reload and no half-copied release state.
 
 Install these files:
 
-- `deploy/nginx/journal-headers.conf` -> `/etc/nginx/snippets/gender-diary-journal-headers.conf`
-- `deploy/nginx/journal-site.conf` -> `/etc/nginx/snippets/gender-diary-journal-site.conf`
-- `deploy/nginx/journal.conf` -> `/etc/nginx/sites-available/gender-diary-journal.conf`
+- `deploy/nginx/journal-headers.conf` -> `/etc/nginx/snippets/engender-journal-headers.conf`
+- `deploy/nginx/journal-site.conf` -> `/etc/nginx/snippets/engender-journal-site.conf`
+- `deploy/nginx/journal.conf` -> `/etc/nginx/sites-available/engender-journal.conf`
 
 `deploy/nginx/journal-brotli.conf` is optional and goes in last, because it
 needs a module stock nginx does not have. Install the module first, check that
@@ -25,7 +25,7 @@ nginx still starts, and only then copy the snippet in:
 
 ```bash
 sudo apt install libnginx-mod-http-brotli
-sudo cp deploy/nginx/journal-brotli.conf /etc/nginx/snippets/gender-diary-journal-brotli.conf
+sudo cp deploy/nginx/journal-brotli.conf /etc/nginx/snippets/engender-journal-brotli.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -38,7 +38,7 @@ rather than ignoring it.
 Enable the site and reload nginx:
 
 ```bash
-sudo ln -sf /etc/nginx/sites-available/gender-diary-journal.conf /etc/nginx/sites-enabled/gender-diary-journal.conf
+sudo ln -sf /etc/nginx/sites-available/engender-journal.conf /etc/nginx/sites-enabled/engender-journal.conf
 sudo nginx -t
 sudo systemctl reload nginx
 ```

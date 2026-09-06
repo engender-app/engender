@@ -1,4 +1,4 @@
-# Gender Diary
+# enGender
 
 [![Checks](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/barankiewicz/gender-diary/actions/workflows/ci.yml)
 
@@ -95,7 +95,7 @@ suite runs there too, and the full suite runs on the current Android.
 
 The version the build stamps into the app comes from a signed `v<semver>` tag
 and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit.
-`GENDER_DIARY_VERSION` overrides it, which is how the release
+`ENGENDER_VERSION` overrides it, which is how the release
 pipeline hands one value to the bundle, the release notes and the Android
 artifacts at once.
 
@@ -140,7 +140,7 @@ synthetic, and no job in that workflow is given a secret.
 `.github/workflows/release.yml` runs on a `v*` tag. It reads the version once,
 through `scripts/app-version.mjs`, so an unsigned tag or a tag on an edited tree
 produces no release at all; hands that string to everything else
-through `GENDER_DIARY_VERSION`; takes the notes out of `CHANGELOG.md`; and
+through `ENGENDER_VERSION`; takes the notes out of `CHANGELOG.md`; and
 publishes a web bundle, a source archive, signed Android artifacts and
 checksums. The App Bundle upload to Play internal runs in that same protected
 environment.
@@ -162,15 +162,15 @@ node scripts/package-release.mjs           # bundle, source archive, checksums
 ```
 
 Both refuse a development version, so a dry run of the whole path means handing
-one over deliberately: `GENDER_DIARY_VERSION=1.2.3 node scripts/package-release.mjs`.
+one over deliberately: `ENGENDER_VERSION=1.2.3 node scripts/package-release.mjs`.
 Packaging builds twice and stops unless both bundles have the same digest,
 because a checksum over a bundle nobody can rebuild only says the download
 arrived intact. Anyone else can repeat that from the published source archive,
 which has no tags to read, so the version has to be handed over:
 
 ```
-tar xzf gender-diary-src-1.2.3.tar.gz && cd gender-diary-1.2.3
-npm ci && GENDER_DIARY_VERSION=1.2.3 npm run build
+tar xzf engender-src-1.2.3.tar.gz && cd engender-1.2.3
+npm ci && ENGENDER_VERSION=1.2.3 npm run build
 tar --create --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 \
     --format=gnu --directory=build . | gzip --no-name --best | sha256sum
 ```
@@ -179,7 +179,7 @@ questions - schema changes, Archive format changes, security migrations,
 minimum supported version - and the pipeline stops before it builds anything if
 one of them is blank. Everything left in `dist/release/` is checksummed and
 attached. The signed APK there is always named
-`gender-diary-android-release-<version>.apk`, so it cannot be confused with
+`engender-android-release-<version>.apk`, so it cannot be confused with
 debug or unsigned artifacts.
 
 F-Droid rebuilds from public source and signs with F-Droid's own key. That key
