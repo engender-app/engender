@@ -14,7 +14,9 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,6 +45,10 @@ public class PhotoPickChannelTest {
         is about: a PDF is stored exactly as it arrived (ADR-0065), so a scan
         really does arrive at 25 MB. */
     private static final int CEILING = 25 * 1024 * 1024;
+
+    /** A size both transports can complete, for the one test that compares
+        them. See {@link #bothTransportsAtASizeTheFallbackSurvives}. */
+    private static final int COMPARABLE = 4 * 1024 * 1024;
 
     @Test
     public void theChannelIsRegisteredOnAWebViewThatCanCarryIt() throws Exception {
@@ -107,26 +113,66 @@ public class PhotoPickChannelTest {
     }
 
     /**
-     * The ticket's own acceptance figure, taken on whatever this is running
-     * on: the same 25 MB payload fetched over each transport, timing the
-     * synchronous span that blocks the main thread separately from the whole
-     * round trip. Both numbers reach logcat under {@code PhotoPickChannelTest},
-     * which is the only place they can be read from.
+     * The ticket's acceptance figure: a 25 MB scan - what a document really
+     * weighs, since a PDF is stored exactly as it arrived (ADR-0065) - over
+     * the channel, timing the synchronous span that blocks the main thread
+     * apart from the whole round trip. Both numbers reach logcat under
+     * {@code PhotoPickChannelTest}, which is the only place they can be read
+     * from.
      *
-     * <p>The channel's decode is a no-op by construction - a
-     * {@code Uint8Array} over a transferred {@code ArrayBuffer} copies
-     * nothing - which is the whole reason the transport was changed rather
-     * than the decode optimised. The base64 path has to walk 33 MB of string
-     * a character at a time, and that is the second the person cannot tell
-     * from a crash.
+     * <p>The decode is a no-op by construction: a {@code Uint8Array} over a
+     * transferred {@code ArrayBuffer} copies nothing. That is the whole
+     * reason the transport was changed rather than the decode optimised, and
+     * a figure anywhere near the bound below would mean something is copying
+     * that should not be.
+     *
+     * <p>The base64 leg is deliberately not here. At this size it does not
+     * finish on this emulator at all - {@code encodeBase64}'s
+     * {@code toString("US-ASCII")} asks for a 34 MB String against a 192 MB
+     * heap cap and the allocation fails - which is the peak-memory half of
+     * the finding rather than an alternative to time it against. Unchanged
+     * from before this ticket, on the same code, except that it is now only
+     * the older WebViews' path instead of everyone's.
+     * {@link #bothTransportsAtASizeTheFallbackSurvives} is the comparison.
      */
     @Test
     public void aTwentyFiveMegabyteFileCostsTheMainThreadNothingOverTheChannel() throws Exception {
-        byte[] payload = new byte[CEILING];
-        for (int i = 0; i < payload.length; i++) payload[i] = (byte) (i % 251);
+        String token = hold(payload(CEILING));
 
-        String channelToken = hold(payload);
-        String base64Token = hold(payload);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            JSONObject report = new JSONObject(awaitResult(scenario, channelCostScript(token), 180));
+
+            assertEquals(
+                "the channel reported " + report.optString("error"), false, report.has("error"));
+            assertEquals(CEILING, report.getInt("length"));
+
+            double decode = report.getDouble("decodeMs");
+            Log.i(
+                TAG,
+                String.format(
+                    "25MB picked file over the channel: decode %.1fms, round trip %.1fms",
+                    decode, report.getDouble("totalMs")));
+
+            assertTrue(
+                "the channel's decode blocked the main thread for " + decode + "ms", decode < 250);
+        }
+    }
+
+    /**
+     * The before-and-after, at a size the base64 fallback can still complete:
+     * the same bytes fetched over each transport, with the blocking span of
+     * each logged. Four megabytes rather than the ceiling for the reason the
+     * test above gives - the fallback runs out of heap before it runs out of
+     * time.
+     */
+    @Test
+    public void bothTransportsAtASizeTheFallbackSurvives() throws Exception {
+        /* One hold, two tokens: a second hold() would replace the first
+           batch, which is the bound PickedFiles is documented to have - and
+           two tokens from one hold is what a multi-pick looks like anyway. */
+        byte[] bytes = payload(COMPARABLE);
+        List<String> tokens =
+            PickedFiles.hold(Arrays.asList(PickedFiles.ofBytes(bytes), PickedFiles.ofBytes(bytes)));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             String script =
@@ -146,7 +192,7 @@ public class PhotoPickChannelTest {
                     + "    report.channelTotalMs = performance.now() - sent;"
                     + "    report.channelLength = length;"
                     + "    var asked = performance.now();"
-                    + "    window.Capacitor.Plugins.Photos.readPickedBase64({token:'" + base64Token + "'})"
+                    + "    window.Capacitor.Plugins.Photos.readPickedBase64({token:'" + tokens.get(1) + "'})"
                     + "      .then(function(res){"
                     + "        var start = performance.now();"
                     + "        var decoded = Uint8Array.from(atob(res.base64), function(c){ return c.charCodeAt(0); });"
@@ -160,40 +206,65 @@ public class PhotoPickChannelTest {
                     + "      });"
                     + "  };"
                     + "  window.androidPhotoPickChannel.postMessage("
-                    + "    JSON.stringify({token:'" + channelToken + "'}), [channel.port2]);"
+                    + "    JSON.stringify({token:'" + tokens.get(0) + "'}), [channel.port2]);"
                     + "})();";
 
             JSONObject report =
                 new JSONObject(awaitResult(scenario, script, "window.__pickChannelCostResult", 180));
 
-            assertEquals("no error expected", false, report.has("error"));
-            assertEquals(CEILING, report.getInt("channelLength"));
-            assertEquals(CEILING, report.getInt("base64Length"));
+            assertEquals(
+                "the transports reported " + report.optString("error"), false, report.has("error"));
+            assertEquals(COMPARABLE, report.getInt("channelLength"));
+            assertEquals(COMPARABLE, report.getInt("base64Length"));
 
             double channelDecode = report.getDouble("channelDecodeMs");
             double base64Decode = report.getDouble("base64DecodeMs");
             Log.i(
                 TAG,
                 String.format(
-                    "25MB picked file: channel decode %.1fms (round trip %.1fms), base64 decode %.1fms (round trip %.1fms)",
+                    "%dMB picked file: channel decode %.1fms (round trip %.1fms), base64 decode %.1fms (round trip %.1fms)",
+                    COMPARABLE / (1024 * 1024),
                     channelDecode,
                     report.getDouble("channelTotalMs"),
                     base64Decode,
                     report.getDouble("base64TotalMs")));
 
-            /* The acceptance criterion, as a number rather than a claim. A
-               quarter second rather than the ticket's one, because the
-               channel's decode is a buffer wrap and the whole point is that
-               it is not work - a figure anywhere near the bound would mean
-               something is copying that should not be. */
-            assertTrue(
-                "the channel's decode blocked the main thread for " + channelDecode + "ms",
-                channelDecode < 250);
             assertTrue(
                 "base64 decode (" + base64Decode + "ms) was not slower than the channel's ("
                     + channelDecode + "ms), so this is not measuring what it thinks",
                 base64Decode > channelDecode);
         }
+    }
+
+    /** Not a constant pattern: a run of one repeated byte would let base64
+        and the transport both compress in ways a real scan does not. */
+    private static byte[] payload(int size) {
+        byte[] bytes = new byte[size];
+        for (int i = 0; i < bytes.length; i++) bytes[i] = (byte) (i % 251);
+        return bytes;
+    }
+
+    /** Fetches one token over the channel and reports what the decode and
+        the round trip cost. */
+    private static String channelCostScript(String token) {
+        return "(function(){"
+            + "  var channel = new MessageChannel();"
+            + "  var sent = performance.now();"
+            + "  channel.port1.onmessage = function(e){"
+            + "    if (typeof e.data === 'string') {"
+            + "      window.__pickChannelCostResult = JSON.stringify({error:e.data});"
+            + "      return;"
+            + "    }"
+            + "    var decodeStart = performance.now();"
+            + "    var bytes = new Uint8Array(e.data);"
+            + "    var length = bytes.length;"
+            + "    var decodeMs = performance.now() - decodeStart;"
+            + "    window.__pickChannelCostResult = JSON.stringify("
+            + "      {decodeMs:decodeMs,totalMs:performance.now() - sent,length:length});"
+            + "  };"
+            + "  window.androidPhotoPickChannel.postMessage("
+            + "    JSON.stringify({token:'" + token + "'}), [channel.port2]);"
+            + "})();";
     }
 
     private static String hold(byte[] payload) {
@@ -202,6 +273,11 @@ public class PhotoPickChannelTest {
 
     private String awaitResult(ActivityScenario<MainActivity> scenario, String script) throws InterruptedException {
         return awaitResult(scenario, script, "window.__pickChannelTestResult", 30);
+    }
+
+    private String awaitResult(ActivityScenario<MainActivity> scenario, String script, int timeoutSeconds)
+        throws InterruptedException {
+        return awaitResult(scenario, script, "window.__pickChannelCostResult", timeoutSeconds);
     }
 
     /** Runs {@code script}, then polls {@code resultExpression} - a JS string, so
