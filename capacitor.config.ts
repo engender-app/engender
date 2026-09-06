@@ -1,7 +1,7 @@
-/* The Android shell (ticket 11). Capacitor wraps the same static bundle the
-   web release serves - `npm run build` writes it to build/ and `cap sync`
-   copies it into the APK - so there is no Android-specific application code
-   above the driver seam (ADR-0017).
+/* The Android shell. Capacitor wraps the same static bundle the web release
+   serves - `npm run build` writes it to build/ and `cap sync` copies it into
+   the APK - so there is no Android-specific application code above the
+   driver seam.
 
    The scheme and hostname matter more than they look. Capacitor serves the
    bundle from https://localhost by default on Android, and that origin is a
@@ -10,6 +10,8 @@
    different origin and orphan whatever a previous version stored there. */
 
 import type { CapacitorConfig } from '@capacitor/cli';
+
+export const JOURNAL_ORIGIN = 'app.genderdiary.barankiewicz.dev';
 
 const config: CapacitorConfig = {
   appId: 'dev.barankiewicz.genderdiary',
@@ -20,8 +22,8 @@ const config: CapacitorConfig = {
        WebView, so nothing here needs a mixed-content or cleartext exception. */
     allowMixedContent: false,
     /* Android updates its WebView separately from the OS, so the API level
-       does not tell you what the app is running in (ADR-0023). This is the
-       number that decides whether it runs at all.
+       does not tell you what the app is running in. This is the number that
+       decides whether it runs at all.
 
        87 is where Vite compiles the bundle to - its default module target -
        so below it the app is syntax the WebView cannot parse. Everything the
@@ -47,8 +49,8 @@ const config: CapacitorConfig = {
      are not, so nothing shipped ever logged any of it - but the road those
      arguments travel is the same road the journal's raw data key takes on
      every open (SqlitePlugin's `hexKey`), and the archive password, and
-     every value written to every row, and since phase 8 audit ticket 09 the
-     recovery key. A debug build on a phone put all of that in logcat, where
+     every value written to every row, and the recovery key. A debug build
+     on a phone put all of that in logcat, where
      anything with the READ_LOGS permission or an adb cable could read it.
 
      "none" turns Capacitor's own logging off in every build instead of only
@@ -61,7 +63,7 @@ const config: CapacitorConfig = {
   loggingBehavior: 'none',
   /* Left unset, `cap sync` writes res/xml/config.xml with a wildcard
      <access origin="*" />, a Cordova-compat leftover no plugin here reads
-     (phase 5 security ticket 07, G-07). Empty skips the tag instead of
+     (audit finding G-07). Empty skips the tag instead of
      narrowing it, since nothing needs it at all. */
   cordova: {
     accessOrigins: []

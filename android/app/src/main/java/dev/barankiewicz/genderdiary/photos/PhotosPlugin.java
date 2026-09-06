@@ -27,9 +27,9 @@ import java.io.InputStream;
 import java.util.Arrays;
 
 /**
- * Android half of the photo seam (ticket 12): one picker call and one
+ * Android half of the photo seam: one picker call and one
  * app-private file store, both behind a bridge that keeps web types and
- * Android types out of the journal code. {@link #pickDocument} (ticket 54)
+ * Android types out of the journal code. {@link #pickDocument}
  * reuses the same picker shape for a PDF or an image.
  */
 @CapacitorPlugin(name = "Photos")
@@ -59,9 +59,9 @@ public class PhotosPlugin extends Plugin {
     }
 
     /**
-     * Documents ticket 54: a PDF or an image, one at a time, through the
-     * system picker rather than the WebView's file input (ticket 66's crash,
-     * ADR-0065). No permission is declared or needed - {@code
+     * A PDF or an image, one at a time, through the
+     * system picker rather than the WebView's file input, which crashes on
+     * this call. No permission is declared or needed - {@code
      * ACTION_OPEN_DOCUMENT} hands back a per-URI grant.
      */
     @PluginMethod

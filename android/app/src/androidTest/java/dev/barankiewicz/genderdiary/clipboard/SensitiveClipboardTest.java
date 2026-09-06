@@ -26,9 +26,9 @@ import java.util.concurrent.TimeUnit;
 import dev.barankiewicz.genderdiary.MainActivity;
 
 /**
- * Phase 8 audit ticket 09's three acceptance boxes, against the device's real
- * clipboard: the clip is marked sensitive, the key is gone again after the
- * interval, and something copied after the key survives.
+ * The three acceptance boxes for a self-clearing clipboard, against the
+ * device's real clipboard: the clip is marked sensitive, the key is gone
+ * again after the interval, and something copied after the key survives.
  *
  * Everything happens inside an ActivityScenario, and that is load-bearing
  * rather than scaffolding. From Android 10 the clipboard answers only an app

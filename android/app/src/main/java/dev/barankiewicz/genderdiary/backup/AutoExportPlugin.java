@@ -44,17 +44,17 @@ import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
 /**
- * Android side of scheduled encrypted backup destination management
- * (ticket 16): a SAF tree the person picks, verified writes into it,
- * and the wrapped backup password the schedule reuses.
+ * Android side of scheduled encrypted backup destination management: a SAF
+ * tree the person picks, verified writes into it, and the wrapped backup
+ * password the schedule reuses.
  */
 @CapacitorPlugin(name = "AutoExport")
 public class AutoExportPlugin extends Plugin {
     private static final int DAY_MS = 24 * 60 * 60 * 1000;
 
     /** Named rather than private because the reset has to prove it cleared
-        this file and deleted that alias (phase 5 security ticket 01), and a
-        test that spelled either out itself would pass while the app moved. */
+        this file and deleted that alias, and a test that spelled either
+        out itself would pass while the app moved. */
     public static final String PREFS = "gender-diary-auto-export";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_SCHEDULE = "schedule";
@@ -72,11 +72,11 @@ public class AutoExportPlugin extends Plugin {
 
     private static final String FAILURE_CHANNEL = "backup_failures";
     /* Only reached when the JS side sends nothing, which it does not: the
-       localized name and body come from messages/*.json (phase 6 ticket 04). */
+       localized name and body come from messages/*.json. */
     private static final String FAILURE_CHANNEL_FALLBACK_NAME = "Backups";
     private static final int FAILURE_NOTIFICATION_ID = 1601;
 
-    /** The archive profile (ADR-0013), pinned here rather than read off the
+    /** The archive profile, pinned here rather than read off the
         bridge call. A page that can reach {@code deriveKey} - it never
         should, but audit finding G-04 assumed it could - gets this cost or
         nothing: it cannot ask for a cheaper derivation to grind offline, or
@@ -127,8 +127,7 @@ public class AutoExportPlugin extends Plugin {
 
     /**
      * Derives an archive encryption key from the saved backup password,
-     * without ever exposing the password to the WebView (phase 5 security
-     * ticket 06, F-04).
+     * without ever exposing the password to the WebView (audit finding F-04).
      *
      * <p>Argon2id derivation runs native behind the bridge. The scheduler
      * sends a fresh random salt, and receives a single derived key that
@@ -167,7 +166,7 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
-    /** {@code deriveKey}'s derivation, under the archive profile (ADR-0013)
+    /** {@code deriveKey}'s derivation, under the archive profile
         pinned above rather than taken as parameters - there is no argument
         list here for a caller's numbers to occupy. Only the salt, which is
         per-archive and random, still comes from outside. */
@@ -332,8 +331,8 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /**
-     * Posts the failure notice with the strings the JS side hands over
-     * (phase 6 ticket 04). They used to be English literals here, which made
+     * Posts the failure notice with the strings the JS side hands over.
+     * They used to be English literals here, which made
      * the one notification in the app that nobody could turn off also the one
      * nobody could read in Polish; the fallbacks below are those same
      * literals, for a call that somehow arrives with nothing.
@@ -370,7 +369,7 @@ public class AutoExportPlugin extends Plugin {
     }
 
     /**
-     * The reset path (ADR-0014): the destination URI and its label, the
+     * The reset path: the destination URI and its label, the
      * wrapped backup password, and - the part a preference clear does not
      * reach - the Keystore alias it was wrapped under. An alias left behind
      * is a key left behind, and the ciphertext beside it is only gone

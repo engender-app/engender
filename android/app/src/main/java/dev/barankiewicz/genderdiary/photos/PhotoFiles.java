@@ -7,7 +7,7 @@ import java.io.IOException;
 
 /**
  * Directory and file resolution for app-private photo storage, shared by
- * {@link PhotosPlugin} and {@link PhotoWriteChannel} (ticket 19). Both cross
+ * {@link PhotosPlugin} and {@link PhotoWriteChannel}. Both cross
  * into native by a different transport, but the same name and directory can
  * reach either one, so the path-traversal guard has to live in one place
  * rather than twice.

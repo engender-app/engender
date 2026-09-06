@@ -75,8 +75,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(time)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            /* Phase 5 security ticket 01 (F-05), corrected by audit ticket
-               07: VISIBILITY_PRIVATE does not hide this title on a lock
+            /* Audit finding F-05, corrected by a later audit pass:
+               VISIBILITY_PRIVATE does not hide this title on a lock
                screen by itself. It only asks the OS to conceal a
                notification's content, and the OS only honours that where
                the lock screen itself is set to hide sensitive content -
@@ -123,7 +123,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build());
     }
 
-    /** The affirming line for this day (phase 4 features ticket 22), or null
+    /** The affirming line for this day, or null
         when the prompt stays plain: the pool arrives empty when the
         preference is off, and hideNotificationTitles suppresses the line the
         same way it hides reminder titles - an affirmation on a lock screen
@@ -138,7 +138,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         return line.isBlank() ? null : line;
     }
 
-    /** The reminder's own title, unless hideNotificationTitles (ticket 15) is
+    /** The reminder's own title, unless hideNotificationTitles is
         on - then the channel name stands in for it. Not a lock-time check:
         the app cannot learn whether the screen is locked when an alarm
         fires, so the preference hides the title unconditionally rather than

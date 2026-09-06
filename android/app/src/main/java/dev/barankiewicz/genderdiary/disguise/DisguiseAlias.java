@@ -6,8 +6,8 @@ import android.content.pm.PackageManager;
 
 /**
  * Which of the two launcher activity-aliases (AndroidManifest.xml) is the
- * one Android shows in the launcher and the recents list (ticket 15's first
- * acceptance box). Exactly one is ever enabled.
+ * one Android shows in the launcher and the recents list. Exactly one is
+ * ever enabled.
  *
  * <p>Always {@code DONT_KILL_APP} here, even though the disguise switch is
  * supposed to restart the app: that restart is a deliberate, separate step
@@ -34,8 +34,8 @@ public final class DisguiseAlias {
 
     /** The same live PackageManager read {@link #apply} uses, exposed for
         other at-rest surfaces that must not brand themselves while disguise
-        is on - the quick-log widget (ticket 26) reads this rather than
-        keeping a second copy of the preference. */
+        is on - the quick-log widget reads this rather than keeping a
+        second copy of the preference. */
     public static boolean isDisguised(Context context) {
         return isDisguised(context.getPackageManager(), context);
     }

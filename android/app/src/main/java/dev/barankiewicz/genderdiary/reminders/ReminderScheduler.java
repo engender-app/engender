@@ -34,8 +34,8 @@ public final class ReminderScheduler {
 
     /**
      * The store is written before the old alarms are cancelled, so a wrap
-     * that fails (phase 5 security ticket 02) leaves the phone on the rules
-     * it already had rather than on none. {@code RemindersPlugin.sync}
+     * that fails leaves the phone on the rules it already had rather than
+     * on none. {@code RemindersPlugin.sync}
      * rejects, which {@code platform-sync.ts} logs and nothing shows the
      * person; what recovers it is the next sync, on the next focus.
      */
@@ -55,7 +55,7 @@ public final class ReminderScheduler {
     }
 
     /**
-     * The reset path (ADR-0014). Cancellation lives here, beside the
+     * The reset path. Cancellation lives here, beside the
      * {@link #cancelAll} that {@code saveAndSchedule} already calls, rather
      * than in a second mechanism that would have to know the same request
      * codes and intent shapes to reach the same alarms.
@@ -94,8 +94,8 @@ public final class ReminderScheduler {
     }
 
     /**
-     * Quiet hours are applied here rather than inside {@link ReminderPlanner}
-     * (phase 6 ticket 04): the planner answers what the rule says, which is
+     * Quiet hours are applied here rather than inside {@link ReminderPlanner}:
+     * the planner answers what the rule says, which is
      * what the shared reminder-rule fixture pins, and holding an alarm out of
      * the window is a separate decision on top of that answer.
      */
@@ -177,9 +177,9 @@ public final class ReminderScheduler {
             }
             return route;
         }
-        // Phase 4 features ticket 04: wrapped and on-this-day notifications
-        // deep-link through this same allowlist, not a route-specific one of
-        // their own - see RetrospectiveNotificationsPlugin.
+        // Wrapped and on-this-day notifications deep-link through this same
+        // allowlist, not a route-specific one of their own - see
+        // RetrospectiveNotificationsPlugin.
         if (route.equals("/wrapped/week") || route.equals("/wrapped/month") || route.equals("/wrapped/year")) {
             return route;
         }
@@ -189,7 +189,7 @@ public final class ReminderScheduler {
             boolean known = "month".equals(lookback) || "sixMonths".equals(lookback) || "year".equals(lookback);
             return known ? route : null;
         }
-        // The quick-log widget's mood buttons (ticket 26): "today" rather than
+        // The quick-log widget's mood buttons: "today" rather than
         // a computed epoch day, so a PendingIntent built at widget-render time
         // still lands on the right day even if tapped much later - the [day]
         // route resolves "today" live, at navigation time, not at intent-build
@@ -198,14 +198,14 @@ public final class ReminderScheduler {
             String mood = route.substring("/entry/new/today?seedMood=".length());
             return mood.length() == 1 && mood.charAt(0) >= '1' && mood.charAt(0) <= '5' ? route : null;
         }
-        // The tally widget's two buttons (ticket 33): Home reads and clears
+        // The tally widget's two buttons: Home reads and clears
         // this query parameter itself (src/routes/+page.svelte) rather than
         // a route of the widget's own existing to hold.
         if (route.startsWith("/?tally=")) {
             String kind = route.substring("/?tally=".length());
             return "misgendered".equals(kind) || "correctly_gendered".equals(kind) ? route : null;
         }
-        // The doubt-entry widget (ticket 34): the existing /doubt route
+        // The doubt-entry widget: the existing /doubt route
         // itself, already the composer plus counterevidence in one screen -
         // no query parameter to carry, unlike the tally widget above.
         if (route.equals("/doubt")) return route;

@@ -44,8 +44,8 @@ import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
 
 /**
- * The Keystore half of ticket 13, on a device, because none of it is true
- * anywhere else. Whether a key is really in Android Keystore, whether it is
+ * The Keystore half of the encryption claim, on a device, because none of it
+ * is true anywhere else. Whether a key is really in Android Keystore, whether it is
  * really bound to the lock screen, and what the platform does when that lock
  * screen is removed are properties of the platform rather than of this code.
  *
@@ -94,7 +94,7 @@ public class JournalKeystoreTest {
         assertFalse("a fresh device should hold no key", keystore.hasKey());
 
         byte[] dataKey = keystore.create();
-        assertEquals("ADR-0018's data key is 32 bytes", 32, dataKey.length);
+        assertEquals("the data key is 32 bytes", 32, dataKey.length);
         assertTrue(keystore.hasKey());
 
         KeyStore androidKeystore = KeyStore.getInstance("AndroidKeyStore");
@@ -110,12 +110,13 @@ public class JournalKeystoreTest {
     }
 
     /**
-     * Ticket 08's own claim: a key made before it - no MGF1 digest declared -
-     * still unwraps under the current code. There is no real pre-ticket key
-     * to load, so this rebuilds exactly what {@code generateKeyPair()} made
-     * before the ticket ({@link #generateKeyWithoutMgf1Declaration()}) and
-     * wraps a data key under it by hand, then hands the result to the
-     * current, unchanged {@link JournalKeystore#unwrapCipher()}.
+     * A migration claim: a key made before the MGF1 digest was declared
+     * explicitly still unwraps under the current code. There is no real
+     * pre-migration key to load, so this rebuilds exactly what
+     * {@code generateKeyPair()} made before that change
+     * ({@link #generateKeyWithoutMgf1Declaration()}) and wraps a data key
+     * under it by hand, then hands the result to the current, unchanged
+     * {@link JournalKeystore#unwrapCipher()}.
      *
      * <p>A full round trip only proves out where a live authentication can
      * be faked at all: below API 30, setting the lock screen is itself an
@@ -263,8 +264,8 @@ public class JournalKeystoreTest {
 
     /**
      * Removing the lock screen destroys the key, and the app reports that as
-     * its own state rather than as a finger that did not match (ticket 13's
-     * third box - a retry loop here would be a trap with no way out).
+     * its own state rather than as a finger that did not match - a retry loop
+     * here would be a trap with no way out.
      *
      * <p>Emulator only: putting the lock screen back afterwards means putting
      * back this class's own throwaway PIN, which is not an option on a phone
@@ -313,7 +314,7 @@ public class JournalKeystoreTest {
         setLockScreen();
     }
 
-    /** The reset path (ADR-0014): both halves go. */
+    /** The reset path: both halves go. */
     @Test
     public void eraseTakesTheKeyAndTheBlob() throws Exception {
         keystore.create();
