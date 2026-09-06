@@ -3409,5 +3409,28 @@
   "document_link_kind_episode": "Kuracja",
   "document_link_kind_goal": "Krok z mapy tranzycji",
   "roadmap_goal_open_aria": "Otwórz: {goal}",
-  "roadmap_goal_milestone_sub": "Kamień milowy tego kroku"
+  "roadmap_goal_milestone_sub": "Kamień milowy tego kroku",
+  "roadmap_goal_text_label": "Twój krok",
+  "roadmap_goal_save": "Zapisz treść",
+  "roadmap_goal_delete": "Usuń krok",
+  "roadmap_goal_delete_sheet": "Usuń krok",
+  "roadmap_goal_delete_q": "Usunąć {goal}?",
+  "roadmap_goal_delete_hint": "Tego nie da się cofnąć.",
+  "roadmap_goal_delete_documents": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} dokument złożony tutaj zostaje, ale przestaje być przypisany do tego kroku. Tego nie da się cofnąć.",
+        "countPlural=few": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć.",
+        "countPlural=many": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć.",
+        "countPlural=other": "Dokumenty złożone tutaj zostają ({count}), ale przestają być przypisane do tego kroku. Tego nie da się cofnąć."
+      }
+    }
+  ]
 }
