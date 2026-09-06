@@ -227,7 +227,7 @@
     // A row of title and date and no page image at all, which is what
     // ADR-0065 asks every list to be (phase 8 features ticket 52).
     documents: [
-      { id: 'dc1', epochDay: DAY, title: 'Psychiatric opinion', fileName: noFile() }
+      { id: 'dc1', epochDay: DAY, title: 'Psychiatric opinion', fileName: noFile(), targetKind: null, targetId: null }
     ]
   };
 
