@@ -184,9 +184,8 @@ export async function photosByMilestone(
    OPFS root: the database file lives in OPFS too, and no row references
    it.
 
-   Reads `hair_photo` (migrations.ts v13), `voice_recording` (migrations.ts
-   v17), `video_note` (migrations.ts v30), `tryout_photo` (migrations.ts
-   v31) and `document` (migrations.ts v75) as well as `photo`: a
+   Reads `hair_photo`, `voice_recording`, `video_note`, `tryout_photo` and
+   `document` as well as `photo` (schema.ts has all six): a
    hair-progress photo's row lives in its own table
    (journal/hairProgress.ts), a voice recording's in its own
    (journal/voiceRecordings.ts), a video note's in its own

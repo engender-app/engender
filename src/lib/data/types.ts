@@ -306,7 +306,7 @@ export interface Reminder {
    This is stored, not derived on read, and it is the one place in this
    schema that stores a figure computable from other rows - which is what
    ADR-0010 exists to prevent. The exception is deliberate and argued at
-   the column definitions (migrations.ts, v6). In short: ADR-0010's case is
+   the column definitions (schema.ts). In short: ADR-0010's case is
    about columns that drift out of agreement with their inputs, and this
    one cannot, because its input is the dose log as it stood at the moment
    of the draw and that is not recoverable later. It is a recorded
@@ -395,7 +395,7 @@ export interface TallyEvent {
 
 /** One of the user's own euphoria-tagged entries, copied into a
     CounterevidenceSnapshot rather than referenced by id - see the
-    ADR-0010 exception argued at migrations.ts v14. Deliberately thinner
+    ADR-0010 exception argued in schema.ts. Deliberately thinner
     than Entry: a snapshot exists to be reread, not re-edited, so it
     carries only what makes the counterevidence legible - the day and what
     was written - not its tags or photos. */
@@ -828,7 +828,7 @@ export interface RegimenTemplate {
   lean: Lean;
 }
 
-/** A stable key into `personal_effect_type` (migrations.ts v39) - an open
+/** A stable key into `personal_effect_type` (schema.ts) - an open
     vocabulary now, not a closed union. Phase 4 ticket 07 closed this list
     at four feminizing markers; phase 5 ticket 02 reopened it once to
     reach trans-masc parity and closed it again at eight, calling that
@@ -866,7 +866,7 @@ export interface EffectCategory {
 }
 
 /** One row of the effect catalogue itself - what `personal_effect.effect`
-    is allowed to name, now that migrations.ts v39 has dropped the CHECK
+    is allowed to name, now that the schema carries no CHECK
     that used to enumerate it. Built-in rows are seeded by key and
     localized at display time (`labels.ts`), the same split `BodyRegion`
     and `MeasurementType` use; a custom row's `name` is stored verbatim,
@@ -884,7 +884,7 @@ export interface PersonalEffectCatalogEntry {
   direction: EffectDirection | null;
 }
 
-/* One row per effect (migrations.ts v12, widened v37), matched exactly
+/* One row per effect (schema.ts), matched exactly
    like MedicationStock's drug: a person is always answering "when did I
    first notice this", never logging a series of sightings. No episode
    reference: what this marker is read against - the earliest regimen
@@ -907,7 +907,7 @@ export interface PersonalEffect {
    the same treatment HairRemovalSession.area gets: the pair is validated
    against hairStageScales.ts's closed vocabularies above the schema seam
    (journal/hairProgress.ts), and the schema's own CHECK refuses a
-   mismatched pair on a write or a restore alike (migrations.ts v37). The
+   mismatched pair on a write or a restore alike (schema.ts). The
    two are never separated - '1' through '5' are grade codes on both
    published scales and mean different things on each, so a stage without
    its scale says nothing (phase 5 ticket 33). */
@@ -958,7 +958,7 @@ export interface HairRemovalSession {
 
 /** What a person last reported having of one drug (phase 4 ticket 04,
     CONTEXT: pending). One per drug, matched exactly (`RegimenEpisode.drug`'s
-    own convention) rather than per episode - see migrations.ts v7. Neither
+    own convention) rather than per episode - see schema.ts. Neither
     `quantity` nor `recordedEpochDay` is a running total: saving a fresh
     count replaces the old one outright, the way `DoseSchedule` replaces per
     episode, because a person reporting stock is always answering "how much

@@ -1,5 +1,5 @@
 /* The dilation taper (phase 8 features ticket 12, CONTEXT: "Taper"). Two
-   flat tables (schema.ts SCHEMA_V65), both through flatArea.ts's shared
+   flat tables (schema.ts), both through flatArea.ts's shared
    triple - the row-and-write contract ticket 08 installs, adopted rather
    than copied from a sibling module the way sizeRecords.ts is: an unknown
    id throws on upsert and succeeds-and-changes-nothing on delete, with no
