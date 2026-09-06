@@ -1759,8 +1759,17 @@ a.kit-entry:active {
   stroke-width: 2;
 }
 
-/* The reading under the finger, in the corner rather than beside the line:
-   a label that follows the touch is a label under the thumb holding it. */
+/* The reading under the finger, in a corner rather than beside the line:
+   a label that follows the touch is a label under the thumb holding it.
+
+   Fixed in the top-right corner used to be the whole rule, and a reading
+   near the top of its own range sat right under a plate answering for it
+   (carpet ticket 08, Alicja: the label sits on top of the data). So the
+   corner is now whichever of the four is furthest from the mark - AreaChart
+   works out which in its own script (readoutCorner, charts/geometry.ts) and
+   hands this two classes below. Still never the exact touch point: that
+   is the thumb problem above, restated for a corner that would otherwise
+   chase a fingertip around the plot. */
 /* A plate laid over the plot, not a tag.
 
    It was a pill, which is right for the one-line case it was drawn for and
@@ -1772,16 +1781,27 @@ a.kit-entry:active {
    buttons and rows take, it holds its padding at any height, and on a
    single-line readout 14px still reads as a chip.
 
-   What it does not get is a shadow. It sits over the marks, and lifting it
-   off them with one is the obvious move and the wrong one: DIRECTION.md's
-   decision 2 gives this app two surfaces rather than a stack of planes, and
-   the single shadow in it belongs to the shell's floating nav. The plate is
-   an opaque --surface-2 inside a line, which is how everything else here
-   separates from what is behind it. */
+   What it does not get is a shadow: DIRECTION.md's decision 2 gives this
+   app two surfaces rather than a stack of planes, and the single shadow in
+   it belongs to the shell's floating nav. The plate is an opaque
+   --surface-2 inside a line, which is how everything else here separates
+   from what is behind it - and now that the corner picks itself, that line
+   is what still reads if a plate ever does land near a mark it did not
+   choose to clear (two series' marks pulling the choice two ways). */
 .kit-area-readout {
   position: absolute;
   top: 0;
   right: 0;
+  /* Held to half the plot's width - the horizontal half the corner it took
+     gave up - so a long annotation name cannot grow the plate back across
+     the midline and over the mark readoutCorner picked this corner to
+     clear. Width only: capping the height the same way clips a wrapped
+     annotation mid-line with nothing saying it was cut short, worse than
+     the overlap it would be guarding against, and the plot's height is a
+     fixed 132px (unlike its width, which answers to the card) so there is
+     no card size this could go wrong at the way the width could. */
+  max-width: 50%;
+  overflow: hidden;
   /* A column, so an annotation goes under the reading rather than beside it:
      side by side, a long name pushes the number off the plot at 390px. It
      collapses to one line on its own where there is nothing to annotate. */
@@ -1798,6 +1818,20 @@ a.kit-entry:active {
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* The other three corners readoutCorner can choose. Each is one axis
+   flipped off the top-right default above, so the two combine freely into
+   all four. */
+.kit-area-readout.is-left {
+  right: auto;
+  left: 0;
+  align-items: flex-start;
+}
+
+.kit-area-readout.is-below {
+  top: auto;
+  bottom: 0;
 }
 
 .kit-area-readout b {
@@ -1885,10 +1919,17 @@ a.kit-entry:active {
    Blocks, not spans, and capped: a name is the person's own text and can be
    any length, and inline elements ignore both `max-width` and the ellipsis
    that goes with it - which is how a two-word readout grew into a pill lying
-   across most of the plot it was annotating. */
+   across most of the plot it was annotating.
+
+   Relative rather than a fixed `ch` count (carpet ticket 08): the plate
+   around this now caps itself to half the plot so its corner-picking always
+   clears the mark it names, and a name still allowed to reach a fixed 20ch
+   of its own could grow past that half again - this ties the two caps
+   together instead of guessing a `ch` count small enough for every plot
+   width the kit is asked to draw at. */
 .kit-area-readout-annotation {
   display: block;
-  max-width: 20ch;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
