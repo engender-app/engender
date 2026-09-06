@@ -19,6 +19,23 @@ import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'pdf';
 
+/* Every Worker pdf.ts constructs against every terminate() call on it - the
+   count a resource leak needs, since nothing else here would notice a
+   worker still running. */
+let workersCreated = 0;
+let workersTerminated = 0;
+const RealWorker = window.Worker;
+window.Worker = class extends RealWorker {
+  constructor(...args: ConstructorParameters<typeof RealWorker>) {
+    super(...args);
+    workersCreated += 1;
+  }
+  terminate() {
+    workersTerminated += 1;
+    super.terminate();
+  }
+} as typeof RealWorker;
+
 /* What the module logged on its way to answering null, which is the
    difference between "the renderer refused this file" and "the probe is
    holding it wrong" - and there is nowhere else to read it, since a
@@ -97,13 +114,23 @@ async function run() {
   }
   const unreadableThumb = await renderPdfThumbnail(makeUnreadablePdf());
 
+  /* Termination happens after document.destroy() settles (pdf.ts's own
+     ordering), so it can still be in flight here. Poll rather than a fixed
+     sleep - and give up after 2s so a reintroduced leak fails the count
+     below instead of hanging the whole probe. */
+  const deadline = Date.now() + 2000;
+  while (workersTerminated < workersCreated && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
   publish(NAME, {
     rendered,
     refusedMissingPage,
     thumbnail,
     openedUnreadable,
     unreadableThumbIsNull: unreadableThumb === null,
-    complaints
+    complaints,
+    workerCounts: { created: workersCreated, terminated: workersTerminated }
   });
 }
 

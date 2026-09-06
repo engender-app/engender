@@ -38,6 +38,7 @@
     "check:copy": "node scripts/check-copy.mjs",
     "check:licences": "node scripts/check-licences.mjs",
     "check:screens-classes": "node scripts/check-screens-classes.mjs",
+    "check:first-load-budget": "node scripts/check-first-load-budget.mjs",
     "check:progressive-release": "node scripts/check-progressive-release.mjs",
     "benchmark:argon2": "node scripts/benchmark-argon2.mjs",
     "benchmark:long-journal": "svelte-kit sync && node tests/long-journal/run.mjs"
