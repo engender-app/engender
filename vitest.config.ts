@@ -1,4 +1,4 @@
-/* Node tier (ADR: ticket 03). Fast, runs on every change via `npm test`.
+/* Node tier. Fast, runs on every change via `npm test`.
    The browser tier lives under tests/browser-tier/ and runs via its own
    script (`npm run test:browser`), not through this config - it needs a
    real browser for OPFS/WASM SQLite, which this Node-only config cannot

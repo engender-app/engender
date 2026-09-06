@@ -15,7 +15,7 @@ walkable end to end on demo data. Design decisions and their history live in
 [mockup/DESIGN.md](mockup/DESIGN.md) (the earlier static mockup in `mockup/`
 is superseded by this app but kept for reference).
 
-Not yet wired (Phase 1): SQLite persistence (SQLocal/OPFS + Capacitor
+Not yet wired: SQLite persistence (SQLocal/OPFS + Capacitor
 driver — the demo store behind `src/lib/data/` implements the same repository
 interfaces), real photo storage, crypto for export/import, Capacitor shell,
 notifications, real Rive assets (animated CSS stand-ins render in every Rive
@@ -26,8 +26,7 @@ precaches the whole release into one cache per build version: app code,
 SQLocal's worker and WASM, the bundled fonts and everything in `static/`. A new
 release waits instead of taking over: `src/lib/pwa/update.ts` asks it to stop
 waiting only once nothing is running that an activation must not land on, and
-`src/lib/data/journal-busy.ts` is what answers that question. See
-[ADR-0021](docs/adr/0021-the-offline-shell-is-one-document-and-one-cache-per-release.md).
+`src/lib/data/journal-busy.ts` is what answers that question.
 `npm run dev` does not register it, since a precached shell would be served
 ahead of every edit; `npm run verify:build` installs it, kills the network and
 starts the app again.
@@ -59,7 +58,7 @@ node scripts/app-version.mjs   # what this checkout would build as
 The Android app is the same static bundle in a Capacitor shell, with one
 native piece: a local plugin that opens the journal over SQLCipher, because
 the key model everything else assumes wants a raw key and no derivation of
-its own (ADR-0020).
+its own.
 
 ```
 npm run build && npx cap sync android   # copy the web bundle into the APK
@@ -86,21 +85,21 @@ what Vite compiles the bundle to - and points `server.errorPath` at
 `static/webview-too-old.html`, so a device below it gets a page saying which
 component to update rather than a blank screen. `minWebViewVersion` alone does
 not do that: without an error path Capacitor logs the failure and loads the
-app anyway. See [ADR-0023](docs/adr/0023-the-android-floor-is-a-webview-version-not-an-api-level.md).
+app anyway.
 
 The API 26 emulator image ships Chrome 69 from 2018 and so cannot start the
 app at all. It is where the error page is checked; the native half of the
 suite runs there too, and the full suite runs on the current Android.
 
 The version the build stamps into the app comes from a signed `v<semver>` tag
-and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit
-(ADR-0022). `GENDER_DIARY_VERSION` overrides it, which is how the release
+and from nowhere else, so ordinary builds are `0.0.0-dev` plus the commit.
+`GENDER_DIARY_VERSION` overrides it, which is how the release
 pipeline hands one value to the bundle, the release notes and the Android
 artifacts at once.
 
 `check:copy` compares the two catalogues key by key and counts user-facing text
 written straight into the markup. Hundreds of those literals are still there
-from phase 0 and phase 1, so the check is a ratchet against
+from earlier development, so the check is a ratchet against
 `messages/untranslated-literals.txt`: a count may not go up, and one that goes
 down is recorded with `node scripts/check-copy.mjs --update`. A key the code
 calls and no catalogue has is a type error already, so `npm run check` covers
@@ -138,7 +137,7 @@ synthetic, and no job in that workflow is given a secret.
 
 `.github/workflows/release.yml` runs on a `v*` tag. It reads the version once,
 through `scripts/app-version.mjs`, so an unsigned tag or a tag on an edited tree
-produces no release at all (ADR-0022); hands that string to everything else
+produces no release at all; hands that string to everything else
 through `GENDER_DIARY_VERSION`; takes the notes out of `CHANGELOG.md`; and
 publishes a web bundle, a source archive, signed Android artifacts and
 checksums. The App Bundle upload to Play internal runs in that same protected
@@ -186,7 +185,7 @@ is not update-compatible with this repository's signed APK, so moving between
 those channels is a reinstall plus Archive restore rather than an in-place
 update.
 
-Progressive release exercises are recorded and validated with ticket 22's gate:
+Progressive release exercises are recorded and validated with a dedicated gate:
 
 ```
 npm run check:progressive-release -- --file docs/progressive-release-record.json --target stage1
@@ -238,5 +237,5 @@ src/
     └── paraglide/       # generated i18n runtime (gitignored)
 messages/                # en.json, pl.json
 static/fonts/            # bundled woff2 (OFL)
-mockup/                  # Phase 0 static mockup (superseded, kept for reference)
+mockup/                  # earlier static mockup (superseded, kept for reference)
 ```

@@ -8,15 +8,14 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 
 /**
- * Quiet hours, the unprompted registry's one cross-class rule (phase 6
- * ticket 04). The same arithmetic as
- * src/lib/unprompted/quietHours.ts, reimplemented here for the same reason
+ * Quiet hours, the unprompted registry's one cross-class rule. The same
+ * arithmetic as src/lib/unprompted/quietHours.ts, reimplemented here for the same reason
  * {@link ReminderPlanner} reimplements reminderRule.ts: an alarm is scheduled
  * before any WebView exists and Java has no import path into TypeScript.
  *
  * <p>What holds the two to the same answers is
  * src/lib/android/fixtures/quiet-hours.json, read by QuietHoursFixtureTest on
- * this side (ADR-0028).
+ * this side.
  *
  * <p>Held, never dropped: an alarm that would fire inside the window is
  * scheduled at the end of the window instead, so the person still gets it and

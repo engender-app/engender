@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Reading a value out of the app's own WebView from an instrumentation test.
  *
- * <p>Extracted when a second test needed it (phase 5 security ticket 03).
- * WebViewPrintAdapterTest had grown a poll-evaluate-compare loop of its own,
+ * <p>Extracted when a second test needed it. WebViewPrintAdapterTest had
+ * grown a poll-evaluate-compare loop of its own,
  * and the CSP test copied it verbatim, strings and 250ms interval included. A
  * third copy was the next thing to happen, so it lives here instead.
  *

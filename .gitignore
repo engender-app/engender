@@ -15,8 +15,8 @@ android/app/src/androidTest/assets/
 
 # Release artifacts and the CI logs kept from a failed browser run. Both have to
 # stay untracked for another reason too: a release version needs an unedited
-# tree (ADR-0022), so anything the pipeline writes into the workspace while it
-# runs would otherwise turn the build it is packaging into a development build.
+# tree, so anything the pipeline writes into the workspace while it runs would
+# otherwise turn the build it is packaging into a development build.
 dist/
 ci-logs/
 
@@ -56,7 +56,8 @@ GEMINI.md
 # would be read as a setup step for the app itself.
 #
 # What outlives a run is which secret goes where and which ticket reads it, and
-# that is docs/provisioning.md, which is tracked. The test goes with the script
+# that lives in docs/provisioning.md - untracked, like the rest of docs/, but the
+# file meant to hold that record. The test goes with the script
 # because it runs the script: kept here it would fail on any clone that has one
 # and not the other.
 scripts/provision.sh
@@ -70,13 +71,13 @@ static/tesseract/
 static/pdf-fonts/
 
 # Throwaway prototypes, which live on their own branches and leave build output
-# behind on this one - ticket 08's Android probe left 87M of Gradle output and a
+# behind on this one - an Android probe run left 87M of Gradle output and a
 # local.properties holding a machine's SDK path. The prototype/encryption-mechanism
 # branch tracks its sources and is unaffected: ignoring a path does not untrack
 # what is already committed under it.
 prototype/
 
-# Phase 0's throwaway static mockup, already committed under this path - same
+# An early throwaway static mockup, already committed under this path - same
 # note as prototype/ above applies: ignoring it here stops new/changed files
 # in it from showing up, not what git already tracks there.
 mockup/
@@ -90,7 +91,7 @@ mockup/
 # Source comments across src/ cite CONTEXT.md by name as the domain authority, and on
 # a clone those references now point at a file that is not there. And impeccable's
 # context.mjs reads PRODUCT.md to resolve the platform, so on a clone it falls back to
-# treating the app as a website - which is the exact failure phase 5 ticket 29 fixed.
+# treating the app as a website - a real failure mode this has already caused.
 # Both are accepted on the same trade docs/ already made: these live with whoever is
 # working on the app, not in the public tree.
 PRODUCT.md

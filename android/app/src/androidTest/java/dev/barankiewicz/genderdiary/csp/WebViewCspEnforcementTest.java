@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Whether the Capacitor shell enforces the document's Content Security Policy
- * (phase 5 security ticket 03, audit finding F-06).
+ * (audit finding F-06).
  *
  * <p>The policy used to be split: nginx sent everything except the script
  * hashes, and the build wrote the hashes into the document because only a build

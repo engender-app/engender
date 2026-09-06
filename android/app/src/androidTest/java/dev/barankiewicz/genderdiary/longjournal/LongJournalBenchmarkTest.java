@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Runs the ten-year Journal benchmark over the native Android driver (ticket 20).
+ * Runs the ten-year Journal benchmark over the native Android driver.
  *
  * <p>Generates 3231 entries over 3653 days, 375 photos, 122 lab results and 12
  * milestones through the same probe generate.ts and measure.ts use on the web, then
@@ -132,9 +132,9 @@ public class LongJournalBenchmarkTest {
                 budget = "  NO BUDGET";
             }
             Log.i(TAG, String.format("  %-55s %4dms%s", m.getString("what"), ms, budget));
-            /* A screen mount's own line: what it crossed the driver seam for
-               (phase 8 audit ticket 01). On this platform a statement is a
-               Capacitor bridge call, so the count is the reading and the
+            /* A screen mount's own line: what it crossed the driver seam for.
+               On this platform a statement is a Capacitor bridge call, so
+               the count is the reading and the
                milliseconds beside it say what one call costs here. */
             if (m.has("statements")) {
                 String ceilings = budgetTable.has(name) && budgetTable.getJSONObject(name).has("statementBudget")

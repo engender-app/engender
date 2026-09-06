@@ -13,7 +13,7 @@ import javax.crypto.SecretKey;
 
 /**
  * The device half of a PIN, held by the phone rather than by the WebView
- * (phase 5 security ticket sec-02-06, audit finding G-03).
+ * (audit finding G-03).
  *
  * <p>PIN mode wraps the journal under the four digits joined with a secret
  * only this device can produce ({@code src/lib/data/device-secret.ts}). That
@@ -95,7 +95,7 @@ public final class PinBindingKeystore {
         return key == null ? null : sign(key, label);
     }
 
-    /** The reset path (ADR-0014), and a move out of PIN mode. */
+    /** The reset path, and a move out of PIN mode. */
     public static void erase() throws Exception {
         KeyStore keystore = keystore();
         if (keystore.containsAlias(ALIAS)) keystore.deleteEntry(ALIAS);

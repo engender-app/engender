@@ -29,9 +29,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Runs the shared driver contract suite on a phone (ticket 11's acceptance:
- * the same journal contract tests, and folded search matching the other
- * tiers, against the native driver).
+ * Runs the shared driver contract suite on a phone: the same journal contract
+ * tests, and folded search matching the other tiers, against the native
+ * driver.
  *
  * <p>"The same tests" is meant literally. The checks live in
  * src/lib/data/journal/contract-suite.ts and the Node tier runs them over

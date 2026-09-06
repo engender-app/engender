@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Ticket 17: one archive format, both directions.
+ * One archive format, both directions.
  *
  * <p>The probe this test serves boots both stacks in one Android app run:
  * the web stack (OPFS + web sqlite path) and the Android stack (native
@@ -73,7 +73,7 @@ public class ArchiveCrossPlatformRoundTripTest {
             // Guard against an empty or truncated report falsely passing.
             // 6 direction/encryption cases x 7 checks each = 42 checks.
             assertTrue(
-                "expected ticket 17 coverage checks, got " + checks.length(),
+                "expected full coverage checks, got " + checks.length(),
                 checks.length() >= 42);
         }
     }

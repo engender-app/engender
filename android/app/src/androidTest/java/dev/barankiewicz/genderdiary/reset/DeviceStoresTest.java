@@ -26,8 +26,8 @@ import dev.barankiewicz.genderdiary.reminders.ReminderPayloadStore;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
 
 /**
- * Phase 5 security ticket 01, the Android half of "nothing outlives a
- * reset" (F-01), on a device rather than against a fake.
+ * The Android half of "nothing outlives a reset" (F-01), on a device rather
+ * than against a fake.
  *
  * <p>Everything here was left behind by the reset as shipped: the reminder
  * titles, the auto-export destination and the Keystore alias its password
@@ -93,7 +93,7 @@ public class DeviceStoresTest {
 
     @Test
     public void aResetDeletesTheKeystoreAliasTheRemindersWereWrappedUnder() throws Exception {
-        /* Phase 5 security ticket 02 (G-02): the reminder payload gained a
+        /* Audit finding G-02: the reminder payload gained a
            wrapping key of its own, and it leaves for the same reason the
            backup password's does. The ciphertext is only gone because the
            preference file went with it, so a key left behind opens any copy

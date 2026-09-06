@@ -7,10 +7,10 @@ import { appVersion } from './scripts/app-version.mjs';
 import capacitorConfig from './capacitor.config';
 
 /* What the client build actually emitted, written where src/service-worker.ts
-   can import it (phase 2 ticket 03; ADR-0021 for why the shell cannot be
-   precached from SvelteKit's own `build` list, which omits SQLocal's worker
-   and the worker's copy of the SQLite WASM). verify-build.mjs fails if
-   anything the build wrote is missing from the cache the worker fills. */
+   can import it - the shell cannot be precached from SvelteKit's own `build`
+   list, which omits SQLocal's worker and the worker's copy of the SQLite
+   WASM. verify-build.mjs fails if anything the build wrote is missing from
+   the cache the worker fills. */
 const GENERATED = 'src/lib/pwa/emitted-client-assets.generated.ts';
 
 function writeEmittedClientAssets() {
@@ -53,9 +53,9 @@ function writeEmittedClientAssets() {
 }
 
 /* The syntax floor, taken from the number the Android shell refuses to run
-   below rather than written down twice (phase 8 features ticket 55).
+   below rather than written down twice.
 
-   ADR-0023 says what this is for: 87 was Vite's own default module target,
+   87 was Vite's own default module target,
    inherited rather than chosen, so a Vite upgrade that moved it would have
    moved what the app runs on with nobody deciding to - and the number in
    capacitor.config.ts would have gone on claiming the old one. Deriving it
@@ -73,13 +73,13 @@ export default defineConfig(({ command }) => ({
   build: { target: BUILD_TARGET },
   // A literal, not an exported const, so Rollup can fold `if (__DEMO__)`
   // and drop the Alice persona and the demo bar from a production bundle
-  // rather than shipping them behind a runtime flag (ticket 05). True
-  // while developing, and in a build only when VITE_DEMO=1 asks for it -
-  // which is what `npm run test:walkthrough` does, since the walkthrough
-  // drives the persona and the demo bar's jump control.
+  // rather than shipping them behind a runtime flag. True while developing,
+  // and in a build only when VITE_DEMO=1 asks for it - which is what
+  // `npm run test:walkthrough` does, since the walkthrough drives the
+  // persona and the demo bar's jump control.
   //
   // __APP_VERSION__ is the same literal treatment, for the reason the release
-  // contract needs rather than the one Rollup needs (ticket 01): the version
+  // contract needs rather than the one Rollup needs: the version
   // the build was given has to be inside the bundle it built, so the About
   // screen can only ever show what was actually shipped. Read once here, from
   // the signed tag or from GENDER_DIARY_VERSION, and nowhere else.
@@ -88,8 +88,8 @@ export default defineConfig(({ command }) => ({
     __APP_VERSION__: JSON.stringify(appVersion())
   },
   // Pre-bundling would inline the sqlite3mc wasm module in a way that
-  // breaks its URL-relative sqlite3.wasm loading inside mc-worker.ts
-  // (ticket 09). Build output is unaffected; this is dev-server only.
+  // breaks its URL-relative sqlite3.wasm loading inside mc-worker.ts.
+  // Build output is unaffected; this is dev-server only.
   optimizeDeps: {
     exclude: ['@evolu/sqlite-wasm']
   },
@@ -101,7 +101,7 @@ export default defineConfig(({ command }) => ({
     }),
     sveltekit(),
     // Handles SQLocal's worker and sets the COOP/COEP headers SQLocal's
-    // own docs call for (ticket 04) - but only for the Vite dev server, so
+    // own docs call for - but only for the Vite dev server, so
     // however this gets deployed for real, production hosting has to set
     // Cross-Origin-Embedder-Policy: require-corp and
     // Cross-Origin-Opener-Policy: same-origin itself.
@@ -112,7 +112,7 @@ export default defineConfig(({ command }) => ({
     // SharedArrayBuffer, SQLocal's worker cannot install its OPFS VFS, and
     // opening the database fails outright with "Value at index 0 does not
     // have a transferable type" - which nothing caught while no screen
-    // read from the database. Ticket 06 puts preferences in there, so the
+    // read from the database. Now that preferences live there too, the
     // preview server needs the headers the dev server already had.
     {
       name: 'gender-diary:cross-origin-isolate-preview',

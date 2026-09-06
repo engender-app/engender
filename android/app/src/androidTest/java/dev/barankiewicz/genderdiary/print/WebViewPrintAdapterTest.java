@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Whether the print button does anything on Android (phase 5 ticket 17).
+ * Whether the print button does anything on Android.
  *
  * `window.print()` is a Chrome method the WebView does not implement: it
  * returns, prints nothing, and reports no error. That is why the clinician

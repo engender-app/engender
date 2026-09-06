@@ -23,9 +23,8 @@ if (requireSigning && !hasReleaseSigning) {
 android {
     namespace = "dev.barankiewicz.genderdiary"
     compileSdk = rootProject.ext.compileSdkVersion
-    // Launch-route contract fixture (phase 5 deepening ticket 03, ADR-0028):
-    // the JVM unit test reads the same launch-routes.json the TypeScript
-    // test does, rather than a copy of it.
+    // Launch-route contract fixture: the JVM unit test reads the same
+    // launch-routes.json the TypeScript test does, rather than a copy of it.
     sourceSets {
         test {
             resources.srcDirs += ['../../src/lib/android/fixtures']
@@ -77,24 +76,24 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    // The journal's SQLite (ADR-0020). `implementation` rather than a test
-    // dependency: libsqlcipher.so has to ship in the app APK, because the test
-    // APK's native libraries are not on the app process's linker search path -
-    // measured on API 35 in ticket 08's probe.
+    // The journal's SQLite. `implementation` rather than a test dependency:
+    // libsqlcipher.so has to ship in the app APK, because the test APK's
+    // native libraries are not on the app process's linker search path -
+    // measured on API 35.
     implementation "net.zetetic:sqlcipher-android:$sqlcipherVersion@aar"
     implementation "androidx.sqlite:sqlite:$androidxSqliteVersion"
-    // The prompt in front of the Keystore-wrapped data key (ticket 13,
-    // ADR-0018). androidx rather than the framework's BiometricPrompt: the
-    // app's floor is API 26 and the framework class arrived in 28, and only
-    // androidx knows how to reach the device credential below API 30.
+    // The prompt in front of the Keystore-wrapped data key. androidx rather
+    // than the framework's BiometricPrompt: the app's floor is API 26 and
+    // the framework class arrived in 28, and only androidx knows how to
+    // reach the device credential below API 30.
     implementation "androidx.biometric:biometric:$androidxBiometricVersion"
     // SAF tree/document operations for scheduled backup destinations.
     implementation "androidx.documentfile:documentfile:1.0.1"
-    // WebMessageListener/ArrayBuffer transfer for the photo write channel
-    // (ticket 19) - lets bytes cross into native as a structured clone
-    // instead of a JSON string.
+    // WebMessageListener/ArrayBuffer transfer for the photo write channel -
+    // lets bytes cross into native as a structured clone instead of a
+    // JSON string.
     implementation "androidx.webkit:webkit:$androidxWebkitVersion"
-    // Argon2id KDF for archive key derivation behind the bridge (phase 5 security ticket 06).
+    // Argon2id KDF for archive key derivation behind the bridge.
     implementation "org.bouncycastle:bcprov-jdk18on:$bouncycastleVersion"
     testImplementation "junit:junit:$junitVersion"
     // Host-side unit tests run against the Android SDK's stub jar, whose
