@@ -3337,5 +3337,21 @@
   "hub_sub_documents": "Opinions, referrals and rulings you have been given",
   "document_page_alt": "The page of {title}",
   "document_save_failed": "Couldn’t file this document. Nothing was kept.",
-  "document_edit_failed": "Couldn’t save that change. The document is as it was."
+  "document_edit_failed": "Couldn’t save that change. The document is as it was.",
+  "document_link_label": "Linked to",
+  "document_link_none": "Not linked to anything",
+  "document_target_gone": "Linked to something that’s gone",
+  "document_link_change": "Change",
+  "document_link_add": "Link it",
+  "document_link_sheet": "Link this document",
+  "document_link_clear": "Remove the link",
+  "document_link_empty_title": "Nothing to link this to yet",
+  "document_link_empty_body": "A document can be filed under a milestone, a procedure, a regimen or a step on your roadmap. When you have one of those, it shows up here.",
+  "document_linked_here_title": "Documents linked here",
+  "document_link_kind_milestone": "Milestone",
+  "document_link_kind_procedure": "Procedure",
+  "document_link_kind_episode": "Regimen",
+  "document_link_kind_goal": "Roadmap step",
+  "roadmap_goal_open_aria": "Open: {goal}",
+  "roadmap_goal_milestone_sub": "This step’s milestone"
 }

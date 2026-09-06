@@ -149,6 +149,27 @@ test('deleting a milestone takes its photo rows and files; twice is success', as
   await journal.milestones.deleteMilestone(id); // idempotent
 });
 
+/* Ticket 56, ADR-0065: the link nulls, the document survives. */
+test('deleting a milestone nulls a document\'s link to it, and the document survives', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+
+  const id = await journal.milestones.upsertMilestone({ epochDay: 20000, name: 'HRT start' });
+  const documentId = await journal.documents.addDocument(
+    { epochDay: 20000, title: 'Endo letter' },
+    { full: new Uint8Array([1]), thumb: new Uint8Array([1]) }
+  );
+  await journal.documents.setDocumentTarget(documentId, { kind: 'milestone', id });
+
+  await journal.milestones.deleteMilestone(id);
+
+  const document = await journal.documents.getDocument(documentId);
+  assert.ok(document, 'the document survives its target being deleted');
+  assert.equal(document!.targetKind, null);
+  assert.equal(document!.targetId, null);
+});
+
 /* labs */
 
 test('analytes are the presets plus whatever is in use; results order by day', async () => {

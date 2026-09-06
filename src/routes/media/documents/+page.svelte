@@ -30,6 +30,8 @@
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import type { JournalDocument } from '$lib/data/types';
+  import { documentTargetKindLabel } from '$lib/data/vocabulary/documentTargetLabels';
   import { pickPhotos } from '$lib/stores/photoPicking';
   import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -77,6 +79,14 @@
   }
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* ADR-0065: "a row is a paper icon, the title, the date and the link."
+     Generic per-kind wording rather than the target's own name - resolving
+     that would mean this list fetching all four kinds' full lists just to
+     label one line each, where the target's own name is already one tap
+     away on the document's own screen. */
+  const linkLabel = (document: { targetKind: JournalDocument['targetKind'] }): string | false =>
+    document.targetKind !== null && documentTargetKindLabel(document.targetKind);
 </script>
 
 <div class="screen">
@@ -102,7 +112,7 @@
               key={document.id}
               icon="documents"
               title={document.title}
-              subtitle={dayLabel(document.epochDay)}
+              subtitle={[dayLabel(document.epochDay), linkLabel(document)]}
               href={`/media/documents/${document.id}`}
             />
           {/each}

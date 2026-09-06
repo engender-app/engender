@@ -653,6 +653,46 @@ test('a regimen episode\'s end reason travels, and a restore keeps it', async ()
   assert.equal(restored?.endReason, 'pausedForNow');
 });
 
+/* Ticket 56: a document's link travels as the pair it is stored as, and a
+   dangling one travels too. The link names a row in one of four tables
+   rather than pointing at a rowid this section could resolve, so a restore
+   writes back exactly what it was given - which is the requirement, not a
+   gap: a document outlives the thing it was filed under. */
+test("a document's link travels, dangling or not, and a restore keeps both", async () => {
+  const { journal, milestone } = await populated();
+  const filed = await journal.documents.addDocument(
+    { epochDay: 20000, title: 'Endo letter' },
+    { full: bytes('a page'), thumb: bytes('its thumb') }
+  );
+  const orphaned = await journal.documents.addDocument(
+    { epochDay: 19999, title: 'A ruling about a goal that is gone' },
+    { full: bytes('another page'), thumb: bytes('another thumb') }
+  );
+  await journal.documents.setDocumentTarget(filed, { kind: 'milestone', id: milestone });
+  await journal.documents.setDocumentTarget(orphaned, { kind: 'episode', id: 'e-no-longer-here' });
+
+  const snapshot = await journal.archive.snapshot();
+
+  const travelled = (id: string) => {
+    const document = snapshot.journal.documents.find((d) => d.id === id)!;
+    return [document.targetKind, document.targetId];
+  };
+  assert.deepEqual(travelled(filed), ['milestone', milestone]);
+  assert.deepEqual(travelled(orphaned), ['episode', 'e-no-longer-here']);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  const restoredFiled = (await target.documents.getDocument(filed))!;
+  assert.equal(restoredFiled.targetKind, 'milestone');
+  assert.equal(restoredFiled.targetId, milestone);
+
+  const restoredOrphan = (await target.documents.getDocument(orphaned))!;
+  assert.equal(restoredOrphan.targetKind, 'episode');
+  assert.equal(restoredOrphan.targetId, 'e-no-longer-here', 'a link whose target is gone travels unresolved');
+});
+
 /* Every column of every table, checked against what the snapshot claims to
    carry. The point is drift: an archive that quietly stops carrying a
    column added later is a backup that silently loses data, and nothing
