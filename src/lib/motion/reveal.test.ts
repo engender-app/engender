@@ -173,6 +173,18 @@ describe('tier 3, a panel giving its space back', () => {
   /* Below the floor the same pair is stacked, and a tile that collapsed its
      width there would leave a full-height hole behind it. The axis is read
      off the layout rather than passed in, so one call site covers both. */
+  /* A card narrowing along a row reflows its own text on the way, which is a
+     broken layout held in front of the reader for the whole travel. The empty
+     surface finishes the journey instead. Nothing like this is needed down a
+     column, where a shrinking box's lines keep their width. */
+  it('takes the content out early so the card does not reflow as it narrows', () => {
+    const { css } = collapse(panel({ beside: [[0, 100]] }));
+    expect(frame(css!, 1)).toContain('opacity: 1');
+    expect(frame(css!, 0.8)).toContain('opacity: 0.692');
+    expect(frame(css!, 0.35)).toContain('opacity: 0');
+    expect(frame(css!, 0.1)).toContain('opacity: 0');
+  });
+
   it('collapses its height instead when nothing shares its line', () => {
     const { css } = collapse(
       panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' })

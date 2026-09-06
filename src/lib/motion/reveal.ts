@@ -289,11 +289,23 @@ export function collapse(
        width for the whole travel and lose the rest in one frame. The gap
        leaves as a negative margin on the leading edge: whether this panel is
        first on its line or last, the gap beside it plus its own zero width
-       comes to nothing, so the survivor lands exactly on the full width. */
+       comes to nothing, so the survivor lands exactly on the full width.
+
+       And the content goes before the box does. A card narrowing along a row
+       reflows its own text on the way - "3 Aug 2025" became "3 A… 2…" over a
+       tile 60px wide - which is the reader being shown a broken layout for
+       240ms rather than a tile leaving. Down a column that never happens,
+       because `disclose` shrinks a box whose lines keep their width. So the
+       row case fades what is inside out as the tile narrows - gone by the
+       time it is down to a third of its width, so the empty surface finishes
+       the journey alone; the survivor's growth,
+       which is the thing actually worth watching, carries on either way.
+       Opacity is the one property this contract spends freely. */
     css: (t, u) =>
       `overflow: hidden;` +
       `min-width: 0;` +
       `flex: 0 0 ${t * width}px;` +
+      `opacity: ${Number(Math.max(0, Math.min(1, (t - 0.35) / 0.65)).toFixed(3))};` +
       `margin-inline-start: ${-(u * gap)}px;`
   };
 }
