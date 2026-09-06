@@ -113,14 +113,16 @@
 
    The table's own row is a dense, print-shaped read (this is a clinical
    report, not a list of controls), so the visible text is one line at
-   `--text-sm`. The negative margin pads the tap target toward the 48px
-   touch floor without pulling the row's own height along with it - the
-   padding and the margin cancel exactly, so nothing about the printed or
-   on-screen layout moves. */
+   `--text-sm`. The negative margin pads the tap target out to
+   `--touch-target` without pulling the row's own height along with it -
+   computed against the token rather than a measured pixel figure, the
+   same shape kit.css's `.kit-notice-x` centring uses, and padding and
+   margin cancel exactly so nothing about the printed or on-screen layout
+   moves. */
 .dossier-row-link {
   display: inline-block;
-  margin: -13px 0;
-  padding: 13px 0;
+  margin: calc((var(--text-sm) * var(--leading-body) - var(--touch-target)) / 2) 0;
+  padding: calc((var(--touch-target) - var(--text-sm) * var(--leading-body)) / 2) 0;
   color: inherit;
   text-decoration: underline;
 }
