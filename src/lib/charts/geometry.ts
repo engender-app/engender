@@ -5,12 +5,13 @@
    chart draws instead of averaging its real points down.
 
    This module imports nothing, and that is a rule rather than an accident.
-   Its callers are not all charts: `share` is a bar's length, and
-   components/kit/barRow.ts wanted those three lines out of a module that
-   used to open with a d3-shape import. Path building moved to
-   charts/areaPath.ts so that importing arithmetic cannot pull a charting
-   library along behind it - tests/chart-library-graph.test.ts holds the
-   line and has the measurement that went with the decision. */
+   Path building, the one part of the kit that needs d3-shape, is
+   charts/areaPath.ts, so that a caller wanting arithmetic cannot pull a
+   charting library along behind it - which is what components/kit/barRow.ts
+   did for one three-line function until phase 9 audit ticket 02. That
+   function, `share`, has its own module now (charts/share.ts) because none
+   of its three callers draws a line. tests/chart-library-graph.test.ts holds
+   the rule and carries the measurement that went with it. */
 
 export interface Point {
   /** Domain position - an epoch day, an index, whatever the caller counts in. */
@@ -111,13 +112,6 @@ export function bridgeGaps(values: Sample[]): Sample[] {
     last = i;
   }
   return out;
-}
-
-/** A bar's width as a percentage of the largest value beside it. The bars
-    carry their own values as text, so this is length only. */
-export function share(value: number, max: number): number {
-  if (max <= 0 || value <= 0) return 0;
-  return (value / max) * 100;
 }
 
 export interface PaddedRange {
