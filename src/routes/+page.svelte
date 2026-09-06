@@ -642,11 +642,11 @@
   {/if}
 
   <!-- The week, and the days. Both wait for the first entry (phase 8 UX
-       ticket 01): seven grey cells and a heading over an empty list are two
-       more of day one's four placeholders, and the start-here notice below
-       is the one thing that screen owes. -->
+       ticket 01): a row of grey cells and a heading over an empty list are
+       two more of day one's four placeholders, and the start-here notice
+       below is the one thing that screen owes. -->
   {#if hasEntries}
-    <SectionHeading text={m.last_seven()}>
+    <SectionHeading text={m.recent_days()}>
       {#snippet action()}
         <ChartPicker
           key="home-metric"

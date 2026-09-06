@@ -249,7 +249,7 @@ describe('what spec 08 took off Home', () => {
     expect(home).toMatch(/hasEntries = \$derived\(entryCount == null \? null : entryCount > 0\)/);
     expect(markup).toMatch(/\{#if hasEntries\}\s*<TileGrid[\s\S]*?HOME_AREA_ROLE\.lookBack/);
     expect(markup).toMatch(/\{#if hasEntries \|\| upcoming\.length\}/);
-    expect(markup).toMatch(/\{#if hasEntries\}\s*<SectionHeading text=\{m\.last_seven\(\)\}/);
+    expect(markup).toMatch(/\{#if hasEntries\}\s*<SectionHeading text=\{m\.recent_days\(\)\}/);
     // The one thing day one keeps besides the header and the chips.
     expect(markup).toContain('key="no-entries"');
   });
