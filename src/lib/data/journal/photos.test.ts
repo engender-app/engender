@@ -267,6 +267,37 @@ test('the sweep reclaims a deleted document’s files', async () => {
   assert.deepEqual(files.names(), []);
 });
 
+/* Phase 8 features ticket 53. A PDF document has one file and no derived
+   thumbnail - unlike the image case above, whose two files come out of
+   filesOf(). Proving this needs its own case: documentFilesOf() is what
+   keeps the sweep from either inventing a phantom thumbnail name (which a
+   blanket filesOf() would, the same trap videoNotes and recordings avoid
+   above) or, the opposite failure, leaving the one real file unreferenced
+   and reclaiming it out from under a live row. */
+test('the sweep keeps a PDF document’s one file, and invents no thumbnail (ticket 53)', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, {
+    pdfBytes: new Uint8Array([...'%PDF-1.4'].map((c) => c.charCodeAt(0)))
+  });
+  const stored = (await journal.documents.getDocument(id))!;
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names(), [stored.fileName]);
+});
+
+test('the sweep reclaims a deleted PDF document’s one file', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, {
+    pdfBytes: new Uint8Array([...'%PDF-1.4'].map((c) => c.charCodeAt(0)))
+  });
+  await db.run('DELETE FROM document WHERE uuid = ?', [id]);
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names(), []);
+});
+
 test('mood cannot be cleared from an entry even with a photo still on it', async () => {
   const { journal } = await journalWithFiles();
   // Mood is required unconditionally now (ticket 04): a photo does not

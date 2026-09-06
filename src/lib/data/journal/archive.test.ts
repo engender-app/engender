@@ -570,6 +570,27 @@ test('the manifest carries a document’s page and its thumbnail, not just its r
   assert.ok(files.names().includes(document.fileName));
 });
 
+/* Phase 8 features ticket 53. A PDF document has no derived thumbnail, so
+   the manifest has to name exactly its one file - the same reasoning as
+   above, over the kind `filesOf()` alone gets wrong. */
+test('the manifest carries a PDF document’s one file and invents no thumbnail', async () => {
+  const { journal } = await populated();
+  const id = await journal.documents.addDocument(
+    { epochDay: 8766, title: 'Court ruling' },
+    { pdfBytes: bytes('%PDF-1.4 a whole ruling') }
+  );
+  const document = (await journal.documents.getDocument(id))!;
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(
+    snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
+    [{ name: document.fileName, length: bytes('%PDF-1.4 a whole ruling').length }],
+    'a PDF document travels as exactly one file'
+  );
+  assert.deepEqual(await snapshot.readFile(document.fileName), bytes('%PDF-1.4 a whole ruling'));
+});
+
 test('a trashed entry, and its photo, recording and video-note files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
   const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;

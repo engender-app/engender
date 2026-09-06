@@ -3408,5 +3408,10 @@
   "document_link_kind_episode": "Kuracja",
   "document_link_kind_goal": "Krok z mapy tranzycji",
   "roadmap_goal_open_aria": "Otwórz: {goal}",
-  "roadmap_goal_milestone_sub": "Kamień milowy tego kroku"
+  "roadmap_goal_milestone_sub": "Kamień milowy tego kroku",
+  "document_unsupported_file": "Tego pliku aplikacja nie odczyta. To nie jest ani PDF, ani obraz. Spróbuj z PDF-em, JPEG-iem albo PNG-iem.",
+  "document_too_large": "Ten plik jest za duży, żeby go zapisać. Maksymalnie 25 MB.",
+  "document_picker_failed": "Nie udało się otworzyć wyboru pliku.",
+  "document_export": "Wyślij albo zapisz",
+  "document_export_hint": "Plik wtedy opuszcza szyfrowanie aplikacji."
 }

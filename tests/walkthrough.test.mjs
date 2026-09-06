@@ -4228,6 +4228,73 @@ try {
   ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
 } catch (e) { fail('a place for paper', e); }
 
+/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, which
+   draws no page at all - the paper icon, its size and the export action
+   are what its own screen has instead. Type is decided by reading the
+   bytes: this file is named .png in the chooser and is a PDF anyway.
+
+   Not asserting the list starts empty here (unlike "a place for paper"
+   above): ticket 64 seeded the demo persona with a document of its own,
+   which `fresh()` cannot clear - it lives in SQLite, not localStorage - so
+   the list already carries that row before this flow ever saves its own.
+   Our own row is found by counting (a plain increase proves the save
+   landed, race-free against the seeded row already satisfying a bare
+   `[data-list-row]` wait) and then by reading each row's own text in JS
+   rather than a Playwright text locator - `walkthrough-locators.test.ts`
+   reserves those for a deliberate exception, and there is nothing
+   deliberate about a title used only to tell two rows apart. */
+try {
+  await fresh('/media/documents');
+  await page.locator('[data-add]').waitFor();
+  const rowCountBefore = await page.locator('[data-list-row]').count();
+
+  const pdfBytes = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(2048, 0x20)]);
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: 'scan_0143.png', mimeType: 'image/png', buffer: pdfBytes })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  await page.locator('#document-title').fill('Postanowienie sądu');
+  await fillDate(page, '#document-day', '2025-02-14');
+  await page.locator('[data-save-document]').click();
+
+  await page.waitForFunction(
+    (before) => document.querySelectorAll('[data-list-row]').length > before,
+    rowCountBefore
+  );
+  const rows = page.locator('[data-list-row]');
+  const ourIndex = (await rows.allTextContents()).findIndex((text) => text.includes('Postanowienie sądu'));
+  if (ourIndex === -1) throw new Error('the newly filed document does not appear in the list');
+  await rows.nth(ourIndex).click();
+  await page.waitForFunction(() => document.querySelector('[data-document-size]')?.textContent?.trim());
+  if (await page.locator('[data-document-page]').count()) {
+    throw new Error('a PDF document is drawing a page image');
+  }
+  const sizeText = await page.locator('[data-document-size]').textContent();
+  if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-export-document]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.pdf')) {
+    throw new Error(`the exported file is not named as a PDF: ${download.suggestedFilename()}`);
+  }
+  const exported = await readFile(await download.path());
+  if (!exported.equals(pdfBytes)) throw new Error('the exported bytes do not match what was filed');
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  // Not the empty notice (the seeded document is still there) - just that
+  // ours is gone, read the same way it was found above.
+  if ((await page.locator('[data-list-row]').allTextContents()).some((text) => text.includes('Postanowienie sądu'))) {
+    throw new Error('the deleted PDF document is still in the list');
+  }
+
+  ok('a PDF, named .png by the picker, is filed by its real bytes, shows no page, and exports unchanged');
+} catch (e) { fail('a document can be a PDF', e); }
+
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
 
