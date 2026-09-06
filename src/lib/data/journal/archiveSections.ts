@@ -71,7 +71,7 @@ export type ArchiveSectionName = keyof ArchiveJournal;
     `flat` below), the same reason `FlatColumn` is: a typo'd or renamed
     field is a compile error here rather than a silently-empty column in
     someone else's import. */
-export type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] };
+type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] };
 
 /** One area's declaration that it travels. Erased over the row type, because
     the list holds every section at once and because a test registers
