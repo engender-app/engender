@@ -1207,21 +1207,37 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    here is to not transition it at all: the blur snaps with `inert`, and
    the scrim's own opacity fade is what still carries the felt sense of the
    withdrawal arriving gradually. */
-/* Opacity alongside the blur (ticket 99 item 40): confirmed against the
-   rail, this rule's filter never painted on .app-nav - computed style
-   reports the blur applied, on-screen it stayed full sharpness, so the
-   floating bar read as sitting in front of an open sheet rather than
-   behind it. Filter compositing is the thing failing, not the withdrawal
-   itself, and opacity is the one part of this material with no known
-   compositing gap - it carries the "not this" on its own wherever the
-   blur silently does not. */
 @supports (backdrop-filter: blur(1px)) {
   [data-app-root] > [inert] {
     filter: blur(var(--blur-withdraw));
   }
 }
+/* Behind the screen while it is withdrawn, and this is the whole of ticket
+   99 item 40 ("overall - the menu renders over the popups", and Alicja
+   confirmed she meant a sheet).
+
+   The bar really did paint in front of an open sheet, and z-index said it
+   should not: the bar is 30 and the sheet's scrim is 40. The two numbers
+   were never compared, though. `.app-main` carries `view-transition-name:
+   screen`, and a view-transition-name makes an element a stacking context
+   - so the scrim's 40 is spent *inside* `.app-main`, which itself sits at
+   `z-index: auto` beside the bar's 30 in `.app`. Every sheet in the app was
+   painting one level below the bar, and no z-index on the sheet could have
+   fixed it from in there.
+
+   The bar is inert exactly when a sheet is up, which is when it should be
+   behind the screen rather than above it, so the withdrawal is where this
+   belongs. A negative index puts it under `.app-main` and still above
+   `.app`'s own background, which is what leaves it visible through the
+   scrim where the sheet does not cover - the blurred, receded bar the
+   withdrawal was always meant to be.
+
+   An earlier round of this ticket read the same symptom as the blur failing
+   to composite and dimmed the bar to 0.5 to compensate. The blur was
+   painting all along; it was painting in the wrong place. The dim goes with
+   the diagnosis that asked for it. */
 [data-app-root] > [inert] {
-  opacity: 0.5;
+  z-index: -1;
 }
 html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   filter: none;
