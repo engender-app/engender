@@ -190,6 +190,25 @@
              screen once there is something to flag. -->
         <p class="muted small">{m.appointment_prep_flag_hint()}</p>
       </div>
+      <!-- The way to use the list, as against the rest of this screen, which
+           is where it is kept (phase 8 features ticket 60). Under the list
+           and inside the gate's rows branch, so it is on screen exactly when
+           there is something to read out: an empty prep list has nothing to
+           show one question at a time. Any day, not only a day with an
+           appointment on it - the list is standing and unowned (ADR-0066),
+           and somebody rehearsing the night before is reading the same
+           questions. -->
+      <div class="screen-part">
+        <ListCard role={roleAt(activeFlag.roles, 1)}>
+          <ListRow
+            key="in-the-room"
+            icon="bookmark"
+            title={m.in_the_room_title()}
+            subtitle={m.in_the_room_row_sub()}
+            href="/health/appointments/in-the-room"
+          />
+        </ListCard>
+      </div>
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">
