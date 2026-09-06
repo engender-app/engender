@@ -118,6 +118,18 @@ export function mostRecentPastAppointment(appointments: Appointment[], todayEpoc
   return appointments[firstNotYetHappened(appointments, todayEpochDay) - 1] ?? null;
 }
 
+/** The visit somebody is at today, or null (ticket 60): the in-the-room
+    view's own appointment, and the appointments screen's own reason to
+    offer a way into it. The first one on the day where there are two,
+    since the boundary index above is the head of the not-yet-happened
+    half and that half is in day order. Off the same index as the other
+    two, so the row that leads into the room and the room itself can never
+    disagree about which appointment they mean. */
+export function appointmentOnDay(appointments: Appointment[], epochDay: number): Appointment | null {
+  const next = soonestFutureAppointment(appointments, epochDay);
+  return next?.epochDay === epochDay ? next : null;
+}
+
 /** The `appointment`/`procedure` join every `getAppointments`/`getAppointment`
     row shares, so the two differ only in their `WHERE`, not in what a row
     means. */

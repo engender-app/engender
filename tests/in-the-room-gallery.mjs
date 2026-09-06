@@ -20,6 +20,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { PALETTES } from './palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/room-shots'));
@@ -102,10 +103,26 @@ const QUESTIONS = [
   'The referral she said she would write'
 ];
 
+/* Three of the eight rather than all of them: what these shots vary is one
+   screen's own layout under a person's own words, and the palette ramp
+   itself is what `gallery:kit` is for. Read out of `PALETTES`, which is
+   where the set is declared (tests/palettes.mjs, ticket 06), so a renamed
+   palette fails here rather than quietly rendering the default one. */
+const named = (name) => {
+  if (!PALETTES.includes(name)) throw new Error(`no such palette: ${name}`);
+  return name;
+};
+const LOOKS = [
+  [named('trans'), 'dark'],
+  [named('trans'), 'light'],
+  [named('nonbinary'), 'light'],
+  [named('agender'), 'dark']
+];
+
 /* ---------- nothing on the list yet ---------- */
 for (const theme of ['dark', 'light']) {
   const page = await freshPage();
-  await setLook(page, 'trans', theme);
+  await setLook(page, named('trans'), theme);
   await goto(page, '/health/appointments/in-the-room');
   await page.waitForTimeout(SETTLED);
   await shoot(page, `room-empty-trans-${theme}`);
@@ -113,12 +130,7 @@ for (const theme of ['dark', 'light']) {
 }
 
 /* ---------- the screen itself, across palettes and themes ---------- */
-for (const [palette, theme] of [
-  ['trans', 'dark'],
-  ['trans', 'light'],
-  ['nonbinary', 'light'],
-  ['agender', 'dark']
-]) {
+for (const [palette, theme] of LOOKS) {
   const page = await freshPage();
   await setLook(page, palette, theme);
   for (const question of QUESTIONS) await addQuestion(page, question);

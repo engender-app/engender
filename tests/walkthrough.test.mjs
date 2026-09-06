@@ -4012,6 +4012,19 @@ try {
     appointmentsBefore,
     { timeout: 8000 }
   );
+
+  /* And with that visit gone there is nothing today for an answer to belong
+     to, so the questions are still readable and the field is not offered -
+     rather than taking what somebody types and dropping it on the way out.
+     Deterministic here because this flow just deleted the one appointment it
+     booked, and neither demo seed writes one on today. */
+  await page.goto(BASE + '/health/appointments/in-the-room', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-room-question]', { timeout: 8000 });
+  if (await page.locator('[data-room-answer]').count()) {
+    throw new Error('the room offered a field to jot in on a day with no visit to attach it to');
+  }
+  if (!(await page.locator('[data-room-done]').count())) throw new Error('the room lost its way out');
   ok('in the room: the prep list one question per screen, chromeless, and a jotted answer reaching the debrief under its own question');
 } catch (e) { fail('in the room', e); }
 

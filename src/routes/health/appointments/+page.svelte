@@ -30,6 +30,7 @@
   import type { Appointment } from '$lib/data/types';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { appointmentOnDay } from '$lib/data/journal/appointments';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -60,11 +61,11 @@
   let upcoming = $derived(appointments.filter((a) => a.epochDay >= today));
   let past = $derived([...appointments].reverse().filter((a) => a.epochDay < today));
 
-  /* The first appointment on today, if there is one - what the in-the-room
-     row is for (ticket 60). `upcoming` is already soonest-first and today's
-     appointments sort ahead of every later one, so this is its head rather
-     than a second pass over the list. */
-  let todaysAppointment = $derived(upcoming[0]?.epochDay === today ? upcoming[0] : null);
+  /* The visit today, if there is one - what the in-the-room row is for
+     (ticket 60). appointments.ts's own selector rather than a read off
+     `upcoming`, so this screen's row and the screen it leads to cannot
+     disagree about which appointment they mean. */
+  let todaysAppointment = $derived(appointmentOnDay(appointments, today));
 
   const titleOf = (appointment: Appointment) =>
     appointment.kind ??
