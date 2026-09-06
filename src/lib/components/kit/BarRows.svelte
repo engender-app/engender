@@ -62,21 +62,22 @@
         gender dimension (docs/ui-copy.md), and `scale="track"` on a card of
         scale bars read as though it took one. */
     measure?: 'leader' | 'track';
-    /** How much vertical room a row takes, which follows from how much of
-        the reading the bar is carrying.
+    /** Where the row's label sits, which decides how much room a row takes.
 
         `stacked` is the drawing: label and value on one line, a 26px track
         on the next. The length is the point, so it gets a line of its own
         and the full width of the card to be read across.
 
-        `inline` puts all three on one line over a slim track, for a set
-        where the bar supports a reading the number already gives. The
-        highest days are that set: ten days ranked on a 0-to-100 scale land
-        within a few points of each other, so ten full-width tracks are ten
-        near-identical lengths taking 870px to say what the column of
-        numbers beside them says exactly. Same data, same honest `track`
-        measure, half the height, and the ranking readable without
-        scrolling - "tighter, not airier". */
+        `inline` writes the label inside the bar. The bar is then the row -
+        40px of it, with only the touch floor's spare 8px between one and
+        the next - rather than a mark under a line of text, and a set of
+        them reads as one stack instead of ten separate drawings. It is for
+        a ranking, where the rows are the same kind of thing in order: the
+        highest days are that, and stacked they cost 870px at 390px wide to
+        say what a column of ten numbers says exactly. Same data, same
+        honest `track` measure (Alicja, 2026-09-07: "make the bar a little
+        higher, and the date written inside the bar, then make the bars much
+        closer to each other"). */
     form?: 'stacked' | 'inline';
   } = $props();
 
@@ -89,14 +90,37 @@
   </div>
 {/snippet}
 
+<!-- The day, and what the day is drawn from, as they read inside the bar.
+     Twice per row: once on the card, and once inside the mark, which clips
+     it. Where the bar reaches past the words the clipped copy is what is
+     seen, in the ink the flag's own stripe carries for text; where the bar
+     stops short, the rest of the words continue in the card's own text
+     colour. Both grounds are ones an ink is already proven against, which
+     one copy in one colour could not be: a bar is the stripe undiluted, and
+     no single colour is readable on both agender's near-black stripe and
+     the card it is drawn on. -->
+{#snippet inside(row: DrawnBar, handles: boolean)}
+  <span class="kit-bar-inside">
+    <span class="kit-bar-name" data-bar-name={handles ? '' : undefined}>{row.name}</span>
+    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+  </span>
+{/snippet}
+
 {#snippet bar(row: DrawnBar)}
   {#if form === 'inline'}
-    <span class="kit-bar-name" data-bar-name>{row.name}</span>
-    {@render track(row)}
+    <div class="kit-bar-track">
+      {@render inside(row, true)}
+      <span
+        class="kit-bar-mark"
+        class:is-leader={row.isLeader}
+        style={`--bar-share: ${row.share}`}
+        aria-hidden="true"
+      >
+        <span class="kit-bar-fill"></span>
+        {@render inside(row, false)}
+      </span>
+    </div>
     <span class="kit-bar-value" data-bar-value>{row.value}</span>
-    <!-- Under the name, in its column: the row is 48dp tall for the touch
-         floor whatever it holds, so a second line there is free. -->
-    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
   {:else}
     <div class="kit-bar-label">
       <span class="kit-bar-name" data-bar-name>{row.name}</span>
