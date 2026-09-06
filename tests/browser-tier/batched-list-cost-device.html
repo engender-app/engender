@@ -2,9 +2,31 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>batch arrival cost probe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>batch arrival cost, on the device</title>
+    <style>
+      /* Fixed and covering, unlike voice-cost-device.html's #readout (which
+         sits in normal flow below its #figure): the mounted list here is a
+         real [data-app-scroll-region] at 100dvh, so a readout stacked after
+         it in the document would sit below the fold of the very screen it
+         is meant to be read from. */
+      #readout {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        padding: 16px;
+        background: var(--bg);
+        display: none;
+      }
+      #readout dl { display: grid; gap: 6px; margin: 0; font-size: 20px; }
+      #readout dl > div { display: flex; justify-content: space-between; gap: 16px; }
+      #readout dt { color: var(--text-2); }
+      #readout dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700; }
+    </style>
   </head>
   <body>
+    <div id="region"></div>
+    <div id="readout"></div>
     <script type="module" src="./batched-list-cost-device.svelte.ts"></script>
   </body>
 </html>
