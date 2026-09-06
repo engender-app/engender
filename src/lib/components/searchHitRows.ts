@@ -40,7 +40,7 @@ import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch
 import { matchWindow } from '$lib/data/searchQuery';
 
 /** One hit as a row: where it goes, and what it says. */
-export interface SearchHitRow {
+interface SearchHitRow {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
   key: string;
   /** The registered area's key, for the walkthrough's handle on the row. */

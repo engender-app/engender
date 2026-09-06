@@ -59,10 +59,10 @@
     back rather than inventing a band (`bandLanguageOf`). */
 export type BandLanguage = 'en' | 'pl';
 
-export type PopulationKey = 'cisMan' | 'cisWoman';
-export type PitchBandKey = PopulationKey | 'between';
+type PopulationKey = 'cisMan' | 'cisWoman';
+type PitchBandKey = PopulationKey | 'between';
 
-export interface PopulationBand {
+interface PopulationBand {
   key: PopulationKey;
   lowHz: number;
   highHz: number;
@@ -101,6 +101,7 @@ const POPULATIONS: Record<BandLanguage, Record<PopulationKey, { meanHz: number; 
 };
 
 /** The two typical ranges for a language, low band first. */
+/* typicalRanges stays exported only for its own test (AU-09 test-only review). */
 export function typicalRanges(language: BandLanguage): readonly PopulationBand[] {
   const population = POPULATIONS[language];
   return (['cisMan', 'cisWoman'] as const).map((key) => ({
@@ -117,6 +118,7 @@ export function typicalRanges(language: BandLanguage): readonly PopulationBand[]
     Computed rather than written down, so the middle band cannot drift out
     of agreement with the ranges it is the middle of, and so the caption
     cannot claim an overlap that the figures do not support. */
+/* middleBand stays exported only for its own test (AU-09 test-only review). */
 export function middleBand(a: PopulationBand, b: PopulationBand): MiddleBand | null {
   const [lower, upper] = a.lowHz <= b.lowHz ? [a, b] : [b, a];
   if (lower.highHz > upper.lowHz) {
@@ -284,6 +286,8 @@ export function comfortBand(
     (quality.ts's MAX_F0_CV), which is about 1.4 semitones of spread - so a
     take about to fail is plainly off the middle without slamming into the
     edges. */
+/* STEADINESS_SEMITONES stays exported only for its own test (AU-09 test-only
+   review). */
 export const STEADINESS_SEMITONES = 3;
 
 /** The axis a held note is judged on: not absolute hertz but semitones

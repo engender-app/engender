@@ -190,7 +190,7 @@ export function weekdayOfEpochDay(epochDay: number): number {
   return (((epochDay + 3) % 7) + 7) % 7;
 }
 
-export interface CalendarWeekRange {
+interface CalendarWeekRange {
   start: number;
   end: number;
 }
@@ -219,7 +219,7 @@ export function previousCalendarWeekRange(epochDay: number): CalendarWeekRange {
   return { start: thisMonday - 7, end: thisMonday - 1 };
 }
 
-export interface CalendarMonthRange {
+interface CalendarMonthRange {
   start: number;
   end: number;
   year: number;
@@ -240,7 +240,7 @@ export function previousCalendarMonthRange(epochDay: number): CalendarMonthRange
   };
 }
 
-export interface CalendarYearRange {
+interface CalendarYearRange {
   start: number;
   end: number;
   year: number;
@@ -257,7 +257,7 @@ export function previousCalendarYearRange(epochDay: number): CalendarYearRange {
   };
 }
 
-export interface OngoingWindowRange {
+interface OngoingWindowRange {
   start: number;
   end: number;
   days: number;

@@ -12,6 +12,8 @@
 
 import { parseKeystore, serializeKeystore, type JournalSecretSource, type KeystoreMetadata } from '../crypto/keystore';
 
+/* KEYSTORE_FILE stays exported only for conversion-probe.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export const KEYSTORE_FILE = 'keystore.json';
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';

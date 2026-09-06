@@ -23,7 +23,7 @@ import { epochDayFromTimestamp } from './epochDay';
 import type { DayAverage, TagInsight } from './journal/stats';
 import type { DoseEvent } from './types';
 
-export type CorrelationOccurrence = { kind: 'tag'; id: string } | { kind: 'doseDay' };
+type CorrelationOccurrence = { kind: 'tag'; id: string } | { kind: 'doseDay' };
 
 export interface CorrelationCard {
   occurrence: CorrelationOccurrence;

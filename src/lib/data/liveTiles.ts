@@ -48,11 +48,13 @@ import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import type { LetterSeal } from './journal/letters';
 
-export interface ActiveTryoutTileResult {
+interface ActiveTryoutTileResult {
   tryout: Tryout;
   daysElapsed: number;
 }
 
+/* shouldShowActiveTryoutTile stays exported only for its own test (AU-09
+   test-only review). */
 export function shouldShowActiveTryoutTile(params: {
   tryouts: readonly Tryout[];
   /** A tryout with no felt-sense history is absent, which reads the same as
@@ -80,13 +82,15 @@ export function shouldShowActiveTryoutTile(params: {
   return null;
 }
 
-export interface PatchScheduleTileResult {
+interface PatchScheduleTileResult {
   episode: RegimenEpisode;
   schedule: DoseSchedule;
   doseAmount: string;
   route: string;
 }
 
+/* shouldShowPatchScheduleTile stays exported only for its own test (AU-09
+   test-only review). */
 export function shouldShowPatchScheduleTile(params: {
   episodes: readonly RegimenEpisode[];
   schedules: readonly DoseSchedule[];
@@ -151,7 +155,7 @@ export function shouldShowPatchScheduleTile(params: {
   return null;
 }
 
-export interface VoiceBenchmarkNudgeResult {
+interface VoiceBenchmarkNudgeResult {
   daysElapsed: number;
 }
 
@@ -165,6 +169,8 @@ export interface VoiceBenchmarkNudgeResult {
    own rule - the live-tile area is gated on live data, never on a preference
    - and is what stops the tile being an advert for a feature nobody has
    started. The flow is reached from the More hub until then. */
+/* shouldShowVoiceBenchmarkNudge stays exported only for its own test (AU-09
+   test-only review). */
 export function shouldShowVoiceBenchmarkNudge(params: {
   /** The day of the newest benchmark at or before today, or null when there
       is none - one bounded `MAX`, not a table reduced here (lastWrite.ts). */
@@ -185,11 +191,13 @@ export function shouldShowVoiceBenchmarkNudge(params: {
   return null;
 }
 
-export interface PauseActiveBannerResult {
+interface PauseActiveBannerResult {
   pause: JournalingPause;
   resumeEpochDay: number | null;
 }
 
+/* shouldShowPauseActiveBanner stays exported only for its own test (AU-09
+   test-only review). */
 export function shouldShowPauseActiveBanner(params: {
   pauses: readonly JournalingPause[];
   todayEpochDay: number;
@@ -207,11 +215,13 @@ export function shouldShowPauseActiveBanner(params: {
   };
 }
 
-export interface HairRemovalRecoveryResult {
+interface HairRemovalRecoveryResult {
   session: HairRemovalSession;
   daysSince: number;
 }
 
+/* shouldShowHairRemovalRecovery stays exported only for its own test (AU-09
+   test-only review). */
 export function shouldShowHairRemovalRecovery(params: {
   /** The newest session at or before today, which is the read's own job to
       find (hairRemoval.ts): the tile needs one row, not the table. */
@@ -232,10 +242,12 @@ export function shouldShowHairRemovalRecovery(params: {
   return null;
 }
 
-export interface MeasurementsNudgeResult {
+interface MeasurementsNudgeResult {
   daysSince: number;
 }
 
+/* shouldShowMeasurementsNudge stays exported only for its own test (AU-09
+   test-only review). */
 export function shouldShowMeasurementsNudge(params: {
   measurementsCount: number;
   latestMeasurementEpochDay: number | null;
@@ -340,10 +352,10 @@ export const LIVE_TILE_ORDER = [
     qualifies for as long as an episode is active, which would make it a
     permanent full-width row; what says a dose is actually due today is the
     patch-schedule tile beside it. */
-export type HomeTileTier = 'today' | 'moment' | 'dormant';
+type HomeTileTier = 'today' | 'moment' | 'dormant';
 
 /** The three bands, in the order Home draws them. */
-export const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readonly HomeTileTier[];
+const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readonly HomeTileTier[];
 
 /** Which band each kind is in.
 
@@ -352,6 +364,8 @@ export const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies
     not give - a kind absent from all of them would just never be drawn.
     Demonstrated by deleting a line: the object stops satisfying the
     `Record` and this file refuses to compile, naming the kind. */
+/* LIVE_TILE_TIER stays exported only for liveTiles.grid.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'wear-timer': 'today',
   'patch-schedule-tile': 'today',
@@ -371,17 +385,19 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
 /** How many tiles Home draws at their own weight. The rest fold into one
     collapsed row in place - never a route, and never a true tile dropped
     (ADR-0039's amendment). */
+/* HOME_TILE_CAP stays exported only for liveTiles.grid.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export const HOME_TILE_CAP = 3;
 
 type Unordered = Exclude<LiveTileKind, (typeof LIVE_TILE_ORDER)[number]>;
 type AssertNoneUnordered<Missing extends never> = Missing;
-export type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
+type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
 
 /** Every grid kind is a kind the unprompted registry knows, which is what
     lets the preference gate below be read off the registry instead of
     restated. A literal above that is not an `UnpromptedKind` fails here. */
 type AssertKindsAreUnprompted<K extends UnpromptedKind> = K;
-export type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
+type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
 
 /** Which preference switches each tile off, taken from the registry that
     already declares it (`/settings/live-tiles` draws its switch from the
@@ -409,7 +425,7 @@ export const LIVE_TILE_PREF_KEY = liveTilePrefKeys(SURFACE_ROWS);
     the grid's markup does not change. `Tile.svelte`'s `TileAction.attrs` is
     a `Record<string, string>` and would refuse `true` anyway, so the split
     is the component's rather than a choice made here. */
-export type TileHandles = Record<string, true>;
+type TileHandles = Record<string, true>;
 
 /** An in-place control on a tile (ADR-0039). Structurally what
     `Tile.svelte` takes; declared here rather than imported from it because
@@ -417,7 +433,7 @@ export type TileHandles = Record<string, true>;
     step is not a convention - Home passes `action={tile.action}` straight
     into the component, so a field that drifts is a `svelte-check` error at
     that line. */
-export interface HomeTileAction {
+interface HomeTileAction {
   icon?: string;
   text?: string;
   label: string;
@@ -426,7 +442,7 @@ export interface HomeTileAction {
   attrs?: Record<string, string>;
 }
 
-export interface HomeTileDismiss {
+interface HomeTileDismiss {
   label: string;
   onclick: (e: MouseEvent) => void;
   attrs?: Record<string, string>;
@@ -457,6 +473,8 @@ export interface HomeTile {
 }
 
 /** What the reads answered. One field per query `liveTiles.svelte.ts` runs. */
+/* HomeTileReads stays exported only for liveTiles.grid.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export interface HomeTileReads {
   runningWear: WearSession | null;
   /** `prefs.wearDurationCueEnabled` - a preference rather than a read, the
@@ -491,6 +509,8 @@ export interface HomeTileReads {
 
 /** What a tile's controls do. Everything a tile can start except opening the
     letter tile's dismiss sheet, which is Home's own surface. */
+/* HomeTileActions stays exported only for liveTiles.grid.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export interface HomeTileActions {
   stopWear: (session: WearSession) => void;
   dismissSafeSpace: (entryId: number) => void;
@@ -506,6 +526,8 @@ export interface HomeTileActions {
 
 /** The four display formats, as callbacks: every one of them reaches
     paraglide through `$lib`, which the Node tier cannot resolve. */
+/* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export interface HomeTileFormat {
   /** A full date - the day a letter unlocked. */
   fullDay: (epochDay: number) => string;
@@ -517,6 +539,8 @@ export interface HomeTileFormat {
   hairRemovalArea: (area: string) => string;
 }
 
+/* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export interface HomeTilesInput {
   todayEpochDay: number;
   /** One clock for the whole grid: the wear timer's reading, every snooze

@@ -84,7 +84,7 @@ export type Keying =
     intervals or interval repeats before it says anything - the same
     evidentiary bar tagInsights and correlationCards hold every occurrence
     to. */
-export const MIN_POSITION_DAYS = 3;
+const MIN_POSITION_DAYS = 3;
 
 interface Bucket {
   total: number;

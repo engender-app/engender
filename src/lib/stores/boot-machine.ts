@@ -36,7 +36,7 @@ import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migra
 import type { AndroidKeyResult } from '../lock/android-key.ts';
 import { bootStates, bootTransitions, type BootState } from './boot-state.ts';
 
-export type BootPlatform = 'web' | 'android';
+type BootPlatform = 'web' | 'android';
 
 /** The data key never lands in `BootState` - it travels through the machine
     from the platform that unwrapped it to the effect that opens the journal
@@ -120,7 +120,7 @@ export interface BootMachine {
   conversionResumable: boolean;
 }
 
-export interface BootStep {
+interface BootStep {
   machine: BootMachine;
   effects: BootEffect[];
 }

@@ -17,7 +17,7 @@
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
-export type Recurrence = 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS';
+type Recurrence = 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS';
 
 export interface ReminderRule {
   /** Local wall-clock time, 'HH:MM'. */

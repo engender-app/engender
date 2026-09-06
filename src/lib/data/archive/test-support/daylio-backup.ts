@@ -27,7 +27,7 @@ import { zipSync } from 'fflate';
     entry, because stored and deflated members are not the same path
     through the reader and a fixture that only exercised one would leave
     the other untested. */
-export interface ZipSource {
+interface ZipSource {
   /** Written verbatim, so a test can give the leading-slash form Daylio
       itself uses. */
   name: string;
@@ -37,7 +37,7 @@ export interface ZipSource {
 
 export const PHOTO_CHECKSUM = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1';
 export const AUDIO_CHECKSUM = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2';
-export const MILESTONE_CHECKSUM = 'ccccccccccccccccccccccccccccccc3';
+const MILESTONE_CHECKSUM = 'ccccccccccccccccccccccccccccccc3';
 
 /* Real image bytes, not just a plausible magic number: the photo half of
    the import runs each one through a decoder and a canvas, so a fixture

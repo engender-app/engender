@@ -34,7 +34,7 @@ import { mintUuid, now } from './support';
     `vowelAudio` is null when the vowel step was skipped or never cleared the
     gate, and `f1Hz`/`f2Hz`/`snrDb` are null with it - a benchmark with a
     passage and no resonance is a valid benchmark, not a failed one. */
-export interface NewVoiceBenchmark {
+interface NewVoiceBenchmark {
   epochDay: number;
   /** Which passage was read. A benchmark is comparable only to others from
       the same passage (CONTEXT: "Benchmark passage"), which is why the row

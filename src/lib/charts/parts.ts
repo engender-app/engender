@@ -19,7 +19,7 @@ export interface Part {
   amount: number;
 }
 
-export interface Slice extends Part {
+interface Slice extends Part {
   /** Percentage of the whole, 0-100. */
   share: number;
   /** True for the one slice standing in for everything the cap dropped. */
@@ -37,6 +37,7 @@ export const MAX_SLICES = 5;
 
 /** The break between two arcs, in the ring's own path units, so a ring
     reads as parts rather than as one banded track. */
+/* ARC_GAP stays exported only for its own test (AU-09 test-only review). */
 export const ARC_GAP = 2;
 
 /** The shortest arc worth drawing with a break after it. A share smaller
@@ -51,6 +52,7 @@ export const ARC_GAP = 2;
     since the next arc paints over it the visible result is a slice shorter
     than the floor was for, on a ring whose arcs no longer add up to one
     circumference. */
+/* MIN_ARC stays exported only for its own test (AU-09 test-only review). */
 export const MIN_ARC = 3;
 
 /** The parts of a whole, largest first, capped, with everything past the
@@ -99,7 +101,7 @@ export function slices(parts: Part[], restName: string, cap: number = MAX_SLICES
     interpolating - `0 C` to `dash rest` keeps the pattern exactly one
     circumference long at every frame, so an arc grows in place instead of
     the pattern repeating around the circle mid-animation. */
-export interface Arc {
+interface Arc {
   dash: number;
   rest: number;
   /** Negative: a dash pattern shifts forward along the path. */

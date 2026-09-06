@@ -4,7 +4,7 @@ import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-
     activity-alias is enabled, so the icon and label the launcher and
     recents show follow the same preference the tab title and the web
     manifest do (ticket 25). */
-export interface AndroidDisguiseBridge {
+interface AndroidDisguiseBridge {
   setDisguised(options: { disguised: boolean }): Promise<void>;
 }
 

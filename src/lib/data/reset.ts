@@ -11,6 +11,8 @@
 import { BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
+/* LocalDataTargets stays exported only for its own test (AU-09 test-only
+   review). */
 export interface LocalDataTargets {
   /** Lets go of the database file; OPFS will not delete a file whose sync
       access handle is still open. */

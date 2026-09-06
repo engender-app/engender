@@ -9,7 +9,7 @@
 
 const NONCE_LENGTH = 12;
 
-export interface Encrypted {
+interface Encrypted {
   nonce: Uint8Array<ArrayBuffer>;
   ciphertext: Uint8Array<ArrayBuffer>;
 }

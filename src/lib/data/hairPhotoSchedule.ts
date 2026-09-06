@@ -11,6 +11,8 @@
    and inventing that knob would be exactly the speculative flexibility
    CLAUDE.md's simplicity rule warns against. */
 
+/* HAIR_PHOTO_INTERVAL_DAYS stays exported only for its own test (AU-09
+   test-only review). */
 export const HAIR_PHOTO_INTERVAL_DAYS = 28;
 
 /** The next due day, or null with no anchor yet - there is nothing to count
@@ -24,6 +26,8 @@ export const HAIR_PHOTO_INTERVAL_DAYS = 28;
     later photo perpetually "overdue" the moment one photo lands late, the
     same reason doseSchedule.ts's expectedSlots does not re-anchor to when a
     schedule was edited. */
+/* nextHairPhotoDueEpochDay stays exported only for its own test (AU-09
+   test-only review). */
 export function nextHairPhotoDueEpochDay(anchorEpochDay: number | null, lastPhotoEpochDay: number | null): number | null {
   if (anchorEpochDay === null) return null;
   if (lastPhotoEpochDay === null) return anchorEpochDay;

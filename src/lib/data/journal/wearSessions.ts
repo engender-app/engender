@@ -33,7 +33,7 @@ import { assertChanged, mintUuid, now } from './support';
 import type { RemindersArea } from './reminders';
 import { wearAutoSource } from '../autoSource';
 
-export interface WearSessionInput {
+interface WearSessionInput {
   id?: string;
   /** Required on every write, not just a create (ticket 50): every caller
       that updates a session is holding the row it read, so asking for the
@@ -156,6 +156,8 @@ export function wearTrendRegion(
     binding's four and is already exceeded by 44.8% of daily tuckers (Malik
     et al. 2024), and no source of any kind gives a compression figure, so
     neither kind gets a threshold rather than getting a borrowed one. */
+/* BINDER_CUE_HOURS stays exported only for its own test (AU-09 test-only
+   review). */
 export const BINDER_CUE_HOURS = 8;
 
 /** Whether this session is showing the duration cue right now. Running

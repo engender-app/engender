@@ -17,13 +17,15 @@ export type OnThisDayLookback = 'month' | 'sixMonths' | 'year';
 
 /** Longest first, the order the retrospective page shows them in when more
     than one qualifies. */
+/* ON_THIS_DAY_LOOKBACKS stays exported only for its own test (AU-09 test-only
+   review). */
 export const ON_THIS_DAY_LOOKBACKS: { key: OnThisDayLookback; months: number }[] = [
   { key: 'year', months: 12 },
   { key: 'sixMonths', months: 6 },
   { key: 'month', months: 1 }
 ];
 
-export interface OnThisDayCandidate {
+interface OnThisDayCandidate {
   key: OnThisDayLookback;
   epochDay: number;
 }

@@ -40,20 +40,20 @@
 
 import type { SqliteDriver } from '../driver.ts';
 
-export interface TablesTouched {
+interface TablesTouched {
   /** Sorted, and never a CTE, an alias or a subquery. */
   read: readonly string[];
   wrote: readonly string[];
 }
 
-export interface RecordedStatement extends TablesTouched {
+interface RecordedStatement extends TablesTouched {
   sql: string;
   /** UTF-8 bytes of the JSON the statement handed back, which is what a
       serialising boundary charges for it. */
   bytes: number;
 }
 
-export interface Recording {
+interface Recording {
   /** One per crossing, in the order they crossed. A `query` and a `run` are
       one statement each; a multi-statement `exec` is one crossing carrying
       several, which is why the tables are a union over its whole text. */

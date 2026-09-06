@@ -13,7 +13,7 @@ import { liveQuery, type LiveQuery } from '$lib/data/live/journal.svelte';
 import type { Journal } from '$lib/data/journal/journal';
 import { answersFor, draftFor, fillDecision } from './detailDraft.ts';
 
-export type DetailDraftOptions<TRecord, TDraft> = {
+type DetailDraftOptions<TRecord, TDraft> = {
   /** Find the record this id names. Not called for a new one. */
   read: (journal: Journal, id: string) => Promise<TRecord | undefined>;
   /** The draft for a record that does not exist yet. */
@@ -22,7 +22,7 @@ export type DetailDraftOptions<TRecord, TDraft> = {
   fromRecord: (record: TRecord) => TDraft;
 };
 
-export type DetailDraft<TRecord, TDraft> = {
+type DetailDraft<TRecord, TDraft> = {
   /** The id on the route, right now. */
   readonly id: string;
   /** Whether the route is on this screen's own `new`. */

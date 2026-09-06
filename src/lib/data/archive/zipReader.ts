@@ -36,7 +36,7 @@ import { unzipSync } from 'fflate';
     picking the real number from an actual export nobody has measured yet.
     The Daylio backup sheet's `dlb_too_large` string names this number in
     both languages - change one, change the other. */
-export const ZIP_INFLATED_CEILING_BYTES = 512 * 1024 * 1024;
+const ZIP_INFLATED_CEILING_BYTES = 512 * 1024 * 1024;
 
 /** The picked file's own size on disk, checked before it is read into
     memory at all - a cheap, separate guard from the ceiling above, which

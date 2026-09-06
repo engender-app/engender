@@ -41,13 +41,13 @@ export interface JourneyFrame {
 
 /** Full photo bytes by stored file name, or null when there is no file to
     read - one the orphan sweep reclaimed, or one a crash left a row for. */
-export type ReadPhoto = (fileName: string) => Promise<Uint8Array | null>;
+type ReadPhoto = (fileName: string) => Promise<Uint8Array | null>;
 
 /** Called after each photo is drawn, so a screen can show progress through
     an export that takes tens of seconds. */
-export type JourneyProgress = (done: number, total: number) => void;
+type JourneyProgress = (done: number, total: number) => void;
 
-export interface JourneyRenderOptions {
+interface JourneyRenderOptions {
   onProgress?: JourneyProgress;
   /** Abandons the export between photos. Worth having rather than assuming
       nobody waits: a timelapse records in real time, so a 156-photo journey

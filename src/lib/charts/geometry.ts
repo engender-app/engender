@@ -116,7 +116,7 @@ export interface PaddedRange {
   max: number;
 }
 
-export interface PaddedSeries extends PaddedRange {
+interface PaddedSeries extends PaddedRange {
   points: Point[];
   from: number;
   to: number;

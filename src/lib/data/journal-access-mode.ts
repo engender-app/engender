@@ -42,7 +42,7 @@ export function chooseJournalAccessMode({
   return null;
 }
 
-export type WebBootPlan = 'needs-setup' | 'needs-unlock' | 'auto-unlock' | 'convert' | 'retire';
+type WebBootPlan = 'needs-setup' | 'needs-unlock' | 'auto-unlock' | 'convert' | 'retire';
 
 export function describeWebBootPlan({
   keystoreSecretSource,
@@ -68,7 +68,7 @@ export function describeWebBootPlan({
     : 'needs-unlock';
 }
 
-export type AndroidBootPlan = 'needs-setup' | 'needs-unlock' | 'needs-authentication' | 'plaintext-error';
+type AndroidBootPlan = 'needs-setup' | 'needs-unlock' | 'needs-authentication' | 'plaintext-error';
 
 export function describeAndroidBootPlan({
   keystoreSecretSource,

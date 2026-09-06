@@ -44,7 +44,7 @@
 
 import { RUN_OUT_LEAD_DAYS, type StockProjection } from './stockProjection';
 
-export interface StockReminderState {
+interface StockReminderState {
   /** Whether an auto reminder has ever been created for this drug. */
   everCreated: boolean;
   /** Set once a person's own edit or delete took the reminder over; while
@@ -55,12 +55,12 @@ export interface StockReminderState {
 
 /** The Reminder row currently carrying this drug's `auto_source` marker,
     if any. */
-export interface StockReminderRow {
+interface StockReminderRow {
   id: string;
   epochDay: number;
 }
 
-export type StockReminderAction =
+type StockReminderAction =
   | { kind: 'none' }
   | { kind: 'mark-dismissed' }
   | { kind: 'clear'; reminderId: string }
