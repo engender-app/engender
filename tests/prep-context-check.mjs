@@ -14,6 +14,7 @@
 import { preview } from 'vite';
 import { resolve } from 'node:path';
 import { launchChromium } from './browser-harness.mjs';
+import { clearPrepList } from './prep-fixture.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 
@@ -74,25 +75,17 @@ try {
   const withList = await sections();
   console.log('sections with a list:', withList.join(' / '));
   check('a list shows the way into the room', (await page.locator('[data-list-row="in-the-room"]').count()) === 1);
+  /* The class, not the one string this ticket replaced: a check that greps
+     for wording no catalogue carries can only pass. A heading naming one
+     visit is what the ticket forbade, in either language. */
+  check('a heading is drawn over the card', withList.length > 0);
   check(
     'no heading claims a single visit',
-    !withList.some((h) => /^For this visit$|^Na tę wizytę$/.test(h))
+    !withList.some((h) => /this visit|t[e\u0119] wizyt|tej wizyt/i.test(h))
   );
 
   /* ---------- the list emptied, through the screen's own control ---------- */
-  for (let guard = 0; guard < 40; guard += 1) {
-    const rows = await page.locator('[data-delete-appointment-item]').count();
-    if (rows === 0) break;
-    await page.locator('[data-delete-appointment-item]').first().click();
-    // The confirm sheet the record editor puts in front of a delete.
-    const confirm = page.locator('[data-confirm-delete]');
-    if (await confirm.count()) await confirm.click();
-    await page.waitForFunction(
-      (before) => document.querySelectorAll('[data-delete-appointment-item]').length < before,
-      rows
-    );
-  }
-  await page.waitForSelector('[data-notice="appointment-prep-empty"]');
+  await clearPrepList(page);
 
   const emptied = await sections();
   console.log('sections with an empty list:', emptied.join(' / '));
@@ -101,14 +94,18 @@ try {
     'an empty list still shows when the next appointment is',
     (await page.locator('[data-list-row="next-appointment"]').count()) === 1
   );
-  const day = await page.locator('[data-list-row="next-appointment"]').innerText();
-  // The unset strings, not a stand-in for them: this check passes for free
-  // if it greps for wording the catalogues no longer carry.
-  check('and shows the day rather than the unset line', !/Nothing booked yet|Nic jeszcze nie um/.test(day));
+  /* Positive: the subtitle has to *be* a day. Negating the unset wording
+     passes for free the moment that wording changes, which is exactly the
+     trap the heading check above was in. */
+  const subtitle = (await page.locator('[data-list-row="next-appointment"]').innerText()).split('\n').pop() ?? '';
+  check(`and the subtitle names a day (${JSON.stringify(subtitle)})`, /\d{1,2}\s+\p{L}+/u.test(subtitle));
   check(
     'an empty list keeps every reference section it had',
     withList.every((heading) => emptied.includes(heading))
   );
+  /* One card, one heading, whichever way its rows point: the shape this
+     ticket chose over splitting the card stands or falls on that. */
+  check('the heading over the card does not move with the rows', withList[0] === emptied[0]);
   check(
     'an empty list does not offer the room, which would have nothing in it',
     (await page.locator('[data-list-row="in-the-room"]').count()) === 0

@@ -15,6 +15,8 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { PALETTES } from './palettes.mjs';
+import { clearPrepList } from './prep-fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/prep-shots'));
@@ -92,20 +94,16 @@ async function clearAppointments(page) {
   }
 }
 
+/* Read out of PALETTES, which is where the set is declared, so a renamed
+   palette throws here rather than quietly rendering the default one. */
+const named = (name) => {
+  if (!PALETTES.includes(name)) throw new Error(`no such palette: ${name}`);
+  return name;
+};
+
 async function emptyTheList(page) {
   await goto(page, '/health/appointment-prep');
-  for (let guard = 0; guard < 40; guard += 1) {
-    const rows = await page.locator('[data-delete-appointment-item]').count();
-    if (rows === 0) break;
-    await page.locator('[data-delete-appointment-item]').first().click();
-    const confirm = page.locator('[data-confirm-delete]');
-    if (await confirm.count()) await confirm.click();
-    await page.waitForFunction(
-      (before) => document.querySelectorAll('[data-delete-appointment-item]').length < before,
-      rows
-    );
-  }
-  await page.waitForSelector('[data-notice="appointment-prep-empty"]');
+  await clearPrepList(page);
 }
 
 async function shoot(page, name) {
@@ -133,7 +131,7 @@ for (const lang of ['en', 'pl']) {
     // 1. Nothing on the list and nothing on the record: the date row with
     //    no day to give, which is the state this change adds to the screen.
     let page = await freshPage();
-    await setLook(page, 'trans', theme);
+    await setLook(page, named('trans'), theme);
     await clearAppointments(page);
     await setLanguage(page, lang);
     await goto(page, '/health/appointment-prep');
@@ -150,7 +148,7 @@ for (const lang of ['en', 'pl']) {
     await page.waitForTimeout(SETTLED);
     // After the jump, never before it: filling every feature writes the
     // preferences back, which takes the theme with it.
-    await setLook(page, 'trans', theme);
+    await setLook(page, named('trans'), theme);
     await bookAhead(page, 14);
     await setLanguage(page, lang);
     await emptyTheList(page);

@@ -2614,7 +2614,7 @@
   "appointment_prep_context_heading": "Around your appointments",
   "appointment_prep_next_appointment_label": "Next appointment",
   "appointment_debrief_row": "Your debrief",
-  "appointment_prep_next_appointment_unset": "Nothing booked yet",
+  "appointment_prep_next_appointment_unset": "None yet",
   "appointment_prep_labs_heading": "Labs since your last appointment, {day}",
   "appointment_prep_side_effects_heading": "Side effects since your last appointment, {day}",
   "clinician_summary_appointment_prep_empty": "Nothing on the appointment prep list.",
