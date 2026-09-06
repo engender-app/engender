@@ -48,7 +48,7 @@ export function markUnlocked() {
   lockState.blanked = false;
 }
 
-export function lockNow() {
+function lockNow() {
   lockState.unlocked = false;
   /* Quick add is a layout-level sibling of the gate chain, not below it, so
      its own open flag is the only thing keeping it up. Locking is neither a

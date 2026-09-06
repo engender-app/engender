@@ -69,7 +69,7 @@ interface PersonaAppointment extends AppointmentInput {
   debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };
 }
 
-export interface Persona {
+interface Persona {
   customTag: { groupKey: string; label: string };
   presentations: PersonaPresentation[];
   entries: PersonaEntry[];

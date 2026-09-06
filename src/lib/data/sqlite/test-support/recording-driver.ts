@@ -53,7 +53,7 @@ interface RecordedStatement extends TablesTouched {
   bytes: number;
 }
 
-export interface Recording {
+interface Recording {
   /** One per crossing, in the order they crossed. A `query` and a `run` are
       one statement each; a multi-statement `exec` is one crossing carrying
       several, which is why the tables are a union over its whole text. */

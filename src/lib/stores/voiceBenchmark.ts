@@ -68,7 +68,7 @@ export interface TakeSession {
 /** Decodes recorded audio to mono samples at the analysis rate. The
     OfflineAudioContext's own rate is what does the resampling, so there is
     no resampler in this tree to get wrong. */
-export async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
+async function decodeTake(bytes: Uint8Array): Promise<Float32Array> {
   // A one-frame context: it is never rendered, it is only the decoder's
   // target rate. `slice()` because decodeAudioData detaches the buffer it is
   // given, and these bytes are also what gets stored.

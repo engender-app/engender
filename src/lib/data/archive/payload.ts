@@ -580,7 +580,7 @@ export interface ArchiveHairRemovalSession {
   photos: ArchiveHairRemovalPhoto[];
 }
 
-export interface ArchiveReminder {
+interface ArchiveReminder {
   id: string;
   title: string;
   type: string;
@@ -766,7 +766,7 @@ interface ArchiveDocument {
     hand-off bookkeeping (phase 4 ticket 04). Not the projection over it -
     that is derived from the dose log, and the importing device has its
     own (CONTEXT: pending, stockProjection.ts). */
-export interface ArchiveMedicationStock {
+interface ArchiveMedicationStock {
   id: string;
   drug: string;
   quantity: number;
@@ -1002,7 +1002,7 @@ export interface ArchivePayload {
 }
 
 /** Brings a payload written at one version up to the next one. */
-export type PayloadMigration = (payload: ArchivePayload) => ArchivePayload;
+type PayloadMigration = (payload: ArchivePayload) => ArchivePayload;
 
 /** The shape a v1 archive's preferences had where they now hold a list of
     ticked scales: one preset key, which the app resolved to a dimension

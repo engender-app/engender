@@ -67,7 +67,7 @@ export interface ClinicianSummaryFinishedArea {
   epochDay: number;
 }
 
-export interface ClinicianSummary {
+interface ClinicianSummary {
   regimenEpisodes: ClinicianSummaryEpisode[];
   doses: DoseEvent[];
   labResults: LabResult[];

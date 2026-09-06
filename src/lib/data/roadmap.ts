@@ -32,7 +32,7 @@ export type RoadmapTrack = (typeof ROADMAP_TRACKS)[number];
    all the way to the screen, where roadmapLabels.ts needs them to look
    wording up. The default keeps every other reader - the tests, a future
    contributed pack - writing plain `RoadmapGoal`. */
-export interface RoadmapGoal<K extends string = string> {
+interface RoadmapGoal<K extends string = string> {
   readonly key: K;
   readonly track: RoadmapTrack;
   /** CONTEXT: "Lean" (phase 5 ticket 43). Most of the Polish pack is

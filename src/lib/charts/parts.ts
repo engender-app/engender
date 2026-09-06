@@ -99,7 +99,7 @@ export function slices(parts: Part[], restName: string, cap: number = MAX_SLICES
     interpolating - `0 C` to `dash rest` keeps the pattern exactly one
     circumference long at every frame, so an arc grows in place instead of
     the pattern repeating around the circle mid-animation. */
-export interface Arc {
+interface Arc {
   dash: number;
   rest: number;
   /** Negative: a dash pattern shifts forward along the path. */
