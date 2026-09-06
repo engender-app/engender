@@ -1,53 +1,30 @@
-/* Home's recent entries, grouped into days and capped (spec 08).
+/* Home's recent entries, grouped into days (ux-carpet ticket 13).
 
-   The read behind this returns every entry of the last five logged days
-   with no row limit, so a day with a lot logged turned Home into a very
-   long scroll of everything the app can say. The cap is a render limit
-   rather than a narrower read: the rest are one tap away on the calendar,
-   and cutting the query instead would make "how many did that day hold"
-   unanswerable - which is the one number the day bar has to say.
+   This used to cap what Home drew to five entries total and head a
+   truncated day with how many it actually held ("3 that day" over one
+   drawn) - a render limit rather than a narrower read, because cutting the
+   query instead would make "how many did that day hold" unanswerable.
 
-   That is why a group carries both. `entries` is what Home draws and
-   `dayCount` is what the day actually holds, so the bar reads "3 that day"
-   whether or not the cap took the third one. A count that shrank with the
-   cap would be the cap describing itself.
-
-   Day order and within-day order are the read's own (entries.recentDays
-   returns whole days, newest day first): a second sort here would be a
-   second place deciding how this app orders a journal. */
+   The cap cut days in half more often than not: a day with two entries
+   logged twelve hours apart is exactly the shape a timeline exists to show,
+   and a home screen that had already spent its budget on the days before it
+   drew one entry and a bare count instead - the read `entries.recentDays`
+   already bounds by day, so every entry of a shown day draws now and
+   nothing here trims a day's own list down further. A long run of entries
+   inside the last five days makes Home longer that day; a quiet run keeps
+   it short, same as it always has. */
 
 import type { Entry } from './types';
-
-/** How many entries Home draws before pointing at the calendar.
-
-    Five, which is the same number of days the read asks for, and comes out
-    at about a screen of day cards at 390px with the week strip and the
-    milestones above them. */
-export const RECENT_ENTRY_CAP = 5;
-
-interface RecentDayGroup {
-  epochDay: number;
-  /** The entries to draw, already cut to whatever is left of the cap. */
-  entries: Entry[];
-  /** How many entries that day holds in total, cap or no cap. */
-  dayCount: number;
-}
 
 export interface EntryDayGroup {
   epochDay: number;
   entries: Entry[];
 }
 
-/** The entries grouped by day, uncapped, in the order the read handed them
-    over.
+/** The entries grouped by day, in the order the read handed them over.
 
-    Its own export because Home is no longer the only screen that draws days
-    (phase 5 ticket 22): a day, a search result set and the starred shelf all
-    group the same way and none of the other three has a cap. What they also
-    do not have is Home's `dayCount` - a search hit list can say how many
-    entries of a day *matched* and not how many that day holds, and a bar
-    reading "3 that day" over three of five would be the filter describing
-    itself. So the count belongs to the capped form below and not here. */
+    Not Home's alone (phase 5 ticket 22): a day, a search result set and the
+    starred shelf all group the same way. */
 export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
   const groups: EntryDayGroup[] = [];
   const byDay = new Map<number, EntryDayGroup>();
@@ -61,18 +38,6 @@ export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
     group.entries.push(entry);
   }
   return groups;
-}
-
-export function recentDayGroups(entries: Entry[], cap: number): RecentDayGroup[] {
-  const out: RecentDayGroup[] = [];
-  let drawn = 0;
-  for (const group of entryDayGroups(entries)) {
-    const draw = group.entries.slice(0, Math.max(0, cap - drawn));
-    drawn += draw.length;
-    // A day the cap never reached is a heading with nothing under it.
-    if (draw.length) out.push({ epochDay: group.epochDay, entries: draw, dayCount: group.entries.length });
-  }
-  return out;
 }
 
 /** Icon names for the media an entry carries, in the order a row draws them.
