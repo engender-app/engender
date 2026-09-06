@@ -101,37 +101,40 @@ export function applyEntryTemplateToDraft(draft: TemplateableDraft, template: En
   };
 }
 
-/** What the offer predicate below needs to know, read off the standalone
-    checklist (checklists.ts) and the clock (phase 6 ticket 08). */
+/** What the offer predicate below needs to know (ticket 58, ADR-0066): the
+    most recent past appointment (appointments.ts's
+    `mostRecentPastAppointment`), the standing prep list's own state read
+    off the standalone checklist (checklists.ts), scoped to that same
+    appointment. */
 export interface DebriefOfferState {
-  /** The standalone checklist's own appointment date, or null when none is
-      set. */
-  appointmentEpochDay: number | null;
+  /** The most recent past appointment's id, or null when there is none -
+      "strictly past" is already baked in by the selector that produced
+      this, so the predicate below has no clock of its own to consult. */
+  appointmentId: string | null;
   /** How many prep questions are on the list - an appointment with none
       produces no offer, the ticket's own line. */
   itemCount: number;
-  todayEpochDay: number;
-  /** `getDebriefDismissedEpochDay()` - only ever meaningful against the
-      appointment it was recorded for, since `setAppointmentDate` clears it
-      the moment the date changes (checklists.ts). */
-  dismissedEpochDay: number | null;
-  /** `getDebriefEntryId()` - non-null once the offer has been taken, the
-      same reset-on-date-change guarantee as `dismissedEpochDay`. */
+  /** Whether the offer for `appointmentId` was dismissed
+      (`getDebriefState`, checklists.ts) - already resolved against this
+      exact id, so a dismissal recorded for a since-superseded appointment
+      reads as not-dismissed here. */
+  dismissed: boolean;
+  /** The entry that debriefs `appointmentId`, or null - same id-scoped
+      resolution as `dismissed`. */
   debriefEntryId: number | null;
 }
 
-/** Whether Home should offer the debrief template right now: a date is on
-    record, it has actually passed (not today - the appointment could still
-    be later today), there was something to prepare for, and this specific
-    occurrence has not already been resolved one way or the other. Once,
-    whether taken or dismissed (What to Build #1): the offer never
-    reappears for the same appointment, and a new appointment date is what
-    re-arms it, not a fresh dismissal window. */
+/** Whether Home should offer the debrief template right now: there is a
+    most recent past appointment, there was something to prepare for, and
+    this specific appointment has not already been resolved one way or the
+    other. Once, whether taken or dismissed (What to Build #1): the offer
+    never reappears for the same appointment, and a newer past appointment
+    is what re-arms it (ticket 58) - `appointmentId` moving on is itself
+    the re-arm, there is no date to change or column to clear. */
 export function debriefOfferVisible(state: DebriefOfferState): boolean {
-  if (state.appointmentEpochDay == null) return false;
+  if (state.appointmentId == null) return false;
   if (state.itemCount === 0) return false;
-  if (state.appointmentEpochDay >= state.todayEpochDay) return false;
-  if (state.dismissedEpochDay === state.appointmentEpochDay) return false;
+  if (state.dismissed) return false;
   if (state.debriefEntryId !== null) return false;
   return true;
 }

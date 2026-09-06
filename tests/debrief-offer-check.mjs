@@ -38,34 +38,61 @@ const settle = async (path) => {
 const check = (label, ok) => console.log(`${ok ? 'PASS' : 'FAIL'} ${label}`);
 
 try {
-  await settle('/settings/appointment-prep');
+  await settle('/health/appointment-prep');
   await page.locator('[data-add]').click();
   await page.locator('#appointment-prep-input').fill('ask about labs');
   await page.locator('[data-save-appointment-item]').click();
-  await page.waitForSelector('[data-appointment-date]');
+  // The row appearing is what says the write landed. Navigating on the click
+  // alone drops it, and every check below then passes for the wrong reason:
+  // an empty prep list produces no offer whatever the appointments say.
+  await page.waitForSelector('[data-appointment-item]');
 
+  // The demo persona already has a past appointment with its debrief written
+  // (ticket 64's seed), so the resting state is a journal whose most recent
+  // past appointment is settled - which is the state that must stay quiet.
   await settle('/');
-  check('no offer with a prep item but no date', (await page.locator('[data-debrief-offer]').count()) === 0);
+  check(
+    'no offer when the most recent past appointment already has its debrief',
+    (await page.locator('[data-debrief-offer]').count()) === 0
+  );
 
-  // The date field is a flatpickr-driven text input (DatePicker.svelte),
-  // not a plain <input type=date> - it does not accept typed text, so the
-  // instance's own API is driven directly rather than via `.fill()`.
-  await settle('/settings/appointment-prep');
-  await page.evaluate(() => {
-    document.getElementById('appointment-prep-date')._flatpickr.setDate('2020-01-01', true);
-  });
-  await page.waitForTimeout(300);
+  // The prep screen's own date row is a read of the appointment record now
+  // (ticket 58) - a past appointment is written on the appointments screen
+  // itself, not by driving a date picker on prep.
+  const writeAppointment = async (date) => {
+    await settle('/health/appointments');
+    await page.locator('[data-add]').click();
+    await page.waitForSelector('#appointment-date');
+    await page.evaluate((day) => {
+      document.getElementById('appointment-date')._flatpickr.setDate(day, true);
+    }, date);
+    await page.locator('[data-save-appointment]').click();
+    await page.waitForSelector('[data-appointment]');
+  };
+
+  // Back-filling an old visit offers nothing: only the most recent past
+  // appointment ever does, and the seeded one is still more recent than this.
+  await writeAppointment('2020-01-01');
+  await settle('/');
+  check(
+    'back-filling an older appointment produces no offer',
+    (await page.locator('[data-debrief-offer]').count()) === 0
+  );
+
+  // Yesterday's visit supersedes it, and has no debrief of its own.
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  await writeAppointment(yesterday);
 
   await settle('/');
   const offer = page.locator('[data-debrief-offer]');
   await offer.waitFor({ state: 'visible', timeout: 5000 });
-  check('offer shows once a prep item exists for a past date', await offer.isVisible());
+  check('offer shows once a prep item exists for a past appointment', await offer.isVisible());
 
   const writeLink = page.locator('[data-debrief-offer] [data-notice-action]');
   const href = await writeLink.getAttribute('href');
   check(
-    'offer links to /entry/new/today with a debriefFor param',
-    /\/entry\/new\/today\?debriefFor=\d+/.test(href ?? '')
+    'offer links to /entry/new/today with a debriefFor param naming an appointment id',
+    /\/entry\/new\/today\?debriefFor=.+/.test(href ?? '')
   );
 
   await writeLink.click();
@@ -79,7 +106,7 @@ try {
 
   check('offer is gone once the debrief is written', (await page.locator('[data-debrief-offer]').count()) === 0);
 
-  await settle('/settings/appointment-prep');
+  await settle('/health/appointment-prep');
   const debriefRow = page.locator('[data-list-row="debrief"]');
   check('appointment prep shows the "your debrief" row', (await debriefRow.count()) > 0);
 } catch (error) {

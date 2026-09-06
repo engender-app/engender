@@ -149,154 +149,124 @@ test('addToStandaloneChecklist reuses the same checklist on later calls', async 
   );
 });
 
-test('the appointment date is null until set, and setAppointmentDate creates the standalone checklist on first use', async () => {
+test('the debrief dismissal and entry link both read as absent until set', async () => {
   const { journal } = await journalWithBuiltIns();
-  assert.equal(await journal.checklists.getAppointmentDate(), null);
-  assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
-
-  await journal.checklists.setAppointmentDate(19800);
-
-  assert.equal(await journal.checklists.getAppointmentDate(), 19800);
-  const checklist = await journal.checklists.getStandaloneChecklist();
-  assert.equal(checklist?.owner, null);
-  assert.deepEqual(checklist?.items, []);
-});
-
-test('setAppointmentDate on an existing standalone checklist replaces the date and leaves its items alone', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const item = await journal.checklists.addToStandaloneChecklist('ask about labs');
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.setAppointmentDate(19830);
-
-  assert.equal(await journal.checklists.getAppointmentDate(), 19830);
-  const checklist = await journal.checklists.getStandaloneChecklist();
-  assert.deepEqual(checklist?.items, [item]);
-});
-
-test('setAppointmentDate(null) clears a previously set date', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.setAppointmentDate(null);
-  assert.equal(await journal.checklists.getAppointmentDate(), null);
-});
-
-test('an owned checklist never carries the appointment date', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.checklists.createChecklist({ kind: 'procedure', id: 'p-1' });
-  await journal.checklists.setAppointmentDate(19800);
-
-  const owned = await journal.checklists.getChecklistByOwner({ kind: 'procedure', id: 'p-1' });
-  assert.equal(owned?.owner?.id, 'p-1');
-  assert.equal(await journal.checklists.getAppointmentDate(), 19800);
-});
-
-test('the debrief dismissal and entry link are both null until set', async () => {
-  const { journal } = await journalWithBuiltIns();
-  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), null);
-  assert.equal(await journal.checklists.getDebriefEntryId(), null);
+  assert.equal(await journal.checklists.getDebriefEntryId('some-appointment'), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(null), null);
 });
 
 test('getDebriefState reads everything the offer predicate needs in one call', async () => {
   const { journal } = await journalWithBuiltIns();
-  assert.deepEqual(await journal.checklists.getDebriefState(), {
-    appointmentEpochDay: null,
+  const appointmentId = await journal.appointments.upsertAppointment({
+    epochDay: 19800,
+    procedureId: null,
+    kind: null,
+    place: null,
+    note: null
+  });
+
+  assert.deepEqual(await journal.checklists.getDebriefState(appointmentId), {
+    appointmentId,
     itemCount: 0,
-    dismissedEpochDay: null,
+    dismissed: false,
     debriefEntryId: null
   });
 
   const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
   await journal.checklists.addToStandaloneChecklist('ask about labs');
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.recordDebriefEntry(entryId, 19800);
+  await journal.checklists.recordDebriefEntry(entryId, appointmentId);
 
-  assert.deepEqual(await journal.checklists.getDebriefState(), {
-    appointmentEpochDay: 19800,
+  assert.deepEqual(await journal.checklists.getDebriefState(appointmentId), {
+    appointmentId,
     itemCount: 1,
-    dismissedEpochDay: null,
+    dismissed: false,
     debriefEntryId: entryId
   });
 });
 
-test('a journal that has never written an appointment gets no debrief offer', async () => {
-  /* Phase 8 features ticket 49 item 6. Both halves of the gate are already
-     tested apart - `getDebriefState` returns nulls above, and
-     `debriefOfferVisible` answers false to a null date in
-     entryTemplates.test.ts - but nothing joined them, so nothing would
-     notice a read that started defaulting the date to today, or a predicate
-     that stopped checking it. The claim being kept is persona 2's: a
-     clinician-facing surface must not describe someone who has never had a
-     clinician.
+test('a journal with no most recent past appointment gets no debrief offer', async () => {
+  /* Phase 8 features ticket 49 item 6, rekeyed by ticket 58. Both halves of
+     the gate are already tested apart - `getDebriefState` answers a null
+     appointment id with itemCount/dismissed/debriefEntryId that all read
+     as "nothing recorded" above, and `debriefOfferVisible` answers false
+     to a null id in entryTemplates.test.ts - but nothing joined them, so
+     nothing would notice a read that started defaulting the id, or a
+     predicate that stopped checking it. The claim being kept is persona
+     2's: a clinician-facing surface must not describe someone who has
+     never had a clinician.
 
      Adding a prep question is deliberately not enough. Somebody can write
      down what they want to ask long before they have anywhere to ask it,
-     and the offer stays silent until a date is actually on record. */
+     and the offer stays silent until an appointment is actually on
+     record. */
   const { journal } = await journalWithBuiltIns();
-  const today = 19900;
 
-  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), false);
+  assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(null)), false);
 
   await journal.checklists.addToStandaloneChecklist('ask about spironolactone');
-  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), false);
+  assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(null)), false);
 
-  // The first appointment written is what arms it, once that day has passed.
-  await journal.checklists.setAppointmentDate(today - 1);
-  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), true);
-
-  // Clearing the date back to "no appointment on record" silences it again.
-  await journal.checklists.setAppointmentDate(null);
-  assert.equal(debriefOfferVisible({ ...(await journal.checklists.getDebriefState()), todayEpochDay: today }), false);
+  // The first appointment written is what arms it.
+  const appointmentId = await journal.appointments.upsertAppointment({
+    epochDay: 19800,
+    procedureId: null,
+    kind: null,
+    place: null,
+    note: null
+  });
+  assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(appointmentId)), true);
 });
 
-test('setDebriefDismissed records which date the offer was dismissed for', async () => {
+test('setDebriefDismissed records which appointment the offer was dismissed for', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.setDebriefDismissed(19800);
+  await journal.checklists.setDebriefDismissed('appt-1');
 
-  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), 19800);
+  const state = await journal.checklists.getDebriefState('appt-1');
+  assert.equal(state.dismissed, true);
+  assert.equal((await journal.checklists.getDebriefState('appt-2')).dismissed, false);
 });
 
-test('recordDebriefEntry links an entry to the appointment currently on record', async () => {
+test('recordDebriefEntry links an entry to the appointment it names', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.checklists.addToStandaloneChecklist('ask about labs');
+  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
+
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
+});
+
+test('recordDebriefEntry creates the standalone checklist when there is none yet', async () => {
+  /* The link is state about the standalone checklist, so it needs a row to
+     live in, and until ticket 58 the retired `setAppointmentDate` was what
+     created one. Nothing in the app reaches here without a prep question
+     already standing - the offer requires `itemCount > 0` - but the demo
+     seed does (journal-seed.ts), and a silent zero-row UPDATE is the kind
+     of thing that shows up as a persona whose debrief simply isn't there.
+     `setDebriefDismissed`, the other writer of a debrief column, has
+     created on first use all along. */
   const { journal } = await journalWithBuiltIns();
   const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.recordDebriefEntry(entryId, 19800);
+  await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
 
-  assert.equal(await journal.checklists.getDebriefEntryId(), entryId);
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
 });
 
-test('recordDebriefEntry is a no-op once the appointment has moved on', async () => {
+test('a dismissal or entry link recorded for one appointment does not answer for another', async () => {
   const { journal } = await journalWithBuiltIns();
+  await journal.checklists.addToStandaloneChecklist('ask about labs');
   const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.setAppointmentDate(19830);
-  await journal.checklists.recordDebriefEntry(entryId, 19800);
+  await journal.checklists.setDebriefDismissed('appt-1');
+  await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
 
-  assert.equal(await journal.checklists.getDebriefEntryId(), null);
-});
+  // A newer past appointment becoming "the current one" (appointments.ts's
+  // mostRecentPastAppointment moving forward) sees neither: the id-keyed
+  // read is what replaces the old clear-on-date-change behaviour.
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-2'), null);
+  const state = await journal.checklists.getDebriefState('appt-2');
+  assert.equal(state.dismissed, false);
+  assert.equal(state.debriefEntryId, null);
 
-test('changing the appointment date clears a stale dismissal and entry link', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.setDebriefDismissed(19800);
-  await journal.checklists.recordDebriefEntry(entryId, 19800);
-
-  await journal.checklists.setAppointmentDate(19830);
-
-  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), null);
-  assert.equal(await journal.checklists.getDebriefEntryId(), null);
-});
-
-test('setting the same appointment date again leaves the dismissal and entry link alone', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
-  await journal.checklists.setAppointmentDate(19800);
-  await journal.checklists.setDebriefDismissed(19800);
-  await journal.checklists.recordDebriefEntry(entryId, 19800);
-
-  await journal.checklists.setAppointmentDate(19800);
-
-  assert.equal(await journal.checklists.getDebriefDismissedEpochDay(), 19800);
-  assert.equal(await journal.checklists.getDebriefEntryId(), entryId);
+  // The original appointment's own dismissal and entry link are untouched.
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
+  assert.equal((await journal.checklists.getDebriefState('appt-1')).dismissed, true);
 });

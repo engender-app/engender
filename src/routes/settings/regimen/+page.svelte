@@ -23,6 +23,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -676,6 +677,13 @@
             </div>
           {/snippet}
         </Field>
+      {/if}
+
+      {#if editor.id}
+        <!-- The target's own screen lists the documents pointing at it
+             (ticket 56, ADR-0065); the episode stores nothing about the
+             link. -->
+        <LinkedDocuments kind="episode" id={editor.id} />
       {/if}
 
       <div class="stack-3">

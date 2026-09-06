@@ -224,6 +224,9 @@ export function makeProceduresArea(
       const checklist = await checklists.getChecklistByOwner(procedureChecklistOwner(id));
 
       await driver.run('UPDATE milestone SET procedure_id = NULL WHERE procedure_id = ?', [id]);
+      // A document's link is a (kind, id) pair rather than a foreign key
+      // (documents.ts), so nothing cascades it either - ticket 56.
+      await driver.run("UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'procedure' AND target_id = ?", [id]);
       await driver.run('DELETE FROM procedure WHERE uuid = ?', [id]);
       if (checklist) await checklists.deleteChecklist(checklist.id);
       await removeFilesOf(files, photos);

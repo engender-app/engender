@@ -2843,6 +2843,37 @@ try {
   fail('fill every feature', e);
 }
 
+/* Ticket 66, ADR-0069: a long log renders a batch at a time and grows as it
+   is scrolled, so the scroll bar on the web build stays a size somebody can
+   use. Here rather than in the browser tier, which already covers the
+   component against a synthetic list: what this adds is that the wear log's
+   own rows are the ones being batched, over the journal "Fill every feature"
+   leaves, which holds more than one batch of completed sessions.
+
+   The control is what is pressed rather than the scroll, deliberately - a
+   scroll far enough to bring the next batch is a geometry this file has no
+   way to assert went far enough, and the control is on the screen either
+   way (it is what a keyboard reaches). */
+try {
+  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const wearRows = () => page.locator('[data-wear-session]').count();
+  const onArrival = await wearRows();
+  if (onArrival !== 30) throw new Error(`the wear log rendered ${onArrival} rows on arrival, not one batch of 30`);
+
+  await page.waitForSelector('[data-batched-more="wear-sessions"]', { timeout: 8000 });
+  await page.locator('[data-batched-more="wear-sessions"]').click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-wear-session]').length > 30,
+    null,
+    { timeout: 8000 }
+  );
+  ok('the wear log arrives as one batch of thirty, and the control at the end of it brings more');
+} catch (e) {
+  fail('wear log renders in batches', e);
+}
+
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
    field for it - checked against fullFixture's own "Binder check-in"
@@ -4141,28 +4172,6 @@ try {
   ok('one screen over one registry: notify column absent on web, Home column still whole');
 } catch (e) { fail('the unprompted registry view', e); }
 
-/* The demo persona files paper of its own since ticket 64, and every flow
-   below was written against a list with nothing in it - a row dated 1994
-   is the last row rather than the first one the moment anything else is
-   there, so `first()` opens somebody else's document. Emptying the list
-   through the app's own delete is what makes the three flows below say
-   what they mean again, and it exercises the same path they end on. */
-async function emptyTheDocumentsList() {
-  // The list reads from the journal, so counting rows before it has
-  // answered would find none and leave the persona's paper behind.
-  const settled = () => page.waitForSelector('[data-list-row], [data-notice="documents-empty"]');
-  await settled();
-  for (let guard = 0; guard < 12 && (await page.locator('[data-list-row]').count()); guard++) {
-    await page.locator('[data-list-row]').first().click();
-    await page.waitForSelector('[data-delete-document]');
-    await page.locator('[data-delete-document]').click();
-    await page.locator('[data-confirm-delete-document]').click();
-    await page.waitForURL('**/media/documents');
-    await settled();
-  }
-  await page.waitForSelector('[data-notice="documents-empty"]');
-}
-
 /* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
    opened and thrown away.
 
@@ -4173,7 +4182,8 @@ async function emptyTheDocumentsList() {
    encrypted store the way a scan would. */
 try {
   await fresh('/media/documents');
-  await emptyTheDocumentsList();
+  await page.locator('[data-add]').waitFor();
+  const paperBefore = await page.locator('[data-list-row]').count();
 
   const page1994 = await labSlipImage(['CITY HOSPITAL', 'Diagnosis, 1994']);
   page.once('filechooser', (chooser) =>
@@ -4193,13 +4203,16 @@ try {
   // editable date exists for.
   await fillDate(page, '#document-day', '1994-06-30');
   await page.locator('[data-save-document]').click();
-  await page.waitForSelector('[data-list-row]');
-
-  const row = page.locator('[data-list-row]').first();
-  if (!(await row.textContent()).includes('1994')) {
-    throw new Error(`the row does not carry the day on the paper: ${await row.textContent()}`);
-  }
-  await row.click();
+  /* Counted rather than waited for, and found by its own text in JS, for
+     the reason the flow below spells out: the demo persona files paper of
+     its own (ticket 64), so a bare `[data-list-row]` wait is already
+     satisfied and `first()` is somebody else's document - this one is
+     dated 1994 and sorts last. */
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, paperBefore);
+  const paperRows = page.locator('[data-list-row]');
+  const filed = (await paperRows.allTextContents()).findIndex((text) => text.includes('1994'));
+  if (filed === -1) throw new Error('the row does not carry the day on the paper');
+  await paperRows.nth(filed).click();
   await page.waitForSelector('[data-document-page]', { timeout: 15000 });
 
   /* The page is drawn here and nowhere else (ADR-0065), so the list it came
@@ -4210,26 +4223,39 @@ try {
     throw new Error('the documents list is drawing a page image');
   }
 
-  await page.locator('[data-list-row]').first().click();
+  const stillThere = (await page.locator('[data-list-row]').allTextContents()).findIndex((text) => text.includes('1994'));
+  await page.locator('[data-list-row]').nth(stillThere).click();
   await page.waitForSelector('[data-delete-document]');
   await page.locator('[data-delete-document]').click();
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  // Back to what was there before this flow filed anything, which is the
+  // list being empty on a journal that had no paper of its own.
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, paperBefore);
 
-  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
+  ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it takes it off the list');
 } catch (e) { fail('a place for paper', e); }
 
-/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way. This
-   one is a header with nothing behind it, which is the file the renderer
-   cannot read (ticket 55) - so what its screen has is the paper icon, the
-   line saying so, its size and the export, which is the honest thing to
-   offer for a file this app cannot draw. Type is decided by reading the
-   bytes: this file is named .png in the chooser and is a PDF anyway. */
+/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, one the
+   renderer cannot read (ticket 55) - the paper icon, the line that says
+   so, its size and the export action are what its own screen has instead.
+   Type is decided by reading the bytes: this file is named .png in the
+   chooser and is a PDF anyway.
+
+   Not asserting the list starts empty here (unlike "a place for paper"
+   above): ticket 64 seeded the demo persona with a document of its own,
+   which `fresh()` cannot clear - it lives in SQLite, not localStorage - so
+   the list already carries that row before this flow ever saves its own.
+   Our own row is found by counting (a plain increase proves the save
+   landed, race-free against the seeded row already satisfying a bare
+   `[data-list-row]` wait) and then by reading each row's own text in JS
+   rather than a Playwright text locator - `walkthrough-locators.test.ts`
+   reserves those for a deliberate exception, and there is nothing
+   deliberate about a title used only to tell two rows apart. */
 try {
   await fresh('/media/documents');
-  await emptyTheDocumentsList();
-
+  await page.locator('[data-add]').waitFor();
+  const rowCountBefore = await page.locator('[data-list-row]').count();
   const pdfBytes = Buffer.from(makeUnreadablePdf());
   page.once('filechooser', (chooser) =>
     chooser.setFiles({ name: 'scan_0143.png', mimeType: 'image/png', buffer: pdfBytes })
@@ -4239,11 +4265,16 @@ try {
   await page.locator('#document-title').fill('Postanowienie sądu');
   await fillDate(page, '#document-day', '2025-02-14');
   await page.locator('[data-save-document]').click();
-  await page.waitForSelector('[data-list-row]');
 
-  await page.locator('[data-list-row]').first().click();
-  await page.waitForSelector('[data-document-unreadable]');
-  if (await page.locator('[data-document-page]').count()) {
+  await page.waitForFunction(
+    (before) => document.querySelectorAll('[data-list-row]').length > before,
+    rowCountBefore
+  );
+  const rows = page.locator('[data-list-row]');
+  const ourIndex = (await rows.allTextContents()).findIndex((text) => text.includes('Postanowienie sądu'));
+  if (ourIndex === -1) throw new Error('the newly filed document does not appear in the list');
+  await rows.nth(ourIndex).click();
+  await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
     throw new Error('a PDF nothing could draw is showing a page image');
   }
   const sizeText = await page.locator('[data-document-size]').textContent();
@@ -4262,7 +4293,11 @@ try {
   await page.locator('[data-delete-document]').click();
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  // Not the empty notice (the seeded document is still there) - just that
+  // ours is gone, read the same way it was found above.
+  if ((await page.locator('[data-list-row]').allTextContents()).some((text) => text.includes('Postanowienie sądu'))) {
+    throw new Error('the deleted PDF document is still in the list');
+  }
 
   ok('a PDF, named .png by the picker, is filed by its real bytes, says it cannot be drawn, and exports unchanged');
 } catch (e) { fail('a document can be a PDF', e); }
@@ -4279,7 +4314,8 @@ try {
    them. */
 try {
   await fresh('/media/documents');
-  await emptyTheDocumentsList();
+  await page.locator('[data-add]').waitFor();
+  const readableBefore = await page.locator('[data-list-row]').count();
 
   page.once('filechooser', (chooser) =>
     chooser.setFiles({
@@ -4293,7 +4329,9 @@ try {
   await page.locator('#document-title').fill('Opinia psychiatryczna');
   await fillDate(page, '#document-day', '2025-06-02');
   await page.locator('[data-save-document]').click();
-  await page.waitForSelector('[data-list-row]');
+  // Counted, and found by its own text, for the reason the two flows above
+  // give: the persona's own paper is already in this list.
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, readableBefore);
 
   /* The list is still text, deliberately (ADR-0065): the page a document
      carries never appears in it, however drawable that page turned out. */
@@ -4301,7 +4339,10 @@ try {
     throw new Error('the documents list is drawing page images');
   }
 
-  await page.locator('[data-list-row]').first().click();
+  const opinionRows = page.locator('[data-list-row]');
+  const opinion = (await opinionRows.allTextContents()).findIndex((text) => text.includes('Opinia psychiatryczna'));
+  if (opinion === -1) throw new Error('the PDF that was just filed does not appear in the list');
+  await opinionRows.nth(opinion).click();
   // The thumbnail stored at import, which is what the screen has before a
   // megabyte of renderer has even loaded.
   await page.waitForSelector('[data-document-page]');
@@ -4352,7 +4393,7 @@ try {
   await page.locator('[data-delete-document]').click();
   await page.locator('[data-confirm-delete-document]').click();
   await page.waitForURL('**/media/documents');
-  await page.waitForSelector('[data-notice="documents-empty"]');
+  await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length === before, readableBefore);
 
   ok('a PDF draws its first page at import, turns to page 2 and back, and has no text layer on any of them');
 } catch (e) { fail('looking at a PDF', e); }

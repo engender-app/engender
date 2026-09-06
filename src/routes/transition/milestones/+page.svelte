@@ -31,6 +31,7 @@
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { EditorPhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
+  import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
@@ -416,6 +417,10 @@
             </div>
           {/snippet}
         </Field>
+        <!-- The target's own screen lists the documents pointing at it
+             (ticket 56, ADR-0065); the milestone stores nothing about the
+             link. -->
+        <LinkedDocuments kind="milestone" id={editor.id} />
       {/if}
     {/snippet}
   </RecordSheet>

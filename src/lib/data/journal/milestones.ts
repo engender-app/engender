@@ -225,6 +225,12 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
           id
         ]);
         await driver.run('DELETE FROM photo WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [id]);
+        // A document's link is a (kind, id) pair rather than a foreign key
+        // (documents.ts), so nothing cascades it either - ticket 56.
+        await driver.run(
+          "UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'milestone' AND target_id = ?",
+          [id]
+        );
         await driver.run('DELETE FROM milestone WHERE uuid = ?', [id]);
       });
       // After the commit, like deleteEntry: rows never come back because a
