@@ -19,8 +19,20 @@ export interface OcrImageSource {
   pickImage(source: 'gallery' | 'camera'): Promise<Uint8Array | null>;
 }
 
+/** Watching a recognition pass that is already running (phase 9 audit
+    ticket 11, ADR-0070). */
+export interface OcrWatch {
+  /** How far through the pass Tesseract says it is, or null while it is
+      still loading its language data and has nothing to divide by. */
+  onProgress?(fraction: number | null): void;
+  /** Stops the pass. Safe here and only here: recognition reads a picked
+      file and never touches the journal, so stopping means picking again
+      (ADR-0070). */
+  signal?: AbortSignal;
+}
+
 export interface OcrRecognizer {
-  recognize(image: Uint8Array): Promise<string>;
+  recognize(image: Uint8Array, watch?: OcrWatch): Promise<string>;
 }
 
 export interface OcrSaver {
@@ -44,7 +56,9 @@ export interface OcrSaver {
 export type OcrMachineState =
   | { tag: 'idle' }
   | { tag: 'picking' }
-  | { tag: 'recognizing' }
+  /** Picking the image and reading it. `fraction` is null until Tesseract
+      has loaded enough to say how far through the pass it is. */
+  | { tag: 'recognizing'; fraction: number | null }
   | { tag: 'permission-denied' }
   | { tag: 'no-rows' }
   | { tag: 'recognition-failed' }
@@ -81,6 +95,12 @@ interface OcrMachine {
   /** User confirms save. Validates, then writes rows via saver adapter. */
   save(): Promise<void>;
 
+  /** User stops the pass. Only `recognizing` answers to it: that state has
+      written nothing, so stopping means picking again, while `saving` is
+      already putting rows in the journal and has no defined rollback -
+      the same rule that makes archive import uncancellable (ADR-0070). */
+  cancel(): void;
+
   /** User closes / cancels the sheet. Returns to idle. */
   close(): void;
 }
@@ -92,6 +112,9 @@ export function createOcrMachine(
   onStateChange?: (state: OcrMachineState) => void
 ): OcrMachine {
   let currentState: OcrMachineState = { tag: 'idle' };
+  /** Live only while a pass is running, so the stop button and the
+      recognizer are talking about the same one. */
+  let attempt: AbortController | null = null;
 
   const machine: OcrMachine = {
     get state() {
@@ -108,12 +131,15 @@ export function createOcrMachine(
 
     async pickSource(source) {
       if (machine.state.tag !== 'picking') return;
-      machine.state = { tag: 'recognizing' };
+      machine.state = { tag: 'recognizing', fraction: null };
+      const running = new AbortController();
+      attempt = running;
 
       let image: Uint8Array | null;
       try {
         image = await imageSource.pickImage(source);
       } catch (err) {
+        attempt = null;
         if (isPermissionDenied(err)) {
           machine.state = { tag: 'permission-denied' };
         } else {
@@ -123,23 +149,37 @@ export function createOcrMachine(
         return;
       }
 
-      if (!image) {
-        // User cancelled the picker
+      if (!image || running.signal.aborted) {
+        // User cancelled the picker, or stopped the pass while it was open
+        attempt = null;
         machine.state = { tag: 'picking' };
         return;
       }
 
       let text: string;
       try {
-        text = await recognizer.recognize(image);
+        text = await recognizer.recognize(image, {
+          signal: running.signal,
+          onProgress: (fraction) => {
+            // Late reports from a pass the person already stopped must not
+            // put the sheet back into recognizing.
+            if (machine.state.tag === 'recognizing') machine.state = { tag: 'recognizing', fraction };
+          }
+        });
       } catch (err) {
-        if (isPermissionDenied(err)) {
+        attempt = null;
+        // Stopping is an answer, not a failure: the picker is where it
+        // leaves them, with nothing to apologise for.
+        if (running.signal.aborted) {
+          machine.state = { tag: 'picking' };
+        } else if (isPermissionDenied(err)) {
           machine.state = { tag: 'permission-denied' };
         } else {
           machine.state = { tag: 'recognition-failed' };
         }
         return;
       }
+      attempt = null;
 
       const preferredUnits = Object.fromEntries(
         PREFERRED_UNIT_ANALYTES.map((analyte) => [analyte, saver.getPreferredUnit?.(analyte) ?? undefined])
@@ -224,7 +264,14 @@ export function createOcrMachine(
       machine.state = { tag: 'saved', count: saved };
     },
 
+    cancel() {
+      if (machine.state.tag !== 'recognizing') return;
+      attempt?.abort();
+    },
+
     close() {
+      attempt?.abort();
+      attempt = null;
       machine.state = { tag: 'idle' };
     }
   };

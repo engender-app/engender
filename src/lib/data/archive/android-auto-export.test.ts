@@ -284,3 +284,60 @@ test('next due time and due checks use schedule windows and required prerequisit
   expect(isDue({ ...monthly, destinationUri: null }, Number.MAX_SAFE_INTEGER)).toBe(false);
   expect(isDue({ ...monthly, hasPassword: false }, Number.MAX_SAFE_INTEGER)).toBe(false);
 });
+
+/* Phase 9 audit ticket 11: "Back up now" on the export screen runs this,
+   and it used to swap one word on a disabled button for however long
+   packing a decade of photos takes. */
+describe('runAndroidAutoExport progress and cancellation', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(androidAutoExport.status).mockResolvedValue({
+      enabled: true,
+      schedule: 'weekly',
+      destinationUri: 'content://tree/backup',
+      destinationLabel: 'backup',
+      lastSuccessAt: null,
+      lastFailureAt: null,
+      lastFailureReason: null,
+      hasPassword: true,
+      nextDueAt: null
+    });
+    vi.mocked(androidAutoExport.deriveKey).mockResolvedValue({
+      key: btoa('01234567890123456789012345678901')
+    });
+    vi.mocked(androidAutoExport.writeBackup).mockResolvedValue({ writtenAt: 12345 });
+  });
+
+  test('reports how much of the archive has been packed', async () => {
+    const reports: { done: number; total: number }[] = [];
+
+    const result = await runAndroidAutoExport(
+      { snapshot, preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' } },
+      { recordBackup: () => {}, watch: { onProgress: (done, total) => reports.push({ done, total }) } }
+    );
+
+    expect(result.outcome).toBe('ok');
+    expect(reports.length).toBeGreaterThan(0);
+    expect(reports[reports.length - 1].done).toBe(reports[0].total);
+  });
+
+  test('a cancelled run writes nothing and stamps nothing', async () => {
+    const stop = new AbortController();
+    stop.abort();
+    let recorded: number | null = null;
+
+    const result = await runAndroidAutoExport(
+      { snapshot, preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja' } },
+      { recordBackup: (at) => (recorded = at), watch: { signal: stop.signal } }
+    );
+
+    /* Cancelling is safe here for the same reason it is on the manual
+       export: nothing has been written to the journal or to the folder, so
+       it means trying again (ADR-0070). Its own outcome rather than
+       'failed', so the screen can stay quiet about it instead of saying
+       the backup broke. */
+    expect(result.outcome).toBe('cancelled');
+    expect(androidAutoExport.writeBackup).not.toHaveBeenCalled();
+    expect(recorded).toBe(null);
+  });
+});
