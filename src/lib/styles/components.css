@@ -312,8 +312,17 @@
    read as a label that did not fit its background (Alicja, 2026-08-26, on a
    new hair-removal session and on side effects). A spacer the width of that
    padding is the standard answer: it is content, so the scroll box includes
-   it. */
-.segmented::after {
+   it.
+
+   Only on a track that actually scrolls (ticket 99 item 24, "last value
+   highlight in switcher doesn't reach the end of the bg"). On one that
+   fits - every compact track, and most of the rest - there is no end of a
+   scroll for the padding to be dropped at, and the spacer was simply an
+   extra flex item: 3px of it plus the 8px gap in front of it left 11px of
+   bare background after the last segment, against 3px of padding before
+   the first. The sliding pill matches its segment exactly, so that dead
+   strip is what read as the highlight stopping short of the end. */
+.segmented.can-scroll::after {
   content: '';
   flex: 0 0 3px;
 }
