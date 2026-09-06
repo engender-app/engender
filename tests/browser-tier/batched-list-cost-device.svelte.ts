@@ -31,7 +31,15 @@
    performance.now(), and the panel interval taken as the median of the
    deltas rather than the minimum - both the on-device measurement's own
    documented traps (a rAF timestamp can precede the call that scheduled
-   it, which reads as a faster panel than the phone is actually keeping). */
+   it, which reads as a faster panel than the phone is actually keeping).
+
+   Ticket 68 concluded `resize` should not ship on `BatchedList`'s wrapper
+   (a structural conflict with the growth sentinel, unrelated to frame
+   cost - see the ticket file), so `BatchedList.svelte` carries no
+   `use:resize` today and this probe, run as committed, measures a batch
+   arriving with no animation at all. To reproduce the numbers the ticket
+   recorded, temporarily add `use:resize` to the div wrapping `ListCard` in
+   `BatchedList.svelte` before running this file, and revert it after. */
 import { mount } from 'svelte';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
@@ -58,16 +66,12 @@ const items = Array.from({ length: TOTAL }, (_, index) => ({
   subtitle: `2026-0${(index % 9) + 1}-1${(index % 27) + 1} · a note about how it went`
 }));
 
-const host = document.createElement('div');
-document.body.append(host);
+const host = document.querySelector<HTMLElement>('#region')!;
 mount(Fixture, { target: host, props: { items } });
 
-const readout = document.createElement('div');
-readout.style.cssText =
-  'position: fixed; inset: 0; background: #000; color: #0f0; font: 20px monospace; ' +
-  'padding: 24px; white-space: pre; z-index: 999;';
-readout.textContent = 'measuring...';
-document.body.append(readout);
+// Hidden (batched-list-cost-device.html's default) until finish() below
+// reveals it - shown early would just be an empty <dl> over the list.
+const readout = document.querySelector<HTMLElement>('#readout')!;
 
 const region = document.querySelector<HTMLElement>('[data-app-scroll-region]')!;
 const rowCount = () => document.querySelectorAll('[data-probe-row]').length;
@@ -159,16 +163,18 @@ await settled();
     const over = sorted.filter((delta) => delta > interval * 1.5).length;
     const hz = Math.round(1000 / interval);
 
-    readout.textContent = [
-      `rows rendered      ${startCount} -> ${finalCount} of ${TOTAL}`,
-      `boundaries crossed ${crossed}`,
-      `frames sampled     ${sorted.length}`,
-      `panel              ${hz} Hz`,
-      `median frame       ${interval.toFixed(2)} ms`,
-      `p95 frame          ${at(0.95).toFixed(2)} ms`,
-      `worst frame        ${sorted[sorted.length - 1].toFixed(2)} ms`,
-      `dropped (>1.5x)    ${over} of ${sorted.length}`
-    ].join('\n');
+    const row = (label: string, value: string) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+    readout.innerHTML = `<dl>${[
+      row('rows rendered', `${startCount} &rarr; ${finalCount} of ${TOTAL}`),
+      row('boundaries crossed', `${crossed}`),
+      row('frames sampled', `${sorted.length}`),
+      row('panel', `${hz} Hz`),
+      row('median frame', `${interval.toFixed(2)} ms`),
+      row('p95 frame', `${at(0.95).toFixed(2)} ms`),
+      row('worst frame', `${sorted[sorted.length - 1].toFixed(2)} ms`),
+      row('dropped (>1.5x)', `${over} of ${sorted.length}`)
+    ].join('')}</dl>`;
+    readout.style.display = 'block';
     document.body.setAttribute('data-cost-ready', '');
   }
 }
