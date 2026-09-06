@@ -28,7 +28,7 @@ export interface PassageFigures {
   wordsPerMinute: number;
 }
 
-export interface PassageTake {
+interface PassageTake {
   quality: QualityReport;
   figures: PassageFigures | null;
   /** The passage's pitch over time, downsampled and encoded for the row's
@@ -41,7 +41,7 @@ export interface PassageTake {
   pitchTrack: string | null;
 }
 
-export interface VowelTake {
+interface VowelTake {
   quality: QualityReport;
   /** Null when no vowel could be measured, which a take can be while still
       clearing the gate - a benchmark then keeps its passage and stores no

@@ -1,11 +1,11 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
-export interface AndroidPrintJob {
+interface AndroidPrintJob {
   /** What the print dialog and the resulting file are named. */
   jobName: string;
 }
 
-export interface AndroidPrintBridge {
+interface AndroidPrintBridge {
   print(job: AndroidPrintJob): Promise<void>;
 }
 

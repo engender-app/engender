@@ -21,7 +21,7 @@ import { GARMENT_CATEGORIES, type GarmentCategoryKey } from '../garmentCategorie
 import type { SizeRecord } from '../types';
 import { flatArea } from './flatArea';
 
-export interface SizeRecordInput {
+interface SizeRecordInput {
   id?: string;
   epochDay: number;
   category: string;

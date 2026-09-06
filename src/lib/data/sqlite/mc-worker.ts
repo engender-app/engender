@@ -70,6 +70,8 @@ let openError: Error | null = null;
 // keep the journal's contents unreadable at rest (ADR-0018), and a
 // directory literally named after "gender-diary.sqlite3" would defeat the
 // same closed-app OPFS scan that proves nothing plaintext survives there.
+/* poolDirectory stays exported only for legacy-cipher-worker.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export function poolDirectory(path: string): string {
   let hash = 2166136261; // FNV-1a, just for a short stable non-identifying tag.
   for (let i = 0; i < path.length; i++) {

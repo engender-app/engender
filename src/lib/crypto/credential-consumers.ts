@@ -1,8 +1,8 @@
 import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS, type Argon2Params } from './params.ts';
 
-export type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf' | 'recovery-key';
+type CredentialProfile = 'archive-password' | 'journal-passphrase' | 'pin-encryption' | 'biometric-prf' | 'recovery-key';
 
-export type CredentialConsumer =
+type CredentialConsumer =
   | 'journal-passphrase-setup'
   | 'journal-passphrase-add'
   | 'journal-passphrase-unlock'
@@ -26,13 +26,15 @@ interface CredentialProfileRegistration {
   params: Argon2Params;
 }
 
-export interface CredentialConsumerRegistration {
+interface CredentialConsumerRegistration {
   consumer: CredentialConsumer;
   profile: CredentialProfile;
   selectionRule: SelectionRule;
   purpose: string;
 }
 
+/* CREDENTIAL_PROFILES stays exported only for its own test (AU-09 test-only
+   review). */
 export const CREDENTIAL_PROFILES = {
   'archive-password': {
     purpose: 'Protects an archive that can leave the device.',
@@ -85,6 +87,8 @@ export const CREDENTIAL_PROFILES = {
   }
 } as const satisfies Record<CredentialProfile, CredentialProfileRegistration>;
 
+/* CREDENTIAL_CONSUMERS stays exported only for its own test (AU-09 test-only
+   review). */
 export const CREDENTIAL_CONSUMERS = [
   {
     consumer: 'journal-passphrase-setup',
@@ -189,6 +193,8 @@ const consumersByName = new Map<string, CredentialConsumerRegistration>(
   CREDENTIAL_CONSUMERS.map((entry) => [entry.consumer, entry])
 );
 
+/* UnknownCredentialConsumerError stays exported only for its own test (AU-09
+   test-only review). */
 export class UnknownCredentialConsumerError extends Error {
   constructor(consumer: string) {
     super(`unknown credential consumer: ${consumer}`);
@@ -196,6 +202,8 @@ export class UnknownCredentialConsumerError extends Error {
   }
 }
 
+/* CredentialConsumerMismatchError stays exported only for its own test (AU-09
+   test-only review). */
 export class CredentialConsumerMismatchError extends Error {
   constructor(message: string) {
     super(message);
@@ -203,6 +211,8 @@ export class CredentialConsumerMismatchError extends Error {
   }
 }
 
+/* credentialConsumer stays exported only for its own test (AU-09 test-only
+   review). */
 export function credentialConsumer(consumer: string): CredentialConsumerRegistration {
   const entry = consumersByName.get(consumer);
   if (!entry) throw new UnknownCredentialConsumerError(consumer);

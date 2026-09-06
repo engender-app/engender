@@ -45,7 +45,7 @@ import type { SideEffectsArea } from './sideEffects';
 /** A regimen episode as the summary prints it - its own stored end day
     (types.ts), unchanged: an episode's end no longer needs deriving
     against the full history the way it did before ticket 38 stored it. */
-export type ClinicianSummaryEpisode = RegimenEpisode;
+type ClinicianSummaryEpisode = RegimenEpisode;
 
 /** A procedure as the summary prints it (phase 5 ticket 07): the record
     itself, plus the two things it owns elsewhere - its recovery checklist's
@@ -67,7 +67,7 @@ export interface ClinicianSummaryFinishedArea {
   epochDay: number;
 }
 
-export interface ClinicianSummary {
+interface ClinicianSummary {
   regimenEpisodes: ClinicianSummaryEpisode[];
   doses: DoseEvent[];
   labResults: LabResult[];
@@ -95,7 +95,7 @@ export type ClinicianSummarySectionKey = keyof ClinicianSummary;
     built, so a section reads exactly what its own screen does. One type
     rather than five parameters, because every section is handed all of them
     and the section that registers next will want a sixth. */
-export interface ClinicianSummaryAreas {
+interface ClinicianSummaryAreas {
   areaStates: AreaStatesArea;
   regimen: RegimenArea;
   doses: DosesArea;
@@ -111,7 +111,7 @@ export interface ClinicianSummaryAreas {
     ticket 39, ADR-0031). Empty by default - most sections ignore it
     entirely, the same way most ignore fromEpochDay/toEpochDay's siblings
     like `procedures` do. */
-export interface ClinicianSummaryReading extends ClinicianSummaryAreas {
+interface ClinicianSummaryReading extends ClinicianSummaryAreas {
   fromEpochDay: number;
   toEpochDay: number;
   excludedDrugs: ReadonlySet<string>;
@@ -120,6 +120,8 @@ export interface ClinicianSummaryReading extends ClinicianSummaryAreas {
 /** One part of the summary's declaration that it prints. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `ClinicianSummary` has never heard of. */
+/* ClinicianSummarySection stays exported only for its own test (AU-09
+   test-only review). */
 export interface ClinicianSummarySection {
   key: string;
   tables: readonly TableName[];
@@ -295,11 +297,13 @@ type Unregistered = Exclude<ClinicianSummarySectionKey, (typeof SECTIONS)[number
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
+/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test (AU-09
+   test-only review). */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
 
 /** Every section's key, in the order they print - what the screen walks to
     lay a summary out, so it never names a section itself. */
-export const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
+const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
 
 /** Every table any section reads, de-duplicated: what
     `journal.clinicianSummary.getSummary` depends on, single-sourced here

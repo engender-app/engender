@@ -30,6 +30,8 @@ import type { NormalizedPhoto } from '../journal/photos';
 /** The long edge of a stored photo, and of its thumbnail. 2048 is
     ADR-0008's; the thumbnail is sized for the Progress grid at 2x, so
     that screen never decodes a full photo to draw a 104px tile. */
+/* MAX_EDGE stays exported only for photos-probe.ts, which cross-checks against
+   it (AU-09 test-only review). */
 export const MAX_EDGE = 2048;
 export const THUMB_EDGE = 320;
 
@@ -43,7 +45,7 @@ export const THUMB_QUALITY = 0.7;
     person who picked it. */
 /** As with UnsupportedArchiveKind: the screen words its message from this,
     while the message itself is the English diagnostic for the console. */
-export type UnsupportedImageKind = 'heic' | 'unreadable';
+type UnsupportedImageKind = 'heic' | 'unreadable';
 
 export class UnsupportedImageError extends Error {
   readonly kind: UnsupportedImageKind;

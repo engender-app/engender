@@ -14,6 +14,8 @@
 
 import { parseRecoveryWrap, serializeRecoveryWrap, type RecoveryWrap } from '../crypto/recoveryWrap';
 
+/* RECOVERY_KEY_FILE stays exported only for reset.test.ts, which cross-checks
+   against it (AU-09 test-only review). */
 export const RECOVERY_KEY_FILE = 'recovery-key.json';
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';

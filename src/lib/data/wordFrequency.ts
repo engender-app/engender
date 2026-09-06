@@ -60,9 +60,9 @@ export interface WordFrequencySource {
 /** A word and how many times it occurred, most-frequent first. Ties break
     alphabetically so the order is stable across two runs over the same
     notes rather than depending on iteration order. */
-export type WordCount = readonly [word: string, count: number];
+type WordCount = readonly [word: string, count: number];
 
-export type NoteLanguage = 'en' | 'pl';
+type NoteLanguage = 'en' | 'pl';
 
 /* Runs of letters, deliberately not letters-and-digits the way
    searchQuery.ts's TOKENS is: a search index wants "2026" and "mg"
@@ -151,7 +151,7 @@ function languageOf(note: string, words: readonly string[]): NoteLanguage {
     in, and the words left after that language's stopwords are dropped. Both
     come out of a single pass over the note, and both are what everything
     downstream asks - the counting, and the screen's caveat about Polish. */
-export interface AnalysedNote {
+interface AnalysedNote {
   readonly language: NoteLanguage;
   /** Lowercased content words, in the order the note wrote them. Diacritics
       are kept - the count key is a lowercased word, never a folded one
@@ -210,6 +210,8 @@ export function countWords(
 /** Which language a note is in, on its own. The screen reads the same
     answer off `AnalysedNote.language` rather than calling this, since by
     then the note has already been read. */
+/* noteLanguage stays exported only for its own test (AU-09 test-only
+   review). */
 export function noteLanguage(note: string): NoteLanguage {
   return languageOf(note, tokenize(note));
 }

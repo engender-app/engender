@@ -9,7 +9,7 @@
 
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
-export interface AndroidDeviceResetBridge {
+interface AndroidDeviceResetBridge {
   wipe(): Promise<void>;
 }
 

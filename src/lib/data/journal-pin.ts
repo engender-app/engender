@@ -50,6 +50,7 @@ import { androidPinBinding } from './pin-binding-bridge';
 
 /** Where a PIN keystore's two halves live. Defaults to this platform's own;
     the tests hand in memory. */
+/* PinPorts stays exported only for its own test (AU-09 test-only review). */
 export interface PinPorts {
   /** The key store a wrap written now binds to. */
   binding: DeviceBinding;
@@ -84,6 +85,7 @@ const platformPorts = (): PinPorts =>
 /** Exactly four digits (crypto/params.ts states why four). A floor and a
     ceiling both, because the pad collects a fixed count and submits itself on
     the last one. */
+/* isValidPin stays exported only for its own test (AU-09 test-only review). */
 export function isValidPin(pin: string): boolean {
   return new RegExp(`^[0-9]{${PIN_LENGTH}}$`).test(pin);
 }

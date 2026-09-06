@@ -14,7 +14,7 @@ import { vocabulary } from './vocabulary';
 
 /** How many tags a row draws before the rest become a count. Four, which is
     what the entry card has always drawn. */
-export const TAG_CAP = 4;
+const TAG_CAP = 4;
 
 /** A tag whose id no longer resolves is dropped rather than drawn as its
     key: the id is not a word, and a row is not where a missing tag gets

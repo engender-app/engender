@@ -25,7 +25,7 @@ import type { Entry } from './types';
     milestones above them. */
 export const RECENT_ENTRY_CAP = 5;
 
-export interface RecentDayGroup {
+interface RecentDayGroup {
   epochDay: number;
   /** The entries to draw, already cut to whatever is left of the cap. */
   entries: Entry[];

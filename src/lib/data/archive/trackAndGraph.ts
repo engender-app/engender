@@ -28,6 +28,8 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { contentUuid, mintUuid } from '../journal/support';
 import type { ArchiveJournal, ArchiveMeasurement, ArchiveMeasurementType } from './payload';
 
+/* TrackAndGraphCsvError stays exported only for its own test (AU-09 test-only
+   review). */
 export class TrackAndGraphCsvError extends Error {
   constructor(message: string) {
     super(`Track & Graph CSV ${message}`);
@@ -188,7 +190,7 @@ function localDay(timestamp: string, rowNumber: number): number {
   return epochDay;
 }
 
-export interface TrackAndGraphValue {
+interface TrackAndGraphValue {
   value: number;
   /** `seconds` for a duration, by construction; empty for everything else -
       this source has no unit anywhere in its own format (spec's own
@@ -213,6 +215,8 @@ export interface TrackAndGraphValue {
    single `value:label` string never has. */
 const DURATION_PREFIX = /^(-?\d*):(-?\d{2}):(-?\d{2})/;
 
+/* parseTrackAndGraphValue stays exported only for its own test (AU-09
+   test-only review). */
 export function parseTrackAndGraphValue(raw: string): TrackAndGraphValue | null {
   const trimmed = raw.trim();
   const duration = DURATION_PREFIX.exec(trimmed);

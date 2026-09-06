@@ -17,16 +17,21 @@ import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
     dots and the thigh dots were never on screen at once, which is a
     rotation map that cannot answer the question it exists for. 420px leaves
     the figure and its caption inside that window. */
+/* MAP_WIDTH, MAP_HEIGHT stay exported only for their own test (AU-09 test-only
+   review). */
 export const MAP_WIDTH = 280;
 export const MAP_HEIGHT = 420;
 
 /** `--touch-target` in base.css, which this layout is spaced against and
     cannot read. The test next door holds the two in step. */
+/* MAP_TOUCH_TARGET stays exported only for its own test (AU-09 test-only
+   review). */
 export const MAP_TOUCH_TARGET = 48;
 
 /** The clear space Android asks for between two touch targets, on top of
     the targets themselves. Twelve dots on one small figure is exactly the
     layout where that guidance earns its keep. */
+/* MAP_TOUCH_GAP stays exported only for its own test (AU-09 test-only review). */
 export const MAP_TOUCH_GAP = 8;
 
 /** Where each region sits on the silhouette, as percentages of the box.
@@ -66,6 +71,7 @@ export function sitePosition(site: InjectionSite): { top: number; left: number }
 
 /** The same point in CSS px at the size the map actually renders at, which
     is the only unit a touch target can be compared against. */
+/* siteCentre stays exported only for its own test (AU-09 test-only review). */
 export function siteCentre(site: InjectionSite): { x: number; y: number } {
   const { top, left } = sitePosition(site);
   return { x: (left / 100) * MAP_WIDTH, y: (top / 100) * MAP_HEIGHT };

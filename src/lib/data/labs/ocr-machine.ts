@@ -72,7 +72,7 @@ export type OcrMachineState =
 // Machine
 // ---------------------------------------------------------------------------
 
-export interface OcrMachine {
+interface OcrMachine {
   /** Current machine state. Wrapping this object in $state does not make
       reads of `.state` reactive - every write here happens on the object
       this factory closed over, not on a caller's proxy. Pass an

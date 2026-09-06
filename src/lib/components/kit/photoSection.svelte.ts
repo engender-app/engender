@@ -17,7 +17,7 @@ import { photoReview } from '$lib/stores/photoReview.svelte';
 import { addPickedPhoto, findPhotoById } from './photoSection';
 import { recordEditor } from './recordEditor.svelte';
 
-export interface PhotoSectionOptions<TPhoto extends { id: string }> {
+interface PhotoSectionOptions<TPhoto extends { id: string }> {
   /** The owner's current photos, already reactive. */
   photos(): TPhoto[];
   /** Store a newly picked or captured photo against this owner. */

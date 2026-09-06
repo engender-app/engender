@@ -10,18 +10,18 @@ import { androidAutoExport, type AutoExportStatus } from './android-auto-export-
 // Large archives can overflow argument limits if one giant spread is used.
 const BASE64_CHUNK = 0x8000;
 
-export interface AndroidAutoExportSource {
+interface AndroidAutoExportSource {
   snapshot: ArchiveSnapshot;
   preferences: PreferenceValues;
 }
 
-export type AndroidAutoExportResult =
+type AndroidAutoExportResult =
   | { outcome: 'ok'; writtenAt: number }
   | { outcome: 'needs-destination' }
   | { outcome: 'cancelled' }
   | { outcome: 'failed'; reason: string };
 
-export interface AndroidAutoExportDeps {
+interface AndroidAutoExportDeps {
   now?(): number;
   recordBackup(at: number): void;
   /** How far the pack has got, and a way to stop it (phase 9 audit ticket

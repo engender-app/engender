@@ -71,7 +71,7 @@ function connectWorker() {
     handles belong to one at a time and the app's driver must not be
     holding the file this is about to replace - so a conversion runs, closes
     and only then lets boot open what it wrote. */
-export interface ConversionTarget {
+interface ConversionTarget {
   writeFrom(plaintext: Uint8Array): Promise<void>;
   close(): Promise<void>;
 }

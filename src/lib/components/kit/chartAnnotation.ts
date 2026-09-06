@@ -69,7 +69,7 @@ function kindWord(kind: ChartAnnotationKind): string {
     an annotation too, so a caption listing both wrote "top surgery, top
     surgery" and looked like a bug in the query rather than two marks that
     mean different things. */
-export function annotationName(annotation: ChartAnnotation): string {
+function annotationName(annotation: ChartAnnotation): string {
   const name = recordName(annotation);
   if (!name) return kindWord(annotation.kind);
   return annotation.kind === 'recovery' ? m.chart_annotation_recovery_of({ name }) : name;

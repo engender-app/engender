@@ -13,8 +13,10 @@
 
 import { activeTabKey } from './active-tab';
 
-export type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
+type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
 
+/* NavigationFacts stays exported only for its own test (AU-09 test-only
+   review). */
 export interface NavigationFacts {
   from: string | null;
   to: string;

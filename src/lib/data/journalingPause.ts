@@ -10,7 +10,7 @@
 
 import { spanCoversDay } from './span';
 
-export interface JournalingPauseRange {
+interface JournalingPauseRange {
   id?: string;
   startEpochDay: number;
   endEpochDay: number | null;

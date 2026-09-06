@@ -64,13 +64,13 @@ export interface TagInsight {
   withoutAvg: number;
 }
 
-export interface RecapMilestone {
+interface RecapMilestone {
   id: string;
   name: string;
   epochDay: number;
 }
 
-export interface DimensionChange {
+interface DimensionChange {
   key: string;
   from: number;
   to: number;
@@ -89,7 +89,7 @@ export interface DimensionChange {
     figure on it coming back from one call is what stops two of them
     disagreeing about the same range. The cost is that `/recap` runs the
     query below without rendering it - one bounded read, four rows. */
-export interface RecapPhoto extends Photo {
+interface RecapPhoto extends Photo {
   epochDay: number;
 }
 
@@ -97,7 +97,7 @@ export interface RecapPhoto extends Photo {
     row on the narrowest screen the app supports and reads as a handful
     rather than a gallery; the photo grid (media/photos) is where every
     photo lives. */
-export const RECAP_PHOTO_HIGHLIGHTS = 4;
+const RECAP_PHOTO_HIGHLIGHTS = 4;
 
 export interface Recap {
   entryCount: number;
@@ -282,7 +282,7 @@ export interface RegionReading {
 
 /** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
     a day's average mood has to clear for on-this-day (CONTEXT: Good day). */
-export const GOOD_DAY_MOOD_FLOOR = 3;
+const GOOD_DAY_MOOD_FLOOR = 3;
 
 /** The body-region intensity scale is 0 to 100 (bodyMap.ts); 50 is its
     midpoint and the bar a single region's euphoria has to clear, on any one

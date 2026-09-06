@@ -19,9 +19,9 @@ import { isSealedUntil } from './sealedUntil';
 import type { LetterSeal } from './journal/letters';
 import type { Letter } from './types';
 
-export const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
-export const READ_LETTERS_STORAGE_KEY = 'gender-diary-read-letter-ids';
-export const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
+const READ_LETTERS_STORAGE_KEY = 'gender-diary-read-letter-ids';
+const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;
@@ -33,6 +33,8 @@ export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpoc
   return isSealedUntil(letter.unlockEpochDay, todayEpochDay);
 }
 
+/* getReadLetterIds stays exported for its own test, and cross-checked in
+   ready-letter-tile.test.ts (AU-09 test-only review). */
 export function getReadLetterIds(storage?: Storage): Set<string> {
   const s = resolveStorage(storage);
   if (!s) return new Set();
@@ -81,6 +83,8 @@ export function snoozeLetterTile(nowMs: number = Date.now(), storage?: Storage):
   }
 }
 
+/* clearLetterSnooze stays exported for its own test, and cross-checked in
+   ready-letter-tile.test.ts (AU-09 test-only review). */
 export function clearLetterSnooze(storage?: Storage): void {
   const s = resolveStorage(storage);
   if (!s) return;

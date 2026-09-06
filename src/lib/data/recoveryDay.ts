@@ -16,7 +16,7 @@
 /** How far a procedure is from its surgery date, or that it has none yet.
     `surgeryDay` is its own case rather than `since` with zero days because
     the wording differs, the same split milestoneStatus gives `today`. */
-export type RecoveryDay =
+type RecoveryDay =
   | { type: 'unscheduled' }
   | { type: 'upcoming'; days: number }
   | { type: 'surgeryDay' }

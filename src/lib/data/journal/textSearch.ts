@@ -96,14 +96,14 @@ import type { ArchiveSectionName } from './archiveSections';
     `null` is for an area whose text belongs to no day at all: a roadmap
     goal, an affirmation, a checklist nobody dated. Those are never narrowed
     by a range and sort after everything that has a date. */
-export type SearchDate =
+type SearchDate =
   | { kind: 'epochDay'; column: string }
   | { kind: 'timestamp'; column: string }
   | null;
 
 /** What the caller asks of a search. `today` arrives rather than being read
     off a clock, for the reason every dated read here takes it (ADR-0001). */
-export interface SearchRequest {
+interface SearchRequest {
   /** What somebody typed, unfolded. */
   query: string;
   today: number;
@@ -149,7 +149,7 @@ interface DeclaredArea<Key extends string, Covers extends readonly ArchiveSectio
 
 /** One declaration with its literals erased, which is what the list holds
     and what everything below reads. */
-export type SearchArea = DeclaredArea<string, readonly ArchiveSectionName[]>;
+type SearchArea = DeclaredArea<string, readonly ArchiveSectionName[]>;
 
 /** Keeps the key and `covers` from widening at the declaration site.
 
@@ -522,6 +522,8 @@ type Covered = (typeof AREAS)[number]['covers'][number];
     a dose event's site and vehicle come from closed lists.
 
     *Its own reason*, for the two that need one. */
+/* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
+   review). */
 export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   entries: 'searched through the entry FTS index, by the screen’s own read (ADR-0005)',
 
@@ -598,10 +600,13 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   wordIgnore: 'a word already searchable in the note it came from, not new text of its own'
 };
 
+/* SEARCH_AREAS stays exported only for its own test (AU-09 test-only review). */
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;
 
 /** Every area's key, in the order they are declared - which is the order
     hits are grouped in on the screen, so it never names an area itself. */
+/* SEARCH_AREA_KEYS stays exported for its own test, and cross-checked in
+   measure.ts (AU-09 test-only review). */
 export const SEARCH_AREA_KEYS: readonly SearchAreaKey[] = AREAS.map((a) => a.key);
 
 /** Every table any area reads, de-duplicated: what `textSearch.search`
@@ -692,7 +697,7 @@ interface HitRow extends Record<string, unknown> {
   context: string | null;
 }
 
-export interface SearchResults {
+interface SearchResults {
   hits: SearchHit[];
   /** How many hits there are in total, which is not the page's length: the
       screen states how many results a query found and shows a page of them.

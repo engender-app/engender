@@ -65,7 +65,7 @@ export interface PitchFrame {
   hz: number | null;
 }
 
-export interface PitchStats {
+interface PitchStats {
   medianHz: number;
   /** The 10th and 90th percentile of the voiced frames - see the header. */
   p10Hz: number;
@@ -208,7 +208,7 @@ export function pitchAt(
   return frameF0(samples, from, windowLength, minTau, maxTau, sampleRate, difference, normalized);
 }
 
-export interface FrameGeometry {
+interface FrameGeometry {
   windowLength: number;
   maxTau: number;
   minTau: number;

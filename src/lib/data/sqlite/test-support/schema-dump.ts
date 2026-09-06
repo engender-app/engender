@@ -21,7 +21,7 @@ import type { DatabaseSync } from 'node:sqlite';
     to one space, because `ALTER TABLE ... ADD COLUMN` appends its column after
     whatever whitespace the last one ended on - `updated_at INTEGER NOT NULL ,
     trashed_at INTEGER` - and no hand-written column list would have that. */
-export function normalizeSql(sql: string): string {
+function normalizeSql(sql: string): string {
   const pieces: string[] = [];
   let plain = '';
   const flush = () => {

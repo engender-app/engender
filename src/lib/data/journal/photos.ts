@@ -48,7 +48,7 @@ export interface NormalizedPhoto {
 /** Exactly one owner, mirroring the photo table's CHECK constraint. An
     entry is addressed by its rowid and a milestone by its uuid, which is
     what each area already speaks (ADR-0002). */
-export type PhotoOwner = { entryId: number; milestoneId?: never } | { milestoneId: string; entryId?: never };
+type PhotoOwner = { entryId: number; milestoneId?: never } | { milestoneId: string; entryId?: never };
 
 /** A photo placed in time, for the Progress screen (PRD F27). The date comes
     from whichever owner the row hangs off, and `milestoneName` is that
@@ -85,7 +85,7 @@ export interface PhotosArea {
 type PhotoRow = { uuid: string; file_path: string; starred: number };
 
 export type StagedPhoto = { id: string; fileName: string };
-export type PhotoColumns = { entryId: number | null; milestoneId: number | null };
+type PhotoColumns = { entryId: number | null; milestoneId: number | null };
 
 const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_path, starred: bool(row.starred) });
 
@@ -349,7 +349,7 @@ export async function insertStagedPhoto(
   return photo.id;
 }
 
-export async function attachPhoto(
+async function attachPhoto(
   driver: SqliteDriver,
   files: PhotoFileStore,
   owner: PhotoOwner,

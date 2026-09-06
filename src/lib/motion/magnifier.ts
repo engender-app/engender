@@ -33,7 +33,7 @@ const PEAK = 1.24;
     the same reason (Alicja, phase 5 ticket 99, round 4). 1.6 under the
     finger, on the sweep the fan's slide already answers, is what makes the
     row read as the same control. */
-export const ROW_PEAK = 1.6;
+const ROW_PEAK = 1.6;
 
 /** How far the lift reaches, in mood cells. Under 2 on purpose: at 1.7 an
     immediate neighbour comes up about a third of the way and the face two

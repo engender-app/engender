@@ -27,7 +27,7 @@ export interface BarRow {
 
 /** What BarRows.svelte's track's full length is measured against - see the
     component's own prop doc for what `leader` and `track` mean. */
-export type BarMeasure = 'leader' | 'track';
+type BarMeasure = 'leader' | 'track';
 
 export interface DrawnBar extends BarRow {
   /** This bar's length, 0-100 - already decided by the measure. */

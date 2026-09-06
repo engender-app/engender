@@ -84,9 +84,13 @@
 export const HAIR_SCALES = ['norwood_hamilton', 'sinclair', 'other'] as const;
 export type HairScale = (typeof HAIR_SCALES)[number];
 
+/* NORWOOD_HAMILTON_STAGES stays exported only for its own test (AU-09
+   test-only review). */
 export const NORWOOD_HAMILTON_STAGES = ['1', '2', '2a', '3', '3v', '3a', '4', '4a', '5', '5a', '6', '7'] as const;
 export type NorwoodHamiltonStage = (typeof NORWOOD_HAMILTON_STAGES)[number];
 
+/* SINCLAIR_GRADES stays exported only for its own test (AU-09 test-only
+   review). */
 export const SINCLAIR_GRADES = ['1', '2', '3', '4', '5'] as const;
 export type SinclairGrade = (typeof SINCLAIR_GRADES)[number];
 
@@ -96,6 +100,7 @@ const GRADES: Record<HairScale, readonly string[]> = {
   other: []
 };
 
+/* isHairScale stays exported only for its own test (AU-09 test-only review). */
 export const isHairScale = (value: string): value is HairScale =>
   (HAIR_SCALES as readonly string[]).includes(value);
 

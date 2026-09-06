@@ -18,7 +18,7 @@
 
 import { mayFireAt, type QuietHours } from '../../unprompted/quietHours';
 
-export interface FailureNoticeStep {
+interface FailureNoticeStep {
   /** Post the notice now. */
   post: boolean;
   /** What `heldExportFailureNotice` should be after this step. */
