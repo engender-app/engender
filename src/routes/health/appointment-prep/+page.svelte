@@ -226,11 +226,16 @@
             : dayShort(upcomingAppointment.epochDay)}
           href="/health/appointments"
         />
-        {#if debriefEntryId !== null}
+        <!-- The debrief belongs to the appointment behind, while the row
+             above names the one ahead, so it carries its own day: adjacency
+             alone would read as "your debrief of the 18th", which is a visit
+             that has not happened (ticket 58). -->
+        {#if lastAppointment !== null && debriefEntryId !== null}
           <ListRow
             key="debrief"
             icon="book"
             title={m.appointment_debrief_row()}
+            subtitle={dayShort(lastAppointment.epochDay)}
             href={`/entry/${debriefEntryId}`}
           />
         {/if}
