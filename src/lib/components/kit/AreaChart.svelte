@@ -39,8 +39,8 @@
   import { untrack } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
+  import { areaPath } from '$lib/charts/areaPath';
   import {
-    areaPath,
     bridgeGaps,
     lerpSamples,
     resample,
