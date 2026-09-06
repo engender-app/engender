@@ -54,11 +54,33 @@ export type KeyDerivation = (
   kdf: Argon2Params
 ) => Promise<Uint8Array<ArrayBuffer>>;
 
+/** Watching a pack that is already under way (phase 9 audit ticket 11,
+    ADR-0070). Both halves are optional and neither changes what comes out:
+    an export packed without them is byte for byte the one packed with. */
+export interface PackWatch {
+  /** Plaintext body bytes handed to the encryptor, against the body's
+      whole length. The total is known before the first chunk, because it
+      is what settles the chunk count (ADR-0007), and it never moves.
+
+      Bytes rather than photos, because a journal whose photos are all
+      thumbnails and one that is mostly full-size JPEG are the same number
+      of photos and very different amounts of work - and because the
+      payload's own JSON is real work too on a decade of entries. */
+  onProgress?(done: number, total: number): void;
+  /** Stops the pack. Safe at any point: an interrupted export has written
+      nothing to the journal, so cancelling only means trying again
+      (ADR-0070). The abort surfaces to the caller as an AbortError from
+      whatever is draining the generator. */
+  signal?: AbortSignal;
+}
+
 export async function* packArchive(
   contents: ArchiveContents,
   keyOrPassword: string | KeyDerivation,
-  kdf: Argon2Params = resolveCredentialProfile('archive-export')
+  kdf: Argon2Params = resolveCredentialProfile('archive-export'),
+  watch: PackWatch = {}
 ): AsyncGenerator<Uint8Array<ArrayBuffer>> {
+  watch.signal?.throwIfAborted();
   const encoded = await encodeArchive(contents);
 
   const salt = randomSalt();
@@ -76,8 +98,28 @@ export async function* packArchive(
       chunkSize: CHUNK_SIZE,
       totalChunks: chunkCountFor(encoded.bodyLength, CHUNK_SIZE)
     },
-    encoded.body
+    watched(encoded.body, encoded.bodyLength, watch)
   );
+}
+
+/* Counted on the way in rather than on the way out: what comes out of
+   frameArchive is ciphertext plus a header and a tag per chunk, so its
+   lengths would report against a total the body's own length is not. The
+   count leads the encryption by at most one chunk, which is the shape of
+   every streamed progress report. */
+async function* watched(
+  body: AsyncGenerator<Uint8Array>,
+  bodyLength: number,
+  watch: PackWatch
+): AsyncGenerator<Uint8Array> {
+  let done = 0;
+  watch.onProgress?.(0, bodyLength);
+  for await (const piece of body) {
+    watch.signal?.throwIfAborted();
+    done += piece.length;
+    watch.onProgress?.(done, bodyLength);
+    yield piece;
+  }
 }
 
 /** Reads an archive far enough to hand back its payload. The header is

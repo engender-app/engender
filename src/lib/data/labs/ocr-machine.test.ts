@@ -506,3 +506,79 @@ describe('OcrMachine – preferred-unit default derives from the allowlist', () 
     expect(getPreferredUnit).toHaveBeenCalledWith('progesterone');
   });
 });
+
+/* Phase 9 audit ticket 11. Recognition on a phone photo of a lab report is
+   seconds to tens of seconds and said nothing but "Reading…" while it ran.
+   Tesseract's own logger reports {status, progress} through the pass
+   (ocr-engine.ts), so this state carries the fraction rather than the
+   screen keeping a second copy of it beside the machine. */
+describe('recognition progress and cancelling', () => {
+  test('starts with no fraction and carries whatever the recognizer reports', async () => {
+    const seen: (number | null)[] = [];
+    const recognizer: OcrRecognizer = {
+      async recognize(_image, watch) {
+        watch?.onProgress?.(0.4);
+        watch?.onProgress?.(0.9);
+        return GOOD_OCR_TEXT;
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizer, saverWith(), (state) => {
+      if (state.tag === 'recognizing') seen.push(state.fraction);
+    });
+
+    m.open();
+    await m.pickSource('gallery');
+
+    // Null first: the pass is under way before Tesseract has anything to
+    // divide by, which is the indeterminate case rather than 0%.
+    expect(seen).toEqual([null, 0.4, 0.9]);
+  });
+
+  test('cancelling during recognition goes back to the picker', async () => {
+    let stopped = false;
+    let began: () => void;
+    const started = new Promise<void>((resolve) => (began = resolve));
+    const recognizer: OcrRecognizer = {
+      recognize(_image, watch) {
+        return new Promise((_resolve, reject) => {
+          watch?.signal?.addEventListener('abort', () => {
+            stopped = true;
+            reject(new DOMException('stopped', 'AbortError'));
+          });
+          began();
+        });
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizer, saverWith());
+
+    m.open();
+    const running = m.pickSource('gallery');
+    expect(m.state.tag).toBe('recognizing');
+    // Waited for on purpose: stopping while the file chooser is still open
+    // never reaches the recognizer at all, and this test is about the stop
+    // that does.
+    await started;
+    m.cancel();
+    await running;
+
+    /* Not 'recognition-failed': nothing failed, the person stopped it, and
+       the picker is where stopping leaves them. Safe to offer at all only
+       because this state has written nothing (ADR-0070) - `saving` has,
+       and cancel() below leaves it alone. */
+    expect(stopped).toBe(true);
+    expect(m.state).toEqual({ tag: 'picking' });
+  });
+
+  test('cancel does nothing once the rows are being written', async () => {
+    const saver = saverWith();
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
+
+    m.open();
+    await m.pickSource('gallery');
+    const saving = m.save();
+    m.cancel();
+    await saving;
+
+    expect(m.state).toMatchObject({ tag: 'saved' });
+  });
+});

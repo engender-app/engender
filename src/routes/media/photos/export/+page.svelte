@@ -34,6 +34,8 @@
     JOURNEY_SURROUND,
     type JourneyFrame
   } from '$lib/data/photos/journey-render';
+  import Progress from '$lib/components/Progress.svelte';
+  import { createProgress } from '$lib/components/progress.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { readPhoto } from '$lib/stores/photoFiles';
@@ -65,10 +67,10 @@
   let output = $state<JourneyOutput>('collage');
 
   let running = $state(false);
-  let progress = $state<{ done: number; total: number } | null>(null);
-  /* Live only while an export is being made, so the cancel button and the
-     render loop are talking about the same run. */
-  let attempt = $state.raw<AbortController | null>(null);
+  /* The shared bar (ADR-0070). This screen had the app's only honest
+     (done, total) already and was spending it on button-label text; what
+     it gains here is the bar, the throttle and the hold at full. */
+  const progress = createProgress();
   let made = $state.raw<{ blob: Blob; from: string } | null>(null);
   let previewUrl = $state<string | null>(null);
 
@@ -135,22 +137,36 @@
     }));
 
     const from = recipe;
+    /* Live only while an export is being made, so the stop button on the
+       bar and the render loop are talking about the same run.
+
+       A fourth cancellable operation beyond the three phase-9 audit ticket
+       11 enumerates, and deliberately: this screen already shipped a stop
+       button, and it sits squarely inside ADR-0070's own rule, which
+       decides cancel by whether the journal has been written to rather
+       than by which operation is running. Rendering a collage writes
+       nothing anywhere. Taking the button away to match a list would have
+       been a regression dressed as compliance. */
     const controller = new AbortController();
-    attempt = controller;
     running = true;
     made = null;
-    progress = { done: 0, total: frames.length };
+    progress.start({ onCancel: () => controller.abort() });
+    progress.report(0, frames.length);
     try {
       const options = {
-        onProgress: (done: number, total: number) => (progress = { done, total }),
+        onProgress: (done: number, total: number) => progress.report(done, total),
         signal: controller.signal
       };
       const blob =
         output === 'collage'
           ? await renderCollage(frames, readPhoto, options)
           : await recordTimelapse(frames, readPhoto, options);
+      // Before the preview replaces the picker, so the bar is not cut off
+      // mid-thought by the thing it was counting down to (ADR-0070).
+      await progress.finish();
       made = { blob, from };
     } catch (error) {
+      progress.abandon();
       // A cancelled export is an answer, not a failure: the person pressed
       // stop and the screen going back to the picker says so by itself.
       if (!controller.signal.aborted) {
@@ -158,9 +174,7 @@
         toast(m.pj_failed());
       }
     } finally {
-      attempt = null;
       running = false;
-      progress = null;
     }
   }
 
@@ -269,14 +283,10 @@
         {:else}
           <div class="editor-savebar journey-actions">
             <button class="btn btn-primary press" data-generate disabled={running || selected.length === 0} onclick={make}>
-              <span>{running && progress ? m.pj_progress({ done: progress.done, total: progress.total }) : m.pj_generate()}</span>
+              <span>{m.pj_generate()}</span>
             </button>
-            {#if attempt}
-              <button class="btn btn-soft press" data-stop onclick={() => attempt?.abort()}>
-                <span>{m.pj_stop()}</span>
-              </button>
-            {/if}
           </div>
+          <Progress run={progress} label={m.pj_running()} handle="journey" />
         {/if}
       </div>
     {/snippet}

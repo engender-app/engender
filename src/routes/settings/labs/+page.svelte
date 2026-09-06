@@ -37,6 +37,8 @@
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import Progress from '$lib/components/Progress.svelte';
+  import { createProgress } from '$lib/components/progress.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -232,6 +234,11 @@
   // $state proxy from inside its own methods. So the component owns the
   // reactive copy, and the machine notifies it on every transition.
   let ocrState = $state<OcrMachineState>({ tag: 'idle' });
+  /* The scan's own bar (phase 9 audit ticket 11, ADR-0070). The fraction
+     comes off the machine's state rather than a second callback, because
+     `recognizing` is what carries it - and the run is started and settled
+     here, in one place, rather than at each of the machine's exits. */
+  const ocrProgress = createProgress();
   const ocr = createOcrMachine(
     platformImageSource(),
     tesseractOcrRecognizer(),
@@ -240,6 +247,43 @@
       ocrState = next;
     }
   );
+
+  /** The recognizing screen outliving the pass by the length of the bar's
+      hold at full. Without it the sheet swaps to the review table the frame
+      recognition lands, and finish() would be holding a bar nothing is
+      rendering - the same thing JournalGate does for the conversion gate. */
+  let ocrSettling = $state(false);
+  let showRecognizing = $derived(ocrState.tag === 'recognizing' || ocrSettling);
+
+  /* Around the call rather than in an $effect on the state. The machine
+     reassigns ocrState on every progress tick, so an effect reading
+     `ocrState.tag` re-runs per tick - which would tear the run down and
+     start it again, re-arming the 300ms show delay each time, and a bar
+     reporting faster than that would never appear at all. */
+  async function scan(source: 'gallery' | 'camera') {
+    // Stoppable because this state has written nothing: it reads a picked
+    // file and runs Tesseract against it. `saving`, after the review, has,
+    // and gets no stop button (ADR-0070).
+    ocrProgress.start({ onCancel: () => ocr.cancel() });
+    await ocr.pickSource(source);
+    if (ocrState.tag !== 'review') {
+      // Stopped, refused or unreadable. Nothing to hold at full for.
+      ocrProgress.abandon();
+      return;
+    }
+    ocrSettling = true;
+    await ocrProgress.finish();
+    ocrSettling = false;
+  }
+
+  $effect(() => {
+    /* Null until Tesseract is actually reading the page - loading its
+       language data reports its own separate 0 to 1 (ocr-engine.ts) - so
+       the bar sweeps first and then fills. Safe as an effect where the one
+       above was not: report() writes no reactive state, so a re-run per
+       tick is exactly what this wants. */
+    if (ocrState.tag === 'recognizing' && ocrState.fraction !== null) ocrProgress.report(ocrState.fraction, 1);
+  });
 
   // After save succeeds, show a toast and return to idle.
   $effect(() => {
@@ -582,8 +626,12 @@
     onClose={closeOcrSheet}
   >
     <!-- The tag itself, not just its wording, so a walkthrough can grip the
-         state directly (ADR-0029) rather than matching translated copy. -->
-    <div data-ocr-state={ocrState.tag}>
+         state directly (ADR-0029) rather than matching translated copy.
+         What is drawn rather than the raw tag, because the bar's hold at
+         full outlives the pass by design: a handle that said `review`
+         while the screen still showed the scan running would send a
+         walkthrough clicking a row that is not there yet. -->
+    <div data-ocr-state={showRecognizing ? 'recognizing' : ocrState.tag}>
     {#if ocrState.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
@@ -596,16 +644,16 @@
         />
       {/if}
       <div class="stack-3">
-        <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => ocr.pickSource('gallery')}>
+        <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => scan('gallery')}>
           <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
-        <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => ocr.pickSource('camera')}>
+        <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => scan('camera')}>
           <span>{m.labs_ocr_pick_camera()}</span>
         </button>
       </div>
-    {:else if ocrState.tag === 'recognizing'}
+    {:else if showRecognizing}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
-      <p class="muted small">{m.labs_ocr_running()}</p>
+      <Progress run={ocrProgress} label={m.labs_ocr_running()} handle="ocr" />
     {:else if ocrState.tag === 'permission-denied'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">

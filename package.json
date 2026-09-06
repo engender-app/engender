@@ -18,6 +18,7 @@
     "gallery:icons": "node tests/icon-gallery.mjs",
     "gallery:controls": "node tests/controls-gallery.mjs",
     "gallery:kit": "node tests/kit-gallery.mjs",
+    "gallery:progress": "node tests/progress-gallery.mjs",
     "gallery:scales": "VITE_DEMO=1 npm run build && node tests/scales-gallery.mjs",
     "gallery:gates": "VITE_DEMO=1 npm run build && node tests/gates-gallery.mjs",
     "gallery:day": "node tests/day-gallery.mjs",
