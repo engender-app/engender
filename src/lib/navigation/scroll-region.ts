@@ -1,4 +1,5 @@
-/* Where each screen was scrolled to.
+/* Where each screen was scrolled to, and how much of its long lists was
+   rendered when it was left.
 
    The app scrolls `[data-app-scroll-region]` rather than the window, so the
    browser's own scroll restoration never sees it and SvelteKit's does not
@@ -21,6 +22,21 @@
 
 const positions = new Map<string, number>();
 
+/* How far a screen's batched lists had been grown when it was left (phase 8
+   features ticket 66). Here rather than in the kit component because it is
+   the same fact as the position above and exists to serve it: a list that
+   comes back rendering one batch is a short region, and a remembered
+   position restored against a short region is clamped to the end of what is
+   there. Both halves of "what this screen looked like when you left it" are
+   remembered in one place and for one lifetime - the tab's, not the
+   journal's.
+
+   Keyed by the list as well as the path: a screen can hold two batched
+   lists, and growing one is not growing the other. */
+const batches = new Map<string, number>();
+
+const batchKey = (path: string, list: string) => `${path}#${list}`;
+
 function region(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-app-scroll-region]');
 }
@@ -32,11 +48,58 @@ export function rememberScroll(path: string | null | undefined): void {
   positions.set(path, el.scrollTop);
 }
 
-/** Called once the incoming screen is in the DOM. */
+/** Called once the incoming screen is in the DOM.
+
+    "In the DOM" is the shell, not the content. Every screen with a list
+    reads it behind a liveQuery, so at the moment this runs the region holds
+    a skeleton and is a few hundred pixels tall - and a browser clamps a
+    scrollTop to what there is to scroll, which for a remembered position
+    deep in a long screen means 0. Leaving the photo grid, the side effects
+    log or the wear log part way down and coming back landed at the top,
+    every time, on every screen whose rows are read rather than mirrored
+    (measured across three of them, phase 8 features ticket 66).
+
+    So the position is re-applied as the rows arrive, for up to half a
+    second, and abandoned the moment anything else moves the region -
+    somebody scrolling while their screen is still filling in owns that
+    number, not this. The same shape `scrollToHash` below already uses for
+    the same reason, and the same reason it is a loop rather than a single
+    delayed retry: what is being waited for is a layout, and nothing fires
+    an event when one has finished growing. */
 export function restoreScroll(path: string): void {
   const el = region();
   if (!el) return;
-  el.scrollTop = positions.get(path) ?? 0;
+
+  const wanted = positions.get(path) ?? 0;
+  el.scrollTop = wanted;
+  /* The top is always reachable, so a screen being sent there is done. */
+  if (wanted === 0 || el.scrollTop === wanted) return;
+
+  let applied = el.scrollTop;
+  let frames = 0;
+  const settle = () => {
+    if (!el.isConnected || frames++ > 30) return;
+    /* Moved by something that is not this - a finger, a wheel, a key. The
+       person is reading; the number is theirs now. */
+    if (el.scrollTop !== applied) return;
+    el.scrollTop = wanted;
+    applied = el.scrollTop;
+    if (applied === wanted) return;
+    requestAnimationFrame(settle);
+  };
+  requestAnimationFrame(settle);
+}
+
+/** Called by a batched list whenever it grows, so leaving now and coming
+    back renders the same rows again. */
+export function rememberBatches(path: string, list: string, count: number): void {
+  batches.set(batchKey(path, list), count);
+}
+
+/** What a batched list should mount rendering. One batch for a screen
+    nobody has grown, which is every screen the first time. */
+export function restoredBatches(path: string, list: string): number {
+  return Math.max(1, batches.get(batchKey(path, list)) ?? 1);
 }
 
 /** Scrolls the element a navigation's hash names into view, once it exists.

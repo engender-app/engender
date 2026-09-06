@@ -2842,6 +2842,37 @@ try {
   fail('fill every feature', e);
 }
 
+/* Ticket 66, ADR-0069: a long log renders a batch at a time and grows as it
+   is scrolled, so the scroll bar on the web build stays a size somebody can
+   use. Here rather than in the browser tier, which already covers the
+   component against a synthetic list: what this adds is that the wear log's
+   own rows are the ones being batched, over the journal "Fill every feature"
+   leaves, which holds more than one batch of completed sessions.
+
+   The control is what is pressed rather than the scroll, deliberately - a
+   scroll far enough to bring the next batch is a geometry this file has no
+   way to assert went far enough, and the control is on the screen either
+   way (it is what a keyboard reaches). */
+try {
+  await page.goto(BASE + '/practice/wear', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const wearRows = () => page.locator('[data-wear-session]').count();
+  const onArrival = await wearRows();
+  if (onArrival !== 30) throw new Error(`the wear log rendered ${onArrival} rows on arrival, not one batch of 30`);
+
+  await page.waitForSelector('[data-batched-more="wear-sessions"]', { timeout: 8000 });
+  await page.locator('[data-batched-more="wear-sessions"]').click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-wear-session]').length > 30,
+    null,
+    { timeout: 8000 }
+  );
+  ok('the wear log arrives as one batch of thirty, and the control at the end of it brings more');
+} catch (e) {
+  fail('wear log renders in batches', e);
+}
+
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
    field for it - checked against fullFixture's own "Binder check-in"

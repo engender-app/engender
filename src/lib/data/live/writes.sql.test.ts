@@ -655,8 +655,13 @@ beforeAll(async () => {
       id: documentId,
       epochDay: 19999,
       title: 'Psychiatric opinion, second',
-      fileName: `${documentId}.jpg`
+      fileName: `${documentId}.jpg`,
+      targetKind: null,
+      targetId: null
     })
+  );
+  await drive('documents', 'setDocumentTarget', () =>
+    journal.documents.setDocumentTarget(documentId, { kind: 'goal', id: 'core:hrt' })
   );
   // A second one purely to delete, so the reads below still have a document
   // to read and the delete still runs its own SQL.
@@ -984,6 +989,9 @@ beforeAll(async () => {
   await driveRead('documents', 'getDocuments', () => journal.documents.getDocuments());
   await driveRead('documents', 'getDocument', () => journal.documents.getDocument(documentId));
   await driveRead('documents', 'getDocumentsOnDay', () => journal.documents.getDocumentsOnDay(19999));
+  await driveRead('documents', 'getDocumentsLinkedTo', () =>
+    journal.documents.getDocumentsLinkedTo('goal', 'core:hrt')
+  );
   await driveRead('documents', 'lastWriteEpochDay', () => journal.documents.lastWriteEpochDay(20000));
   await driveRead('chartAnnotations', 'getAnnotations', () =>
     journal.chartAnnotations.getAnnotations(0, 30000, 20000)
