@@ -976,7 +976,9 @@
       <div class="procedure-photo-row">
         {#if procRecoveryPhoto}
           <div class="photo-wrap">
-            <PhotoThumb photo={{ fileName: null }} bytes={procRecoveryPhoto.thumb} size={64} />
+            <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: procRecoveryPhoto!.full })}>
+              <PhotoThumb photo={{ fileName: null }} bytes={procRecoveryPhoto.thumb} size={64} />
+            </button>
             <button
               type="button"
               class="photo-remove"
