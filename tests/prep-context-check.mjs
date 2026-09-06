@@ -102,7 +102,9 @@ try {
     (await page.locator('[data-list-row="next-appointment"]').count()) === 1
   );
   const day = await page.locator('[data-list-row="next-appointment"]').innerText();
-  check('and shows the day rather than "Not set"', !/Not set|Nie ustawiono/.test(day));
+  // The unset strings, not a stand-in for them: this check passes for free
+  // if it greps for wording the catalogues no longer carry.
+  check('and shows the day rather than the unset line', !/Nothing booked yet|Nic jeszcze nie um/.test(day));
   check(
     'an empty list keeps every reference section it had',
     withList.every((heading) => emptied.includes(heading))
