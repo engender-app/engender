@@ -570,14 +570,40 @@ test('the manifest carries a document’s page and its thumbnail, not just its r
   assert.ok(files.names().includes(document.fileName));
 });
 
-/* Phase 8 features ticket 53. A PDF document has no derived thumbnail, so
-   the manifest has to name exactly its one file - the same reasoning as
-   above, over the kind `filesOf()` alone gets wrong. */
-test('the manifest carries a PDF document’s one file and invents no thumbnail', async () => {
+/* Phase 8 features tickets 53 and 55. A PDF document's two files are the
+   file itself and the first page drawn at import, whose name is spelled
+   off the `.pdf` - the same reasoning as above, over the kind `filesOf()`
+   alone gets wrong. */
+test('the manifest carries a PDF document’s file and the page drawn at import', async () => {
   const { journal } = await populated();
   const id = await journal.documents.addDocument(
     { epochDay: 8766, title: 'Court ruling' },
-    { pdfBytes: bytes('%PDF-1.4 a whole ruling') }
+    { pdfBytes: bytes('%PDF-1.4 a whole ruling'), thumb: bytes('its first page') }
+  );
+  const document = (await journal.documents.getDocument(id))!;
+  const thumbName = document.fileName.replace(/\.pdf$/, '-thumb.jpg');
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.deepEqual(
+    snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
+    [
+      { name: document.fileName, length: bytes('%PDF-1.4 a whole ruling').length },
+      { name: thumbName, length: bytes('its first page').length }
+    ],
+    'a PDF document travels as its file and its page'
+  );
+  assert.deepEqual(await snapshot.readFile(document.fileName), bytes('%PDF-1.4 a whole ruling'));
+});
+
+/* The other half of it: a PDF the renderer could not read has no page
+   file at all, and the manifest names what is there rather than what the
+   name says could be. */
+test('the manifest leaves out a page a PDF never had', async () => {
+  const { journal } = await populated();
+  const id = await journal.documents.addDocument(
+    { epochDay: 8766, title: 'Something scanned oddly' },
+    { pdfBytes: bytes('%PDF-1.4 unreadable'), thumb: null }
   );
   const document = (await journal.documents.getDocument(id))!;
 
@@ -585,10 +611,8 @@ test('the manifest carries a PDF document’s one file and invents no thumbnail'
 
   assert.deepEqual(
     snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
-    [{ name: document.fileName, length: bytes('%PDF-1.4 a whole ruling').length }],
-    'a PDF document travels as exactly one file'
+    [{ name: document.fileName, length: bytes('%PDF-1.4 unreadable').length }]
   );
-  assert.deepEqual(await snapshot.readFile(document.fileName), bytes('%PDF-1.4 a whole ruling'));
 });
 
 test('a trashed entry, and its photo, recording and video-note files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {

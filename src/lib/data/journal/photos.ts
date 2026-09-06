@@ -200,9 +200,11 @@ export async function photosByMilestone(
    suffix (names.ts), so calling it on a `.webm` name would leave it
    unchanged and add the same name to the referenced set twice for no
    reason. A document's file is read through `documentFilesOf()` instead of
-   `filesOf()` directly for the same reason (ticket 53): an image document
-   has the derived thumbnail beside it, but a PDF document does not, and
-   `documentFilesOf()` is what tells the two apart by their own extension.
+   `filesOf()` directly for the same reason (tickets 53 and 55): both kinds
+   of document have a thumbnail beside them, but a PDF's is named off its
+   own `.pdf` rather than off a `.jpg`, and `documentFilesOf()` is what
+   knows that - a blanket `filesOf()` would name the PDF itself twice and
+   leave its first page looking like an orphan.
 
    Precondition: nothing may attach a photo while this runs. It reads the
    rows and then lists the files, so a photo whose files landed after the
@@ -262,10 +264,11 @@ async function sweepUnreferencedFiles(
       ...procedurePhotoRows,
       ...tryoutPhotoRows
     ].flatMap((row) => filesOf(row.file_path)),
-    // An image document went through the same normalisation as a photo, so
-    // it has the derived thumbnail beside it; a PDF document has no such
-    // thumbnail (phase 8 features ticket 53) - documentFilesOf() is what
-    // tells the two apart, the same way filesOf() alone cannot.
+    // An image document's thumbnail comes out of normalisation and a PDF's
+    // out of the renderer, under a name spelled off its own extension
+    // (tickets 53 and 55) - documentFilesOf() is what knows both, the way
+    // filesOf() alone cannot. A PDF that could not be rendered names a
+    // page that is not there, which is nothing for the sweep to find.
     ...documentRows.flatMap((row) => documentFilesOf(row.file_path)),
     ...recordingRows.map((row) => row.file_path),
     // Neither a recording nor a video note has a thumbnail sibling, so

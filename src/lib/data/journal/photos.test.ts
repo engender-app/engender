@@ -267,18 +267,33 @@ test('the sweep reclaims a deleted document’s files', async () => {
   assert.deepEqual(files.names(), []);
 });
 
-/* Phase 8 features ticket 53. A PDF document has one file and no derived
-   thumbnail - unlike the image case above, whose two files come out of
-   filesOf(). Proving this needs its own case: documentFilesOf() is what
-   keeps the sweep from either inventing a phantom thumbnail name (which a
-   blanket filesOf() would, the same trap videoNotes and recordings avoid
-   above) or, the opposite failure, leaving the one real file unreferenced
-   and reclaiming it out from under a live row. */
-test('the sweep keeps a PDF document’s one file, and invents no thumbnail (ticket 53)', async () => {
+/* Phase 8 features tickets 53 and 55. A PDF document's two files are not
+   an image's two: the page beside it is drawn by the renderer at import
+   and its name is spelled off the `.pdf`, so a blanket filesOf() would
+   name the document itself twice and leave the real page unreferenced -
+   which is the sweep reclaiming a live row's first page. documentFilesOf()
+   is what tells the two kinds apart, and the pair below covers both halves
+   of it: a page that exists is kept, and a PDF the renderer could not read
+   has one file and no phantom second name. */
+const pdfDocument = (thumb: Uint8Array | null) => ({
+  pdfBytes: new Uint8Array([...'%PDF-1.4'].map((c) => c.charCodeAt(0))),
+  thumb
+});
+const drawnPage = new Uint8Array([...'its first page'].map((c) => c.charCodeAt(0)));
+
+test('the sweep keeps a PDF document’s file and the page drawn at import (ticket 55)', async () => {
   const { db, files, journal } = await journalWithFiles();
-  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, {
-    pdfBytes: new Uint8Array([...'%PDF-1.4'].map((c) => c.charCodeAt(0)))
-  });
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, pdfDocument(drawnPage));
+  const stored = (await journal.documents.getDocument(id))!;
+
+  await sweepOrphanPhotos(db, files);
+
+  assert.deepEqual(files.names().sort(), [stored.fileName, stored.fileName.replace('.pdf', '-thumb.jpg')].sort());
+});
+
+test('the sweep keeps the one file of a PDF that could not be rendered', async () => {
+  const { db, files, journal } = await journalWithFiles();
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, pdfDocument(null));
   const stored = (await journal.documents.getDocument(id))!;
 
   await sweepOrphanPhotos(db, files);
@@ -286,11 +301,9 @@ test('the sweep keeps a PDF document’s one file, and invents no thumbnail (tic
   assert.deepEqual(files.names(), [stored.fileName]);
 });
 
-test('the sweep reclaims a deleted PDF document’s one file', async () => {
+test('the sweep reclaims a deleted PDF document’s file and its page', async () => {
   const { db, files, journal } = await journalWithFiles();
-  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, {
-    pdfBytes: new Uint8Array([...'%PDF-1.4'].map((c) => c.charCodeAt(0)))
-  });
+  const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, pdfDocument(drawnPage));
   await db.run('DELETE FROM document WHERE uuid = ?', [id]);
 
   await sweepOrphanPhotos(db, files);

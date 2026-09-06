@@ -1241,11 +1241,12 @@ export interface DocumentTarget {
 
     `fileName` is opaque either way, but not one shape: an image document
     goes through the existing normalisation and carries the same `<uuid>.jpg`
-    a photo does (photos/names.ts), with a derived thumbnail beside it like
-    any other photo; a PDF cannot be normalised and is stored as it arrived,
-    as `<uuid>.pdf` with no thumbnail (ticket 53, ADR-0065) -
-    `isPdfDocument`/`documentFilesOf` (journal/documents.ts) are what tell
-    the two apart from the name alone.
+    a photo does (photos/names.ts); a PDF cannot be normalised and is stored
+    as it arrived, as `<uuid>.pdf` (ticket 53, ADR-0065). Both have a
+    thumbnail beside them - an image's from normalisation, a PDF's its first
+    page drawn once at import (ticket 55) - and
+    `isPdfDocument`/`documentThumbName`/`documentFilesOf`
+    (journal/documents.ts) are what tell the two apart from the name alone.
 
     `targetKind`/`targetId` are the checklist owner pair (`ChecklistOwner`)
     over the fixed `DocumentTargetKind` set instead of that type's open
