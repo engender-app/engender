@@ -39,6 +39,7 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import { moodMagnifier } from '../moodMagnifier.svelte';
   import MoodFace from '../MoodFace.svelte';
+  import { nextRadioIndex } from '../rovingRadioIndex';
 
   let {
     value = null,
@@ -58,12 +59,30 @@
      pressed face keeps the moves coming as the finger travels, and they
      bubble up here. The release puts every face back. */
   const magnifier = moodMagnifier(STEPS.length);
+
+  let buttons = $state<(HTMLElement | undefined)[]>([]);
+
+  /* The one face the roving tabindex leaves in the tab order: the picked
+     one, or the first while nothing is picked yet. */
+  let activeIndex = $derived.by(() => {
+    const i = STEPS.findIndex((s) => s === value);
+    return i === -1 ? 0 : i;
+  });
+
+  function onRadioKeydown(e: KeyboardEvent, i: number) {
+    const next = nextRadioIndex(e.key, i, STEPS.length);
+    if (next === null) return;
+    e.preventDefault();
+    buttons[next]?.focus();
+    onPick(STEPS[next]);
+  }
 </script>
 
 <div
   class="kit-moods"
   data-kit-surface
   role="radiogroup"
+  tabindex="-1"
   aria-label={m.mood()}
   data-mood-chips
   onpointermove={magnifier.onRowMove}
@@ -73,14 +92,17 @@
 >
   {#each STEPS as step, i (step)}
     <button
+      bind:this={buttons[i]}
       type="button"
       class="kit-mood press"
       role="radio"
       aria-checked={step === value}
       aria-label={moodName(step)}
+      tabindex={i === activeIndex ? 0 : -1}
       data-mood={step}
       style:--mood-mag={magnifier.moodScale[i]}
       onclick={() => onPick(step === value ? null : step)}
+      onkeydown={(e) => onRadioKeydown(e, i)}
     >
       <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
            number as --touch-target, so the circle itself now clears the row
