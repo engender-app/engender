@@ -136,7 +136,7 @@
      not a tile at all but a row of a list, which is the whole of what the
      quiet weight means - except the one row promoted to a Notice below
      (carpet ticket 03), which keeps the dormant tier's gate and snooze but
-     draws on the surface a nudge to act on gets rather than a line in a
+     draws as a surface asking to be acted on, rather than a line in a
      list. */
   const TILE_BLOCKS = [
     { tier: 'today', weight: 'row', rows: true },
@@ -554,7 +554,14 @@
            snooze/action it already carries (dismissSnooze, the "Log
            feeling" link) were sitting unused under the ListRow's plainer
            tap-through. Same liveTiles role as the tiles beside it: this is
-           journal content, not the app talking about itself. -->
+           journal content, not the app talking about itself.
+
+           `dismiss` isn't `feltSenseGapTile.dismiss` straight through, unlike
+           `tileRow`'s `dismiss={tile.dismiss}` below: `HomeTileDismiss.onclick`
+           takes a MouseEvent, which `Tile.svelte` also declares and forwards
+           untouched, but `Notice`'s own `dismiss.onclick` takes none - the
+           same snooze (`liveTiles.snooze`, the tile's own `dismissSnooze`)
+           called through a zero-arg wrapper `svelte-check` requires here. -->
       {#if feltSenseGapTile}
         <Notice
           icon="heart"
@@ -562,11 +569,11 @@
           role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
           title={feltSenseGapTile.title}
           text={feltSenseGapTile.note}
-          action={{
-            label: feltSenseGapTile.action?.label ?? m.tile_tryout_action(),
-            href: feltSenseGapTile.action?.href ?? feltSenseGapTile.href
+          action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
+          dismiss={feltSenseGapTile.dismiss && {
+            label: feltSenseGapTile.dismiss.label,
+            onclick: () => liveTiles.snooze('active-tryout-tile')
           }}
-          dismiss={{ label: m.dismiss(), onclick: () => liveTiles.snooze('active-tryout-tile') }}
           data-live-tile={feltSenseGapTile.key}
           {...feltSenseGapTile.attrs}
         />
