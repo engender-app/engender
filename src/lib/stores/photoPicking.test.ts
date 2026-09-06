@@ -1,34 +1,47 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { filePick, cameraPick, normalizePhoto, toast, FakeUnsupportedImageError } = vi.hoisted(() => {
-  class FakeUnsupportedImageError extends Error {
-    readonly kind: 'heic' | 'unreadable';
-    constructor(kind: 'heic' | 'unreadable') {
-      super(kind);
-      this.kind = kind;
+const { filePick, cameraPick, normalizePhoto, toast, FakeUnsupportedImageError, FakeDocumentRefusedError } =
+  vi.hoisted(() => {
+    class FakeUnsupportedImageError extends Error {
+      readonly kind: 'heic' | 'unreadable';
+      constructor(kind: 'heic' | 'unreadable') {
+        super(kind);
+        this.kind = kind;
+      }
     }
-  }
-  return {
-    filePick: vi.fn(),
-    cameraPick: vi.fn(),
-    normalizePhoto: vi.fn(),
-    toast: vi.fn(),
-    FakeUnsupportedImageError
-  };
-});
+    class FakeDocumentRefusedError extends Error {
+      readonly kind: 'unsupported' | 'too-large';
+      constructor(kind: 'unsupported' | 'too-large') {
+        super(kind);
+        this.kind = kind;
+      }
+    }
+    return {
+      filePick: vi.fn(),
+      cameraPick: vi.fn(),
+      normalizePhoto: vi.fn(),
+      toast: vi.fn(),
+      FakeUnsupportedImageError,
+      FakeDocumentRefusedError
+    };
+  });
 
 vi.mock('$lib/paraglide/messages', () => ({
   m: {
     photo_picker_failed: () => 'picker-failed',
     photo_heic: () => 'heic',
     photo_not_an_image: () => 'not-an-image',
-    photo_unreadable: () => 'unreadable'
+    photo_unreadable: () => 'unreadable',
+    document_too_large: () => 'too-large'
   }
 }));
 vi.mock('./toasts.svelte', () => ({ toast }));
 vi.mock('../data/photos/normalize', () => ({
   normalizePhoto,
   UnsupportedImageError: FakeUnsupportedImageError
+}));
+vi.mock('../data/documents/accept', () => ({
+  DocumentRefusedError: FakeDocumentRefusedError
 }));
 vi.mock('../data/photos/picker', () => ({
   filePhotoPicker: () => ({ pick: filePick }),
@@ -82,6 +95,15 @@ describe('capturePhoto', () => {
     expect(photo).toBeNull();
     expect(toast).toHaveBeenCalledWith('heic');
   });
+
+  test('toasts the too-large message and returns null when the picker refuses an oversized shot', async () => {
+    cameraPick.mockRejectedValue(new FakeDocumentRefusedError('too-large'));
+
+    const photo = await capturePhoto();
+
+    expect(photo).toBeNull();
+    expect(toast).toHaveBeenCalledWith('too-large');
+  });
 });
 
 describe('pickPhotos', () => {
@@ -116,5 +138,14 @@ describe('pickPhotos', () => {
 
     expect(photos).toEqual([]);
     expect(toast).toHaveBeenCalledWith('picker-failed');
+  });
+
+  test('toasts the too-large message and returns nothing when the picker refuses an oversized photo', async () => {
+    filePick.mockRejectedValue(new FakeDocumentRefusedError('too-large'));
+
+    const photos = await pickPhotos();
+
+    expect(photos).toEqual([]);
+    expect(toast).toHaveBeenCalledWith('too-large');
   });
 });

@@ -60,8 +60,21 @@ const TOO_LARGE_MESSAGE = `That file is too large to store. Up to ${DOCUMENT_SIZ
 
 const UNSUPPORTED_MESSAGE = "This file isn't a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.";
 
-function refuseAboveCeiling(byteLength: number): void {
-  if (byteLength > DOCUMENT_SIZE_CEILING) throw new DocumentRefusedError('too-large', TOO_LARGE_MESSAGE);
+/** The too-large refusal on its own, for a caller that already knows the
+    size is over the ceiling without a byte length to hand refuseAboveCeiling
+    - Android's picker rejects a size queried from the content provider
+    rather than a Uint8Array, so picker.ts's Android branches throw this
+    directly once the native side has already refused the pick. */
+export function refuseTooLarge(): never {
+  throw new DocumentRefusedError('too-large', TOO_LARGE_MESSAGE);
+}
+
+/** Refuses a byte length over the document ceiling, the same refusal a
+    document over size gets - shared with picker.ts so a picked file is
+    refused by its size on disk before it is ever read, rather than only
+    after its bytes have already reached the JS heap. */
+export function refuseAboveCeiling(byteLength: number): void {
+  if (byteLength > DOCUMENT_SIZE_CEILING) refuseTooLarge();
 }
 
 export async function acceptDocumentFile(bytes: Uint8Array): Promise<DocumentFile> {

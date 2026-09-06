@@ -1143,6 +1143,77 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
   else fail('reduced motion takes all three press depths to 1', JSON.stringify(reduced));
 });
 
+// --- Phase 9 audit ticket 07: Segmented's radiogroup takes arrow keys ------
+/* Still on controls.html from the block above. svelte-check's warning named
+   two composite radiogroups Tab walked one stop per option rather than one
+   stop for the group - this is the keyboard half a unit test can't see,
+   since it needs a real DOM giving out real focus. */
+await block('phase 9 audit ticket 07 segmented keyboard nav', 4, async () => {
+  const group = page.locator('[data-segmented="range"]');
+  const week = group.locator('[data-segment="week"]');
+  const month = group.locator('[data-segment="month"]');
+  const year = group.locator('[data-segment="year"]');
+
+  // A known baseline: the block above this one clicked Year, so pin it back
+  // to Month rather than assume whichever segment an earlier check left active.
+  await month.click();
+
+  const tabindexes = await Promise.all(
+    [week, month, year].map((seg) => seg.getAttribute('tabindex'))
+  );
+  if (JSON.stringify(tabindexes) === JSON.stringify(['-1', '0', '-1']))
+    ok('only the selected segment (Month) is a tab stop');
+  else fail('only the selected segment is a tab stop', JSON.stringify(tabindexes));
+
+  await month.focus();
+  await page.keyboard.press('ArrowRight');
+  const afterRight = await year.getAttribute('aria-checked');
+  if (afterRight === 'true') ok('ArrowRight moves the tab stop and the selection to the next segment');
+  else fail('ArrowRight moves selection to the next segment', afterRight);
+
+  await page.keyboard.press('ArrowRight');
+  const wrapped = await week.getAttribute('aria-checked');
+  if (wrapped === 'true') ok('ArrowRight wraps from the last segment back to the first');
+  else fail('ArrowRight wraps to the first segment', wrapped);
+
+  await page.keyboard.press('ArrowLeft');
+  const afterLeft = await year.getAttribute('aria-checked');
+  if (afterLeft === 'true') ok('ArrowLeft moves back to the previous segment');
+  else fail('ArrowLeft moves back to the previous segment', afterLeft);
+});
+
+// --- Phase 9 audit ticket 07: MoodChips' radiogroup takes arrow keys -------
+await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
+  await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
+
+  const faces = page.locator('[data-mood-chips] [data-mood]');
+  const tabindexes = await faces.evaluateAll((els) => els.map((el) => el.getAttribute('tabindex')));
+  if (JSON.stringify(tabindexes) === JSON.stringify(['-1', '-1', '-1', '0', '-1']))
+    ok('only the picked mood (4) is a tab stop');
+  else fail('only the picked mood is a tab stop', JSON.stringify(tabindexes));
+
+  const four = faces.nth(3);
+  const five = faces.nth(4);
+  await four.focus();
+  await page.keyboard.press('ArrowRight');
+  const movedChecked = await five.getAttribute('aria-checked');
+  if (movedChecked === 'true') ok('ArrowRight moves the tab stop and the pick to the next face');
+  else fail('ArrowRight moves the pick to the next face', movedChecked);
+
+  const movedTabindex = await five.getAttribute('tabindex');
+  if (movedTabindex === '0') ok('and the newly picked face becomes the one tab stop');
+  else fail('the newly picked face becomes the one tab stop', movedTabindex);
+
+  /* The keyboard equivalent of the click-to-clear a mistap relies on: Enter
+     on a native <button> fires the same click handler a pointer would, so
+     the already-picked face clears without any keydown wiring of its own. */
+  await page.keyboard.press('Enter');
+  const cleared = await five.getAttribute('aria-checked');
+  if (cleared === 'false') ok('Enter on the picked face clears it, the same as a click would');
+  else fail('Enter on the picked face clears it', cleared);
+});
+
 // --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
 await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
   await page.setViewportSize({ width: 400, height: 600 });
