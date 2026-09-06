@@ -312,8 +312,17 @@
    read as a label that did not fit its background (Alicja, 2026-08-26, on a
    new hair-removal session and on side effects). A spacer the width of that
    padding is the standard answer: it is content, so the scroll box includes
-   it. */
-.segmented::after {
+   it.
+
+   Only on a track that actually scrolls (ticket 99 item 24, "last value
+   highlight in switcher doesn't reach the end of the bg"). On one that
+   fits - every compact track, and most of the rest - there is no end of a
+   scroll for the padding to be dropped at, and the spacer was simply an
+   extra flex item: 3px of it plus the 8px gap in front of it left 11px of
+   bare background after the last segment, against 3px of padding before
+   the first. The sliding pill matches its segment exactly, so that dead
+   strip is what read as the highlight stopping short of the end. */
+.segmented.can-scroll::after {
   content: '';
   flex: 0 0 3px;
 }
@@ -540,7 +549,15 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .mood-picker { position: relative; }
 .mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  /* --space-4, not --space-2, and the extra 8px is all ring (ticket 99 item
+     15, "mood icon text too close to the icon"). The face wears a 2px
+     outline at 3px offset, and an outline is painted outside the box
+     without taking any layout space, so 8px of gap was only 3px of visible
+     air. A picked face then scales to 1.18, which drops its own bottom
+     edge another ~4px and takes the scaled ring down with it - the label
+     ended up all but touching the ring it belongs to. 16px clears both and
+     leaves the row looking like a row again. */
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
@@ -621,6 +638,21 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      arrive twice. `transform` stays because the picked state writes it
      directly, and opacity because the dimming does. */
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
+}
+/* Standalone scale/translate shipped in Chrome 104; the WebView floor is
+   Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
+   gap) - seventeen versions short, so the whole magnifier silently did
+   nothing there. No hover/press growth on any device at or under that
+   floor is ticket 99 items 1 and 2's report, round two of the same "phase 5
+   ticket 99" bug above, this time in the property rather than the border.
+   transform is the one form every engine back to Chrome 1 reads, so the
+   fallback trades that for losing composition with .mood-btn.is-selected's
+   own transform below - which only an engine this old would ever notice. */
+@supports not (scale: 1) {
+  .mood-face {
+    transform: translateY(calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px))) scale(var(--mood-mag, 1));
+    transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+  }
 }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
    already-similar surface tones. A mood face sits straight on the bare app
@@ -978,7 +1010,21 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    instead of appearing with it. */
 .body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
-.tag-chip-wrap .tag-info-btn { margin-left: -6px; color: var(--text-2); }
+/* Shrunk from .icon-btn's 48px hover circle (ticket 99 item 17): a 14px
+   glyph inline after a chip's label read as an oversized highlight the
+   moment the pointer neared it. 24px visual, 48px hit area restored by
+   ::after the same way .tag-chip already extends past its own pill. */
+.tag-chip-wrap .tag-info-btn {
+  width: 24px; height: 24px;
+  margin-left: -6px;
+  color: var(--text-2);
+  position: relative;
+}
+.tag-chip-wrap .tag-info-btn::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
    checking the controls it does own. What is fixed here is the floor, not the
    chip: the pill stays 36px because a chip is a 36px pill in every reference
@@ -1165,6 +1211,33 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   [data-app-root] > [inert] {
     filter: blur(var(--blur-withdraw));
   }
+}
+/* Behind the screen while it is withdrawn, and this is the whole of ticket
+   99 item 40 ("overall - the menu renders over the popups", and Alicja
+   confirmed she meant a sheet).
+
+   The bar really did paint in front of an open sheet, and z-index said it
+   should not: the bar is 30 and the sheet's scrim is 40. The two numbers
+   were never compared, though. `.app-main` carries `view-transition-name:
+   screen`, and a view-transition-name makes an element a stacking context
+   - so the scrim's 40 is spent *inside* `.app-main`, which itself sits at
+   `z-index: auto` beside the bar's 30 in `.app`. Every sheet in the app was
+   painting one level below the bar, and no z-index on the sheet could have
+   fixed it from in there.
+
+   The bar is inert exactly when a sheet is up, which is when it should be
+   behind the screen rather than above it, so the withdrawal is where this
+   belongs. A negative index puts it under `.app-main` and still above
+   `.app`'s own background, which is what leaves it visible through the
+   scrim where the sheet does not cover - the blurred, receded bar the
+   withdrawal was always meant to be.
+
+   An earlier round of this ticket read the same symptom as the blur failing
+   to composite and dimmed the bar to 0.5 to compensate. The blur was
+   painting all along; it was painting in the wrong place. The dim goes with
+   the diagnosis that asked for it. */
+[data-app-root] > [inert] {
+  z-index: -1;
 }
 html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   filter: none;

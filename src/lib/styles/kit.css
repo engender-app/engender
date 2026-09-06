@@ -946,11 +946,17 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-mark) 14%, transparent);
 }
 
+/* Named areas rather than relying on source order (ticket 99 item 9): the
+   note is a DOM sibling of .kit-tile-main so it can be its own row instead
+   of stretching that row's height, but auto-placement would otherwise slot
+   the action button wherever the flow cursor lands after a full-width note,
+   not necessarily beside main. Areas pin all three regardless of order. */
 .kit-tile.is-split {
   display: grid;
   grid-template-columns: 1fr auto;
+  grid-template-areas: 'main act' 'note note';
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-height: 108px;
   height: 100%;
   padding: var(--space-4);
@@ -958,6 +964,9 @@ a.kit-entry:active {
   border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
   border-radius: var(--r-card);
 }
+
+.kit-tile.is-split > .kit-tile-main { grid-area: main; }
+.kit-tile.is-split > .kit-tile-act { grid-area: act; }
 
 .kit-tile-main {
   display: grid;
@@ -1008,7 +1017,6 @@ a.kit-entry:active {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   column-gap: var(--space-3);
-  row-gap: var(--space-1);
 }
 
 .kit-tile[data-weight='row'] .kit-tile-value {
@@ -1016,9 +1024,13 @@ a.kit-entry:active {
   justify-self: end;
 }
 
-/* The note runs under both of them rather than under the title alone. */
-.kit-tile[data-weight='row'] .kit-tile-note {
-  grid-column: 1 / -1;
+/* The note runs under both of them rather than under the title alone - a
+   direct child of the split tile now (ticket 99 item 9), not nested in
+   .kit-tile-main, so it is its own grid row (card weight and row weight
+   alike) and never part of what .kit-tile.is-split centres against the
+   action button. */
+.kit-tile.is-split > .kit-tile-note {
+  grid-area: note;
 }
 
 /* A row with no value has nothing in the second column, so the title takes
@@ -1190,6 +1202,26 @@ a.kit-entry:active {
   grid-template-columns: repeat(var(--strip-count, 7), minmax(0, 1fr));
   gap: var(--space-2);
   padding: 0 var(--space-1);
+  /* Caps the row at its own cells' natural width (ticket 99 item 5):
+     without this, a wide web viewport gives each column far more than a
+     cell wants, and .kit-strip-day's justify-items: center floats every
+     cell away from its column's true edge - worst at the two ends, which
+     is what read as "too far from the content edge". On mobile the strip
+     is already narrower than this cap, so nothing changes there.
+
+     Counted from --strip-count rather than from a literal seven, and from
+     --strip-cell-max rather than a literal 44px, because neither is fixed
+     any more: CARPET-02 draws fourteen cells at 38px on a desktop-width
+     container, and a cap written for seven 44px cells would have squeezed
+     that strip into half the room it was designed for (the ticket's own
+     code review caught the collision before CARPET-02 and this met). The
+     two rules state the same numbers now, so they cannot drift apart. */
+  --strip-cell-max: 44px;
+  max-width: calc(
+    var(--strip-count, 7) * var(--strip-cell-max) + (var(--strip-count, 7) - 1) * var(--space-2) + 2 *
+      var(--space-1)
+  );
+  margin-inline: auto;
 }
 
 .kit-strip-day {
@@ -1221,6 +1253,12 @@ a.kit-entry:active {
    that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
    --strip-count says there is more than a week to draw. */
 @container app (min-width: 1024px) {
+  .kit-strip[data-strip-count='14'] {
+    /* The row's own cap reads this, so the two agree by construction
+       rather than by both being edited at the same time (ticket 99 item
+       5). */
+    --strip-cell-max: 38px;
+  }
   .kit-strip[data-strip-count='14'] .kit-strip-cell {
     max-width: 38px;
   }
@@ -1651,11 +1689,13 @@ a.kit-entry:active {
 }
 
 /* The one-column state - a plot with no value gutter beside it - lives in
-   AreaChart.svelte's own style block: `.no-gutter` has exactly one consumer
-   by construction and check-screens-classes.mjs fails a new single-consumer
-   class in a shared sheet. It used to be `.has-overlay` here, keyed to the
-   second line rather than to the gutter, which put a shared-scale pair's
-   numbers in a row of their own above the plot (ticket 29). */
+   AreaChart.svelte's own style block: the gutter's own state class has
+   exactly one consumer by construction and check-screens-classes.mjs fails
+   a new single-consumer class in a shared sheet. It was `.has-overlay`
+   here first, keyed to the second line rather than to the gutter, which put
+   a shared-scale pair's numbers in a row of their own above the plot
+   (ticket 29); then `.no-gutter`, which dropped the column outright until
+   ticket 99 item 25 found that the drop was what made the switch jump. */
 
 .kit-area-scale {
   display: flex;
@@ -1759,8 +1799,17 @@ a.kit-entry:active {
   stroke-width: 2;
 }
 
-/* The reading under the finger, in the corner rather than beside the line:
-   a label that follows the touch is a label under the thumb holding it. */
+/* The reading under the finger, in a corner rather than beside the line:
+   a label that follows the touch is a label under the thumb holding it.
+
+   Fixed in the top-right corner used to be the whole rule, and a reading
+   near the top of its own range sat right under a plate answering for it
+   (carpet ticket 08, Alicja: the label sits on top of the data). So the
+   corner is now whichever of the four is furthest from the mark - AreaChart
+   works out which in its own script (readoutCorner, charts/geometry.ts) and
+   hands this two classes below. Still never the exact touch point: that
+   is the thumb problem above, restated for a corner that would otherwise
+   chase a fingertip around the plot. */
 /* A plate laid over the plot, not a tag.
 
    It was a pill, which is right for the one-line case it was drawn for and
@@ -1772,16 +1821,27 @@ a.kit-entry:active {
    buttons and rows take, it holds its padding at any height, and on a
    single-line readout 14px still reads as a chip.
 
-   What it does not get is a shadow. It sits over the marks, and lifting it
-   off them with one is the obvious move and the wrong one: DIRECTION.md's
-   decision 2 gives this app two surfaces rather than a stack of planes, and
-   the single shadow in it belongs to the shell's floating nav. The plate is
-   an opaque --surface-2 inside a line, which is how everything else here
-   separates from what is behind it. */
+   What it does not get is a shadow. It can still land close to a mark even
+   once picking its own corner (two series' marks pulling the choice two
+   ways), and lifting it off with one is the obvious move and the wrong
+   one: DIRECTION.md's decision 2 gives this app two surfaces rather than a
+   stack of planes, and the single shadow in it belongs to the shell's
+   floating nav. The plate is an opaque --surface-2 inside a line, which is
+   how everything else here separates from what is behind it. */
 .kit-area-readout {
   position: absolute;
   top: 0;
   right: 0;
+  /* Held to half the plot's width - the horizontal half the corner it took
+     gave up - so a long annotation name cannot grow the plate back across
+     the midline and over the mark readoutCorner picked this corner to
+     clear. Width only: capping the height the same way clips a wrapped
+     annotation mid-line with nothing saying it was cut short, worse than
+     the overlap it would be guarding against, and the plot's height is a
+     fixed 132px (unlike its width, which answers to the card) so there is
+     no card size this could go wrong at the way the width could. */
+  max-width: 50%;
+  overflow: hidden;
   /* A column, so an annotation goes under the reading rather than beside it:
      side by side, a long name pushes the number off the plot at 390px. It
      collapses to one line on its own where there is nothing to annotate. */
@@ -1800,6 +1860,20 @@ a.kit-entry:active {
   white-space: nowrap;
 }
 
+/* The other three corners readoutCorner can choose. Each is one axis
+   flipped off the top-right default above, so the two combine freely into
+   all four. */
+.kit-area-readout.is-left {
+  right: auto;
+  left: 0;
+  align-items: flex-start;
+}
+
+.kit-area-readout.is-below {
+  top: auto;
+  bottom: 0;
+}
+
 .kit-area-readout b {
   font-size: var(--text-sm);
   color: var(--text);
@@ -1807,6 +1881,11 @@ a.kit-entry:active {
 
 .kit-area-readout-value {
   display: flex;
+  /* Lets the row itself shrink under the plate's own width cap above -
+     without it a flex item won't shrink past its content's width even
+     when its container is narrower, and .kit-area-readout-text's own
+     min-width: 0 would have nothing to hand its own shrink down to. */
+  min-width: 0;
   align-items: baseline;
   gap: var(--space-2);
 }
@@ -1823,7 +1902,13 @@ a.kit-entry:active {
    off the right it read as a third value with no label. */
 .kit-area-readout-pair {
   display: grid;
-  grid-template-columns: auto auto;
+  /* Lets the grid itself shrink under the plate's own width cap above, the
+     same reason .kit-area-readout-value takes it. */
+  min-width: 0;
+  /* The name column can shrink - `minmax(0, ...)`, the same escape the
+     outer `.kit-area` grid takes for its own second column - so a long one
+     ellipsizes instead of forcing the plate past the width cap above it. */
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   gap: 1px var(--space-2);
 }
@@ -1837,6 +1922,17 @@ a.kit-entry:active {
   /* A step away from the pair above, so the plate reads as two readings and
      when they were taken rather than as three rows of the same weight. */
   margin-top: 2px;
+}
+
+/* The free-text half of a reading - a metric's own name, or when it was
+   taken - next to a number that is never allowed to shrink. Capped and
+   ellipsized like an annotation's own name (below): the plate around it is
+   now held to half the plot, and an unbounded name could otherwise still
+   force it wider than that; the shared cap lives on the selector pair below.
+   `min-width: 0` here overrides the flex/grid default that would rather
+   overflow than shrink a line below its own content. */
+.kit-area-readout-text {
+  min-width: 0;
 }
 
 /* Which line is which (phase 6 ticket 12). The app's second legend, and the
@@ -1885,10 +1981,19 @@ a.kit-entry:active {
    Blocks, not spans, and capped: a name is the person's own text and can be
    any length, and inline elements ignore both `max-width` and the ellipsis
    that goes with it - which is how a two-word readout grew into a pill lying
-   across most of the plot it was annotating. */
+   across most of the plot it was annotating.
+
+   Relative rather than a fixed `ch` count (carpet ticket 08): the plate
+   around this now caps itself to half the plot so its corner-picking always
+   clears the mark it names, and a name still allowed to reach a fixed 20ch
+   of its own could grow past that half again - this ties the two caps
+   together instead of guessing a `ch` count small enough for every plot
+   width the kit is asked to draw at. Shared with .kit-area-readout-text
+   above, which caps for the same reason. */
+.kit-area-readout-text,
 .kit-area-readout-annotation {
   display: block;
-  max-width: 20ch;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }

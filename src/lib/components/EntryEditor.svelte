@@ -56,7 +56,9 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { effectCategoryName } from '$lib/data/vocabulary/labels';
 
   let {
     epochDay,
@@ -413,7 +415,6 @@
     return null;
   });
 
-  let effectTypesQuery = liveQuery((j) => j.personalEffects.getEffectTypes());
   let isHrtActive = $derived(activeEpisodes.length > 0);
 
   /* ADR-0043's gate, asked rather than re-derived (phase 8 features ticket
@@ -468,10 +469,6 @@
     }
   });
 
-  function effectLabel(key: string): string {
-    const found = (effectTypesQuery.value ?? []).find((e) => e.key === key);
-    return found?.name || key;
-  }
 
   function updateProcedureRecovery() {
     if (!recoveringProcedure) return;
@@ -862,7 +859,15 @@
 
   <!-- Contextual Inline Cards (ticket 04, ADR-0044) -->
   {#if prefs.entryTryoutPromptEnabled && activeTryout}
-    <div class="contextual-panel" data-contextual="tryout-felt-sense">
+    <!-- All three contextual cards open their own height rather than
+         appearing at full size in one frame (ticket 99 item 18, "tryout
+         felt sense comes out without an animation"). None of them is on
+         screen when the editor mounts - each waits on a read the journal
+         has not answered yet - so they arrive into a screen the person is
+         already looking at, which is what tier 3 is for. A Svelte
+         transition is local and does not play on first render, so this
+         stays out of the way of the screen's own arrival. -->
+    <div class="contextual-panel" data-contextual="tryout-felt-sense" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_tryout_felt_sense_title({ name: activeTryout.label })}</span>
       </div>
@@ -959,7 +964,7 @@
   {/if}
 
   {#if prefs.entryProcedureRecoveryEnabled && recoveringProcedure}
-    <div class="contextual-panel" data-contextual="procedure-recovery">
+    <div class="contextual-panel" data-contextual="procedure-recovery" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">
           {m.entry_procedure_recovery_title({ day: recoveringProcedure.postOpDays, name: recoveringProcedure.proc.name })}
@@ -1014,7 +1019,7 @@
     <div class="contextual-row" data-contextual="hrt-effects">
       {#if entryDraft.effectMarker}
         <div class="contextual-chip effect-chip is-active">
-          <span>{m.entry_hrt_effects_title()}: {effectLabel(entryDraft.effectMarker.effect)}</span>
+          <span>{m.entry_hrt_effects_title()}: {vocabulary.personalEffectTypeName(entryDraft.effectMarker.effect)}</span>
           <button
             type="button"
             class="icon-btn-inline"
@@ -1038,7 +1043,7 @@
   {/if}
 
   {#if cycleTrackingActive}
-    <div class="contextual-panel" data-contextual="cycle-event">
+    <div class="contextual-panel" data-contextual="cycle-event" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_cycle_event_title()}</span>
       </div>
@@ -1272,11 +1277,20 @@
   <Sheet bind:open={effectSheetOpen} title={m.entry_hrt_effects_sheet_title()}>
     <SectionHeading text={m.entry_hrt_effects_sheet_title()} />
     <ListCard {role}>
-      {#each effectTypesQuery.value ?? [] as effectType (effectType.key)}
+      <!-- `vocabulary`, not a read of the effect table this screen ran for
+           itself (ticket 99 item 19, "they are called with technical names,
+           such as taste_perception_change_feminizing"). A built-in effect
+           row carries no name of its own - the words live in the message
+           catalogue and `vocabulary` is the layer that puts the two
+           together, which is why every other screen showing an effect gets
+           real words. The raw read also skipped the hidden/category filter
+           `visiblePersonalEffectTypes` applies, so this picker offered
+           effects the person had already turned off. -->
+      {#each vocabulary.visiblePersonalEffectTypes as effectType (effectType.key)}
         <ListRow
           key={effectType.key}
-          title={effectType.name || effectType.key}
-          subtitle={effectType.categoryKey ?? undefined}
+          title={effectType.name}
+          subtitle={effectType.categoryKey ? effectCategoryName(effectType.categoryKey) : undefined}
           chevron={false}
           onclick={() => {
             entryDraft.setEffectMarker({ effect: effectType.key, firstNoticedEpochDay: day });
@@ -1412,7 +1426,15 @@
     cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  .contextual-chip::after {
+  /* Only where the chip is itself the control (ticket 99 item 19, "when i
+     select an effect, i cannot deselect it even though i am clicking on the
+     'x'"). This box exists to grow a 36px pill's hit area to the touch
+     target, which is worth doing on a chip that is a <button> and is worth
+     nothing on the one chip that is a <div> wrapping its own dismiss
+     button - there it was an overlay with no handler, painted after its
+     sibling button because a positioned pseudo-element with auto z-index
+     paints in tree order, so it swallowed every press on the x. */
+  button.contextual-chip::after {
     content: '';
     position: absolute;
     inset: -6px 0;
