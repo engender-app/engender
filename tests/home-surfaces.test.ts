@@ -268,12 +268,14 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toMatch(/\{#if prefs\.onThisDayEnabled\}\s*<OnThisDayHomeCard \/>/);
   });
 
-  it('caps what it draws without narrowing what it reads', () => {
-    /* The cap is a render limit: the day bar has to be able to say how many
-       entries a day holds, which a query row limit would make
-       unanswerable. */
-    expect(home).toContain('RECENT_ENTRY_CAP');
+  it('draws every entry of a shown day, with no render-time cap of its own (ux-carpet ticket 13)', () => {
+    /* A cap that trimmed a busy day's entries left it a bare count and one
+       row - exactly the bare-count regression the ticket was filed over.
+       `entryDayGroups` groups by day and nothing here slices a group down
+       further; the query itself still bounds by day (RECENT_DAYS). */
+    expect(home).toContain('entryDayGroups(recent.rows)');
     expect(home).toContain('recentDays(RECENT_DAYS)');
+    expect(home).not.toContain('RECENT_ENTRY_CAP');
     expect(markup).toContain('href="/calendar"');
   });
 
