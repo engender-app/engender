@@ -540,7 +540,15 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .mood-picker { position: relative; }
 .mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  /* --space-4, not --space-2, and the extra 8px is all ring (ticket 99 item
+     15, "mood icon text too close to the icon"). The face wears a 2px
+     outline at 3px offset, and an outline is painted outside the box
+     without taking any layout space, so 8px of gap was only 3px of visible
+     air. A picked face then scales to 1.18, which drops its own bottom
+     edge another ~4px and takes the scaled ring down with it - the label
+     ended up all but touching the ring it belongs to. 16px clears both and
+     leaves the row looking like a row again. */
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
