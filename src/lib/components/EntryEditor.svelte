@@ -51,6 +51,7 @@
   import BodyRegionPicker from '$lib/components/BodyRegionPicker.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
+  import PhotoViewer from '$lib/components/PhotoViewer.svelte';
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -530,6 +531,10 @@
   }
 
   const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => queueForDayPrompt([photo]));
+
+  // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
+  // closed.
+  let viewedPhoto = $state<{ fileName: string | null; bytes?: Uint8Array } | null>(null);
 
   // Unset while nothing is being recorded; the record/stop button reads
   // this to know which state it is showing (ticket 24).
@@ -1085,7 +1090,9 @@
         {#each entryDraft.photos as p, i (p)}
           <div class="photo-wrap">
             {#if p.kind === 'stored'}
-              <PhotoThumb photo={p.photo} size={72} />
+              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
+                <PhotoThumb photo={p.photo} size={72} />
+              </button>
               <button
                 class="photo-star"
                 class:is-starred={p.photo.starred}
@@ -1096,7 +1103,9 @@
                 <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
               </button>
             {:else}
-              <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
+                <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+              </button>
             {/if}
             <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
               <Icon name="x" size={14} />
@@ -1292,6 +1301,8 @@
     onRetake={entryPhotoReview.capture}
     onCancel={entryPhotoReview.cancel}
   />
+
+  <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
 </div>
 
 <style>
@@ -1501,6 +1512,14 @@
     letter-spacing: 0.04em;
     color: var(--text-2);
     margin: 0 0 var(--space-3);
+  }
+
+  /* Wraps the thumb only, not the star/remove badges beside it (ticket
+     CARPET-06) - a plain block the same size as the tile it holds, so it
+     adds a tap target without shifting either badge's absolute position. */
+  .photo-view {
+    display: block; border: none; background: none; padding: 0; cursor: pointer;
+    border-radius: var(--radius-md);
   }
 
   /* Same 44px-touch-target/24px-badge shape as .photo-remove (screens.css),
