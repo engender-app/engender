@@ -28,22 +28,21 @@ describe('phase 2 accessibility seams', () => {
   it('keeps chart values available as text in stats', () => {
     /* The chart carries a value gutter and a mark per reading (phase 5 UX
        ticket 23), and neither is a number a screen reader can report. The
-       sheet is the text of the same series, and it is the reason the
-       "All values" control exists at all rather than being a convenience. */
+       series has to be readable as text somewhere on this screen, which is
+       what this check is about - not which control opens it.
+
+       It was an "All values" link opening a sheet of bar rows until ticket
+       99 item 26 took the link away. The text stayed: a visually hidden
+       list of the same rows, which costs nothing on screen and keeps the
+       numbers reachable. If that list ever goes too, this check should fail
+       rather than be updated again. */
     const stats = read('src/routes/stats/+page.svelte');
-    expect(stats).toContain('data-values-open');
-    expect(stats).toMatch(/<Sheet\s+open=\{valueSheet\}/);
-    /* The sheet is the screen's own bar rows now, and a bar carries its
-       value as text - which is the property this check is about. It used to
-       be three columns of text per row, which is a table with one column
-       that matters. */
+    expect(stats).toContain('data-values-list');
+    expect(stats).toMatch(/<ul class="visually-hidden" data-values-list/);
     expect(stats).toContain('valueRows');
-    /* `measure="track"` since phase 8 UX ticket 03: the bar is where the day
-       sits in the metric's own range, which is what the sheet's own comment
-       promised while the primitive was quietly re-normalising it against the
-       longest row. The value beside it is text either way, which is what
-       this check is about. */
-    expect(stats).toContain('<BarRows rows={valueRows} measure="track" />');
+    /* Each row still carries its own name and reading as text, which is the
+       property the sheet's bar rows used to provide. */
+    expect(stats).toMatch(/\{row\.name\}: \{row\.value\}/);
     /* And a second scale joins that list rather than only the picture
        (phase 6 ticket 12). The plot is one image to a screen reader and a
        scrub is a way of reading a picture, so a comparison whose numbers

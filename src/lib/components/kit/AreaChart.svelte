@@ -38,6 +38,7 @@
      to stand in for. */
   import { untrack } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { disclose } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { areaPath } from '$lib/charts/areaPath';
   import {
@@ -407,7 +408,6 @@
   <div
     class="kit-area"
     class:has-overlay={overlaid}
-    class:no-gutter={!oneScale}
     data-chart="area"
     role="img"
     aria-label={ariaLabel}
@@ -433,18 +433,33 @@
          It stays for a pair placed against one range, though - the two ends
          of one band are the case that rule was not written for, and the
          ends of the scale are the ends of both lines. -->
-    {#if oneScale}
-      <div
-        class="kit-area-scale"
-        data-chart-scale
-        aria-hidden="true"
-        out:fade={{ duration: motionDuration('--dur-fast') }}
-      >
-        <span>{formatValue(max)}</span>
-        <span>{formatValue(min + (max - min) / 2)}</span>
-        <span>{formatValue(min)}</span>
-      </div>
-    {/if}
+    <!-- Mounted either way, and hidden rather than removed for the second
+         scale (ticket 99 item 25, "when switching from one scale to 2, it
+         happens with a yank... only happens when switching between 1 and 2
+         curves"). Taking the column out moved the plot 29px to the left and
+         widened it by the same, in the frame the second line arrived - so
+         the line already on the chart jumped sideways while the new one was
+         trying to fade in, which is the whole of the yank. Switching between
+         two second scales never did it, because by then the column was
+         already gone.
+
+         The numbers still go, which is what the rule above is actually
+         about: they are one range printed beside two lines placed against
+         their own. What stays is the space they took, so the plot is drawn
+         in the same place before and after and the arrival is the fade the
+         overlay path already had. `visibility` rather than `opacity`, so
+         the column keeps its width from the same digits it always did
+         rather than from a guess written here. -->
+    <div
+      class="kit-area-scale"
+      class:is-hidden={!oneScale}
+      data-chart-scale
+      aria-hidden="true"
+    >
+      <span>{formatValue(max)}</span>
+      <span>{formatValue(min + (max - min) / 2)}</span>
+      <span>{formatValue(min)}</span>
+    </div>
 
     <div class="kit-area-plot-wrap" bind:clientWidth={width}>
       <svg
@@ -645,6 +660,7 @@
       data-chart-legend
       aria-hidden="true"
       style:--role-2={overlay.role?.paired}
+      transition:disclose
     >
       <span class="kit-area-legend-item"><span class="kit-area-legend-mark"></span>{name ?? ''}</span>
       <span class="kit-area-legend-item"
@@ -691,8 +707,10 @@
      collapsed state is here, because a new single-consumer class in a
      shared sheet fails scripts/check-screens-classes.mjs and every class
      of this one's kind has exactly one consumer by construction. */
-  .kit-area.no-gutter {
-    grid-template-columns: minmax(0, 1fr);
+  /* The gutter's numbers go for a second scale; the column they sit in
+     does not (see the markup's own note). */
+  .kit-area-scale.is-hidden {
+    visibility: hidden;
   }
 
   /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
