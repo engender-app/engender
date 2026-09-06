@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { DayAverage } from './journal/stats';
 import type { DayRecords } from './journal/day';
-import { HIGHEST_DAYS_CAP, highestDays, rankHighestDays } from './highestDays';
+import {
+  HIGHEST_DAYS_CAP,
+  HIGHEST_DAYS_METRIC,
+  highestDays,
+  highestMetricKey,
+  rankHighestDays
+} from './highestDays';
 
 const point = (day: number, value: number): DayAverage => ({ day, value, count: 1 });
 
@@ -37,6 +43,41 @@ describe('ranking days by euphoria', () => {
   it('drops a row past today rather than trusting the caller\'s bound', () => {
     const ranked = rankHighestDays(10, [point(9, 50), point(11, 99)]);
     expect(ranked.map((p) => p.day)).toEqual([9]);
+  });
+});
+
+/* Which scale the ranking runs on, once the panel got a chooser (phase 9 UX
+   carpet ticket 11). The chooser is local to its card, so "nothing chosen"
+   is a state this has to answer for on every render, not just the first. */
+describe('which scale the ranking runs on', () => {
+  it('runs on euphoria until somebody chooses otherwise', () => {
+    expect(highestMetricKey(null, ['mood', HIGHEST_DAYS_METRIC, 'femininity'], 'mood')).toBe(
+      HIGHEST_DAYS_METRIC
+    );
+  });
+
+  it('runs on what was chosen', () => {
+    expect(highestMetricKey('femininity', ['mood', HIGHEST_DAYS_METRIC, 'femininity'], 'mood')).toBe(
+      'femininity'
+    );
+  });
+
+  /* Nothing falls back to mood by default: naming which scale a high day is
+     measured on is this module's decision, and euphoria is the one it made.
+     The screen's own metric is the fallback only where euphoria is not kept,
+     which is the case the card used to answer by not rendering at all. */
+  it('falls back to the screen\'s own scale where euphoria is not kept', () => {
+    expect(highestMetricKey(null, ['mood', 'femininity'], 'femininity')).toBe('femininity');
+  });
+
+  /* A chosen scale can stop being kept while the choice is still held - the
+     person unticks it in settings and comes back to this screen. Ranking a
+     scale that is no longer in the journal draws an empty card with a
+     control naming something that is gone. */
+  it('drops a choice the person has stopped keeping', () => {
+    expect(highestMetricKey('femininity', ['mood', HIGHEST_DAYS_METRIC], 'mood')).toBe(
+      HIGHEST_DAYS_METRIC
+    );
   });
 });
 
