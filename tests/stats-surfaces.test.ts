@@ -19,10 +19,15 @@ describe('the two folds say they read the whole journal, and only when they draw
      The header above them names the range picker's window and these two
      cards ignore it on purpose, so the line that used to explain the fold
      now says which journal it read. Inside the ReadGate's `rows` snippet, so
-     it prints on exactly the branch the chart prints on. */
+     it prints on exactly the branch the chart prints on.
+
+     The window is generous because what is being checked is which branch the
+     line sits on, never how far down it sits: ticket 99 item 34 put an
+     explainer and its comment above it, which is the kind of thing that
+     belongs there and should not fail this. */
   it('puts the all-history line inside the interval fold that draws it', () => {
     expect(stats).toMatch(
-      /<ReadGate read=\{intervalMoodQuery\}[\s\S]{0,120}\{#snippet rows\(\)\}[\s\S]{0,900}?<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
+      /<ReadGate read=\{intervalMoodQuery\}[\s\S]{0,120}\{#snippet rows\(\)\}[\s\S]{0,2000}?<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
     );
   });
 
