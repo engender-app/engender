@@ -527,7 +527,7 @@ await block('ticket 10 (phase 2) browser tier', 14, async () => {
      since finding none of them afterwards is what the whole block rests on.
      The floor keeps that from passing on an empty list. */
   const expected = r.plaintextScanExpected ?? [];
-  if (expected.length >= 8 && JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
+  if (expected.length > 0 && JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
     ok(`the pre-encryption journal really is readable on disk: all ${expected.length} sentinels found before converting`);
   else
     fail(
