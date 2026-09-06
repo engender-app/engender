@@ -1,3 +1,17 @@
+# The schema the 78-step migration chain built, dumped through dumpSchema() in
+# this directory's schema-dump.ts. This is the ground truth the squashed
+# baseline is held to (features ticket 34, ADR-0006); schema.test.ts compares
+# against it.
+#
+# The chain that produced it is at 4c38403a, the commit before the squash. To
+# reproduce: take that commit's migrations.ts, run every entry in version order
+# against an empty :memory: database, and dump it with the same function.
+#
+#   git show 4c38403a:src/lib/data/sqlite/migrations.ts
+#
+# Regenerating this is not part of adding a migration. It records what the
+# chain built, once, and it does not move again - a migration added after the
+# baseline changes the live schema and leaves this file alone.
 index idx_affirmation_language on affirmation
   CREATE INDEX idx_affirmation_language ON affirmation(language)
 index idx_appointment_epoch_day on appointment

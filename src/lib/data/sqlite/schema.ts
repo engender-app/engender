@@ -910,6 +910,13 @@ CREATE TABLE personal_effect (
 -- cleared the gate, is a valid benchmark with a passage and no resonance - not
 -- a failed one, and not a row to refuse.
 --
+-- \`pitch_track\` is TEXT rather than a BLOB of floats: the encoding is
+-- human-readable, one comma-separated Hz value per point with an empty slot
+-- for an unvoiced one, which is what audio/track.ts writes and reads. A
+-- thirty-second passage at four hertz is about 120 points and under a
+-- kilobyte, so the compactness a BLOB would buy is not worth a format nothing
+-- can read at the sqlite prompt.
+--
 -- The last of the original columns is \`updated_at\` rather than
 -- \`created_at\`: every table here names it that, and the flat archive path
 -- writes it by that name on the way back in. A benchmark is never edited, so
@@ -938,6 +945,24 @@ CREATE TABLE voice_benchmark (
 );
 CREATE INDEX idx_voice_benchmark_epoch_day ON voice_benchmark(epoch_day);
 
+-- Its own table rather than a nullable passage_key on voice_benchmark, the
+-- same reasoning that gave a benchmark a table separate from entry: a
+-- benchmark is a fixed, comparable measurement, and a practice take is what
+-- somebody does with their voice most days.
+--
+-- \`min_hz\`/\`max_hz\` rather than a benchmark's p10/p90: a practice take is
+-- short and deliberate and the person knows what they just did, so the true
+-- extremes are the honest answer here, where on a thirty-second passage read
+-- they would mostly show one creaky frame. \`felt_sense\` is the app's own
+-- five-level mood scale, nullable because recording how a take felt is
+-- offered and never required - and not the \`felt_sense\` table, which belongs
+-- to a tryout or a milestone by name.
+--
+-- No sealed-until column. The seal reuses the time-capsule letter's mechanics
+-- (sealedUntil.ts), but unlike a letter's unlock day - a real choice the
+-- person makes - a take's is always \`epoch_day + 1\` and never anything else,
+-- which is exactly the computable-from-what-is-here case ADR-0010 refuses a
+-- column for.
 CREATE TABLE voice_practice_take (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid       TEXT NOT NULL UNIQUE,
@@ -1069,6 +1094,12 @@ CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);
 -- key, so any owner kind reuses this table with no migration of its own. Both
 -- columns are NULL together for a standalone checklist or set together for an
 -- owned one; the CHECK rules out the half-set case a typo could write silently.
+--
+-- \`appointment_epoch_day\` sits on the checklist row rather than in a table
+-- of its own because the standalone checklist already is the appointment prep
+-- list, so the date belongs to the record that is that list's home. Null on
+-- every owned checklist - a procedure's recovery list has no appointment of
+-- its own - and read rather than written since ticket 58.
 --
 -- The four debrief columns are device-local bookkeeping and deliberately not
 -- part of what a checklist travels in an archive: they name a row this device

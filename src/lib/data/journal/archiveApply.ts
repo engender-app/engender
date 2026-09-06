@@ -948,7 +948,7 @@ export async function applyPersonalEffectTypes({ driver, mode, journal, ts }: Re
   }
 }
 
-/* A hair photo owns no other row (migrations.ts v13's own table, not a
+/* A hair photo owns no other row (its own table in schema.ts, not a
    third owner on `photo`), so it is matched and inserted directly by uuid
    like applyMeasurements - unlike applyEntries/applyMilestones, there is no
    owner row to insert first and no owner id to resolve. */

@@ -11,7 +11,7 @@ import { runMigrations } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
-import { dumpSchema } from './test-support/schema-dump.ts';
+import { dumpSchema, readSchemaFixture } from './test-support/schema-dump.ts';
 
 /* The version the squash landed on (ticket 34): one baseline statement in
    place of the 78 steps that used to build up to it, keeping the number those
@@ -24,11 +24,17 @@ test('the squashed baseline builds the schema the 78-step chain built', async ()
   /* The ground truth is a dump taken from a database the real 78-step chain
      built, frozen at the commit that retired the chain - the chain itself is
      in git history from there, not in the tree, so this file is the only thing
-     left that remembers what it produced. Compared through dumpSchema, which
-     forgives comments, whitespace and the quoting ALTER TABLE leaves behind,
-     so the baseline is free to be written as a readable column list rather
-     than as the appended-column text SQLite happened to store. */
-  const expected = readFileSync(new URL('./test-support/pre-squash-schema.txt', import.meta.url), 'utf8');
+     left that remembers what it produced. Its own header says which commit
+     holds the chain and how to rebuild the dump, which is the whole of what
+     makes a frozen oracle checkable rather than merely asserted.
+
+     Compared through dumpSchema, which forgives comments, whitespace and the
+     quoting ALTER TABLE leaves behind, so the baseline is free to be written
+     as a readable column list rather than as the appended-column text SQLite
+     happened to store. */
+  const expected = readSchemaFixture(
+    readFileSync(new URL('./test-support/pre-squash-schema.txt', import.meta.url), 'utf8')
+  );
 
   const db = makeNodeSqliteDb();
   await runMigrations(
@@ -39,6 +45,40 @@ test('the squashed baseline builds the schema the 78-step chain built', async ()
 
   assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
   assert.equal(dumpSchema(db.raw) + '\n', expected);
+});
+
+test('a journal from below the baseline is refused loudly, with its rows left alone', async () => {
+  /* The price the squash took: the steps that would have carried such a
+     journal forward are gone, so it cannot be opened. What it must not do is
+     go wrong quietly. The version is behind rather than ahead, so
+     SchemaTooNewError never fires for it - the baseline is simply pending, it
+     meets tables that are already there, and the step fails inside its own
+     transaction. */
+  const db = makeNodeSqliteDb();
+  db.raw.exec(`CREATE TABLE entry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, epoch_day INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL, mood INTEGER, note TEXT, updated_at INTEGER NOT NULL)`);
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, 'still here', 1000)");
+  db.setUserVersion(SQUASH_BASELINE_VERSION - 38);
+
+  const fileOps = noopFileOps();
+  let cleanups = 0;
+  fileOps.cleanupPreMigrationCopy = () => {
+    cleanups += 1;
+  };
+
+  await assert.rejects(() => runMigrations(db, fileOps, migrations));
+
+  // The transaction rolled back, so nothing the baseline creates is there and
+  // the entry is untouched. The copy is not retired either, which is what
+  // leaves a way back (ADR-0006, amended by ticket 04).
+  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION - 38);
+  assert.equal(
+    (db.raw.prepare("SELECT note FROM entry WHERE uuid = 'e1'").get() as { note: string }).note,
+    'still here'
+  );
+  assert.equal(db.raw.prepare("SELECT name FROM sqlite_master WHERE name = 'appointment'").get(), undefined);
+  assert.equal(cleanups, 0);
 });
 
 test('the squash left one migration standing where there were 78', async () => {
@@ -115,9 +155,9 @@ test('entry_fts is a contentless FTS5 table', async () => {
   assert.match(def, /content=''/);
 });
 
-test('v3 lets the index delete a row without being handed its old text', async () => {
+test('the index deletes a row without being handed its old text', async () => {
   // Why this option, rather than the 'delete' command a plain contentless
-  // table forces, is in migrations.ts on SCHEMA_V3.
+  // table forces, is in schema.ts above entry_fts.
   const db = await migratedDb();
   const def = (
     db.raw
@@ -137,7 +177,7 @@ test('v3 lets the index delete a row without being handed its old text', async (
   assert.deepEqual(hits, []);
 });
 
-test('v3 drops an entry out of the index when the entry row goes', async () => {
+test('an entry drops out of the index when the entry row goes', async () => {
   // The trigger is what makes this hold for every delete path, including
   // ones written later that know nothing about the index - ticket 14's
   // Replace import deletes entry rows wholesale.
@@ -154,7 +194,7 @@ test('v3 drops an entry out of the index when the entry row goes', async () => {
   assert.deepEqual(hits, []);
 });
 
-test('v2 adds gender_dimension.hidden, defaulting to visible', async () => {
+test('gender_dimension.hidden defaults to visible', async () => {
   const db = await migratedDb();
   db.raw.exec(
     "INSERT INTO gender_dimension (key, name, low_label, high_label, updated_at) VALUES ('voice', 'Voice', 'low', 'high', 1000)"
@@ -165,7 +205,7 @@ test('v2 adds gender_dimension.hidden, defaulting to visible', async () => {
   assert.equal(row.hidden, 0);
 });
 
-test('v26 adds entry.starred and photo.starred, defaulting to unstarred', async () => {
+test('entry.starred and photo.starred default to unstarred', async () => {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, '', 1000)");
   const entryId = (db.raw.prepare("SELECT id FROM entry WHERE uuid = 'e1'").get() as { id: number }).id;
@@ -269,7 +309,7 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
   );
 });
 
-test('v5 measurement carries no episode reference; v34 opens its type past the built-in four', async () => {
+test('measurement carries no episode reference, and its type is open past the built-in four', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(measurement)').all() as Array<{ name: string }>).map(
     (c) => c.name
@@ -286,7 +326,7 @@ test('v5 measurement carries no episode reference; v34 opens its type past the b
   );
 });
 
-test('v34 gives measurement_type the same key NOT NULL / uuid nullable shape gender_dimension has', async () => {
+test('measurement_type has the same key NOT NULL / uuid nullable shape gender_dimension has', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(measurement_type)').all() as Array<{
     name: string;
@@ -315,7 +355,7 @@ test('tally_event.kind accepts only the two counters', async () => {
   assert.throws(() => insert('confused'));
 });
 
-test('v21 cycle_event carries no episode reference and accepts only its three kinds', async () => {
+test('cycle_event carries no episode reference and accepts only its three kinds', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(cycle_event)').all() as Array<{ name: string }>).map(
     (c) => c.name
@@ -377,7 +417,7 @@ test('a body region says dysphoria, euphoria or both, and the two are independen
   ]);
 });
 
-test('v36 refuses a body region that says nothing on either axis', async () => {
+test('a body region that says nothing on either axis is refused', async () => {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
 
@@ -385,7 +425,6 @@ test('v36 refuses a body region that says nothing on either axis', async () => {
     db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', NULL, NULL)")
   );
 });
-
 
 test('measurement.type is open past the built-in four, with no CHECK to reopen', async () => {
   const db = await migratedDb();
@@ -442,7 +481,7 @@ const insertHairStage =
       `INSERT INTO hair_stage (uuid, epoch_day, scale, stage, description, updated_at) VALUES ('${uuid}', 100, '${scale}', '${stage}', '${description}', 1000)`
     );
 
-test('v37 hair_stage rejects a grade the named scale does not publish', async () => {
+test('hair_stage rejects a grade the named scale does not publish', async () => {
   const db = await migratedDb();
   const insert = insertHairStage(db);
 
@@ -457,7 +496,7 @@ test('v37 hair_stage rejects a grade the named scale does not publish', async ()
   assert.throws(() => insert('h6', 'ludwig', 'ii'));
 });
 
-test('v37 hair_stage keeps a free-text description to the scale that has no grades', async () => {
+test('hair_stage keeps a free-text description to the scale that has no grades', async () => {
   const db = await migratedDb();
   const insert = insertHairStage(db);
 
@@ -468,7 +507,6 @@ test('v37 hair_stage keeps a free-text description to the scale that has no grad
   assert.throws(() => insert('h3', 'other', '3'));
   assert.throws(() => insert('h4', 'norwood_hamilton', '3', 'and some prose'));
 });
-
 
 test('a dose schedule cannot claim one recurrence shape while carrying the other one data', async () => {
   const db = await migratedDb();
@@ -500,7 +538,7 @@ test('a dose schedule cannot claim one recurrence shape while carrying the other
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM dose_schedule_dose_amount').get() as { n: number }).n, 0);
 });
 
-test('v13 hair_photo is its own table, not a third owner on photo', async () => {
+test('hair_photo is its own table, not a third owner on photo', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(hair_photo)').all() as Array<{ name: string }>).map(
     (c) => c.name
@@ -544,7 +582,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM gender_dimension').get()?.['n'], 1);
 });
 
-test('v24 entry gets a nullable trashed_at column, indexed, defaulting to NULL', async () => {
+test('entry.trashed_at is nullable and indexed, defaulting to NULL', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(entry)').all() as Array<{
     name: string;
@@ -594,8 +632,7 @@ test('an episode ends only when it is ended, and a dose names its own drug or no
   assert.equal(dose.drug, null);
 });
 
-
-test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {
+test('video_note is entry-only, ordered, and unique by uuid', async () => {
   const db = await migratedDb();
   const exec = (sql: string) => db.raw.exec(sql);
   exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 19180, 1000, '', 1000)");
@@ -614,15 +651,6 @@ test('v27 video_note is entry-only, ordered, and unique by uuid', async () => {
     exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'other.webm', 1000)")
   );
 });
-
-
-
-
-
-
-
-
-
 
 test('a milestone records where it came from in three nullable columns, all unset by default', async () => {
   const db = await migratedDb();
@@ -676,7 +704,7 @@ test('the presentation table and entry.presentation_id are both nullable and unf
   assert.equal(linked.presentation_id, 'p-1');
 });
 
-test('v50 adds the era table, with both bounds nullable and no fifth column', async () => {
+test('the era table has both bounds nullable and no fifth column', async () => {
   const db = await migratedDb();
 
   db.raw.exec("INSERT INTO era (uuid, name, start_epoch_day, end_epoch_day, updated_at) VALUES ('era-1', 'before I knew', NULL, 19000, 1000)");
@@ -704,7 +732,7 @@ test('v50 adds the era table, with both bounds nullable and no fifth column', as
   assert.deepEqual(columns, ['id', 'uuid', 'name', 'start_epoch_day', 'end_epoch_day', 'updated_at']);
 });
 
-test('v51 adds era_mute, presence keyed by era_uuid alone', async () => {
+test('era_mute is presence keyed by era_uuid alone', async () => {
   const db = await migratedDb();
 
   db.raw.exec("INSERT INTO era_mute (era_uuid, updated_at) VALUES ('era-1', 1000)");
@@ -883,11 +911,6 @@ test('the hand-written latest version and the migration list agree', async () =>
     'the list is contiguous from the baseline, in order, with no version applied twice'
   );
 });
-
-
-
-
-
 
 test('every wear session has a kind, and a write that names none gets the default', async () => {
   const db = await migratedDb();

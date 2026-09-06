@@ -13,7 +13,9 @@ import type { DatabaseSync } from 'node:sqlite';
 /** Strips the three ways the same statement can be stored under different
     text: comments, whitespace, and the double quotes `ALTER TABLE ... RENAME`
     writes around a table name when it rewrites the CREATE. String literals are
-    copied through untouched - a CHECK's allowlist is shape.
+    copied through untouched - a CHECK's allowlist is shape - and so is any
+    identifier whose quotes are load-bearing, so two names that differ only
+    inside their quotes never normalize to the same thing.
 
     Whitespace around brackets and commas goes entirely rather than collapsing
     to one space, because `ALTER TABLE ... ADD COLUMN` appends its column after
@@ -49,10 +51,36 @@ export function normalizeSql(sql: string): string {
     }
 
     if (sql[i] === '"') {
-      const end = sql.indexOf('"', i + 1);
-      const close = end === -1 ? sql.length : end;
-      plain += sql.slice(i + 1, close);
-      i = close + 1;
+      let end = i + 1;
+      let name = '';
+      while (end < sql.length) {
+        if (sql[end] === '"') {
+          // "" inside a quoted identifier is an escaped quote, the same
+          // doubling a string literal uses, not the end of the name.
+          if (sql[end + 1] === '"') {
+            name += '"';
+            end += 2;
+            continue;
+          }
+          end += 1;
+          break;
+        }
+        name += sql[end];
+        end += 1;
+      }
+      /* An identifier only needs its quotes because of what is inside it, so
+         they come off only for the plain word SQLite would have written bare -
+         which is the one case ALTER TABLE RENAME produces. Anything else keeps
+         them and rides through verbatim like a string literal, since a space
+         or a comma inside a name is part of the name and must not be squeezed
+         out with the whitespace. */
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+        plain += name;
+      } else {
+        flush();
+        pieces.push(`"${name.replace(/"/g, '""')}"`);
+      }
+      i = end;
       continue;
     }
 
@@ -76,6 +104,17 @@ export function normalizeSql(sql: string): string {
   flush();
 
   return pieces.join('').trim();
+}
+
+/** Reads a dump back out of a fixture file, dropping the `#` header lines that
+    say where it came from. A frozen dump is only worth as much as its
+    provenance, and the provenance has to live in the file rather than in
+    whatever commit message happened to accompany it. */
+export function readSchemaFixture(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => !line.startsWith('#'))
+    .join('\n');
 }
 
 /** Every object SQLite knows about, in a stable order. Rows with no SQL of
