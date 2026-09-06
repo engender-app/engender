@@ -1671,11 +1671,13 @@ a.kit-entry:active {
 }
 
 /* The one-column state - a plot with no value gutter beside it - lives in
-   AreaChart.svelte's own style block: `.no-gutter` has exactly one consumer
-   by construction and check-screens-classes.mjs fails a new single-consumer
-   class in a shared sheet. It used to be `.has-overlay` here, keyed to the
-   second line rather than to the gutter, which put a shared-scale pair's
-   numbers in a row of their own above the plot (ticket 29). */
+   AreaChart.svelte's own style block: the gutter's own state class has
+   exactly one consumer by construction and check-screens-classes.mjs fails
+   a new single-consumer class in a shared sheet. It was `.has-overlay`
+   here first, keyed to the second line rather than to the gutter, which put
+   a shared-scale pair's numbers in a row of their own above the plot
+   (ticket 29); then `.no-gutter`, which dropped the column outright until
+   ticket 99 item 25 found that the drop was what made the switch jump. */
 
 .kit-area-scale {
   display: flex;

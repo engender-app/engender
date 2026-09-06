@@ -861,34 +861,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The one text action on the screen: every reading in the range, as
-   numbers. Right-aligned under the chart it belongs to, at the touch floor. */
-.stats-open {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-left: auto;
-  margin-top: var(--space-1);
-  min-height: var(--touch-target);
-  padding-inline: var(--space-3);
-  border: 0;
-  background: none;
-  color: var(--accent-ink);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
-}
-
-/* `.stats-note` used to be named here too, and never won - kit.css is imported
-   after this file and matched it at the same specificity. Its three consumers
-   have since moved inside the cards they qualify (phase 8 UX ticket 03), so
-   the class is gone from both files and what is left here is the button,
-   which is a control that wants the tighter gap anyway. */
-.stats-open + :is(.kit-chart, .kit-list) {
-  margin-top: var(--space-4);
-}
-
 /* The "pick a start and end day" notice sat a hairline under the second
    picker (Alicja, 2026-08-25). A card and the remark about it are two
    things, and two things get the space two things get. */
