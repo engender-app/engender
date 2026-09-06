@@ -51,9 +51,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * has the numbers without a device:
  *
  * <ul>
- *   <li>25 MB over the channel: 0.0ms decode, 91.6ms round trip.</li>
- *   <li>25 MB, both transports: see
- *       {@link #bothTransportsAtTheCeiling}.</li>
+ *   <li>25 MB over the channel: 0.0ms decode, 61.1ms round trip.</li>
+ *   <li>25 MB through the chunked fallback: 34 chunks, 1066.4ms of decode,
+ *       3831.4ms round trip - against the same file over the channel in the
+ *       same run at 0.0ms and 39.1ms. So the gap between WebView 87 and 105
+ *       costs about four seconds of a person's time for a scan at the
+ *       ceiling, where before ticket 14 it cost them the scan.</li>
  * </ul>
  *
  * <p>A phone's own figures will be better and are
