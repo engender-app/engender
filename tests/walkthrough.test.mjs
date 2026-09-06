@@ -3875,6 +3875,160 @@ try {
 } catch (e) { fail('the appointment record', e); }
 
 try {
+  /* In the room (phase 8 features ticket 60): the standing prep list read
+     one question per screen, and what gets jotted arriving in the debrief
+     attributed to the question it was typed under.
+
+     Two questions of this flow's own, and it walks forward to find the
+     first of them rather than assuming a position: the standing list is
+     whatever the demo jump and the flows above have left on it, and this
+     one appends to the end of it. */
+  await fresh('/health/appointment-prep');
+
+  const ASKED = 'ask about the dose';
+  const REFERRAL = 'ask about the referral';
+  let questionCount = await page.locator('[data-appointment-item]').count();
+  for (const question of [ASKED, REFERRAL]) {
+    await page.click('[data-add]');
+    await page.waitForSelector('#appointment-prep-input');
+    await page.fill('#appointment-prep-input', question);
+    await page.click('[data-save-appointment-item]');
+    questionCount += 1;
+    // The row landing is what says the write went through. Navigating on
+    // the click alone would leave every check below passing over a shorter
+    // list than the one this flow thinks it wrote.
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('[data-appointment-item]').length === n,
+      questionCount,
+      { timeout: 8000 }
+    );
+  }
+
+  /* The way in from the list, on any day. Also the control case for the
+     chromeless check below: the bar has to be here first, or its absence
+     in the room proves nothing. */
+  if (!(await page.locator('[data-app-nav]').count())) {
+    throw new Error('the prep list has no tab bar, so losing one in the room would say nothing');
+  }
+  await page.waitForSelector('[data-list-row="in-the-room"]');
+
+  /* A visit today, so the room has an appointment to attribute answers to.
+     The date field opens on today already, so saving without touching it is
+     what books one for this morning. */
+  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
+  await booted();
+  const appointmentsBefore = await page.locator('[data-appointment]').count();
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  await page.fill('#appointment-kind', 'endokrynolog');
+  await page.click('[data-save-appointment]');
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('[data-appointment]').length === n,
+    appointmentsBefore + 1,
+    { timeout: 8000 }
+  );
+
+  // The second way in: from the appointment, on its day.
+  await page.waitForSelector('[data-list-row="in-the-room"]', { timeout: 8000 });
+  await page.click('[data-list-row="in-the-room"]');
+  await page.waitForSelector('[data-in-the-room]', { timeout: 8000 });
+
+  if (await page.locator('[data-app-nav]').count()) {
+    throw new Error('the room kept the tab bar, which is four ways to leave it by accident');
+  }
+  if ((await page.locator('[data-room-question]').count()) !== 1) {
+    throw new Error('the room is showing more than one question at a time');
+  }
+
+  const questionOnScreen = async () => (await page.textContent('[data-room-question]')).trim();
+  let steps = 0;
+  while ((await questionOnScreen()) !== ASKED) {
+    if (steps > 60) throw new Error('walked the whole prep list without reaching the question just written');
+    await page.click('[data-room-next]');
+    steps += 1;
+  }
+
+  /* Advanced past with the field left alone, which has to leave nothing
+     behind: this question must not reach the debrief below. */
+  await page.click('[data-room-next]');
+  await page.waitForFunction(
+    (t) => document.querySelector('[data-room-question]')?.textContent.trim() === t,
+    REFERRAL,
+    { timeout: 8000 }
+  );
+
+  const ANSWER = 'she is writing it this week';
+  await page.fill('[data-room-answer]', ANSWER);
+
+  /* Back one and forward again: the answer belongs to its question rather
+     than to the field, so it survives the walk. */
+  await page.click('[data-room-previous]');
+  await page.waitForFunction(
+    (t) => document.querySelector('[data-room-question]')?.textContent.trim() === t,
+    ASKED,
+    { timeout: 8000 }
+  );
+  if ((await page.inputValue('[data-room-answer]')) !== '') {
+    throw new Error('a question nobody answered is showing somebody else\'s answer');
+  }
+  await page.click('[data-room-next]');
+  await page.waitForFunction(
+    (t) => document.querySelector('[data-room-question]')?.textContent.trim() === t,
+    REFERRAL,
+    { timeout: 8000 }
+  );
+  if ((await page.inputValue('[data-room-answer]')) !== ANSWER) {
+    throw new Error('walking back and forward lost what was jotted');
+  }
+
+  // The one way out, which carries what was jotted into the debrief.
+  await page.click('[data-room-done]');
+  await page.waitForSelector('#ed-note', { timeout: 8000 });
+  await page.waitForFunction(
+    (answer) => document.querySelector('#ed-note')?.value.includes(answer),
+    ANSWER,
+    { timeout: 8000 }
+  );
+  const note = await page.inputValue('#ed-note');
+  if (!note.includes(REFERRAL)) throw new Error('the answer reached the debrief without its question: ' + note);
+  if (note.indexOf(REFERRAL) > note.indexOf(ANSWER)) {
+    throw new Error('the answer is printed above the question it answers: ' + note);
+  }
+  if (note.includes(ASKED)) {
+    throw new Error('a question advanced past without an answer still reached the debrief: ' + note);
+  }
+
+  /* Left unsaved on purpose - the entry is not this flow's to write - and
+     the visit it was booked for is taken back off the record, so the flows
+     after this one see the appointment list they would have seen. */
+  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-appointment]', { hasText: 'endokrynolog' }).first().click(); // text-under-test: the visit this flow booked
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('[data-appointment]').length === n,
+    appointmentsBefore,
+    { timeout: 8000 }
+  );
+
+  /* And with that visit gone there is nothing today for an answer to belong
+     to, so the questions are still readable and the field is not offered -
+     rather than taking what somebody types and dropping it on the way out.
+     Deterministic here because this flow just deleted the one appointment it
+     booked, and neither demo seed writes one on today. */
+  await page.goto(BASE + '/health/appointments/in-the-room', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-room-question]', { timeout: 8000 });
+  if (await page.locator('[data-room-answer]').count()) {
+    throw new Error('the room offered a field to jot in on a day with no visit to attach it to');
+  }
+  if (!(await page.locator('[data-room-done]').count())) throw new Error('the room lost its way out');
+  ok('in the room: the prep list one question per screen, chromeless, and a jotted answer reaching the debrief under its own question');
+} catch (e) { fail('in the room', e); }
+
+try {
   /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one

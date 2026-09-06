@@ -23,6 +23,18 @@ describe('the routes that render without chrome', () => {
     expect(chromelessPath('/settings/export')).toBe(false);
   });
 
+  it('is the in-the-room view, which owes its reader one way out (ticket 60)', () => {
+    expect(chromelessPath('/health/appointments/in-the-room')).toBe(true);
+  });
+
+  it('is not the appointments screen or the prep list the room is a view over', () => {
+    /* Exact rather than a prefix, for the same reason /settings is: a
+       prefix here would take the bar off the screen the room is reached
+       from. */
+    expect(chromelessPath('/health/appointments')).toBe(false);
+    expect(chromelessPath('/health/appointment-prep')).toBe(false);
+  });
+
   it('is not an ordinary screen', () => {
     expect(chromelessPath('/')).toBe(false);
     expect(chromelessPath('/calendar')).toBe(false);

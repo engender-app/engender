@@ -13,6 +13,7 @@
   import { createEntryDraft, type EntryDraft } from '$lib/data/entryDraft';
   import { readLabResultsInRange } from '$lib/data/journal/clinicianSummary';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
+  import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { applyPersistedDraft, draftMatchesRoute, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { journalDataKey } from '$lib/stores/boot.svelte';
@@ -277,50 +278,74 @@
   if (entryId == null && debriefForAppointment != null) {
     const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
     if (debriefTemplate) applyTemplate(debriefTemplate);
-    void fillDebriefList(debriefForAppointment);
+    void fillDebriefPrefill(debriefForAppointment);
   }
 
-  /* The descriptive list the debrief offer pre-fills below its "How did it
-     go?" scaffold (ticket 19, What to Build #2): the same range and the
-     same two reads the appointment prep screen's own "since last time"
-     cards already use (readLabResultsInRange, sideEffects's own
-     getSideEffectsInRange) - not a new read, the range this ticket adds
-     asked of the pair that already answers it. debriefListItems merges and
-     sorts them Node-tier, free of paraglide; the date on each line and the
-     join are here, the same split every other wording split in this app
-     follows (ADR-0016).
+  /* What the debrief opens pre-filled with, under its "How did it go?"
+     scaffold: what the person jotted in the room, then the descriptive list
+     of labs and side effects since the visit.
 
-     Appended only while the note still reads exactly as applyTemplate left
-     it: a restored process-death draft, or the person having already
-     started typing, both mean there is something here that is not this
-     function's to overwrite - the offer "does not write" (ticket 19's own
-     line), read as "does not clobber" too. Nothing is appended when the
-     range is empty; a blank line under a one-line prompt is not a list.
+     THE ROOM'S ANSWERS FIRST (phase 8 features ticket 60), because they are
+     the person's own words and the list under them is context. Each one is
+     printed under the question it was typed against - that pairing is the
+     whole reason the room asks per question rather than offering one free
+     note (answeredQuestions, debriefNote.ts). They arrive from module state
+     (stores/inTheRoom.ts) rather than from the journal, since ticket 60
+     adds no record: read here, non-destructively, so discarding this entry
+     and taking the offer again pre-fills the same words a second time.
+
+     THE LIST (ticket 19, What to Build #2): the same range and the same two
+     reads the appointment prep screen's own "since last time" cards already
+     use (readLabResultsInRange, sideEffects's own getSideEffectsInRange) -
+     not a new read, the range that ticket added asked of the pair that
+     already answers it. debriefListItems merges and sorts them Node-tier,
+     free of paraglide; the date on each line and the join are here, the
+     same split every other wording split in this app follows (ADR-0016).
+
+     Both sections go on in one write, past one guard: the note is appended
+     to only while it still reads exactly as applyTemplate left it. A
+     restored process-death draft, or the person having already started
+     typing, both mean there is something here that is not this function's
+     to overwrite - the offer "does not write" (ticket 19's own line), read
+     as "does not clobber" too. With nothing on either side there is nothing
+     to append; a blank line under a one-line prompt is not a list.
 
      Takes the appointment's id (ticket 58) and resolves its own day first,
-     since the range this pre-fill wants starts there, not at some day the
-     caller already knew. Silently does nothing for an id the journal no
-     longer holds, the same "offer a blank entry rather than a broken one"
-     rule the deep link's own param parsing follows. */
-  async function fillDebriefList(appointmentId: string) {
+     since the range the list wants starts there, not at some day the caller
+     already knew. An id the journal no longer holds costs the list, not the
+     answers: the room's own words are held against that id and are still
+     the person's, which is the "offer a blank entry rather than a broken
+     one" rule read the generous way round. */
+  async function fillDebriefPrefill(appointmentId: string) {
     // Awaited first, deterministically: a restored process-death draft is
     // the person's own unsaved work and always wins the race against this
     // function's own two reads, rather than whichever happens to resolve
     // last.
     await persistedRestore;
     const appointment = await journal.appointments.getAppointment(appointmentId);
-    if (!appointment) return;
-    const [labs, sideEffects] = await Promise.all([
-      readLabResultsInRange(journal.labs, appointment.epochDay, todayEpochDay()),
-      journal.sideEffects.getSideEffectsInRange(appointment.epochDay, todayEpochDay())
-    ]);
+    const [labs, sideEffects] = appointment
+      ? await Promise.all([
+          readLabResultsInRange(journal.labs, appointment.epochDay, todayEpochDay()),
+          journal.sideEffects.getSideEffectsInRange(appointment.epochDay, todayEpochDay())
+        ])
+      : [[], []];
     const items = debriefListItems(labs, sideEffects);
-    if (!items.length) return;
+    const answers = roomAnswersFor(appointmentId);
+    if (!items.length && !answers.length) return;
     if (entryDraft.note !== m.prompt_appointment_debrief()) return;
-    const lines = items.map(
-      (item) => `${fmtDay(item.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}: ${item.text}`
-    );
-    entryDraft.setNote(`${entryDraft.note}\n\n${m.debrief_since_heading()}\n${lines.join('\n')}`);
+
+    const sections: string[] = [];
+    if (answers.length) {
+      const pairs = answers.map((pair) => `${pair.question}\n${pair.answer}`);
+      sections.push(`${m.debrief_room_heading()}\n${pairs.join('\n\n')}`);
+    }
+    if (items.length) {
+      const lines = items.map(
+        (item) => `${fmtDay(item.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}: ${item.text}`
+      );
+      sections.push(`${m.debrief_since_heading()}\n${lines.join('\n')}`);
+    }
+    entryDraft.setNote([entryDraft.note, ...sections].join('\n\n'));
   }
 
   /* The union of the ticked scales and the entry's own: an entry logged
