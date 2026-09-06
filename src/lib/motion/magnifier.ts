@@ -95,15 +95,15 @@ export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
     stopped being an eye; what should be noticeable is five of them agreeing. */
 export const GAZE_REACH = 1.05;
 
-/** How far away, in cells, a face has to be before its eyes are fully turned.
-    One: the immediate neighbour is already looking as hard as it can, and
-    everything past it looks the same. Eyes run out of travel, which is the
-    difference between a gaze and a compass needle, and it also means a row of
-    nine would not have its outer faces staring harder than its inner ones. */
-const GAZE_FULL = 1;
+/** A distance in cells, as a turn from -1 to 1.
 
+    One cell is already a full turn: the immediate neighbour looks as hard as
+    it can and everything past it looks the same. Eyes run out of travel,
+    which is the difference between a gaze and a compass needle, and it also
+    means a row of nine would not have its outer faces staring harder than
+    its inner ones. */
 function clampTurn(cells: number): number {
-  return Math.max(-1, Math.min(1, cells / GAZE_FULL));
+  return Math.max(-1, Math.min(1, cells));
 }
 
 /** Every face's gaze for a pointer at `x`, as -1 (fully left) to 1 (fully
@@ -120,7 +120,12 @@ export function gazeRow(x: number, row: DOMRect, count: number): number[] {
     the four that were not chosen turn to look at the one that was, and the
     chosen one looks straight out. A cell index rather than a coordinate,
     because after the pick the pointer is gone and the row's position on the
-    screen is not something any of these surfaces should have to know. */
-export function gazeToCell(picked: number | null, count: number): number[] {
-  return Array.from({ length: count }, (_, i) => (picked === null ? 0 : clampTurn(picked - i)));
+    screen is not something any of these surfaces should have to know.
+
+    There is no "nothing was picked" here. A cleared mood is the row letting
+    go, which is moodMagnifier's own resting value of null on every face, and
+    a second spelling of nothing - all zeros, meaning five faces deliberately
+    staring straight ahead - is a different state that nothing wants. */
+export function gazeToCell(picked: number, count: number): number[] {
+  return Array.from({ length: count }, (_, i) => clampTurn(picked - i));
 }

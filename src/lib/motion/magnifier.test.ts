@@ -166,10 +166,6 @@ describe('gazeToCell', () => {
   it('looks the other way for a pick on the other side', () => {
     expect(gazeToCell(4, 5)[0]).toBeCloseTo(1, 10);
   });
-
-  it('lets go when nothing is picked', () => {
-    expect(gazeToCell(null, 5)).toEqual([0, 0, 0, 0, 0]);
-  });
 });
 
 describe('GAZE_REACH', () => {

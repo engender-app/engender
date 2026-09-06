@@ -73,10 +73,17 @@
      runs afterwards - the four unpicked faces turning to look at the chosen
      one - needs the cell index, and the index is a thing only the row knows.
      Clearing a mood sends null, and null is the row letting go. */
-  function choose(i: number) {
-    const next = STEPS[i] === value ? null : STEPS[i];
+  function announce(i: number, next: number | null) {
     magnifier.onPick(next === null ? null : i);
     onPick(next);
+  }
+
+  /* A tap toggles: picking the selected mood again clears it. An arrow key
+     does not, because it lands on whatever it moved to and a radio group
+     that unpicked itself when you arrowed onto the current choice would be
+     unusable. Two callers, one announcement. */
+  function choose(i: number) {
+    announce(i, STEPS[i] === value ? null : STEPS[i]);
   }
 
   function onRadioKeydown(e: KeyboardEvent, i: number) {
@@ -84,7 +91,11 @@
     if (next === null) return;
     e.preventDefault();
     buttons[next]?.focus();
-    onPick(STEPS[next]);
+    /* Through announce(), not straight to onPick: an arrow key picks a mood
+       exactly as much as a tap does, and routing it past the row left a
+       keyboard user the only one who never saw the other four look at what
+       they had chosen. */
+    announce(next, STEPS[next]);
   }
 </script>
 

@@ -483,7 +483,12 @@
     const row = document.querySelector('[data-fan-moods]')?.getBoundingClientRect();
     const cell = row ? row.width / MOODS.length : 0;
     if (!row || !cell || e.clientY < row.top - cell / 2 || e.clientY > row.bottom + cell / 2) {
-      if (moodScale.some((scale) => scale !== 1)) restMoods();
+      /* Both channels, because either can be the one still set. A finger far
+         enough along the row that every scale is already back to 1 still has
+         all five gazes clamped hard toward it, and leaving the band on the
+         scale test alone left them staring after it with the glance still
+         paused - the half-answering state restMoods exists to rule out. */
+      if (moodScale.some((scale) => scale !== 1) || moodGaze.some((g) => g !== null)) restMoods();
       return;
     }
     const spread = cell * MAGNIFIER_SPREAD;
