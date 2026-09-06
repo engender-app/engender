@@ -1,41 +1,41 @@
-/* Picking a document to file (phase 8 features ticket 53, ADR-0065): one
-   file, PDF or image, refused and reported the way photoPicking.ts already
-   does for photos - accepting happens here, before the import sheet is
-   the thing in front of the user, so a file this app will not store never
-   gets as far as asking for a title.
+/* Picking a document to file (phase 8 features tickets 53 and 54,
+   ADR-0065): one file, PDF or image, refused and reported the way
+   photoPicking.ts already does for photos - accepting happens here, before
+   the import sheet is the thing in front of the user, so a file this app
+   will not store never gets as far as asking for a title.
 
-   Web only for now. ADR-0065's own consequence - a native
-   `ACTION_OPEN_DOCUMENT` pick on Android - is ticket 54's; until that
-   lands Android goes through the same WebView file input every other
-   picker not yet moved to the shell does, exactly as ticket 52 left it. */
+   The platform split - Capacitor's native `ACTION_OPEN_DOCUMENT` pick on
+   Android, the WebView file input elsewhere - lives in documentPicker()
+   (data/photos/picker.ts), the same seam filePhotoPicker() already makes
+   for photos. This module never learns which one ran. */
 
-import { chooseFiles } from '../data/fileDialog';
 import { m } from '$lib/paraglide/messages';
 import { acceptDocumentFile, DocumentRefusedError, type DocumentFile } from '../data/documents/accept';
+import { documentPicker } from '../data/photos/picker';
 import { UnsupportedImageError } from '../data/photos/normalize';
 import { toast } from './toasts.svelte';
 
-const ACCEPT = 'application/pdf,image/*';
+const picker = documentPicker();
 
 /** Whatever the user chose, accepted and ready to store - or null if they
     backed out or the file was refused, both reported the same way
     pickPhotos() reports them: a toast naming what happened, nothing
     thrown past this point. */
 export async function pickDocument(): Promise<DocumentFile | null> {
-  let files: File[];
+  let files: Uint8Array[];
   try {
-    files = await chooseFiles(ACCEPT);
+    files = await picker.pick();
   } catch (error) {
     console.error('the document picker failed', error);
     toast(m.document_picker_failed());
     return null;
   }
 
-  const [file] = files;
-  if (!file) return null;
+  const [bytes] = files;
+  if (!bytes) return null;
 
   try {
-    return await acceptDocumentFile(new Uint8Array(await file.arrayBuffer()));
+    return await acceptDocumentFile(bytes);
   } catch (error) {
     if (error instanceof UnsupportedImageError) {
       // Only 'heic' ever reaches here unwrapped (documents/accept.ts) -
