@@ -34,54 +34,42 @@ export interface ChecklistsArea {
       07's procedure is the first owner): the rule that a checklist appears
       when its first item does lives here once, rather than at each owner. */
   addToOwnedChecklist(owner: ChecklistOwner, content: string): Promise<ChecklistItem>;
-  /** The standalone checklist's own appointment date (phase 5 deepening
-      ticket 25, ADR-0010): null until the person sets one. Not part of the
-      `Checklist` shape returned elsewhere, because that shape is shared
-      with every owned checklist (a procedure's recovery list has no
-      appointment of its own) - these two are the only way the column is
-      read or written, so an owned checklist can never carry a value here. */
-  getAppointmentDate(): Promise<number | null>;
-  /** The standalone checklist's whole debrief-relevant state in one read
-      (phase 6 ticket 08): the appointment date, how many prep items are on
-      the list, and the two device-local columns below - the exact shape
-      `debriefOfferVisible` (vocabulary/entryTemplates.ts) takes, so a
-      caller folding the predicate over a live read needs one query rather
-      than composing several. */
-  getDebriefState(): Promise<{
-    appointmentEpochDay: number | null;
+  /** The debrief-relevant state for one appointment (ticket 58, ADR-0066):
+      how many prep items are on the standing list, whether the offer for
+      `appointmentId` was dismissed, and the entry that debriefs it, if
+      any - both of the latter resolved against `appointmentId` itself, so
+      a stale row left over from a since-superseded appointment reads as
+      "nothing recorded" rather than leaking across. `appointmentId` is
+      null when there is no most-recent-past appointment at all
+      (appointments.ts's `mostRecentPastAppointment`); the shape still
+      answers, since an absent appointment has nothing dismissed and no
+      entry either. `appointmentId` comes back out again, which is what
+      makes this the exact shape `debriefOfferVisible`
+      (vocabulary/entryTemplates.ts) takes: a caller folding the predicate
+      over a live read needs one query and no splicing, and cannot hand the
+      predicate a different appointment than the read was scoped to. */
+  getDebriefState(appointmentId: string | null): Promise<{
+    appointmentId: string | null;
     itemCount: number;
-    dismissedEpochDay: number | null;
+    dismissed: boolean;
     debriefEntryId: number | null;
   }>;
-  /** Creates the standalone checklist on first use, the same as
-      `addToStandaloneChecklist` - setting a date before adding a single
-      question is a real order of operations, not an error. `null` clears
-      it. Changing the date to a genuinely different value also clears
-      `debrief_entry_id` and `debrief_dismissed_epoch_day` (phase 6 ticket
-      08): both name a fact about the appointment this column currently
-      holds, and a new appointment has neither a debrief nor a dismissal
-      yet. Setting the same date again, or setting it for the first time,
-      leaves them alone - there is nothing to clear. */
-  setAppointmentDate(epochDay: number | null): Promise<void>;
-  /** Which appointment date's debrief offer was dismissed, or null - reset
-      by `setAppointmentDate` the moment the date changes, so a stored value
-      is only ever read against the date it was set for (phase 6 ticket 08,
-      CONTEXT: "Checklist"). */
-  getDebriefDismissedEpochDay(): Promise<number | null>;
-  /** Dismissing the offer for the appointment currently on record. Creates
-      the standalone checklist on first use like every other write here,
-      though in practice the offer cannot show before a checklist with an
-      appointment date exists. */
-  setDebriefDismissed(epochDay: number): Promise<void>;
-  /** The entry that debriefs the appointment currently on record, or null.
-      Device-local (migrations.ts v54's own comment says why), so this is
-      never part of the `Checklist` shape returned elsewhere. */
-  getDebriefEntryId(): Promise<number | null>;
-  /** Links an entry as the debrief for the appointment currently on
-      record - a no-op if the appointment date has since moved on from
-      `epochDay`, which stops a slow save racing a changed appointment from
-      linking an entry to the wrong one. */
-  recordDebriefEntry(entryId: number, epochDay: number): Promise<void>;
+  /** Dismissing the offer for one appointment. Creates the standalone
+      checklist on first use like every other write here, though in
+      practice the offer cannot show before a checklist with items
+      exists. */
+  setDebriefDismissed(appointmentId: string): Promise<void>;
+  /** The entry that debriefs `appointmentId`, or null - both when nothing
+      has been recorded yet and when the entry on file was recorded for a
+      different appointment (ticket 58): the appointment prep screen's own
+      link to a completed debrief. */
+  getDebriefEntryId(appointmentId: string | null): Promise<number | null>;
+  /** Links an entry as the debrief for `appointmentId`. Unlike the epoch-day
+      keying this replaces, there is no "the appointment has moved on"
+      race to guard against - an id never changes out from under a write,
+      so every read of it is scoped to the exact appointment the link was
+      made for. */
+  recordDebriefEntry(entryId: number, appointmentId: string): Promise<void>;
   editItem(itemId: string, content: string): Promise<void>;
   setItemChecked(itemId: string, checked: boolean): Promise<void>;
   setItemCarriedForward(itemId: string, carriedForward: boolean): Promise<void>;
@@ -97,9 +85,9 @@ type ChecklistRow = { id: number; uuid: string; owner_kind: string | null; owner
 type StandaloneDebriefRow = {
   id: number;
   uuid: string;
-  appointment_epoch_day: number | null;
   debrief_entry_id: number | null;
-  debrief_dismissed_epoch_day: number | null;
+  debrief_entry_appointment_id: string | null;
+  debrief_dismissed_appointment_id: string | null;
 };
 type ItemRow = { uuid: string; content: string; checked: number; carried_forward: number };
 
@@ -132,17 +120,35 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
     return rows[0] ? toChecklist(rows[0]) : undefined;
   };
 
-  /* The one raw read every appointment/debrief accessor below shares,
-     rather than each repeating the same `WHERE owner_kind IS NULL LIMIT 1`
-     query with its own column list (phase 6 ticket 08). Undefined when no
-     standalone checklist exists yet, the same resting state
-     `standaloneChecklist` above gives. */
+  /* The one raw read every debrief accessor below shares, rather than each
+     repeating the same `WHERE owner_kind IS NULL LIMIT 1` query with its
+     own column list (phase 6 ticket 08). Undefined when no standalone
+     checklist exists yet, the same resting state `standaloneChecklist`
+     above gives. */
   const standaloneDebriefRow = async (): Promise<StandaloneDebriefRow | undefined> => {
     const rows = await driver.query<StandaloneDebriefRow>(
-      'SELECT id, uuid, appointment_epoch_day, debrief_entry_id, debrief_dismissed_epoch_day FROM checklist WHERE owner_kind IS NULL LIMIT 1'
+      `SELECT id, uuid, debrief_entry_id, debrief_entry_appointment_id, debrief_dismissed_appointment_id
+         FROM checklist WHERE owner_kind IS NULL LIMIT 1`
     );
     return rows[0];
   };
+
+  /* Both debrief writers below store their column on the standalone
+     checklist, so both need one to exist; before ticket 58 the retired
+     `setAppointmentDate` was what created it and they could assume it had.
+     Neither is reached in the app without a prep question already standing,
+     but the demo seed writes a debrief link into a journal that has no prep
+     list at all (journal-seed.ts), and the alternative is a zero-row UPDATE
+     that reports success. */
+  const standaloneChecklistId = async (): Promise<string> =>
+    (await standaloneChecklist())?.id ?? (await area.createChecklist()).id;
+
+  /* The one comparison `getDebriefState` and `getDebriefEntryId` both need:
+     the linked entry only answers for the appointment it was actually
+     recorded against (ticket 58) - a row left over from a since-superseded
+     appointment reads as no entry rather than the wrong one. */
+  const debriefEntryIdFor = (row: StandaloneDebriefRow | undefined, appointmentId: string | null): number | null =>
+    appointmentId !== null && row?.debrief_entry_appointment_id === appointmentId ? row.debrief_entry_id : null;
 
   /* The one create-on-first-item rule, for both entry points: an owner pair
      is looked up by that pair and a standalone checklist by having no owner
@@ -202,58 +208,33 @@ export function makeChecklistsArea(driver: SqliteDriver): ChecklistsArea {
 
     addToOwnedChecklist: (owner, content) => addToLazyChecklist(owner, content),
 
-    async getAppointmentDate() {
-      const row = await standaloneDebriefRow();
-      return row?.appointment_epoch_day ?? null;
-    },
-
-    async setAppointmentDate(epochDay) {
-      const existing = await standaloneDebriefRow();
-      const checklistId = existing ? existing.uuid : (await area.createChecklist()).id;
-      const changed = (existing?.appointment_epoch_day ?? null) !== epochDay;
-      await driver.run(
-        `UPDATE checklist SET appointment_epoch_day = ?, updated_at = ?
-         ${changed ? ', debrief_entry_id = NULL, debrief_dismissed_epoch_day = NULL' : ''}
-         WHERE uuid = ?`,
-        [epochDay, now(), checklistId]
-      );
-    },
-
-    async getDebriefState() {
+    async getDebriefState(appointmentId) {
       const [row, checklist] = await Promise.all([standaloneDebriefRow(), standaloneChecklist()]);
       return {
-        appointmentEpochDay: row?.appointment_epoch_day ?? null,
+        appointmentId,
         itemCount: checklist?.items.length ?? 0,
-        dismissedEpochDay: row?.debrief_dismissed_epoch_day ?? null,
-        debriefEntryId: row?.debrief_entry_id ?? null
+        dismissed: appointmentId !== null && row?.debrief_dismissed_appointment_id === appointmentId,
+        debriefEntryId: debriefEntryIdFor(row, appointmentId)
       };
     },
 
-    async getDebriefDismissedEpochDay() {
-      const row = await standaloneDebriefRow();
-      return row?.debrief_dismissed_epoch_day ?? null;
-    },
-
-    async setDebriefDismissed(epochDay) {
-      const existing = await standaloneChecklist();
-      const checklistId = existing ? existing.id : (await area.createChecklist()).id;
-      await driver.run('UPDATE checklist SET debrief_dismissed_epoch_day = ?, updated_at = ? WHERE uuid = ?', [
-        epochDay,
+    async setDebriefDismissed(appointmentId) {
+      await driver.run('UPDATE checklist SET debrief_dismissed_appointment_id = ?, updated_at = ? WHERE uuid = ?', [
+        appointmentId,
         now(),
-        checklistId
+        await standaloneChecklistId()
       ]);
     },
 
-    async getDebriefEntryId() {
-      const row = await standaloneDebriefRow();
-      return row?.debrief_entry_id ?? null;
+    async getDebriefEntryId(appointmentId) {
+      return debriefEntryIdFor(await standaloneDebriefRow(), appointmentId);
     },
 
-    async recordDebriefEntry(entryId, epochDay) {
+    async recordDebriefEntry(entryId, appointmentId) {
       await driver.run(
-        `UPDATE checklist SET debrief_entry_id = ?, updated_at = ?
-         WHERE owner_kind IS NULL AND appointment_epoch_day = ?`,
-        [entryId, now(), epochDay]
+        `UPDATE checklist SET debrief_entry_id = ?, debrief_entry_appointment_id = ?, updated_at = ?
+         WHERE uuid = ?`,
+        [entryId, appointmentId, now(), await standaloneChecklistId()]
       );
     },
 
