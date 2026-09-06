@@ -1248,7 +1248,20 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  box-shadow: var(--shadow-3);
+  /* The bar's shadow, and a hairline, which is what quick add's fan already
+     does with the same problem: a sheet genuinely floats, so it casts the
+     app's one shadow rather than picking a second elevation for itself.
+
+     It used to cast --shadow-3, the top of a three-step ramp, over a scrim
+     that had already darkened and blurred everything behind it - so the
+     heaviest shadow in the app was doing its work against a background that
+     was no longer there to be lifted off of (Alicja, on the screencast:
+     remove the popup's heavy shadow). base.css states the rule this breaks:
+     the redesign separates surfaces with a line, not a plane, and it has one
+     shadow. The line is what carries the sheet's own edge now, and the ramp
+     is left to the surfaces that still read as stacked planes. */
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-float);
 }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border); margin: 0 auto var(--space-4); }
 
