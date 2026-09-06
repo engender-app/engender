@@ -991,6 +991,16 @@
                ChartCard takes no prop for a paragraph and still does not; this
                is body content, drawn beside the chart it belongs to and gated
                on the same read. -->
+          <!-- What the fold actually is, in the card rather than in a term
+               somebody has to already know (ticket 99 item 34: "i dont know
+               what it means"). The domain keeps calling this a day of
+               interval - CONTEXT.md's own vocabulary, and the axis still
+               counts "Day 1" from the injection day - but a chart heading
+               is not the place to teach a term, so the heading says what it
+               is and this says how to read it. The second sentence is the
+               one ADR-0012 asks for: a position says where days fell and
+               never where they ought to. -->
+          <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
           <p class="stats-inline-note">{m.stats_all_history()}</p>
           {@const ends = positionEnds(intervalMoodPattern)}
           <AreaChart
