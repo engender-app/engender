@@ -14,6 +14,7 @@
 import { cameraPhotoPicker, filePhotoPicker } from '../data/photos/picker';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
+import { DocumentRefusedError } from '../data/documents/accept';
 import type { NormalizedPhoto } from '../data/journal/photos';
 import { toast } from './toasts.svelte';
 
@@ -68,8 +69,12 @@ export async function pickPhotos(limit?: number): Promise<NormalizedPhoto[]> {
   try {
     picked = await picker.pick();
   } catch (error) {
-    console.error('the photo picker failed', error);
-    toast(m.photo_picker_failed());
+    if (error instanceof DocumentRefusedError) {
+      toast(m.document_too_large());
+    } else {
+      console.error('the photo picker failed', error);
+      toast(m.photo_picker_failed());
+    }
     return [];
   }
 
@@ -84,8 +89,12 @@ export async function capturePhoto(): Promise<NormalizedPhoto | null> {
   try {
     picked = await camera.pick();
   } catch (error) {
-    console.error('the camera failed', error);
-    toast(m.photo_picker_failed());
+    if (error instanceof DocumentRefusedError) {
+      toast(m.document_too_large());
+    } else {
+      console.error('the camera failed', error);
+      toast(m.photo_picker_failed());
+    }
     return null;
   }
 
