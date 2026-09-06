@@ -4,14 +4,11 @@
    charts/grain.ts's MAX_POSITIONS/atGrain, which chooses how coarse a
    chart draws instead of averaging its real points down.
 
-   This module imports nothing, and that is a rule rather than an accident.
-   Path building, the one part of the kit that needs d3-shape, is
-   charts/areaPath.ts, so that a caller wanting arithmetic cannot pull a
-   charting library along behind it - which is what components/kit/barRow.ts
-   did for one three-line function until phase 9 audit ticket 02. That
-   function, `share`, has its own module now (charts/share.ts) because none
-   of its three callers draws a line. tests/chart-library-graph.test.ts holds
-   the rule and carries the measurement that went with it. */
+   This module imports nothing, and that is a rule rather than an accident:
+   its callers want arithmetic and should not have a charting library come
+   with it. Path building is charts/areaPath.ts and the bar length is
+   charts/share.ts for that reason alone. tests/chart-library-graph.test.ts
+   holds the rule and carries the measurement behind it. */
 
 export interface Point {
   /** Domain position - an epoch day, an index, whatever the caller counts in. */
