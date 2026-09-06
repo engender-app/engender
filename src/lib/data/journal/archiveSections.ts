@@ -815,12 +815,14 @@ const SECTIONS = [
     columns: { track: 'track' }
   }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
-     present locally is simply skipped rather than compared column by column:
-     a custom goal's text and track are fixed at creation (roadmap.ts has no
-     rename or move-track setter), so the only thing two devices could
-     disagree on is the status, and skipping it here for the same reason
-     applyRoadmapChecks does - a merge must not overwrite a status this
-     device recorded itself. */
+     present locally is simply skipped rather than compared column by column.
+     Its track is fixed at creation (roadmap.ts has no move-track setter),
+     and its text and status are both this device's own to say since ticket
+     69 gave a custom goal a rewording - so skipping is the same rule
+     applyRoadmapChecks keeps, that a merge must not overwrite what the
+     person did on the device doing the importing. A replace carries all
+     three columns as they now stand, which is what makes a rewording and a
+     delete travel at all (restore.test.ts). */
   flat({
     name: 'roadmapGoals',
     // Ticket 04's own worked case: a custom goal carries its own text and

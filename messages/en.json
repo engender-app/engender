@@ -3353,5 +3353,26 @@
   "document_link_kind_episode": "Regimen",
   "document_link_kind_goal": "Roadmap step",
   "roadmap_goal_open_aria": "Open: {goal}",
-  "roadmap_goal_milestone_sub": "This step’s milestone"
+  "roadmap_goal_milestone_sub": "This step’s milestone",
+  "roadmap_goal_text_label": "Your step",
+  "roadmap_goal_save": "Save wording",
+  "roadmap_goal_delete": "Delete step",
+  "roadmap_goal_delete_sheet": "Delete step",
+  "roadmap_goal_delete_q": "Delete {goal}?",
+  "roadmap_goal_delete_hint": "This cannot be undone.",
+  "roadmap_goal_delete_documents": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} document filed here is kept and stops being filed under this step. This cannot be undone.",
+        "countPlural=other": "{count} documents filed here are kept and stop being filed under this step. This cannot be undone."
+      }
+    }
+  ]
 }
