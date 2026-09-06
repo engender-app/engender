@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { MIN_SPAN_FRACTION, voicedSpans } from './voicing.ts';
 
-/* The reading step's own feedback (phase 8 features ticket 09, Alicja
-   2026-09-04: "during reading the passage, there should be some kind of a
+/* The reading step's own feedback (Alicja 2026-09-04: "during reading the
+   passage, there should be some kind of a
    basic feedback to let the user know that their voice is being recorded
    successfully").
 

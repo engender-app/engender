@@ -1,5 +1,4 @@
-/* Synthesized input for the acoustic engine's tests (phase 5 deepening
-   ticket 15).
+/* Synthesized input for the acoustic engine's tests.
 
    Committed audio fixtures were the alternative and were rejected: a WAV in
    the tree is a binary nobody can read a diff of, its provenance is somebody's

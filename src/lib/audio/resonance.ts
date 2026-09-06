@@ -1,15 +1,14 @@
-/* Vocal tract resonance by linear predictive coding (phase 5 deepening
-   ticket 15, CONTEXT: "Voice benchmark").
+/* Vocal tract resonance by linear predictive coding (CONTEXT: "Voice
+   benchmark").
 
    F1 and F2: the first two resonances of the tube between the vocal folds
    and the lips. F1 moves with how open the jaw and throat are, F2 with where
    the tongue sits and how the lips are shaped. Both are stated in Hz and
-   nothing here reads anything into them (PRODUCT.md:109, and ADR-0059
-   deliberately did not narrow that rule here: F1/F2 norms are much shakier
-   than F0 norms and move with vowel, height and room, so a narrowed search
-   window is how an analyser starts refusing to find the formants somebody
-   actually has) - they are a
-   measurement of a sustained vowel, not a verdict on a voice.
+   nothing here reads anything into them (PRODUCT.md:109) - deliberately not
+   narrowed the way F0 is: F1/F2 norms are much shakier than F0 norms and
+   move with vowel, height and room, so a narrowed search window is how an
+   analyser starts refusing to find the formants somebody actually has - they
+   are a measurement of a sustained vowel, not a verdict on a voice.
 
    Pure, like pitch.ts: a buffer in, two numbers or nothing out.
 
@@ -154,7 +153,7 @@ function peakFormants(
     estimates. Null when the take holds no vowel to measure: silence, room
     noise, or too few frames that yielded a plausible pair. A benchmark
     stores that as no resonance rather than as a failure - the passage is
-    still a benchmark without it (ticket 15's storage seam). */
+    still a benchmark without it. */
 export function analyseFormants(
   samples: Float32Array,
   sampleRate: number,

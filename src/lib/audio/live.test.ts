@@ -5,7 +5,7 @@ import { makeLiveGauge, type LiveGauge } from './live.ts';
 import { trackPitch } from './pitch.ts';
 import { VOWEL_CHECKS, assessQuality, takeSignals } from './quality.ts';
 
-/* The live gauge (ticket 15, seam 3). Its whole reason to exist is that it
+/* The live gauge. Its whole reason to exist is that it
    computes each frame once, so what it has to prove is that feeding a take
    in pieces says the same thing as analysing it whole - otherwise the gauge
    would tell someone their take passed and the saved take would fail. */
@@ -72,7 +72,7 @@ test('it counts the seconds it was given', () => {
   assert.ok(Math.abs(gaugeOver(samples, 999).secondsCaptured() - 2) < 1e-9);
 });
 
-/* What ticket AU-05 is about: the poll used to re-aggregate every sample
+/* What this proves: the poll used to re-aggregate every sample
    captured so far, so a five-minute take cost thirty times what a ten-second
    one did and a single read ate the phone's whole frame budget somewhere
    around a minute in. It kept the take to do it with, in a buffer that

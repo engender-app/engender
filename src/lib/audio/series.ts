@@ -1,4 +1,4 @@
-/* Ordered statistics over a list of numbers (phase 5 deepening ticket 15).
+/* Ordered statistics over a list of numbers.
 
    Three of the four modules in this directory need a median and one needs
    percentiles, and each had written its own four-line copy. They are here

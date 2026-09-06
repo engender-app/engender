@@ -1,8 +1,7 @@
-/* Fundamental frequency over a take, by YIN (phase 5 deepening ticket 15,
-   CONTEXT: "Voice benchmark").
+/* Fundamental frequency over a take, by YIN (CONTEXT: "Voice benchmark").
 
    Pure arithmetic over a buffer of samples: no clock, no database, nothing
-   from $lib/paraglide (ADR-0016), so the Node tier can prove it against
+   from $lib/paraglide, so the Node tier can prove it against
    synthesized input with no browser anywhere near it. The browser half -
    turning a recorded file into these samples - lives in
    stores/voiceBenchmark.ts and does nothing this module could be asked to do.
@@ -11,9 +10,9 @@
    span, a spread in semitones, a note name. No comparison to a range, no
    label, no direction of travel (PRODUCT.md:109). The number is the answer.
 
-   **One exception, and it is not this module's.** ADR-0059 narrowed that
-   rule for the voice screen's pitch graph, which draws two cited
-   speaking-pitch ranges behind the trace. The bands live in bands.ts with
+   **One exception, and it is not this module's.** The voice screen's pitch
+   graph narrows that rule, drawing two cited speaking-pitch ranges behind
+   the trace. The bands live in bands.ts with
    their source and their caveat; nothing here knows about them, and this
    module still reports a frequency and stops.
 

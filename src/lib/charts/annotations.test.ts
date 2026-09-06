@@ -46,9 +46,9 @@ describe('what happened in a range', () => {
     expect(found.map((a) => a.id)).toEqual(['first', 'last']);
   });
 
-  /* The case the ticket names: a regimen that started months before the
-     chart's window and ended inside it. The band has to be drawn from the
-     left edge, and its left edge must not claim to be the day it started. */
+  /* A regimen that started months before the chart's window and ended
+     inside it. The band has to be drawn from the left edge, and its left
+     edge must not claim to be the day it started. */
   it('clips a span that starts before the range and ends inside it', () => {
     const [found] = annotationsInRange([regimen('estradiol', 10, 50)], { from: 40, to: 60, today: 60 });
 
@@ -67,8 +67,8 @@ describe('what happened in a range', () => {
     expect(found.endsInRange).toBe(false);
   });
 
-  /* Ticket 43: the source's end reason travels through unchanged, on both
-     an edge the range actually shows and one it only clips to. Whether the
+  /* The source's end reason travels through unchanged, on both an edge
+     the range actually shows and one it only clips to. Whether the
      reason is safe to *say* against this particular edge is the wording
      layer's gate (kit/chartAnnotation.ts), not this function's. */
   it("carries a regimen episode's end reason through, clipped or not", () => {
@@ -98,8 +98,8 @@ describe('what happened in a range', () => {
     expect(found.endsInRange).toBe(false);
   });
 
-  /* Nothing is stored about an episode still running (ADR-0010), so where it
-     reaches to is today's question, asked of the argument rather than of a
+  /* Nothing is stored about an episode still running, so where it reaches
+     to is today's question, asked of the argument rather than of a
      clock. */
   it('runs an unfinished span up to today and no further', () => {
     const [found] = annotationsInRange([regimen('estradiol', 45, null)], { from: 40, to: 90, today: 55 });
@@ -200,8 +200,8 @@ describe('where the marks go', () => {
     expect(placed.bands).toHaveLength(2);
   });
 
-  /* The ticket's legibility floor. Three days apart on a card 300px wide is
-     three marks; the same three inside one weekly bucket is one mark, because
+  /* The legibility floor. Three days apart on a card 300px wide is three
+     marks; the same three inside one weekly bucket is one mark, because
      three ticks drawn 0px apart is one tick that lies about being one. */
   it('keeps three annotations on adjacent days apart where there is room', () => {
     const placed = placeAnnotations(
@@ -340,8 +340,8 @@ describe('the range a set of readings asks for', () => {
   });
 });
 
-/* Phase 8 features ticket 15: six kinds join the seven, all of them moments,
-   and each one stands for a record somebody can open. */
+/* Six kinds join the seven, all of them moments, and each one stands for a
+   record somebody can open. */
 describe('a marker that goes somewhere', () => {
   const marker = (id: string, at: number, href?: string): ChartAnnotationSource => ({
     id,

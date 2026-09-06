@@ -1,5 +1,4 @@
-/* Every day of one year, on the mood ramp (phase 5 UX ticket 23, third
-   review round).
+/* Every day of one year, on the mood ramp.
 
    The yearly wrapped drew twelve bars, one per month, which is where the
    shape went but not what the year was: "it should have a custom built
@@ -45,8 +44,8 @@ export const MOOD_YEAR_COLUMNS = 31;
 
     A row per month rather than a column per week, which is how this was
     first drawn: 53 columns of 5px cells overflowed a 390px card, and mood's
-    own ramp (ADR-0025) has literal hex steps chosen to be sat on rather than
-    to be 5px dots - on the dark theme they are all dark, and at that size
+    own ramp has literal hex steps chosen to be sat on rather than to be
+    5px dots - on the dark theme they are all dark, and at that size
     they had almost no separation from each other. Twelve rows of 31 gives a
     cell about 11px on the same card, which is enough area for a step to be a
     colour, and it reads as the year's calendar rather than as a heat map.

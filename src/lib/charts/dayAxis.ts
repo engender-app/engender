@@ -1,5 +1,4 @@
-/* Which axis a day chart can be read on, and the keying each one names
-   (phase 8 features ticket 16).
+/* Which axis a day chart can be read on, and the keying each one names.
 
    Two screens draw a day series and both can now re-key it, so the rule
    for what is on offer lives here rather than twice in markup. It is the

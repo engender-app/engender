@@ -1,5 +1,4 @@
-/* How coarse a chart draws, and why (phase 5 UX ticket 23, second review
-   round).
+/* How coarse a chart draws, and why.
 
    The area chart used to be a timeline you scrolled: every reading kept a
    14px slot, so a year was 365 slots and you read it a week at a time by
@@ -144,7 +143,7 @@ export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
     .map((x) => ({ x, a: first.get(x) ?? null, b: second.get(x) ?? null }));
 }
 
-/** How coarse a **re-keyed** axis draws (phase 8 features ticket 16).
+/** How coarse a **re-keyed** axis draws.
 
     `chooseGrain` and `bucketByGrain` above answer this for a calendar axis
     and cannot answer it here: a seven-day calendar bucket spans seven

@@ -9,8 +9,8 @@ import {
   encodePitchTrack
 } from './track.ts';
 
-/* The stored track (phase 8 features ticket 09, seam 1). What is proved
-   here is the arithmetic between the tracker's 10 ms frames and the row's
+/* The stored track. What is proved here is the arithmetic between the
+   tracker's 10 ms frames and the row's
    own column: how many points a passage becomes, what an unvoiced stretch
    becomes, and that a row written out and read back is the same track. */
 

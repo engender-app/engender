@@ -1,9 +1,9 @@
 /* The pitch track a benchmark stores, so the take can be drawn again
-   afterwards (phase 8 features ticket 09, ADR-0059).
+   afterwards.
 
-   Until this ticket the tracker's output was summarized into six figures
-   and dropped, which is why no benchmark taken before schema v58 can be
-   redrawn. Two rejected alternatives, both from the ticket:
+   Before this the tracker's output was summarized into six figures and
+   dropped, which is why no benchmark taken before schema v58 can be
+   redrawn. Two rejected alternatives:
 
      every frame        3000 floats for a thirty-second passage at the 10 ms
                         hop, which is more than any phone-width chart can
@@ -17,8 +17,8 @@
    pixels at the 390px floor - the resolution the drawing can actually use.
 
    Pure arithmetic over frames, like the rest of $lib/audio: no clock, no
-   database, nothing from paraglide (ADR-0016), so the Node tier proves it
-   without a browser. */
+   database, nothing from paraglide, so the Node tier proves it without a
+   browser. */
 
 import type { PitchFrame } from './pitch';
 import { median } from './series';

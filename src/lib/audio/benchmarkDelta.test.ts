@@ -62,7 +62,7 @@ test('different passages produce no delta at all', () => {
   assert.equal(delta, null);
 });
 
-/* ADR-0061's gate. The resonance figures are formants, which a phone
+/* The chain gate. The resonance figures are formants, which a phone
    measures differently on different equipment, so a delta across two
    chains is not a change in a voice. */
 test('resonance refuses to compare across two capture chains', () => {
@@ -103,7 +103,7 @@ test('a take that recorded no chain compares no resonance either way round', () 
 });
 
 /* The gate the own-series trend breaks its line on, which is the same gate
-   the delta above is computed behind (phase 8 features ticket 29). */
+   the delta above is computed behind. */
 test('a change of passage is the reason even when the phone changed with it', () => {
   const pixel = captureChainOf('Pixel 10a', 'mic', UNPROCESSED);
   const samsung = captureChainOf('SM-A546B', 'mic', UNPROCESSED);

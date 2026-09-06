@@ -1,4 +1,4 @@
-/* Per-take arithmetic for a practice session (phase 8 features ticket 10).
+/* Per-take arithmetic for a practice session.
 
    A benchmark reports the 10th and 90th percentile of the voiced frames,
    deliberately not the true minimum and maximum - pitch.ts's own header
