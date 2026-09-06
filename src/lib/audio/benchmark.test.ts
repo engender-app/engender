@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { concat, mix, noise, silence, sine, vowel, wobblingSine } from './test-support/synth.ts';
 import { analysePassage, analyseVowel } from './benchmark.ts';
 
-/* Which questions get asked of which take (ticket 15, seam 3). */
+/* Which questions get asked of which take. */
 
 /** A read passage: pitch that moves, with pauses in it, over room tone. */
 const readAloud = () =>
@@ -57,8 +57,8 @@ test('a vowel that wandered in pitch is held to steadiness where a passage is no
 });
 
 test('a passage carries the track its picture is drawn from later', () => {
-  /* Phase 8 features ticket 09: the figures alone could not be redrawn, so
-     the passage take now also produces the downsampled track. Four seconds
+  /* The figures alone could not be redrawn, so the passage take also
+     produces the downsampled track. Four seconds
      at four hertz is sixteen points, less the frames at the end that YIN
      needs the samples after to compute. */
   const take = analysePassage(sine(190, 4).samples, 16000, 100);

@@ -1,5 +1,5 @@
-/* One multiplicative factor across the three held vowels (phase 8 features
-   ticket 30, CONTEXT: "Own-series figure").
+/* One multiplicative factor across the three held vowels (CONTEXT:
+   "Own-series figure").
 
    A single F1/F2 pair is one token: whatever an LPC estimate got wrong on
    that one vowel is wrong in the number a person reads. Three vowels held
@@ -11,9 +11,9 @@
 
    `REFERENCE_FORMANTS` is a fixed anchor, not a typical range: it is never
    shown to a person and it is the same anchor every time, which is what
-   makes the factor comparable across benchmarks (ADR-0060 forbids a band or
-   norm on this figure - the anchor is an implementation detail of the fit,
-   never a claim about anyone's voice). The fit is a geometric mean of
+   makes the factor comparable across benchmarks. No band or norm is put on
+   this figure - the anchor is an implementation detail of the fit, never a
+   claim about anyone's voice. The fit is a geometric mean of
    log-ratios, which is the closed form of least squares over log(observed)
    against log(anchor) - the standard way a single scale factor is pulled out
    of several formant pairs at once.

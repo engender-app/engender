@@ -1,4 +1,4 @@
-/* What recorded a benchmark (phase 8 features ticket 28, ADR-0061).
+/* What recorded a benchmark.
 
    `CONTEXT.md` already says a benchmark is comparable only to benchmarks
    read from the same passage. For some of the figures the microphone
@@ -101,16 +101,15 @@ export function captureChainOf(device: string, label: string, settings: CaptureS
     device-sensitive figures are gated on (audio/benchmarkDelta.ts).
 
     A missing chain is not a match, not even against another missing one: a
-    benchmark from before ADR-0061 kept no record of what recorded it, and
-    two unknowns are not evidence of one phone. Every benchmark this build
+    benchmark from before capture chains were tracked kept no record of
+    what recorded it, and two unknowns are not evidence of one phone. Every benchmark this build
     writes carries a chain, and the app has no users, so the case this
     refuses is a fixture rather than a person's history. */
 export function sameCaptureChain(a: string | null, b: string | null): boolean {
   return a !== null && b !== null && a === b;
 }
 
-/** Why two chains are not one, for the sentence that breaks an own series
-    (phase 8 features ticket 29).
+/** Why two chains are not one, for the sentence that breaks an own series.
 
     `device` covers the microphone as well as the phone, because a headset
     plugged into one handset is as much a change of equipment as a second
@@ -121,8 +120,9 @@ export function sameCaptureChain(a: string | null, b: string | null): boolean {
     it is not on the same chain.
 
     `unrecorded` is either side having no chain at all, and it names no
-    equipment on purpose: a row from before ADR-0061 is not evidence of one
-    phone or of two, so the only honest sentence is that the app does not
+    equipment on purpose: a row from before capture chains were tracked is
+    not evidence of one phone or of two, so the only honest sentence is
+    that the app does not
     know what recorded it. Null where the two match, which is the caller's
     signal that the series carries on. */
 export type ChainBreak = 'device' | 'processing' | 'unrecorded';

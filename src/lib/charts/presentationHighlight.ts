@@ -1,7 +1,7 @@
-/* Which chart positions fall on a day logged under a chosen presentation
-   (phase 8 features ticket 17, ADR-0048) - the chip row's whole mechanism.
-   It only ever adds a mark to a chart already drawn: ADR-0030's rule, rank
-   or highlight and never gate, applies here as "highlight and never filter".
+/* Which chart positions fall on a day logged under a chosen presentation -
+   the chip row's whole mechanism. It only ever adds a mark to a chart
+   already drawn: the app's rule of rank or highlight and never gate applies
+   here as "highlight and never filter".
 
    Two coordinate spaces call this, because a day chart draws in one of two
    ($lib/charts/dayAxis.ts). On the calendar axis a position is a bucket's
@@ -13,8 +13,8 @@
    axis walks the same completed intervals.
 
    Deliberately not `rekeyDaySeries` itself: that function's evidence floor
-   (three days for a repeating position, ticket 16) answers "is this bucket
-   attested enough to plot a value", and a highlight answers a different
+   (three days for a repeating position) answers "is this bucket attested
+   enough to plot a value", and a highlight answers a different
    question, "did this happen here at all" - one day is enough to say yes.
    Restating the two mapping rules here, with no floor, is what keeps a
    highlighted set of one day from being folded away as insufficient

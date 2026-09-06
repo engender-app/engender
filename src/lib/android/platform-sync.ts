@@ -1,14 +1,14 @@
 /* Everything that runs while the app is ready on Android and nowhere else:
    reminder schedule sync, medication stock run-out reconciliation, launch-route
    consumption, visibility/focus resync, the back button, the disguise alias and
-   the quick-exit mirror (phase 5 deepening ticket 04). These seven pieces used to
-   be seven separate effects in +layout.svelte, accumulated one at a time because
+   the quick-exit mirror. These seven pieces used to be seven separate effects
+   in +layout.svelte, accumulated one at a time because
    no narrower seam existed for "Android, and the journal is open" - this is that
    seam.
 
    Dependencies arrive as arguments rather than imports so this module can run in
-   the Node tier with fakes (ADR-0017: no Svelte runes here, `$state` is not
-   defined there). Reacting to a preference such as `checkInEnabled` still needs
+   the Node tier with fakes: no Svelte runes here, `$state` is not defined
+   there. Reacting to a preference such as `checkInEnabled` still needs
    real Svelte reactivity, though, and that only exists in a `.svelte` file - so
    +layout.svelte's one platform-sync effect reads every preference this module
    cares about and calls `startAndroidPlatformSync` again on any of their changes.
@@ -31,9 +31,9 @@
 
 import type { Reminder } from '$lib/data/types';
 /* Relative, not `$lib/...`: platform-sync.test.ts's vitest config has no
-   SvelteKit plugin (ADR-0017) and cannot resolve the alias, and this pure
-   module (unlike buildAndroidReminderPayload below) has no reason to be
-   mocked out. */
+   SvelteKit plugin and cannot resolve the alias, and this pure module
+   (unlike buildAndroidReminderPayload below) has no reason to be mocked
+   out. */
 import { isPausedOn } from '../data/journalingPause';
 import { isWearAutoSource } from '../data/autoSource';
 import type { AreaStates } from '../data/areaState';
@@ -52,8 +52,8 @@ export interface PlatformSyncDeps {
     checkInTime: string;
     checkInAffirmationsEnabled: boolean;
     hideNotificationTitles: boolean;
-    /** The unprompted registry's two reminder switches (phase 6 ticket 04).
-        Gated here rather than by editing the rows themselves: a person who
+    /** The unprompted registry's two reminder switches. Gated here rather
+        than by editing the rows themselves: a person who
         turns reminders off keeps every rule exactly as they wrote it, and
         turning them back on schedules the same alarms again. */
     remindersEnabled: boolean;
@@ -68,14 +68,14 @@ export interface PlatformSyncDeps {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<void> };
-    /** The journaling pause (phase 5 ticket 21): while one covers today,
-        the check-in prompt goes quiet while a journaling pause runs,
-        without touching the `checkInEnabled` preference itself. */
+    /** The journaling pause: while one covers today, the check-in prompt
+        goes quiet while a journaling pause runs, without touching the
+        `checkInEnabled` preference itself. */
     journalingPauses: { getPauses(): Promise<Array<{ startEpochDay: number; endEpochDay: number | null }>> };
-    /** Which areas are hidden or finished (phase 8 features ticket 04):
-        finishing the wear log stops its elapsed prompts the same way the
-        preference does, and for the same reason the pause above is read
-        here rather than written into a preference. */
+    /** Which areas are hidden or finished: finishing the wear log stops
+        its elapsed prompts the same way the preference does, and for the
+        same reason the pause above is read here rather than written into
+        a preference. */
     areaStates: { getAreaStates(): Promise<AreaStates> };
   };
   onTablesWritten: (listener: (tables: string[]) => void) => void;
@@ -125,8 +125,8 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
 }
 
 /** Which reminder rows may actually be scheduled, given the unprompted
-    registry's two switches (phase 6 ticket 04). The rows themselves are
-    untouched by either: this is the one choke point every reminder alarm
+    registry's two switches. The rows themselves are untouched by either:
+    this is the one choke point every reminder alarm
     passes through, native side included, so filtering here is what makes
     "off" mean off for the whole path rather than for whichever caller
     remembered to check.
@@ -135,8 +135,8 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
     marker (CONTEXT.md), which is why `wearElapsedEnabled` is a filter over
     the same list rather than a producer of its own.
 
-    Finishing the wear log takes those prompts with it (phase 8 features
-    ticket 04). Applied here rather than at the call site for the reason
+    Finishing the wear log takes those prompts with it. Applied here rather
+    than at the call site for the reason
     above: this is where "off" is made to mean off for the native side too,
     and an area that has gone quiet is off. Which area the prompt belongs to
     is the unprompted registry's answer, not this file's. */
@@ -177,13 +177,13 @@ export function assembleReminderSyncPayload(input: {
   remindersEnabled: boolean;
   wearElapsedEnabled: boolean;
   /** Which areas are hidden or finished, and the day to read a finish
-      against (phase 8 features ticket 04). */
+      against. */
   areaStates: AreaStates;
   todayEpochDay: number;
   quietHours: QuietHours;
-  /** Whether a journaling pause covers today (phase 5 ticket 21). Gated
-      here, not by clearing the `checkInEnabled` preference, so the prompt
-      resumes on its own once the pause ends. */
+  /** Whether a journaling pause covers today. Gated here, not by clearing
+      the `checkInEnabled` preference, so the prompt resumes on its own
+      once the pause ends. */
   pausedToday: boolean;
   texts: AndroidReminderTexts;
 }): AndroidReminderSyncPayload {

@@ -1,7 +1,6 @@
-/* The chart kit's arithmetic (phase 5 ticket 20). Kept apart from the
-   components for the same reason $lib/motion/flagSun.ts is: the number
-   the ticket pins - the re-tween between datasets - is worth testing
-   without a DOM. The point cap that used to live here moved to
+/* The chart kit's arithmetic. Kept apart from the components for the same
+   reason $lib/motion/flagSun.ts is: the re-tween between datasets is worth
+   testing without a DOM. The point cap that used to live here moved to
    charts/grain.ts's MAX_POSITIONS/atGrain, which chooses how coarse a
    chart draws instead of averaging its real points down. */
 
@@ -206,8 +205,8 @@ export interface PaddedSeries extends PaddedRange {
 
 /** The two ends of a scale to draw a set of readings against, padded off
     the readings themselves - see paddedSeries below for why, which is the
-    caller this was pulled out of (phase 8 features ticket 29 wanted the
-    same pad over a set of values with no positions attached).
+    caller this was pulled out of: another caller wanted the same pad over
+    a set of values with no positions attached.
 
     Null on nothing to scale. One reading is a scale, unlike one *point*,
     which is not a series: a lone mark still has to be placed somewhere on
