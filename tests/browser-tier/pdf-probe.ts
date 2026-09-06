@@ -19,9 +19,9 @@ import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'pdf';
 
-/* Ticket 04 (phase 9 audit): every Worker pdf.ts constructs against every
-   terminate() call on it - the count a resource leak needs, since nothing
-   else here would notice a worker still running. */
+/* Every Worker pdf.ts constructs against every terminate() call on it - the
+   count a resource leak needs, since nothing else here would notice a
+   worker still running. */
 let workersCreated = 0;
 let workersTerminated = 0;
 const RealWorker = window.Worker;

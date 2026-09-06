@@ -1991,8 +1991,8 @@ await block('phase 8 features ticket 55 PDF renderer', 8, async () => {
       JSON.stringify({ unreadableThumbIsNull: r.unreadableThumbIsNull, refusedMissingPage: r.refusedMissingPage })
     );
 
-  // Ticket 04 (phase 9 audit): every Worker this probe's opens constructed
-  // is terminated - the leak no other tier here would ever notice.
+  // Every Worker this probe's opens constructed is terminated - the leak
+  // no other tier here would ever notice.
   const { created, terminated } = r.workerCounts;
   if (created > 0 && terminated === created)
     ok(`every PDF worker opened is terminated (${created} created, ${terminated} terminated)`);
