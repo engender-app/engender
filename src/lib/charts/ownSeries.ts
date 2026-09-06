@@ -1,11 +1,10 @@
-/* One Own-series figure across the benchmarks that can be read together
-   (phase 8 features ticket 29, ADR-0060, ADR-0061).
+/* One Own-series figure across the benchmarks that can be read together.
 
    Six of the seven figures a benchmark reports carry no published range and
    nothing to compare against except the person's own earlier takes
-   (CONTEXT: "Own-series figure"). Ticket 27 says that in words on the
-   reference screen. This is the half that makes the honest answer useful:
-   the figure over time, in its own units.
+   (CONTEXT: "Own-series figure"). The reference screen says that in words.
+   This is the half that makes the honest answer useful: the figure over
+   time, in its own units.
 
    **The series breaks rather than joining.** Two takes are readable
    together only if they were read from the same passage and recorded
@@ -20,8 +19,8 @@
    on the day they bought a handset.
 
    No band, no target region and no normalising: what a figure means here
-   is a number in the unit it was measured in, and ADR-0060 is explicit
-   that these five have no dependable typical range to draw. This module
+   is a number in the unit it was measured in, and these five have no
+   dependable typical range to draw. This module
    produces readings and scales only, and every scale is padded off the
    readings themselves (charts/geometry.ts's own rule for a measurement
    that moves within a few percent of itself).

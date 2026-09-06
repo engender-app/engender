@@ -5,8 +5,8 @@ import { trackPitch } from './pitch.ts';
 import { PASSAGE_CHECKS, VOWEL_CHECKS, assessQuality, takeSignals } from './quality.ts';
 import type { QualityCheck } from './quality.ts';
 
-/* The gate (ticket 15, seam 1). Its failure modes are tested as carefully as
-   its happy path: a gate that never rejects is worse than no gate, because
+/* The gate's failure modes are tested as carefully as its happy path: a
+   gate that never rejects is worse than no gate, because
    it launders a bad take into a trend chart where nothing downstream can
    tell it from a good one. */
 

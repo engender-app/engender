@@ -1,5 +1,4 @@
-/* Where in the last few seconds a voice was found (phase 8 features ticket
-   09).
+/* Where in the last few seconds a voice was found.
 
    The reading step needs to say that a voice is arriving and being counted,
    and it cannot say it with a graph: pitch moves by design while somebody
@@ -20,7 +19,7 @@
    aloud. Presence answers the one they did.
 
    Pure arithmetic over frames, like the rest of $lib/audio: no clock, no
-   database, nothing from paraglide (ADR-0016). */
+   database, nothing from paraglide. */
 
 import type { PitchFrame } from './pitch';
 

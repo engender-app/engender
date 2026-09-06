@@ -1,4 +1,4 @@
-/* Per-take arithmetic for a practice session (phase 8 features ticket 10). */
+/* Per-take arithmetic for a practice session. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

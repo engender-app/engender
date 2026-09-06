@@ -97,7 +97,7 @@
   },
   {
     "name": "DST: a wall-clock time keeps its wall clock across the spring forward",
-    "why": "Warsaw loses an hour at 02:00 on 2026-03-29. 08:00 stays 08:00 and the real gap to it is 23 hours, which is the whole reason the schema stores a rule and not a next-fire instant (ADR-0010).",
+    "why": "Warsaw loses an hour at 02:00 on 2026-03-29. 08:00 stays 08:00 and the real gap to it is 23 hours, which is the whole reason the schema stores a rule and not a next-fire instant.",
     "zone": "Europe/Warsaw",
     "nowIso": "2026-03-28T10:00:00+01:00",
     "rule": { "time": "08:00", "recurrence": "DAILY", "interval": null, "anchorEpochDay": null, "epochDay": null },

@@ -3,8 +3,8 @@
    The demo bar's phone-frame toggle used to answer this, which meant the
    answer was a review control: nothing could tell a real Android install
    from a reviewer looking at a 390px frame, and the toggle could not exist
-   in a production build (ticket 05). The frame is a viewport preview now
-   and nothing outside the demo module reads it.
+   in a production build. The frame is a viewport preview now and nothing
+   outside the demo module reads it.
 
    Capacitor injects `window.Capacitor` into the WebView it hosts, and only
    the Android build is hosted, so asking it is the honest question until

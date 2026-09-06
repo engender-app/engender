@@ -78,7 +78,7 @@ test('an unrecorded chain is not the same as any other, including another unreco
 });
 
 /* Why two chains differ, which is what the break in an own series says out
-   loud (phase 8 features ticket 29). */
+   loud. */
 test('a change of phone and a change of processing are different breaks', () => {
   assert.equal(captureChainBreak(chain('mic'), chain('mic', UNPROCESSED, 'SM-A546B')), 'device');
   assert.equal(captureChainBreak(chain('Bottom microphone'), chain('Wired headset')), 'device');
