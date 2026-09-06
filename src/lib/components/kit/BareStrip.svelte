@@ -1,13 +1,16 @@
 <script lang="ts">
-  /* The bare strip: seven cells sitting directly on the page, no card
-     around them. One of the six surfaces precisely because it is not a
-     card - a screen built only from cards is what DIRECTION.md's decision
-     2b exists to prevent.
+  /* The bare strip: cells sitting directly on the page, no card around
+     them. One of the six surfaces precisely because it is not a card - a
+     screen built only from cards is what DIRECTION.md's decision 2b exists
+     to prevent.
 
      Presentational: the caller brings the days and their levels, so the
      strip draws a week of a journal, a week of a metric, or a week of
      demo data without knowing which. WeekStrip.svelte is the app's
-     journal-connected caller. */
+     journal-connected caller. Seven of them on a phone, and --strip-count
+     lets a wider caller hand over more without this file caring how many
+     (CARPET-02) - kit.css's desktop breakpoint shrinks the cells' own cap
+     to keep a longer row inside the same column. */
   import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
@@ -31,7 +34,14 @@
   const LEVELS = [0, 22, 45, 70, 100];
 </script>
 
-<div class="kit-strip" data-kit-surface data-week-strip {...roleAttrs(role)}>
+<div
+  class="kit-strip"
+  data-kit-surface
+  data-week-strip
+  data-strip-count={days.length}
+  {...roleAttrs(role)}
+  style:--strip-count={days.length}
+>
   {#each days as day (day.key)}
     <div class="kit-strip-day" class:is-today={day.isToday}>
       <span
