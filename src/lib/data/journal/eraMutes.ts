@@ -6,7 +6,7 @@
    already draws.
 
    `era_uuid` names an era by free text rather than by a foreign key
-   (migrations.ts's SCHEMA_V51). A mute naming an era that later gets deleted
+   (schema.ts). A mute naming an era that later gets deleted
    is left exactly where it is: nothing here resolves it against `era`, so
    there is nothing to cascade and no cleanup job to run. It simply stops
    matching anything eraForDay can still return - the same resting state a

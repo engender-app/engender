@@ -909,7 +909,7 @@ const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CAR
    as before - this is scoped to `regimen_episode` alone by the per-table
    CARRIED lists above, not by this flat list. */
 // debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08) and their
-// appointment-id-keyed successors (migrations.ts v78, ticket 58): device-
+// appointment-id-keyed successors (schema.ts, ticket 58): device-
 // local bookkeeping for the appointment debrief offer, scoped to `checklist`
 // alone - never part of what the checklist travels, the same reason `id`
 // and `updated_at` never are. debrief_dismissed_epoch_day itself is also

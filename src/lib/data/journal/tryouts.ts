@@ -19,7 +19,7 @@
    Tryout photos are their own table (tryout_photo) rather than a third
    owner arm on `photo`, the same reasoning procedures.ts gives for
    procedure_photo: `photo`'s exactly-one-owner CHECK cannot be widened in
-   place (migrations.ts v13). The shared pipeline is reused unchanged:
+   place (schema.ts). The shared pipeline is reused unchanged:
    stagePhoto (photos.ts) writes the same normalized, metadata-stripped
    bytes through the same file-before-row order, and removeFilesOf
    reclaims them the same way on delete. */
