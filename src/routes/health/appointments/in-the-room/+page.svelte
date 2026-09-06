@@ -28,7 +28,7 @@
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { soonestFutureAppointment } from '$lib/data/journal/appointments';
+  import { appointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
   import { holdRoomAnswers } from '$lib/stores/inTheRoom';
   import { smartBack } from '$lib/navigation/smart-back';
@@ -49,16 +49,16 @@
   /* The appointment this room is: the one on today, or none. Read through
      the same boundary index the prep screen and the debrief offer share
      (appointments.ts), so the three cannot disagree about which appointment
-     is which - `soonestFutureAppointment` answers "the next one that has
-     not happened", and today counts as not yet happened.
+     is which.
 
      None is an ordinary state, not a failure. The list is standing and
-     unowned (ADR-0066), so reading it this way on a day with nothing booked
-     is allowed; what that day has no place to send answers to is the
-     debrief, and the way out says so by not offering one. */
+     unowned (ADR-0066), so reading it on a day with nothing booked is
+     allowed - somebody rehearsing the night before is reading the same
+     questions. What that day has nowhere to put is an answer, and the
+     screen says so by not offering a field rather than by taking one and
+     dropping it. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
-  let appointment = $derived(soonestFutureAppointment(appointmentsQuery.rows, today));
-  let todaysAppointment = $derived(appointment?.epochDay === today ? appointment : null);
+  let todaysAppointment = $derived(appointmentOnDay(appointmentsQuery.rows, today));
 
   let index = $state(0);
   /* Keyed by item id rather than by position: the list is live, and an item
@@ -70,14 +70,17 @@
   let atFirst = $derived(index <= 0);
   let atLast = $derived(index >= items.length - 1);
 
+  /* One read of the pairing rule, for the two things that ask about it: what
+     travels to the debrief, and whether the way out has anything to carry. */
+  let jotted = $derived(answeredQuestions(items, answers));
+  let carrying = $derived(todaysAppointment !== null && jotted.length > 0);
+
   /* Held as it is typed rather than on the way out, so a back gesture in the
      middle of a visit loses nothing (stores/inTheRoom.ts). Nothing is
      written to the journal here and nothing reaches storage. */
   $effect(() => {
-    if (todaysAppointment) holdRoomAnswers(todaysAppointment.id, answeredQuestions(items, answers));
+    if (todaysAppointment) holdRoomAnswers(todaysAppointment.id, jotted);
   });
-
-  let carrying = $derived(todaysAppointment !== null && answeredQuestions(items, answers).length > 0);
 
   function step(by: number) {
     index = Math.min(Math.max(index + by, 0), items.length - 1);
@@ -115,40 +118,42 @@
           {/key}
         </div>
 
-        <Field label={m.in_the_room_answer_label()} id="room-answer">
-          {#snippet children(id)}
-            <textarea
-              class="input room-answer"
-              {id}
-              name="room-answer"
-              rows="3"
-              data-room-answer
-              placeholder={m.in_the_room_answer_placeholder()}
-              value={answers[current.id] ?? ''}
-              oninput={(event) => (answers[current.id] = event.currentTarget.value)}
-            ></textarea>
-          {/snippet}
-        </Field>
+        <!-- Only where there is a visit today for an answer to belong to.
+             The list is standing and can be read any day (ADR-0066), and on
+             a day with nothing booked there is no debrief for a jotting to
+             reach - a field that took what somebody typed and dropped it on
+             the way out would be the worst of the three options. -->
+        {#if todaysAppointment}
+          <Field label={m.in_the_room_answer_label()} id="room-answer">
+            {#snippet children(id)}
+              <textarea
+                class="input room-answer"
+                {id}
+                name="room-answer"
+                rows="3"
+                data-room-answer
+                placeholder={m.in_the_room_answer_placeholder()}
+                value={answers[current.id] ?? ''}
+                oninput={(event) => (answers[current.id] = event.currentTarget.value)}
+              ></textarea>
+            {/snippet}
+          </Field>
+        {/if}
       </div>
 
       <div class="room-move">
-        <button
-          class="btn btn-soft room-step press"
-          data-room-previous
-          disabled={atFirst}
-          onclick={() => step(-1)}
-        >
+        <button class="btn btn-soft room-step" data-room-previous disabled={atFirst} onclick={() => step(-1)}>
           <Icon name="chevronLeft" size={22} />
           <span>{m.in_the_room_previous()}</span>
         </button>
-        <button class="btn btn-soft room-step press" data-room-next disabled={atLast} onclick={() => step(1)}>
+        <button class="btn btn-soft room-step" data-room-next disabled={atLast} onclick={() => step(1)}>
           <span>{m.in_the_room_next()}</span>
           <Icon name="chevronRight" size={22} />
         </button>
       </div>
 
       <div class="room-out">
-        <button class="btn btn-primary room-leave press" data-room-done onclick={leave}>
+        <button class="btn btn-primary room-leave" data-room-done onclick={leave}>
           <span>{carrying ? m.in_the_room_done_write() : m.done()}</span>
         </button>
       </div>
@@ -238,18 +243,21 @@
   }
 
   /* Both halves the same width whichever label is longer, so the pair does
-     not shuffle sideways as the questions change. */
+     not shuffle sideways as the questions change.
+
+     One step above --touch-target for the pair and two for the way out,
+     rather than the floor itself: every control here is aimed at while the
+     person is listening to somebody rather than looking at their phone, and
+     the way out is the one that must not be missed. */
   .room-step {
     flex: 1 1 0;
     min-width: 0;
     gap: var(--space-2);
-    /* Below the kit's own control height would be under the 44px floor on a
-       screen whose whole point is being usable while distracted. */
-    min-height: 52px;
+    min-height: calc(var(--touch-target) + var(--space-1));
   }
 
   .room-leave {
     width: 100%;
-    min-height: 56px;
+    min-height: calc(var(--touch-target) + var(--space-2));
   }
 </style>
