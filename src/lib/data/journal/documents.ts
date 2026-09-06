@@ -36,19 +36,45 @@
    `document` had to be added to the list of tables that sweep reads - never
    a row pointing at a file that is not there.
 
-   Nothing here is image-specific beyond the caller handing it a
-   `NormalizedPhoto`: an image is normalised on the way in by the existing
-   path (photos/normalize.ts), which is what strips its metadata (ADR-0015)
-   and produces the thumbnail the document's own screen draws. Ticket 53 is
-   what widens the area past images to PDFs. */
+   An image is normalised on the way in by the existing path
+   (photos/normalize.ts), which is what strips its metadata (ADR-0015) and
+   produces the thumbnail the document's own screen draws, and gets the
+   same opaque `<uuid>.jpg` a photo carries (photos/names.ts). A PDF
+   (ticket 53, ADR-0065) cannot go through that path - canvas normalisation
+   is image-only - so it is stored exactly as it arrived, as `<uuid>.pdf`.
+   That extension is this module's own doing, never trusted from the file
+   that arrived, and it is what tells the two kinds apart afterwards: a
+   `.pdf` name has no derived thumbnail beside it the way a `.jpg` one
+   does, which is what `documentFilesOf` and `isPdfDocument` below exist
+   to make a decision instead of a convention every caller has to
+   remember. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DocumentTarget, JournalDocument } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import type { NormalizedPhoto } from './photos';
+import type { DocumentFile } from '../documents/accept';
+export type { DocumentFile } from '../documents/accept';
 import { flatArea } from './flatArea';
 import { assertChanged, mintUuid, now } from './support';
+
+/** Whether a document's stored file is a PDF rather than an image - read
+    off the extension `addDocument` mints below, never off anything the
+    picker claimed. A PDF has no derived thumbnail (unlike a photo's
+    `<uuid>.jpg`), which is the one thing every reader of a document's file
+    name needs to know before touching it. */
+export const isPdfDocument = (fileName: string): boolean => fileName.endsWith('.pdf');
+
+/** Every file one document row owns. An image document is a photo in
+    every sense that matters here, so `filesOf` expands it to its derived
+    thumbnail; a PDF is the one file it arrived as and has no thumbnail to
+    invent - calling `filesOf` on a `.pdf` name would not match its `.jpg`
+    suffix rewrite and would add the same name twice for no reason
+    (photos/names.ts's own `thumbFileName`). Shared by `deleteDocument`
+    below and by the orphan sweep and the archive's file manifest
+    (photos.ts, archive.ts), which both own a document row's files without
+    owning the area itself. */
+export const documentFilesOf = (fileName: string): string[] => (isPdfDocument(fileName) ? [fileName] : filesOf(fileName));
 
 /** What a person types when they file a piece of paper: the day it is from,
     and their own name for it. The file arrives beside this rather than in
@@ -72,8 +98,10 @@ export interface DocumentsArea {
       null if there is none (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Stores the file and returns the document's id. Refuses a blank title
-      before anything is written. */
-  addDocument(input: DocumentInput, image: NormalizedPhoto): Promise<string>;
+      before anything is written. `content` is whatever `acceptDocumentFile`
+      (documents/accept.ts) already decided the picked bytes are - this
+      never re-reads them, so a document is never refused twice. */
+  addDocument(input: DocumentInput, content: DocumentFile): Promise<string>;
   /** Corrects a title or a day. Takes the whole record rather than the two
       editable fields, so the file it names travels with it and this shares
       `flatArea`'s upsert instead of writing a second UPDATE beside it.
@@ -153,17 +181,23 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
       return latest?.epochDay ?? null;
     },
 
-    async addDocument(input, image) {
+    async addDocument(input, content) {
       const title = titled(input.title);
-      const fileName = photoFileName(mintUuid());
-      const [full, thumb] = filesOf(fileName);
+      const uuid = mintUuid();
 
       // Files first (see the header): the row must never name a file that
       // has not landed. A failure here leaves at most one loose file, which
       // the boot sweep reclaims.
-      await files.write(full, image.full);
-      await files.write(thumb, image.thumb);
+      if ('pdfBytes' in content) {
+        const fileName = `${uuid}.pdf`;
+        await files.write(fileName, content.pdfBytes);
+        return documents.upsert({ epochDay: input.epochDay, title, fileName, targetKind: null, targetId: null });
+      }
 
+      const fileName = photoFileName(uuid);
+      const [full, thumb] = filesOf(fileName);
+      await files.write(full, content.full);
+      await files.write(thumb, content.thumb);
       return documents.upsert({ epochDay: input.epochDay, title, fileName, targetKind: null, targetId: null });
     },
 
@@ -174,7 +208,7 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
     async deleteDocument(id) {
       const document = await byId(id);
       await documents.delete(id);
-      if (document) for (const name of filesOf(document.fileName)) await files.remove(name);
+      if (document) for (const name of documentFilesOf(document.fileName)) await files.remove(name);
     },
 
     getDocumentsLinkedTo: (kind, id) =>

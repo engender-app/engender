@@ -3352,5 +3352,10 @@
   "document_link_kind_episode": "Regimen",
   "document_link_kind_goal": "Roadmap step",
   "roadmap_goal_open_aria": "Open: {goal}",
-  "roadmap_goal_milestone_sub": "This step’s milestone"
+  "roadmap_goal_milestone_sub": "This step’s milestone",
+  "document_unsupported_file": "This file isn’t a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.",
+  "document_too_large": "That file is too large to store. Up to 25 MB.",
+  "document_picker_failed": "Couldn’t open the file picker.",
+  "document_export": "Share or save",
+  "document_export_hint": "This copies the file out of the app’s encryption."
 }
