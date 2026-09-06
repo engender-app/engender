@@ -263,10 +263,9 @@ describe('readoutCorner', () => {
   // Plot-local pixels: 0,0 is top-left, x grows right, y grows down. This
   // only ever has to pick a half - kit.css's own 50%-of-the-plot cap on
   // .kit-area-readout is what keeps the plate from growing back across
-  // whichever half it gave up (chart-library-graph.test.ts and
-  // kit-surfaces.test.ts hold that cap; it is not re-tested in pixels here,
-  // the same division tests/kit-gallery.mjs and chart-geometry.test.ts
-  // already keep between what an eye checks and what arithmetic can).
+  // whichever half it gave up; that cap is not asserted by any test, only
+  // checked by eye (tests/kit-gallery.mjs), the same division this file
+  // keeps everywhere else between what an eye checks and what arithmetic can.
   const width = 100;
   const height = 100;
 
