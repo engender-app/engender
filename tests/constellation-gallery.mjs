@@ -98,6 +98,53 @@ for (const theme of THEMES) {
   console.log(`stats-${theme}`);
 }
 
+/* The label declutter, checked rather than assumed (ticket CARPET-07): the
+   density note's own worst case, 365 daily entries in one square, is
+   exactly the collision risk the ticket named. Every label's own box
+   gathered and checked pairwise, the same direct assertion the
+   reduced-motion check below makes rather than trusting a screenshot to
+   prove it. */
+await wear('dark');
+await settle('/stats');
+await page.locator('[data-segment="365"]').click();
+await page.waitForTimeout(1200);
+const labelBoxes = await page.$$eval('[data-chart-card="constellation"] .cn-point-label', (nodes) =>
+  nodes.map((n) => {
+    const r = n.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+  })
+);
+const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+let collided = 0;
+for (let i = 0; i < labelBoxes.length; i++) {
+  for (let j = i + 1; j < labelBoxes.length; j++) {
+    if (overlaps(labelBoxes[i], labelBoxes[j])) collided++;
+  }
+}
+console.log(
+  collided === 0
+    ? `constellation-labels (${labelBoxes.length} labels, none collide)`
+    : `constellation-labels FAILED: ${collided} pair(s) collide out of ${labelBoxes.length}`
+);
+
+/* The play button, checked rather than assumed: pressing it has to walk
+   the head back to the start and out again, not just sit there. */
+await settle('/stats');
+await page.waitForTimeout(1200);
+const slider = () => page.locator('[data-chart-card="constellation"] [data-slider]');
+const valueNow = async () => Number(await slider().getAttribute('aria-valuenow'));
+const before = await valueNow();
+await page.locator('[data-chart-card="constellation"] [data-constellation-play]').click();
+await page.waitForTimeout(50);
+const early = await valueNow();
+await page.waitForTimeout(1200);
+const after = await valueNow();
+console.log(
+  early < before && after === before
+    ? `constellation-play (walked ${before} -> ${early} -> ${after})`
+    : `constellation-play FAILED: before ${before}, early ${early}, after ${after}`
+);
+
 /* The card with modes and fewer than two ticked scales, which is a state
    and not a fault: it says what would make a plot rather than drawing an
    empty square. Untick one scale in Settings and come back.

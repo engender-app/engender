@@ -39,6 +39,7 @@
      15 excluded is not this ticket's - what is new here is the shape. */
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { slide } from 'svelte/transition';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -306,7 +307,7 @@
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
     if (kind) journal.tally.log({ epochDay: today, kind });
-    goto('/', { replaceState: true, noScroll: true, keepFocus: true });
+    void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
   /* Phase 4 ticket 13: a quick log's save already happened before this
@@ -328,7 +329,7 @@
       dimInputs = {};
       dimsPromptEntryId = id;
     }
-    goto('/', { replaceState: true, noScroll: true, keepFocus: true });
+    void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
   async function saveQuickLogDims() {

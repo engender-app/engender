@@ -32,8 +32,11 @@ describe('what Safe Space is built from', () => {
     expect(doubt).toContain("from '$lib/components/BreathingExercise.svelte'");
   });
 
-  it('backs out to the More hub via smartBack', () => {
-    expect(doubt).toContain("back={() => smartBack('/more')}");
+  it('names the More hub as where back falls back to', () => {
+    /* CARPET-05: the href is the fallback rather than the destination now,
+       and ScreenHeader is what turns it into a return to whichever screen
+       the person actually came from. */
+    expect(doubt).toContain('back="/more"');
   });
 
   it('renders a breathing exercise calming tool', () => {
