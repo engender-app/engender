@@ -48,7 +48,7 @@
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
-  import { RECENT_ENTRY_CAP, entryMarks, recentDayGroups } from '$lib/data/recentEntries';
+  import { entryDayGroups, entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
@@ -245,14 +245,12 @@
   let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
   let stockDismissSheetOpen = $state(false);
 
-  /* Five days, not five entries, is what the read asks for: the day cards
-     head each day with how many entries it holds, and a query row limit
-     would leave that number unanswerable. The cap is applied to what is
-     drawn (recentEntries.ts), and the rest are one tap away on the
-     calendar. */
+  /* Five days, not five entries: every entry of each shown day draws, so a
+     day with more than one holds its own timeline rather than a bare count
+     over a truncated one (ux-carpet ticket 13, recentEntries.ts). */
   const RECENT_DAYS = 5;
   let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
-  let dayGroups = $derived(recentDayGroups(recent.rows, RECENT_ENTRY_CAP));
+  let dayGroups = $derived(entryDayGroups(recent.rows));
 
   /* The one authored moment besides the sun: on a milestone day, opening
      Home throws a little confetti over the notice that names it. It plays
@@ -714,7 +712,6 @@
               key={String(group.epochDay)}
               role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
               date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
-              aside={group.dayCount > 1 ? m.entry_day_count({ count: String(group.dayCount) }) : undefined}
             >
               {#each group.entries as entry (entry.id)}
                 {@const presentation = entryPresentation(entry)}
