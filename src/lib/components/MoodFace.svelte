@@ -30,7 +30,7 @@
      of five was one blink crossing it over and over. It is now `alive`, and
      what it turns on is a face that looks around the room: three positions per
      cycle, each arrived at behind a closed lid the way a real saccade is, on
-     five periods and five delays that never agree (moodGlance.ts). ADR-0072
+     five periods and five delays that never agree (moodGlance.ts). ADR-0071
      has why the app now spends two ambient loops instead of one.
 
      The eyes sit in two nested groups because two different things move them
