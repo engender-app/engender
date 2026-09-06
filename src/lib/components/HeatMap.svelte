@@ -501,6 +501,18 @@
     position: absolute;
     inset: 0;
     border-radius: var(--r);
+    /* The month recolours rather than cutting when the metric changes
+       (ticket 99 item 22, "there should be some animation when switching
+       from mood to another metric in calendar"). Every cell's fill is the
+       one thing that actually differs between two metrics over the same
+       month - the grid, the dates and the marks all stay - so the change
+       has nothing to reveal and everything to restate, and a transition on
+       the fill is the whole of it. Cheaper than the alternative, too: the
+       month is a live read, so keying it to replay a wipe would remount
+       thirty-odd cells and re-ask the journal for a picture it already has.
+       --dur-med and --ease-out are the tier-3 pair, and the reduced-motion
+       clamp in base.css takes both to 1ms without this rule knowing. */
+    transition: background-color var(--dur-med) var(--ease-out);
     /* The empty cells carry the same edge the shaded ones get from their
        fill, so a month reads as a grid rather than as scattered colour - and
        so a day with nothing logged is still a day. It is what separates one
@@ -528,6 +540,9 @@
     left: 0;
     width: 50%;
     border-radius: var(--half-low);
+    /* A split day's two halves are fills like any other, and they travel
+       with the swatch under them. */
+    transition: background-color var(--dur-med) var(--ease-out);
   }
   .cal-half.is-later {
     left: auto;
