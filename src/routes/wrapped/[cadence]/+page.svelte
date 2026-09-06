@@ -40,7 +40,6 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { smartBack } from '$lib/navigation/smart-back';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
   import { wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
   import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
@@ -351,7 +350,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.wrapped()} screen="wrapped" back={() => smartBack('/')}>
+  <ScreenHeader title={m.wrapped()} screen="wrapped" back="/">
     {#snippet actions()}
       {#if canShare}
         <a class="icon-btn press" href="/wrapped/{cadence}/share" aria-label={m.wrapped_share_open()}>

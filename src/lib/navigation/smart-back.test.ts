@@ -38,8 +38,25 @@ describe('smartBack', () => {
   it('falls back on the entry the app booted on - a deep link, or a reload', () => {
     smartBack('/calendar');
 
-    expect(goto).toHaveBeenCalledWith('/calendar');
+    expect(goto).toHaveBeenCalledWith('/calendar', { replaceState: true });
     expect(back).not.toHaveBeenCalled();
+  });
+
+  it('replaces on the way to the fallback, so back cannot bounce (CARPET-05)', () => {
+    /* Pushed, the fallback would leave the screen it just backed out of
+       one entry behind: deep link into a screen, press back to its parent,
+       press back there and land on the deep-linked screen again, with no
+       press that ever leaves. Replacing walks the parents up to Home
+       instead - which is what Android's gesture already does when it runs
+       out of history (platform-sync.ts). */
+    smartBack('/settings');
+    expect(goto).toHaveBeenCalledWith('/settings', { replaceState: true });
+
+    recordNavigation('goto');
+    smartBack('/more');
+
+    expect(back).not.toHaveBeenCalled();
+    expect(goto).toHaveBeenLastCalledWith('/more', { replaceState: true });
   });
 
   it('goes back through history once a navigation has happened inside the app', () => {
@@ -76,7 +93,7 @@ describe('smartBack', () => {
     recordNavigation('popstate', -1);
     smartBack('/calendar');
     expect(back).toHaveBeenCalledOnce();
-    expect(goto).toHaveBeenCalledWith('/calendar');
+    expect(goto).toHaveBeenCalledWith('/calendar', { replaceState: true });
   });
 
   it('counts a forward popstate back up', () => {
@@ -138,7 +155,7 @@ describe('replaceRoute', () => {
 
     smartBack('/calendar');
 
-    expect(goto).toHaveBeenCalledWith('/calendar');
+    expect(goto).toHaveBeenCalledWith('/calendar', { replaceState: true });
     expect(back).not.toHaveBeenCalled();
   });
 

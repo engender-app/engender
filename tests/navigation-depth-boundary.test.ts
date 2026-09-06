@@ -26,7 +26,7 @@ const OWNS_IT = new Set(['src/lib/navigation/smart-back.ts', 'src/lib/navigation
 const sources = globSync('src/**/*.{ts,svelte}', { cwd: root });
 
 describe('replacements go through replaceRoute', () => {
-  it('finds no navigation that replaces an entry behind the counter’s back', () => {
+  it('finds no navigation that replaces an entry behind the count\'s back', () => {
     const offenders = sources.filter((file) => !OWNS_IT.has(file) && /replaceState:\s*true/.test(read(file)));
     expect(offenders).toEqual([]);
   });
