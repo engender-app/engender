@@ -2,7 +2,14 @@
   /* Structured, print-ready multi-page clinical dossier (phase 5 ticket 09).
      Renders patient demographics, current regimen and dose log, cumulative
      exposure, lab results with post-dose timing, side effects, cycle events,
-     and appointment prep consultation questions. */
+     and appointment prep consultation questions.
+
+     Every regimen and dose row links back to its own record across a hash
+     (phase 8 features ticket 67, restoring what ticket 09's rewrite dropped
+     when the flat, static rows here became a printed table) - `.dossier-
+     row-link` in clinician-print.css keeps that plain text once actually
+     printed, since a clinician reading the page on paper has nowhere to
+     click it. */
 
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -126,7 +133,7 @@
               {#each dossier.regimen.current as ep (ep.id)}
                 <tr>
                   <td>
-                    <strong>{ep.drug}</strong>
+                    <a class="dossier-row-link" href={`/settings/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
                     {#if ep.ester}<span class="muted small">({ep.ester})</span>{/if}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
@@ -160,7 +167,11 @@
             <tbody>
               {#each pastEpisodes as ep (ep.id)}
                 <tr>
-                  <td>{ep.drug}{ep.ester ? ` (${ep.ester})` : ''}</td>
+                  <td>
+                    <a class="dossier-row-link" href={`/settings/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
+                      ? ` (${ep.ester})`
+                      : ''}
+                  </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
                   <td>{ep.route}</td>
                   <td>{ep.interval}</td>
@@ -195,7 +206,7 @@
                   <td class="num">{dayShort(doseDay)}</td>
                   <td class="num">{fmtTime(dose.timestamp)}</td>
                   <td class="num">
-                    <strong>{dose.dose} {dose.doseUnit}</strong>
+                    <a class="dossier-row-link" href={`/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
                     {#if dose.drug}<span class="muted small">· {dose.drug}</span>{/if}
                   </td>
                   <td>{routeLabel(dose.route)}</td>
