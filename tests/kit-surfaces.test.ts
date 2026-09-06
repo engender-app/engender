@@ -308,7 +308,7 @@ describe('the charts', () => {
       const prelude = rule.split('{')[0] ?? '';
       const isAreaChart = /\.kit-area/.test(prelude);
       for (const [, token] of rule.matchAll(/var\((--[a-z0-9-]+)/g)) {
-        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
+        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display|touch)/.test(token)) continue;
         if (isAreaChart && secondSeries.test(token)) continue;
         if (isHighlightRule.test(prelude) && token === '--highlight') continue;
         expect(token, `${token} in the chart rules`).toMatch(allowed);

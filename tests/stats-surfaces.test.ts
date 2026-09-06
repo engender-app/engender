@@ -92,7 +92,7 @@ describe('the summary panels wait for the floor', () => {
      all sat near the top. */
   it('asks for the track where the bar is an absolute position', () => {
     for (const rows of ['scaleRows', 'highestRows', 'valueRows']) {
-      expect(stats).toMatch(new RegExp(`<BarRows rows=\\{${rows}\\}[^>]*measure="track"`));
+      expect(stats).toMatch(new RegExp(`<BarRows\\s+rows=\\{${rows}\\}[^>]*measure="track"`));
     }
   });
 
@@ -104,9 +104,18 @@ describe('the summary panels wait for the floor', () => {
     expect(stats).toMatch(/\{#if valueRows\.length\}\s*<button class="stats-open"/);
   });
 
-  it('draws the highest days only where that scale is kept and the floor is cleared', () => {
-    expect(stats).toMatch(/\{#if euphoriaScale\}/);
-    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows rows=\{highestRows\} measure="track"/);
+  /* The card used to render only for somebody who keeps euphoria (phase 8
+     features ticket 20). Phase 9 carpet ticket 11 gave it a chooser, so it
+     renders for everybody and which scale it ranks is `highestMetricKey`'s
+     answer - the euphoria default and the unticked-since case are held
+     there, with their own tests. What is still this screen's to get right is
+     that the chooser writes the card's own state and not the stored metric
+     preference two other screens shade by, and that no ranking is drawn
+     before the journal clears the entry floor. */
+  it('ranks by the chooser, over the floor, without touching the stored metric', () => {
+    expect(stats).toMatch(/highestMetricKey\(highestKey, /);
+    expect(stats).toMatch(/key="highest-metric"[\s\S]*?onPick=\{\(value\) => \(highestKey = value\)\}/);
+    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows\s+rows=\{highestRows\}/);
   });
 });
 
