@@ -2873,6 +2873,103 @@ try {
   fail('wear log renders in batches', e);
 }
 
+/* Ticket 67 acceptance: the dose log and the regimen screen each arrive
+   with one batch rendered, not the whole log - the wear log's own check
+   above, for the other two screens ticket 67 adopts BatchedList onto.
+   The regimen screen's demo data never exceeds thirty episodes, so a row
+   count there cannot tell "batched, under one batch" from "never
+   batched" apart - `[data-batched-list]` is BatchedList's own wrapper, so
+   its presence is what actually proves the adoption on a screen a count
+   can't. */
+try {
+  await page.goto(BASE + '/doses', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+  const onArrival = await page.locator('[data-dose]').count();
+  if (onArrival !== 30) throw new Error(`the dose log rendered ${onArrival} rows on arrival, not one batch of 30`);
+  if ((await page.locator('[data-batched-list="doses"]').count()) !== 1) {
+    throw new Error('the dose log is not wrapped in BatchedList');
+  }
+  ok('the dose log arrives with one batch of thirty, same as the wear log');
+} catch (e) {
+  fail('dose log arrives batched', e);
+}
+
+try {
+  await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+  if ((await page.locator('[data-batched-list="episodes"]').count()) !== 1) {
+    throw new Error('the regimen episode list is not wrapped in BatchedList');
+  }
+  ok('the regimen screen adopts BatchedList for its episode list');
+} catch (e) {
+  fail('regimen screen arrives batched', e);
+}
+
+/* Ticket 67: a deep link into a batched log expands to the row before
+   scrolling to it, rather than landing short of a row the first batch
+   never rendered. The clinician summary's dossier links every regimen and
+   dose row back to its own record - restored by this ticket after the
+   phase 5 ticket 09 rewrite dropped it - and its dosage-log table reads
+   oldest first, so the first row's link is the one link on demo data that
+   is guaranteed to sit past the dose log's own newest-first first batch. */
+try {
+  await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
+  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+
+  const firstDoseLink = page.locator('a[href^="/doses#"]').first();
+  const href = await firstDoseLink.getAttribute('href');
+  if (!href) throw new Error('no dose link found in the clinician summary');
+  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+
+  await firstDoseLink.click();
+  await page.waitForURL(BASE + '/doses', { timeout: 8000 }); // the hash is stripped once honoured
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const renderedDoseRows = await page.locator('[data-dose]').count();
+  if (renderedDoseRows <= 30) {
+    throw new Error(`expected the deep link to expand the log past its first batch, got ${renderedDoseRows} rows`);
+  }
+
+  const linkedRow = page.locator(`[data-dose="${doseId}"]`);
+  if ((await linkedRow.count()) !== 1) throw new Error('the linked dose is not in the DOM after the deep link');
+  if (!(await linkedRow.isVisible())) throw new Error('the linked dose exists but is not visible');
+
+  ok('a clinician-summary link into a dose past the first batch expands the log and lands on it');
+} catch (e) {
+  fail('deep-linked row expands the batched dose log', e);
+}
+
+/* Ticket 67 acceptance: "the same link to a record inside the first batch
+   behaves as it does today". The dossier's dosage log reads oldest first,
+   so its last row is the most recent dose - always within the log's own
+   newest-first first batch - and following it must not expand anything. */
+try {
+  await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
+  await page.waitForSelector('a[href^="/doses#"]', { timeout: 8000 });
+
+  const lastDoseLink = page.locator('a[href^="/doses#"]').last();
+  const href = await lastDoseLink.getAttribute('href');
+  if (!href) throw new Error('no dose link found in the clinician summary');
+  const doseId = decodeURIComponent(href.slice('/doses#'.length));
+
+  await lastDoseLink.click();
+  await page.waitForURL(BASE + '/doses', { timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('[data-skeleton]'), null, { timeout: 8000 });
+
+  const renderedDoseRows = await page.locator('[data-dose]').count();
+  if (renderedDoseRows !== 30) {
+    throw new Error(`a link already inside the first batch should not expand it, got ${renderedDoseRows} rows`);
+  }
+
+  const linkedRow = page.locator(`[data-dose="${doseId}"]`);
+  if ((await linkedRow.count()) !== 1) throw new Error('the linked dose is not in the DOM');
+  if (!(await linkedRow.isVisible())) throw new Error('the linked dose exists but is not visible');
+
+  ok('a clinician-summary link into a dose already inside the first batch behaves as it did before batching');
+} catch (e) {
+  fail('deep-linked row inside the first batch is unchanged', e);
+}
+
 /* Ticket 32, ADR-0063: the elapsed reminder can only ever fire through the
    Android bridge, so the web wear editor offers no toggle and no hours
    field for it - checked against fullFixture's own "Binder check-in"
