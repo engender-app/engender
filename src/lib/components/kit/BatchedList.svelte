@@ -1,6 +1,6 @@
 <script lang="ts" generics="T">
   /* A list card that renders a batch at a time and grows as it is scrolled
-     (phase 8 features ticket 66, ADR-0068).
+     (phase 8 features ticket 66, ADR-0069).
 
      Why not simply render the whole log: on web the app draws a real
      scrollbar, on `[data-app-scroll-region]` rather than on the window, and a
@@ -12,7 +12,7 @@
 
      SCREENS.md rules infinite scroll out for `/search`, and that stands: a
      person searching their own history is looking for one day, not grazing.
-     A log is grazing, which is the whole of the distinction (ADR-0068).
+     A log is grazing, which is the whole of the distinction (ADR-0069).
      DIRECTION.md tier 4 refuses scroll-triggered reveals, and this is not
      one: what the scroll triggers is rendering, and the rows are simply
      there when they arrive. Whether the card's height travels as they do is

@@ -2842,7 +2842,7 @@ try {
   fail('fill every feature', e);
 }
 
-/* Ticket 66, ADR-0068: a long log renders a batch at a time and grows as it
+/* Ticket 66, ADR-0069: a long log renders a batch at a time and grows as it
    is scrolled, so the scroll bar on the web build stays a size somebody can
    use. Here rather than in the browser tier, which already covers the
    component against a synthetic list: what this adds is that the wear log's

@@ -1,4 +1,4 @@
-/* How much of a long log is rendered (phase 8 features ticket 66, ADR-0068).
+/* How much of a long log is rendered (phase 8 features ticket 66, ADR-0069).
 
    A **batch** is a run of rows in the DOM. A **page** is a run of rows read
    out of the journal, which is what search grows and what ADR-0004 bounds -
