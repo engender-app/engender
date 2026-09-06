@@ -36,7 +36,7 @@ export interface EntryDraftStore {
 
 /* ENTRY_DRAFT_STORE_KEY stays exported for its own test, and cross-checked in
    encryption-probe.ts (AU-09 test-only review). */
-export const ENTRY_DRAFT_STORE_KEY = 'gender-diary-entry-draft';
+export const ENTRY_DRAFT_STORE_KEY = 'engender-entry-draft';
 
 const NONCE_LENGTH = 12;
 

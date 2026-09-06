@@ -378,6 +378,8 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
     isValidLaunchRoute: () => true,
     currentPathname: () => '/',
     goto: vi.fn(),
+    replaceRoute: vi.fn(),
+    navigationDepth: () => 0,
     ...overrides
   };
 }

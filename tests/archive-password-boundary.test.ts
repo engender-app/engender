@@ -38,7 +38,7 @@ describe('archive password boundary', () => {
   });
 
   it('exposes only deriveKey in the plugin and bridge', () => {
-    const plugin = read('android/app/src/main/java/dev/barankiewicz/genderdiary/backup/AutoExportPlugin.java');
+    const plugin = read('android/app/src/main/java/dev/engender/app/backup/AutoExportPlugin.java');
     const bridge = read('src/lib/data/archive/android-auto-export-bridge.ts');
 
     expect(plugin).toContain('public void deriveKey(PluginCall call)');

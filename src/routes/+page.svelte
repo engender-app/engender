@@ -39,6 +39,7 @@
      15 excluded is not this ticket's - what is new here is the shape. */
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { slide } from 'svelte/transition';
   import { todayEpochDay } from '$lib/data/epochDay';
@@ -134,7 +135,10 @@
      The tiers are contiguous in the order, so filtering by them keeps each
      block's own order and needs no second sort. Dormant is not here: it is
      not a tile at all but a row of a list, which is the whole of what the
-     quiet weight means. */
+     quiet weight means - except the one row promoted to a Notice below
+     (carpet ticket 03), which keeps the dormant tier's gate and snooze but
+     draws as a surface asking to be acted on, rather than a line in a
+     list. */
   const TILE_BLOCKS = [
     { tier: 'today', weight: 'row', rows: true },
     { tier: 'moment', weight: 'card', rows: undefined }
@@ -146,6 +150,12 @@
   let todayTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
   let momentTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
   let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
+  /* The felt-sense gap is a nudge to act, not a fact to skim (carpet ticket
+     03) - it keeps the dormant tier's gate and snooze (still counted in
+     `quietTiles` for the fold/cap math above) but draws as a Notice next to
+     the moment tiles instead of a row in the quiet list below them. */
+  let feltSenseGapTile = $derived(quietTiles.find((tile) => tile.key === 'active-tryout-tile') ?? null);
+  let quietListTiles = $derived(quietTiles.filter((tile) => tile.key !== 'active-tryout-tile'));
   const FOLD_NAMES = 2;
   let foldLabel = $derived.by(() => {
     const names = tileSplit.folded.slice(0, FOLD_NAMES).map((tile) => tile.title).join(', ');
@@ -297,7 +307,7 @@
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
     if (kind) journal.tally.log({ epochDay: today, kind });
-    goto('/', { replaceState: true, noScroll: true, keepFocus: true });
+    void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
   /* Phase 4 ticket 13: a quick log's save already happened before this
@@ -319,7 +329,7 @@
       dimInputs = {};
       dimsPromptEntryId = id;
     }
-    goto('/', { replaceState: true, noScroll: true, keepFocus: true });
+    void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
   async function saveQuickLogDims() {
@@ -540,14 +550,44 @@
     <div class="home-tiles" transition:disclose>
       {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
 
+      <!-- Carpet ticket 03: this one dormant tile gets a Notice instead of a
+           quiet row - a stalled tryout is a thing to act on, and the
+           snooze/action it already carries (dismissSnooze, the "Log
+           feeling" link) were sitting unused under the ListRow's plainer
+           tap-through. Same liveTiles role as the tiles beside it: this is
+           journal content, not the app talking about itself.
+
+           `dismiss` isn't `feltSenseGapTile.dismiss` straight through, unlike
+           `tileRow`'s `dismiss={tile.dismiss}` below: `HomeTileDismiss.onclick`
+           takes a MouseEvent, which `Tile.svelte` also declares and forwards
+           untouched, but `Notice`'s own `dismiss.onclick` takes none - the
+           same snooze (`liveTiles.snooze`, the tile's own `dismissSnooze`)
+           called through a zero-arg wrapper `svelte-check` requires here. -->
+      {#if feltSenseGapTile}
+        <Notice
+          icon="heart"
+          key="active-tryout-tile"
+          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+          title={feltSenseGapTile.title}
+          text={feltSenseGapTile.note}
+          action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
+          dismiss={{
+            label: feltSenseGapTile.dismiss!.label,
+            onclick: () => liveTiles.snooze('active-tryout-tile')
+          }}
+          data-live-tile={feltSenseGapTile.key}
+          {...feltSenseGapTile.attrs}
+        />
+      {/if}
+
       <!-- The quiet weight. A dormant nudge keeps neither its action nor its
            dismiss: the whole line taps through to the screen its action
            opened anyway, and the fewest controls belong on the quietest
            thing. Its value goes with them - "40 days" is what the note
            already says. -->
-      {#if quietTiles.length > 0}
+      {#if quietListTiles.length > 0}
         <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
-          {#each quietTiles as tile (tile.key)}
+          {#each quietListTiles as tile (tile.key)}
             <ListRow
               key={tile.tileKey}
               href={tile.href}
@@ -642,11 +682,11 @@
   {/if}
 
   <!-- The week, and the days. Both wait for the first entry (phase 8 UX
-       ticket 01): seven grey cells and a heading over an empty list are two
-       more of day one's four placeholders, and the start-here notice below
-       is the one thing that screen owes. -->
+       ticket 01): a row of grey cells and a heading over an empty list are
+       two more of day one's four placeholders, and the start-here notice
+       below is the one thing that screen owes. -->
   {#if hasEntries}
-    <SectionHeading text={m.last_seven()}>
+    <SectionHeading text={m.recent_days()}>
       {#snippet action()}
         <ChartPicker
           key="home-metric"

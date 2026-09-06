@@ -1,7 +1,7 @@
 /* The licence of everything the lockfile installs, checked on every pull
    request (phase 2 ticket 06).
 
-   Gender Diary is GPL-3.0-only, and one channel decides for itself whether it
+   enGender is GPL-3.0-only, and one channel decides for itself whether it
    agrees: F-Droid rebuilds from source and rejects a dependency graph it
    cannot build freely (ticket 18). A dependency that arrives under a licence
    nobody looked at is how that turns into a rejected build months later, when
@@ -41,14 +41,42 @@ const ALLOWED = new Set([
   'Unlicense'
 ]);
 
-/** Packages that ship a licence file and no `license` field. Read by hand from
-    the file in the published tarball, which is the only place it exists.
+/** Packages with no `license` field, and where the licence was read from
+    instead. Two kinds, and the difference is worth seeing at a glance
+    because one is weaker evidence than the other:
+
+    - the package ships a licence file and only omits the field, so the
+      tarball itself says what it is; and
+    - the package ships no licence text at all, so the answer comes from the
+      source repository its own `repository.url` points at. Weaker, because
+      a tarball is what actually gets redistributed - recorded here with the
+      repository read, so whoever revisits it knows what was checked.
+
     @type {Record<string, string>} */
 const READ_BY_HAND = {
   // node_modules/runed/LICENSE: "MIT License", Hunter Johnston and Thomas G. Lopes.
   runed: 'MIT',
   // node_modules/sqlite-wasm-kysely/LICENSE: "MIT License", Opral US Inc.
-  'sqlite-wasm-kysely': 'MIT'
+  'sqlite-wasm-kysely': 'MIT',
+
+  /* The four native builds of @lix-js/sdk, which arrives under paraglide
+     and declares MIT itself. Each of these is the same version, 0.12.3,
+     published from the same monorepo, and each ships exactly two files -
+     the .node binary and a package.json with no `license` field and no
+     licence text beside it. github.com/opral/lix, the repository all four
+     name, is "MIT License", Copyright (c) 2026 Opral US Inc., which is the
+     same holder sqlite-wasm-kysely's own file names above; the SDK they are
+     built from lives in it at packages/js-sdk. Read on 2026-09-06 for phase
+     9 audit ticket 12, which is when check:licences first ran on main after
+     the bump that introduced them - it had been failing behind check:copy
+     in the same job, unreported.
+
+     npm records all four in the lockfile whatever the platform, so all four
+     are checked here even though a Linux install unpacks only one. */
+  '@lix-js/sdk-darwin-arm64': 'MIT',
+  '@lix-js/sdk-linux-arm64': 'MIT',
+  '@lix-js/sdk-linux-x64': 'MIT',
+  '@lix-js/sdk-win32-x64': 'MIT'
 };
 
 /**

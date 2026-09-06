@@ -816,24 +816,12 @@
   background: var(--surface); box-shadow: var(--shadow-1);
 }
 .compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-5); }
-.compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
-.compare-side { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
-.compare-side .photo-thumb { width: 100% !important; aspect-ratio: 3/4; height: auto !important; }
 .compare-nav { display: flex; align-items: center; gap: var(--space-1); }
 /* SH-106: was 36px; falls back to .icon-btn's 44px default. */
-
-/* ---------- Voice compare ---------- */
-/* .voice-player's own `flex: 1` (components.css) is sized for
-   .recording-row, a row-direction flex parent, where flex-basis 0% grows
-   its width. .compare-side is column-direction, so that same flex-basis
-   lands on height instead and collapses the player to 0px tall - the same
-   reason .compare-side overrides .photo-thumb's sizing above. */
-.compare-side .voice-player { flex: none; width: 100%; }
 
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  .compare-wrap { max-width: 560px; margin-left: auto; margin-right: auto; }
   .home-hero { font-size: 3rem; }
   .editor-savebar { bottom: var(--space-4); }
 
