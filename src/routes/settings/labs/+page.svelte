@@ -156,7 +156,7 @@
       analyte,
       customAnalyte: '',
       value: '',
-      unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results.at(-1)?.unit ?? ''),
+      unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results[results.length - 1]?.unit ?? ''),
       note: '',
       provider: '',
       timing: null

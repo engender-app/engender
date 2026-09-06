@@ -21,11 +21,18 @@
      document cannot exist before its file does, so it is always born on the
      list screen's import.
 
-     A PDF (ticket 53, ADR-0065) has no thumbnail to draw here, so it shows
-     the same paper icon the list row already uses, plus its size and one
-     action: write the file back out, unchanged, through the share sheet or
-     a download (archive/deliver.ts) - the only way this app hands a file
-     to anything outside its own encryption. */
+     A PDF (tickets 53 and 55, ADR-0065) shows its first page the same way,
+     from the thumbnail drawn once at import, and then the page itself as
+     the renderer finishes it - which is what the thumbnail is for: the
+     screen has something to show in the moment before a megabyte of
+     library has even loaded. Pages after that are turned here, and there
+     is no text layer on any of them (ADR-0065): what a document says is
+     not something this app reads.
+
+     It keeps its size and its export, which is the honest fallback for a
+     file the renderer cannot read: written back out unchanged through the
+     share sheet or a download (archive/deliver.ts), the only way this app
+     hands a file to anything outside its own encryption. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -38,9 +45,10 @@
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { nameSlug } from '$lib/data/fold';
-  import { isPdfDocument } from '$lib/data/journal/documents';
+  import { openPdf, type OpenPdf } from '$lib/data/documents/pdf';
+  import { documentThumbName, isPdfDocument } from '$lib/data/journal/documents';
   import { journal } from '$lib/data/live/journal.svelte';
-  import { readPhoto, readThumbnail } from '$lib/stores/photoFiles';
+  import { readPhoto, readThumbnailFile } from '$lib/stores/photoFiles';
   import { toast } from '$lib/stores/toasts.svelte';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { JournalDocument } from '$lib/data/types';
@@ -69,21 +77,21 @@
      already in the field below. So the read and the blob's lifetime are
      here, the same two moves PhotoThumb makes, with the aspect left alone.
 
-     It is the thumbnail rather than the full page. What it is for is
-     recognising which document this is; reading one is ticket 55's viewer,
-     which is also where the zoom lives. A PDF has no thumbnail at all
-     (ticket 53), so this never runs for one - `readThumbnail` would
-     otherwise hand back the PDF's own bytes under a JPEG's `type`
-     (photos/names.ts's `thumbFileName` only rewrites a `.jpg` suffix). */
+     The thumbnail, for either kind of document: an image's from
+     normalisation, a PDF's its first page drawn at import (ticket 55).
+     Read under the name the area derives rather than through
+     `readThumbnail`, whose `.jpg` rewrite would hand a PDF its own bytes
+     back under a JPEG's type (photos/names.ts). For a PDF this is what is
+     on screen until the renderer has a page of its own. */
   let pageUrl = $state<string | null>(null);
 
   $effect(() => {
     const fileName = stored?.fileName;
-    if (!fileName || isPdfDocument(fileName)) return;
+    if (!fileName) return;
 
     let stale = false;
     let objectUrl: string | null = null;
-    readThumbnail(fileName).then(
+    readThumbnailFile(documentThumbName(fileName)).then(
       (bytes) => {
         if (stale || !bytes) return;
         objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
@@ -126,6 +134,115 @@
       pdfBytes = null;
     };
   });
+
+  /* The renderer, opened on the bytes this screen already holds and closed
+     when the screen goes. Only a PDF ever reaches it, and only once
+     somebody has opened the document: that tap is the whole of what wakes
+     a megabyte of library (ADR-0065's "nothing wakes it until somebody
+     opens a document").
+
+     `unreadable` is a whole file the renderer refused - encrypted,
+     truncated, or not the PDF its header claimed. The screen says so in a
+     line and keeps the export, which is the honest thing to offer for a
+     file this app cannot draw. */
+  let pages = $state<OpenPdf | null>(null);
+  let pageNumber = $state(1);
+  let unreadable = $state(false);
+
+  $effect(() => {
+    const bytes = pdfBytes;
+    if (!bytes) return;
+
+    let stale = false;
+    let opened: OpenPdf | null = null;
+    openPdf(bytes).then(
+      (open) => {
+        if (stale) return open.close();
+        opened = open;
+        pages = open;
+        pageNumber = 1;
+      },
+      (error) => {
+        if (stale) return;
+        console.error('a document could not be opened for reading', error);
+        unreadable = true;
+      }
+    );
+
+    return () => {
+      stale = true;
+      opened?.close();
+      pages = null;
+      pageDrawn = false;
+      unreadable = false;
+    };
+  });
+
+  /* Where the page is drawn, and how big it is drawn. The canvas stays
+     mounted whether or not there is anything on it yet, because a page
+     cannot be rendered into an element that only appears once the page has
+     rendered; `pageDrawn` is what decides whether it is the thing on
+     screen or the thumbnail behind it still is.
+
+     The size is the sheet's own box in device pixels, rounded to a step so
+     that a keyboard opening or an address bar collapsing does not re-render
+     the page for the sake of four pixels. Capped, because a page is vector
+     and would otherwise happily rasterise at whatever a desktop window
+     asks for. */
+  let canvas = $state<HTMLCanvasElement | null>(null);
+  let frameWidth = $state(0);
+  let pageDrawn = $state(false);
+  let pageFailed = $state(false);
+
+  const RENDER_STEP = 64;
+  const RENDER_CAP = 2048;
+  let renderEdge = $derived.by(() => {
+    if (frameWidth === 0 || typeof window === 'undefined') return 0;
+    const sheetHeight = window.innerHeight * 0.44;
+    const devicePixels = Math.max(frameWidth, sheetHeight) * (window.devicePixelRatio || 1);
+    return Math.min(RENDER_CAP, Math.ceil(devicePixels / RENDER_STEP) * RENDER_STEP);
+  });
+
+  $effect(() => {
+    const open = pages;
+    const target = canvas;
+    const number = pageNumber;
+    const edge = renderEdge;
+    if (!open || !target || edge === 0) return;
+
+    let stale = false;
+    open.page(number, edge).then(
+      (bitmap) => {
+        if (stale) return bitmap.close();
+        target.width = bitmap.width;
+        target.height = bitmap.height;
+        target.getContext('2d')?.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        pageDrawn = true;
+        pageFailed = false;
+      },
+      (error) => {
+        if (stale) return;
+        // One page of a file the rest of which is fine: a scanned page in
+        // a format the renderer choked on, or a damaged object. Said in a
+        // line rather than left as an empty canvas.
+        console.error('a page of a document could not be drawn', error);
+        pageFailed = true;
+        pageDrawn = false;
+      }
+    );
+
+    return () => {
+      stale = true;
+    };
+  });
+
+  const turnPage = (by: number) => {
+    if (!pages) return;
+    const next = pageNumber + by;
+    if (next < 1 || next > pages.pageCount) return;
+    pageNumber = next;
+  };
 
   const fileSize = (bytes: number): string =>
     bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -185,20 +302,69 @@
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <!-- The page itself, at the top of the screen the tap opened. A PDF
-         has no page image to show (ticket 53) - the same empty frame an
-         image document's own thumbnail still loading uses, here shown on
-         purpose rather than while waiting. -->
-    <div class="screen-part doc-page">
-      {#if pageUrl}
-        <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
-      {:else}
-        <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
+    <!-- The page itself, at the top of the screen the tap opened. The
+         canvas is always mounted and only sometimes the thing on screen:
+         a page cannot be drawn into an element that appears once it has
+         been drawn. Behind it, in order, the thumbnail from import and
+         then the paper icon, which is what a document whose page could
+         not be drawn at all is left with. -->
+    <div class="screen-part doc-page" bind:clientWidth={frameWidth}>
+      <canvas
+        class="doc-page-canvas"
+        class:drawn={pageDrawn}
+        data-document-page-canvas={pageDrawn ? 'drawn' : 'blank'}
+        bind:this={canvas}
+        aria-label={m.document_page_alt({ title: stored.title })}
+      >
+        <!-- A canvas's own children are what a screen reader is offered in
+             place of the pixels, so the page says what it is there too. -->
+        {m.document_page_alt({ title: stored.title })}
+      </canvas>
+      {#if !pageDrawn}
+        {#if pageUrl}
+          <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
+        {:else}
+          <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
+        {/if}
       {/if}
     </div>
 
     {#if isPdf}
       <div class="screen-part stack-3">
+        {#if pages && pages.pageCount > 1}
+          <!-- Pages and nothing else (ADR-0065): no zoom, no rotation, no
+               grid of every page, and no text under any of them. -->
+          <div class="doc-pager">
+            <button
+              class="icon-btn press"
+              data-page-back
+              aria-label={m.document_page_prev()}
+              disabled={pageNumber <= 1}
+              onclick={() => turnPage(-1)}
+            >
+              <Icon name="chevronLeft" size={22} />
+            </button>
+            <p class="doc-page-count" data-page-count aria-live="polite">
+              {m.document_page_count({ page: pageNumber, pages: pages.pageCount })}
+            </p>
+            <button
+              class="icon-btn press"
+              data-page-forward
+              aria-label={m.document_page_next()}
+              disabled={pageNumber >= pages.pageCount}
+              onclick={() => turnPage(1)}
+            >
+              <Icon name="chevronRight" size={22} />
+            </button>
+          </div>
+        {/if}
+
+        {#if unreadable}
+          <p class="muted small" data-document-unreadable>{m.document_pdf_unreadable()}</p>
+        {:else if pageFailed}
+          <p class="muted small" data-document-page-failed>{m.document_page_failed()}</p>
+        {/if}
+
         <p data-document-size>{pdfBytes ? fileSize(pdfBytes.byteLength) : ''}</p>
         <button class="btn btn-soft press" data-export-document disabled={!pdfBytes} onclick={exportPdf}>
           <Icon name="share" size={20} /><span>{m.document_export()}</span>
@@ -271,6 +437,7 @@
      sheet scaled to the screen's width would push both fields and the
      delete off the bottom on a 390px phone. */
   .doc-page-image,
+  .doc-page-canvas,
   .doc-page-empty {
     max-width: 100%;
     max-height: 44vh;
@@ -286,6 +453,56 @@
   .doc-page-image {
     width: auto;
     height: auto;
+  }
+
+  /* Mounted from the start and hidden until there is a page on it, so that
+     the render has somewhere to go. display:none rather than opacity,
+     because an invisible sheet still standing in the layout would hold the
+     thumbnail's own place open beside it. */
+  .doc-page-canvas {
+    display: none;
+    width: auto;
+    height: auto;
+  }
+
+  /* The page arriving over the thumbnail it replaces. It is the same
+     picture at a better resolution, so the motion says "sharpened", not
+     "something new": a fade with no travel, at the medium duration the
+     rest of the app swaps things at. */
+  .doc-page-canvas.drawn {
+    display: block;
+    /* The resting opacity is written out rather than left implicit: under
+       the reduced-motion clamp an animation ends where its last frame
+       says, and a frame with nothing to land on strands the sheet
+       (tests/motion-system.test.ts). */
+    opacity: 1;
+    animation: doc-page-sharpen var(--dur-med) var(--ease-out);
+  }
+
+  @keyframes doc-page-sharpen {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* The pager reads as one control rather than three: the count is what
+     the eye lands on, and the two chevrons sit at the ends of the same
+     line so a thumb finds them in the same place on every page. */
+  .doc-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .doc-page-count {
+    /* Tabular, so a page number growing a digit does not shift the
+       chevrons under the thumb that is tapping them. */
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
   }
 
   .doc-page-empty {

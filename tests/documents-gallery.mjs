@@ -1,12 +1,13 @@
-/* Screenshots of the documents area (phase 8 features tickets 52 and 53,
-   ADR-0065).
+/* Screenshots of the documents area (phase 8 features tickets 52, 53 and
+   55, ADR-0065).
 
-   Five states, which are the five a sign-off has to see: the empty screen,
-   the import sheet with a title typed into it, the list with several
-   documents on it, one document's own screen - the only place in the app
-   that draws a page image at all - and a PDF document's own screen, which
-   draws no page at all (ticket 53): the paper icon, the size, and the one
-   export action.
+   Seven states, which are the seven a sign-off has to see: the empty
+   screen, the import sheet with a title typed into it, the list with
+   several documents on it, one document's own screen - the only place in
+   the app that draws a page at all - a PDF's first page with the pager
+   under it, the same PDF turned to page two, and a PDF the renderer could
+   not read (ticket 55), which is the paper icon, the line saying so, the
+   size and the export.
 
    The pages themselves are drawn in the browser and handed to the real file
    input, so what is on screen has been through normalizePhoto, the metadata
@@ -23,6 +24,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { makePaperPdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/documents-shots'));
@@ -153,11 +155,12 @@ for (const theme of ['light', 'dark']) {
     return bytes;
   };
 
-  /* A real `%PDF-` signature is what makes this land as a document rather
-     than get refused (documents/accept.ts) - the rest of the bytes are
-     never read by anything (ADR-0065), so padding is all they need to be. */
-  const importPdf = async (title, day) => {
-    const bytes = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(4096, 0x20)]);
+  /* Two PDFs, and the difference between them is the whole of what ticket
+     55 added to this screen: one the renderer draws, and one it cannot
+     read at all. Both are real files rather than padding - the drawable
+     one is pages of letterheaded paper (tests/pdf-fixture.mjs), which is
+     what a person actually files. */
+  const importPdf = async (title, day, bytes) => {
     page.once('filechooser', (chooser) =>
       chooser.setFiles({ name: 'court-ruling.pdf', mimeType: 'application/pdf', buffer: bytes })
     );
@@ -209,18 +212,46 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1200);
   await shoot('04-one-document');
 
-  /* ---------- 05: a PDF document's own screen (ticket 53). No page image
-     anywhere - the paper icon, the size, and the export action are the
-     whole of what a PDF gets here. ---------- */
+  /* ---------- 05 and 06: a PDF's own screen (ticket 55), on its first
+     page and then turned to its second. The page under the pager is the
+     canvas the renderer drew, not the thumbnail: the shot waits for the
+     class the screen only sets once a page is on it. ---------- */
   await page.goBack();
   await page.waitForSelector('[data-add]');
-  await importPdf('Postanowienie sądu, PDF', '2025-02-14');
+  await importPdf(
+    'Postanowienie sądu',
+    '2025-02-14',
+    Buffer.from(
+      makePaperPdf([
+        { head: 'SĄD OKRĘGOWY', day: '20 stycznia 2025', note: 'Strona 1 z 3' },
+        { head: 'SĄD OKRĘGOWY', day: '20 stycznia 2025', note: 'Strona 2 z 3' },
+        { head: 'SĄD OKRĘGOWY', day: '20 stycznia 2025', note: 'Strona 3 z 3' }
+      ])
+    )
+  );
+  await page.locator('[data-save-document]').click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-list-row]').first().click();
+  await page.waitForSelector('[data-document-page-canvas="drawn"]');
+  await page.waitForTimeout(600);
+  await shoot('05-pdf-page-one');
+
+  await page.locator('[data-page-forward]').click();
+  await page.waitForTimeout(1200);
+  await shoot('06-pdf-page-two');
+
+  /* ---------- 07: the PDF nothing can draw (ticket 55). The paper icon,
+     the line that says so, the size and the export - which is the honest
+     thing to offer for a file this app cannot read. ---------- */
+  await page.goBack();
+  await page.waitForSelector('[data-add]');
+  await importPdf('Skan, którego nie da się odczytać', '2025-03-03', Buffer.from(makeUnreadablePdf()));
   await page.locator('[data-save-document]').click();
   await page.waitForTimeout(500);
   await page.locator('[data-list-row]').first().click();
-  await page.waitForFunction(() => document.querySelector('[data-document-size]')?.textContent?.trim());
+  await page.waitForSelector('[data-document-unreadable]');
   await page.waitForTimeout(600);
-  await shoot('05-one-pdf-document');
+  await shoot('07-pdf-not-drawable');
 
   await page.close();
 }

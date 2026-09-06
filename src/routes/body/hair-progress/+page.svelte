@@ -72,7 +72,7 @@
   let photosQuery = liveList((j) => j.hairProgress.getPhotos());
   let photos = $derived(photosQuery.rows);
 
-  let lastPhotoEpochDay = $derived(photos.at(-1)?.epochDay ?? null);
+  let lastPhotoEpochDay = $derived(photos[photos.length - 1]?.epochDay ?? null);
   let photoDue = $derived(isHairPhotoDue(anchorEpochDay, lastPhotoEpochDay, today));
 
   /** Null with no anchor, or for a record dated before it - "since

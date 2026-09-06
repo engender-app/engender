@@ -34,7 +34,10 @@ export const MAX_EDGE = 2048;
 export const THUMB_EDGE = 320;
 
 const FULL_QUALITY = 0.82;
-const THUMB_QUALITY = 0.7;
+/** Exported because a PDF's first page is encoded to the same shape by the
+    renderer (documents/pdf.ts), rather than to a second thumbnail quality
+    nobody chose. */
+export const THUMB_QUALITY = 0.7;
 
 /** A picked file this app will not store, with a message meant for the
     person who picked it. */

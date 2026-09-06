@@ -490,7 +490,7 @@
   // The context is this entry: the last photo already in its own draft,
   // stored or just picked, not the journal's last photo overall.
   function lastDraftPhotoReference(): ReferencePhoto | null {
-    const last = entryDraft.photos.at(-1);
+    const last = entryDraft.photos[entryDraft.photos.length - 1];
     if (!last) return null;
     if (last.kind === 'picked') return { bytes: last.photo.full };
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
