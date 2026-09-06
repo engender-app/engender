@@ -6,6 +6,7 @@ const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string 
   type: 'link',
   isAndroid: false,
   isChromeless: false,
+  fromSheet: false,
   ...over
 });
 
@@ -101,6 +102,47 @@ describe('choosing a tier-2 pattern', () => {
     expect(screenTransition(nav({ from: '/entry/41', to: '/', type: 'popstate', delta: -1 }))).toBe(
       'fade-through'
     );
+  });
+
+  it('fades an entry open out of a sheet, because a modal is not a container', () => {
+    /* The tag insights on /stats open a sheet of the entries carrying a
+       tag, and by the rule those cards are a correct source: they draw an
+       entry and they link into the editor. What that produced was the
+       card's box growing out of an open modal into the whole screen while
+       the sheet sat behind it, which is item 23's complaint again on a
+       different surface (Alicja, carpet ticket 10, screencast 32_2 - she
+       took it for an animation already removed elsewhere).
+
+       A sheet is not a place a screen grows out of. The thing tapped
+       belongs to the modal, and the modal is what the tap is inside; the
+       transform claims the card became the screen when what happened is
+       that a modal was dismissed and a screen replaced the one underneath
+       it. So it fades through, which is what Home gets and what she asked
+       for by name there.
+
+       A fact rather than a route: /stats draws entry cards only inside that
+       sheet today, and a table keyed on the route would be right by
+       accident and wrong the day a screen draws them both ways. */
+    expect(screenTransition(nav({ from: '/stats', to: '/entry/41', fromSheet: true }))).toBe(
+      'fade-through'
+    );
+    /* And the same screen with nothing open over it is still a container:
+       the carve-out is the sheet, not /stats. */
+    expect(screenTransition(nav({ from: '/stats', to: '/entry/41' }))).toBe('container');
+  });
+
+  it('leaves the way back out of an entry to the table it already had', () => {
+    /* Deliberately not carved out, unlike /doubt's return leg. That one had
+       to be, because a nameless `container` there would have been a plain
+       crossfade over the transform's own --dur-slow. This one is not: only
+       the named entry-open group takes --dur-slow, and the forward leg
+       above having answered fade-through means the layout dropped the
+       container name, so nothing on the way back is named at all. What is
+       left is the screen pair, which crossfades on the same --dur-fast out
+       and --dur-med in a fade-through uses. */
+    expect(
+      screenTransition(nav({ from: '/entry/41', to: '/stats', type: 'popstate', delta: -1 }))
+    ).toBe('container');
   });
 
   it('opens an entry from the counterevidence screen on the axis, both ways', () => {
