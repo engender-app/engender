@@ -35,9 +35,19 @@ describe('Tile component contract', () => {
      the one that snapped, and the branch a tile takes is decided by which
      controls its caller passed rather than by anything about the motion. */
   it('collapses through the panel primitive on all three branches', () => {
-    expect((tileFile.match(/transition:collapse=\{panel\}/g) ?? []).length).toBe(3);
+    expect((tileFile.match(/transition:collapse\|global=\{panel\}/g) ?? []).length).toBe(3);
     expect(tileFile).toContain("from '$lib/motion/reveal'");
     // The `skip` that stops a screen folding its own tiles up as it leaves.
     expect(tileFile).toContain('navigating.to !== null');
+  });
+
+  /* `|global` is not decoration. A transition is local by default and plays
+     only when its own block is created or destroyed; a tile is created and
+     destroyed by the caller's `{#each}`, which is a parent block, so the
+     local rule skipped it in silence - no inline style, no frames, a tile
+     that vanished. Held here because the mark is one character and its
+     absence fails nothing else. */
+  it('tells the transition globally, since what removes a tile is its caller', () => {
+    expect(tileFile).not.toMatch(/transition:collapse=\{/);
   });
 });

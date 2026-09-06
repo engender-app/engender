@@ -95,14 +95,27 @@
      x axis whatever the layout was doing, which at 390px collapsed the width
      of a tile whose neighbours were giving back height.
 
-     `skip` is Notice.svelte's, for the same reason: Svelte runs an outro
-     when the *page* unmounts a tile, and a screen leaving should not spend
-     240ms folding its tiles up first. */
+     `|global`, and it is load-bearing rather than decoration. A Svelte
+     transition is local by default, which means it plays only when the block
+     it is written in is created or destroyed - and this one is written in
+     Tile's own body, while what actually creates and destroys a tile is the
+     caller's `{#each}`. That is a parent block, so the local rule skipped it
+     silently: the tile vanished in a frame and nothing in the DOM ever
+     carried an inline style. Notice.svelte gets away without it because its
+     callers wrap it in an `{#if}` whose own creation the transition can see.
+     Told globally, a tile collapses whatever removes it, which is the
+     contract this ticket wanted in the first place.
+
+     `skip` is then what keeps `|global` honest, and it is Notice's own for
+     the same reason: Svelte runs an outro when the *page* unmounts a tile,
+     and a screen leaving should not spend 240ms folding its tiles up first.
+     The entrance's counterpart is inside `collapse` - a tile that appears
+     while the screen is still arriving is simply there. */
   let panel = $derived({ skip: navigating.to !== null });
 </script>
 
 {#if action}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse={panel} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -147,7 +160,7 @@
     {/if}
   </div>
 {:else if dismiss}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse={panel} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse|global={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -168,7 +181,7 @@
     </button>
   </div>
 {:else}
-  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse={panel} {...rest}>
+  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse|global={panel} {...rest}>
     <span class="kit-tile-title">{title}</span>
     {#if value}<span class="kit-tile-value">{value}</span>{/if}
     {#if note}<span class="kit-tile-note">{note}</span>{/if}
