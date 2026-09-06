@@ -34,11 +34,10 @@
    the limit forms. A guard that cannot fire would just be a claim that this
    was checked, so the check is written down here instead. */
 
-import { doseMilligrams } from './hormoneCurveFit';
+import { doseMilligrams, fractionalEpochDay } from './hormoneCurveFit';
 import { curveUnit, type CurveDrug } from './hormoneDrug';
 import { INJECTABLE_ESTERS, resolveInjectableEster, type InjectableEster } from './hormoneEster';
 import { ESTER_POSTERIORS, type PkSample } from './hormoneCurveModels';
-import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { attributeDose } from './regimenEpisode';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -65,8 +64,6 @@ export const BAND_PERCENTILES: readonly [number, number] = [5, 95];
     honest trade at that zoom. At the default 90-day window this is a sample
     every six hours. */
 const BAND_SAMPLES = 361;
-
-const DAY_MS = 86400000;
 
 /** One sampled slice of the band. Three fields and no fourth: a `value` or
     `median` here is how a single-line presentation would get built by
@@ -105,20 +102,6 @@ export interface CurveInput {
   episodes: readonly RegimenEpisode[];
   fromEpochDay: number;
   toEpochDay: number;
-}
-
-/** Where a moment falls on the curve's time axis: the epoch day it belongs
-    to plus how far through that day it is. Local, because an epoch day is a
-    local calendar day (ADR-0001) and a dose's timestamp is a real instant.
-
-    Not in epochDay.ts: an epoch day there is a whole local day by
-    definition, and a fractional one is a different idea that only the
-    pharmacokinetics needs - hours matter to a curve and to nothing else in
-    the app. Exported because the curve's own axis is the one a lab point has
-    to be placed on too (journal/hormoneCurve.ts). */
-export function fractionalEpochDay(timestamp: number): number {
-  const day = epochDayFromTimestamp(timestamp);
-  return day + (timestamp - startOfDayTimestamp(day)) / DAY_MS;
 }
 
 /** The cascade's single-dose solution, in pg/mL, milligrams in and days

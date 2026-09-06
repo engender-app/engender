@@ -14,7 +14,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 export type { PhotoFileStore } from '../photos/photo-file-store';
 import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
-import { makeArchiveArea, type ArchiveArea } from './archive';
+import type { ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import { makeChartAnnotationsArea, type ChartAnnotationsArea } from './chartAnnotations';
 import { makeChecklistsArea, type ChecklistsArea } from './checklists';
@@ -34,7 +34,7 @@ import { makeEffectCategoriesArea, type EffectCategoriesArea } from './effectCat
 import { makeEntriesArea, type EntriesArea } from './entries';
 import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
-import { makeHormoneCurveArea, type HormoneCurveArea } from './hormoneCurve';
+import type { HormoneCurveArea } from './hormoneCurve';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
 import { makeIntervalMoodPatternArea, type IntervalMoodPatternArea } from './intervalMoodPattern';
@@ -74,6 +74,7 @@ import { makeVoicePracticeTakesArea, type VoicePracticeTakesArea } from './voice
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
 import { makeWordIgnoreArea, type WordIgnoreArea } from './wordIgnore';
 import { reconcileBuiltIns } from './reconcile';
+import { deferredArea } from './deferredArea';
 
 /** Every write below that addresses a row by id answers the unknown-id
     case the same way, in every area, and the answer differs by operation
@@ -462,7 +463,12 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     doses,
     stock: makeStockArea(driver, doses, regimen, reminders),
     exposure,
-    hormoneCurve: makeHormoneCurveArea(doses, regimen, labs),
+    /* Deferred (ticket 03): the curve models are 2,600 lines of
+       pharmacokinetics, the largest thing in the first-load graph, and only
+       the curve screen ever asks for them. */
+    hormoneCurve: deferredArea<HormoneCurveArea>(async () =>
+      (await import('./hormoneCurve')).makeHormoneCurveArea(doses, regimen, labs)
+    )(['getCurves']),
     sideEffects,
     cycleEvents,
     journalingPauses,
@@ -567,7 +573,29 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     stats,
     correlationCards: makeCorrelationCardsArea(stats, doses, dimensions),
     intervalMoodPattern: makeIntervalMoodPatternArea(stats, doses),
-    archive: makeArchiveArea(driver, files),
+    /* Deferred (ticket 03), and the larger of the two: the pack, read, apply
+       and section machinery plus five importers, none of which a screen
+       reaches before somebody opens settings and asks to export or import. */
+    archive: deferredArea<ArchiveArea>(async () =>
+      (await import('./archive')).makeArchiveArea(driver, files)
+    )([
+      'snapshot',
+      'previewDaylioImport',
+      'commitDaylioImport',
+      'previewDaylioBackupImport',
+      'commitDaylioBackupImport',
+      'previewTransTracksImport',
+      'commitTransTracksImport',
+      'previewDayOneImport',
+      'commitDayOneImport',
+      'previewTrackAndGraphImport',
+      'commitTrackAndGraphImport',
+      'previewPixelsImport',
+      'commitPixelsImport',
+      'importLog',
+      'replace',
+      'merge'
+    ]),
     reconcileBuiltIns: () => reconcileBuiltIns(driver),
     discardEverything: async () => {
       const { discardJournalRows } = await import('./restore');
