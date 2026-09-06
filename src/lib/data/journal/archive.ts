@@ -249,7 +249,12 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async importLog() {
-      return (await readImportLog(driver)).reverse();
+      // Copied before reversing rather than reversed in place: `toReversed`
+      // is above the WebView floor (ADR-0023, ticket 55) and this is what
+      // replaced it, so it has to keep the same promise not to touch what
+      // it was handed - the read's array is its own today, and a reader
+      // that started sharing one would be a bug nobody would look for here.
+      return [...(await readImportLog(driver))].reverse();
     },
 
     async previewDaylioBackupImport(file, naming) {

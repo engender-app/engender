@@ -170,12 +170,24 @@
       }
     );
 
+    /* Everything the last document put on this screen goes with it,
+       including what went wrong on it. SvelteKit reuses this component
+       across two ids (detailDraft's own reason for reading the route
+       parameter reactively), so a page that failed on one document would
+       otherwise leave the next one's screen saying so, hiding its
+       thumbnail behind a line about a page it never had - and `shownPage`
+       surviving would make the next document's first page read as the
+       same page it already had, which is what decides whether it
+       animates. */
     return () => {
       stale = true;
       opened?.close();
       pages = null;
       pageDrawn = false;
+      pageFailed = false;
       unreadable = false;
+      shownPage = 0;
+      turnedBy = 0;
     };
   });
 
@@ -197,9 +209,16 @@
 
   const RENDER_STEP = 64;
   const RENDER_CAP = 2048;
+  /** How much of the screen's height one sheet may take. Declared here and
+      handed to the stylesheet below as a custom property, rather than
+      written as a number in the CSS and again as a fraction here: the two
+      have to agree for the page to be rendered at the size it is drawn at,
+      and nothing but this line would have made them. */
+  const SHEET_VIEWPORT_SHARE = 0.44;
+
   let renderEdge = $derived.by(() => {
     if (frameWidth === 0 || typeof window === 'undefined') return 0;
-    const sheetHeight = window.innerHeight * 0.44;
+    const sheetHeight = window.innerHeight * SHEET_VIEWPORT_SHARE;
     const devicePixels = Math.max(frameWidth, sheetHeight) * (window.devicePixelRatio || 1);
     return Math.min(RENDER_CAP, Math.ceil(devicePixels / RENDER_STEP) * RENDER_STEP);
   });
@@ -340,7 +359,11 @@
          been drawn. Behind it, in order, the thumbnail from import and
          then the paper icon, which is what a document whose page could
          not be drawn at all is left with. -->
-    <div class="screen-part doc-page" bind:clientWidth={frameWidth}>
+    <div
+      class="screen-part doc-page"
+      style="--doc-sheet-height: {SHEET_VIEWPORT_SHARE * 100}vh"
+      bind:clientWidth={frameWidth}
+    >
       <!-- The sheet and the control that turns it are one column, so the
            pager is exactly as wide as the page it belongs to rather than
            as wide as the screen. -->
@@ -368,31 +391,41 @@
           {/if}
         {/if}
 
-        {#if pages && pages.pageCount > 1}
+        {#if pages}
           <!-- Pages and nothing else (ADR-0065): no zoom, no rotation, no
-               grid of every page, and no text under any of them. -->
-          <div class="doc-pager">
-            <button
-              class="icon-btn press"
-              data-page-back
-              aria-label={m.document_page_prev()}
-              disabled={pageNumber <= 1}
-              onclick={() => turnPage(-1)}
-            >
-              <Icon name="chevronLeft" size={22} />
-            </button>
+               grid of every page, and no text under any of them.
+
+               The count shows for a one-page document too, because "Page 1
+               of 1" is how a person knows they have seen the whole thing;
+               the two chevrons are what a single page does not get, since
+               a control that can never do anything is not worth the two
+               places it would take under every e-recepta. -->
+          <div class="doc-pager" class:one-page={pages.pageCount === 1}>
+            {#if pages.pageCount > 1}
+              <button
+                class="icon-btn press"
+                data-page-back
+                aria-label={m.document_page_prev()}
+                disabled={pageNumber <= 1}
+                onclick={() => turnPage(-1)}
+              >
+                <Icon name="chevronLeft" size={22} />
+              </button>
+            {/if}
             <p class="doc-page-count" data-page-count aria-live="polite">
               {m.document_page_count({ page: pageNumber, pages: pages.pageCount })}
             </p>
-            <button
-              class="icon-btn press"
-              data-page-forward
-              aria-label={m.document_page_next()}
-              disabled={pageNumber >= pages.pageCount}
-              onclick={() => turnPage(1)}
-            >
-              <Icon name="chevronRight" size={22} />
-            </button>
+            {#if pages.pageCount > 1}
+              <button
+                class="icon-btn press"
+                data-page-forward
+                aria-label={m.document_page_next()}
+                disabled={pageNumber >= pages.pageCount}
+                onclick={() => turnPage(1)}
+              >
+                <Icon name="chevronRight" size={22} />
+              </button>
+            {/if}
           </div>
         {/if}
       </div>
@@ -481,7 +514,9 @@
   .doc-page-canvas,
   .doc-page-empty {
     max-width: 100%;
-    max-height: 44vh;
+    /* The share the renderer draws to, handed down from the script so the
+       page is never rasterised at one size and capped at another. */
+    max-height: var(--doc-sheet-height);
     border-radius: var(--radius-md);
     /* A scan of white paper on a light background has no edge of its own -
        in the light theme the sheet and the screen behind it are within a
@@ -529,6 +564,13 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
+  }
+
+  /* With nothing to turn, the count is the only thing in the row, and a
+     lone label pushed to one end would read as a label that lost its
+     control. */
+  .doc-pager.one-page {
+    justify-content: center;
   }
 
   .doc-page-count {

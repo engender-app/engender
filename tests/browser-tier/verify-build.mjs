@@ -15,7 +15,7 @@
    service worker and precached shell, then kills the network and starts the
    app again. That is the check no test against a dev server can make -
    neither the worker nor the manifest exists until something is built. */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
@@ -688,6 +688,37 @@ try {
     fail(
       'with the network gone the OCR engine still loads whole from the shell',
       short.map((asset) => `${asset}: ${offlineEngine[asset]} of ${onlineSizes[asset]} bytes`).join(', ')
+    );
+
+  /* The same question for the PDF renderer's fonts (phase 8 features
+     ticket 55), and it is the half the ticket asks to be proven offline:
+     a document that named Helvetica draws blank without these, and it
+     would draw blank exactly when there is no network - which is when a
+     store that exists so a diagnosis is not in Downloads matters most.
+
+     Every face rather than a sample, and the byte counts come off disk
+     rather than off an earlier fetch: precache membership was already
+     checked above, so what is new here is that the bytes come back whole
+     from a browser process the origin is gone from. */
+  const PDF_FONT_DIR = new URL('../../static/pdf-fonts/', import.meta.url);
+  const pdfFonts = readdirSync(PDF_FONT_DIR).map((name) => `/pdf-fonts/${name}`);
+  const offlineFonts = await deep.evaluate(async (assets) => {
+    const sizes = {};
+    for (const asset of assets) {
+      const response = await fetch(asset).catch(() => null);
+      sizes[asset] = response && response.ok ? (await response.blob()).size : 0;
+    }
+    return sizes;
+  }, pdfFonts);
+  const shortFonts = pdfFonts.filter(
+    (asset) => offlineFonts[asset] !== statSync(new URL(asset.slice('/pdf-fonts/'.length), PDF_FONT_DIR)).size
+  );
+  if (shortFonts.length === 0)
+    ok(`with the network gone all ${pdfFonts.length} standard PDF faces still load whole from the shell`);
+  else
+    fail(
+      'with the network gone the standard PDF faces still load whole from the shell',
+      shortFonts.map((asset) => `${asset}: ${offlineFonts[asset]} bytes`).join(', ')
     );
 
   const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);

@@ -37,7 +37,7 @@ const FLOOR = capacitorConfig.android?.minWebViewVersion ?? 0;
 
 /** What each one costs, so a failure says which Chrome it would break. */
 const ABOVE_THE_FLOOR: [pattern: RegExp, api: string, since: number][] = [
-  [/\.at\(-?\d/g, 'Array.prototype.at', 92],
+  [/\.at\(\s*[-\w]/g, 'Array.prototype.at', 92],
   [/\bObject\.hasOwn\(/g, 'Object.hasOwn', 93],
   [/\.toReversed\(/g, 'Array.prototype.toReversed', 110],
   [/\.toSorted\(/g, 'Array.prototype.toSorted', 110],
@@ -98,7 +98,11 @@ test('nothing the app ships calls an API newer than the WebView floor', () => {
    grep is wrong, so this proves the pattern actually finds what it is
    looking for - in a string that never reaches a browser. */
 test('the rule finds what it is looking for', () => {
-  const sample = 'const last = rows.at(-1);';
+  /* Both spellings, because the first version of this rule only matched a
+     numeric literal and would have let `rows.at(i)` ship past a header
+     that claims nothing does. */
   const [pattern] = ABOVE_THE_FLOOR[0];
-  assert.equal(sample.match(pattern)?.length, 1);
+  assert.equal('const last = rows.at(-1);'.match(pattern)?.length, 1);
+  assert.equal('const item = rows.at(index);'.match(pattern)?.length, 1);
+  assert.equal('const sliced = rows.slice(1);'.match(pattern), null);
 });
