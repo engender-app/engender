@@ -23,6 +23,9 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import Progress from '$lib/components/Progress.svelte';
+  import { createProgress } from '$lib/components/progress.svelte';
+  import type { RestoreProgress } from '$lib/data/journal/restore';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -80,6 +83,39 @@
   let autoLastFailureReason = $state<string | null>(null);
   let autoHasPassword = $state(false);
   let autoBusy = $state(false);
+
+  /* Five bars for six operations (phase 9 audit ticket 11, ADR-0070).
+     Import and verify share one because they share their two buttons and
+     cannot run at once; everything else has its own place on the screen.
+     Each carries a label beside it because these operations move between
+     stages a percentage alone would not explain - "72%" of copying photos
+     and "72%" of writing rows are the same number about different work. */
+  const exportProgress = createProgress();
+  let exportLabel = $state('');
+  const autoProgress = createProgress();
+  let autoLabel = $state('');
+  const importProgress = createProgress();
+  let importLabel = $state('');
+  const daylioProgress = createProgress();
+  const backupProgress = createProgress();
+  let backupLabel = $state('');
+
+  /** One restore's two stages as a sentence and a fraction, shared by the
+      two operations that go through restore.ts with files to write. The
+      first stage's wording is the caller's, because what arrives is not
+      the same thing twice: an archive's photos are copied in, a Daylio
+      backup's are re-encoded on the way (archive.ts). The second stage is
+      rows either way, so it is not a parameter. */
+  const restoreWatcher =
+    (
+      run: ReturnType<typeof createProgress>,
+      setLabel: (label: string) => void,
+      whileWritingFiles: () => string
+    ) =>
+    (progress: RestoreProgress) => {
+      setLabel(progress.stage === 'files' ? whileWritingFiles() : m.imp_running_rows());
+      run.report(progress.done, progress.total);
+    };
 
   const done: Record<ExportPath, () => string> = {
     encrypted: m.exp_done_encrypted,
@@ -194,6 +230,12 @@
     }
 
     autoBusy = true;
+    /* Not exp_auto_running(): the button above already says that while it
+       is disabled, and a bar repeating its button says nothing the button
+       has not. It names the half that is running instead. */
+    autoLabel = m.exp_running_packing();
+    const stop = new AbortController();
+    autoProgress.start({ onCancel: () => stop.abort() });
     try {
       if (expPass) {
         await androidAutoExport.setPassword({ password: expPass });
@@ -209,20 +251,46 @@
           recordBackup: (at) => {
             prefs.lastBackupAt = at;
             prefs.backupNoticeDismissed = false;
+          },
+          watch: {
+            signal: stop.signal,
+            onProgress: (done, total) => {
+              /* The pack is the countable half. What follows it - base64
+                 across the bridge and the SAF write of a multi-megabyte
+                 archive - has no unit of work to report, so the bar goes
+                 back to sweeping under a sentence that says which half
+                 this is. Leaving it parked at 100% through the slower half
+                 would be the bar lying, which is the whole thing ADR-0070
+                 is about. */
+              if (done === total) {
+                autoLabel = m.exp_auto_running_writing();
+                autoProgress.report(0, 0);
+                return;
+              }
+              autoProgress.report(done, total);
+            }
           }
         }
       );
 
       if (result.outcome === 'ok') {
+        await autoProgress.finish();
         toast(m.exp_auto_saved_toast());
       } else if (result.outcome === 'needs-destination') {
+        autoProgress.abandon();
         toast(m.exp_auto_reselect_needed());
+      } else if (result.outcome === 'cancelled') {
+        // Stopping is an answer, not a failure: nothing reached the folder.
+        autoProgress.abandon();
+        toast(m.exp_cancelled());
       } else {
+        autoProgress.abandon();
         console.error('auto-export failed', result.reason);
         toast(m.exp_auto_failed());
       }
       await refreshAutoStatus();
     } catch (error) {
+      autoProgress.abandon();
       console.error('auto-export failed', error);
       toast(m.exp_auto_failed());
     } finally {
@@ -281,6 +349,15 @@
   async function exportNow(path: ExportPath) {
     if (running) return;
     running = path;
+    exportLabel = m.exp_running_packing();
+    const stop = new AbortController();
+    /* Cancellable on the encrypted path alone, and not because the other
+       two are dangerous to stop - nothing an export does touches the
+       journal (ADR-0070) - but because there is nothing there to stop.
+       journalCsv and journalJson build one string before the body is ever
+       pulled, so a stop button on them would refuse the only work they do
+       after it was already done. */
+    exportProgress.start(path === 'encrypted' ? { onCancel: () => stop.abort() } : undefined);
     try {
       // No "still opening" branch: a call through data/live's handle queues until
       // the database is open (ticket 08), and every screen reaches it that way.
@@ -300,17 +377,27 @@
             // The journal is freshly backed up, so the Home notice starts
             // over: dismissing it once does not silence it forever.
             prefs.backupNoticeDismissed = false;
-          }
+          },
+          watch: { signal: stop.signal, onProgress: (done, total) => exportProgress.report(done, total) }
         }
       );
 
       if (delivery === 'cancelled') {
+        exportProgress.abandon();
         toast(m.exp_cancelled());
         return;
       }
+      // Before the toast, so the bar finishes its sentence rather than
+      // being talked over by the answer (ADR-0070).
+      await exportProgress.finish();
       const what = done[path]();
       toast(delivery === 'shared' ? m.exp_done_shared({ what }) : m.exp_done_downloaded({ what }));
     } catch (error) {
+      exportProgress.abandon();
+      if (stop.signal.aborted) {
+        toast(m.exp_cancelled());
+        return;
+      }
       console.error(`the ${path} export failed`, error);
       toast(m.exp_failed());
     } finally {
@@ -368,12 +455,23 @@
     impError = '';
     impErrorKind = '';
     importing = true;
+    /* No stop button, on either mode (ADR-0070): Replace discards this
+       device's journal before installing the archive's and Merge writes as
+       it reads, so an abort part way through has no defined rollback
+       anywhere in the code. The bar says how far along it is and nothing
+       else. */
+    importLabel = m.imp_running_files();
+    importProgress.start();
+    const onProgress = restoreWatcher(importProgress, (label) => (importLabel = label), m.imp_running_files);
     try {
       const { payload, files } = await openArchive(picked.bytes(), impPass);
-      const contents = { journal: payload.journal, files };
+      // The manifest is what the stream is about to deliver, so the bar
+      // has a denominator for its first half (restore.ts).
+      const contents = { journal: payload.journal, files, fileCount: payload.files.length };
 
       if (impMode === 'replace') {
-        await journal.archive.replace(contents);
+        await journal.archive.replace(contents, onProgress);
+        await importProgress.finish();
         /* The settings that describe the journal travel with it (ADR-0003);
            the ones that describe this installation - the PIN, the lock flags,
            the disguise - are not in the archive at all, so restoring cannot
@@ -383,10 +481,12 @@
       } else {
         // A merge writes no settings, for the same reason it leaves rows
         // alone: what is already on this device wins.
-        await journal.archive.merge(contents);
+        await journal.archive.merge(contents, onProgress);
+        await importProgress.finish();
         toast(m.imp_merged_toast());
       }
     } catch (error) {
+      importProgress.abandon();
       console.error('the import failed', error);
       impErrorKind = archiveFailureKind(error);
       impError = importFailureMessage(impErrorKind);
@@ -410,11 +510,18 @@
     }
     impError = '';
     verifying = true;
+    // Not cancellable either, though nothing is written: a half-drained
+    // archive proves nothing, and a drill that can be stopped early is a
+    // drill somebody can believe they passed (ADR-0070).
+    importLabel = m.verify_running_files();
+    importProgress.start();
     try {
-      await verifyArchive(picked.bytes(), impPass);
+      await verifyArchive(picked.bytes(), impPass, (done, total) => importProgress.report(done, total));
+      await importProgress.finish();
       prefs.lastVerifiedAt = Date.now();
       toast(m.verify_ok_toast());
     } catch (error) {
+      importProgress.abandon();
       console.error('the verify drill failed', error);
       impError = verifyFailureMessage(archiveFailureKind(error));
     } finally {
@@ -452,12 +559,22 @@
     if (!daylioPreview || daylioPreview.unmappedMoodLabels.length > 0 || daylioImporting) return;
     daylioImporting = true;
     daylioError = '';
+    /* A CSV export carries no photos, so this is one stage and one label
+       and it may well finish inside the bar's show delay - which is the
+       case that delay is for (ADR-0070). */
+    daylioProgress.start();
     try {
-      const result = await journal.archive.commitDaylioImport(daylioPreview);
+      const result = await journal.archive.commitDaylioImport(daylioPreview, (progress) =>
+        daylioProgress.report(progress.done, progress.total)
+      );
+      // Before the sheet closes, so the bar is not cut off by the sheet it
+      // is sitting in going away.
+      await daylioProgress.finish();
       daylioSheet = false;
       toast(m.daylio_imported_toast({ entries: String(result.entriesAdded), tags: String(result.tagsAdded) }));
       void refreshImportLog();
     } catch (error) {
+      daylioProgress.abandon();
       console.error('the Daylio import failed', error);
       daylioError = m.daylio_failed();
     } finally {
@@ -577,8 +694,17 @@
     if (!backupPreview || backupPreview.unmappedMoodNames.length > 0 || backupImporting) return;
     backupImporting = true;
     backupError = '';
+    backupLabel = m.dlb_running_assets();
+    backupProgress.start();
     try {
-      const result = await journal.archive.commitDaylioBackupImport(backupPreview, normalizePhoto);
+      // Its own first-stage wording, because the backup re-encodes every
+      // photo it carries rather than just writing it (archive.ts).
+      const result = await journal.archive.commitDaylioBackupImport(
+        backupPreview,
+        normalizePhoto,
+        restoreWatcher(backupProgress, (label) => (backupLabel = label), m.dlb_running_assets)
+      );
+      await backupProgress.finish();
       backupSheet = false;
       await refreshImportLog();
       toast(
@@ -589,6 +715,7 @@
         })
       );
     } catch (error) {
+      backupProgress.abandon();
       console.error('the Daylio backup import failed', error);
       backupError = m.dlb_failed();
     } finally {
@@ -666,6 +793,16 @@
       <Icon name={android ? 'share' : 'download'} size={20} />
       <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
     </button>
+    <!-- The encrypted path only. journalCsv and journalJson build their
+         whole string synchronously before the body is ever pulled, so
+         there is nothing for a bar to count and, worse, nothing for it to
+         paint: the show-delay timer cannot fire inside a block that never
+         yields, so a bar there would appear only once the work it was
+         reporting had finished. The two plain buttons stay disabled and
+         say so, which is the honest amount this screen knows about them. -->
+    {#if running === 'encrypted'}
+      <Progress run={exportProgress} label={exportLabel} handle="export" />
+    {/if}
     <p class="muted small">
       <Icon name="key" size={13} /> {m.exp_crypto_note()}
     </p>
@@ -712,6 +849,7 @@
             onclick={backupNowToDestination} disabled={autoBusy}>
             <span>{autoBusy ? m.exp_auto_running() : m.exp_auto_backup_now()}</span>
           </button>
+          <Progress run={autoProgress} label={autoLabel} handle="auto-export" />
       {/if}
 
         <p class="muted small">
@@ -777,6 +915,9 @@
         <span>{importing ? m.imp_running() : m.imp_run()}</span>
       </button>
     </div>
+    <!-- One bar for the two buttons above it: they are disabled by each
+         other, so only one of them is ever running. -->
+    <Progress run={importProgress} label={importLabel} handle="import" />
     <div class="hr"></div>
     <div data-import-rows>
     <ListRow
@@ -892,6 +1033,7 @@
           <span>{daylioImporting ? m.imp_running() : m.daylio_confirm({ count: daylioPreview.entryCount })}</span>
         </button>
       {/if}
+      <Progress run={daylioProgress} label={m.daylio_running_rows()} handle="daylio" />
       <button class="btn btn-ghost" onclick={() => (daylioSheet = false)}><span>{m.cancel()}</span></button>
     </div>
   </Sheet>
@@ -980,6 +1122,7 @@
           <span>{backupImporting ? m.imp_running() : m.dlb_confirm()}</span>
         </button>
       {/if}
+      <Progress run={backupProgress} label={backupLabel} handle="daylio-backup" />
       <button class="btn btn-ghost" onclick={() => (backupSheet = false)}><span>{m.cancel()}</span></button>
     </div>
   </Sheet>

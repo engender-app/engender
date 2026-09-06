@@ -27,7 +27,7 @@
 
 import { filesOf, thumbFileName } from '../photos/names';
 import { documentFilesOf } from './documents';
-import type { RestoreContents, RestoreMode } from './restore';
+import type { OnRestoreProgress, RestoreContents, RestoreMode } from './restore';
 import {
   daylioPreview,
   type DaylioCommitResult,
@@ -99,7 +99,7 @@ export interface ArchiveArea {
   /** Always Merge. An unmapped mood is refused before restore sees a row.
       Writes one import_log record on success (ticket 03) - never on the
       unmapped-mood refusal above, which never reaches restore either. */
-  commitDaylioImport(preview: DaylioPreview): Promise<DaylioCommitResult>;
+  commitDaylioImport(preview: DaylioPreview, onProgress?: OnRestoreProgress): Promise<DaylioCommitResult>;
   /** The same two steps for a `.daylio` backup rather than a CSV export
       (phase 7 ticket 09), which carries milestones, tag groups, custom
       scales, writing templates, photos and voice notes as well. */
@@ -109,7 +109,8 @@ export interface ArchiveArea {
       Node-tested. */
   commitDaylioBackupImport(
     preview: DaylioBackupPreview,
-    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
+    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>,
+    onProgress?: OnRestoreProgress
   ): Promise<DaylioBackupCommitResult>;
   /** Parses and resolves a TransTracks `.ttbackup` zip without writing. */
   previewTransTracksImport(bytes: Uint8Array): Promise<TransTracksPreview>;
@@ -153,10 +154,10 @@ export interface ArchiveArea {
   /** Discards this device's journal and installs the archive's, keeping the
       built-in vocabulary by key and leaving preferences alone (ADR-0011).
       One operation: the order it happens in is not a caller's to compose. */
-  replace(contents: RestoreContents): Promise<void>;
+  replace(contents: RestoreContents, onProgress?: OnRestoreProgress): Promise<void>;
   /** Adds what this device does not have and leaves matched rows alone, so
       importing the same archive twice is a no-op the second time. */
-  merge(contents: RestoreContents): Promise<void>;
+  merge(contents: RestoreContents, onProgress?: OnRestoreProgress): Promise<void>;
 }
 
 /** restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/
@@ -169,10 +170,11 @@ async function restoreArchive(
   driver: SqliteDriver,
   files: PhotoFileStore,
   mode: RestoreMode,
-  contents: RestoreContents
+  contents: RestoreContents,
+  onProgress?: OnRestoreProgress
 ): Promise<void> {
   const restore = await import('./restore');
-  return restore.restoreArchive(driver, files, mode, contents);
+  return restore.restoreArchive(driver, files, mode, contents, onProgress);
 }
 
 /** One import_log row, direct rather than through the ordinary merge: this
@@ -221,22 +223,30 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     manifestNames(fileOwners.flatMap((owner) => filesOf(owner.file_path)));
 
   const area: ArchiveArea = {
-    replace: (contents) => restoreArchive(driver, files, 'replace', contents),
-    merge: (contents) => restoreArchive(driver, files, 'merge', contents),
+    replace: (contents, onProgress) => restoreArchive(driver, files, 'replace', contents, onProgress),
+    merge: (contents, onProgress) => restoreArchive(driver, files, 'merge', contents, onProgress),
 
     async previewDaylioImport(csv, naming) {
       return daylioPreview(csv, (await area.snapshot()).journal, naming);
     },
 
-    async commitDaylioImport(preview) {
+    async commitDaylioImport(preview, onProgress) {
       if (preview.unmappedMoodLabels.length > 0) {
         throw new Error(`Daylio mood ${preview.unmappedMoodLabels.join(', ')} is not mapped; nothing was imported`);
       }
       const before = await area.snapshot();
-      await restoreArchive(driver, files, 'merge', {
-        journal: preview.journal,
-        files: (async function* () {})()
-      });
+      await restoreArchive(
+        driver,
+        files,
+        'merge',
+        {
+          journal: preview.journal,
+          // A CSV export carries no photos (daylio.ts), so this restore is
+          // all rows and its progress is the section count alone.
+          files: (async function* () {})()
+        },
+        onProgress
+      );
       const after = await area.snapshot();
       const result = {
         entriesAdded: after.journal.entries.length - before.journal.entries.length,
@@ -261,7 +271,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       return daylioBackupPreview(file, (await area.snapshot()).journal, naming);
     },
 
-    async commitDaylioBackupImport(preview, normalize) {
+    async commitDaylioBackupImport(preview, normalize, onProgress) {
       if (preview.unmappedMoodNames.length > 0) {
         throw new Error(
           `Daylio mood ${preview.unmappedMoodNames.join(', ')} has no scale position; nothing was imported`
@@ -290,7 +300,19 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         }
       };
 
-      await restoreArchive(driver, files, 'merge', { journal: preview.journal, files: assetFiles() });
+      /* Two files per photo and one per anything else, which is what the
+         generator above yields and therefore what the restore will count
+         (phase 9 audit ticket 11). Counted from the assets rather than
+         from preview.photoCount, so the denominator cannot disagree with
+         the numerator if either ever changes. */
+      const fileCount = preview.assets.reduce((n, asset) => n + (asset.kind === 'photo' ? 2 : 1), 0);
+      await restoreArchive(
+        driver,
+        files,
+        'merge',
+        { journal: preview.journal, files: assetFiles(), fileCount },
+        onProgress
+      );
       /* The source name is the registry's own (archive/sources.ts), so the
          log names what read the file rather than a second spelling of it.
          Written after restore and never before: a preview somebody

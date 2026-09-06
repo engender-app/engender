@@ -92,3 +92,49 @@ test('the plain paths deliver the journal in the format they name', async () => 
   assert.equal(json.delivered[0].type, 'application/json');
   assert.deepEqual(JSON.parse(await collect(json.delivered[0])).journal, emptySnapshot.journal);
 });
+
+/* Phase 9 audit ticket 11: the screen's bar is fed from here, so the watch
+   has to reach the one path that can pack for minutes and be harmless on
+   the two that cannot. */
+test('the encrypted export reports its progress to the caller', async () => {
+  const { deliver, delivered } = fakeDelivery();
+  const reports: { done: number; total: number }[] = [];
+
+  await runExport('encrypted', source, {
+    deliver,
+    recordBackup: () => {},
+    watch: { onProgress: (done, total) => reports.push({ done, total }) }
+  });
+
+  // fakeDelivery does not drain the body, so nothing is packed yet: the
+  // watch is wired, not fired.
+  assert.equal(reports.length, 0);
+  for await (const _piece of delivered[0].body) void _piece;
+  assert.ok(reports.length > 0, 'draining the body reported progress');
+  assert.equal(reports[reports.length - 1].done, reports[0].total);
+});
+
+/* The real deliverFile drains the body before it hands anything over, so a
+   cancelled pack takes the delivery down with it and runExport never
+   reaches the recorder - which is what keeps a stopped export off Home's
+   "your journal is safe" line (F21). Driven with a delivery that really
+   drains, rather than the fake above, because that ordering is the whole
+   assertion. */
+test('a cancelled export never records a backup', async () => {
+  const stop = new AbortController();
+  let recorded: number | null = null;
+  stop.abort();
+
+  await assert.rejects(
+    runExport('encrypted', source, {
+      deliver: async (file) => {
+        for await (const _piece of file.body) void _piece;
+        return 'downloaded';
+      },
+      recordBackup: (at) => (recorded = at),
+      watch: { signal: stop.signal }
+    }),
+    (error: unknown) => (error as Error).name === 'AbortError'
+  );
+  assert.equal(recorded, null);
+});
