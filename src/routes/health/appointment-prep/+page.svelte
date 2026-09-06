@@ -44,9 +44,14 @@
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
-  /* The context block below is the "day before" mood (design note): it
-     only earns its place once there is something being prepared for. An
-     empty list stays the quiet screen it already was. */
+  /* Only the way into the room reads this now (ticket 71). It used to gate
+     the whole lower half of the screen, on the theory that an empty list
+     means nothing is being prepared for - but an appointment on record, a
+     debrief still unwritten and a drug running out are all true whether or
+     not a question has been typed, and hiding them made the empty state's
+     own promise ("it'll be here for your next appointment") false at the
+     moment somebody was reading it. Each block below governs itself on
+     whether it has anything to say, which three of the four already did. */
   let hasQuestions = $derived(items.length > 0);
 
   /* The appointment record (appointments.ts, ticket 58, ADR-0066): read
@@ -205,22 +210,26 @@
     {/snippet}
   </ReadGate>
 
-  {#if hasQuestions}
-    <!-- The "day before" mood (design note): everything below is a live
-         read of a module that already owns the figure - regimen.ts through
-         doses.getComparison, labs.ts, sideEffects.ts, stock.ts - and prints
-         only once there is a question on the list to prep for. -->
-    <div class="screen-part">
-      <SectionHeading text={m.appointment_prep_context_heading()} />
-      <ListCard role={roleAt(activeFlag.roles, 1)}>
-        <!-- Using the list, first, because the rest of this section is
-             reference and this is the doing (phase 8 features ticket 60).
-             In "For this visit" rather than in a card of its own under the
-             list, where it sat below the fold behind the paragraph about
-             the flag control. Offered any day, not only a day with an
-             appointment on it: the list is standing and unowned (ADR-0066),
-             and somebody rehearsing the night before is reading the same
-             questions. -->
+  <!-- Everything below is a live read of a module that already owns the
+       figure - regimen.ts through doses.getComparison, labs.ts,
+       sideEffects.ts, stock.ts. Each section prints when its own read has
+       rows, and the card prints always: the date row is the one place the
+       app says when the next visit is, and it has an answer either way. -->
+  <div class="screen-part">
+    <SectionHeading text={m.appointment_prep_context_heading()} />
+    <ListCard role={roleAt(activeFlag.roles, 1)}>
+      <!-- Using the list, first, because the rest of this section is
+           reference and this is the doing (phase 8 features ticket 60).
+           In this card rather than in a card of its own under the list,
+           where it sat below the fold behind the paragraph about the flag
+           control. Offered any day, not only a day with an
+           appointment on it: the list is standing and unowned (ADR-0066),
+           and somebody rehearsing the night before is reading the same
+           questions. -->
+      <!-- The one row that does need a list: it reads the questions one
+           per screen, so with none it opens onto its own empty state
+           (ticket 71). -->
+      {#if hasQuestions}
         <ListRow
           key="in-the-room"
           icon="bookmark"
@@ -228,118 +237,118 @@
           subtitle={m.in_the_room_row_sub()}
           href="/health/appointments/in-the-room"
         />
-        <!-- A way into the appointment record rather than a date picker of
-             its own (ticket 58): the date shown is read off `appointment`,
-             so setting or changing one now happens on the appointments
-             screen itself. -->
+      {/if}
+      <!-- A way into the appointment record rather than a date picker of
+           its own (ticket 58): the date shown is read off `appointment`,
+           so setting or changing one now happens on the appointments
+           screen itself. -->
+      <ListRow
+        key="next-appointment"
+        icon="calendar"
+        title={m.appointment_prep_next_appointment_label()}
+        subtitle={upcomingAppointment === null
+          ? m.appointment_prep_next_appointment_unset()
+          : dayShort(upcomingAppointment.epochDay)}
+        href="/health/appointments"
+      />
+      <!-- The debrief belongs to the appointment behind, while the row
+           above names the one ahead, so it carries its own day: adjacency
+           alone would read as "your debrief of the 18th", which is a visit
+           that has not happened (ticket 58). -->
+      {#if lastAppointment !== null && debriefEntryId !== null}
         <ListRow
-          key="next-appointment"
-          icon="calendar"
-          title={m.appointment_prep_next_appointment_label()}
-          subtitle={upcomingAppointment === null
-            ? m.appointment_prep_next_appointment_unset()
-            : dayShort(upcomingAppointment.epochDay)}
-          href="/health/appointments"
+          key="debrief"
+          icon="book"
+          title={m.appointment_debrief_row()}
+          subtitle={dayShort(lastAppointment.epochDay)}
+          href={`/entry/${debriefEntryId}`}
         />
-        <!-- The debrief belongs to the appointment behind, while the row
-             above names the one ahead, so it carries its own day: adjacency
-             alone would read as "your debrief of the 18th", which is a visit
-             that has not happened (ticket 58). -->
-        {#if lastAppointment !== null && debriefEntryId !== null}
-          <ListRow
-            key="debrief"
-            icon="book"
-            title={m.appointment_debrief_row()}
-            subtitle={dayShort(lastAppointment.epochDay)}
-            href={`/entry/${debriefEntryId}`}
-          />
-        {/if}
-        {#if activeEpisode}
-          <ListRow
-            key="regimen"
-            icon="curve"
-            title={activeEpisode.drug}
-            subtitle={m.care_regimen_sub({ dose: String(activeEpisode.dose), unit: activeEpisode.doseUnit, interval: activeEpisode.interval })}
-            href="/settings/regimen"
-          />
-        {:else if severalRegimens}
-          <ListRow key="regimen" icon="curve" title={m.care_regimen_several()} href="/settings/regimen" />
-        {/if}
+      {/if}
+      {#if activeEpisode}
         <ListRow
-          key="clinician-summary"
-          icon="share"
-          title={m.clinician_summary_row()}
-          subtitle={m.clinician_summary_row_sub()}
-          href="/health/clinician-summary"
+          key="regimen"
+          icon="curve"
+          title={activeEpisode.drug}
+          subtitle={m.care_regimen_sub({ dose: String(activeEpisode.dose), unit: activeEpisode.doseUnit, interval: activeEpisode.interval })}
+          href="/settings/regimen"
         />
+      {:else if severalRegimens}
+        <ListRow key="regimen" icon="curve" title={m.care_regimen_several()} href="/settings/regimen" />
+      {/if}
+      <ListRow
+        key="clinician-summary"
+        icon="share"
+        title={m.clinician_summary_row()}
+        subtitle={m.clinician_summary_row_sub()}
+        href="/health/clinician-summary"
+      />
+    </ListCard>
+  </div>
+
+  <!-- Both this section and the side effects one below run from the most
+       recent past appointment, not the next one the date row shows, so the
+       heading names that day rather than saying "since then" at a date
+       that is nowhere on screen (ticket 58). Guarded on the appointment
+       itself as well as the rows: the rows can only be non-empty when
+       there is one, and saying so is what lets the heading read its day. -->
+  {#if lastAppointment !== null && labsQuery.rows.length}
+    <div class="screen-part">
+      <SectionHeading text={m.appointment_prep_labs_heading({ day: dayShort(lastAppointment.epochDay) })} />
+      <ListCard role={roleAt(activeFlag.roles, 1)}>
+        {#each labsQuery.rows as lab (lab.id)}
+          <ListRow
+            key={lab.id}
+            icon="flask"
+            title={lab.analyte}
+            subtitle={[
+              `${lab.value} ${lab.unit}`.trim(),
+              `${dayShort(lab.epochDay)}${lab.timing ? ` · ${labTimingLabel(lab.timing)}` : ''}`
+            ]}
+            href="/settings/labs"
+          />
+        {/each}
       </ListCard>
     </div>
+  {/if}
 
-    <!-- Both this section and the side effects one below run from the most
-         recent past appointment, not the next one the date row shows, so the
-         heading names that day rather than saying "since then" at a date
-         that is nowhere on screen (ticket 58). Guarded on the appointment
-         itself as well as the rows: the rows can only be non-empty when
-         there is one, and saying so is what lets the heading read its day. -->
-    {#if lastAppointment !== null && labsQuery.rows.length}
-      <div class="screen-part">
-        <SectionHeading text={m.appointment_prep_labs_heading({ day: dayShort(lastAppointment.epochDay) })} />
-        <ListCard role={roleAt(activeFlag.roles, 1)}>
-          {#each labsQuery.rows as lab (lab.id)}
-            <ListRow
-              key={lab.id}
-              icon="flask"
-              title={lab.analyte}
-              subtitle={[
-                `${lab.value} ${lab.unit}`.trim(),
-                `${dayShort(lab.epochDay)}${lab.timing ? ` · ${labTimingLabel(lab.timing)}` : ''}`
-              ]}
-              href="/settings/labs"
-            />
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
+  {#if lastAppointment !== null && sideEffectsQuery.rows.length}
+    <div class="screen-part">
+      <SectionHeading text={m.appointment_prep_side_effects_heading({ day: dayShort(lastAppointment.epochDay) })} />
+      <ListCard role={roleAt(activeFlag.roles, 1)}>
+        {#each sideEffectsQuery.rows as effect (effect.id)}
+          <ListRow
+            key={effect.id}
+            icon="zap"
+            title={effect.name}
+            subtitle={[severityName(effect.severity), dayShort(effect.epochDay)]}
+            href="/health/side-effects"
+          />
+        {/each}
+      </ListCard>
+    </div>
+  {/if}
 
-    {#if lastAppointment !== null && sideEffectsQuery.rows.length}
-      <div class="screen-part">
-        <SectionHeading text={m.appointment_prep_side_effects_heading({ day: dayShort(lastAppointment.epochDay) })} />
-        <ListCard role={roleAt(activeFlag.roles, 1)}>
-          {#each sideEffectsQuery.rows as effect (effect.id)}
-            <ListRow
-              key={effect.id}
-              icon="zap"
-              title={effect.name}
-              subtitle={[severityName(effect.severity), dayShort(effect.epochDay)]}
-              href="/health/side-effects"
-            />
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
-
-    {#if stockQuery.rows.length}
-      <div class="screen-part">
-        <SectionHeading text={m.regimen_stock_link()} />
-        <ListCard role={roleAt(activeFlag.roles, 1)}>
-          {#each stockQuery.rows as row (row.entry.id)}
-            {@const runOut = stockRunOutLabel(row.projection, today)}
-            <ListRow
-              key={row.entry.id}
-              title={row.entry.drug}
-              subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
-              href="/settings/stock"
-            >
-              {#snippet leading()}
-                <span class="kit-row-ico" class:is-warn={runOut.warn}>
-                  <Icon name="package" size={22} />
-                </span>
-              {/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
-      </div>
-    {/if}
+  {#if stockQuery.rows.length}
+    <div class="screen-part">
+      <SectionHeading text={m.regimen_stock_link()} />
+      <ListCard role={roleAt(activeFlag.roles, 1)}>
+        {#each stockQuery.rows as row (row.entry.id)}
+          {@const runOut = stockRunOutLabel(row.projection, today)}
+          <ListRow
+            key={row.entry.id}
+            title={row.entry.drug}
+            subtitle={[stockRemainingLabel(row.projection.remaining, row.entry.unit), runOut.text]}
+            href="/settings/stock"
+          >
+            {#snippet leading()}
+              <span class="kit-row-ico" class:is-warn={runOut.warn}>
+                <Icon name="package" size={22} />
+              </span>
+            {/snippet}
+          </ListRow>
+        {/each}
+      </ListCard>
+    </div>
   {/if}
 
   <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
