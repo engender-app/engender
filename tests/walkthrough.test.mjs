@@ -4278,14 +4278,12 @@ try {
    handed to the real input, so it goes through normalizePhoto and the
    encrypted store the way a scan would.
 
-   Phase 8 features ticket 70: this used to open on an asserted-empty list,
-   which stopped being true when ticket 64 seeded the demo persona with a
-   document of its own - the empty notice never appears, so the flow died
-   on its first wait. Fixed here by joining the seeded row rather than
-   unseeding it (ticket 64 put it there on purpose): the filed document is
-   found by its own 1994 text among whatever the persona already had, and
-   the flow ends back at the row count it started with rather than at an
-   empty notice. */
+   Phase 8 features ticket 70: this used to open on an asserted-empty
+   list, which the persona document seeded by ticket 64 broke the same
+   way it broke the PDF flow below - see that flow's own comment for the
+   mechanism. Fixed by joining the seeded row rather than unseeding it
+   (ticket 64 put it there on purpose), so this flow ends back at its
+   starting row count instead of an empty notice. */
 try {
   await fresh('/media/documents');
   await page.locator('[data-add]').waitFor();
