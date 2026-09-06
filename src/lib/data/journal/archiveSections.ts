@@ -1221,7 +1221,18 @@ export async function readArchiveJournal(
     sections concurrently instead. */
 export async function applyArchiveJournal(
   restoring: Restoring,
-  sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS
+  sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS,
+  /** How far through the sections this is (phase 9 audit ticket 11). The
+      section is the unit rather than the row: rows go in as batched
+      inserts per section, so there is no per-row moment to report from,
+      and the registry is the only thing that knows how many sections
+      there are to divide by. */
+  onApplied?: (done: number, total: number) => void
 ): Promise<void> {
-  for (const s of orderedSections(sections)) await s.apply(restoring);
+  const ordered = orderedSections(sections);
+  let done = 0;
+  for (const s of ordered) {
+    await s.apply(restoring);
+    onApplied?.((done += 1), ordered.length);
+  }
 }

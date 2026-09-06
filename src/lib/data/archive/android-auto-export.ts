@@ -3,7 +3,7 @@ import type { PreferenceValues } from '../prefs/catalogue';
 import type { ArchiveSnapshot } from '../journal/archive';
 import { ARCHIVE_FILE_EXTENSION } from './container';
 import { exportFileName } from './deliver';
-import { packArchive, type KeyDerivation } from './pack';
+import { packArchive, type KeyDerivation, type PackWatch } from './pack';
 import { portablePreferences } from './payload';
 import { androidAutoExport, type AutoExportStatus } from './android-auto-export-bridge';
 
@@ -18,11 +18,16 @@ export interface AndroidAutoExportSource {
 export type AndroidAutoExportResult =
   | { outcome: 'ok'; writtenAt: number }
   | { outcome: 'needs-destination' }
+  | { outcome: 'cancelled' }
   | { outcome: 'failed'; reason: string };
 
 export interface AndroidAutoExportDeps {
   now?(): number;
   recordBackup(at: number): void;
+  /** How far the pack has got, and a way to stop it (phase 9 audit ticket
+      11). Passed by the export screen's "Back up now"; the scheduler
+      leaves it out, since nobody is watching a background run. */
+  watch?: PackWatch;
 }
 
 const toBase64 = (bytes: Uint8Array): string => {
@@ -122,7 +127,9 @@ export async function runAndroidAutoExport(
       files: source.snapshot.files,
       readFile: source.snapshot.readFile
     },
-    derivation
+    derivation,
+    undefined,
+    deps.watch
   );
 
   try {
@@ -138,6 +145,12 @@ export async function runAndroidAutoExport(
     deps.recordBackup(writtenAt);
     return { outcome: 'ok', writtenAt };
   } catch (error) {
+    /* A stopped pack is an answer, not a failure (ADR-0070): nothing
+       reached the folder and nothing was stamped, so the screen has
+       nothing to apologise for and disabling the schedule on it would be
+       wrong. Checked before the reason strings below, because an
+       AbortError's message is not one of them. */
+    if ((error as Error)?.name === 'AbortError') return { outcome: 'cancelled' };
     const reason = reasonText(error);
     if (isDestinationFailure(reason)) {
       await disable(status);

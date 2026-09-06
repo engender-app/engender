@@ -1,23 +1,37 @@
 import type { RecognizeResult } from 'tesseract.js';
 import { ON_DEMAND_PREFIX } from '../../pwa/shell-assets';
 import { CACHE_ON_DEMAND } from '../../pwa/sw-messages';
+import type { OcrWatch } from './ocr-machine';
 
 export interface LabOcrEngine {
-  recognize(image: Uint8Array): Promise<RecognizeResult>;
+  recognize(image: Uint8Array, watch?: OcrWatch): Promise<RecognizeResult>;
 }
 
 const TESSERACT_LANGS = ['eng', 'pol'];
 
+/* The one status worth turning into a bar (phase 9 audit ticket 11). The
+   installed tesseract.js reports through its logger under several statuses
+   - loading its core, fetching each language's traineddata, initialising
+   the API - and each of those sweeps its own 0 to 1. Reporting all of them
+   would fill the bar three times before the work anyone is waiting for
+   starts, so everything before this one runs indeterminate and the
+   fraction begins when the page is actually being read. */
+const RECOGNIZING = 'recognizing text';
+
 export function tesseractLabOcrEngine(): LabOcrEngine {
   return {
-    async recognize(image) {
+    async recognize(image, watch) {
+      watch?.signal?.throwIfAborted();
       const { createWorker } = await import('tesseract.js');
 
       // Local-only paths: OCR workers and language data are loaded from app assets.
       const worker = await createWorker(TESSERACT_LANGS, 1, {
         workerPath: `${ON_DEMAND_PREFIX}worker.min.js`,
         corePath: `${ON_DEMAND_PREFIX}tesseract-core.wasm.js`,
-        langPath: `${ON_DEMAND_PREFIX}lang-data`
+        langPath: `${ON_DEMAND_PREFIX}lang-data`,
+        logger: ({ status, progress }) => {
+          if (status === RECOGNIZING) watch?.onProgress?.(progress);
+        }
       });
 
       /* The engine is here, so the offline shell can have it too (phase 5
@@ -49,10 +63,21 @@ export function tesseractLabOcrEngine(): LabOcrEngine {
          refused before recognition ever runs (found only once ticket 44 made
          the sheet reachable enough to try). */
       const blob = new Blob([buffer], { type: 'image/*' });
+      /* Terminating the worker is the only stop tesseract.js has - there is
+         no cancel on `recognize` - and it makes the pending call reject.
+         The reject arrives as whatever the teardown threw rather than as
+         an AbortError, so the throwIfAborted in the finally is what turns
+         a stopped pass into one, and the listener is removed either way so
+         a signal held by a longer-lived caller does not keep this worker
+         reachable. */
+      const stop = () => void worker.terminate();
+      watch?.signal?.addEventListener('abort', stop, { once: true });
       try {
         return await worker.recognize(blob);
       } finally {
+        watch?.signal?.removeEventListener('abort', stop);
         await worker.terminate();
+        watch?.signal?.throwIfAborted();
       }
     }
   };

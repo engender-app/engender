@@ -72,7 +72,34 @@ export type RestoreMode = 'replace' | 'merge';
 export interface RestoreContents {
   journal: ArchiveJournal;
   files: AsyncIterable<{ name: string; bytes: Uint8Array }>;
+  /** How many files that stream will deliver, when the caller knows - the
+      manifest inside the payload says so, and an importer that has opened
+      the archive is holding it (phase 9 audit ticket 11). Left out by a
+      caller that is synthesising files rather than replaying an archive's,
+      which only costs the progress report its denominator. */
+  fileCount?: number;
 }
+
+/** Which half of a restore is running and how far through it is (phase 9
+    audit ticket 11, ADR-0070).
+
+    Two stages rather than one number, because they are separately long and
+    separately countable: the photos arrive one at a time off the archive's
+    body, and the rows go in section by section inside a single
+    transaction. One combined fraction would need a weighting between them
+    that nothing here knows, and a bar that sat at 100% through the whole
+    row half would be the "the bar lied" failure the ADR is about. */
+export type RestoreStage = 'files' | 'rows';
+
+export interface RestoreProgress {
+  stage: RestoreStage;
+  done: number;
+  /** 0 when the count is not known, which the progress component renders
+      as indeterminate rather than as an empty bar. */
+  total: number;
+}
+
+export type OnRestoreProgress = (progress: RestoreProgress) => void;
 /** Chosen for what it does on Android since ticket 19: writes there used to
     cross the Capacitor plugin-call queue, which serializes one call at a
     time, so this bought nothing - eight in flight were eight queued. The
@@ -83,12 +110,23 @@ export interface RestoreContents {
     and moving it would need a baseline of its own. */
 const FILE_WRITE_CONCURRENCY = 8;
 
-async function writeArchiveFiles(files: PhotoFileStore, source: RestoreContents['files']): Promise<void> {
+async function writeArchiveFiles(
+  files: PhotoFileStore,
+  source: RestoreContents['files'],
+  fileCount: number,
+  onProgress?: OnRestoreProgress
+): Promise<void> {
   const inFlight = new Set<Promise<void>>();
+  /* Counted as each write lands rather than as it is scheduled: up to
+     FILE_WRITE_CONCURRENCY are in the air at once, and a count of what has
+     been handed to the disk is not a count of what is on it. */
+  let written = 0;
 
   const schedule = (name: string, bytes: Uint8Array) => {
     const op = files.write(name, bytes).finally(() => {
       inFlight.delete(op);
+      written += 1;
+      onProgress?.({ stage: 'files', done: written, total: fileCount });
     });
     inFlight.add(op);
     return op;
@@ -110,12 +148,13 @@ export async function restoreArchive(
   driver: SqliteDriver,
   files: PhotoFileStore,
   mode: RestoreMode,
-  contents: RestoreContents
+  contents: RestoreContents,
+  onProgress?: OnRestoreProgress
 ): Promise<void> {
   const journal = aliasLegacyConsults(contents.journal);
   assertRestorable(journal);
 
-  await writeArchiveFiles(files, contents.files);
+  await writeArchiveFiles(files, contents.files, contents.fileCount ?? 0, onProgress);
 
   await driver.transaction(async () => {
     // Seeding first, unconditionally, and inside this transaction with
@@ -123,8 +162,11 @@ export async function restoreArchive(
     await reconcileBuiltInsWithin(driver);
     if (mode === 'replace') await discardJournalRows(driver);
     // Which sections there are and what has to be inserted before what are
-    // the registry's (archiveSections.ts), not this function's.
-    await applyArchiveJournal({ driver, mode, journal, ts: now() });
+    // the registry's (archiveSections.ts), not this function's - and so is
+    // how many there are to count against.
+    await applyArchiveJournal({ driver, mode, journal, ts: now() }, undefined, (done, total) =>
+      onProgress?.({ stage: 'rows', done, total })
+    );
   });
 }
 
@@ -135,12 +177,20 @@ export async function restoreArchive(
     chunk's AES-GCM tag to be checked, including the ones holding only
     photos that the header and payload alone never reach (pack.ts's
     OpenedArchive doc, ADR-0007). */
-export async function verifyArchive(source: AsyncIterable<Uint8Array>, password: string): Promise<void> {
+export async function verifyArchive(
+  source: AsyncIterable<Uint8Array>,
+  password: string,
+  onProgress?: (done: number, total: number) => void
+): Promise<void> {
   const { payload, files } = await openArchive(source, password);
   assertRestorable(aliasLegacyConsults(payload.journal));
 
+  /* One stage, so a pair rather than a RestoreProgress: the whole drill is
+     the drain, and the manifest already says how many files that is. */
+  const total = payload.files.length;
+  let done = 0;
   const iterator = files[Symbol.asyncIterator]();
-  while (!(await iterator.next()).done);
+  while (!(await iterator.next()).done) onProgress?.((done += 1), total);
 }
 
 /** Only the payload's shape, and only the sections the registry says an
