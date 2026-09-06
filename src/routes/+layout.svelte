@@ -556,8 +556,11 @@
                so the button never lies about having something to restore. -->
           {#if bootState.recoverable}
             <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
+            <!-- The button keeps naming its action while it is disabled and
+                 the bar under it says what is happening, rather than the
+                 two of them saying the same sentence twice. -->
             <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
-              <span>{restoring ? m.boot_restore_running() : m.boot_restore_action()}</span>
+              <span>{m.boot_restore_action()}</span>
             </button>
             <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
             {#if restoreFailed}
