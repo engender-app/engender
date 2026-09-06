@@ -12,7 +12,7 @@
    measurements.ts carry none either.
 
    Hair photos are their own table rather than a third owner on `photo`
-   (migrations.ts v13 explains why: SQLite cannot widen that table's
+   (schema.ts explains why: SQLite cannot widen that table's
    exactly-one-owner CHECK without a full rebuild). The shared pipeline is
    still reused exactly as ticket 09 asks: stagePhoto (photos.ts) writes the
    same normalized, metadata-stripped bytes through the same
@@ -35,7 +35,7 @@ export interface HairStageInput {
   scale: string;
   stage: string;
   /** Free text, and only ever under 'other' - the schema refuses it on a
-      graded staging (migrations.ts v37). Defaults to empty. */
+      graded staging (schema.ts). Defaults to empty. */
   description?: string;
 }
 

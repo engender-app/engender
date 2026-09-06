@@ -62,7 +62,7 @@ export function downsamplePitchTrack(frames: readonly PitchFrame[]): (number | n
     which stores as no track rather than as an empty string - a benchmark
     whose passage held no voice at all never cleared the gate anyway.
 
-    Text rather than packed floats on purpose (migrations.ts's own note on
+    Text rather than packed floats on purpose (schema.ts's own note on
     the column): it is legible at the sqlite prompt, and a hundred-odd
     numbers is under a kilobyte either way. */
 export function encodePitchTrack(points: readonly (number | null)[]): string | null {

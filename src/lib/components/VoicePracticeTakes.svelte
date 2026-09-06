@@ -21,7 +21,7 @@
 
      The distinction from a benchmark's p10-p90 span is written under the
      list rather than assumed, because a "fix" that makes one match the
-     other would be wrong in both directions (migrations.ts's own note). */
+     other would be wrong in both directions (schema.ts's own note). */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
