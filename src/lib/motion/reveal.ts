@@ -338,6 +338,17 @@ export function collapse(
 
   const width = node.getBoundingClientRect().width;
   const gap = parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0;
+  /* The side padding and the edges travel with the width. A tile is a padded,
+     bordered box under `box-sizing: border-box`, so a zero flex-basis still
+     draws all of that: the safe-space card stalled at 34px - its own padding
+     plus the room its close control keeps - for the last third of the travel
+     and lost the rest in the frame the node was removed. This is `disclose`'s
+     own treatment of the vertical padding, turned ninety degrees. */
+  const style = getComputedStyle(node);
+  const paddingLeft = parseFloat(style.paddingLeft) || 0;
+  const paddingRight = parseFloat(style.paddingRight) || 0;
+  const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+  const borderRight = parseFloat(style.borderRightWidth) || 0;
 
   return {
     duration: motionDuration('--dur-med'),
@@ -364,6 +375,10 @@ export function collapse(
       `min-width: 0;` +
       `flex: 0 0 ${t * width}px;` +
       `opacity: ${Number(Math.max(0, Math.min(1, (t - 0.35) / 0.65)).toFixed(3))};` +
+      `padding-left: ${t * paddingLeft}px;` +
+      `padding-right: ${t * paddingRight}px;` +
+      `border-left-width: ${t >= 1 ? borderLeft : 0}px;` +
+      `border-right-width: ${t >= 1 ? borderRight : 0}px;` +
       `margin-inline-start: ${-(u * gap)}px;`
   };
 }

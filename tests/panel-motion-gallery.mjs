@@ -159,6 +159,18 @@ const dress = async (theme) => {
     is the corner X, and three tiles state theirs as an `action` carrying an x
     icon instead, which comes out as a soft button. Both are named here so the
     recording finds whichever pair the demo state actually produces. */
+/** Puts back every tile the scene before closed. A close is a 24-hour snooze
+    in localStorage (liveTilesSnooze.ts, letterStatus.ts), so without this
+    each scene records a grid one tile smaller than the last. */
+const unsnoozeTiles = () =>
+  page.evaluate(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('gender-diary-tile-snooze-') || key === 'letter_tile_snooze_until') {
+        localStorage.removeItem(key);
+      }
+    }
+  });
+
 const pairedDismiss = () =>
   page
     .locator(
@@ -221,6 +233,43 @@ try {
     await settle('/');
     await page.locator('[data-fill-every-feature]').click();
     await page.waitForURL('**/more');
+    await settle('/');
+    await page.waitForSelector('[data-home-count]');
+    await stripDemoBar();
+    await page.waitForTimeout(400);
+
+    /* Two closes in this row, and they are the two halves of the contract.
+       With the fold open every tile is already shown, so a close is a tile
+       giving its space back and the one beside it growing into it. With the
+       fold shut a close is filled from the fold in the same tick, and
+       nothing is given back at all. */
+    await page.locator('[data-home-tiles-fold]').click();
+    await page.waitForTimeout(400);
+
+    const unfoldedDismiss = page
+      /* Not `pairedDismiss`: the ready letter's close opens a sheet rather
+         than acting in place (ADR-0071), and with the fold open it is the
+         first two-up tile carrying one. */
+      .locator(
+        '[data-live-tile-grid]:not([data-rows]) [data-tile]:not([data-live-tile="ready-letter"]) .kit-tile-dismiss'
+      )
+      .first();
+    if (await unfoldedDismiss.count()) {
+      await record(
+        'close-row-closes-up',
+        'Closing a tile with the fold open, so the row closes up behind it.',
+        () => unfoldedDismiss.click()
+      );
+    } else {
+      console.warn('no dismissible tile with the fold open - row scene skipped');
+    }
+
+    /* Seeded again, because the close above took the tile the scene below
+       needs, and its snooze outlives a reload. */
+    await settle('/');
+    await page.locator('[data-fill-every-feature]').click();
+    await page.waitForURL('**/more');
+    await unsnoozeTiles();
     await settle('/');
     await page.waitForSelector('[data-home-count]');
     await stripDemoBar();
