@@ -42,11 +42,20 @@ import type { Action } from 'svelte/action';
     given a `title` by their own author. */
 const CANDIDATES = 'button[aria-label], a[aria-label], [role="button"][aria-label]';
 
+/** The titles this module wrote, so it can tell them from an author's own.
+
+    A WeakSet rather than a marker attribute: the distinction is this
+    module's bookkeeping and not something the DOM should carry around, and
+    a node that leaves the document takes its entry with it. */
+const ours = new WeakSet<HTMLElement>();
+
 function fillOne(el: HTMLElement): void {
   if (el.title) return;
   if (el.textContent?.trim()) return;
   const label = el.getAttribute('aria-label');
-  if (label) el.title = label;
+  if (!label) return;
+  el.title = label;
+  ours.add(el);
 }
 
 function fill(root: ParentNode): void {
@@ -77,8 +86,13 @@ export const hoverHints: Action<HTMLElement> = (root) => {
   const observer = new MutationObserver((records) => {
     for (const record of records) {
       if (record.type === 'attributes' && record.target instanceof HTMLElement) {
+        /* Only a title this module wrote is cleared and rewritten. Clearing
+           any title at all would have broken this file's own rule two
+           paragraphs up - a caller that wrote its own keeps it - the moment
+           that caller also changed its `aria-label`. */
+        if (!ours.has(record.target)) continue;
         record.target.removeAttribute('title');
-        fill(record.target.parentNode ?? root);
+        fillOne(record.target);
       } else {
         for (const node of record.addedNodes) if (node instanceof HTMLElement) fill(node);
       }

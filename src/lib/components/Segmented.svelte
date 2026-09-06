@@ -114,10 +114,12 @@
     }
     canScrollStart = first.offsetLeft < track.scrollLeft - 1;
     canScrollEnd = last.offsetLeft + last.offsetWidth > track.scrollLeft + track.clientWidth + 1;
-    /* Measured the same way, against the segments rather than the raw
-       scroll range, so that adding the spacer cannot itself be the reason
-       the spacer is wanted: the answer stays the same once it is there. */
-    canScroll = first.offsetLeft + (last.offsetLeft + last.offsetWidth - first.offsetLeft) > track.clientWidth + 1;
+    /* Where the last segment ends, measured against the segments rather
+       than the raw scroll range: the spacer this answer controls is itself
+       part of `scrollWidth`, so asking that would make adding the spacer
+       the reason the spacer is wanted. Asked this way the answer stays the
+       same once it is there. */
+    canScroll = last.offsetLeft + last.offsetWidth > track.clientWidth + 1;
   }
 
   // Re-measured whenever the option set changes shape, not only on scroll.

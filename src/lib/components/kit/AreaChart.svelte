@@ -447,7 +447,7 @@
          rather than from a guess written here. -->
     <div
       class="kit-area-scale"
-      class:is-quiet={!oneScale}
+      class:is-hidden={!oneScale}
       data-chart-scale
       aria-hidden="true"
     >
@@ -697,9 +697,9 @@
      collapsed state is here, because a new single-consumer class in a
      shared sheet fails scripts/check-screens-classes.mjs and every class
      of this one's kind has exactly one consumer by construction. */
-  /* The gutter's numbers go quiet for a second scale; its column does not
-     (see the markup's own note). */
-  .kit-area-scale.is-quiet {
+  /* The gutter's numbers go for a second scale; the column they sit in
+     does not (see the markup's own note). */
+  .kit-area-scale.is-hidden {
     visibility: hidden;
   }
 
