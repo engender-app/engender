@@ -72,7 +72,7 @@ async function pickedBytesInChunks(token: string): Promise<Uint8Array> {
 
     Two transports, chosen the same way android-file-store.ts chooses one
     for a write: the message channel when the WebView can carry a
-    structured clone, the base64 bridge call when it cannot
+    structured clone, the chunked base64 bridge call when it cannot
     (android-pick-channel.ts returns null to say so). The fast path is the
     default and the slow one is the floor's - a 25 MB scan measured 1054ms
     of blocked main thread through base64 against 4ms through a typed
@@ -120,7 +120,10 @@ export function filePhotoPicker(): PhotoPicker {
         const { tokens } = await pickOnAndroid(() => androidPhotos.pickImages());
         // One at a time rather than all at once: a multi-pick can be
         // several files at the ceiling, and fetching them concurrently
-        // would hold every one of them in the heap together.
+        // would hold every one of them in the heap together. The fallback
+        // transport needs it too now - PickedFiles keeps one chunked read
+        // open at a time, so a second token's first chunk ends the first
+        // file's read wherever it had got to (phase 9 audit ticket 14).
         const picked: Uint8Array[] = [];
         for (const token of tokens) picked.push(await androidPickedBytes(token));
         return picked;

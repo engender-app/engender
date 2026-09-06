@@ -112,7 +112,12 @@ public final class PickedFiles {
         <p>-1 for a token that was never held, was taken whole by the other
         transport, or whose read has already finished - the same "pick again"
         recovery {@link #take} documents, including after a failure, which
-        propagates with the read already ended. */
+        propagates with the read already ended.
+
+        <p>A chunk's read from the content provider happens under this
+        class's lock, where before only the map access did. That is a buffer
+        at a time rather than a whole file, and it is what stops a pick
+        arriving mid-read from racing the stream it is about to close. */
     public static synchronized int readChunk(String token, byte[] buffer) throws Exception {
         if (token == null) return -1;
         if (!token.equals(readingToken)) {

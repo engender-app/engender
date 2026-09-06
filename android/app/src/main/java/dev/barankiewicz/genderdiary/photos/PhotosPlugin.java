@@ -245,16 +245,18 @@ public class PhotosPlugin extends Plugin {
      */
     @PluginMethod
     public void readPickedChunk(PluginCall call) {
-        String token = call.getString("token");
-        byte[] buffer = new byte[CHUNK_BYTES];
         try {
-            int read = PickedFiles.readChunk(token, buffer);
+            byte[] buffer = new byte[CHUNK_BYTES];
+            int read = PickedFiles.readChunk(call.getString("token"), buffer);
             if (read == -1) {
                 call.reject("unknown picked file");
                 return;
             }
             JSObject result = new JSObject();
             result.put("base64", Base64.encodeToString(buffer, 0, read, Base64.NO_WRAP));
+            /* readChunk's own end condition, read off its contract rather
+               than guessed: a chunk shorter than the buffer is the last one,
+               and it has already closed the file and dropped the token. */
             result.put("done", read < CHUNK_BYTES);
             call.resolve(result);
         } catch (Exception e) {
