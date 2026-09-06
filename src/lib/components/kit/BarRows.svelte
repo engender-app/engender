@@ -94,8 +94,8 @@
     <span class="kit-bar-name" data-bar-name>{row.name}</span>
     {@render track(row)}
     <span class="kit-bar-value" data-bar-value>{row.value}</span>
-    <!-- Under all three columns rather than beside them: a note is a
-         sentence, and the one column with room for one is the row. -->
+    <!-- Under the name, in its column: the row is 48dp tall for the touch
+         floor whatever it holds, so a second line there is free. -->
     {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
   {:else}
     <div class="kit-bar-label">

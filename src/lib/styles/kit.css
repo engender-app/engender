@@ -2147,21 +2147,34 @@ a.kit-entry:active {
    reading: the number is, and it now sits on the same line as the day it
    belongs to.
 
-   Grid rather than flex, because the value column has to line up down the
-   card - a ranking read as a column of numbers is the whole point, and
-   three flex rows with different name lengths put the numbers in three
-   different places. `auto` for the name and `max-content` for the value, so
-   the track takes what is left and every row's track starts and ends on the
-   same two x positions. */
+   Both side columns are a fixed width, and that is the whole reason this
+   reads as a chart rather than as ten unrelated bars. A row is its own
+   grid - the pressable row is a button, and a button cannot be
+   `display: contents` without losing the press wash and its own box - so
+   nothing lines these three columns up across rows on its own, and subgrid
+   is out at the WebView 87 floor the app supports. Sized to content, the
+   track's region then started and ended at a different x on every row, and
+   two days on the same reading drew visibly different lengths: 84 under
+   "Sat 5 Sept" came out 8px longer than 84 under "Sat 22 Aug". A bar chart
+   whose lengths are not comparable is worse than no bar at all.
+
+   The widths are in em of the row's own `--text-sm`, so they follow the
+   type scale and the system font size rather than pinning px under it.
+   7em holds the longest short-format day in either language - measured,
+   not guessed: the widest of all 366 in English is "Wed 16 Sept" at 86px
+   and in Polish "niedz., 29 mar" at 92px, against 98px of column. 3.5em
+   holds four tabular figures, and the column gap absorbs a fifth before
+   anything touches the track. */
 .kit-bars.is-inline {
   gap: var(--space-1);
 }
 
 .kit-bars.is-inline .kit-bar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) max-content;
+  grid-template-columns: 7em minmax(0, 1fr) 3.5em;
   align-items: center;
   column-gap: var(--space-3);
+  font-size: var(--text-sm);
 }
 
 /* The touch floor (48dp, PRODUCT.md) is what sets the row's height now that
@@ -2171,9 +2184,33 @@ a.kit-entry:active {
   min-height: var(--touch-target);
 }
 
+/* Every cell placed by hand, and this is not belt and braces: the moment
+   the track and the value are told to span both rows for the note's sake,
+   auto-placement has nowhere left to put an unplaced name and drops it into
+   the second row's spare column, which draws the row inside out - value,
+   sliver, name.
+
+   `span 2` and not `1 / -1`: the note's row is implicit, and a negative
+   line number counts back from the explicit grid, which here has one row. */
+.kit-bars.is-inline .kit-bar-name {
+  grid-column: 1;
+  grid-row: 1;
+}
+
 .kit-bars.is-inline .kit-bar-track {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   height: 10px;
   margin-top: 0;
+}
+
+/* Right, so the figures line up on their last digit down the card: the
+   column is fixed and 85 is a character narrower than 100. */
+.kit-bars.is-inline .kit-bar-value {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  margin-left: 0;
+  text-align: right;
 }
 
 /* Slim, and a pill rather than the 8px corner the stacked track takes: at
@@ -2184,15 +2221,28 @@ a.kit-entry:active {
   border-radius: var(--radius-pill);
 }
 
-.kit-bars.is-inline .kit-bar-value {
-  margin-left: 0;
-}
+/* Under the name and inside its column, rather than under all three: the
+   row is already 48dp for the touch floor and a one-line name leaves that
+   much room spare, so a note printed there costs the row no height at all
+   and the set keeps one rhythm down the card. The track and the value span
+   both lines so they stay centred on the row rather than riding up.
 
-/* Spanning all three columns, under them. Rare here - it prints where a day
-   holds more than one reading - so it costs the set nothing on most rows. */
+   Truncated rather than wrapped, which is the one thing this form asks of
+   a note that the stacked form does not: wrapping would grow the row and
+   cost the set the rhythm this placement just bought it. The notes this
+   form is built for are counts - "avg of 2" - and a set whose notes are
+   sentences wants `form="stacked"`, where a note has the whole width. */
 .kit-bars.is-inline .kit-bar-note {
-  grid-column: 1 / -1;
+  grid-column: 1;
+  grid-row: 2;
   margin-top: 0;
+  /* The name's leading, not the body's: two tight lines and the row's own
+     padding come to just under the 48dp floor, so a row with a note is the
+     same height as every row without one. */
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* --- a year of moods ---
