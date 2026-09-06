@@ -29,7 +29,8 @@ import java.util.Arrays;
 /**
  * Android half of the photo seam (ticket 12): one picker call and one
  * app-private file store, both behind a bridge that keeps web types and
- * Android types out of the journal code.
+ * Android types out of the journal code. {@link #pickDocument} (ticket 54)
+ * reuses the same picker shape for a PDF or an image.
  */
 @CapacitorPlugin(name = "Photos")
 public class PhotosPlugin extends Plugin {
@@ -55,6 +56,21 @@ public class PhotosPlugin extends Plugin {
             return;
         }
         startActivityForResult(call, intent, "capturedImage");
+    }
+
+    /**
+     * Documents ticket 54: a PDF or an image, one at a time, through the
+     * system picker rather than the WebView's file input (ticket 66's crash,
+     * ADR-0065). No permission is declared or needed - {@code
+     * ACTION_OPEN_DOCUMENT} hands back a per-URI grant.
+     */
+    @PluginMethod
+    public void pickDocument(PluginCall call) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] { "application/pdf", "image/*" });
+        startActivityForResult(call, intent, "pickedDocument");
     }
 
     @ActivityCallback
@@ -125,6 +141,36 @@ public class PhotosPlugin extends Plugin {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             ((Bitmap) thumbnail).compress(Bitmap.CompressFormat.JPEG, 92, output);
             result.put("image", Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP));
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /** A returned URI the content provider will not open (an unmounted SD
+        card, a file already deleted from under the picker) rejects the call
+        with a plain message rather than crashing - readBase64() already
+        throws one. */
+    @ActivityCallback
+    private void pickedDocument(PluginCall call, ActivityResult activityResult) {
+        JSObject result = new JSObject();
+
+        if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
+            result.put("bytes", JSObject.NULL);
+            call.resolve(result);
+            return;
+        }
+
+        Intent data = activityResult.getData();
+        Uri uri = data == null ? null : data.getData();
+        if (uri == null) {
+            result.put("bytes", JSObject.NULL);
+            call.resolve(result);
+            return;
+        }
+
+        try {
+            result.put("bytes", readBase64(uri));
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -269,7 +315,7 @@ public class PhotosPlugin extends Plugin {
 
     private String readBase64(Uri uri) throws Exception {
         try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
-            if (input == null) throw new IllegalStateException("could not read selected image");
+            if (input == null) throw new IllegalStateException("could not read selected file");
             return encodeBase64(input, 8192);
         }
     }
