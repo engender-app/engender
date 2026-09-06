@@ -220,9 +220,9 @@
     <ListCard role={roleAt(activeFlag.roles, 1)}>
       <!-- Using the list, first, because the rest of this section is
            reference and this is the doing (phase 8 features ticket 60).
-           In the visits card rather than in a card of its own under the
-           list, where it sat below the fold behind the paragraph about
-           the flag control. Offered any day, not only a day with an
+           In this card rather than in a card of its own under the list,
+           where it sat below the fold behind the paragraph about the flag
+           control. Offered any day, not only a day with an
            appointment on it: the list is standing and unowned (ADR-0066),
            and somebody rehearsing the night before is reading the same
            questions. -->
