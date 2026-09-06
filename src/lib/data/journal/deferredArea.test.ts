@@ -15,7 +15,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { deferredArea } from './deferredArea.ts';
 import { openJournal } from './journal.ts';
-import { makeArchiveArea } from './archive.ts';
+import { makeArchiveArea, type ArchiveArea } from './archive.ts';
 import { makeHormoneCurveArea } from './hormoneCurve.ts';
 import { makeDosesArea } from './doses.ts';
 import { makeRegimenArea } from './regimen.ts';
@@ -126,14 +126,22 @@ test('every method of the eager archive and hormoneCurve areas is on the deferre
   }
 });
 
+/* The proof that the check above can fail, run through the same assertion
+   rather than a restatement of it: a facade built one name short is compared
+   to the eager area exactly the way the test above compares them, and the
+   difference the failure reports is the missing name. */
 test('the completeness check can fail: a shortened facade names exactly the method it is missing', async () => {
   const driver = await migratedDb();
   const files = fakeFileStore();
   const eager = makeArchiveArea(driver, files);
-  const shortened = deferredArea<Record<string, unknown>>(async () => eager as unknown as Record<string, unknown>)(
-    Object.keys(eager).filter((name) => name !== 'importLog')
+  const shortened = deferredArea<ArchiveArea>(async () => eager)(
+    Object.keys(eager).filter((name) => name !== 'importLog') as Parameters<
+      ReturnType<typeof deferredArea<ArchiveArea>>
+    >[0]
   );
 
-  const missing = Object.keys(eager).filter((name) => !(name in shortened));
-  assert.deepEqual(missing, ['importLog']);
+  assert.throws(
+    () => assert.deepEqual(Object.keys(shortened).sort(), Object.keys(eager).sort()),
+    (error: Error) => error.message.includes('importLog')
+  );
 });

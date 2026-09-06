@@ -28,6 +28,16 @@
    fifty lazy ones and a list of names each - the ticket's own "out of
    scope". This is for the few that carry real weight. */
 
+/** The names of an area's callable members, and only those - the same shape
+    writes.ts's `Operation` picks out, and for the same reason. An area
+    carrying a data member would otherwise be listable here, and the facade
+    would hand back an async function where the eager area held a value,
+    which is exactly the case `observeWrites` passes through untouched. */
+type Method<Area> = Extract<
+  { [K in keyof Area]: Area[K] extends (...args: never[]) => unknown ? K : never }[keyof Area],
+  string
+>;
+
 /**
  * A facade over `load`'s area, offering `methods` and resolving the
  * implementation on the first call to any of them.
@@ -40,11 +50,11 @@
  * trick writes.ts's `classify` plays for the same reason.
  */
 export function deferredArea<Area extends object>(load: () => Promise<Area>) {
-  return <const Names extends readonly (keyof Area & string)[]>(
+  return <const Names extends readonly Method<Area>[]>(
     methods: Names &
-      (Exclude<keyof Area & string, Names[number]> extends never
+      (Exclude<Method<Area>, Names[number]> extends never
         ? unknown
-        : { missing: Exclude<keyof Area & string, Names[number]> })
+        : { missing: Exclude<Method<Area>, Names[number]> })
   ): Area => {
     /* The area rather than the import is what is remembered here. A repeated
        `import()` of one specifier already resolves from the module loader's

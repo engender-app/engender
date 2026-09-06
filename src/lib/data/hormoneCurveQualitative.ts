@@ -336,10 +336,12 @@ export function latestQualitativeValue(curve: QualitativeCurve): number | null {
     Counts doses, not esters, because that is what the reader recognizes: they
     know how many injections they gave, not how many vocabularies missed.
 
-    Here rather than beside the band it also asks about, because this module
-    is the one that knows which doses have a shape and hormoneCurve.ts is not
-    allowed to ask it - the band module is the older of the two and nothing
-    in it may depend on the shapes. */
+    Here rather than beside the band it also asks about, because answering it
+    needs `resolveQualitativeKey`, which is this module's. Putting it there
+    would make hormoneCurve.ts import this module, and hormoneCurve.ts is the
+    one that drags in the 1,352-line posterior table - so anything that only
+    wants a qualitative key would start paying for the band's parameters.
+    That is what phase 9 audit ticket 03 was undoing. */
 export function dosesWithNoCurve(input: Omit<QualitativeCurveInput, 'drug'>): number {
   const { doses, episodes, fromEpochDay, toEpochDay } = input;
   let count = 0;
