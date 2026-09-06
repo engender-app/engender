@@ -33,6 +33,8 @@ export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpoc
   return isSealedUntil(letter.unlockEpochDay, todayEpochDay);
 }
 
+/* getReadLetterIds stays exported for its own test, and cross-checked in
+   ready-letter-tile.test.ts (AU-09 test-only review). */
 export function getReadLetterIds(storage?: Storage): Set<string> {
   const s = resolveStorage(storage);
   if (!s) return new Set();
@@ -81,6 +83,8 @@ export function snoozeLetterTile(nowMs: number = Date.now(), storage?: Storage):
   }
 }
 
+/* clearLetterSnooze stays exported for its own test, and cross-checked in
+   ready-letter-tile.test.ts (AU-09 test-only review). */
 export function clearLetterSnooze(storage?: Storage): void {
   const s = resolveStorage(storage);
   if (!s) return;

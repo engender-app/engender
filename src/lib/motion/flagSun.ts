@@ -7,6 +7,7 @@
 /** The sun's outer diameter, the same for every flag (DIRECTION.md): a
     fixed step per ring instead would make three-stripe pansexual a third
     the size of seven-stripe agender. */
+/* SUN_OUTER stays exported only for its own test (AU-09 test-only review). */
 export const SUN_OUTER = 350;
 
 interface SunRing {

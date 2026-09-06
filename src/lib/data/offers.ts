@@ -104,6 +104,7 @@ import type { WearKind } from './types';
 /** Every offer this registry knows about. A key here with no entry in
     `OFFERS` does not compile, because `OFFERS` is a total `Record` over
     this union - demonstrated by deleting an entry below. */
+/* OfferKey stays exported only for its own test (AU-09 test-only review). */
 export type OfferKey =
   | 'roadmap-goal-milestone'
   | 'surgery-day-milestone'
@@ -138,6 +139,7 @@ export interface OfferCopy {
 /** The areas an offer's `write` may reach: the ones `openJournal` already
     built, so a confirmed offer writes through exactly the path the owning
     screen would. */
+/* OfferJournal stays exported only for its own test (AU-09 test-only review). */
 export interface OfferJournal {
   areaStates: AreaStatesArea;
   milestones: MilestonesArea;
@@ -461,6 +463,7 @@ export const OFFERS = {
     derived from `OFFERS` could only ever fail on a copy of `OFFERS` that a
     test shortened by hand, which is a check of `filter` wearing this
     registry's name. */
+/* OFFER_KEYS stays exported only for its own test (AU-09 test-only review). */
 export const OFFER_KEYS = Object.keys(OFFERS) as readonly OfferKey[];
 
 /** The milestone a roadmap goal has already minted, if it has one.

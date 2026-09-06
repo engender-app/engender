@@ -338,6 +338,8 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
 
 export type BuiltInPersonalEffectKey = (typeof BUILT_IN_PERSONAL_EFFECT_TYPES)[number]['key'];
 
+/* MILESTONE_TEMPLATE_KEYS stays exported only for its own test (AU-09
+   test-only review). */
 export const MILESTONE_TEMPLATE_KEYS = [
   'hrt_start',
   'transition_start',
@@ -355,6 +357,8 @@ export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
     type (starting HRT, coming out, a name change, surgery) names a kind of
     event, not a direction - the same eight apply whichever way a person is
     transitioning. */
+/* MILESTONE_TEMPLATE_LEAN stays exported only for its own test (AU-09
+   test-only review). */
 export const MILESTONE_TEMPLATE_LEAN: Record<MilestoneTemplateKey, Lean> = {
   hrt_start: 'neutral',
   transition_start: 'neutral',
@@ -372,6 +376,8 @@ export const MILESTONE_TEMPLATE_LEAN: Record<MilestoneTemplateKey, Lean> = {
    route wording lives in doseLabels.ts, which is where the rest of a
    regimen episode's own closed vocabulary already lives. No dose or
    interval key exists to carry either one by accident. */
+/* REGIMEN_TEMPLATE_KEYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const REGIMEN_TEMPLATE_KEYS = [
   'estradiol_valerate_im',
   'estradiol_oral',
@@ -386,6 +392,8 @@ export type RegimenTemplateKey = (typeof REGIMEN_TEMPLATE_KEYS)[number];
     work: the estradiol templates are feminizing HRT, the testosterone ones
     masculinizing, so the split is the drug each one starts, not a judgment
     call. */
+/* REGIMEN_TEMPLATE_LEAN stays exported only for its own test (AU-09 test-only
+   review). */
 export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
   estradiol_valerate_im: 'femme',
   estradiol_oral: 'femme',
@@ -469,6 +477,8 @@ function builtInDimension(key: string, min: number, max: number): GenderDimensio
   return { key, name: '', low: '', high: '', min, max, builtIn: true, hidden: false };
 }
 
+/* withBuiltInDimensions stays exported only for its own test (AU-09 test-only
+   review). */
 export function withBuiltInDimensions(existing: GenderDimension[]): GenderDimension[] {
   const present = new Set(existing.map((d) => d.key));
   const missing = BUILT_IN_DIMENSIONS.filter((d) => !present.has(d.key)).map((d) =>
@@ -481,6 +491,8 @@ function builtInTag(id: string): Tag {
   return { id, label: '', builtIn: true, hidden: false };
 }
 
+/* withBuiltInTagGroups stays exported only for its own test (AU-09 test-only
+   review). */
 export function withBuiltInTagGroups(existing: TagGroup[]): TagGroup[] {
   const byKey = new Map(existing.map((g) => [g.key, g]));
 

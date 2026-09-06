@@ -51,6 +51,8 @@ export function comparabilityBreak(from: ComparableTake, to: ComparableTake): Se
   return captureChainBreak(from.captureChain, to.captureChain);
 }
 
+/* BenchmarkForDelta stays exported only for its own test (AU-09 test-only
+   review). */
 export interface BenchmarkForDelta extends ComparableTake {
   f0MedianHz: number;
   f1Hz: number | null;

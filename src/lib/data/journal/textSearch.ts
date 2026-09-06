@@ -522,6 +522,8 @@ type Covered = (typeof AREAS)[number]['covers'][number];
     a dose event's site and vehicle come from closed lists.
 
     *Its own reason*, for the two that need one. */
+/* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
+   review). */
 export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   entries: 'searched through the entry FTS index, by the screen’s own read (ADR-0005)',
 
@@ -598,10 +600,13 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   wordIgnore: 'a word already searchable in the note it came from, not new text of its own'
 };
 
+/* SEARCH_AREAS stays exported only for its own test (AU-09 test-only review). */
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;
 
 /** Every area's key, in the order they are declared - which is the order
     hits are grouped in on the screen, so it never names an area itself. */
+/* SEARCH_AREA_KEYS stays exported for its own test, and cross-checked in
+   measure.ts (AU-09 test-only review). */
 export const SEARCH_AREA_KEYS: readonly SearchAreaKey[] = AREAS.map((a) => a.key);
 
 /** Every table any area reads, de-duplicated: what `textSearch.search`

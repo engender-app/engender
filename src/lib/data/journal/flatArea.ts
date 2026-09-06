@@ -69,6 +69,7 @@ interface FlatAreaSpec<Domain extends { id: string }> {
   guard?: (input: Omit<Domain, 'id'>) => void;
 }
 
+/* FlatArea stays exported only for its own test (AU-09 test-only review). */
 export interface FlatArea<Domain extends { id: string }> {
   /** This table's rows as domain objects, under `tail` - everything after
       `SELECT <columns> FROM <table>`, which is the area's own business. */

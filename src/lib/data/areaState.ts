@@ -98,6 +98,8 @@ export type AreaStates = Partial<Record<HideableArea, AreaState>>;
     Declared as the array so the literals stay narrow: a union written by
     hand beside a widened `readonly ArchiveSectionName[]` would make
     `Unfinishable` collapse to `never` and the whole check below vacuous. */
+/* FINISHABLE_AREAS stays exported for its own test, and cross-checked in
+   areaGroups.test.ts (AU-09 test-only review). */
 export const FINISHABLE_AREAS = [
   'hairRemovalSessions',
   'measurements',
@@ -175,6 +177,8 @@ type Unfinishable = Exclude<ArchiveSectionName, FinishableArea>;
     *Structural.* A fact about the schema rather than a judgement about
     practice - reference data, or content that belongs to another record.
     These need no product call and cannot drift. */
+/* NOT_FINISHABLE stays exported only for its own test (AU-09 test-only
+   review). */
 export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   /* Practice-based exclusions. */
   tryouts: 'a tryout carries its own end day, so finishing the practice says nothing the record has not already said',
@@ -235,6 +239,8 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
 
     Takes no day, unlike `areaQuiet` below - hiding an area is not a dated
     statement, and finishing one does not hide it. */
+/* areaHidden stays exported for its own test, and cross-checked in
+   areaStates.test.ts (AU-09 test-only review). */
 export function areaHidden(area: HideableArea, states: AreaStates): boolean {
   return states[area]?.hidden === true;
 }
@@ -243,6 +249,8 @@ export function areaHidden(area: HideableArea, states: AreaStates): boolean {
     state - the same test the storage layer runs to know when to drop a row
     (`journal/areaStates.ts`). Here so both sides read one function rather
     than two copies of "hidden = 0 and both days are null" agreeing by luck. */
+/* areaStateResting stays exported only for its own test (AU-09 test-only
+   review). */
 export function areaStateResting(state: Pick<AreaState, 'hidden' | 'finishedEpochDay' | 'suspendedEpochDay'>): boolean {
   return !state.hidden && state.finishedEpochDay === null && state.suspendedEpochDay === null;
 }

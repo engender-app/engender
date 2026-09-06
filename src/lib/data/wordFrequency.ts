@@ -210,6 +210,8 @@ export function countWords(
 /** Which language a note is in, on its own. The screen reads the same
     answer off `AnalysedNote.language` rather than calling this, since by
     then the note has already been read. */
+/* noteLanguage stays exported only for its own test (AU-09 test-only
+   review). */
 export function noteLanguage(note: string): NoteLanguage {
   return languageOf(note, tokenize(note));
 }

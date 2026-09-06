@@ -73,6 +73,7 @@ export const HUB_GROUP_KEYS = ['body', 'health', 'transition', 'practice', 'medi
 export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
 /** One row, as declared. */
+/* HubRowSpec stays exported only for its own test (AU-09 test-only review). */
 export interface HubRowSpec {
   /** The row's own identity: the walkthrough's handle and the key
       `areaGroups.ts` named its groups after (ADR-0029). */
@@ -444,8 +445,13 @@ export type HubRowKey = (typeof ROWS)[number]['key'];
 /** One row as the list holds it: `HubRowSpec` with its key still narrow, so a
     consumer reaching for a row's title cannot be handed a `string` the label
     record has never heard of. */
+/* HubRow stays exported only for feature-screens.test.ts, which cross-checks
+   against it (AU-09 test-only review). */
 export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
 
+/* HUB_ROWS stays exported for its own test, and cross-checked in
+   feature-screens.test.ts, home-surfaces.test.ts, more-surfaces.test.ts,
+   safe-space-surfaces.test.ts (AU-09 test-only review). */
 export const HUB_ROWS: readonly HubRow[] = ROWS;
 
 const ROWS_BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
@@ -491,6 +497,8 @@ type EveryAreaGroupFrontedByARow = AssertNoneUnfronted<Unfronted>;
     Five of them, and none is a hub row's business: three are their own tab or
     screen, one sits behind `/care`, and one is content belonging to two other
     rows at once. */
+/* LAST_WRITE_WITHOUT_A_ROW stays exported only for its own test (AU-09
+   test-only review). */
 export const LAST_WRITE_WITHOUT_A_ROW: Record<Exclude<LastWriteKey, RowArea>, string> = {
   entries: 'the journal itself, which Home and the calendar are already about',
   doseEvents: 'behind the care row, whose own screen opens on the last dose',
@@ -513,6 +521,7 @@ const AREAS_WITH_A_LAST_WRITE: ReadonlySet<string> = new Set(LAST_WRITE_ENTRIES.
 const hasLastWrite = (area: ArchiveSectionName): area is LastWriteKey => AREAS_WITH_A_LAST_WRITE.has(area);
 
 /** Which of a row's areas have a last write to report. */
+/* rowReads stays exported only for its own test (AU-09 test-only review). */
 export function rowReads(spec: HubRowSpec): LastWriteKey[] {
   return spec.areas.filter(hasLastWrite);
 }
@@ -520,6 +529,7 @@ export function rowReads(spec: HubRowSpec): LastWriteKey[] {
 /** Whether a row has gone with a hidden area: `areasHidden` over the sections
     it fronts, which is where the rule lives now that the stats tab's cards
     ask it too (`areaState.ts`). */
+/* rowHidden stays exported only for its own test (AU-09 test-only review). */
 export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
   return areasHidden(spec.areas, states);
 }
@@ -558,6 +568,7 @@ export type HubLine =
 const CYCLE_GATED_ROW = 'cycle-events';
 
 /** Everything the hub reads, so nothing below asks for itself. */
+/* HubReading stays exported only for its own test (AU-09 test-only review). */
 export interface HubReading {
   todayEpochDay: number;
   /** One assembled call, `journal/lastWrite.ts` - not a query per row.
@@ -594,6 +605,7 @@ function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: num
 }
 
 /** What one row says under its title. */
+/* rowLine stays exported only for its own test (AU-09 test-only review). */
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
@@ -646,6 +658,8 @@ export function hubSections(reading: HubReading): HubSection[] {
     `AREA_GROUPS` rather than a module-level throw, because a bad row list is
     a coding error to fail a test on and not something to refuse to boot
     over. */
+/* AREA_GROUP_ROW_KEYS stays exported for its own test, and cross-checked in
+   AreaFinish.mounted.test.ts (AU-09 test-only review). */
 export const AREA_GROUP_ROW_KEYS: Record<AreaGroupKey, HubRowKey> = Object.fromEntries(
   ROWS.filter((spec) => spec.finishes !== null).map((spec) => [spec.finishes, spec.key])
 ) as Record<AreaGroupKey, HubRowKey>;

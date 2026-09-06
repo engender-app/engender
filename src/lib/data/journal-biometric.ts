@@ -35,6 +35,8 @@ import { browserAuthenticator, randomPrfSalt, type PrfAuthenticator } from './we
 /** Where a biometric keystore's two halves live: the authenticator that
     releases the secret, and the file that records how to ask it. Defaults to
     the real browser bindings; the tests hand in fakes. */
+/* BiometricPorts stays exported only for its own test (AU-09 test-only
+   review). */
 export interface BiometricPorts {
   authenticator: PrfAuthenticator;
   readKeystore(): Promise<KeystoreMetadata | null>;

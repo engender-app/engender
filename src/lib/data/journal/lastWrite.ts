@@ -111,6 +111,8 @@ interface LastWriteReading extends LastWriteAreas {
 /** One area's declaration of its last write. Erased over its own area
     dependency, the same reason `DaySection` is: the list holds every area at
     once, and a test registers an area this file has never named. */
+/* LastWriteEntry stays exported only for its own test (AU-09 test-only
+   review). */
 export interface LastWriteEntry {
   key: string;
   tables: readonly TableName[];
@@ -269,6 +271,8 @@ export type LastWriteKey = (typeof ENTRIES)[number]['key'];
     Restating day.ts's own reasoning for this registry's own question rather
     than reusing its list: an area with no dated record to show on a day has
     no dated write to report the last of, either. */
+/* LAST_WRITE_OPT_OUTS stays exported only for its own test (AU-09 test-only
+   review). */
 export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKey>, string> = {
   dimensions: 'reference data, not a written stream',
   presets: 'reference data, not a written stream',

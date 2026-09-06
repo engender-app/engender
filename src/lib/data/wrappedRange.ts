@@ -53,6 +53,8 @@ export type WrappedRangeChoice = (typeof WRAPPED_RANGE_CHOICES)[number];
 /** The choice a wrapped opens on when the range view is reached with no
     parameters: the widest of the rolling windows that is still a window
     rather than a calendar period. */
+/* WRAPPED_RANGE_DEFAULT stays exported only for its own test (AU-09 test-only
+   review). */
 export const WRAPPED_RANGE_DEFAULT: WrappedRangeChoice = 'd30';
 
 /** How many days each rolling window covers, inclusive of today. */

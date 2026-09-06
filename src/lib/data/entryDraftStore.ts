@@ -26,18 +26,24 @@
 import { decrypt, encrypt } from '../crypto/aesGcm';
 import type { PersistedEntryDraft } from './entryDraftPersistence';
 
+/* EntryDraftStore stays exported only for draft-mirror-probe.ts, which
+   cross-checks against it (AU-09 test-only review). */
 export interface EntryDraftStore {
   read(): Promise<PersistedEntryDraft | null>;
   write(draft: PersistedEntryDraft): Promise<void>;
   clear(): void;
 }
 
+/* ENTRY_DRAFT_STORE_KEY stays exported for its own test, and cross-checked in
+   encryption-probe.ts (AU-09 test-only review). */
 export const ENTRY_DRAFT_STORE_KEY = 'gender-diary-entry-draft';
 
 const NONCE_LENGTH = 12;
 
 // Hand-editable storage: anything that is not this shape is no draft at
 // all, the same rule attempt-store.ts applies to its own mirror.
+/* isPersistedEntryDraft stays exported only for its own test (AU-09 test-only
+   review). */
 export function isPersistedEntryDraft(value: unknown): value is PersistedEntryDraft {
   if (!value || typeof value !== 'object') return false;
   const d = value as Partial<PersistedEntryDraft>;

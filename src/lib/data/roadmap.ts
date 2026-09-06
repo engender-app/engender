@@ -44,6 +44,7 @@ interface RoadmapGoal<K extends string = string> {
   readonly lean: Lean;
 }
 
+/* RoadmapPack stays exported only for its own test (AU-09 test-only review). */
 export interface RoadmapPack<K extends string = string> {
   /** Prefixes every goal key in the pack, and is what a stored tick names
       the pack by. */
@@ -124,6 +125,7 @@ export const POLISH_PACK = {
     session's scope decision (Q14): the structure holds a second country's
     content without a schema change, but populating one is separate content
     work. */
+/* ROADMAP_PACKS stays exported only for its own test (AU-09 test-only review). */
 export const ROADMAP_PACKS = [POLISH_PACK] as const satisfies readonly RoadmapPack[];
 
 /** Every goal key any bundled pack holds - what roadmapLabels.ts has to
@@ -138,6 +140,7 @@ export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['ke
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 
 /** One track's goals, in the order the pack lists them. */
+/* goalsInTrack stays exported only for its own test (AU-09 test-only review). */
 export const goalsInTrack = <K extends string>(pack: RoadmapPack<K>, track: RoadmapTrack): RoadmapGoal<K>[] =>
   pack.goals.filter((goal) => goal.track === track);
 

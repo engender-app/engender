@@ -42,6 +42,8 @@ import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types
     Forwards there are two, and a run-out projection on a full box
     routinely lands months out; a hundred and twenty days is a whole
     quarter of runway, past which "a long way off" is the honest reading. */
+/* SPINE_BACK_DAYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const SPINE_BACK_DAYS = 60;
 export const SPINE_FORWARD_DAYS = 120;
 
@@ -52,6 +54,8 @@ export const SPINE_FORWARD_DAYS = 120;
     next dose against the right - two marks at the ends of a line, which
     says nothing about the gap between them. A fortnight each way gives
     every arrangement a middle to be near. */
+/* SPINE_MIN_BACK_DAYS, SPINE_MIN_FORWARD_DAYS stay exported only for their own
+   test (AU-09 test-only review). */
 export const SPINE_MIN_BACK_DAYS = 14;
 export const SPINE_MIN_FORWARD_DAYS = 14;
 
@@ -59,6 +63,7 @@ export const SPINE_MIN_FORWARD_DAYS = 14;
     rail. A date label is around 48px wide and a mark owes a 48px target
     (PRODUCT.md's floor), so at the 330px of rail a 390px screen leaves,
     0.17 is about the 56px two adjacent labels need to stay apart. */
+/* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
 export const MIN_LABEL_GAP = 0.17;
 
 export type SpineMarkKind = 'labDraw' | 'lastDose' | 'today' | 'nextDose' | 'runOut';
@@ -136,6 +141,8 @@ interface SpineFacts {
 /** The day of the most recent dose that actually happened, or null when
     none did. A skipped dose is a gap someone recorded rather than a dose,
     the same reading labTiming.ts takes of one. */
+/* lastLoggedDoseDay stays exported only for its own test (AU-09 test-only
+   review). */
 export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
   let latest: number | null = null;
   for (const dose of doses) {
@@ -158,6 +165,8 @@ export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
     Not a judgement about a dose being due. A slot with nothing in it is a
     slot with nothing in it; expectedAmountOn (doseSchedule.ts) reads the
     same rows the same way for the same reason. */
+/* nextExpectedSlot stays exported only for its own test (AU-09 test-only
+   review). */
 export function nextExpectedSlot(
   schedule: DoseSchedule,
   anchorEpochDay: number,

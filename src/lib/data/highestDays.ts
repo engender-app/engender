@@ -25,6 +25,8 @@ import type { DayArea, DayRecords } from './journal/day';
 /** How many days the ranking names. Not configurable behind a preference,
     or any other way - the ticket that asked for this asked for ten and no
     bottom ten. */
+/* HIGHEST_DAYS_CAP stays exported only for its own test (AU-09 test-only
+   review). */
 export const HIGHEST_DAYS_CAP = 10;
 
 interface HighestDay {

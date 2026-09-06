@@ -76,6 +76,7 @@ export class UnsupportedArchiveError extends Error {
   }
 }
 
+/* ArchiveHeader stays exported only for its own test (AU-09 test-only review). */
 export interface ArchiveHeader {
   formatVersion: number;
   kdf: Argon2Params;

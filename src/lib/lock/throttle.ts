@@ -20,10 +20,13 @@ const FIRST_DELAY_MS = 1000;
     and the cap keeps a fat-fingered owner from being locked out for a day
     by a doubling that never stops. At a minute a guess, walking all 10,000
     four-digit PINs takes about a week. */
+/* MAX_DELAY_MS stays exported only for its own test (AU-09 test-only review). */
 export const MAX_DELAY_MS = 60_000;
 
 /** What is owed after `wrongAttempts` consecutive misses. The first is
     free - a mistyped digit is the common case, not an attack. */
+/* delayAfterWrongAttempts stays exported only for its own test (AU-09
+   test-only review). */
 export function delayAfterWrongAttempts(wrongAttempts: number): number {
   if (wrongAttempts < 2) return 0;
   return Math.min(FIRST_DELAY_MS * 2 ** (wrongAttempts - 2), MAX_DELAY_MS);

@@ -492,6 +492,8 @@ export const PORTABLE_KEYS = [
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
+/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in
+   pack.test.ts, roadmap-milestone-sync.test.ts (AU-09 test-only review). */
 export const DEVICE_LOCAL_KEYS = [
   'onboarded',
   'a11yTextSizeBoost',

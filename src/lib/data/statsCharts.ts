@@ -22,6 +22,7 @@ import type { DayAverage, DaySpread } from './journal/stats';
 import { MOOD_RANGE, moodStep, normalize, type MetricRange } from './metricRange';
 
 /** The average of a day series, or null where nothing was logged. */
+/* seriesAverage stays exported only for its own test (AU-09 test-only review). */
 export function seriesAverage(points: DayAverage[]): number | null {
   if (!points.length) return null;
   return points.reduce((sum, point) => sum + point.value, 0) / points.length;
@@ -101,6 +102,8 @@ export function moodDistribution(days: DayAverage[]): MoodDay[] {
 /** How many cards a stack ever draws, however many entries the day holds.
     Past this the deck stops being countable and starts being a texture, and
     the exact number is read out on the cell rather than counted off it. */
+/* MAX_STACK_CARDS stays exported only for its own test (AU-09 test-only
+   review). */
 export const MAX_STACK_CARDS = 4;
 
 /** What a day's cell is drawn as, once the day's own entries are known

@@ -120,6 +120,8 @@ interface ClinicianSummaryReading extends ClinicianSummaryAreas {
 /** One part of the summary's declaration that it prints. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `ClinicianSummary` has never heard of. */
+/* ClinicianSummarySection stays exported only for its own test (AU-09
+   test-only review). */
 export interface ClinicianSummarySection {
   key: string;
   tables: readonly TableName[];
@@ -295,6 +297,8 @@ type Unregistered = Exclude<ClinicianSummarySectionKey, (typeof SECTIONS)[number
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
+/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test (AU-09
+   test-only review). */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
 
 /** Every section's key, in the order they print - what the screen walks to
