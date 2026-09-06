@@ -41,6 +41,17 @@ async function pickOnAndroid<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
+/** The single-file half of documentPicker() and cameraPhotoPicker() on the
+    web: open the same file input, refuse by size before reading, read if
+    not. `chooseFiles`'s own arguments are the only difference between the
+    two callers. */
+async function pickOneFile(...args: Parameters<typeof chooseFiles>): Promise<Uint8Array[]> {
+  const [file] = await chooseFiles(...args);
+  if (!file) return [];
+  refuseAboveCeiling(file.size);
+  return [new Uint8Array(await file.arrayBuffer())];
+}
+
 export function filePhotoPicker(): PhotoPicker {
   return {
     async pick() {
@@ -75,10 +86,7 @@ export function documentPicker(): PhotoPicker {
         return bytes ? [base64ToBytes(bytes)] : [];
       }
 
-      const [file] = await chooseFiles('application/pdf,image/*');
-      if (!file) return [];
-      refuseAboveCeiling(file.size);
-      return [new Uint8Array(await file.arrayBuffer())];
+      return pickOneFile('application/pdf,image/*');
     }
   };
 }
@@ -100,10 +108,7 @@ export function cameraPhotoPicker(): PhotoPicker {
         return image ? [base64ToBytes(image)] : [];
       }
 
-      const [file] = await chooseFiles('image/*', { capture: 'environment' });
-      if (!file) return [];
-      refuseAboveCeiling(file.size);
-      return [new Uint8Array(await file.arrayBuffer())];
+      return pickOneFile('image/*', { capture: 'environment' });
     }
   };
 }
