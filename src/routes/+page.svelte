@@ -90,7 +90,7 @@
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
-  import { splitHomeTiles } from '$lib/data/liveTiles';
+  import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
 
   const today = todayEpochDay();
@@ -125,6 +125,12 @@
      two near-identical grids, so a tier cannot be given a weight in one
      place and a shape in another.
 
+     Read from two places rather than one `{#each}` since phase 8 features
+     ticket 63 (ADR-0067): the today block draws above the mood pick and the
+     rest of the grid stays below it, but both still take their weight and
+     `data-rows` off this one table, so a tier still cannot be given a shape
+     in one place and a different one where it is drawn.
+
      The tiers are contiguous in the order, so filtering by them keeps each
      block's own order and needs no second sort. Dormant is not here: it is
      not a tile at all but a row of a list, which is the whole of what the
@@ -133,6 +139,12 @@
     { tier: 'today', weight: 'row', rows: true },
     { tier: 'moment', weight: 'card', rows: undefined }
   ] as const;
+  /* Filtered off `shownTiles` rather than recomputed per block below: each
+     table row above maps to exactly one of these, and the reorder is that
+     the today one is read here and drawn before the mood pick while moment
+     stays where the whole grid used to sit. */
+  let todayTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
+  let momentTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
   let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
   const FOLD_NAMES = 2;
   let foldLabel = $derived.by(() => {
@@ -460,16 +472,63 @@
     />
   {/if}
 
+  <!-- One tier's worth of tiles, in `block`'s weight and shape - shared by
+       the today location above and the moment location below (phase 8
+       features ticket 63), so the two locations cannot read the same table
+       and still draw two different shapes for it. -->
+  {#snippet tileRow(tiles: HomeTile[], block: (typeof TILE_BLOCKS)[number])}
+    {#if tiles.length > 0}
+      <TileGrid
+        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        data-live-tile-grid
+        data-rows={block.rows}
+      >
+        <!-- One slide rule for every tile on screen (deepening ticket 07) -
+             `shownTiles`, not just this tier, so a journal with one today
+             tile and one moment tile still slides both in together. -->
+        {#each tiles as tile (tile.key)}
+          <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
+            <Tile
+              key={tile.tileKey}
+              weight={block.weight}
+              title={tile.title}
+              value={tile.value}
+              note={tile.note}
+              href={tile.href}
+              action={tile.action}
+              dismiss={tile.dismiss}
+              {...tile.attrs}
+              data-live-tile={tile.key}
+            />
+          </div>
+        {/each}
+      </TileGrid>
+    {/if}
+  {/snippet}
+
+  <!-- The today tier leads Home, above the mood pick (phase 8 features
+       ticket 63, ADR-0067): what is happening today - a wear session
+       running, a dose the day expects, an appointment on the date - answers
+       before "how are you feeling" does. A reorder rather than a second
+       grid: this is the same today-tier row the block below used to draw in
+       its own turn, only moved. Empty, and nothing here renders at all -
+       Home looks exactly as it did before this ticket. -->
+  {#if todayTiles.length > 0}
+    <div transition:disclose>
+      {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
+    </div>
+  {/if}
+
   <SectionHeading text={m.how_feeling()} />
   <MoodChips onPick={onQuickLog} />
 
-  <!-- The live tiles (ticket 45, capped and weighted by phase 8 UX ticket
-       01). Three at most, ordered by tier, and the tier drawn as weight so
-       the difference carries the same information as the ordering rather
-       than twelve tiles differing only by hue.
+  <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
+       UX ticket 01) - the moment weight as a card, the dormant weight as a
+       quiet list row. The today tier's own row moved above the mood pick;
+       this block never draws it (phase 8 features ticket 63).
 
-       Three blocks, because the three weights want three shapes: a
-       bound-to-today tile is a full-width row with its action, a moment is
+       Two shapes rather than the three the grid as a whole has: a moment is
        a card in the two-up grid, and a dormant nudge is a line in a list
        with no action of its own - tapping it opens the screen the action
        lived on. They share one role, so they still read as one area of the
@@ -477,41 +536,9 @@
 
        Separation is an opaque surface and a line: box-shadow is banned in
        the kit and tested for. -->
-  {#if shownTiles.length > 0 || tileSplit.folded.length > 0}
+  {#if momentTiles.length > 0 || quietTiles.length > 0 || tileSplit.folded.length > 0}
     <div class="home-tiles" transition:disclose>
-      {#each TILE_BLOCKS as block (block.tier)}
-        {@const tiles = shownTiles.filter((tile) => tile.tier === block.tier)}
-        {#if tiles.length > 0}
-          <TileGrid
-            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-            flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
-            data-live-tile-grid
-            data-rows={block.rows}
-          >
-            <!-- One slide rule for every tile on screen. It used to be two:
-                 seven tiles asked whether they had a sibling and four asked
-                 whether one of the original five was showing, so a journal
-                 with only the wear and measurements tiles slid one in and
-                 left the other to appear (deepening ticket 07). -->
-            {#each tiles as tile (tile.key)}
-              <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
-                <Tile
-                  key={tile.tileKey}
-                  weight={block.weight}
-                  title={tile.title}
-                  value={tile.value}
-                  note={tile.note}
-                  href={tile.href}
-                  action={tile.action}
-                  dismiss={tile.dismiss}
-                  {...tile.attrs}
-                  data-live-tile={tile.key}
-                />
-              </div>
-            {/each}
-          </TileGrid>
-        {/if}
-      {/each}
+      {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
 
       <!-- The quiet weight. A dormant nudge keeps neither its action nor its
            dismiss: the whole line taps through to the screen its action

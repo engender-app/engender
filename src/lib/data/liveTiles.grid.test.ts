@@ -7,9 +7,9 @@
    and fails on a correct move that does not, which is what this ticket is.
    So everything here goes through `composeHomeTiles` instead.
 
-   One fixture qualifies all eleven at once, and each test switches off the
+   One fixture qualifies all twelve at once, and each test switches off the
    one thing it is about. That is the shape the ordering and the absence of a
-   cap need - both are claims about eleven tiles together - and it also means
+   cap need - both are claims about twelve tiles together - and it also means
    a tile that silently stops qualifying breaks every test rather than one. */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -32,6 +32,7 @@ import {
   type LiveTileKind
 } from './liveTiles';
 import type { LetterSeal } from './journal/letters';
+import type { AppointmentDayRecord } from './journal/appointments';
 import type {
   DoseSchedule,
   HairRemovalSession,
@@ -116,6 +117,14 @@ const hairRemovalSession: HairRemovalSession = {
   provider: ''
 };
 
+const todayAppointment: AppointmentDayRecord = {
+  id: 'appt-1',
+  kind: 'Endocrinologist',
+  place: 'City clinic',
+  procedureId: null,
+  procedureName: null
+};
+
 const allOn = <T>(value: T): Record<LiveTileKind, T> =>
   Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [kind, value])) as Record<LiveTileKind, T>;
 
@@ -158,7 +167,8 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       latestBenchmarkEpochDay: TODAY - 20,
       journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
       latestHairRemovalSession: hairRemovalSession,
-      measurements: { count: 3, latestDay: TODAY - 40 }
+      measurements: { count: 3, latestDay: TODAY - 40 },
+      todayAppointments: [todayAppointment]
     },
     actions: {
       stopWear: vi.fn(),
@@ -199,6 +209,7 @@ const TIERED: LiveTileKind[] = [
   'wear-timer',
   'patch-schedule-tile',
   'hair-removal-recovery',
+  'appointment-today',
   // A moment.
   'dose-panel',
   'surgery-countdown',
@@ -213,14 +224,15 @@ const TIERED: LiveTileKind[] = [
 ];
 
 describe('which kinds the grid is for', () => {
-  it('draws the eleven live tiles and none of the registry\'s other seven', () => {
-    /* The narrowing is the point: `UnpromptedKind` has eighteen members and
+  it('draws the twelve live tiles and none of the registry\'s other seven', () => {
+    /* The narrowing is the point: `UnpromptedKind` has nineteen members and
        seven of them are a notice, a look-back card or a notification, so an
        ordering keyed off the whole union would demand an entry for
        `export-failure`. */
     expect([...LIVE_TILE_ORDER].sort()).toEqual(
       [
         'active-tryout-tile',
+        'appointment-today',
         'dose-panel',
         'hair-removal-recovery',
         'measurements-nudge',
@@ -266,7 +278,12 @@ describe('the tier every kind is in', () => {
     const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
     for (const kind of LIVE_TILE_ORDER) byTier[LIVE_TILE_TIER[kind]].push(kind);
 
-    expect(byTier.today).toEqual(['wear-timer', 'patch-schedule-tile', 'hair-removal-recovery']);
+    expect(byTier.today).toEqual([
+      'wear-timer',
+      'patch-schedule-tile',
+      'hair-removal-recovery',
+      'appointment-today'
+    ]);
     expect(byTier.moment).toEqual([
       'dose-panel',
       'surgery-countdown',
@@ -534,6 +551,47 @@ describe('what each tile says', () => {
     expect(tile.href).toBe('/body/measurements');
     expect(tile.action?.href).toBe('/body/measurements');
   });
+
+  it('the appointment tile names the kind and place of today\'s appointment', () => {
+    const tile = tileNamed('appointment-today')!;
+    expect(tile.tileKey).toBe('appointment-today');
+    expect(tile.attrs).toEqual({ 'data-appointment-today-tile': true });
+    expect(tile.value).toBe('Endocrinologist');
+    expect(tile.note).toBe('City clinic');
+    expect(tile.href).toBe('/health/appointments');
+    expect(tile.action).toBeUndefined();
+    expect(tile.dismiss).toBeUndefined();
+  });
+
+  it('the appointment tile falls back to the untitled label with no kind or procedure', () => {
+    const tile = tileNamed('appointment-today', {
+      reads: { todayAppointments: [{ ...todayAppointment, kind: null }] }
+    })!;
+    expect(tile.value).toBe(m.appointments_untitled());
+  });
+
+  it('the appointment tile names the procedure before the untitled label', () => {
+    const tile = tileNamed('appointment-today', {
+      reads: { todayAppointments: [{ ...todayAppointment, kind: null, procedureName: 'Vaginoplasty' }] }
+    })!;
+    expect(tile.value).toBe('Vaginoplasty');
+  });
+
+  it('the appointment tile counts the rest when more than one is today', () => {
+    const tile = tileNamed('appointment-today', {
+      reads: {
+        todayAppointments: [
+          todayAppointment,
+          { ...todayAppointment, id: 'appt-2', kind: 'Psychologist', place: null }
+        ]
+      }
+    })!;
+    expect(tile.note).toBe(m.tile_appointment_more({ count: '1' }));
+  });
+
+  it('the appointment tile is absent with nothing today', () => {
+    expect(tileNamed('appointment-today', { reads: { todayAppointments: [] } })).toBeUndefined();
+  });
 });
 
 describe('the dismiss controls', () => {
@@ -553,19 +611,22 @@ describe('the dismiss controls', () => {
     expect(snooze).toHaveBeenCalledWith(kind);
   });
 
-  it('gives no dismiss to the six that never had one', () => {
+  it('gives no dismiss to the seven that never had one', () => {
     /* Wear, dose, surgery, safe space, the ready letter and revisit each
        resolve themselves - a running session cannot be hidden while it runs
        (ADR-0039's amendment), the letter's dismiss opens a sheet, and a
        revisit's own action deletes the row outright rather than snoozing
-       it. */
+       it. The appointment tile joins them for a different reason: it names
+       a single day's own fact, gone on its own tomorrow, so there is
+       nothing a snooze would buy (ticket 63). */
     for (const kind of [
       'wear-timer',
       'dose-panel',
       'surgery-countdown',
       'safe-space-nudge',
       'ready-letter',
-      'revisit'
+      'revisit',
+      'appointment-today'
     ] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }
