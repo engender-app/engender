@@ -7,8 +7,8 @@
    datasets the same way for as long as one is turning into the other. */
 
 import { describe, expect, it } from 'vitest';
+import { areaPath } from '../src/lib/charts/areaPath';
 import {
-  areaPath,
   bridgeGaps,
   lerpSamples,
   paddedSeries,
