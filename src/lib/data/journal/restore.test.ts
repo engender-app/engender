@@ -310,6 +310,30 @@ test('a target own roadmap tick and custom goal survive a merge that has never h
   );
 });
 
+/* Phase 8 features ticket 69: a custom goal's text stopped being write-once
+   and its row stopped being permanent, and `roadmapGoals` carries both
+   columns as they stand rather than a history of them. What a replace owes
+   is that the journal on the other side holds exactly what this one does -
+   the new wording and not the old one, and nothing at all for the goal that
+   was deleted. */
+test('a reworded custom goal travels as it now reads, and a deleted one does not travel at all', async () => {
+  const source = await device();
+  const kept = await source.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
+  const reworded = await source.journal.roadmap.addCustomGoal('social', 'Tell my sster');
+  const removed = await source.journal.roadmap.addCustomGoal('medical', 'Ask for a second opinion');
+  await source.journal.roadmap.setCustomGoalStatus(reworded.id, 'checked');
+  await source.journal.roadmap.updateCustomGoalText(reworded.id, 'Tell my sister');
+  await source.journal.roadmap.deleteCustomGoal(removed.id);
+
+  const target = await device();
+  await target.journal.archive.replace(await exported(source.journal));
+
+  assert.deepEqual(await target.journal.roadmap.getCustomGoals(), [
+    { id: kept.id, track: 'legal', text: 'Ask about remote hearings', status: 'unchecked' },
+    { id: reworded.id, track: 'social', text: 'Tell my sister', status: 'checked' }
+  ]);
+});
+
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
   const source = await populated();
   const target = await device();

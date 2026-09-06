@@ -15,13 +15,14 @@
    nested owner. `documentTarget()` below is the combined read a caller
    wants instead of the two apart.
 
-   The link is nulled by the two deletes that can reach it - `deleteMilestone`,
-   `deleteProcedure` - each running a cross-table UPDATE before its own row's
-   DELETE, the same order those two already use for `milestone.procedure_id`/
-   `tryout_id`. A regimen episode and a roadmap goal have no delete to null it
-   from (regimen.ts: "episodes are never deleted"; provenance.ts: "nothing can
-   delete a roadmap goal today"), so a link to either cannot dangle in
-   practice today - schema v77's own comment says the same.
+   The link is nulled by the three deletes that can reach it -
+   `deleteMilestone`, `deleteProcedure`, `deleteCustomGoal` - each running a
+   cross-table UPDATE before its own row's DELETE, the same order the first
+   two already use for `milestone.procedure_id`/`tryout_id`. A regimen episode
+   is the one kind with no delete to null it from (regimen.ts: "episodes are
+   never deleted"), so a link to one cannot dangle in practice today. A
+   built-in roadmap goal is the same by construction: it has no row, so there
+   is nothing to delete (roadmap.ts, ticket 69/ADR-0068).
 
    **The app never reads a document.** No OCR, no text extraction, nothing
    about what the page says (ADR-0065). That is why there is no method here

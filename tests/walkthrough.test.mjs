@@ -4494,6 +4494,115 @@ try {
 
   ok('a PDF draws its first page at import, turns to page 2 and back, and has no text layer on any of them');
 } catch (e) { fail('looking at a PDF', e); }
+/* Phase 8 features ticket 69, ADR-0068: a custom goal is the person's own
+   words, so it can be reworded and it can be removed - and removing it
+   unfiles the paper filed against it without destroying the paper.
+
+   Only a browser can prove the last part end to end. The node tier knows
+   the UPDATE runs; what it cannot see is that the document's own screen
+   then draws the "file this somewhere" row rather than the "what this was
+   filed under is gone" one, which is the same nulled column read through
+   two screens and a picker. */
+try {
+  await fresh('/transition/roadmap');
+  await page.waitForSelector('[data-goal]');
+
+  await page.locator('[data-add-goal="medical"]').click();
+  await page.getByPlaceholder('Your step').fill('Get the referal reissued');
+  await page.getByRole('button', { name: 'Add goal' }).click();
+
+  const misspelt = page.locator('[data-goal]').filter({ hasText: 'Get the referal reissued' }); // text-under-test: fixture text, typed by this flow two lines up
+  await misspelt.waitFor();
+  const goalId = await misspelt.getAttribute('data-goal');
+
+  // Reworded from inside the sheet, and the row underneath follows.
+  await page.locator(`[data-open-goal="${goalId}"]`).click();
+  await page.waitForSelector('[data-goal-sheet-status]');
+  if (!(await page.locator('[data-save-goal]').isDisabled())) {
+    throw new Error('the save button offers to write the wording that is already stored');
+  }
+  await page.locator('#goal-text').fill('Get the referral reissued');
+  await page.locator('[data-save-goal]').click();
+  await page.waitForFunction(
+    (id) => document.querySelector(`[data-goal="${id}"]`)?.textContent?.includes('Get the referral reissued'),
+    goalId
+  );
+  await page.keyboard.press('Escape');
+
+  // A piece of paper, filed under that goal.
+  await page.goto(BASE + '/media/documents', { waitUntil: 'networkidle' });
+  await booted();
+  const referral = await labSlipImage(['CITY HOSPITAL', 'Referral']);
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: 'scan_0207.png', mimeType: 'image/png', buffer: referral })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  // A title of its own, since the demo persona already files a referral of
+  // its own and `.first()` on this list would open that one.
+  await page.locator('#document-title').fill('Referral, reissued');
+  await page.locator('[data-save-document]').click();
+  await page.waitForSelector('[data-list-row]');
+  await page.locator('[data-list-row]').filter({ hasText: 'Referral, reissued' }).click(); // text-under-test: fixture text, the title typed above
+  await page.waitForSelector('[data-pick-document-target]');
+  await page.locator('[data-pick-document-target]').click();
+  await page.locator(`[data-pick-target="goal:${goalId}"]`).click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-document-link]')?.textContent?.includes('Get the referral reissued')
+  );
+  await page.locator('[data-save-document]').click();
+  const documentUrl = page.url();
+
+  // The goal's sheet lists it, and the confirmation counts it before it goes.
+  await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator(`[data-open-goal="${goalId}"]`).click();
+  await page.waitForSelector('[data-goal-sheet-status]');
+  await page.locator('[data-delete-goal]').click();
+  /* The count is the whole reason this confirmation says more than "this
+     cannot be undone", and it is read off the button's own handle rather
+     than out of the sentence: gripping the plural copy would let a rewording
+     of it pass this flow for free (ADR-0029). */
+  await page.waitForSelector('[data-confirm-delete-goal]');
+  const unfiles = await page.locator('[data-confirm-delete-goal]').getAttribute('data-unfiles');
+  if (unfiles !== '1') {
+    throw new Error(`the confirmation counts ${unfiles} documents to unfile, not the one filed here`);
+  }
+  await page.locator('[data-confirm-delete-goal]').click();
+  await page.waitForFunction((id) => !document.querySelector(`[data-goal="${id}"]`), goalId);
+
+  /* The paper is still there and still openable, and its link row is the
+     one that offers a target rather than the one that reports a broken
+     link (ADR-0065's "gone" state, which a restored archive can still
+     reach and a delete here must not). */
+  await page.goto(documentUrl, { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-document-link]');
+  const linkRow = await page.locator('[data-document-link]').textContent();
+  if (linkRow.includes('gone') || linkRow.includes('Get the referral reissued')) { // text-under-test: document_target_gone
+    throw new Error(`the document still claims a link to the deleted goal: ${linkRow}`);
+  }
+  if (!(await page.locator('#document-title').inputValue()).includes('Referral, reissued')) {
+    throw new Error('the document did not survive its goal being deleted');
+  }
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+
+  /* Neither control on a built-in goal, ever (ADR-0068). Asserted against a
+     sheet that is provably open - `[data-goal-sheet-status]` is the handle
+     that says so - since an absence checked against a screen that never
+     rendered proves nothing. */
+  await page.goto(BASE + '/transition/roadmap', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-open-goal="pl-medical-keep-opinions"]').click();
+  await page.waitForSelector('[data-goal-sheet-status="pl-medical-keep-opinions"]');
+  if (await page.locator('[data-save-goal]').count()) throw new Error('a built-in goal offers a way to reword it');
+  if (await page.locator('[data-delete-goal]').count()) throw new Error('a built-in goal offers a way to delete it');
+
+  ok('a custom goal is reworded from its sheet, deleting it unfiles the paper filed against it without destroying it, and a built-in goal has neither control');
+} catch (e) { fail('a roadmap goal reworded and removed', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).

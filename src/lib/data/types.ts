@@ -1255,10 +1255,10 @@ export interface DocumentTarget {
     domain field to one column and has no join to offer; `documentTarget()`
     (documents.ts) is the combined read a caller wants instead. Both null
     until the person files this under something (ticket 56), both set
-    together (schema CHECK). Deleting a milestone or a procedure nulls them
-    (documents.ts); a regimen episode and a roadmap goal have no delete to
-    null them from (regimen.ts, provenance.ts), so a link to either cannot
-    dangle in practice today. */
+    together (schema CHECK). Deleting a milestone, a procedure or a custom
+    roadmap goal nulls them (documents.ts); a regimen episode has no delete
+    to null them from (regimen.ts) and a built-in goal has no row to delete
+    (roadmap.ts), so a link to either cannot dangle in practice today. */
 export interface JournalDocument {
   id: string;
   epochDay: number;
