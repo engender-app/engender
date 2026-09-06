@@ -27,7 +27,7 @@ import java.nio.file.Files;
 import java.security.KeyStore;
 
 /**
- * Phase 5 security ticket 02 (audit finding G-02): what a copy of the app's
+ * Audit finding G-02: what a copy of the app's
  * directory reads out of the reminder store.
  *
  * <p>Read from the file rather than through the API, in the same spirit as
