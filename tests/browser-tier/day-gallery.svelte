@@ -26,7 +26,7 @@
      tests/day-gallery.mjs drives the selectors below across the three days,
      all 8 palettes and both themes. */
   import DayRecordsView from '$lib/components/DayRecords.svelte';
-  import type { DayRecords } from '$lib/data/journal/day';
+  import { DAY_SECTION_KEYS, type DayRecords } from '$lib/data/journal/day';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -233,6 +233,15 @@
 
   const DAYS: Record<string, DayRecords> = { sparse, typical, maximal };
 
+  /* The maximal day's own claim, counted rather than left to its comment:
+     every registered section with something in it. Registering an area
+     gives the day a section, and a fixture that misses the new one quietly
+     stops being the widest day this screen can draw - which is what the
+     overflow assertions in tests/browser-tier/run.mjs rest on. Published
+     as two numbers so that runner can hold them to being equal without
+     importing the registry itself (phase 9 audit ticket 12). */
+  const coveredSections = DAY_SECTION_KEYS.filter((key) => maximal[key].length).length;
+
   let shape = $state('typical');
   let palette = $state('trans');
   let theme = $state('dark');
@@ -245,7 +254,7 @@
   let records = $derived(DAYS[shape]);
 </script>
 
-<div class="stage-controls">
+<div class="stage-controls" data-day-sections={DAY_SECTION_KEYS.length} data-day-covered={coveredSections}>
   <select aria-label="Day" bind:value={shape}>
     {#each Object.keys(DAYS) as key (key)}<option value={key}>{key}</option>{/each}
   </select>

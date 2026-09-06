@@ -520,13 +520,19 @@ await block('ticket 10 (phase 2) browser tier', 14, async () => {
   /* The fixture first, or nothing below it means anything: this journal was
      written by the pre-encryption app, so every sentinel has to be sitting
      in the clear on disk before the conversion runs. */
-  const expected = ['JPEG signature', 'entry note', 'lab analyte', 'milestone name', 'photo body', 'pin hash', 'preference name', 'reminder title'];
-  if (JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
-    ok('the pre-encryption journal really is readable on disk: all 8 sentinels found before converting');
+  /* Against the probe's own sentinel list rather than a copy written here.
+     Which kinds of protected content the fixture plants is that file's
+     decision and it has changed once already; what this has to hold is
+     that every one of them is readable in the clear before the conversion,
+     since finding none of them afterwards is what the whole block rests on.
+     The floor keeps that from passing on an empty list. */
+  const expected = r.plaintextScanExpected ?? [];
+  if (expected.length >= 8 && JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
+    ok(`the pre-encryption journal really is readable on disk: all ${expected.length} sentinels found before converting`);
   else
     fail(
       'the pre-encryption journal is readable on disk before converting',
-      `found ${JSON.stringify(r.plaintextScanFound)}`
+      `found ${JSON.stringify(r.plaintextScanFound)} of ${JSON.stringify(expected)}`
     );
 
   if (r.stateBeforeConversion === 'convert') ok('a plaintext journal in the OPFS root is recognised as one to convert');
@@ -1478,9 +1484,29 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
    and $lib, neither of which resolves under vitest.config.ts. The gallery
    fixture already mounts DayRecords.svelte against the real cascade, so
    this drives it. */
-await block('phase 5 deepening ticket 21 day composition', 8, async () => {
+await block('phase 5 deepening ticket 21 day composition', 9, async () => {
   await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
+
+  /* The maximal fixture's own claim first, because every count below rests
+     on it: it is meant to hold every registered section, and registering an
+     area adds one. Without this, an area added and not seeded would leave
+     the assertions below measuring a day that is no longer the widest one,
+     and they would keep passing while doing it. */
+  const coverage = await page.evaluate(() => {
+    const controls = document.querySelector('[data-day-sections]');
+    return {
+      sections: Number(controls?.getAttribute('data-day-sections')),
+      covered: Number(controls?.getAttribute('data-day-covered'))
+    };
+  });
+  if (coverage.sections > 0 && coverage.covered === coverage.sections)
+    ok(`the maximal day fills every registered section (${coverage.covered})`);
+  else
+    fail(
+      'the maximal day fills every registered section - seed the new area in day-gallery.svelte',
+      JSON.stringify(coverage)
+    );
 
   const shape = async (name) => {
     await page.selectOption('select[aria-label="Day"]', name);
@@ -1533,12 +1559,6 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
     ok('a day past the cap shows five rows and one way to the rest');
   else fail('a day past the cap shows five rows and one way to the rest', JSON.stringify(maximal));
 
-  /* The count on that row is what is hidden, not what exists: 24 rows, 5
-     shown, so 19 more. */
-  if (maximal.moreLabel && maximal.moreLabel.includes('19'))
-    ok('the overflow row counts what is hidden rather than what the day holds');
-  else fail('the overflow row counts what is hidden rather than what the day holds', String(maximal.moreLabel));
-
   await page.click('[data-day-more]');
   await page.waitForTimeout(320);
   const opened = await page.evaluate(() => {
@@ -1549,8 +1569,30 @@ await block('phase 5 deepening ticket 21 day composition', 8, async () => {
       keys: sheet ? [...sheet.querySelectorAll('[data-day-row]')].map((r) => r.getAttribute('data-day-row')) : []
     };
   });
-  if (opened.open && opened.rows === 24) ok('the overflow opens a sheet holding the whole list, all 24 rows');
-  else fail('the overflow opens a sheet holding the whole list, all 24 rows', JSON.stringify(opened));
+  if (opened.open && opened.rows > maximal.rows)
+    ok(`the overflow opens a sheet holding the whole list, all ${opened.rows} rows`);
+  else fail('the overflow opens a sheet holding the whole list', JSON.stringify(opened));
+
+  /* The count on that row is what is hidden, not what exists: the whole
+     list the sheet drew, less the five the card showed. Both halves are
+     read from the page and the arithmetic is the assertion, because the
+     card's label and the sheet's list are two code paths over one day - a
+     sheet that drew ten rows would leave the card's "21 more" disagreeing
+     with it and fail here.
+
+     Written out as numbers until phase 9 audit ticket 12: the day held 24
+     rows and the label said 19, and both were literals here. Registering
+     the appointment and document areas made it 26 and 21, the app was
+     right both times, and the test failed on main for weeks naming the
+     numbers it had been told rather than the ones the screen drew. */
+  const hidden = opened.rows - maximal.rows;
+  if (maximal.moreLabel && maximal.moreLabel.includes(String(hidden)))
+    ok(`the overflow row counts what is hidden rather than what the day holds (${hidden} of ${opened.rows})`);
+  else
+    fail(
+      'the overflow row counts what is hidden rather than what the day holds',
+      `${maximal.moreLabel} against ${hidden} hidden of ${opened.rows}`
+    );
 
   /* Photographs collapse and records do not, checked on the full list now
      that the card only carries the first five: three hair photos are one row,
