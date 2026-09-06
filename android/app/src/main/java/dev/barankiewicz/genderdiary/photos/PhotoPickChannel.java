@@ -56,7 +56,9 @@ import java.util.concurrent.Executors;
  * the same two the write channel needs. The app's floor is WebView 87, below
  * both (ADR-0023), so {@code window.androidPhotoPickChannel} is not always
  * there and {@code picker.ts} falls back to the plugin's own
- * {@code readPickedBase64} exactly where it does not exist.
+ * {@code readPickedChunk} exactly where it does not exist - a piece of the
+ * file per bridge call, which is how that path reaches the 25 MB ceiling
+ * without an allocation the heap can refuse (phase 9 audit ticket 14).
  */
 public final class PhotoPickChannel {
     private static final String TAG = "PhotoPickChannel";
