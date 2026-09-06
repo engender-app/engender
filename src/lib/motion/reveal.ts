@@ -188,6 +188,116 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
   };
 }
 
+/* When the screen under the panels last changed, as a `performance.now()`
+   reading. Set at module load, because that is the app opening, and then by
+   the shell on every navigation and every boot state change (+layout.svelte)
+   - the two ways one screen becomes another. */
+let arrivedAt = typeof performance === 'undefined' ? 0 : performance.now();
+
+/** Called by the shell when a screen arrives. See `collapse`. */
+export function markScreenArrival(now: number = performance.now()): void {
+  arrivedAt = now;
+}
+
+/* A screen's panels are gated on reads that answer a few dozen milliseconds
+   after it mounts, so their `{#if}`s all flip shortly *after* arrival rather
+   than during it. The window is the screen's own arrival duration: while the
+   screen is still moving, a panel appearing is part of it arriving; once it
+   has stopped, a panel appearing is a change. Measured on the demo journal,
+   Home's slowest panel lands 111-119ms after the tab is tapped, so --dur-med
+   covers it with room over. */
+function stillArriving(): boolean {
+  return performance.now() - arrivedAt < motionDuration('--dur-med');
+}
+
+/** Whether anything else in this node's parent stands on the same line.
+
+    More than half of this node's own height has to overlap, so a tile beside
+    it counts and the row above it does not. Asked of the live layout rather
+    than of a prop, which is what lets one call site cover both a pair side by
+    side and the same pair stacked below the 390px floor. */
+function sharesItsLine(node: Element): boolean {
+  const parent = node.parentElement;
+  const box = node.getBoundingClientRect();
+  if (!parent || box.height <= 0) return false;
+  for (const sibling of parent.children) {
+    if (sibling === node) continue;
+    const other = sibling.getBoundingClientRect();
+    const overlap = Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top);
+    if (overlap > box.height / 2) return true;
+  }
+  return false;
+}
+
+/**
+ * Tier 3, change within a screen: a panel giving back the space it held,
+ * along whichever axis its neighbours will take it back on.
+ *
+ * The one system phase 9 carpet ticket 04 asks for. Every live panel on Home
+ * leaves through this - a notice, a live tile, a look-back tile, the block a
+ * whole tier of tiles sits in - and the surface it sits on decides how,
+ * rather than each screen patching its own case:
+ *
+ * - **A row.** Something stands beside it, so the space is horizontal. The
+ *   panel shrinks its own width to nothing and takes the row's gap with it,
+ *   and because `.kit-tiles` is a flex row (kit.css) the tile beside it grows
+ *   into that space on every frame rather than snapping to full width the
+ *   frame this node is finally removed. That snap is the defect: a Svelte
+ *   out-transition keeps the leaving node in the DOM for its whole duration,
+ *   so `:only-child` did not apply until it was over - the yank arrived
+ *   *after* the animation looked finished.
+ * - **A column.** Nothing is beside it, so the space is vertical and this is
+ *   `disclose`, unchanged. The same pair below the 390px floor is stacked,
+ *   which is why the axis is read off the layout instead of passed in.
+ *
+ * `flex: 0 0 <width>px` rather than a grow: shrink and grow both leave the
+ * used width to be negotiated against the siblings mid-travel, and this
+ * animation is the one thing that should be deciding it. At t=1 that is the
+ * width the element already had, which is the resting-state invariant every
+ * animation here is held to.
+ *
+ * **On the way in it is silent while the screen is still arriving.** Returning
+ * to Home from the calendar remounts every panel and their reads answer a
+ * moment later, so an entrance played then is the screen assembling itself in
+ * front of you - "panels yank into place", the second of this ticket's three
+ * defects. After the screen has settled the same entrance is a change worth
+ * showing: closing one live tile promotes another out of the fold, and that
+ * one should open its own height rather than appear at full size and shove
+ * the rows below it. Leaving is never suppressed, because a panel that goes
+ * during the arrival window went because somebody dismissed it.
+ *
+ * `skip` is the same escape `disclose` documents, for the caller that can see
+ * a SvelteKit navigation and this module cannot.
+ */
+export function collapse(
+  node: Element,
+  params?: { skip?: boolean },
+  options?: { direction?: 'in' | 'out' | 'both' }
+): TransitionConfig {
+  if (isReducedMotion() || params?.skip) return { duration: 0 };
+  if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
+  if (!sharesItsLine(node)) return disclose(node, params);
+
+  const width = node.getBoundingClientRect().width;
+  const gap = parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0;
+
+  return {
+    duration: motionDuration('--dur-med'),
+    easing: EASE_OUT,
+    /* `min-width: 0` because a flex item's automatic minimum is its content,
+       and a tile whose title will not wrap would otherwise stall at that
+       width for the whole travel and lose the rest in one frame. The gap
+       leaves as a negative margin on the leading edge: whether this panel is
+       first on its line or last, the gap beside it plus its own zero width
+       comes to nothing, so the survivor lands exactly on the full width. */
+    css: (t, u) =>
+      `overflow: hidden;` +
+      `min-width: 0;` +
+      `flex: 0 0 ${t * width}px;` +
+      `margin-inline-start: ${-(u * gap)}px;`
+  };
+}
+
 /**
  * Tier 3, change within a screen: a skeleton crossfading into the content it
  * was standing in for.

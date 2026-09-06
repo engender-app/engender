@@ -134,10 +134,15 @@ describe('Home ready-letter live tile rendering and behavior', () => {
     expect(home).not.toContain('getLetters(');
   });
 
-  it('renders ready-letter tile inside TileGrid with tileSlide transition', () => {
+  /* The transition moved off Home and onto the kit (phase 9 carpet ticket
+     04): every tile in every grid leaves through `collapse`, which reads its
+     axis off the layout, rather than through a slide this screen declared on
+     the x axis whatever the layout was doing. */
+  it('renders ready-letter tile inside TileGrid, which collapses through the kit', () => {
     expect(LIVE_TILE_ORDER as readonly string[]).toContain('ready-letter');
     expect(homeMarkup).toContain('<TileGrid');
-    expect(homeMarkup).toContain('transition:tileSlide');
+    expect(homeMarkup).not.toContain('transition:tileSlide');
+    expect(read('src/lib/components/kit/Tile.svelte')).toContain('transition:collapse={panel}');
   });
 
   it('provides dismiss sheet with 24h snooze and permanent disable actions', () => {

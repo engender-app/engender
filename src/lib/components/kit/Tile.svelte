@@ -31,7 +31,9 @@
      walkthrough has been gripping since phase 4 (ADR-0029). A tile whose
      only name were its slot would have cost that suite a rename for a
      capability that never went anywhere. */
+  import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
+  import { collapse } from '$lib/motion/reveal';
 
   export type TileAction = {
     icon?: string;
@@ -80,10 +82,27 @@
     /** The caller's own attributes - a handle, an aria-describedby. */
     [attribute: string]: unknown;
   } = $props();
+
+  /* Phase 9 carpet ticket 04: a tile joins and leaves its grid through the
+     one panel primitive, so a pair standing side by side gives its space
+     back along the row and the same pair stacked below the floor gives it
+     back down the column - `collapse` reads which from the layout.
+
+     It rides the tile rather than the grid because TileGrid takes its
+     children as one snippet and cannot reach inside them, and rather than a
+     wrapper at each call site because that is the per-screen patch this
+     ticket exists to remove: Home used to declare a slide of its own, on the
+     x axis whatever the layout was doing, which at 390px collapsed the width
+     of a tile whose neighbours were giving back height.
+
+     `skip` is Notice.svelte's, for the same reason: Svelte runs an outro
+     when the *page* unmounts a tile, and a screen leaving should not spend
+     240ms folding its tiles up first. */
+  let panel = $derived({ skip: navigating.to !== null });
 </script>
 
 {#if action}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -128,7 +147,7 @@
     {/if}
   </div>
 {:else if dismiss}
-  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} {...rest}>
+  <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
@@ -149,7 +168,7 @@
     </button>
   </div>
 {:else}
-  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} {...rest}>
+  <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse={panel} {...rest}>
     <span class="kit-tile-title">{title}</span>
     {#if value}<span class="kit-tile-value">{value}</span>{/if}
     {#if note}<span class="kit-tile-note">{note}</span>{/if}
