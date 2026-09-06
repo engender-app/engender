@@ -185,6 +185,13 @@ public class PhotoPickChannelTest {
      * WebView below 105 was refused with it. The loop below is what
      * picker.ts does, written out here because an instrumented test drives
      * the WebView's own APIs rather than the app's bundle.
+     *
+     * <p><b>What this does not prove.</b> This WebView is 124, so the
+     * fallback runs here only because the test calls the plugin method
+     * directly - no WebView between 87 and 105 was involved. That is enough
+     * for the ticket because what failed at the ceiling was a heap
+     * allocation rather than a WebView API, and this device's heap refuses
+     * it the same way an older device's would.
      */
     @Test
     public void bothTransportsAtTheCeiling() throws Exception {
