@@ -81,7 +81,7 @@
     snoozeStockNotice
   } from '$lib/data/stockProjection';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { collapse } from '$lib/motion/reveal';
+  import { collapse, markSlotReplacement } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
@@ -118,6 +118,25 @@
   let tilesExpanded = $state(false);
   let tileSplit = $derived(splitHomeTiles(liveTiles.tiles));
   let shownTiles = $derived(tilesExpanded ? liveTiles.tiles : tileSplit.shown);
+  /* A dismissal the fold fills in the same tick is a swap, not a panel giving
+     its space back, and `collapse` cannot see the difference: the grid keeps
+     every slot it had, and by the time the leaving tile's transition is
+     created the promoted one is already standing in its slot. Only this list
+     knows a promotion happened, so it says so before the DOM is updated -
+     `$effect.pre`, which is what puts it ahead of the `{#each}` below.
+
+     Same length and a different membership is the whole test. Expanding the
+     fold changes the length, a tile's own reading changing leaves the keys
+     alone, and a dismissal with nothing left to promote shortens the list -
+     none of those are a swap. */
+  let shownKeys: string[] = [];
+  $effect.pre(() => {
+    const keys = shownTiles.map((tile) => tile.key);
+    if (keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
+      markSlotReplacement();
+    }
+    shownKeys = keys;
+  });
   /* What each tier is drawn as. `LIVE_TILE_TIER` says which band a kind is
      in and this says what a band looks like, which is the half that belongs
      to a screen: the same three tiers on another surface could be drawn

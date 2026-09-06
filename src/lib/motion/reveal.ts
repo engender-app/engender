@@ -210,6 +210,27 @@ function stillArriving(): boolean {
   return performance.now() - arrivedAt < motionDuration('--dur-med');
 }
 
+/* When a grid last handed a leaving panel's slot straight to another one, as
+   a `performance.now()` reading. See `collapse`. */
+let replacedAt = -Infinity;
+
+/** Called by a screen whose list is swapping one panel for another in a
+    single tick - a dismissal its fold fills at once - before the DOM is
+    updated. See `collapse`. */
+export function markSlotReplacement(now: number = performance.now()): void {
+  replacedAt = now;
+}
+
+/* The signal only has to survive the flush that renders the swap: both
+   transitions are created microseconds after the screen marks it, and a
+   couple of frames of slack covers a slow flush without ever reaching the
+   next change. A window rather than a flag because the swap has two
+   consumers - the panel leaving and the one taking its slot - and neither
+   can be told which of them goes first. */
+function replacingSlot(): boolean {
+  return performance.now() - replacedAt < 50;
+}
+
 /** Whether anything else in this node's parent stands on the same line.
 
     More than half of this node's own height has to overlap, so a tile beside
@@ -249,6 +270,18 @@ function sharesItsLine(node: Element): boolean {
  * - **A column.** Nothing is beside it, so the space is vertical and this is
  *   `disclose`, unchanged. The same pair below the 390px floor is stacked,
  *   which is why the axis is read off the layout instead of passed in.
+ * - **Neither, when the slot is not actually being given up.** Home's grid is
+ *   capped, so dismissing a tile while the fold is holding others promotes
+ *   one into the slot the same tick. Nothing is given back there and the
+ *   neighbours have nothing to do, so the panel leaving goes at once and the
+ *   one taking its place fades in where it stands. It is not a choice of
+ *   taste: by the time the leaving panel's transition is created the
+ *   replacement is already in its slot, which in a two-up row has bumped the
+ *   leaver onto a line of its own - it collapsed a full-width bar below a row
+ *   that had already snapped shut, one defect standing in for another. The
+ *   screen says so through `markSlotReplacement` because only the list knows
+ *   a promotion happened; the DOM at that point cannot tell one from a tile
+ *   that was always on the line below.
  *
  * `flex: 0 0 <width>px` rather than a grow: shrink and grow both leave the
  * used width to be negotiated against the siblings mid-travel, and this
@@ -276,6 +309,14 @@ export function collapse(
 ): TransitionConfig {
   if (isReducedMotion() || params?.skip) return { duration: 0 };
   if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
+  if (replacingSlot()) {
+    if (options?.direction !== 'in') return { duration: 0 };
+    return {
+      duration: motionDuration('--dur-med'),
+      easing: EASE_OUT,
+      css: (t) => `opacity: ${t}`
+    };
+  }
   if (!sharesItsLine(node)) return disclose(node, params);
 
   const width = node.getBoundingClientRect().width;
