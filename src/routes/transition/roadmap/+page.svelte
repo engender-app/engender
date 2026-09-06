@@ -213,7 +213,9 @@
      callback so that one caller can count its rows. One indexed read, only
      while a custom goal's sheet is open. */
   let goalDocuments = liveList((j) =>
-    selectedGoal && !selectedGoal.builtin ? j.documents.getDocumentsLinkedTo('goal', selectedGoal.key) : Promise.resolve(undefined)
+    selectedGoal && !selectedGoal.builtin
+      ? j.documents.getDocumentsLinkedTo('goal', selectedGoal.key)
+      : Promise.resolve(undefined)
   );
 
   const saveGoalText = () => {
