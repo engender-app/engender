@@ -781,7 +781,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal'],
       updateCustomGoalText: ['roadmapGoal'],
-      deleteCustomGoal: ['roadmapGoal']
+      deleteCustomGoal: ['roadmapGoal', 'document']
     },
     reads: {
       getGoalStatuses: ['roadmapCheck'],

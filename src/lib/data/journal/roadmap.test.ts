@@ -218,6 +218,52 @@ test("rewording a custom goal reaches a minted milestone's provenance, never its
   assert.equal(found?.customRoadmapGoalText, 'File the court application');
 });
 
+test('deleting a custom goal unfiles the paper filed against it and keeps the paper', async () => {
+  /* Ticket 56's link is a (kind, id) pair with no foreign key behind it
+     (documents.ts), so nothing cascades and this delete has to clear it
+     itself - the same UPDATE-before-DELETE deleteMilestone and
+     deleteProcedure run. What must not happen is the document going with
+     the goal: the paper is the person's, the filing was a note about where
+     it belonged. */
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('medical', 'Get the referral reissued');
+  const other = await journal.roadmap.addCustomGoal('medical', 'Book the follow-up');
+  const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const filed = await journal.documents.addDocument({ epochDay: 20400, title: 'Referral' }, page());
+  const elsewhere = await journal.documents.addDocument({ epochDay: 20400, title: 'Second opinion' }, page());
+  await journal.documents.setDocumentTarget(filed, { kind: 'goal', id: goal.id });
+  await journal.documents.setDocumentTarget(elsewhere, { kind: 'goal', id: other.id });
+
+  await journal.roadmap.deleteCustomGoal(goal.id);
+
+  const unfiled = (await journal.documents.getDocument(filed))!;
+  assert.equal(unfiled.title, 'Referral');
+  assert.equal(unfiled.targetKind, null);
+  assert.equal(unfiled.targetId, null);
+
+  const untouched = (await journal.documents.getDocument(elsewhere))!;
+  assert.equal(untouched.targetKind, 'goal');
+  assert.equal(untouched.targetId, other.id);
+});
+
+test('deleting a custom goal leaves a built-in goal that happens to share the delete alone', async () => {
+  /* A goal link's id is a pack-and-key string for a built-in goal and a
+     uuid for a custom one (types.ts, the duality `Milestone.roadmapGoalKey`
+     already carries), so the two live in one column and the clearing
+     UPDATE has to match on the id it was handed rather than on the kind. */
+  const { journal } = await journalWithBuiltIns();
+  const goal = await journal.roadmap.addCustomGoal('medical', 'Get the referral reissued');
+  const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const builtin = await journal.documents.addDocument({ epochDay: 20400, title: 'Opinion' }, page());
+  await journal.documents.setDocumentTarget(builtin, { kind: 'goal', id: 'pl-medical-keep-opinions' });
+
+  await journal.roadmap.deleteCustomGoal(goal.id);
+
+  const kept = (await journal.documents.getDocument(builtin))!;
+  assert.equal(kept.targetKind, 'goal');
+  assert.equal(kept.targetId, 'pl-medical-keep-opinions');
+});
+
 /* "Not my path" one grain out (phase 8 features ticket 49 item 5). Presence
    is the whole state here, unlike a goal's tri-state: a track is either
    somebody's path or it is not, and there is no track-level equivalent of
