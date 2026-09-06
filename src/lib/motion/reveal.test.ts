@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { collapse, crossfade, disclose, markScreenArrival, resize, wipe } from './reveal';
+import {
+  collapse,
+  crossfade,
+  disclose,
+  markScreenArrival,
+  markSlotReplacement,
+  resize,
+  wipe
+} from './reveal';
 
 /* Same stub the tier-2 tests use: reveal.ts reads its duration and its easing
    out of the token layer through $lib/motion/tokens, which asks
@@ -23,6 +31,9 @@ afterEach(() => {
   delete g.document;
   delete g.getComputedStyle;
   delete g.CSS;
+  /* The swap signal is a short window rather than a flag, and these tests
+     run inside it. */
+  markSlotReplacement(-Infinity);
 });
 
 const node = {} as Element;
@@ -183,6 +194,35 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.8)).toContain('opacity: 0.692');
     expect(frame(css!, 0.35)).toContain('opacity: 0');
     expect(frame(css!, 0.1)).toContain('opacity: 0');
+  });
+
+  /* A dismissal the fold fills in the same tick is a swap rather than a
+     collapse: the grid keeps every slot it had, so there is no space to give
+     back and nothing for the neighbours to do. The leaving tile goes at once
+     because by the time its transition is created the replacement is already
+     standing in its slot - which in a two-up row has bumped it onto a line of
+     its own, where anything it animated would be motion in the wrong place -
+     and the replacement fades in where it stands. */
+  it('swaps in place when the fold fills the slot in the same tick', () => {
+    stubDocument();
+    markSlotReplacement();
+    const leaving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' });
+    expect(leaving.duration).toBe(0);
+
+    markScreenArrival(performance.now() - 1000);
+    markSlotReplacement();
+    const arriving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'in' });
+    expect(arriving.duration).toBe(240);
+    expect(frame(arriving.css!, 0)).toBe('opacity: 0');
+    expect(frame(arriving.css!, 1)).toBe('opacity: 1');
+  });
+
+  /* The window is the flush that renders the swap and nothing after it: a
+     dismissal a second later is a collapse again. */
+  it('is over by the time the next change comes', () => {
+    stubDocument();
+    markSlotReplacement(performance.now() - 400);
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(240);
   });
 
   it('collapses its height instead when nothing shares its line', () => {
