@@ -14,7 +14,7 @@
      grid built for two photographs; two date fields squeezed into half of a
      390px screen is not the same thing, and the two screens have nothing
      else in common. */
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
@@ -116,7 +116,7 @@
     bMode = 'range';
     bStart = bStartParam;
     bEnd = bEndParam;
-    void goto('/compare', { replaceState: true, noScroll: true, keepFocus: true });
+    void replaceRoute('/compare', { noScroll: true, keepFocus: true });
   });
 
   function periodFromRange(start: string, end: string): Period | null {

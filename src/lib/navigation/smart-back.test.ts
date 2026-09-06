@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto }));
 
-const { smartBack, recordNavigation } = await import('./smart-back.ts');
+const { smartBack, recordNavigation, replaceRoute, navigationDepth } = await import('./smart-back.ts');
 
 let back: ReturnType<typeof vi.fn>;
 
@@ -38,8 +38,25 @@ describe('smartBack', () => {
   it('falls back on the entry the app booted on - a deep link, or a reload', () => {
     smartBack('/calendar');
 
-    expect(goto).toHaveBeenCalledWith('/calendar');
+    expect(goto).toHaveBeenCalledWith('/calendar', { replaceState: true });
     expect(back).not.toHaveBeenCalled();
+  });
+
+  it('replaces on the way to the fallback, so back cannot bounce (CARPET-05)', () => {
+    /* Pushed, the fallback would leave the screen it just backed out of
+       one entry behind: deep link into a screen, press back to its parent,
+       press back there and land on the deep-linked screen again, with no
+       press that ever leaves. Replacing walks the parents up to Home
+       instead - which is what Android's gesture already does when it runs
+       out of history (platform-sync.ts). */
+    smartBack('/settings');
+    expect(goto).toHaveBeenCalledWith('/settings', { replaceState: true });
+
+    recordNavigation('goto');
+    smartBack('/more');
+
+    expect(back).not.toHaveBeenCalled();
+    expect(goto).toHaveBeenLastCalledWith('/more', { replaceState: true });
   });
 
   it('goes back through history once a navigation has happened inside the app', () => {
@@ -76,7 +93,7 @@ describe('smartBack', () => {
     recordNavigation('popstate', -1);
     smartBack('/calendar');
     expect(back).toHaveBeenCalledOnce();
-    expect(goto).toHaveBeenCalledWith('/calendar');
+    expect(goto).toHaveBeenCalledWith('/calendar', { replaceState: true });
   });
 
   it('counts a forward popstate back up', () => {
@@ -90,12 +107,61 @@ describe('smartBack', () => {
     expect(goto).not.toHaveBeenCalled();
   });
 
+  it('reports the count the Android back handler decides on too', () => {
+    expect(navigationDepth()).toBe(0);
+
+    recordNavigation('link');
+    expect(navigationDepth()).toBe(1);
+
+    recordNavigation('popstate', -1);
+    expect(navigationDepth()).toBe(0);
+  });
+
   it('never goes below the boot entry, whatever deltas arrive', () => {
     /* A popstate that walks further back than the app has counted - the
        browser's history holds entries from before the app was opened - must
        not leave a negative depth that a later navigation could climb out of
        without ever pushing anything. */
     recordNavigation('popstate', -5);
+    recordNavigation('link');
+
+    smartBack('/calendar');
+
+    expect(back).toHaveBeenCalledOnce();
+  });
+});
+
+describe('replaceRoute', () => {
+  it('replaces the current entry rather than pushing one', async () => {
+    await replaceRoute('/wrapped/week');
+
+    expect(goto).toHaveBeenCalledWith('/wrapped/week', { replaceState: true });
+  });
+
+  it('keeps the options the caller gave alongside the replacement', async () => {
+    await replaceRoute('/compare', { noScroll: true, keepFocus: true });
+
+    expect(goto).toHaveBeenCalledWith('/compare', { noScroll: true, keepFocus: true, replaceState: true });
+  });
+
+  it('does not deepen the history it replaced into', () => {
+    /* The case that motivates this: a notification opens the app straight
+       onto a screen, so the app sits on its boot entry with nothing behind
+       it, and the screen then takes a query parameter back out of the URL.
+       Counted as a push, the back control would believe there was somewhere
+       to return to and walk out of the app instead of taking its fallback. */
+    void replaceRoute('/wrapped/week');
+    recordNavigation('goto');
+
+    smartBack('/calendar');
+
+    expect(goto).toHaveBeenCalledWith('/calendar', { replaceState: true });
+    expect(back).not.toHaveBeenCalled();
+  });
+
+  it('spends the mark on one navigation, not on the next one too', () => {
+    void replaceRoute('/wrapped/week');
+    recordNavigation('goto');
     recordNavigation('link');
 
     smartBack('/calendar');

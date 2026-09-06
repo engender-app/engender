@@ -21,7 +21,6 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { isLetterSealed, markLetterRead } from '$lib/data/letterStatus';
-  import { smartBack } from '$lib/navigation/smart-back';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -41,7 +40,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.letters_title()} screen="letters" back={() => smartBack('/transition/letters')} />
+  <ScreenHeader title={m.letters_title()} screen="letters" back="/transition/letters" />
 
   {#if letterQuery.loading}
     <Skeleton variant="card" count={1} />
