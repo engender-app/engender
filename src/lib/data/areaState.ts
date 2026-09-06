@@ -50,7 +50,7 @@ import type { ArchiveSectionName } from './journal/archiveSections';
 
 /** One area's state. Absent from `AreaStates` is the resting state - not
     hidden, not finished - so nothing has to write a row to say nothing. */
-export interface AreaState {
+interface AreaState {
   hidden: boolean;
   /** The day the person says this stream ended, or null while it has not. */
   finishedEpochDay: number | null;

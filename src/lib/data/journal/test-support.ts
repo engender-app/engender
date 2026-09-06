@@ -19,7 +19,7 @@ export async function journalWithBuiltIns(): Promise<{
   return { journal, db };
 }
 
-export interface DriverRoundTrips {
+interface DriverRoundTrips {
   query: number;
   run: number;
 }

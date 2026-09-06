@@ -1,6 +1,6 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
-export interface AndroidPhotosBridge {
+interface AndroidPhotosBridge {
   pickImages(): Promise<{ images: string[] }>;
   captureImage(): Promise<{ image: string | null }>;
   pickDocument(): Promise<{ bytes: string | null }>;

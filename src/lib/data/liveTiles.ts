@@ -48,7 +48,7 @@ import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import type { LetterSeal } from './journal/letters';
 
-export interface ActiveTryoutTileResult {
+interface ActiveTryoutTileResult {
   tryout: Tryout;
   daysElapsed: number;
 }
@@ -80,7 +80,7 @@ export function shouldShowActiveTryoutTile(params: {
   return null;
 }
 
-export interface PatchScheduleTileResult {
+interface PatchScheduleTileResult {
   episode: RegimenEpisode;
   schedule: DoseSchedule;
   doseAmount: string;
@@ -151,7 +151,7 @@ export function shouldShowPatchScheduleTile(params: {
   return null;
 }
 
-export interface VoiceBenchmarkNudgeResult {
+interface VoiceBenchmarkNudgeResult {
   daysElapsed: number;
 }
 
@@ -185,7 +185,7 @@ export function shouldShowVoiceBenchmarkNudge(params: {
   return null;
 }
 
-export interface PauseActiveBannerResult {
+interface PauseActiveBannerResult {
   pause: JournalingPause;
   resumeEpochDay: number | null;
 }
@@ -207,7 +207,7 @@ export function shouldShowPauseActiveBanner(params: {
   };
 }
 
-export interface HairRemovalRecoveryResult {
+interface HairRemovalRecoveryResult {
   session: HairRemovalSession;
   daysSince: number;
 }
@@ -232,7 +232,7 @@ export function shouldShowHairRemovalRecovery(params: {
   return null;
 }
 
-export interface MeasurementsNudgeResult {
+interface MeasurementsNudgeResult {
   daysSince: number;
 }
 
@@ -340,10 +340,10 @@ export const LIVE_TILE_ORDER = [
     qualifies for as long as an episode is active, which would make it a
     permanent full-width row; what says a dose is actually due today is the
     patch-schedule tile beside it. */
-export type HomeTileTier = 'today' | 'moment' | 'dormant';
+type HomeTileTier = 'today' | 'moment' | 'dormant';
 
 /** The three bands, in the order Home draws them. */
-export const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readonly HomeTileTier[];
+const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readonly HomeTileTier[];
 
 /** Which band each kind is in.
 
@@ -375,13 +375,13 @@ export const HOME_TILE_CAP = 3;
 
 type Unordered = Exclude<LiveTileKind, (typeof LIVE_TILE_ORDER)[number]>;
 type AssertNoneUnordered<Missing extends never> = Missing;
-export type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
+type EveryLiveTileOrdered = AssertNoneUnordered<Unordered>;
 
 /** Every grid kind is a kind the unprompted registry knows, which is what
     lets the preference gate below be read off the registry instead of
     restated. A literal above that is not an `UnpromptedKind` fails here. */
 type AssertKindsAreUnprompted<K extends UnpromptedKind> = K;
-export type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
+type EveryLiveTileIsUnprompted = AssertKindsAreUnprompted<LiveTileKind>;
 
 /** Which preference switches each tile off, taken from the registry that
     already declares it (`/settings/live-tiles` draws its switch from the
@@ -409,7 +409,7 @@ export const LIVE_TILE_PREF_KEY = liveTilePrefKeys(SURFACE_ROWS);
     the grid's markup does not change. `Tile.svelte`'s `TileAction.attrs` is
     a `Record<string, string>` and would refuse `true` anyway, so the split
     is the component's rather than a choice made here. */
-export type TileHandles = Record<string, true>;
+type TileHandles = Record<string, true>;
 
 /** An in-place control on a tile (ADR-0039). Structurally what
     `Tile.svelte` takes; declared here rather than imported from it because
@@ -417,7 +417,7 @@ export type TileHandles = Record<string, true>;
     step is not a convention - Home passes `action={tile.action}` straight
     into the component, so a field that drifts is a `svelte-check` error at
     that line. */
-export interface HomeTileAction {
+interface HomeTileAction {
   icon?: string;
   text?: string;
   label: string;
@@ -426,7 +426,7 @@ export interface HomeTileAction {
   attrs?: Record<string, string>;
 }
 
-export interface HomeTileDismiss {
+interface HomeTileDismiss {
   label: string;
   onclick: (e: MouseEvent) => void;
   attrs?: Record<string, string>;

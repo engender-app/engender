@@ -208,7 +208,7 @@ export function pitchAt(
   return frameF0(samples, from, windowLength, minTau, maxTau, sampleRate, difference, normalized);
 }
 
-export interface FrameGeometry {
+interface FrameGeometry {
   windowLength: number;
   maxTau: number;
   minTau: number;

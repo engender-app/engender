@@ -33,7 +33,7 @@ import { assertChanged, mintUuid, now } from './support';
 import type { RemindersArea } from './reminders';
 import { wearAutoSource } from '../autoSource';
 
-export interface WearSessionInput {
+interface WearSessionInput {
   id?: string;
   /** Required on every write, not just a create (ticket 50): every caller
       that updates a session is holding the row it read, so asking for the

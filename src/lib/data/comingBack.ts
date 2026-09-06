@@ -172,7 +172,7 @@ export function waitingItemKey(item: WaitingItem): string {
 /** Everything `whatIsWaiting` reads. Rows arrive already fetched, the way
     every `shouldShow*` predicate takes them, and each one is narrowed to
     the fields the selection actually uses. */
-export interface ComingBackInput {
+interface ComingBackInput {
   todayEpochDay: number;
   /** The gap being reported, from `returnGap` below - the day of the last
       write before it.

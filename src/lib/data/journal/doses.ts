@@ -72,14 +72,14 @@ export type DoseEventInput =
   | (DoseInputFields & { route: 'im' | 'sc'; injectionSite: InjectionSiteKey; vehicle: InjectionVehicle })
   | (DoseInputFields & { route: 'patch' | 'gel'; applicationSite: ApplicationSiteKey });
 
-export interface DoseScheduleInput {
+interface DoseScheduleInput {
   episodeId: string;
   recurrence: DoseScheduleRecurrence;
   dosesPerDay: number;
   doseAmounts: DoseScheduleAmount[] | null;
 }
 
-export type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
+type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
 
 /** How the dose log sits against what the schedule expected over a range,
     or why there is nothing to compare - one value for what the dose log
@@ -177,12 +177,12 @@ export interface DosesArea {
 }
 
 /** A closed day range, both ends included. */
-export interface DoseDayRange {
+interface DoseDayRange {
   fromEpochDay: number;
   toEpochDay: number;
 }
 
-export interface DrugDoseCounts {
+interface DrugDoseCounts {
   /** The `drug` column as stored. Null for a dose that named none. */
   drug: string | null;
   /** One count per range asked for, in the same order. */
@@ -213,7 +213,7 @@ const scheduledOf = (row: DoseRow): ScheduledDose | null =>
 /** Row to domain union. The nullable columns collapse into the arm the
     route names, so an oral dose comes out without a site key rather than
     with a null one - the union's whole point (types.ts). */
-export function toDoseEvent(row: DoseRow): DoseEvent {
+function toDoseEvent(row: DoseRow): DoseEvent {
   const common = {
     id: row.uuid,
     timestamp: row.timestamp,

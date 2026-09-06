@@ -103,14 +103,14 @@ function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly Re
     over: `TRAILING_WINDOW_DAYS` back from `asOfEpochDay`, or the day the
     count was recorded when that is later - there is nothing to estimate
     from before the count. */
-export function trailingWindowStart(stock: StockEntry, asOfEpochDay: number): number {
+function trailingWindowStart(stock: StockEntry, asOfEpochDay: number): number {
   return Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
 }
 
 /** The three figures a projection is made of, however they were counted.
     All three are counts of doses, never the doses themselves: a projection
     needs to know how many, not which. */
-export interface StockDoseCounts {
+interface StockDoseCounts {
   /** Doses consuming this drug's stock over `[recordedEpochDay,
       asOfEpochDay]` - taken or changed, and attributed to this drug. */
   consumed: number;
@@ -127,7 +127,7 @@ export interface StockDoseCounts {
     consumed nothing, a run-out day at `asOfEpochDay` once the count is
     already outrun - lives here, so the two ways of arriving at the counts
     cannot drift apart. */
-export function projectStockFromCounts(
+function projectStockFromCounts(
   stock: StockEntry,
   counts: StockDoseCounts,
   asOfEpochDay: number
@@ -275,8 +275,8 @@ export function projectStock(
 
 /** Threshold in days below which a medication stock triggers a low-stock notice. */
 export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
-export const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
-export const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
+const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;
@@ -354,7 +354,7 @@ export function isStockDepletingSoon(
   return projection.runOutEpochDay - asOfEpochDay <= thresholdDays;
 }
 
-export interface DepletingStockInfo<T = StockEntry> {
+interface DepletingStockInfo<T = StockEntry> {
   entry: T;
   projection: StockProjection;
   daysRemaining: number;

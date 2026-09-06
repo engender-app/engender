@@ -57,7 +57,7 @@ export interface BenchmarkForDelta extends ComparableTake {
   f2Hz: number | null;
 }
 
-export interface AcousticDelta {
+interface AcousticDelta {
   f0DeltaHz: number;
   /** 12 * log2(ratio) - equal-tempered semitones, the same scale
       audio/pitch.ts's noteName is built on. Doubling the frequency is

@@ -62,7 +62,7 @@ const WINDOW_DAYS: Partial<Record<WrappedRangeChoice, number>> = {
   d90: 90
 };
 
-export interface WrappedRange {
+interface WrappedRange {
   /** Both ends inclusive, the way the recap seam takes a range. */
   start: number;
   end: number;
@@ -97,7 +97,7 @@ export function wrappedRangeCadence(choice: WrappedRangeChoice): WrappedCadence 
     ADR-0010). Fetched by the caller, the same way `custom`'s two dates
     arrive already read off the form - this stays a pure function of its
     arguments. */
-export interface WrappedEraContext {
+interface WrappedEraContext {
   eraId: string;
   eras: readonly EraSpan[];
   bounds: JournalBounds | null;
@@ -140,7 +140,7 @@ export function resolveWrappedRange(
   return { start: range.start, end: range.end };
 }
 
-export interface WrappedRangeParams {
+interface WrappedRangeParams {
   choice: WrappedRangeChoice;
   /** Date-input values, kept as the strings the two `<input type="date">`
       fields bind to rather than as epoch days: an empty field is a state the

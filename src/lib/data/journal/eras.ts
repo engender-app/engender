@@ -18,7 +18,7 @@ import type { Era } from '../types';
 import { assertEraFits, type JournalBounds } from '../eras';
 import { assertChanged, mintUuid, now } from './support';
 
-export type EraInput = Omit<Era, 'id'> & { id?: string };
+type EraInput = Omit<Era, 'id'> & { id?: string };
 
 export interface ErasArea {
   /** Every era in timeline order, the one with no start first. */

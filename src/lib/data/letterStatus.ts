@@ -19,9 +19,9 @@ import { isSealedUntil } from './sealedUntil';
 import type { LetterSeal } from './journal/letters';
 import type { Letter } from './types';
 
-export const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
-export const READ_LETTERS_STORAGE_KEY = 'gender-diary-read-letter-ids';
-export const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
+const READ_LETTERS_STORAGE_KEY = 'gender-diary-read-letter-ids';
+const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;

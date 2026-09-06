@@ -2,7 +2,7 @@ import type { RecognizeResult } from 'tesseract.js';
 import { ON_DEMAND_PREFIX } from '../../pwa/shell-assets';
 import { CACHE_ON_DEMAND } from '../../pwa/sw-messages';
 
-export interface LabOcrEngine {
+interface LabOcrEngine {
   recognize(image: Uint8Array): Promise<RecognizeResult>;
 }
 

@@ -43,7 +43,7 @@ export const THUMB_QUALITY = 0.7;
     person who picked it. */
 /** As with UnsupportedArchiveKind: the screen words its message from this,
     while the message itself is the English diagnostic for the console. */
-export type UnsupportedImageKind = 'heic' | 'unreadable';
+type UnsupportedImageKind = 'heic' | 'unreadable';
 
 export class UnsupportedImageError extends Error {
   readonly kind: UnsupportedImageKind;

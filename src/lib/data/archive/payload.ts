@@ -165,7 +165,7 @@ export interface ArchiveAffirmation {
     Written out here rather than aliased to BodyRegionFeeling for this
     file's standing reason - a rename in the app must not silently change
     what a backup looks like. */
-export interface ArchiveBodyRegionFeeling {
+interface ArchiveBodyRegionFeeling {
   dysphoria: number | null;
   euphoria: number | null;
 }
@@ -212,7 +212,7 @@ export interface ArchiveMilestone {
    collections without one - no release has shipped, so no archive in
    existence predates either. A real v1 ladder step, filling in both tickets'
    additions, is worth its own ticket rather than half of one here. */
-export interface ArchiveLabResult {
+interface ArchiveLabResult {
   id: string;
   epochDay: number;
   analyte: string;
@@ -250,7 +250,7 @@ export interface ArchiveMeasurementType {
   hidden: boolean;
 }
 
-export interface ArchiveSizeRecord {
+interface ArchiveSizeRecord {
   id: string;
   epochDay: number;
   /** Loosened from GarmentCategoryKey, the way ArchiveMeasurement loosens
@@ -269,7 +269,7 @@ export interface ArchiveSizeRecord {
     (FlatColumn has no transform for a column that is not a scalar
     already), and the stage sequence is scalar to both. Never the
     expansion: that stays derived and never travels (ADR-0010). */
-export interface ArchiveTaper {
+interface ArchiveTaper {
   id: string;
   surgeryEpochDay: number;
   startEpochDay: number;
@@ -278,32 +278,32 @@ export interface ArchiveTaper {
 
 /** One dilation session actually done (ticket 12). Nothing but the day and
     whatever the person chose to note. */
-export interface ArchiveTaperSession {
+interface ArchiveTaperSession {
   id: string;
   epochDay: number;
   note: string;
 }
 
-export interface ArchiveTallyEvent {
+interface ArchiveTallyEvent {
   id: string;
   epochDay: number;
   kind: string;
 }
 
-export interface ArchiveSideEffect {
+interface ArchiveSideEffect {
   id: string;
   name: string;
   severity: number | null;
   epochDay: number;
 }
 
-export interface ArchiveCycleEvent {
+interface ArchiveCycleEvent {
   id: string;
   kind: string;
   epochDay: number;
 }
 
-export interface ArchiveJournalingPause {
+interface ArchiveJournalingPause {
   id: string;
   startEpochDay: number;
   endEpochDay: number | null;
@@ -312,7 +312,7 @@ export interface ArchiveJournalingPause {
 /** A time-capsule letter (phase 4 ticket 19), sealed until `unlockEpochDay`
     - never stored as a `sealed` flag, the same reasoning ArchiveMilestone
     carries no `kind`. */
-export interface ArchiveLetter {
+interface ArchiveLetter {
   id: string;
   epochDay: number;
   text: string;
@@ -323,7 +323,7 @@ export interface ArchiveLetter {
     `epochDay` the same way a letter is sealed until its own unlock day -
     never stored as a `sealed` flag, and here not even as the unlock day
     itself, which types.ts's own comment gives the ADR-0010 reason for. */
-export interface ArchiveVoicePracticeTake {
+interface ArchiveVoicePracticeTake {
   id: string;
   epochDay: number;
   minHz: number;
@@ -336,7 +336,7 @@ export interface ArchiveVoicePracticeTake {
     `tagIds`/`moods` travel comma-joined, the same as the row is stored -
     an archive descriptor has no array column either, and the split back
     into a list is savedQuestions.ts's job on the way out of a restore too. */
-export interface ArchiveSavedQuestion {
+interface ArchiveSavedQuestion {
   id: string;
   name: string;
   queryText: string;
@@ -356,7 +356,7 @@ export interface ArchiveSavedQuestion {
     `procedureId` already carries. The live-schema `Revisit` type (types.ts)
     resolves this back to the app-facing numeric entry id; that resolution
     is revisits.ts's job, not this wire shape's. */
-export interface ArchiveRevisit {
+interface ArchiveRevisit {
   id: string;
   entryId: string;
   entryEpochDay: number;
@@ -381,7 +381,7 @@ export interface ArchiveRoadmapCheck {
     because a track is the app's own structure rather than a pack's content.
     Presence is the whole of the state, the way an ArchiveRoadmapCheck's own
     absence means unchecked, so there is nothing here but the name. */
-export interface ArchiveRoadmapTrack {
+interface ArchiveRoadmapTrack {
   track: string;
 }
 
@@ -389,7 +389,7 @@ export interface ArchiveRoadmapTrack {
     uuid like any other user-owned row - unlike ArchiveRoadmapCheck, it
     carries data of its own (a track and its text) rather than naming
     bundled content, so it travels whether or not it is checked. */
-export interface ArchiveRoadmapGoal {
+interface ArchiveRoadmapGoal {
   id: string;
   track: string;
   text: string;
@@ -442,7 +442,7 @@ export interface ArchiveProcedurePhoto {
     (archiveApply.ts) lifts them into `appointments` on the way in, which is
     the whole of what an older backup costs. Nothing writes this shape any
     more. */
-export interface ArchiveProcedureConsult {
+interface ArchiveProcedureConsult {
   id: string;
   epochDay: number;
 }
@@ -486,7 +486,7 @@ export interface ArchiveAppointment {
     saved (phase 4 ticket 11) - copied fields, not a reference to the
     source entry's id, the same reasoning the snapshot table itself argues
     (schema.ts). */
-export interface ArchiveCounterevidenceEntry {
+interface ArchiveCounterevidenceEntry {
   epochDay: number;
   mood: number | null;
   note: string;
@@ -506,7 +506,7 @@ export interface ArchiveCounterevidenceSnapshot {
     opened up (the schema carries no CHECK to enforce it
     on the way back in); restore.ts now validates against
     ArchivePersonalEffectType rows carried in the same journal instead. */
-export interface ArchivePersonalEffect {
+interface ArchivePersonalEffect {
   id: string;
   effect: string;
   firstNoticedEpochDay: number;
@@ -537,7 +537,7 @@ export interface ArchivePersonalEffectType {
     Norwood-Hamilton stagings and nothing else, since that was the only
     vocabulary there was, and applyHairStages reads a missing `scale` as
     exactly that rather than dropping the row. */
-export interface ArchiveHairStage {
+interface ArchiveHairStage {
   id: string;
   epochDay: number;
   scale?: string;
@@ -598,7 +598,7 @@ export interface ArchiveReminder {
   autoSource: string | null;
 }
 
-export interface ArchiveRegimenEpisode {
+interface ArchiveRegimenEpisode {
   id: string;
   drug: string;
   ester: string | null;
@@ -625,7 +625,7 @@ export interface ArchiveRegimenEpisode {
    the dose area's job either way (doses.ts). No episode id: a dose's
    regimen episode is resolved from its timestamp on whatever device reads
    it, so carrying one would carry an answer instead of the question. */
-export interface ArchiveDoseEvent {
+interface ArchiveDoseEvent {
   id: string;
   timestamp: number;
   route: string;
@@ -733,7 +733,7 @@ export interface ArchiveMarginNote {
 /** A word the person has told the words screen to stop counting (phase 8
     features ticket 48, ADR-0003). Named by the word itself: nothing else in
     the journal resolves an id against it. */
-export interface ArchiveWordIgnore {
+interface ArchiveWordIgnore {
   word: string;
 }
 
@@ -745,7 +745,7 @@ export interface ArchiveWordIgnore {
 
     ADR-0065's optional link to a goal, a milestone, a procedure or an
     episode is ticket 56's and is not on the wire yet. */
-export interface ArchiveDocument {
+interface ArchiveDocument {
   id: string;
   epochDay: number;
   title: string;
@@ -787,7 +787,7 @@ export interface ArchiveMedicationStock {
     travels as an ordinary ArchiveReminder, carrying this session's own
     auto_source marker, and is matched back up by that marker on import - a
     session has nothing of its own to record about the handoff. */
-export interface ArchiveWearSession {
+interface ArchiveWearSession {
   id: string;
   kind: WearKind;
   startTimestamp: number;
@@ -816,7 +816,7 @@ export interface ArchiveImportLogRecord {
     by its pack and its goal: an area key is an archive section name, so the
     same string means the same area on every device (ADR-0002). Why it
     travels at all is the section's own declaration (archiveSections.ts). */
-export interface ArchiveAreaState {
+interface ArchiveAreaState {
   area: string;
   hidden: boolean;
   finishedEpochDay: number | null;
@@ -892,7 +892,7 @@ export interface ArchiveJournal {
     data and is never written down (ADR-0010), so an archive restored onto a
     device with a different first entry resolves "before I knew" against that
     device rather than against the one it was exported from. */
-export interface ArchiveEra {
+interface ArchiveEra {
   id: string;
   name: string;
   startEpochDay: number | null;
@@ -905,7 +905,7 @@ export interface ArchiveEra {
     device it travelled from - nothing here resolves it against
     `ArchiveEra`, so an archive can carry a mute for an era trimmed by a
     merge on the far side without either device having to reconcile that. */
-export interface ArchiveEraMute {
+interface ArchiveEraMute {
   eraUuid: string;
 }
 
@@ -913,7 +913,7 @@ export interface ArchiveEraMute {
     "Comfort list"). `position` travels explicitly rather than being
     inferred from array order, the same as any other flat area with a
     person-set order. */
-export interface ArchiveComfortItem {
+interface ArchiveComfortItem {
   id: string;
   text: string;
   position: number;
@@ -925,7 +925,7 @@ export interface ArchiveComfortItem {
     same way. `roleIndex` is an index into the active flag's roles
     (theme/roles.ts), never a colour of its own - the same reason
     ArchiveMilestone carries no rendered label. */
-export interface ArchivePresentation {
+interface ArchivePresentation {
   id: string;
   name: string;
   roleIndex: number;
@@ -957,7 +957,7 @@ export interface ArchiveEntryTemplate {
     benchmark"). Its two audio files travel in the body like a recording's,
     named by the same opaque `<uuid>.webm`; the vowel half is absent on a
     take that skipped or failed that step, and its three figures with it. */
-export interface ArchiveVoiceBenchmark {
+interface ArchiveVoiceBenchmark {
   id: string;
   epochDay: number;
   timestamp: number;

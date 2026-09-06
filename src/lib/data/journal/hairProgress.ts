@@ -26,7 +26,7 @@ import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { assertChanged, mintUuid, now } from './support';
 
-export interface HairStageInput {
+interface HairStageInput {
   id?: string;
   epochDay: number;
   /** A scale and one of its published grades, or 'other' with an empty

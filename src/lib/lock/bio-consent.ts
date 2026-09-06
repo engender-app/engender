@@ -7,9 +7,9 @@
    either component, the way android-key.ts pulls the boot gate's own
    decision out of the bridge it reads. */
 
-export type BioConsent = boolean | null;
+type BioConsent = boolean | null;
 
-export type BioGateDecision =
+type BioGateDecision =
   /** Consent given: fire the prompt, or show the key on the pad, without
       asking again. */
   | 'auto'

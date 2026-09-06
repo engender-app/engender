@@ -96,14 +96,14 @@ import type { ArchiveSectionName } from './archiveSections';
     `null` is for an area whose text belongs to no day at all: a roadmap
     goal, an affirmation, a checklist nobody dated. Those are never narrowed
     by a range and sort after everything that has a date. */
-export type SearchDate =
+type SearchDate =
   | { kind: 'epochDay'; column: string }
   | { kind: 'timestamp'; column: string }
   | null;
 
 /** What the caller asks of a search. `today` arrives rather than being read
     off a clock, for the reason every dated read here takes it (ADR-0001). */
-export interface SearchRequest {
+interface SearchRequest {
   /** What somebody typed, unfolded. */
   query: string;
   today: number;
@@ -149,7 +149,7 @@ interface DeclaredArea<Key extends string, Covers extends readonly ArchiveSectio
 
 /** One declaration with its literals erased, which is what the list holds
     and what everything below reads. */
-export type SearchArea = DeclaredArea<string, readonly ArchiveSectionName[]>;
+type SearchArea = DeclaredArea<string, readonly ArchiveSectionName[]>;
 
 /** Keeps the key and `covers` from widening at the declaration site.
 
@@ -692,7 +692,7 @@ interface HitRow extends Record<string, unknown> {
   context: string | null;
 }
 
-export interface SearchResults {
+interface SearchResults {
   hits: SearchHit[];
   /** How many hits there are in total, which is not the page's length: the
       screen states how many results a query found and shows a page of them.

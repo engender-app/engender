@@ -43,7 +43,7 @@ import { referenceBands, type BandLanguage, type PitchBand } from '../../audio/b
     figure", "Own-series figure"). Named on screen in ordinary words rather
     than drawn as a badge, which is ADR-0060's own instruction: a missing
     band that is never explained reads as an omission or a bug. */
-export type MetricTier = 'referenced' | 'ownSeries';
+type MetricTier = 'referenced' | 'ownSeries';
 
 interface VoiceMetricShape {
   key: string;
@@ -98,7 +98,7 @@ export type VoiceMetricKey = (typeof ENTRIES)[number]['key'];
     figure with no trend. */
 export type OwnSeriesMetricKey = Extract<(typeof ENTRIES)[number], { tier: 'ownSeries' }>['key'];
 
-export interface OwnSeriesMetric extends VoiceMetric {
+interface OwnSeriesMetric extends VoiceMetric {
   key: OwnSeriesMetricKey;
 }
 

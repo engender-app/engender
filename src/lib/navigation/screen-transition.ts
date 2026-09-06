@@ -13,7 +13,7 @@
 
 import { activeTabKey } from './active-tab';
 
-export type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
+type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
 
 export interface NavigationFacts {
   from: string | null;

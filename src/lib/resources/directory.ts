@@ -30,7 +30,7 @@ export type ResourceRegion = 'pl' | 'int';
 
 /** helpline is a number a person answers, support is an organisation to
     approach, info is reading. Also the order they appear in. */
-export type ResourceKind = 'helpline' | 'support' | 'info';
+type ResourceKind = 'helpline' | 'support' | 'info';
 
 interface ResourceShape {
   key: string;

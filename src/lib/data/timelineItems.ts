@@ -26,7 +26,7 @@ import type { Milestone } from './types';
     rather than re-chosen. */
 export const TIMELINE_GAP_DAYS = 420;
 
-export type TimelineItem =
+type TimelineItem =
   | { kind: 'milestone'; id: string; milestone: Milestone; future: boolean }
   | { kind: 'gap'; id: string; fromEpochDay: number; toEpochDay: number }
   | { kind: 'today'; id: string };

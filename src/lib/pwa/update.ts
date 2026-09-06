@@ -45,7 +45,7 @@ interface InstallingWorker {
 
 /** What only a real page can do, injected so both test tiers can stand in
     for it. */
-export interface UpdateEnvironment {
+interface UpdateEnvironment {
   /** Calls back when a worker has taken control of this page. */
   onControllerChange(listener: () => void): void;
   /** Starts the release that just took control. */

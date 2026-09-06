@@ -23,7 +23,7 @@ import { projectEveryStock, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 
-export interface StockEntryInput {
+interface StockEntryInput {
   drug: string;
   quantity: number;
   unit: string;

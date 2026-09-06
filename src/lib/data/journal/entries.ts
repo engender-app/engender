@@ -269,7 +269,7 @@ export interface EntriesArea {
   noteEntries(): Promise<WordFrequencySource[]>;
 }
 
-export interface TrashedEntry extends Entry {
+interface TrashedEntry extends Entry {
   trashedAt: number;
 }
 

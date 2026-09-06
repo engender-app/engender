@@ -17,7 +17,7 @@
    handle for a record called `confirm`. */
 const PREFIXES = ['data-confirm-delete-', 'data-delete-', 'data-save-'] as const;
 
-export type RecordHandles = {
+type RecordHandles = {
   /** The editor sheet's primary button. */
   save: string;
   /** The editor sheet's delete button, which opens the confirm sheet. */

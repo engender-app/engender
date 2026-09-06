@@ -60,12 +60,12 @@ export type CompareStretchState =
   | { status: 'noPrecedingData' }
   | { status: 'ready'; href: string };
 
-export type CompareStretchOfferedState = Exclude<CompareStretchState, { status: 'hidden' }>;
+type CompareStretchOfferedState = Exclude<CompareStretchState, { status: 'hidden' }>;
 
 /** The words a screen supplies - its own message-key prefix, already bound
     to `m`, so this file stays free of paraglide and testable under the
     Node tier (ADR-0016 draws that same line at dates.ts). */
-export interface CompareStretchNoticeCopy {
+interface CompareStretchNoticeCopy {
   title: () => string;
   openHint: () => string;
   tooShort: () => string;
@@ -73,7 +73,7 @@ export interface CompareStretchNoticeCopy {
   action: () => string;
 }
 
-export interface CompareStretchNoticeProps {
+interface CompareStretchNoticeProps {
   title: string;
   text: string | undefined;
   action: { label: string; href: string } | undefined;

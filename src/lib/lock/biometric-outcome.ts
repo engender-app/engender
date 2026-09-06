@@ -34,7 +34,7 @@ export type BiometricOutcome = (typeof BIOMETRIC_OUTCOMES)[number];
 
 /** What the screen offers next. Never empty: the ticket's third box is that
     no failure leaves someone with nothing to do. */
-export type WayForward =
+type WayForward =
   /** Nothing to offer - they are in. */
   | 'none'
   /** Ask again; the sensor is there and willing. */

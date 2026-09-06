@@ -1,6 +1,6 @@
 /* Quiet toast confirmations, rendered by Toasts.svelte in the layout. */
 
-export interface ToastItem {
+interface ToastItem {
   id: number;
   message: string;
   actionLabel?: string;

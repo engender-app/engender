@@ -71,7 +71,7 @@ export const OWN_SPREAD_MIN_READINGS = 8;
     Tukey's own constant, kept rather than tuned: a number picked to make a
     particular journal look right is a fixed threshold wearing a multiplier's
     clothes. */
-export const OWN_SPREAD_FENCE_IQRS = 1.5;
+const OWN_SPREAD_FENCE_IQRS = 1.5;
 
 /** The p-th percentile of an already-sorted sample, interpolating between
     the two readings it falls between (the ordinary definition, the one a

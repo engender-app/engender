@@ -130,7 +130,7 @@ export type DaySectionKey = keyof DayRecords;
     built, so a section reads exactly what its own screen does. One type
     rather than seventeen parameters, because every section is handed all of
     them and the section that registers next will want an eighteenth. */
-export interface DayAreas {
+interface DayAreas {
   entries: EntriesArea;
   milestones: MilestonesArea;
   doses: DosesArea;
@@ -154,7 +154,7 @@ export interface DayAreas {
 }
 
 /** What every section's read is given: the areas, and the day to read. */
-export interface DayReading extends DayAreas {
+interface DayReading extends DayAreas {
   epochDay: number;
 }
 

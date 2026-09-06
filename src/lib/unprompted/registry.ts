@@ -100,7 +100,7 @@ export type UnpromptedKind =
     (retrospective-notifications-scheduler.ts); `retrospective` covers both
     here, since what varies between them is the channel's display name, not
     its category. `exportFailure` is AutoExportPlugin's own. */
-export type NotificationChannel = 'reminders' | 'checkIn' | 'retrospective' | 'exportFailure';
+type NotificationChannel = 'reminders' | 'checkIn' | 'retrospective' | 'exportFailure';
 
 export interface UnpromptedRow {
   /** Stable handle for the walkthrough (ADR-0029) - never the title, which
@@ -394,7 +394,7 @@ export function unpromptedQuiet(kind: UnpromptedKind, states: AreaStates, todayE
     `row.notify!` on every line, which is a non-null assertion standing in
     for a filter that already ran. */
 export type SurfaceRow = UnpromptedRow & { surface: NonNullable<UnpromptedRow['surface']> };
-export type NotificationRow = UnpromptedRow & { notify: NonNullable<UnpromptedRow['notify']> };
+type NotificationRow = UnpromptedRow & { notify: NonNullable<UnpromptedRow['notify']> };
 
 /** The surfaces view's rows, in registry order. */
 export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(

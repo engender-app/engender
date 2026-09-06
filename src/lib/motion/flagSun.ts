@@ -9,7 +9,7 @@
     the size of seven-stripe agender. */
 export const SUN_OUTER = 350;
 
-export interface SunRing {
+interface SunRing {
   /** Diameter in px. */
   diameter: number;
   color: string;

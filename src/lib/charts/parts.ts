@@ -19,7 +19,7 @@ export interface Part {
   amount: number;
 }
 
-export interface Slice extends Part {
+interface Slice extends Part {
   /** Percentage of the whole, 0-100. */
   share: number;
   /** True for the one slice standing in for everything the cap dropped. */

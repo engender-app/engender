@@ -27,7 +27,7 @@ export function seriesAverage(points: DayAverage[]): number | null {
   return points.reduce((sum, point) => sum + point.value, 0) / points.length;
 }
 
-export interface MetricStanding {
+interface MetricStanding {
   key: string;
   /** The period's average, in the metric's own units, or null where the
       metric carried nothing. */
@@ -68,7 +68,7 @@ export function metricStandings(
   });
 }
 
-export interface MoodDay {
+interface MoodDay {
   /** 1 to 5 on the mood ramp (ADR-0025). */
   step: number;
   count: number;
