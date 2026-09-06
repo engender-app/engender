@@ -39,6 +39,14 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('ep.endReason');
   });
 
+  /* Ticket 67: restores the record-linking ticket 09's rewrite dropped when
+     the flat, static rows became a printed table. */
+  it('links every regimen and dose row back to its own record', () => {
+    expect(dossierComponent).toContain('href={`/settings/regimen#${ep.id}`}');
+    expect(dossierComponent).toContain('href={`/doses#${dose.id}`}');
+    expect(dossierComponent).toContain('class="dossier-row-link"');
+  });
+
   it('renders cumulative exposure section', () => {
     expect(dossierComponent).toContain('{#if dossier.exposure}');
     expect(dossierComponent).toContain('data-dossier-section="exposure"');
@@ -93,5 +101,11 @@ describe('clinician-print.css contract', () => {
   it('enforces high-contrast monochrome styles in print mode', () => {
     expect(printCss).toContain('color: #000000');
     expect(printCss).toContain('background: #ffffff');
+  });
+
+  it('drops the row-link affordance in print, without removing the link itself', () => {
+    expect(printCss).toContain('.dossier-row-link');
+    const printBlock = printCss.slice(printCss.indexOf('@media print'));
+    expect(printBlock).toMatch(/\.dossier-row-link\s*{[^}]*text-decoration:\s*none/);
   });
 });

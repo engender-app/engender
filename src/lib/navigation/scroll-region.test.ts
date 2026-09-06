@@ -1,10 +1,12 @@
 /* The batch half of scroll-region only. The scroll half reads and writes a
    real element and belongs to the browser tier; these two functions hold a
    map and touch no document, which is the whole reason they are testable
-   here (phase 8 features ticket 66). */
+   here (phase 8 features ticket 66). `hashRowId` joins them for the same
+   reason (ticket 67): called with an explicit hash, it touches no `location`
+   either. */
 import { describe, expect, it } from 'vitest';
 
-import { rememberBatches, restoredBatches } from './scroll-region';
+import { hashRowId, rememberBatches, restoredBatches } from './scroll-region';
 
 describe('batches remembered per screen', () => {
   it('starts a screen nobody has grown at one batch', () => {
@@ -42,5 +44,19 @@ describe('batches remembered per screen', () => {
   it('never hands back less than one batch', () => {
     rememberBatches('/odd', 'log', 0);
     expect(restoredBatches('/odd', 'log')).toBe(1);
+  });
+});
+
+describe('hashRowId', () => {
+  it('is null for no hash at all', () => {
+    expect(hashRowId('')).toBeNull();
+  });
+
+  it('decodes the id a hash names', () => {
+    expect(hashRowId('#abc-123')).toBe('abc-123');
+  });
+
+  it('decodes a percent-encoded id the same way getElementById would need it', () => {
+    expect(hashRowId('#a%20b')).toBe('a b');
   });
 });
