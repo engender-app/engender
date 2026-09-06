@@ -37,14 +37,15 @@
   import { m } from '$lib/paraglide/messages';
   import { rememberBatches, restoredBatches } from '$lib/navigation/scroll-region';
   import ListCard from './ListCard.svelte';
-  import { nextCount, remainingCount, shownCount } from './batchedList';
+  import { batchesFor, nextCount, remainingCount, shownCount } from './batchedList';
   import type { Role } from '$lib/theme/roles';
 
   let {
     items,
     key,
     role,
-    rows
+    rows,
+    focusIndex = null
   }: {
     /** Every row the screen has, already read and already ordered. Nothing
         here asks the journal for anything: what is paged is the DOM. */
@@ -57,6 +58,15 @@
     role?: Role;
     /** The screen's rows, rendered over the slice that is showing. */
     rows: Snippet<[T[]]>;
+    /** The index in `items` a deep link named, if the screen found one
+        (phase 8 features ticket 67) - the screen's own question, since it
+        already knows which row an id resolves to in its own ordered array.
+        Expands the mounting render to include it in one step, over
+        `restoredBatches` rather than replacing it: whichever asks for more
+        wins. Never fed back into `rememberBatches` - a link landing on batch
+        five must not leave the list on batch five after the person leaves
+        and comes back with no link in hand. */
+    focusIndex?: number | null;
   } = $props();
 
   /* Read once rather than tracked. This component's whole life is one visit
@@ -65,9 +75,11 @@
   const path = page.url.pathname;
 
   /* The initial value is the point: what this list mounted at is what it
-     was left at, and a later `key` would be a different list. */
+     was left at, and a later `key` would be a different list - and a deep
+     link past that count is rendered in one step rather than one batch at a
+     time. */
   // svelte-ignore state_referenced_locally
-  let batches = $state(restoredBatches(path, key));
+  let batches = $state(Math.max(restoredBatches(path, key), focusIndex !== null ? batchesFor(focusIndex) : 1));
   let shown = $derived(items.slice(0, shownCount(batches, items.length)));
   let remaining = $derived(remainingCount(batches, items.length));
 

@@ -1937,7 +1937,7 @@ await block('phase 8 audit ticket 25 entry editor', 4, async () => {
 });
 
 // --- Phase 8 features ticket 66: a long list renders a batch at a time ----
-await block('phase 8 features ticket 66 batched list', 6, async () => {
+await block('phase 8 features ticket 66 batched list', 8, async () => {
   const r = await load('/batched-list.html', 'batched-list');
   if (r.error) throw new Error(r.error);
 
@@ -1963,6 +1963,15 @@ await block('phase 8 features ticket 66 batched list', 6, async () => {
   if (r.exhaustedCount === r.total && r.controlGoneWhenExhausted)
     ok('the list runs out at its own length and the control goes with it');
   else fail('the list exhausts and drops its control', JSON.stringify(r));
+
+  /* Ticket 67: a deep link's row (index 47, the second batch of thirty)
+     renders in one step, not by growing a batch at a time. */
+  eq('a deep link past the first batch renders exactly enough batches to include the row', r.onFocusArrival, 60);
+
+  /* And leaving that expanded list and coming back with no link in hand
+     restores what was actually grown and remembered - one batch, since
+     nothing here ever pressed "more". */
+  eq('a link-expanded list is not what a later, link-free visit remembers', r.onReturnAfterFocus, 30);
 });
 
 await browser.close();

@@ -25,13 +25,14 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { crossfade, disclose } from '$lib/motion/reveal';
-  import { scrollToHash } from '$lib/navigation/scroll-region';
+  import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -42,10 +43,22 @@
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
+  /* Newest first, the same order the rows render in - and what
+     `deepLinkedEpisodeIndex` below resolves a hash's id against, since
+     BatchedList's `focusIndex` names a position in this exact array. */
+  let orderedEpisodes = $derived([...episodes].reverse());
   /* A set, not one episode (phase 5 ticket 38): more than one can be
      active at once for different drugs, and every one of them still gets
      the "current" badge below. */
   let activeIds = $derived(new Set(activeEpisodesAt(episodes, Date.now()).map((e) => e.id)));
+
+  /* The clinician summary links an episode across a hash (phase 8 features
+     ticket 67) - read once, the same "one visit to one screen" rule
+     BatchedList's own `path` follows. */
+  const deepLinkedEpisodeId = hashRowId();
+  let deepLinkedEpisodeIndex = $derived(
+    deepLinkedEpisodeId ? orderedEpisodes.findIndex((episode) => episode.id === deepLinkedEpisodeId) : -1
+  );
 
   /* The schedule and the pauses belong to an episode, so they are edited
      here beside it rather than on the dose log: the log holds events, this
@@ -278,30 +291,37 @@
   <ReadGate read={episodesQuery} variant="line" count={3}>
     {#snippet rows()}
       <div class="screen-part">
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-          {#each [...episodes].reverse() as episode (episode.id)}
-            <ListRow
-              key={episode.id}
-              data-episode={episode.id}
-              id={episode.id}
-              icon="flask"
-              title={episode.drug}
-              subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
-              chevron={false}
-              onclick={() => openEditor(episode)}
-            >
-              {#snippet trailing()}
-                <!-- Which episodes are running, at the end of the row rather
-                     than wedged into the drug's own name. A badge inside a
-                     title pushes the name it belongs to onto a second line as
-                     soon as the name is long, which every ester is. -->
-                {#if activeIds.has(episode.id)}
-                  <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
-                {/if}
-              {/snippet}
-            </ListRow>
-          {/each}
-        </ListCard>
+        <BatchedList
+          items={orderedEpisodes}
+          key="episodes"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
+          focusIndex={deepLinkedEpisodeIndex >= 0 ? deepLinkedEpisodeIndex : null}
+        >
+          {#snippet rows(shownEpisodes)}
+            {#each shownEpisodes as episode (episode.id)}
+              <ListRow
+                key={episode.id}
+                data-episode={episode.id}
+                id={episode.id}
+                icon="flask"
+                title={episode.drug}
+                subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
+                chevron={false}
+                onclick={() => openEditor(episode)}
+              >
+                {#snippet trailing()}
+                  <!-- Which episodes are running, at the end of the row rather
+                       than wedged into the drug's own name. A badge inside a
+                       title pushes the name it belongs to onto a second line as
+                       soon as the name is long, which every ester is. -->
+                  {#if activeIds.has(episode.id)}
+                    <span class="notice-warn regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
+                  {/if}
+                {/snippet}
+              </ListRow>
+            {/each}
+          {/snippet}
+        </BatchedList>
       </div>
     {/snippet}
     {#snippet empty()}
