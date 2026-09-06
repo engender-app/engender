@@ -128,6 +128,16 @@
   --dur-breathe: 7s;
   --sun-breathe-scale: 1.035;
 
+  /* One pass of the progress bar's indeterminate sweep (Progress.svelte,
+     ADR-0070). Its own token rather than a tier duration, because it is
+     the only loop in the app besides the sun and it is not tier 0's: it
+     exists only while a person-initiated operation is running and it
+     always terminates. Left out of the clamp blocks below for the same
+     reason --dur-breathe is - a 1ms infinite loop is a strobe, not
+     stillness (MO-001) - and Progress.svelte stops it with
+     `animation: none` under both reduce selectors instead. */
+  --dur-sweep: 1400ms;
+
   /* The reduced-motion contract substitutes rather than deletes, and tier
      2's substitute is a crossfade - which needs a duration the clamp below
      cannot reach, or it is an instant cut instead. Left out of both clamp

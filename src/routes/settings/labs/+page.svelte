@@ -37,6 +37,8 @@
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import Progress from '$lib/components/Progress.svelte';
+  import { createProgress } from '$lib/components/progress.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -232,6 +234,11 @@
   // $state proxy from inside its own methods. So the component owns the
   // reactive copy, and the machine notifies it on every transition.
   let ocrState = $state<OcrMachineState>({ tag: 'idle' });
+  /* The scan's own bar (phase 9 audit ticket 11, ADR-0070). The fraction
+     comes off the machine's state rather than a second callback, because
+     `recognizing` is what carries it - and the run is started and settled
+     here, in one place, rather than at each of the machine's exits. */
+  const ocrProgress = createProgress();
   const ocr = createOcrMachine(
     platformImageSource(),
     tesseractOcrRecognizer(),
@@ -240,6 +247,22 @@
       ocrState = next;
     }
   );
+
+  $effect(() => {
+    if (ocrState.tag !== 'recognizing') return;
+    // Stoppable because this state has written nothing: it reads a picked
+    // file and runs Tesseract against it. `saving`, after the review, has,
+    // and gets no stop button (ADR-0070).
+    ocrProgress.start({ onCancel: () => ocr.cancel() });
+    return () => void ocrProgress.finish();
+  });
+
+  $effect(() => {
+    /* Null until Tesseract is actually reading the page - loading its
+       language data reports its own separate 0 to 1 (ocr-engine.ts) - so
+       the bar sweeps first and then fills. */
+    if (ocrState.tag === 'recognizing' && ocrState.fraction !== null) ocrProgress.report(ocrState.fraction, 1);
+  });
 
   // After save succeeds, show a toast and return to idle.
   $effect(() => {
@@ -605,7 +628,7 @@
       </div>
     {:else if ocrState.tag === 'recognizing'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
-      <p class="muted small">{m.labs_ocr_running()}</p>
+      <Progress run={ocrProgress} label={m.labs_ocr_running()} handle="ocr" />
     {:else if ocrState.tag === 'permission-denied'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">

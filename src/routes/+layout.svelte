@@ -61,6 +61,8 @@
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import Progress from '$lib/components/Progress.svelte';
+  import { createProgress } from '$lib/components/progress.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
   import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
@@ -403,14 +405,25 @@
      boot-failure notice, and only when boot found a copy to put back. */
   let restoring = $state(false);
   let restoreFailed = $state(false);
+  /* Indeterminate, and it will stay that way (phase 9 audit ticket 11): the
+     restore is one file copy inside the SQLite worker or the native driver
+     (mc-worker.ts, android-driver.ts) with no callback out of it and no unit
+     of work anywhere on this side to count. A sweep says the honest thing -
+     still working, no idea how much longer - where a bar would have to make
+     a number up. Immediate rather than delayed, because this notice is the
+     failed boot and there is nothing else on the screen for a bar to flash
+     over. */
+  const restoreProgress = createProgress();
   async function restore() {
     restoring = true;
     restoreFailed = false;
+    restoreProgress.start({ immediate: true });
     try {
       // Reloads on success, so nothing after this runs.
       await restorePreviousJournal();
     } catch (e) {
       console.error('restoring the pre-migration copy failed', e);
+      restoreProgress.abandon();
       restoring = false;
       restoreFailed = true;
     }
@@ -546,6 +559,7 @@
             <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
               <span>{restoring ? m.boot_restore_running() : m.boot_restore_action()}</span>
             </button>
+            <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
             {#if restoreFailed}
               <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
             {/if}

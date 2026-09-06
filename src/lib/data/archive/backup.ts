@@ -24,7 +24,7 @@ import type { PreferenceValues } from '../prefs/catalogue';
 import type { ArchiveSnapshot } from '../journal/archive';
 import { ARCHIVE_FILE_EXTENSION } from './container';
 import { deliverFile, exportFileName, type Delivery } from './deliver';
-import { packArchive } from './pack';
+import { packArchive, type PackWatch } from './pack';
 import { journalCsv, journalJson, type PlainNaming } from './plain';
 import { portablePreferences } from './payload';
 
@@ -59,8 +59,8 @@ async function* onePiece(text: string): AsyncGenerator<Uint8Array> {
   yield new TextEncoder().encode(text);
 }
 
-const PRODUCERS: Record<ExportPath, (source: ExportSource) => OutgoingFile> = {
-  encrypted: (source) => ({
+const PRODUCERS: Record<ExportPath, (source: ExportSource, watch: PackWatch) => OutgoingFile> = {
+  encrypted: (source, watch) => ({
     fileName: exportFileName(source.preferences.name, ARCHIVE_FILE_EXTENSION),
     type: 'application/octet-stream',
     body: packArchive(
@@ -73,7 +73,9 @@ const PRODUCERS: Record<ExportPath, (source: ExportSource) => OutgoingFile> = {
         files: source.snapshot.files,
         readFile: source.snapshot.readFile
       },
-      source.password
+      source.password,
+      undefined,
+      watch
     )
   }),
   csv: (source) => ({
@@ -96,10 +98,16 @@ export interface ExportDeps {
       its own way of handing a file over would be an export path that
       never came through here. */
   deliver?(file: OutgoingFile): Promise<Delivery>;
+  /** How far the encrypted path has packed, and a way to stop it (phase 9
+      audit ticket 11). The plain paths ignore it: journalCsv and
+      journalJson are one string each, produced before the body is pulled,
+      so there is no unit of work to count and nothing to interrupt
+      between. Their bar runs indeterminate. */
+  watch?: PackWatch;
 }
 
 export async function runExport(path: ExportPath, source: ExportSource, deps: ExportDeps): Promise<Delivery> {
-  const delivery = await (deps.deliver ?? deliverFile)(PRODUCERS[path](source));
+  const delivery = await (deps.deliver ?? deliverFile)(PRODUCERS[path](source, deps.watch ?? {}));
   // A cancelled share sheet is not a backup. Stamping it would tell
   // someone they have a copy of their journal that does not exist.
   if (delivery !== 'cancelled') deps.recordBackup(Date.now());

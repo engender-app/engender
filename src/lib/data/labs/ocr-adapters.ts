@@ -36,8 +36,8 @@ export function platformImageSource(): OcrImageSource {
 export function tesseractOcrRecognizer(): OcrRecognizer {
   const engine = tesseractLabOcrEngine();
   return {
-    async recognize(image) {
-      const result = await engine.recognize(image);
+    async recognize(image, watch) {
+      const result = await engine.recognize(image, watch);
       return result.data.text;
     }
   };

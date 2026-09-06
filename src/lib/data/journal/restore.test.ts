@@ -15,13 +15,27 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_DIMENSIONS } from '../vocabulary/builtins.ts';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
+import { collect } from '../archive/container.ts';
+import { packArchive } from '../archive/pack.ts';
+import { portablePreferences } from '../archive/payload.ts';
+import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { discardStatements, emptyArchiveJournal } from './archiveSections.ts';
 import { builtInsOnlyDevice, countsOf, everySection, everySectionDevice } from './golden-archive-fixture.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
-import type { RestoreContents } from './restore.ts';
+import { restoreArchive, verifyArchive, type RestoreContents, type RestoreProgress } from './restore.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
+
+/* The archive parameters take about a second per derivation by design
+   (ADR-0013), and the verify test below packs and unpacks. The format does
+   not care what the parameters are - they travel in the header - so this
+   uses a cheap set, the same way pack.test.ts does. */
+const CHEAP_VERIFY_KDF = { memorySize: 256, iterations: 1, parallelism: 1, hashLength: 32 };
+
+async function* oneShot(archive: Uint8Array): AsyncGenerator<Uint8Array> {
+  yield archive;
+}
 
 async function device() {
   const db = await migratedDb();
@@ -184,6 +198,7 @@ async function exported(journal: Journal): Promise<RestoreContents> {
   const snapshot = await journal.archive.snapshot();
   return {
     journal: snapshot.journal,
+    fileCount: snapshot.files.length,
     files: (async function* () {
       for (const file of snapshot.files) yield { name: file.name, bytes: await snapshot.readFile(file.name) };
     })()
@@ -996,4 +1011,78 @@ test("the demo's clear leaves the journal where emptying it does", async () => {
   assert.ok(withPhotos > 0, 'the fixture had photo files to clear');
   assert.deepEqual(countsOf(snapshot.journal), baseline);
   assert.deepEqual(snapshot.files, [], 'the entry and milestone photo files went with their rows');
+});
+
+/* Phase 9 audit ticket 11. The two halves of a restore are separately long
+   and separately countable - photos come off the stream one at a time, and
+   the rows go in section by section inside one transaction - so the screen
+   is told which half it is in rather than being handed one number that
+   means two different things. */
+test('a restore reports its photo files and then its sections', async () => {
+  const source = await populated();
+  const target = await device();
+  const contents = await exported(source.journal);
+  const seen: RestoreProgress[] = [];
+
+  await restoreArchive(target.db, target.files, 'replace', contents, (progress) => seen.push(progress));
+
+  const files = seen.filter((p) => p.stage === 'files');
+  const rows = seen.filter((p) => p.stage === 'rows');
+  assert.ok(files.length > 0, 'the fixture has photo files to report');
+  assert.ok(rows.length > 0, 'the sections were reported');
+  assert.deepEqual(
+    seen.map((p) => p.stage),
+    [...files.map(() => 'files' as const), ...rows.map(() => 'rows' as const)],
+    'the files are all reported before the first section'
+  );
+  assert.equal(files[files.length - 1].done, files[files.length - 1].total);
+  assert.equal(rows[rows.length - 1].done, rows[rows.length - 1].total);
+  assert.equal(files[0].total, contents.fileCount);
+});
+
+test('a restore with no photos still reports its sections', async () => {
+  // Which is the Daylio path's shape, and the one that would leave a bar
+  // sitting at nothing if files were the only unit reported.
+  const target = await device();
+  const seen: RestoreProgress[] = [];
+
+  await restoreArchive(
+    target.db,
+    target.files,
+    'merge',
+    { journal: emptyArchiveJournal(), files: (async function* () {})() },
+    (progress) => seen.push(progress)
+  );
+
+  assert.deepEqual(
+    seen.filter((p) => p.stage === 'files'),
+    []
+  );
+  const rows = seen.filter((p) => p.stage === 'rows');
+  assert.ok(rows.length > 0);
+  assert.equal(rows[rows.length - 1].done, rows[rows.length - 1].total);
+});
+
+test('verifyArchive reports every file it drains', async () => {
+  const source = await populated();
+  const snapshot = await source.journal.archive.snapshot();
+  const seen: { done: number; total: number }[] = [];
+  const archive = await collect(
+    packArchive(
+      {
+        journal: snapshot.journal,
+        preferences: portablePreferences(PREFERENCE_DEFAULTS),
+        files: snapshot.files,
+        readFile: snapshot.readFile
+      },
+      'correct horse',
+      CHEAP_VERIFY_KDF
+    )
+  );
+
+  await verifyArchive(oneShot(archive), 'correct horse', (done, total) => seen.push({ done, total }));
+
+  assert.equal(seen.length, snapshot.files.length);
+  assert.equal(seen[seen.length - 1].done, snapshot.files.length);
+  assert.equal(seen[0].total, snapshot.files.length);
 });
