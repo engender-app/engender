@@ -28,10 +28,17 @@
 
    **What that cost is.** `WEB_MESSAGE_ARRAY_BUFFER` arrives in WebView 105
    and the app's floor is 87 (ADR-0023), so between the two the base64
-   fallback is the real path, with the ceiling behaviour PhotosPlugin's
-   `readPickedBase64` documents: a 25 MB pick can run out of heap there and
-   be refused. Not a regression - that was every WebView's path before this
-   ticket - but it is the half the other shape would have fixed.
+   fallback is the real path.
+
+   That range used to be where a pick at the ceiling failed outright: the
+   whole encoding was one Java String, 34 MB for a 25 MB scan, and the
+   allocation is refused on a heap that size. Phase 9 audit ticket 14 took
+   the third of the routes it weighed and bounded the fallback's peak
+   instead of moving the floor: `PhotosPlugin.readPickedChunk` hands the
+   file back a piece per bridge call and `picker.ts` loops on it, so the gap
+   is now slow rather than impassable - the cost the other shape would have
+   avoided is time on the main thread, on a path that was already the slow
+   one. Its own javadoc has why not the other two routes.
 
    `globalThis` rather than `window`, for the reason android-write-channel.ts
    gives: they are the same object in a WebView, and this keeps the module

@@ -31,6 +31,43 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
+/** The floor's transport, a piece at a time (phase 9 audit ticket 14). A
+    plugin response is one JSON string by construction, so asking for a
+    whole 25 MB scan meant native building a 34 MB String for it - one
+    allocation the heap can simply refuse, which is how a pick at the
+    ceiling used to fail on a WebView too old for the channel. Native walks
+    the file instead and says `done` on the last piece.
+
+    Each piece is decoded on its own rather than the strings joined first.
+    Joining would work - the native chunk is a multiple of three, so no
+    piece carries padding - but it would put the whole encoding back in one
+    string, which is the allocation this exists to avoid.
+
+    The pieces are still joined at the end, because every caller wants one
+    array. That copy is the peak here: the pieces and the joined array are
+    both live for it, against the base64 string, atob's intermediate binary
+    string and the array all being live at once before. */
+async function pickedBytesInChunks(token: string): Promise<Uint8Array> {
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+
+  for (;;) {
+    const { base64, done } = await androidPhotos.readPickedChunk({ token });
+    const chunk = base64ToBytes(base64);
+    chunks.push(chunk);
+    length += chunk.length;
+    if (done) break;
+  }
+
+  const bytes = new Uint8Array(length);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.length;
+  }
+  return bytes;
+}
+
 /** The bytes of one file an Android pick handed back a token for.
 
     Two transports, chosen the same way android-file-store.ts chooses one
@@ -47,8 +84,7 @@ function base64ToBytes(base64: string): Uint8Array {
 export async function androidPickedBytes(token: string): Promise<Uint8Array> {
   const viaChannel = readPickedOverChannel(token);
   if (viaChannel) return viaChannel;
-  const { base64 } = await androidPhotos.readPickedBase64({ token });
-  return base64ToBytes(base64);
+  return pickedBytesInChunks(token);
 }
 
 /** Runs an Android bridge pick, turning the native side's own too-large

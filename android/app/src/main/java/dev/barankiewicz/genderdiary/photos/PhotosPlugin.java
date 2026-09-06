@@ -11,7 +11,6 @@ import android.os.Build;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Base64;
-import android.util.Base64OutputStream;
 
 import androidx.activity.result.ActivityResult;
 
@@ -27,7 +26,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -197,39 +195,67 @@ public class PhotosPlugin extends Plugin {
         }
     }
 
+    /** How much of a picked file crosses the bridge in one call. A
+        multiple of three, so a chunk encodes without padding and the
+        file's base64 is exactly its chunks' concatenated - picker.ts
+        decodes each piece separately and does not need that, but a
+        transport whose pieces only join by luck is worth not having.
+
+        <p>768 KB is chosen from what one call is allowed to allocate, not
+        from throughput: the buffer plus the encoding plus the Java String
+        that carries it is around 3.8 MB live at the peak, against the 34 MB
+        one allocation the whole file used to ask for. At the 25 MB ceiling
+        that is 34 calls. */
+    private static final int CHUNK_BYTES = 3 * 256 * 1024;
+
     /**
      * The floor's transport for a picked file's bytes: base64 over the
      * bridge, for the WebView versions {@link PhotoPickChannel} cannot
      * register on (ADR-0023). picker.ts calls this only where
-     * {@code window.androidPhotoPickChannel} does not exist.
+     * {@code window.androidPhotoPickChannel} does not exist, and loops on
+     * it until {@code done}.
      *
-     * <p>Still streamed straight into a {@code Base64OutputStream} rather
-     * than through a {@code byte[]} first - the fallback path is the one
-     * already paying for three copies of the file, and there is no reason
-     * to make it four.
+     * <p><b>A piece per call, because a plugin response is one string by
+     * construction</b> (phase 9 audit ticket 14). Handing back a whole file
+     * meant {@code toString("US-ASCII")} materialising the entire encoding
+     * as a Java String - two bytes a character, so 34 MB for a file at the
+     * 25 MB document ceiling - and on the API 35 emulator's 192 MB growth
+     * limit that allocation is refused and the pick is refused with it. A
+     * scan really does reach the ceiling, because a document is stored
+     * exactly as it arrived (ADR-0065), so this was the ceiling failing on
+     * every WebView below 105 rather than a corner of it.
      *
-     * <p><b>It can still run out of heap at the ceiling.</b>
-     * {@code encodeBase64}'s {@code toString("US-ASCII")} materialises the
-     * whole encoding as a Java String, which is two bytes a character, so a
-     * 25 MB file asks for 34 MB in one allocation; on the API 35 emulator
-     * (192 MB growth limit) it fails, and the pick is rejected with a toast
-     * rather than filed. That is not new and not fixable here - a plugin
-     * response is one string by construction - but it is now only reachable
-     * on the WebView versions {@link PhotoPickChannel} cannot register on,
-     * where before this ticket it was every pick's path.
-     * {@code PhotoPickChannelTest} records the figures.
+     * <p><b>Why this and not the other two routes.</b> Raising the WebView
+     * floor from 87 to 105 would delete this method, and ADR-0023 has
+     * already answered that shape: a capability the floor does not cover is
+     * a bug to fix while it is cheap, not a reason to raise the floor and
+     * lose the devices in between. Having native write the picked file into
+     * the app-private directory and hand JavaScript a name would work at the
+     * floor, and loses for the reason android-pick-channel.ts's header gives
+     * at length: files at rest are encrypted per file in JavaScript
+     * (ADR-0018/ADR-0020), so a name means a picked scan sitting on disk in
+     * plaintext until the encrypt finishes and past a crash. Chunking is the
+     * one of the three that changes no version condition and no security
+     * property - it is only slower, on the path that was already the slow
+     * one.
+     *
+     * <p>{@link PickedFiles#readChunk} owns the stream between calls and
+     * every way a read ends. {@code PhotoPickChannelTest} records what this
+     * costs against the channel.
      */
     @PluginMethod
-    public void readPickedBase64(PluginCall call) {
-        PickedFiles.Source source = PickedFiles.take(call.getString("token"));
-        if (source == null) {
-            call.reject("unknown picked file");
-            return;
-        }
-        try (InputStream input = source.open()) {
-            if (input == null) throw new IllegalStateException("could not read selected file");
+    public void readPickedChunk(PluginCall call) {
+        String token = call.getString("token");
+        byte[] buffer = new byte[CHUNK_BYTES];
+        try {
+            int read = PickedFiles.readChunk(token, buffer);
+            if (read == -1) {
+                call.reject("unknown picked file");
+                return;
+            }
             JSObject result = new JSObject();
-            result.put("base64", encodeBase64(input, 8192));
+            result.put("base64", Base64.encodeToString(buffer, 0, read, Base64.NO_WRAP));
+            result.put("done", read < CHUNK_BYTES);
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -410,16 +436,6 @@ public class PhotosPlugin extends Plugin {
             sources.add(() -> context.getContentResolver().openInputStream(uri));
         }
         return PickedFiles.hold(sources);
-    }
-
-    private static String encodeBase64(InputStream input, int initialSize) throws Exception {
-        ByteArrayOutputStream output = new ByteArrayOutputStream(initialSize);
-        try (Base64OutputStream encoded = new Base64OutputStream(output, Base64.NO_WRAP)) {
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = input.read(buffer)) != -1) encoded.write(buffer, 0, read);
-        }
-        return output.toString("US-ASCII");
     }
 
     private static String message(Exception e) {

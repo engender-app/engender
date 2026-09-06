@@ -15,7 +15,7 @@ import java.util.UUID;
  *
  * <p>The point of the indirection is that the redeeming can then happen over
  * whichever transport the WebView can carry - {@link PhotoPickChannel} as a
- * structured clone, or {@code PhotosPlugin.readPickedBase64} where it cannot -
+ * structured clone, or {@code PhotosPlugin.readPickedChunk} where it cannot -
  * without the pick itself having to know which, and without the bytes being
  * read at all until something asks for them. Both of those matter for a
  * document: the ceiling is 25 MB and a scan reaches it.
