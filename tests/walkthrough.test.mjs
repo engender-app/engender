@@ -13,6 +13,7 @@
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
+import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 
 const { ok, fail, finish } = createReporter();
 
@@ -4197,15 +4198,17 @@ try {
   ok('a document is filed with a title and a day from 1994, opens on its own page, and deleting it empties the list');
 } catch (e) { fail('a place for paper', e); }
 
-/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, which
-   draws no page at all - the paper icon, its size and the export action
-   are what its own screen has instead. Type is decided by reading the
+/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way. This
+   one is a header with nothing behind it, which is the file the renderer
+   cannot read (ticket 55) - so what its screen has is the paper icon, the
+   line saying so, its size and the export, which is the honest thing to
+   offer for a file this app cannot draw. Type is decided by reading the
    bytes: this file is named .png in the chooser and is a PDF anyway. */
 try {
   await fresh('/media/documents');
   await page.waitForSelector('[data-notice="documents-empty"]');
 
-  const pdfBytes = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(2048, 0x20)]);
+  const pdfBytes = Buffer.from(makeUnreadablePdf());
   page.once('filechooser', (chooser) =>
     chooser.setFiles({ name: 'scan_0143.png', mimeType: 'image/png', buffer: pdfBytes })
   );
@@ -4217,9 +4220,9 @@ try {
   await page.waitForSelector('[data-list-row]');
 
   await page.locator('[data-list-row]').first().click();
-  await page.waitForFunction(() => document.querySelector('[data-document-size]')?.textContent?.trim());
+  await page.waitForSelector('[data-document-unreadable]');
   if (await page.locator('[data-document-page]').count()) {
-    throw new Error('a PDF document is drawing a page image');
+    throw new Error('a PDF nothing could draw is showing a page image');
   }
   const sizeText = await page.locator('[data-document-size]').textContent();
   if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
@@ -4239,8 +4242,98 @@ try {
   await page.waitForURL('**/media/documents');
   await page.waitForSelector('[data-notice="documents-empty"]');
 
-  ok('a PDF, named .png by the picker, is filed by its real bytes, shows no page, and exports unchanged');
+  ok('a PDF, named .png by the picker, is filed by its real bytes, says it cannot be drawn, and exports unchanged');
 } catch (e) { fail('a document can be a PDF', e); }
+
+/* Phase 8 features ticket 55, ADR-0065: a PDF this renderer can read.
+   Its first page is drawn at import and stored, so the screen has
+   something to show at once, and the pager turns the rest. Three pages
+   rather than two, so "next, next, back" lands somewhere it has been and
+   somewhere it has not.
+
+   The page number is read off the indicator and the pixels off the
+   canvas: a viewer that ignored the button would keep the same picture,
+   and both pages here are the same layout with different words on
+   them. */
+try {
+  await fresh('/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'opinia.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from(makePdf(['Page one', 'Page two', 'Page three']))
+    })
+  );
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#document-title');
+  await page.locator('#document-title').fill('Opinia psychiatryczna');
+  await fillDate(page, '#document-day', '2025-06-02');
+  await page.locator('[data-save-document]').click();
+  await page.waitForSelector('[data-list-row]');
+
+  /* The list is still text, deliberately (ADR-0065): the page a document
+     carries never appears in it, however drawable that page turned out. */
+  if (await page.locator('[data-list-row] img').count()) {
+    throw new Error('the documents list is drawing page images');
+  }
+
+  await page.locator('[data-list-row]').first().click();
+  // The thumbnail stored at import, which is what the screen has before a
+  // megabyte of renderer has even loaded.
+  await page.waitForSelector('[data-document-page]');
+  await page.waitForSelector('[data-document-page-canvas="drawn"]');
+
+  const pageInk = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector('[data-document-page-canvas]');
+      const context = canvas.getContext('2d');
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return dark;
+    });
+
+  const count = () => page.locator('[data-page-count]').textContent();
+  if (!/1.*3/.test(await count())) throw new Error(`the page indicator does not read as page 1 of 3: ${await count()}`);
+  const firstInk = await pageInk();
+  if (firstInk === 0) throw new Error('the first page drew nothing at all');
+
+  await page.locator('[data-page-forward]').click();
+  await page.waitForFunction(
+    (ink) => {
+      const canvas = document.querySelector('[data-document-page-canvas]');
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark += 1;
+      return dark !== ink;
+    },
+    firstInk,
+    { timeout: 15000 }
+  );
+  if (!/2.*3/.test(await count())) throw new Error(`the page indicator did not follow to page 2: ${await count()}`);
+
+  await page.locator('[data-page-back]').click();
+  await page.waitForFunction(() => /1/.test(document.querySelector('[data-page-count]')?.textContent ?? ''));
+
+  // No text layer anywhere on the screen (ADR-0065): the page is pixels,
+  // so there is nothing on it to select and nothing to read back.
+  const pageText = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-document-page-canvas]');
+    return canvas.parentElement.innerText.trim();
+  });
+  if (pageText.includes('Page one') || pageText.includes('Page two')) {
+    throw new Error(`the viewer has a text layer: ${pageText}`);
+  }
+
+  await page.locator('[data-delete-document]').click();
+  await page.locator('[data-confirm-delete-document]').click();
+  await page.waitForURL('**/media/documents');
+  await page.waitForSelector('[data-notice="documents-empty"]');
+
+  ok('a PDF draws its first page at import, turns to page 2 and back, and has no text layer on any of them');
+} catch (e) { fail('looking at a PDF', e); }
 
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).

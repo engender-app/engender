@@ -525,6 +525,18 @@ try {
       (path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.wasm')
     ),
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
+    /* The PDF renderer, both halves (phase 8 features ticket 55). Its
+       worker only reaches the shell through the emitted-client-assets
+       plugin, since Vite's worker pipeline is invisible to SvelteKit's own
+       manifest - the same reason SQLocal's worker is named above. The
+       fonts are the fourteen standard faces a document may name without
+       carrying: without them a page of an opened document draws blank,
+       and it would draw blank exactly when there is no network, which is
+       when this store matters most (ADR-0065). */
+    "the PDF renderer's worker": shell.paths.some((path) => /\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/.test(path)),
+    'every standard PDF font': readdirSync(new URL('../../static/pdf-fonts/', import.meta.url)).every((font) =>
+      shell.paths.includes(`/pdf-fonts/${font}`)
+    ),
     /* Both manifests, because either one can be the one a disguised install
        reads (ticket 25), and every icon either one names - counted off the
        files rather than written down here, so adding a purpose or a disguise

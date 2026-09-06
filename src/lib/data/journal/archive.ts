@@ -249,7 +249,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async importLog() {
-      return (await readImportLog(driver)).toReversed();
+      return (await readImportLog(driver)).reverse();
     },
 
     async previewDaylioBackupImport(file, naming) {
@@ -416,11 +416,14 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         ])),
         /* A document's own manifestNames() call rather than folded into
            `manifest()` above: every other owner there is an image and
-           `filesOf` is always right for it, but a document can be a PDF
-           with no derived thumbnail (phase 8 features ticket 53) -
-           `documentFilesOf` is what tells the two kinds apart. Without
-           this a document travels as a row with no bytes and restores
-           into a broken reference (phase 8 features ticket 52). */
+           `filesOf` is always right for it, but a document can be a PDF,
+           whose page beside it is named off the `.pdf` rather than off a
+           `.jpg` (phase 8 features tickets 53 and 55) - `documentFilesOf`
+           is what tells the two kinds apart. Without this a document
+           travels as a row with no bytes and restores into a broken
+           reference (phase 8 features ticket 52). A PDF the renderer
+           could not read names a page that was never written, and
+           manifestNames() leaves out what the store has no size for. */
         ...(await manifestNames(reading.documentFiles.flatMap((d) => documentFilesOf(d.file_path)))),
         ...(await manifestNames(reading.recordings.map((r) => r.file_path))),
         ...(await manifestNames(reading.videos.map((v) => v.file_path))),

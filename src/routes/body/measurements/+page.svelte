@@ -96,7 +96,7 @@
       ordered oldest first (ADR-0012: never converted, so this is a
       default, not a rule). */
   function lastUnit(): string {
-    return measurements.at(-1)?.unit ?? 'cm';
+    return measurements[measurements.length - 1]?.unit ?? 'cm';
   }
 
   const record = recordEditor<Measurement, { id?: string; date: string; type: string; value: string; unit: string }>({
