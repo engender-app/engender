@@ -3383,4 +3383,15 @@
   "document_too_large": "That file is too large to store. Up to 25 MB.",
   "document_picker_failed": "Couldn’t open the file picker.",
   "document_export": "Share or save",
-  "document_export_hint": "This copies the file out of the app’s encryption."}
+  "document_export_hint": "This copies the file out of the app’s encryption.",
+  "in_the_room_title": "In the room",
+  "in_the_room_row_sub": "Your questions, one at a time",
+  "in_the_room_answer_label": "What they said",
+  "in_the_room_answer_placeholder": "Optional",
+  "in_the_room_previous": "Previous",
+  "in_the_room_next": "Next",
+  "in_the_room_done_write": "Done, write it up",
+  "in_the_room_empty_title": "Nothing to ask yet",
+  "in_the_room_empty_body": "This shows your prep list one question at a time, large enough to follow while someone is talking. Add a question first.",
+  "in_the_room_empty_action": "Open the prep list",
+  "debrief_room_heading": "Your questions:"}

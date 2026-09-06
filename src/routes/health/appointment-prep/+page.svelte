@@ -213,6 +213,21 @@
     <div class="screen-part">
       <SectionHeading text={m.appointment_prep_context_heading()} />
       <ListCard role={roleAt(activeFlag.roles, 1)}>
+        <!-- Using the list, first, because the rest of this section is
+             reference and this is the doing (phase 8 features ticket 60).
+             In "For this visit" rather than in a card of its own under the
+             list, where it sat below the fold behind the paragraph about
+             the flag control. Offered any day, not only a day with an
+             appointment on it: the list is standing and unowned (ADR-0066),
+             and somebody rehearsing the night before is reading the same
+             questions. -->
+        <ListRow
+          key="in-the-room"
+          icon="bookmark"
+          title={m.in_the_room_title()}
+          subtitle={m.in_the_room_row_sub()}
+          href="/health/appointments/in-the-room"
+        />
         <!-- A way into the appointment record rather than a date picker of
              its own (ticket 58): the date shown is read off `appointment`,
              so setting or changing one now happens on the appointments
