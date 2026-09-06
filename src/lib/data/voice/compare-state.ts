@@ -11,6 +11,7 @@
 
 type CompareSide = 'left' | 'right';
 
+/* DatedAnchor stays exported only for its own test (AU-09 test-only review). */
 export interface DatedAnchor {
   id: string;
   epochDay: number;

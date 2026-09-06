@@ -18,7 +18,7 @@ import { androidPhotos } from './android-bridge';
 import { readPickedOverChannel } from './android-pick-channel';
 import { refuseAboveCeiling, refuseTooLarge } from '../documents/accept';
 
-export interface PhotoPicker {
+interface PhotoPicker {
   /** The bytes of everything the user chose, or an empty array if they
       backed out. Cancelling is an ordinary outcome, not an error. */
   pick(): Promise<Uint8Array[]>;

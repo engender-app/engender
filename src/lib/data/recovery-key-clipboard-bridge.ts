@@ -1,6 +1,6 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
-export interface SensitiveClipboardCopy {
+interface SensitiveClipboardCopy {
   /** What goes on the clipboard. Never logged: see the plugin's header and
       capacitor.config.ts's loggingBehavior. */
   value: string;
@@ -8,7 +8,7 @@ export interface SensitiveClipboardCopy {
   clearAfterMs: number;
 }
 
-export interface SensitiveClipboardBridge {
+interface SensitiveClipboardBridge {
   copy(request: SensitiveClipboardCopy): Promise<void>;
 }
 

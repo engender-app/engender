@@ -166,7 +166,7 @@ export const metricName = (key: VoiceMetricKey): string => NAME[key]();
 
 /** Which field a rendered pair is, so the screen can hang the pitch
     ranges under the one field they belong to without counting positions. */
-export type MetricField =
+type MetricField =
   | 'measures'
   | 'how'
   | 'changes'

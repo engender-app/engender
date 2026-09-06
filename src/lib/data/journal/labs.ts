@@ -13,7 +13,7 @@ import type { RegimenArea } from './regimen';
     only decides which comes first in a fresh picker - and is not
     alphabetical on purpose, so the list does not read as estradiol plus
     two afterthoughts (phase 5 ticket 37). */
-export const ANALYTE_PRESETS = ['testosterone', 'estradiol', 'prolactin'];
+const ANALYTE_PRESETS = ['testosterone', 'estradiol', 'prolactin'];
 
 /** No `timing`: the dosing context is not something a caller supplies. It
     is derived here, from the dose log as it stands when the result is
@@ -122,7 +122,7 @@ const LAB_COLUMNS = `uuid, epoch_day, analyte, value, unit, note, draw_time, pro
     reads as no context at all, not as day 0: the figure would be this
     module inventing a fact about someone's bloodwork, and a row like that
     can only arrive from a build that wrote the columns differently. */
-export function toLabTiming(row: LabRow): LabTiming | null {
+function toLabTiming(row: LabRow): LabTiming | null {
   const route = row.timing_route as DoseRoute | null;
   if (route === null) return null;
   if (route === 'im' || route === 'sc') {

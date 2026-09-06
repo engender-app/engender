@@ -23,7 +23,7 @@ export const MOOD_RANGE: MetricRange = { min: 1, max: 5 };
 
 /** How many swatches the heat-map and week strip have, not counting the
     empty one. `--heat-1` through `--heat-4` in the palette. */
-export const HEAT_LEVELS = 4;
+const HEAT_LEVELS = 4;
 
 /** Where a value sits in its own range, 0 to 1, clamped. Colour input
     only - showing this number to someone is the bug ADR-0012 exists to
@@ -58,7 +58,7 @@ export function heatLevel(value: number | null, range: MetricRange): number {
     Someone who injects daily, or who started this week, can have every
     site within a day or two of every other; without a floor the ramp would
     turn "yesterday and the day before" into its widest difference. */
-export const RECENCY_FLOOR_DAYS = 7;
+const RECENCY_FLOOR_DAYS = 7;
 
 /** The range a set of "days since last used" readings shades across: zero
     to the longest of them, or the floor above where they are closer

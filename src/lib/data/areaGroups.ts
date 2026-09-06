@@ -67,10 +67,12 @@ export const AREA_GROUPS = {
 type Grouped = (typeof AREA_GROUPS)[AreaGroupKey][number];
 type Ungrouped = Exclude<FinishableArea, Grouped>;
 type AssertNoneUngrouped<Missing extends never> = Missing;
-export type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
+type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
 
 /** `AreaGroupKey` as a value, read off `AREA_GROUPS` rather than typed out a
     second time. */
+/* AREA_GROUP_KEYS stays exported for its own test, and cross-checked in
+   AreaFinish.mounted.test.ts, hubRows.test.ts (AU-09 test-only review). */
 export const AREA_GROUP_KEYS = Object.keys(AREA_GROUPS) as readonly AreaGroupKey[];
 
 /** The day a group finished, or null while it has not.
@@ -106,6 +108,8 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
     Derived from `SUSPENDABLE_AREAS` rather than typed out a second time - the
     same reason this file's own header exists: one list, checked, instead of
     a screen and a rule quietly disagreeing about which groups these are. */
+/* SUSPENDABLE_GROUPS stays exported only for its own test (AU-09 test-only
+   review). */
 export const SUSPENDABLE_GROUPS = AREA_GROUP_KEYS.filter((key) =>
   AREA_GROUPS[key].every((area): area is SuspendableArea => (SUSPENDABLE_AREAS as readonly string[]).includes(area))
 );
@@ -202,7 +206,7 @@ export function groupLastWrite(
     asking a little early or a little late, once. */
 export const FINISH_SUGGESTION_QUIET_DAYS = 180;
 
-export interface FinishOfferInput {
+interface FinishOfferInput {
   states: AreaStates;
   /** From `journal/lastWrite.ts`, which is where the fact lives. */
   lastWrites: Partial<Record<FinishableArea, number | null>>;
@@ -223,6 +227,7 @@ export interface FinishOfferInput {
     that an area somebody said no about stays said-no-about. Re-asking is the
     failure this whole preference exists to prevent, and a group reading as
     un-declined because it grew a new section would be exactly that. */
+/* groupDeclined stays exported only for its own test (AU-09 test-only review). */
 export function groupDeclined(key: AreaGroupKey, declined: readonly string[]): boolean {
   return AREA_GROUPS[key].some((area) => declined.includes(area));
 }

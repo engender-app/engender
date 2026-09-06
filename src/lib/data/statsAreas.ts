@@ -79,13 +79,13 @@ import { hubRow, rowScreen, type HubRowKey } from './hubRows';
 import type { LastWriteKey } from './journal/lastWrite';
 
 /** The More hub's four groups, in the More hub's order. */
-export type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
+type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
 
 export const STATS_AREA_GROUPS = ['body', 'health', 'transition', 'practice'] as const satisfies readonly StatsAreaGroup[];
 
 /** A card as the screen draws it: what the panel declared, plus the identity
     it read off its hub row. */
-export interface StatsAreaPanel {
+interface StatsAreaPanel {
   key: string;
   group: StatsAreaGroup;
   covers: readonly LastWriteKey[];
@@ -196,6 +196,8 @@ export type StatsAreaKey = (typeof PANELS)[number]['key'];
 /** The panels, resolved against the hub and with their keys still literal.
     Typed `readonly StatsAreaPanel[]` they came out as `key: string`, so a
     screen comparing against a misspelled key compiled and matched nothing. */
+/* STATS_AREA_PANELS stays exported only for its own test (AU-09 test-only
+   review). */
 export const STATS_AREA_PANELS: readonly (StatsAreaPanel & { key: StatsAreaKey })[] = PANELS.map(
   (declared) => {
     if ('icon' in declared) return declared;
@@ -219,7 +221,7 @@ export const STATS_AREA_PANELS: readonly (StatsAreaPanel & { key: StatsAreaKey }
    direction of the same join. */
 type Shadowing = Extract<Rowless['key'], HubRowKey>;
 type AssertNoneShadowing<Shadowed extends never> = Shadowed;
-export type NoRowlessCardShadowsARow = AssertNoneShadowing<Shadowing>;
+type NoRowlessCardShadowsARow = AssertNoneShadowing<Shadowing>;
 
 /** Every card with no hub row behind it, and why - the full `Record` over
     whatever `PANELS` declares that the hub does not front, the shape
@@ -227,6 +229,8 @@ export type NoRowlessCardShadowsARow = AssertNoneShadowing<Shadowing>;
     them, and the positive claim the pair makes writable is the one this
     module exists for: every other stats card points at a screen the hub
     already knows about, as a compile error rather than as a grep. */
+/* CARDS_WITHOUT_A_ROW stays exported only for its own test (AU-09 test-only
+   review). */
 export const CARDS_WITHOUT_A_ROW: Record<Exclude<StatsAreaKey, HubRowKey>, string> = {
   labs: 'behind the care row, which fronts four medication surfaces at once',
   tally: 'its own tab, and never a row on the hub'
@@ -239,6 +243,8 @@ export const CARDS_WITHOUT_A_ROW: Record<Exclude<StatsAreaKey, HubRowKey>, strin
     either gives it a card or writes down why it has none. */
 type Covered = (typeof PANELS)[number]['covers'][number];
 
+/* STATS_AREA_OPT_OUTS stays exported only for its own test (AU-09 test-only
+   review). */
 export const STATS_AREA_OPT_OUTS: Record<Exclude<LastWriteKey, Covered>, string> = {
   /* The whole cross-area block above the index is the entries. A card
      sending somebody to the journal to see their entries charted, under a

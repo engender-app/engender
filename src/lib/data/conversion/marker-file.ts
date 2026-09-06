@@ -16,7 +16,7 @@
 
 import type { ConversionMarkerStore, ConversionStage } from './conversion';
 
-export const CONVERSION_MARKER_FILE = 'conversion.json';
+const CONVERSION_MARKER_FILE = 'conversion.json';
 
 const STAGES: ConversionStage[] = ['preparing', 'database', 'photos', 'retire'];
 

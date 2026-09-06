@@ -89,7 +89,7 @@ export function tagIdsMatching(raw: string, tags: Pick<Tag, 'id' | 'label'>[]): 
     Long text is clipped around the match rather than shown whole - a letter
     runs to paragraphs and a hit has one line - so `before` and `after` carry
     an ellipsis where something was cut. */
-export interface MatchWindow {
+interface MatchWindow {
   before: string;
   match: string;
   after: string;

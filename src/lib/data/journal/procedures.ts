@@ -44,12 +44,12 @@ import { todayEpochDay } from '../epochDay';
     (types.ts). */
 export const PROCEDURE_CHECKLIST_OWNER_KIND = 'procedure';
 
-export const procedureChecklistOwner = (procedureId: string): ChecklistOwner => ({
+const procedureChecklistOwner = (procedureId: string): ChecklistOwner => ({
   kind: PROCEDURE_CHECKLIST_OWNER_KIND,
   id: procedureId
 });
 
-export interface ProcedureInput {
+interface ProcedureInput {
   id?: string;
   name: string;
   /** Absent or null both mean no date set yet - a procedure record usually

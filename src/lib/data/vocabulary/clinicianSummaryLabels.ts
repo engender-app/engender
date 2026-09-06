@@ -27,7 +27,7 @@ const SECTION_TITLE: Record<ClinicianSummarySectionKey, () => string> = {
 };
 
 /** What a section prints as its heading. */
-export const clinicianSummarySectionTitle = (key: ClinicianSummarySectionKey): string => SECTION_TITLE[key]();
+const clinicianSummarySectionTitle = (key: ClinicianSummarySectionKey): string => SECTION_TITLE[key]();
 
 const DOSSIER_PART_NAME: Record<ClinicianDossierInclusionKey, () => string> = {
   demographics: m.clinician_summary_part_demographics,

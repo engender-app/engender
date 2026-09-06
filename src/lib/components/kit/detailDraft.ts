@@ -13,7 +13,7 @@
    recordEditor.ts already make here. detailDraft.svelte.ts is the reactive
    half and holds nothing but the state these decide over. */
 
-export type FillDecision =
+type FillDecision =
   /** The record for this id has not answered yet. */
   | 'wait'
   /** Build the draft from what the read answered with. */

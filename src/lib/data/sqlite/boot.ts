@@ -25,7 +25,7 @@ import type { MigrationFileOps } from './migration-runner.ts';
 import { runMigrations } from './migration-runner.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
-export interface BootDeps {
+interface BootDeps {
   createDriver: () => SqliteDriver;
   fileOps: MigrationFileOps;
   applyBootPreferences?: () => void;
@@ -40,7 +40,7 @@ export interface BootDeps {
   scheduleHousekeeping?: (run: () => void) => void;
 }
 
-export type BootResult =
+type BootResult =
   | {
       phase: 'ready';
       driver: SqliteDriver;

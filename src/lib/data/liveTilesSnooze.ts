@@ -4,8 +4,11 @@
    Allows dismissing any state-dependent live tile for a temporary duration (default 24h)
    without flipping its global kind toggle in Settings. */
 
+/* DEFAULT_SNOOZE_DURATION_MS stays exported only for its own test (AU-09
+   test-only review). */
 export const DEFAULT_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
+/* snoozeKey stays exported only for its own test (AU-09 test-only review). */
 export function snoozeKey(tileKey: string): string {
   return `gender-diary-tile-snooze-${tileKey}`;
 }
@@ -50,6 +53,7 @@ export function isTileSnoozed(key: string, now: number = Date.now(), storage?: S
 }
 
 /** Clears any active snooze for the tile. */
+/* clearSnooze stays exported only for its own test (AU-09 test-only review). */
 export function clearSnooze(key: string, storage?: Storage): void {
   const store = resolveStorage(storage);
   if (!store) return;

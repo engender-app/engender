@@ -43,6 +43,8 @@ import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import { resolveAndroidBackAction } from './back-navigation';
 
+/* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
+   review). */
 export interface PlatformSyncDeps {
   isAndroid: () => boolean;
   isReady: () => boolean;
@@ -102,6 +104,7 @@ export interface PlatformSyncDeps {
     schedule sync and the stock run-out reconciliation below - both need exactly
     this shape, and a second copy of the flag/queue dance had already crept in
     once before they shared it. */
+/* coalescing stays exported only for its own test (AU-09 test-only review). */
 export function coalescing(run: () => Promise<void>, onError: (error: unknown) => void): () => void {
   let running = false;
   let queued = false;
@@ -140,6 +143,8 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
     above: this is where "off" is made to mean off for the native side too,
     and an area that has gone quiet is off. Which area the prompt belongs to
     is the unprompted registry's answer, not this file's. */
+/* schedulableReminders stays exported only for its own test (AU-09 test-only
+   review). */
 export function schedulableReminders(
   reminders: Reminder[],
   gates: {
@@ -166,6 +171,8 @@ export function schedulableReminders(
     are computed on the Java side from the rule (ReminderPlanner), before any
     WebView exists - so what crosses the bridge is the window itself and
     QuietHours.java does the holding. */
+/* assembleReminderSyncPayload stays exported only for its own test (AU-09
+   test-only review). */
 export function assembleReminderSyncPayload(input: {
   reminders: Reminder[];
   recentEntries: Array<{ epochDay: number }>;
@@ -344,6 +351,8 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     than the two permanent `onTablesWritten` subscriptions (see above - nothing
     can tear those down). A no-op when nothing is active, so it is safe to call
     from a stale reference or twice in a row. */
+/* stopAndroidPlatformSync stays exported only for its own test (AU-09
+   test-only review). */
 export function stopAndroidPlatformSync(): void {
   stopCurrent?.();
 }

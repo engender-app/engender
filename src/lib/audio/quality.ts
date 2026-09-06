@@ -31,11 +31,11 @@ import { frameGeometry, rms, type PitchTrack } from './pitch';
 export const PEAK_CEILING = 0.98;
 /** Voice against room, in dB. Below this the formant estimate starts
     describing the room. */
-export const MIN_SNR_DB = 15;
+const MIN_SNR_DB = 15;
 /** Continuous voicing, in seconds. Continuous, not total: three seconds in
     five bursts is not a sustained vowel, and a passage read in fragments
     shorter than this was not read. */
-export const MIN_VOICED_SECONDS = 1.5;
+const MIN_VOICED_SECONDS = 1.5;
 /** Coefficient of variation of F0 across the voiced frames. Asked only of
     the sustained vowel - a read passage moves in pitch by design, which is
     why `PASSAGE_CHECKS` leaves this out rather than relaxing the number. */
@@ -66,7 +66,7 @@ export const PASSAGE_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'to
 export const VOWEL_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort', 'unsteady'];
 
 /** What the gate decides on: the measurements, without the verdict. */
-export interface QualitySignals {
+interface QualitySignals {
   /** Largest absolute sample in the take. */
   peak: number;
   /** Voiced level against the room floor. */
@@ -170,7 +170,7 @@ function makeLevels(): Levels {
     recomputed from the take. `observeSamples` is the peak's, `observeFrame`
     is everything else's - a frame's level over one hop, and the F0 the
     tracker gave it, with null meaning room. */
-export interface RunningQualitySignals {
+interface RunningQualitySignals {
   observeSamples(chunk: Float32Array): void;
   observeFrame(level: number, hz: number | null): void;
   signals(): QualitySignals;

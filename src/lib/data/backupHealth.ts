@@ -11,6 +11,8 @@
 import { epochDayFromTimestamp, todayEpochDay } from './epochDay';
 
 /** Older than this and Home says so (F21). */
+/* BACKUP_STALE_DAYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const BACKUP_STALE_DAYS = 30;
 
 /** How many local days ago the last export was, or null if there has never

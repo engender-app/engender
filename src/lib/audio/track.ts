@@ -26,6 +26,8 @@ import { median } from './series';
 /** Points per second in a stored track. Four, because the picture is the
     shape of a passage rather than its cycle-by-cycle detail, and because it
     is the coarsest rate at which a syllable is still a visible move. */
+/* PITCH_TRACK_HZ stays exported only for its own test (AU-09 test-only
+   review). */
 export const PITCH_TRACK_HZ = 4;
 
 const SECONDS_PER_POINT = 1 / PITCH_TRACK_HZ;

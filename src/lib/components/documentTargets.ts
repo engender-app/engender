@@ -13,7 +13,7 @@
 
 import type { DocumentTarget, DocumentTargetKind } from '$lib/data/types';
 
-export type TargetRow = { id: string; title: string; subtitle?: string };
+type TargetRow = { id: string; title: string; subtitle?: string };
 export type TargetSection = { kind: DocumentTargetKind; heading: string; rows: TargetRow[] };
 
 export function documentTargetHref(target: DocumentTarget): string {

@@ -43,6 +43,8 @@ import type { DoseEvent, RegimenEpisode } from './types';
     estimated from, capped at how long the current stock entry has been in
     effect when that is shorter - there is nothing to estimate from before
     the count was recorded. */
+/* TRAILING_WINDOW_DAYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const TRAILING_WINDOW_DAYS = 30;
 
 /** How many days before a projected run-out an Android prompt is dated
@@ -54,6 +56,7 @@ export const TRAILING_WINDOW_DAYS = 30;
     day the acceptance criteria describe. */
 export const RUN_OUT_LEAD_DAYS = 5;
 
+/* StockEntry stays exported only for its own test (AU-09 test-only review). */
 export interface StockEntry {
   drug: string;
   quantity: number;
@@ -103,14 +106,14 @@ function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly Re
     over: `TRAILING_WINDOW_DAYS` back from `asOfEpochDay`, or the day the
     count was recorded when that is later - there is nothing to estimate
     from before the count. */
-export function trailingWindowStart(stock: StockEntry, asOfEpochDay: number): number {
+function trailingWindowStart(stock: StockEntry, asOfEpochDay: number): number {
   return Math.max(stock.recordedEpochDay, asOfEpochDay - TRAILING_WINDOW_DAYS + 1);
 }
 
 /** The three figures a projection is made of, however they were counted.
     All three are counts of doses, never the doses themselves: a projection
     needs to know how many, not which. */
-export interface StockDoseCounts {
+interface StockDoseCounts {
   /** Doses consuming this drug's stock over `[recordedEpochDay,
       asOfEpochDay]` - taken or changed, and attributed to this drug. */
   consumed: number;
@@ -127,7 +130,7 @@ export interface StockDoseCounts {
     consumed nothing, a run-out day at `asOfEpochDay` once the count is
     already outrun - lives here, so the two ways of arriving at the counts
     cannot drift apart. */
-export function projectStockFromCounts(
+function projectStockFromCounts(
   stock: StockEntry,
   counts: StockDoseCounts,
   asOfEpochDay: number
@@ -147,6 +150,8 @@ export function projectStockFromCounts(
     the ranges asked for. Declared structurally rather than imported from
     the doses area, so this module still depends on nothing below the
     journal seam: `DosesArea.countConsumingDosesByDrug` satisfies it. */
+/* DrugDoseCounter stays exported only for its own test (AU-09 test-only
+   review). */
 export type DrugDoseCounter = (
   ranges: readonly { fromEpochDay: number; toEpochDay: number }[]
 ) => Promise<readonly { drug: string | null; countsByRange: readonly number[] }[]>;
@@ -245,6 +250,8 @@ export async function projectEveryStock(
     For a caller holding the doses already. A caller that would have to
     fetch a decade of them to count three numbers should ask its area for
     the counts and use `projectStockFromCounts` instead (stock.ts). */
+/* projectStock stays exported for its own test, and cross-checked in
+   stock.test.ts (AU-09 test-only review). */
 export function projectStock(
   stock: StockEntry,
   doses: readonly DoseEvent[],
@@ -274,9 +281,11 @@ export function projectStock(
 }
 
 /** Threshold in days below which a medication stock triggers a low-stock notice. */
+/* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
+   (AU-09 test-only review). */
 export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
-export const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
-export const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
+const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;
@@ -307,6 +316,8 @@ export function snoozeStockNotice(nowMs: number = Date.now(), storage?: Storage)
   }
 }
 
+/* clearStockNoticeSnooze stays exported for its own test, and cross-checked in
+   stock-notice.test.ts (AU-09 test-only review). */
 export function clearStockNoticeSnooze(storage?: Storage): void {
   const s = resolveStorage(storage);
   if (!s) return;
@@ -317,6 +328,8 @@ export function clearStockNoticeSnooze(storage?: Storage): void {
   }
 }
 
+/* isStockDepletingSoon stays exported for its own test, and cross-checked in
+   stock-notice.test.ts (AU-09 test-only review). */
 export function isStockDepletingSoon(
   projection: StockProjection,
   asOfEpochDay: number,
@@ -354,7 +367,7 @@ export function isStockDepletingSoon(
   return projection.runOutEpochDay - asOfEpochDay <= thresholdDays;
 }
 
-export interface DepletingStockInfo<T = StockEntry> {
+interface DepletingStockInfo<T = StockEntry> {
   entry: T;
   projection: StockProjection;
   daysRemaining: number;

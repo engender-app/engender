@@ -65,13 +65,15 @@ export const OWN_SPREAD_WINDOW_DAYS = 180;
 
 /** How many readings there have to be in that window before there is a
     threshold at all. */
+/* OWN_SPREAD_MIN_READINGS stays exported only for its own test (AU-09
+   test-only review). */
 export const OWN_SPREAD_MIN_READINGS = 8;
 
 /** How far past the upper quartile the fence sits, in interquartile ranges.
     Tukey's own constant, kept rather than tuned: a number picked to make a
     particular journal look right is a fixed threshold wearing a multiplier's
     clothes. */
-export const OWN_SPREAD_FENCE_IQRS = 1.5;
+const OWN_SPREAD_FENCE_IQRS = 1.5;
 
 /** The p-th percentile of an already-sorted sample, interpolating between
     the two readings it falls between (the ordinary definition, the one a
@@ -93,6 +95,8 @@ function percentile(sorted: readonly number[], p: number): number {
     archive from a device whose clock ran ahead can hold one, and a future
     reading voting on what counts as recent would be a threshold set by a
     day that has not happened. */
+/* ownSpreadFence stays exported only for its own test (AU-09 test-only
+   review). */
 export function ownSpreadFence(readings: readonly DayValue[], today: number): number | null {
   const from = today - OWN_SPREAD_WINDOW_DAYS + 1;
   const recent = readings

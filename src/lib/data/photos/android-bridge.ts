@@ -1,6 +1,6 @@
 import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-registry';
 
-export interface AndroidPhotosBridge {
+interface AndroidPhotosBridge {
   /* A pick hands back tokens, not bytes: the bytes come afterwards over
      android-pick-channel.ts, or through readPickedBase64 below on a WebView
      that cannot carry a structured clone (phase 9 audit ticket 06). */

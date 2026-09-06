@@ -8,7 +8,7 @@ import {
   type PreferredLabUnits
 } from './units';
 
-export interface OcrCandidateRow {
+interface OcrCandidateRow {
   analyteText: string;
   valueText: string;
   unitText: string;
@@ -17,7 +17,7 @@ export interface OcrCandidateRow {
   lineConfidence: number;
 }
 
-export interface OcrParsedRow {
+interface OcrParsedRow {
   analyte: string;
   unresolvedAnalyte: boolean;
   value: number;
@@ -39,7 +39,7 @@ export interface OcrReviewRow {
   duplicate: boolean;
 }
 
-export interface OcrSaveValidation {
+interface OcrSaveValidation {
   ok: boolean;
   firstError: 'missing-analyte' | 'invalid-value' | 'missing-date' | 'invalid-date' | null;
 }

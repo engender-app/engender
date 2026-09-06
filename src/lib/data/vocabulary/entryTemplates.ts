@@ -59,6 +59,8 @@ export function resolveBuiltInWording(
   };
 }
 
+/* withBuiltInEntryTemplates stays exported only for its own test (AU-09
+   test-only review). */
 export function withBuiltInEntryTemplates(existing: EntryTemplate[]): EntryTemplate[] {
   const present = new Set(existing.map((t) => t.id));
   const missing = ENTRY_TEMPLATES.filter((t) => !present.has(t.key)).map((t) =>
@@ -70,7 +72,7 @@ export function withBuiltInEntryTemplates(existing: EntryTemplate[]): EntryTempl
 /** The entry draft's own shape, narrowed to what a template can seed - kept
     local rather than importing `EntryDraft` so this stays free of every
     other field the real draft carries (photos, mood, and so on). */
-export interface TemplateableDraft {
+interface TemplateableDraft {
   tags: string[];
   dims: Record<string, number>;
   note: string;
@@ -106,6 +108,8 @@ export function applyEntryTemplateToDraft(draft: TemplateableDraft, template: En
     `mostRecentPastAppointment`), the standing prep list's own state read
     off the standalone checklist (checklists.ts), scoped to that same
     appointment. */
+/* DebriefOfferState stays exported only for its own test (AU-09 test-only
+   review). */
 export interface DebriefOfferState {
   /** The most recent past appointment's id, or null when there is none -
       "strictly past" is already baked in by the selector that produced

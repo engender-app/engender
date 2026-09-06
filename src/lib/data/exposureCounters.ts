@@ -45,7 +45,7 @@ export interface DoseTotal {
   total: number;
 }
 
-export interface DoseTotals {
+interface DoseTotals {
   totals: DoseTotal[];
   /** Doses left out because more than one concurrent regimen episode was
       active and the dose named no drug of its own to break the tie (phase

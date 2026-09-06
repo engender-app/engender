@@ -15,7 +15,7 @@
 
 import type { ChecklistItem, LabResult, SideEffect } from '../types';
 
-export interface DebriefListItem {
+interface DebriefListItem {
   epochDay: number;
   text: string;
 }

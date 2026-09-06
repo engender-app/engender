@@ -10,7 +10,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { CycleEvent } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 
-export type CycleEventInput = FlatInput<CycleEvent>;
+type CycleEventInput = FlatInput<CycleEvent>;
 
 export interface CycleEventsArea {
   getCycleEvents(): Promise<CycleEvent[]>;

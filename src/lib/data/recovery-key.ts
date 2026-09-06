@@ -24,7 +24,7 @@ import {
 import { canonicalRecoveryKey, generateRecoveryKey } from '../crypto/recoveryKey';
 import { readRecoveryWrapFile, removeRecoveryWrapFile, writeRecoveryWrapFile } from './recovery-key-file';
 
-export interface RecoveryKeyPorts {
+interface RecoveryKeyPorts {
   read(): Promise<RecoveryWrap | null>;
   write(wrap: RecoveryWrap): Promise<void>;
   remove(): Promise<void>;

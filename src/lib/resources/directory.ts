@@ -30,7 +30,7 @@ export type ResourceRegion = 'pl' | 'int';
 
 /** helpline is a number a person answers, support is an organisation to
     approach, info is reading. Also the order they appear in. */
-export type ResourceKind = 'helpline' | 'support' | 'info';
+type ResourceKind = 'helpline' | 'support' | 'info';
 
 interface ResourceShape {
   key: string;
@@ -144,10 +144,11 @@ export type ResourceKey = (typeof ENTRIES)[number]['key'];
    property to read at all. The key stays narrow through that widening, which
    is what lets labels.ts index its maps directly instead of casting them back
    to strings and carrying a fallback for a key that cannot exist. */
-export interface Resource extends ResourceShape {
+interface Resource extends ResourceShape {
   key: ResourceKey;
 }
 
+/* RESOURCES stays exported only for its own test (AU-09 test-only review). */
 export const RESOURCES: readonly Resource[] = ENTRIES;
 
 export function resourcesFor(region: ResourceRegion): readonly Resource[] {

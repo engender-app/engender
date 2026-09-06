@@ -14,10 +14,10 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { SideEffect } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 
-export const MIN_SEVERITY = 1;
-export const MAX_SEVERITY = 5;
+const MIN_SEVERITY = 1;
+const MAX_SEVERITY = 5;
 
-export type SideEffectInput = FlatInput<SideEffect>;
+type SideEffectInput = FlatInput<SideEffect>;
 
 export interface SideEffectsArea {
   getSideEffects(): Promise<SideEffect[]>;
