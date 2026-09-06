@@ -13,11 +13,19 @@
    and the locale-aware formatting already live for everything else this
    module's caller writes into a note. */
 
-import type { LabResult, SideEffect } from '../types';
+import type { ChecklistItem, LabResult, SideEffect } from '../types';
 
 export interface DebriefListItem {
   epochDay: number;
   text: string;
+}
+
+/** One prep question and what got jotted under it in the room (phase 8
+    features ticket 60). Not a record: it exists between the in-the-room
+    screen and the debrief's pre-fill and nowhere else. */
+export interface DebriefAnswer {
+  question: string;
+  answer: string;
 }
 
 /** Merges and sorts, earliest first. `Array.prototype.sort` is a stable
@@ -33,4 +41,20 @@ export function debriefListItems(labs: LabResult[], sideEffects: SideEffect[]): 
     }))
   ];
   return items.sort((a, b) => a.epochDay - b.epochDay);
+}
+
+/** The questions that got an answer, in the prep list's own order rather
+    than the order somebody moved through them (ticket 60).
+
+    Blank is not an answer. Advancing past a question without typing has to
+    leave nothing behind - the screen exists to be readable while somebody
+    is being spoken to, and paying a tap cost per question is exactly what
+    that reader has no attention for - so a whitespace-only field is the
+    same as an untouched one. An answer whose question is no longer on the
+    list is dropped for the same reason a stale debrief link reads as unset
+    (checklists.ts): a pairing whose other half is gone is not a pairing. */
+export function answeredQuestions(items: ChecklistItem[], answers: Record<string, string>): DebriefAnswer[] {
+  return items
+    .map((item) => ({ question: item.content, answer: (answers[item.id] ?? '').trim() }))
+    .filter((pair) => pair.answer !== '');
 }
