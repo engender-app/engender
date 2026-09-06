@@ -24,6 +24,8 @@ import type { Milestone } from './types';
     typical gaps - a few months between a first appointment and a first dose
     - stay as ordinary spacing. Carried over from the screen this replaces
     rather than re-chosen. */
+/* TIMELINE_GAP_DAYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const TIMELINE_GAP_DAYS = 420;
 
 type TimelineItem =

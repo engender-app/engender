@@ -76,6 +76,8 @@ type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] 
 /** One area's declaration that it travels. Erased over the row type, because
     the list holds every section at once and because a test registers
     sections `ArchiveJournal` has never heard of. */
+/* ArchiveSection stays exported only for its own test (AU-09 test-only
+   review). */
 export interface ArchiveSection {
   name: string;
   /** Sections that must be applied before this one. Empty for most. */
@@ -1117,6 +1119,8 @@ type Unregistered = Exclude<ArchiveSectionName, (typeof SECTIONS)[number]['name'
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
+/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in
+   archive.test.ts (AU-09 test-only review). */
 export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 
 /** Every section's key, in wire order. */

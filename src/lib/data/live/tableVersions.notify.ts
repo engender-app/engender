@@ -26,6 +26,8 @@ interface WriteAnnouncer {
 /** A fresh registry. The app uses the single shared one below; the factory
     exists so a Node test can exercise the rule without leaking listeners
     between cases. */
+/* createWriteAnnouncer stays exported only for its own test (AU-09 test-only
+   review). */
 export function createWriteAnnouncer(): WriteAnnouncer {
   const listeners = new Set<TablesListener>();
   return {

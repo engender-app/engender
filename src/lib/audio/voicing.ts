@@ -28,6 +28,8 @@ import type { PitchFrame } from './pitch';
     under two pixels and reads as nothing at all - so a moment the tracker
     did find a voice in would look like silence. Two per cent is about 7px
     there, which is a mark. */
+/* MIN_SPAN_FRACTION stays exported only for its own test (AU-09 test-only
+   review). */
 export const MIN_SPAN_FRACTION = 0.02;
 
 interface VoicedSpan {

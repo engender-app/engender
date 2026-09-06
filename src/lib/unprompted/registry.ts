@@ -403,6 +403,8 @@ export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(
 
 /** The notifications view's rows, in registry order - every kind that may
     reach the phone rather than only the app. */
+/* NOTIFICATION_ROWS stays exported only for its own test (AU-09 test-only
+   review). */
 export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.filter(
   (row): row is NotificationRow => row.notify !== undefined
 );
@@ -414,6 +416,9 @@ export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.fil
     what today's registry actually holds for `unregisteredKinds` to check a
     *shortened copy* against, not stand as its own independent source of
     truth - that job is `UnpromptedKind`'s. */
+/* UNPROMPTED_KINDS stays exported only for liveTiles.grid.test.ts,
+   home-surfaces.test.ts, which cross-check against it (AU-09 test-only
+   review). */
 export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row.key);
 
 /** The runtime half of `EveryKindRegistered`: which kinds a given list of
@@ -421,6 +426,8 @@ export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row
     rather than against the list's own contents - so registry.test.ts can
     show the completeness rule actually failing on a named, shortened
     registry, not only assert that it never does. */
+/* unregisteredKinds stays exported only for its own test (AU-09 test-only
+   review). */
 export function unregisteredKinds(rows: readonly Pick<UnpromptedRow, 'key'>[]): UnpromptedKind[] {
   const present = new Set(rows.map((row) => row.key));
   return UNPROMPTED_KINDS.filter((kind) => !present.has(kind));

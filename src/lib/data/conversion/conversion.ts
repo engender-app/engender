@@ -134,6 +134,7 @@ export interface JournalSurvey {
   marker: ConversionStage | null;
 }
 
+/* JournalState stays exported only for its own test (AU-09 test-only review). */
 export type JournalState =
   /** No Journal of either kind: offer to set a passphrase. */
   | 'first-run'
@@ -178,6 +179,8 @@ export type PrecheckResult = { ok: true } | ({ ok: false } & ConversionRefusal);
     and grow by a nonce and a tag each, which the floor also covers. */
 const CONVERSION_SPACE_FLOOR = 4 * 1024 * 1024;
 
+/* spaceRequiredFor stays exported only for its own test (AU-09 test-only
+   review). */
 export function spaceRequiredFor(sourceSizeBytes: number): number {
   return Math.ceil(sourceSizeBytes * 2.5) + CONVERSION_SPACE_FLOOR;
 }
@@ -225,6 +228,8 @@ export async function prepareConversion(
 /** The encrypted copy did not come back the same as what went in. The
     source is still whole and the marker is still at 'database', so the next
     attempt writes the copy again. */
+/* ConversionVerificationError stays exported only for its own test (AU-09
+   test-only review). */
 export class ConversionVerificationError extends Error {
   differences: string[];
 

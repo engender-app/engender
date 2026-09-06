@@ -52,6 +52,8 @@ import type { DoseEvent, RegimenEpisode } from './types';
     Estradiol has no `injected` key and never will: its injections have a real
     published posterior and get hormoneCurve.ts's fitted band. Testosterone's do
     not, which is the whole reason its injections are here instead. */
+/* QUALITATIVE_CURVE_KEYS stays exported only for its own test (AU-09 test-only
+   review). */
 export const QUALITATIVE_CURVE_KEYS = [
   'estradiol:oral',
   'estradiol:sublingual',

@@ -22,7 +22,11 @@
     the pair of caps is short edge 1080, long edge 1920, in whichever
     orientation the camera hands them over. */
 export const VIDEO_MAX_DURATION_MS = 30_000;
+/* VIDEO_MAX_SHORT_EDGE stays exported for its own test, and cross-checked in
+   video-notes-probe.ts (AU-09 test-only review). */
 export const VIDEO_MAX_SHORT_EDGE = 1080;
+/* VIDEO_MAX_LONG_EDGE stays exported only for its own test (AU-09 test-only
+   review). */
 export const VIDEO_MAX_LONG_EDGE = 1920;
 
 /** The size a stored video note may not exceed.
@@ -45,6 +49,8 @@ export const VIDEO_CAPTURE_BITS = { video: 2_000_000, audio: 96_000 } as const;
     scaled with the video: a video note of a person talking is worth less
     with a soft picture than with mangled speech, so the picture is what
     absorbs the cut. */
+/* REENCODE_AUDIO_BITS stays exported only for its own test (AU-09 test-only
+   review). */
 export const REENCODE_AUDIO_BITS = 64_000;
 
 /** How much of the ceiling a re-encode aims at, leaving room for container

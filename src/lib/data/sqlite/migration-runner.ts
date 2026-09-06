@@ -83,6 +83,8 @@ export class InterruptedRestoreError extends Error {
 
 /** Thrown when the running SQLite build lacks FTS5. The schema depends on it
     (`entry_fts`); there is no degraded search mode to fall back to. */
+/* Fts5UnavailableError stays exported only for its own test (AU-09 test-only
+   review). */
 export class Fts5UnavailableError extends Error {
   constructor(cause: unknown) {
     // The cause's own message rides along on this error's message, not just
@@ -100,6 +102,8 @@ export class Fts5UnavailableError extends Error {
 /** Proves FTS5 is compiled in before anything else touches the database, so
     a missing module fails as one clear error rather than as a cryptic
     "no such module" thrown from deep inside a migration step. */
+/* assertFts5Available stays exported only for its own test (AU-09 test-only
+   review). */
 export async function assertFts5Available(db: MigrationDb): Promise<void> {
   try {
     await db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS __fts5_probe USING fts5(x)");

@@ -41,6 +41,7 @@ const DAYS_PER_BUCKET: Record<Grain, number> = { day: 1, week: 7, month: 30.44 }
     with four entries in it is still a month, and drawing those four as four
     positions across a card would space them as though they were
     consecutive. */
+/* chooseGrain stays exported only for its own test (AU-09 test-only review). */
 export function chooseGrain(spanInDays: number, maxPositions: number = MAX_POSITIONS): Grain {
   for (const grain of ['day', 'week'] as const) {
     if (spanInDays / DAYS_PER_BUCKET[grain] <= maxPositions) return grain;
@@ -79,6 +80,7 @@ interface GrainPoint {
     Empty buckets are absent rather than zero. "Said nothing" is not "said
     none", which is the rule the whole stats area is built on - and it is
     what keeps a gap in the journal from drawing as a crash in the line. */
+/* bucketByGrain stays exported only for its own test (AU-09 test-only review). */
 export function bucketByGrain(points: { x: number; y: number }[], grain: Grain): GrainPoint[] {
   const buckets = new Map<number, { total: number; days: number }>();
   for (const point of points) {

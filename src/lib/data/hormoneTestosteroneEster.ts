@@ -146,6 +146,8 @@ export function isTestosteroneDrug(drug: string): boolean {
     shape of their own, argued from their own sources, and neither gets the one
     below in the meantime. Propionate has no usable published parameters at all.
     Order is the order screens list them in. */
+/* INJECTABLE_TESTOSTERONE_ESTERS stays exported only for its own test (AU-09
+   test-only review). */
 export const INJECTABLE_TESTOSTERONE_ESTERS = ['cypionate', 'enanthate'] as const;
 
 type InjectableTestosteroneEster = (typeof INJECTABLE_TESTOSTERONE_ESTERS)[number];

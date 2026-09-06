@@ -50,12 +50,16 @@ function canonicalUnitFor(analyte: PreferredUnitAnalyte, unit: string): string |
   return ALLOWED_PREFERRED_UNITS[analyte].find((allowed) => allowed.toLowerCase() === normalized) ?? null;
 }
 
+/* normalizePreferredUnitSelection stays exported only for its own test (AU-09
+   test-only review). */
 export function normalizePreferredUnitSelection(analyte: string, selectedUnit: string): string | null {
   const known = asAnalyte(analyte);
   if (!known) return null;
   return canonicalUnitFor(known, selectedUnit);
 }
 
+/* sanitizePreferredLabUnits stays exported only for its own test (AU-09
+   test-only review). */
 export function sanitizePreferredLabUnits(input: PreferredLabUnits): PreferredLabUnits {
   const sanitized: PreferredLabUnits = {};
   for (const analyte of PREFERRED_UNIT_ANALYTES) {

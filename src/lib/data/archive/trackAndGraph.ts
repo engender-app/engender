@@ -28,6 +28,8 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { contentUuid, mintUuid } from '../journal/support';
 import type { ArchiveJournal, ArchiveMeasurement, ArchiveMeasurementType } from './payload';
 
+/* TrackAndGraphCsvError stays exported only for its own test (AU-09 test-only
+   review). */
 export class TrackAndGraphCsvError extends Error {
   constructor(message: string) {
     super(`Track & Graph CSV ${message}`);
@@ -213,6 +215,8 @@ interface TrackAndGraphValue {
    single `value:label` string never has. */
 const DURATION_PREFIX = /^(-?\d*):(-?\d{2}):(-?\d{2})/;
 
+/* parseTrackAndGraphValue stays exported only for its own test (AU-09
+   test-only review). */
 export function parseTrackAndGraphValue(raw: string): TrackAndGraphValue | null {
   const trimmed = raw.trim();
   const duration = DURATION_PREFIX.exec(trimmed);

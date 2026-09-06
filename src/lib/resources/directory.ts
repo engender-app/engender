@@ -148,6 +148,7 @@ interface Resource extends ResourceShape {
   key: ResourceKey;
 }
 
+/* RESOURCES stays exported only for its own test (AU-09 test-only review). */
 export const RESOURCES: readonly Resource[] = ENTRIES;
 
 export function resourcesFor(region: ResourceRegion): readonly Resource[] {

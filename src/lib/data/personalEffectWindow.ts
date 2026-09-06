@@ -176,6 +176,8 @@ const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
     Also answers false for any key with no tier-1 window at all - a tier 2
     or tier 3 effect, or a custom one - which is the ordinary case once
     the catalogue is open past twenty (ticket 41). */
+/* literatureCovers stays exported only for its own test (AU-09 test-only
+   review). */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
   const window = EFFECT_LITERATURE_WINDOW[effect];
   return window !== undefined && resolveCurveDrug(drug) === DIRECTION_DRUG[window.direction];

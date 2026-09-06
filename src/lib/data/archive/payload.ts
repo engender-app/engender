@@ -1064,5 +1064,7 @@ export function applyMigrations(
   return migrated;
 }
 
+/* migratePayload stays exported only for its own test (AU-09 test-only
+   review). */
 export const migratePayload = (payload: ArchivePayload, fromVersion: number): ArchivePayload =>
   applyMigrations(payload, fromVersion, ARCHIVE_FORMAT_VERSION, PAYLOAD_MIGRATIONS);

@@ -30,6 +30,8 @@ import type { NormalizedPhoto } from '../journal/photos';
 /** The long edge of a stored photo, and of its thumbnail. 2048 is
     ADR-0008's; the thumbnail is sized for the Progress grid at 2x, so
     that screen never decodes a full photo to draw a 104px tile. */
+/* MAX_EDGE stays exported only for photos-probe.ts, which cross-checks against
+   it (AU-09 test-only review). */
 export const MAX_EDGE = 2048;
 export const THUMB_EDGE = 320;
 
