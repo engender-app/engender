@@ -182,6 +182,23 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).toContain('margin-inline-start: 0px');
   });
 
+  /* A tile is a padded box with a border, and `box-sizing: border-box` means
+     a zero flex-basis still draws all of it: the safe-space card stalled at
+     34px for the last third of the travel and lost the rest in the frame the
+     node was removed. The padding goes with the width, the way `disclose`
+     takes the vertical padding with the height. */
+  it('takes its side padding and edges with it, so nothing is left standing', () => {
+    const { css } = collapse(
+      panel({ beside: [[0, 100]] }, { paddingLeft: '16px', paddingRight: '28px', borderLeftWidth: '1px', borderRightWidth: '1px' })
+    );
+    expect(frame(css!, 0)).toContain('padding-left: 0px');
+    expect(frame(css!, 0)).toContain('padding-right: 0px');
+    expect(frame(css!, 0)).toContain('border-left-width: 0px');
+    expect(frame(css!, 1)).toContain('padding-left: 16px');
+    expect(frame(css!, 1)).toContain('padding-right: 28px');
+    expect(frame(css!, 1)).toContain('border-left-width: 1px');
+  });
+
   /* Below the floor the same pair is stacked, and a tile that collapsed its
      width there would leave a full-height hole behind it. The axis is read
      off the layout rather than passed in, so one call site covers both. */
