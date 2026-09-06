@@ -570,8 +570,8 @@
           title={feltSenseGapTile.title}
           text={feltSenseGapTile.note}
           action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
-          dismiss={feltSenseGapTile.dismiss && {
-            label: feltSenseGapTile.dismiss.label,
+          dismiss={{
+            label: feltSenseGapTile.dismiss!.label,
             onclick: () => liveTiles.snooze('active-tryout-tile')
           }}
           data-live-tile={feltSenseGapTile.key}
