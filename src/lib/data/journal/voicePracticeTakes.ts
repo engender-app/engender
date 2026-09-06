@@ -10,7 +10,7 @@
    Flat, so its three writes come from flatArea.ts and only the reads are its
    own. No seal is stored: a take's own `epochDay + 1` is its unlock day and
    nothing else ever is, which callers compute at the point of reading
-   (sealedUntil.ts) rather than a column repeating it - migrations.ts's v59
+   (sealedUntil.ts) rather than a column repeating it - schema.ts
    comment says why ADR-0010 asks for that. */
 
 import type { SqliteDriver } from '../sqlite/driver';

@@ -383,8 +383,7 @@ const SECTIONS = [
   }),
   /* The dosing context comes across as it was written, never re-derived
      against this device's dose log: the log it was measured on is not the
-     one being imported into (ticket 03, and the argument at migrations.ts
-     v6).
+     one being imported into (ticket 03, and the argument at schema.ts).
 
      Its last five columns declare what they are written from when the field
      is absent, unlike every other column here, because they arrived after
@@ -529,7 +528,7 @@ const SECTIONS = [
     // this device, not something the person would hand to a clinician in a
     // structure file - the same judgement letters and reminders above
     // already made. `entry_id` already holds the owning entry's own uuid
-    // (migrations.ts v61), so this needs no rowid remap on restore, the
+    // (schema.ts), so this needs no rowid remap on restore, the
     // reason it can stay flat at all.
     travels: 'none',
     table: 'revisit',
@@ -626,7 +625,7 @@ const SECTIONS = [
     apply: apply.applyPersonalEffectTypes
   }),
   /* Identified by `effect`, not by uuid: personal_effect is UNIQUE per
-     effect (migrations.ts v12), one row that a fresh date replaces in place
+     effect (schema.ts), one row that a fresh date replaces in place
      rather than a log of past dates - the same shape medicationStock has for
      a drug. A device that already has its own marker for an effect keeps it
      (Merge's own rule), which a Replace gets for free once the journal's
@@ -634,7 +633,7 @@ const SECTIONS = [
 
      `after` here is a convention, not a requirement the insert enforces:
      personal_effect.effect stores an effect's domain key directly with no FK
-     (migrations.ts v37 dropped its CHECK), so nothing breaks if this ran
+     (the schema carries no CHECK over it), so nothing breaks if this ran
      first. Declared after personalEffectTypes anyway - reference data before
      the rows that name it - matching the convention entries/dimensions/
      tagGroups set. */
@@ -651,7 +650,7 @@ const SECTIONS = [
   }),
   /* A row with no `scale` came out of an archive written before phase 5
      ticket 33, when Norwood-Hamilton was the only vocabulary there was, so
-     it is one - the same reading migrations.ts v37 gives the rows it carried
+     it is one - the same reading schema.ts gives the rows it holds
      across. Defaulting rather than dropping is what keeps an old backup
      whole; a scale this build does not know is left as it is and the
      schema's CHECK refuses it, which is the honest failure for an archive
@@ -917,7 +916,7 @@ const SECTIONS = [
     apply: apply.applyDosePauses
   }),
   /* Identified by `drug`, not by uuid: medication_stock is UNIQUE per drug
-     (migrations.ts v7), one row that a fresh count replaces in place rather
+     (schema.ts), one row that a fresh count replaces in place rather
      than a log of past ones - the same shape personalEffects has for an
      effect. The reminder bookkeeping travels as recorded: restoring a
      device's own backup should restore its own hand-off state, not a blank

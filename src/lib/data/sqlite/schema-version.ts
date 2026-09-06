@@ -2,9 +2,11 @@
 
    Derived from the migration array until phase 5 audit ticket 02, which is
    also why it moved out of migrations.ts: reading the number cost every boot
-   the 27KB of SQL text the array carries, and the version is the only part of
-   it a journal already on the current schema needs. Nothing in this module may
-   import migrations.ts, or the saving is gone.
+   the SQL text the array carries, and the version is the only part of it a
+   journal already on the current schema needs. Nothing in this module may
+   import migrations.ts, or the saving is gone - and the squash (features
+   ticket 34) made that saving bigger rather than smaller, since the baseline
+   is one 61KB statement where the chain was 78 smaller ones.
 
    Two things refuse a database numbered higher than this rather than guessing
    at it (ADR-0006): the migration runner, and ticket 10's conversion, which

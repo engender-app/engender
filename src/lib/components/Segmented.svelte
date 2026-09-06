@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
+  import { nextRadioIndex } from './rovingRadioIndex';
 
   /* A choice among a few peers. The pill behind the chosen one is a single
      element that slides between them rather than a background that appears on
@@ -44,6 +45,21 @@
   let links = $derived(options.some((o) => o.href !== undefined));
   let buttons = $state<(HTMLElement | undefined)[]>([]);
   let pill = $state({ x: 0, w: 0 });
+
+  /* The one radio the roving tabindex leaves in the tab order: the selected
+     one, or the first while nothing is (a fresh group with no value yet). */
+  let activeIndex = $derived.by(() => {
+    const i = options.findIndex((o) => o.value === value);
+    return i === -1 ? 0 : i;
+  });
+
+  function onRadioKeydown(e: KeyboardEvent, i: number) {
+    const next = nextRadioIndex(e.key, i, options.length);
+    if (next === null) return;
+    e.preventDefault();
+    buttons[next]?.focus();
+    onChange?.(options[next].value);
+  }
 
   /* The track scrolls rather than shrinks when its segments run wider than
      it is (Alicja, 2026-08-26, "the pill came out 48 by 48" - shrinking was
@@ -243,6 +259,7 @@
       class:can-scroll-end={canScrollEnd}
       data-segmented={key}
       role="radiogroup"
+      tabindex="-1"
       aria-label={name}
       onpointerdown={onTrackPointerDown}
       onpointermove={onTrackPointerMove}
@@ -262,9 +279,11 @@
           class:is-active={o.value === value}
           role="radio"
           aria-checked={o.value === value}
+          tabindex={i === activeIndex ? 0 : -1}
           data-segment={o.value}
           data-no-press
-          onclick={() => onChange?.(o.value)}>{o.label}</button
+          onclick={() => onChange?.(o.value)}
+          onkeydown={(e) => onRadioKeydown(e, i)}>{o.label}</button
         >
       {/each}
     </div>

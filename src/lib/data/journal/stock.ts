@@ -1,5 +1,5 @@
 /* The medication stock area (phase 4 ticket 04, CONTEXT: "Medication stock",
-   "Run-out projection"). One row per drug (migrations.ts v7,
+   "Run-out projection"). One row per drug (schema.ts,
    stockProjection.ts): remaining stock and its run-out projection are both
    derived on read, never stored (ADR-0046, generalizing ADR-0010's rule).
 
@@ -47,7 +47,7 @@ export interface StockArea {
   /** By drug. */
   getEntries(): Promise<MedicationStock[]>;
   /** One entry per drug (matched exactly, trimmed - the drug's own
-      uniqueness, migrations.ts v7): saving a second for the same drug
+      uniqueness, schema.ts): saving a second for the same drug
       replaces the first, the way DoseSchedule replaces per episode
       (doses.ts). Also clears box 4's reminder hand-off state - a fresh
       count is the deliberate act that re-arms a dismissed prompt. Returns
