@@ -37,7 +37,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
-  import { resize, wipe } from '$lib/motion/reveal';
+  import { wipe } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -109,7 +109,7 @@
              place and never moves focus. Focus stays where it is on purpose:
              pulling it into the field would raise the keyboard over the very
              question the person is trying to read. -->
-        <div class="room-ask" use:resize aria-live="polite">
+        <div class="room-ask" aria-live="polite">
           {#key current.id}
             <p class="room-question" data-room-question in:wipe>{current.content}</p>
           {/key}
@@ -154,6 +154,8 @@
       </div>
     {/snippet}
     {#snippet empty()}
+      <!-- The one thing on the screen, and its action is also the way out of
+           it: a room with no questions in it has nothing to leave. -->
       <Notice
         icon="check"
         key="in-the-room-empty"
@@ -172,21 +174,40 @@
 
 <style>
   /* The screen is one column that fills the viewport rather than a stack of
-     surfaces: the question sits in the middle where the eye already is, and
-     the controls are at the bottom where a thumb already is, on a screen
-     held at chest height while somebody is being spoken to. */
+     surfaces, and the split is the use scene: the question in the upper
+     field of view where the eye rests, the optional field and the three
+     controls in the lower third where a thumb already is, on a phone held
+     at chest height while somebody is being spoken to.
+
+     Its own top space, because the header collapses to nothing here and
+     every other screen gets that air from the header it draws. */
   .room {
     display: flex;
     flex-direction: column;
     min-height: 100%;
+    padding-top: var(--space-5);
   }
 
+  /* `1 1 auto` rather than `1`, here and on the block below, so neither box
+     can be squeezed under its own content: at the text-size boost, or on a
+     short window, a four-line question has to push the screen past the
+     viewport and scroll rather than run into the field under it. */
   .room-stage {
-    flex: 1;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     gap: var(--space-6);
+  }
+
+  /* The question takes the whole upper block and sits in the middle of it,
+     so a one-line question and a four-line one land on the same optical
+     centre and the eye returns to one place. Nothing under it moves either:
+     the field and the controls keep their own heights whatever the question
+     is, so the only thing that changes between questions is the words. */
+  .room-ask {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
   }
 
   /* The question, and the reason this screen exists: the prep list draws the
@@ -201,9 +222,14 @@
     text-wrap: balance;
   }
 
+  /* Bigger than an ordinary input for the same reason the question is: this
+     gets read back later by somebody who was not concentrating when they
+     typed it. `resize` off because the handle would be a fourth control on
+     a screen that is meant to have three, and the box is already generous. */
   .room-answer {
     font-size: var(--text-lg);
     line-height: var(--leading-body);
+    resize: none;
   }
 
   .room-move {
@@ -225,11 +251,5 @@
   .room-leave {
     width: 100%;
     min-height: 56px;
-  }
-
-  /* A step that has run out of list stays in place rather than leaving a hole
-     the other button then slides into. */
-  .room-step:disabled {
-    opacity: 0.45;
   }
 </style>
