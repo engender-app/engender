@@ -43,7 +43,12 @@
 
    First-load figures either side of the change, same production build:
    107 scripts, 810,248 raw and 273,064 gzipped before, 810,244 and 273,065
-   after. No saving, because there was nothing there to save.
+   after. No saving, because there was nothing there to save. Ticket 01's
+   ratchet, which landed while this was in flight, counts the four
+   stylesheets too and reads 111 files and 295,861B against a 296,897B
+   budget on the merged branch - that script is the bundle-side check this
+   file deliberately is not, and it is what would catch a chunk merge this
+   source rule cannot see.
 
    Static imports only. A dynamic `import()` is the escape hatch by design -
    it is its own chunk, fetched when a page asks for it - and counting one
