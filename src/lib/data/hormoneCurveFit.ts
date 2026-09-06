@@ -1,11 +1,37 @@
-/* The two guards the hormone curve needs before any pharmacokinetics happen
-   (phase 4 ticket 10): what a logged dose is in milligrams, and how far the
+/* The three guards the hormone curve needs before any pharmacokinetics
+   happen (phase 4 ticket 10): what a logged dose is in milligrams, where a
+   logged instant falls on the curve's day axis, and how far the
    population-level curve has to move to sit on the user's own lab points.
 
    Pure, above the journal seam, no paraglide (ADR-0016), the same shape as
    the other derived modules beside it. Split out from hormoneCurve.ts
-   because neither of these knows anything about an ester or a compartment:
+   because none of these knows anything about an ester or a compartment:
    they are arithmetic over what was logged. */
+
+import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
+
+const DAY_MS = 86400000;
+
+/** Where a moment falls on the curve's time axis: the epoch day it belongs
+    to plus how far through that day it is. Local, because an epoch day is a
+    local calendar day (ADR-0001) and a dose's timestamp is a real instant.
+
+    Not in epochDay.ts: an epoch day there is a whole local day by
+    definition, and a fractional one is a different idea that only the
+    pharmacokinetics needs - hours matter to a curve and to nothing else in
+    the app.
+
+    Here rather than in hormoneCurve.ts, where it was written, for the
+    ordinary reason the two guards below are here: it is arithmetic over a
+    logged fact and it knows nothing about a compartment. The move is what
+    lets hormoneCurveQualitative.ts stop importing hormoneCurve.ts for this
+    one function, which is how the 1,352-line model table reached the
+    first-load graph after journal.ts stopped importing it (phase 9 audit
+    ticket 03). */
+export function fractionalEpochDay(timestamp: number): number {
+  const day = epochDayFromTimestamp(timestamp);
+  return day + (timestamp - startOfDayTimestamp(day)) / DAY_MS;
+}
 
 /** Units this app can read as milligrams. A dose amount is native text
     (ADR-0012), so this is an allowlist and not a parser - the same

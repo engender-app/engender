@@ -58,12 +58,11 @@ import {
   CURVE_LOOKBACK_DAYS,
   bandMidpointAt,
   esterCurves,
-  fractionalEpochDay,
   scaleCurves,
   type EsterCurve,
   type HormoneCurves
 } from '../hormoneCurve';
-import { fitScaleFactorToLabs } from '../hormoneCurveFit';
+import { fitScaleFactorToLabs, fractionalEpochDay } from '../hormoneCurveFit';
 import {
   QUALITATIVE_LOOKBACK_DAYS,
   dosesWithNoCurve,
