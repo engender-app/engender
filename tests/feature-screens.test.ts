@@ -86,7 +86,13 @@ const REACHED_FROM_INSIDE = [
   /* One document (phase 8 features ticket 52). Reached from a row on
      /media/documents, from a day's context list and from a search hit,
      never from the hub - the hub row is the list. */
-  'media/documents/[id]'
+  'media/documents/[id]',
+  /* The prep list read one question at a time (phase 8 features ticket 60).
+     Chromeless, reached from the appointments screen on the day and from
+     the prep list any time, never from the hub. On this list for the reason
+     the note above it gives: chromeless is about the shell around a screen,
+     and says nothing about whether the screen itself is built on the kit. */
+  'health/appointments/in-the-room'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -110,17 +116,17 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the thirteen screens reached only from inside another', () => {
+  it('is the hub, plus the fourteen screens reached only from inside another', () => {
     /* The count that was here covered all 36 routes and had been raised ten
        times since it was written as 26, twice by two branches that each
        thought they were adding the 28th. The hub's own rows no longer need
        one - they arrive from `hubRows.ts`, and a row with no screen behind
        it throws in `sourceOf` above before any assertion runs.
 
-       The thirteen below it still do, for the reason the note at the top of
+       The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(13);
+    expect(REACHED_FROM_INSIDE.length).toBe(14);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

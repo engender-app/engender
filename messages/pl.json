@@ -3441,4 +3441,15 @@
   "document_too_large": "Ten plik jest za duży, żeby go zapisać. Maksymalnie 25 MB.",
   "document_picker_failed": "Nie udało się otworzyć wyboru pliku.",
   "document_export": "Wyślij albo zapisz",
-  "document_export_hint": "Plik wtedy opuszcza szyfrowanie aplikacji."}
+  "document_export_hint": "Plik wtedy opuszcza szyfrowanie aplikacji.",
+  "in_the_room_title": "Na wizycie",
+  "in_the_room_row_sub": "Twoje pytania, po jednym",
+  "in_the_room_answer_label": "Odpowiedź",
+  "in_the_room_answer_placeholder": "Nieobowiązkowe",
+  "in_the_room_previous": "Poprzednie",
+  "in_the_room_next": "Następne",
+  "in_the_room_done_write": "Gotowe, zapisz",
+  "in_the_room_empty_title": "Nie ma jeszcze o co pytać",
+  "in_the_room_empty_body": "Ten ekran pokazuje pytania z listy pojedynczo, na tyle duże, żeby dało się je czytać w trakcie rozmowy. Najpierw dodaj pytanie.",
+  "in_the_room_empty_action": "Otwórz listę pytań",
+  "debrief_room_heading": "Twoje pytania:"}

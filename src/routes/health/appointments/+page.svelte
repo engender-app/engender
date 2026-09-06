@@ -60,6 +60,12 @@
   let upcoming = $derived(appointments.filter((a) => a.epochDay >= today));
   let past = $derived([...appointments].reverse().filter((a) => a.epochDay < today));
 
+  /* The first appointment on today, if there is one - what the in-the-room
+     row is for (ticket 60). `upcoming` is already soonest-first and today's
+     appointments sort ahead of every later one, so this is its head rather
+     than a second pass over the list. */
+  let todaysAppointment = $derived(upcoming[0]?.epochDay === today ? upcoming[0] : null);
+
   const titleOf = (appointment: Appointment) =>
     appointment.kind ??
     (appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined) ??
@@ -152,6 +158,25 @@
 
   <ReadGate read={appointmentsQuery} variant="line" count={3}>
     {#snippet rows()}
+      <!-- The way into the room, on the day (phase 8 features ticket 60).
+           Above both lists rather than inside one: on the morning of a visit
+           it is what this screen is for, and a row that only exists on one
+           day of the month should not have to be found among the bookings.
+           It names the appointment underneath it, so it is that appointment's
+           way in rather than a second general link to the prep list. -->
+      {#if todaysAppointment}
+        <div class="screen-part">
+          <ListCard role={roleAt(activeFlag.roles, 1)}>
+            <ListRow
+              key="in-the-room"
+              icon="bookmark"
+              title={m.in_the_room_title()}
+              subtitle={titleOf(todaysAppointment)}
+              href="/health/appointments/in-the-room"
+            />
+          </ListCard>
+        </div>
+      {/if}
       {#if upcoming.length}
         <SectionHeading text={m.appointments_upcoming_heading()} />
         <div class="screen-part" data-upcoming>{@render list(upcoming)}</div>
