@@ -8,7 +8,7 @@
     "dev": "vite dev",
     "build": "node scripts/prepare-vendor-assets.mjs && vite build && node scripts/release-metadata.mjs",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
     "test:android": "node tests/android-tier/run.mjs",
