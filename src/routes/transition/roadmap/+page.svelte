@@ -57,6 +57,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -176,9 +177,75 @@
   );
   let selectedMilestone = $derived(selectedGoal ? milestoneMintedByGoal(vocabulary.milestones, selectedGoal.key) : null);
 
+  /* Read live for the same reason the tick is (ticket 69): a custom goal's
+     text is editable from inside this sheet, so the title it was opened
+     under is a snapshot the moment somebody saves a new wording. A built-in
+     goal's title is bundled text and has nowhere else to come from. */
+  let selectedTitle = $derived(
+    !selectedGoal
+      ? ''
+      : selectedGoal.builtin
+        ? selectedGoal.title
+        : (customGoals.find((goal) => goal.id === selectedGoal!.key)?.text ?? selectedGoal.title)
+  );
+
   const openBuiltInGoal = (key: RoadmapGoalKey) => (selectedGoal = { key, title: roadmapGoalTitle(key), builtin: true });
-  const openCustomGoal = (goal: { id: string; text: string }) =>
-    (selectedGoal = { key: goal.id, title: goal.text, builtin: false });
+  const openCustomGoal = (goal: { id: string; text: string }) => {
+    selectedGoal = { key: goal.id, title: goal.text, builtin: false };
+    goalDraft = goal.text;
+  };
+
+  /* Editing and deleting a custom goal (ticket 69, ADR-0068), both of them
+     inside the sheet and neither of them offered on a built-in goal: there
+     is no row to edit and nothing to delete.
+
+     The write goes unawaited and uncaught, which is what the three writes
+     above it do - the only way `updateCustomGoalText` throws is an id this
+     screen's own live list still holds, and a single write here that
+     reported a failure while the tick beside it did not would be the
+     inconsistency, not the fix. */
+  let goalDraft = $state('');
+  let confirmingDelete = $state(false);
+
+  /* The confirmation counts what it is about to unfile, so this asks for the
+     documents a second time rather than reading them off LinkedDocuments
+     inside the sheet - a shared component across four kinds does not grow a
+     callback so that one caller can count its rows. One indexed read, only
+     while a custom goal's sheet is open. */
+  let goalDocuments = liveList((j) =>
+    selectedGoal && !selectedGoal.builtin
+      ? j.documents.getDocumentsLinkedTo('goal', selectedGoal.key)
+      : Promise.resolve(undefined)
+  );
+
+  /* Held once rather than restated on the button: the walkthrough asserts on
+     the disabled state, so the two must not be able to drift apart. */
+  let goalRewording = $derived(goalDraft.trim());
+  let canSaveGoal = $derived(
+    selectedGoal !== null && !selectedGoal.builtin && goalRewording !== '' && goalRewording !== selectedTitle
+  );
+
+  /* On the confirm button as a handle rather than left for a test to read
+     out of the sentence: the walkthrough has to be able to check the count
+     without gripping the plural copy that carries it (ADR-0029). */
+  let unfiledByDelete = $derived(goalDocuments.rows.length);
+
+  const saveGoalText = () => {
+    if (!canSaveGoal) return;
+    journal.roadmap.updateCustomGoalText(selectedGoal!.key, goalRewording);
+  };
+
+  /* The sheet closes before the write, the same order `answerMilestoneOffer`
+     above uses: the row is gone from the list underneath a moment later, and
+     a sheet still open over a goal that no longer exists has nothing to read
+     its tick from. */
+  const deleteGoal = () => {
+    if (!selectedGoal) return;
+    const id = selectedGoal.key;
+    confirmingDelete = false;
+    closeGoalSheet();
+    journal.roadmap.deleteCustomGoal(id);
+  };
 
   /* A document's own screen links here as `?goal=<key>`, since a goal has
      no route of its own to link to more precisely (ADR-0068). `dismissedKey`
@@ -407,9 +474,9 @@
      milestone it minted - and nothing a person wrote, because a built-in
      goal has nowhere to write it and a custom one's own text editing is
      ticket 69's. -->
-<Sheet open={selectedGoal !== null} title={selectedGoal?.title ?? ''} onClose={closeGoalSheet}>
+<Sheet open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
   {#if selectedGoal}
-    <h3>{selectedGoal.title}</h3>
+    <h3>{selectedTitle}</h3>
     <div class="kit-row is-static" data-goal-sheet-status={selectedGoal.key}>
       <span
         class="roadmap-box"
@@ -438,10 +505,70 @@
     {/if}
 
     <LinkedDocuments kind="goal" id={selectedGoal.key} />
+
+    <!-- A custom goal is the person's own words, so it can be reworded and
+         it can be removed (ADR-0068). Both sit under the documents rather
+         than above them: what somebody opens this sheet for is the step and
+         the paper filed against it, and a delete button at the top of a
+         sheet is a delete button somebody meets before what it would
+         delete. -->
+    {#if !selectedGoal.builtin}
+      <div class="goal-edit">
+        <Field label={m.roadmap_goal_text_label()} id="goal-text">
+          {#snippet children(id)}
+            <!-- No placeholder: this field opens holding the goal's own
+                 text, so one would only ever restate the label above it. -->
+            <input class="input" {id} name="goal-text" bind:value={goalDraft} />
+          {/snippet}
+        </Field>
+        <button class="btn btn-primary press" data-save-goal disabled={!canSaveGoal} onclick={saveGoalText}>
+          <span>{m.roadmap_goal_save()}</span>
+        </button>
+        <!-- Disabled until the documents read lands: a confirmation that
+             cannot yet count what it is about to unfile would understate the
+             delete, and `rows` is empty while a read is still in flight. -->
+        <button
+          class="btn btn-ghost press"
+          data-delete-goal
+          disabled={goalDocuments.loading}
+          onclick={() => (confirmingDelete = true)}
+        >
+          <Icon name="trash" size={18} />
+          <span>{m.roadmap_goal_delete()}</span>
+        </button>
+      </div>
+    {/if}
   {/if}
 </Sheet>
 
+<!-- Outside the goal sheet rather than inside it: two sheets nested in the
+     markup would draw the confirmation inside the sheet it is confirming
+     about, and this one is the same component every other delete on the app
+     confirms through. -->
+<ConfirmDeleteSheet
+  open={confirmingDelete}
+  title={m.roadmap_goal_delete_sheet()}
+  question={m.roadmap_goal_delete_q({ goal: selectedTitle })}
+  hint={unfiledByDelete > 0
+    ? m.roadmap_goal_delete_documents({ count: unfiledByDelete })
+    : m.roadmap_goal_delete_hint()}
+  confirmLabel={m.roadmap_goal_delete()}
+  cancelLabel={m.keep_it()}
+  confirmAttrs={{ 'data-confirm-delete-goal': '', 'data-unfiles': String(unfiledByDelete) }}
+  onConfirm={deleteGoal}
+  onCancel={() => (confirmingDelete = false)}
+/>
+
 <style>
+  /* The sheet's own controls, set apart from the documents above them by
+     the same rhythm the rest of the sheet uses rather than by a rule. */
+  .goal-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+
   .roadmap-provenance {
     margin: var(--space-3) 0 var(--space-5);
   }

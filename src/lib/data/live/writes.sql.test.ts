@@ -883,6 +883,10 @@ beforeAll(async () => {
     journal.roadmap.addCustomGoal('social', 'Tell my sister')
   )) as { id: string };
   await drive('roadmap', 'setCustomGoalStatus', () => journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked'));
+  await drive('roadmap', 'updateCustomGoalText', () =>
+    journal.roadmap.updateCustomGoalText(customGoal.id, 'Tell my sister about the appointment')
+  );
+  await drive('roadmap', 'deleteCustomGoal', () => journal.roadmap.deleteCustomGoal(customGoal.id));
   await drive('roadmap', 'setTrackDismissed', () => journal.roadmap.setTrackDismissed('medical', true));
 
   // These ids are never read back below; kept only because they exist -
