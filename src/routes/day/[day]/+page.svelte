@@ -57,7 +57,24 @@
      `day` still accepts `today` or an epoch-day number, and still reads it as
      a `$derived` rather than a const: a same-route navigation between two
      days reuses this component, and a plain const would keep the first day it
-     saw (see the stale-params note on /entry/[id]). */
+     saw (see the stale-params note on /entry/[id]).
+
+     A day after today (phase 8 features ticket 62, ADR-0067): before this
+     ticket `journal.day.getDay` was called unconditionally, which reads
+     logged rows a future day cannot have, so it rendered as an empty past
+     day - "Nothing logged this day, add an entry" for a day that has not
+     happened. `isFuture` gates that whole branch off instead: a future day
+     shows only what `dayAhead` has for it and nothing else, never the
+     entries gate, never the add-entry button, never the era-start link.
+
+     What is coming (`comingRows`) is read unconditionally rather than
+     branched on `isFuture` the way the entries read now is, because
+     `dayAhead`'s own floor already does that work: `getDayAhead` clamps
+     every kind's read at today (dayAhead.ts's `stillAhead`), so a past
+     day's query always resolves to nothing without a second guard here.
+     Today reads both and shows what is coming first, above what was
+     logged - the same reading order the calendar's grid keeps between heat
+     and a mark, and the order Home takes in ticket 63. */
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -65,17 +82,22 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
-  import { liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { dayAheadRows } from '$lib/components/dayAheadRows';
   import Icon from '$lib/components/Icon.svelte';
   import DayRecordsView from '$lib/components/DayRecords.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
   let isToday = $derived(epochDay === todayEpochDay());
+  let isFuture = $derived(epochDay > todayEpochDay());
 
   /* The query reads `epochDay` before its first await, which is what makes it
      re-run on navigation - see liveQuery's contract. One query for the whole
@@ -84,6 +106,12 @@
      seventeen re-runs on a write that any one of them cares about. */
   let dayRead = liveQuery((j) => j.day.getDay(epochDay));
   let day = $derived(dayRead.value);
+
+  /* One mark's worth of range - `fromEpochDay` and `toEpochDay` are both
+     this screen's own day, the same reason HeatMap asks for a month and
+     Home (ticket 63) will ask for just today. */
+  let dayAheadRead = liveList((j) => j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay()));
+  let comingRows = $derived(dayAheadRows(dayAheadRead.rows));
 
   /* Margin notes are not one of `day.ts`'s sections (they render with the
      entry they annotate, not as a record of the day they were written on -
@@ -121,40 +149,76 @@
     back={() => smartBack('/calendar')}
   />
 
-  <ReadGate read={everythingLogged} variant="card" count={2}>
-    {#snippet rows()}
-      <!-- `day!` because the gate renders this snippet only once the read
-           has landed with something, which the compiler cannot see across a
-           snippet boundary. -->
-      <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} />
-    {/snippet}
-    {#snippet empty()}
-      <Notice
-        icon="book"
-        key="day-empty"
-        role={entriesRole}
-        title={m.nothing_logged()}
-        text={m.nothing_logged_body()}
-      />
-    {/snippet}
-  </ReadGate>
+  <!-- What is coming (ADR-0067): today and a future day both read it, a
+       past day never does (dayAhead.ts's own floor leaves `comingRows`
+       empty there, so nothing below ever draws). The heading is the
+       appointments screen's own "Coming up" - CONTEXT.md names the same
+       concept the same way, and reusing it says one thing once rather than
+       drawing a second string for it.
 
-  <!-- "Start an era here" (phase 6 ticket 01): naming a stretch of your own
-       timeline is a thought that arrives while looking at the day it starts
-       on, so the action is offered where the thought is rather than only on
-       /transition/eras. A link and not a button, because it goes somewhere -
-       the era editor opens there with this day already in its start bound.
-       At ghost weight, under the entry button: adding an entry is what this
-       screen is for, and two soft buttons would put the rarer action beside
-       it as a peer. A milestone offers nothing of the kind: a milestone is a
-       day and an era is a span, and the bridge is one action on a milestone
-       if it is ever wanted, not a rule (ADR-0049). -->
-  <div class="day-add">
-    <button class="btn btn-soft" data-add onclick={() => goto(`/entry/new/${epochDay}`)}>
-      <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
-    </button>
-    <a class="btn btn-ghost" data-start-era href={`/transition/eras?start=${epochDay}`}>
-      <Icon name="columns" size={20} /><span>{m.era_start_here()}</span>
-    </a>
-  </div>
+       The role is `entriesRole` on a future day and `alsoRole` on today,
+       not the same one always: a future day shows only this card (or only
+       the empty notice below), which is the "one surface, one screen" case
+       role 0 exists for - the only index guaranteed a colour on all 8
+       palettes (`entriesRole`'s own comment below). On today this card sits
+       beside the entries card, which already claims role 0, so it takes
+       role 1 the same way the day's own "also this day" list does. -->
+  {#if comingRows.length > 0}
+    <SectionHeading text={m.appointments_upcoming_heading()} />
+    <ListCard role={isFuture ? entriesRole : alsoRole}>
+      {#each comingRows as row (row.key)}
+        <ListRow key={row.key} icon={row.icon} title={row.title} href={row.href} />
+      {/each}
+    </ListCard>
+  {:else if isFuture}
+    <!-- Honest and offers nothing (ADR-0067, out of scope: writing on a
+         future day): no add-entry button reaches this branch, and no era
+         link either, since both sit inside the `!isFuture` block below. -->
+    <Notice
+      icon="calendar"
+      key="day-ahead-empty"
+      role={entriesRole}
+      title={m.day_ahead_empty_title()}
+      text={m.day_ahead_empty_body()}
+    />
+  {/if}
+
+  {#if !isFuture}
+    <ReadGate read={everythingLogged} variant="card" count={2}>
+      {#snippet rows()}
+        <!-- `day!` because the gate renders this snippet only once the read
+             has landed with something, which the compiler cannot see across a
+             snippet boundary. -->
+        <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} />
+      {/snippet}
+      {#snippet empty()}
+        <Notice
+          icon="book"
+          key="day-empty"
+          role={entriesRole}
+          title={m.nothing_logged()}
+          text={m.nothing_logged_body()}
+        />
+      {/snippet}
+    </ReadGate>
+
+    <!-- "Start an era here" (phase 6 ticket 01): naming a stretch of your own
+         timeline is a thought that arrives while looking at the day it starts
+         on, so the action is offered where the thought is rather than only on
+         /transition/eras. A link and not a button, because it goes somewhere -
+         the era editor opens there with this day already in its start bound.
+         At ghost weight, under the entry button: adding an entry is what this
+         screen is for, and two soft buttons would put the rarer action beside
+         it as a peer. A milestone offers nothing of the kind: a milestone is a
+         day and an era is a span, and the bridge is one action on a milestone
+         if it is ever wanted, not a rule (ADR-0049). -->
+    <div class="day-add">
+      <button class="btn btn-soft" data-add onclick={() => goto(`/entry/new/${epochDay}`)}>
+        <Icon name="plus" size={20} /><span>{m.add_another_entry()}</span>
+      </button>
+      <a class="btn btn-ghost" data-start-era href={`/transition/eras?start=${epochDay}`}>
+        <Icon name="columns" size={20} /><span>{m.era_start_here()}</span>
+      </a>
+    </div>
+  {/if}
 </div>
