@@ -33,15 +33,16 @@
         between stages; the caller owns the wording. */
     label: string;
     /** The walkthrough's grip on this particular bar, since a screen can
-        hold more than one. */
-    handle?: string;
+        hold more than one. Required: the export screen carries five, and a
+        bar with no handle is one no flow can wait on. */
+    handle: string;
   } = $props();
 
   let percent = $derived(progressPercent(run.fraction));
 </script>
 
 {#if run.visible}
-  <div class="progress" data-progress={handle ?? ''}>
+  <div class="progress" data-progress={handle}>
     <div class="progress-head">
       <span class="progress-label" role="status">{label}</span>
       {#if percent !== null}

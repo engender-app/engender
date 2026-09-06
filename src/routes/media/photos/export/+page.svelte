@@ -138,7 +138,15 @@
 
     const from = recipe;
     /* Live only while an export is being made, so the stop button on the
-       bar and the render loop are talking about the same run. */
+       bar and the render loop are talking about the same run.
+
+       A fourth cancellable operation beyond the three phase-9 audit ticket
+       11 enumerates, and deliberately: this screen already shipped a stop
+       button, and it sits squarely inside ADR-0070's own rule, which
+       decides cancel by whether the journal has been written to rather
+       than by which operation is running. Rendering a collage writes
+       nothing anywhere. Taking the button away to match a list would have
+       been a regression dressed as compliance. */
     const controller = new AbortController();
     running = true;
     made = null;

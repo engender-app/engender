@@ -101,10 +101,19 @@
   let backupLabel = $state('');
 
   /** One restore's two stages as a sentence and a fraction, shared by the
-      three operations that go through restore.ts from this screen. */
+      two operations that go through restore.ts with files to write. The
+      first stage's wording is the caller's, because what arrives is not
+      the same thing twice: an archive's photos are copied in, a Daylio
+      backup's are re-encoded on the way (archive.ts). The second stage is
+      rows either way, so it is not a parameter. */
   const restoreWatcher =
-    (run: ReturnType<typeof createProgress>, setLabel: (label: string) => void) => (progress: RestoreProgress) => {
-      setLabel(progress.stage === 'files' ? m.imp_running_files() : m.imp_running_rows());
+    (
+      run: ReturnType<typeof createProgress>,
+      setLabel: (label: string) => void,
+      whileWritingFiles: () => string
+    ) =>
+    (progress: RestoreProgress) => {
+      setLabel(progress.stage === 'files' ? whileWritingFiles() : m.imp_running_rows());
       run.report(progress.done, progress.total);
     };
 
@@ -221,7 +230,10 @@
     }
 
     autoBusy = true;
-    autoLabel = m.exp_auto_running();
+    /* Not exp_auto_running(): the button above already says that while it
+       is disabled, and a bar repeating its button says nothing the button
+       has not. It names the half that is running instead. */
+    autoLabel = m.exp_running_packing();
     const stop = new AbortController();
     autoProgress.start({ onCancel: () => stop.abort() });
     try {
@@ -450,7 +462,7 @@
        else. */
     importLabel = m.imp_running_files();
     importProgress.start();
-    const onProgress = restoreWatcher(importProgress, (label) => (importLabel = label));
+    const onProgress = restoreWatcher(importProgress, (label) => (importLabel = label), m.imp_running_files);
     try {
       const { payload, files } = await openArchive(picked.bytes(), impPass);
       // The manifest is what the stream is about to deliver, so the bar
@@ -685,13 +697,13 @@
     backupLabel = m.dlb_running_assets();
     backupProgress.start();
     try {
-      const result = await journal.archive.commitDaylioBackupImport(backupPreview, normalizePhoto, (progress) => {
-        // The backup's own first stage is re-encoding every photo it
-        // carries, not just writing it (archive.ts), which is why it says
-        // something different from the archive importer's.
-        backupLabel = progress.stage === 'files' ? m.dlb_running_assets() : m.imp_running_rows();
-        backupProgress.report(progress.done, progress.total);
-      });
+      // Its own first-stage wording, because the backup re-encodes every
+      // photo it carries rather than just writing it (archive.ts).
+      const result = await journal.archive.commitDaylioBackupImport(
+        backupPreview,
+        normalizePhoto,
+        restoreWatcher(backupProgress, (label) => (backupLabel = label), m.dlb_running_assets)
+      );
       await backupProgress.finish();
       backupSheet = false;
       await refreshImportLog();
@@ -781,6 +793,13 @@
       <Icon name={android ? 'share' : 'download'} size={20} />
       <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
     </button>
+    <!-- The encrypted path only. journalCsv and journalJson build their
+         whole string synchronously before the body is ever pulled, so
+         there is nothing for a bar to count and, worse, nothing for it to
+         paint: the show-delay timer cannot fire inside a block that never
+         yields, so a bar there would appear only once the work it was
+         reporting had finished. The two plain buttons stay disabled and
+         say so, which is the honest amount this screen knows about them. -->
     {#if running === 'encrypted'}
       <Progress run={exportProgress} label={exportLabel} handle="export" />
     {/if}
