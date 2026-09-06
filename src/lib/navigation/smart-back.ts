@@ -68,7 +68,7 @@ export function navigationDepth(): number {
  * instead of taking its fallback.
  *
  * Going through here rather than passing the option at the call site is what
- * keeps the two facts together. `tests/replace-route-is-the-only-replace.test.ts`
+ * keeps the two facts together. `tests/navigation-depth-boundary.test.ts`
  * holds the rest of the app to it.
  *
  * If the navigation never settles the mark is spent by whichever one settles
@@ -84,7 +84,18 @@ export function replaceRoute(
   return goto(url, { ...options, replaceState: true });
 }
 
+/**
+ * Go back to the entry behind this one, or to `fallback` where there is none.
+ *
+ * The fallback replaces rather than pushes, for the same reason Android's
+ * gesture does it (`platform-sync.ts`): this branch is the app running out of
+ * history, so the screen it falls back to should be the entry it runs out on.
+ * Pushed, back would have somewhere to go again and it would be the screen
+ * that had just been backed out of - deep link into the export screen, press
+ * back to Settings, press back and land on export again, with no press that
+ * ever leaves. Replacing walks the fallbacks up to Home and stops there.
+ */
 export function smartBack(fallback: string): void {
   if (depth > 0) history.back();
-  else goto(fallback);
+  else void replaceRoute(fallback);
 }

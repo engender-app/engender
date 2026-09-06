@@ -10,7 +10,14 @@
    ways that both bite: it counts the boot entry, and it never comes back
    down. Walking into a screen and back out left it at 2 while the app was
    sitting on the entry it booted on, so the gesture stepped out of the
-   WebView instead of going home. */
+   WebView instead of going home.
+
+   Home is the one screen the depth does not govern, and deliberately: it is
+   the root of the app's task, where Android's own convention is that back
+   leaves rather than walks (NAV-002). Tab across to Home from a screen and
+   the count is still above zero, but a gesture there minimizes. Onboarding
+   is the other exemption - a stepper whose back really is one step up, with
+   its own control and no header (see `tests/screen-header.test.ts`). */
 
 type AndroidBackAction = 'minimize' | 'history-back' | 'go-home';
 

@@ -64,12 +64,12 @@
   } = $props();
 
   /* Everything the browser does with a click that is not "follow this link
-     here" is left alone: a middle click and ctrl/cmd open a tab, shift a
-     window, alt downloads, and a right-click never reaches this at all.
-     Only the plain one is ours to redirect. */
+     here" is left alone: ctrl/cmd opens a tab, shift a window, alt
+     downloads, and a middle click fires `auxclick` rather than this and
+     never arrives. Only the plain one is ours to redirect. */
   function goBack(event: MouseEvent) {
     if (typeof back !== 'string') return;
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     /* Before SvelteKit's own document-level link handler, which reads this
        flag and stands down - so the fallback below is the only navigation
        either of us makes. */

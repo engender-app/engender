@@ -62,7 +62,6 @@
   import Icon from '$lib/components/Icon.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import { smartBack } from '$lib/navigation/smart-back';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -528,10 +527,10 @@
        feature screen goes back to /more, not to /settings - applies to it;
        it is also opened from inside regimen and from the hormone curve,
        and throwing someone from there to the hub is the NAV-005 complaint
-       exactly. smartBack goes back where there is something to go back to
-       and falls back to the hub where there is not, which is the answer
-       for a screen with two doors rather than a third hardcoded one. -->
-  <ScreenHeader title={m.doses()} back={() => smartBack('/more')} subtitle={m.doses_intro()}>
+       exactly. The header goes back where there is something to go back to
+       and takes the hub where there is not, which is the answer for a
+       screen with two doors rather than a third hardcoded one. -->
+  <ScreenHeader title={m.doses()} back="/more" subtitle={m.doses_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
         <Icon name="plus" size={22} />
