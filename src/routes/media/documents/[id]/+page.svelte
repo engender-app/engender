@@ -53,6 +53,7 @@
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
   import type { JournalDocument } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
+  import { EASE_OUT_CSS, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -218,8 +219,13 @@
         target.height = bitmap.height;
         target.getContext('2d')?.drawImage(bitmap, 0, 0);
         bitmap.close();
+        const arrived = number !== shownPage;
+        shownPage = number;
         pageDrawn = true;
         pageFailed = false;
+        // A re-render at a new size is the same page again, and animating
+        // it would make a rotation or a keyboard opening look like a turn.
+        if (arrived) sheetArrives(target);
       },
       (error) => {
         if (stale) return;
@@ -237,10 +243,36 @@
     };
   });
 
+  /* The page's own two moments, both authored here rather than in CSS: a
+     class-driven animation cannot be replayed for a canvas whose pixels
+     changed under it, and this is the same WAAPI shape the resize
+     primitive uses (motion/reveal.ts), on the same easing token.
+
+     The first page fades in over the thumbnail it replaces - the same
+     picture at a better resolution, so the motion says "sharpened" rather
+     than "something new". A turn adds the small travel the tap implies:
+     the page comes in from the side the thumb reached for, which is what
+     tells a person the sheet moved rather than redrew. Both come out at
+     zero under reduced motion, where `motionDuration` returns 0. */
+  let shownPage = 0;
+  let turnedBy = 0;
+
+  function sheetArrives(target: HTMLCanvasElement) {
+    const duration = motionDuration('--dur-med');
+    const travel = turnedBy === 0 ? 0 : motionDistance('--motion-distance-sm') * turnedBy;
+    turnedBy = 0;
+    if (duration === 0) return;
+    target.animate([{ opacity: 0, transform: `translateX(${travel}px)` }, { opacity: 1, transform: 'none' }], {
+      duration,
+      easing: EASE_OUT_CSS
+    });
+  }
+
   const turnPage = (by: number) => {
     if (!pages) return;
     const next = pageNumber + by;
     if (next < 1 || next > pages.pageCount) return;
+    turnedBy = by;
     pageNumber = next;
   };
 
@@ -309,31 +341,33 @@
          then the paper icon, which is what a document whose page could
          not be drawn at all is left with. -->
     <div class="screen-part doc-page" bind:clientWidth={frameWidth}>
-      <canvas
-        class="doc-page-canvas"
-        class:drawn={pageDrawn}
-        data-document-page-canvas={pageDrawn ? 'drawn' : 'blank'}
-        bind:this={canvas}
-        aria-label={m.document_page_alt({ title: stored.title })}
-      >
-        <!-- A canvas's own children are what a screen reader is offered in
-             place of the pixels, so the page says what it is there too. -->
-        {m.document_page_alt({ title: stored.title })}
-      </canvas>
-      {#if !pageDrawn}
-        <!-- Not the thumbnail when a page failed: that thumbnail is page
-             one, and page one under a line about page five is a worse
-             answer than the empty sheet. -->
-        {#if pageUrl && !pageFailed}
-          <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
-        {:else}
-          <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
+      <!-- The sheet and the control that turns it are one column, so the
+           pager is exactly as wide as the page it belongs to rather than
+           as wide as the screen. -->
+      <div class="doc-sheet">
+        <canvas
+          class="doc-page-canvas"
+          class:drawn={pageDrawn}
+          data-document-page-canvas={pageDrawn ? 'drawn' : 'blank'}
+          bind:this={canvas}
+          aria-label={m.document_page_alt({ title: stored.title })}
+        >
+          <!-- A canvas's own children are what a screen reader is offered
+               in place of the pixels, so the page says what it is there
+               too. -->
+          {m.document_page_alt({ title: stored.title })}
+        </canvas>
+        {#if !pageDrawn}
+          <!-- Not the thumbnail when a page failed: that thumbnail is page
+               one, and page one under a line about page five is a worse
+               answer than the empty sheet. -->
+          {#if pageUrl && !pageFailed}
+            <img class="doc-page-image" data-document-page src={pageUrl} alt={m.document_page_alt({ title: stored.title })} />
+          {:else}
+            <div class="doc-page-empty"><Icon name="documents" size={28} /></div>
+          {/if}
         {/if}
-      {/if}
-    </div>
 
-    {#if isPdf}
-      <div class="screen-part stack-3">
         {#if pages && pages.pageCount > 1}
           <!-- Pages and nothing else (ADR-0065): no zoom, no rotation, no
                grid of every page, and no text under any of them. -->
@@ -361,7 +395,11 @@
             </button>
           </div>
         {/if}
+      </div>
+    </div>
 
+    {#if isPdf}
+      <div class="screen-part stack-3">
         {#if unreadable}
           <p class="muted small" data-document-unreadable>{m.document_pdf_unreadable()}</p>
         {:else if pageFailed}
@@ -458,6 +496,17 @@
     height: auto;
   }
 
+  /* The sheet and its pager as one column, which is what keeps the
+     control the width of the page rather than the width of the screen.
+     The gap is tight on purpose: the pager belongs to the page above it,
+     and the file's own block below is a screen-part away. */
+  .doc-sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+  }
+
   /* Mounted from the start and hidden until there is a page on it, so that
      the render has somewhere to go. display:none rather than opacity,
      because an invisible sheet still standing in the layout would hold the
@@ -468,32 +517,13 @@
     height: auto;
   }
 
-  /* The page arriving over the thumbnail it replaces. It is the same
-     picture at a better resolution, so the motion says "sharpened", not
-     "something new": a fade with no travel, at the medium duration the
-     rest of the app swaps things at. */
   .doc-page-canvas.drawn {
     display: block;
-    /* The resting opacity is written out rather than left implicit: under
-       the reduced-motion clamp an animation ends where its last frame
-       says, and a frame with nothing to land on strands the sheet
-       (tests/motion-system.test.ts). */
-    opacity: 1;
-    animation: doc-page-sharpen var(--dur-med) var(--ease-out);
-  }
-
-  @keyframes doc-page-sharpen {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
   }
 
   /* The pager reads as one control rather than three: the count is what
-     the eye lands on, and the two chevrons sit at the ends of the same
-     line so a thumb finds them in the same place on every page. */
+     the eye lands on, and the two chevrons sit at the ends of the page's
+     own width so a thumb finds them in the same place on every page. */
   .doc-pager {
     display: flex;
     align-items: center;
