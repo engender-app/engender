@@ -105,7 +105,7 @@ async function run() {
     JSON.stringify(await unlockKeystore((await readKeystoreFile())!, PASSPHRASE)) ===
     JSON.stringify(created.dataKey);
 
-  const { driver, fileOps } = createEncryptedWebSqlite('gender-diary.sqlite3', created.dataKey);
+  const { driver, fileOps } = createEncryptedWebSqlite('engender.sqlite3', created.dataKey);
   const booted = await boot({ createDriver: () => driver, fileOps });
   if (booted.phase === 'error') throw booted.error;
 
@@ -198,7 +198,7 @@ async function run() {
   const stored = (await readKeystoreFile())!;
   result.wrongPassphrase = await refusal(() => unlockKeystore(stored, 'not the passphrase'));
 
-  const reopened = createEncryptedWebSqlite('gender-diary.sqlite3', await unlockKeystore(stored, PASSPHRASE));
+  const reopened = createEncryptedWebSqlite('engender.sqlite3', await unlockKeystore(stored, PASSPHRASE));
   const rebooted = await boot({ createDriver: () => reopened.driver, fileOps: reopened.fileOps });
   if (rebooted.phase === 'error') throw rebooted.error;
   const reread = openJournal(reopened.driver, encryptedFileStore(opfsPhotoFiles(), created.dataKey));
@@ -217,7 +217,7 @@ async function run() {
   await writeKeystoreFile(rewrapped);
   result.oldPassphraseAfterRewrap = await refusal(() => unlockKeystore(rewrapped, PASSPHRASE));
   const rewrappedKey = await unlockKeystore((await readKeystoreFile())!, 'a different passphrase');
-  const afterRewrap = createEncryptedWebSqlite('gender-diary.sqlite3', rewrappedKey);
+  const afterRewrap = createEncryptedWebSqlite('engender.sqlite3', rewrappedKey);
   const rewrapBoot = await boot({ createDriver: () => afterRewrap.driver, fileOps: afterRewrap.fileOps });
   if (rewrapBoot.phase === 'error') throw rewrapBoot.error;
   result.noteAfterRewrap = (await openJournal(afterRewrap.driver, files).entries.getEntry(entryId))?.note;
@@ -225,7 +225,7 @@ async function run() {
 
   // --- a wrong raw key is refused, not read --------------------------------
   const wrongKey = crypto.getRandomValues(new Uint8Array(32));
-  const wrong = createEncryptedWebSqlite('gender-diary.sqlite3', wrongKey);
+  const wrong = createEncryptedWebSqlite('engender.sqlite3', wrongKey);
   result.wrongRawKey = await refusal(() => wrong.driver.query('SELECT count(*) FROM sqlite_master'));
   await refusal(() => wrong.driver.close());
 

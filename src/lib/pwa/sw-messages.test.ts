@@ -53,7 +53,7 @@ describe('listenForOnDemandCache', () => {
     const sw = fakeScope();
     const caches = fakeCaches();
     listenForOnDemandCache(sw, caches, {
-      cacheName: 'gender-diary-shell-abc',
+      cacheName: 'engender-shell-abc',
       assets: ['/tesseract/worker.min.js', '/tesseract/tesseract-core.wasm']
     });
 
@@ -64,7 +64,7 @@ describe('listenForOnDemandCache', () => {
     expect(sw.held).toHaveLength(1);
     await Promise.all(sw.held);
 
-    expect(caches.added['gender-diary-shell-abc']).toEqual([
+    expect(caches.added['engender-shell-abc']).toEqual([
       '/tesseract/worker.min.js',
       '/tesseract/tesseract-core.wasm'
     ]);
@@ -73,10 +73,10 @@ describe('listenForOnDemandCache', () => {
   test('the ask carries no paths of its own, so another page cannot name what gets cached', async () => {
     const sw = fakeScope();
     const caches = fakeCaches();
-    listenForOnDemandCache(sw, caches, { cacheName: 'gender-diary-shell-abc', assets: ['/tesseract/worker.min.js'] });
+    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/tesseract/worker.min.js'] });
 
     sw.send({ type: CACHE_ON_DEMAND, assets: ['https://example.test/tracker.js'] });
-    sw.send('gender-diary:something-else');
+    sw.send('engender:something-else');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(caches.open).not.toHaveBeenCalled();
@@ -91,7 +91,7 @@ describe('listenForOnDemandCache', () => {
         }
       }))
     };
-    listenForOnDemandCache(sw, caches, { cacheName: 'gender-diary-shell-abc', assets: ['/tesseract/worker.min.js'] });
+    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/tesseract/worker.min.js'] });
 
     sw.send(CACHE_ON_DEMAND);
     await expect(Promise.all(sw.held)).resolves.toBeDefined();

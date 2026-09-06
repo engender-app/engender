@@ -11,10 +11,10 @@
 
 import type { CapacitorConfig } from '@capacitor/cli';
 
-export const JOURNAL_ORIGIN = 'app.genderdiary.barankiewicz.dev';
+export const JOURNAL_ORIGIN = 'app.engender.dev';
 
 const config: CapacitorConfig = {
-  appId: 'dev.barankiewicz.genderdiary',
+  appId: 'dev.engender.app',
   appName: 'enGender',
   webDir: 'build',
   android: {
