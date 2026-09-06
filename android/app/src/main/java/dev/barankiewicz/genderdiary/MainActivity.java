@@ -7,6 +7,7 @@ import android.view.WindowManager;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
 
+import dev.barankiewicz.genderdiary.photos.PhotoPickChannel;
 import dev.barankiewicz.genderdiary.photos.PhotoWriteChannel;
 import dev.barankiewicz.genderdiary.quickexit.QuickExitPlugin;
 import dev.barankiewicz.genderdiary.reminders.ReminderScheduler;
@@ -41,6 +42,7 @@ public class MainActivity extends BridgeActivity {
         // exist until the bridge builds it there.
         if (bridge != null && bridge.getWebView() != null) {
             PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
+            PhotoPickChannel.registerIfSupported(bridge.getWebView(), APP_ORIGIN);
         }
         captureReminderRoute(getIntent());
     }

@@ -1,6 +1,7 @@
 package dev.barankiewicz.genderdiary.photos;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -27,7 +28,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Android half of the photo seam: one picker call and one
@@ -40,8 +44,8 @@ public class PhotosPlugin extends Plugin {
 
     /** Sits beside documents/limits.ts's DOCUMENT_SIZE_CEILING (25 MB) - the
         JS side has no File to ask a size of for a bridge pick, so this is
-        the number readBase64() checks a content provider's declared size
-        against before it ever opens the file. */
+        the number hold() checks a content provider's declared size against
+        before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
 
     @PluginMethod
@@ -85,31 +89,32 @@ public class PhotosPlugin extends Plugin {
     @ActivityCallback
     private void pickedImages(PluginCall call, ActivityResult activityResult) {
         JSObject result = new JSObject();
-        JSArray images = new JSArray();
+        JSArray tokens = new JSArray();
 
         if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
-            result.put("images", images);
+            result.put("tokens", tokens);
             call.resolve(result);
             return;
         }
 
         Intent data = activityResult.getData();
         if (data == null) {
-            result.put("images", images);
+            result.put("tokens", tokens);
             call.resolve(result);
             return;
         }
 
         try {
+            List<Uri> uris = new ArrayList<>();
             if (data.getClipData() != null) {
                 for (int i = 0; i < data.getClipData().getItemCount(); i++) {
-                    Uri uri = data.getClipData().getItemAt(i).getUri();
-                    images.put(readBase64(uri));
+                    uris.add(data.getClipData().getItemAt(i).getUri());
                 }
             } else if (data.getData() != null) {
-                images.put(readBase64(data.getData()));
+                uris.add(data.getData());
             }
-            result.put("images", images);
+            for (String token : hold(uris)) tokens.put(token);
+            result.put("tokens", tokens);
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -121,14 +126,14 @@ public class PhotosPlugin extends Plugin {
         JSObject result = new JSObject();
 
         if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
-            result.put("image", JSObject.NULL);
+            result.put("token", JSObject.NULL);
             call.resolve(result);
             return;
         }
 
         Intent data = activityResult.getData();
         if (data == null) {
-            result.put("image", JSObject.NULL);
+            result.put("token", JSObject.NULL);
             call.resolve(result);
             return;
         }
@@ -136,20 +141,25 @@ public class PhotosPlugin extends Plugin {
         try {
             Bundle extras = data.getExtras();
             if (extras == null) {
-                result.put("image", JSObject.NULL);
+                result.put("token", JSObject.NULL);
                 call.resolve(result);
                 return;
             }
             Object thumbnail = extras.get("data");
             if (!(thumbnail instanceof Bitmap)) {
-                result.put("image", JSObject.NULL);
+                result.put("token", JSObject.NULL);
                 call.resolve(result);
                 return;
             }
 
+            /* The one pick whose bytes exist before anything asks for them:
+               the camera hands back a Bitmap in the activity result, not a
+               URI to reopen, so this is the compressed copy of it. */
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             ((Bitmap) thumbnail).compress(Bitmap.CompressFormat.JPEG, 92, output);
-            result.put("image", Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP));
+            result.put(
+                "token",
+                PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(output.toByteArray()))).get(0));
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -157,15 +167,16 @@ public class PhotosPlugin extends Plugin {
     }
 
     /** A returned URI the content provider will not open (an unmounted SD
-        card, a file already deleted from under the picker) rejects the call
-        with a plain message rather than crashing - readBase64() already
-        throws one. */
+        card, a file already deleted from under the picker) fails when the
+        bytes are asked for rather than here, because that is when the file
+        is opened now - either transport reports it the same way, and
+        documentPicking.ts's own catch is what the person sees. */
     @ActivityCallback
     private void pickedDocument(PluginCall call, ActivityResult activityResult) {
         JSObject result = new JSObject();
 
         if (activityResult == null || activityResult.getResultCode() != Activity.RESULT_OK) {
-            result.put("bytes", JSObject.NULL);
+            result.put("token", JSObject.NULL);
             call.resolve(result);
             return;
         }
@@ -173,13 +184,52 @@ public class PhotosPlugin extends Plugin {
         Intent data = activityResult.getData();
         Uri uri = data == null ? null : data.getData();
         if (uri == null) {
-            result.put("bytes", JSObject.NULL);
+            result.put("token", JSObject.NULL);
             call.resolve(result);
             return;
         }
 
         try {
-            result.put("bytes", readBase64(uri));
+            result.put("token", hold(Collections.singletonList(uri)).get(0));
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /**
+     * The floor's transport for a picked file's bytes: base64 over the
+     * bridge, for the WebView versions {@link PhotoPickChannel} cannot
+     * register on (ADR-0023). picker.ts calls this only where
+     * {@code window.androidPhotoPickChannel} does not exist.
+     *
+     * <p>Still streamed straight into a {@code Base64OutputStream} rather
+     * than through a {@code byte[]} first - the fallback path is the one
+     * already paying for three copies of the file, and there is no reason
+     * to make it four.
+     *
+     * <p><b>It can still run out of heap at the ceiling.</b>
+     * {@code encodeBase64}'s {@code toString("US-ASCII")} materialises the
+     * whole encoding as a Java String, which is two bytes a character, so a
+     * 25 MB file asks for 34 MB in one allocation; on the API 35 emulator
+     * (192 MB growth limit) it fails, and the pick is rejected with a toast
+     * rather than filed. That is not new and not fixable here - a plugin
+     * response is one string by construction - but it is now only reachable
+     * on the WebView versions {@link PhotoPickChannel} cannot register on,
+     * where before this ticket it was every pick's path.
+     * {@code PhotoPickChannelTest} records the figures.
+     */
+    @PluginMethod
+    public void readPickedBase64(PluginCall call) {
+        PickedFiles.Source source = PickedFiles.take(call.getString("token"));
+        if (source == null) {
+            call.reject("unknown picked file");
+            return;
+        }
+        try (InputStream input = source.open()) {
+            if (input == null) throw new IllegalStateException("could not read selected file");
+            JSObject result = new JSObject();
+            result.put("base64", encodeBase64(input, 8192));
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -339,14 +389,27 @@ public class PhotosPlugin extends Plugin {
         return -1;
     }
 
-    private String readBase64(Uri uri) throws Exception {
-        long size = querySize(uri);
-        if (size > DOCUMENT_SIZE_CEILING) throw new IOException("too-large");
+    /** Every URI's declared size is checked before any of them is held, so
+        one oversized file in a multi-pick refuses the batch before a token
+        for any of them exists - the same "none of them read" the web half
+        gets from checking every File.size before the first arrayBuffer()
+        (picker.ts).
 
-        try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
-            if (input == null) throw new IllegalStateException("could not read selected file");
-            return encodeBase64(input, 8192);
+        The application context, not the plugin's: a source outlives the
+        activity result it came from by as long as it takes the WebView to
+        ask for the bytes, and a static map holding an Activity would be a
+        leak. */
+    private List<String> hold(List<Uri> uris) throws IOException {
+        for (Uri uri : uris) {
+            if (querySize(uri) > DOCUMENT_SIZE_CEILING) throw new IOException("too-large");
         }
+
+        Context context = getContext().getApplicationContext();
+        List<PickedFiles.Source> sources = new ArrayList<>(uris.size());
+        for (Uri uri : uris) {
+            sources.add(() -> context.getContentResolver().openInputStream(uri));
+        }
+        return PickedFiles.hold(sources);
     }
 
     private static String encodeBase64(InputStream input, int initialSize) throws Exception {
