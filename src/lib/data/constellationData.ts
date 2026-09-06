@@ -152,3 +152,59 @@ export function tracedThrough(points: PlottedPoint[], index: number): Constellat
     slot: (first + i) % TRACE_WINDOW
   }));
 }
+
+/** Where a point's label sits relative to its dot, in real pixels: up and to
+    the right by default, flipped toward the plot's interior once the point
+    sits close enough to the top or the right edge that the default offset
+    would carry it past the plot (ticket CARPET-07). The only two edges the
+    default can reach - `x`/`y` run 0 at a scale's low end, so the left and
+    bottom edges already have PAD of clearance the default offset moves
+    into rather than away from.
+
+    The one place this decides a label's position, read by both
+    `labeledSlots` below and the component that draws the text: measuring
+    collisions against the dot's position while drawing the label somewhere
+    else is exactly the gap that let two labels overlap near an edge where
+    the flip put them closer together than their dots ever were. */
+export function labelOffset(point: { x: number; y: number }): { dx: number; dy: number; anchor: 'start' | 'end' } {
+  return {
+    anchor: point.x > 0.85 ? 'end' : 'start',
+    dx: point.x > 0.85 ? -6 : 6,
+    dy: point.y > 0.9 ? 14 : -6
+  };
+}
+
+/** Which points earn a label, in a square `plot` pixels wide inset by `pad`
+    on every side, with no two labels closer than `minGap` (ticket
+    CARPET-07). Every point still plots; this only decides which of them
+    also gets its day written beside it. Measured at each label's own
+    anchored position (`labelOffset`), not at the dot underneath it, so an
+    edge flip that pulls two labels toward each other is exactly what this
+    catches.
+
+    Highest weight first, which is the same recency order the dots
+    themselves are already drawn at: a label lost to crowding is always the
+    fainter, older of the two marks it collided with, never the sharper one.
+    Nothing here moves a point to make room - the same rule the plane
+    itself is held to (see this file's header) - a label is dropped rather
+    than a reading nudged. */
+export function labeledSlots(
+  points: readonly ConstellationPoint[],
+  plot: number,
+  pad: number,
+  minGap: number
+): Set<number> {
+  const byWeight = points.map((_, index) => index).sort((a, b) => points[b].weight - points[a].weight);
+  const placed: { x: number; y: number }[] = [];
+  const chosen = new Set<number>();
+  for (const index of byWeight) {
+    const point = points[index];
+    const offset = labelOffset(point);
+    const x = pad + point.x * plot + offset.dx;
+    const y = pad + (1 - point.y) * plot + offset.dy;
+    if (placed.some((p) => Math.hypot(p.x - x, p.y - y) < minGap)) continue;
+    placed.push({ x, y });
+    chosen.add(point.slot);
+  }
+  return chosen;
+}

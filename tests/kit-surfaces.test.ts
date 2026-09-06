@@ -141,7 +141,8 @@ describe('the surfaces', () => {
          and the picker's into one component at src/lib/components, because
          the two were one drawing with two sets of markup and the eyes could
          not be changed without changing both. A chip and a day card ask it
-         for a size; the picker asks for a blink. */
+         for a size; a chip and the picker ask it to be alive, which is the
+         glance and the gaze together (phase 9 carpet ticket 01). */
       'Notice.svelte',
       /* The other half of ADR-0058's rule: parts of a whole where the
          order is the information. Mood distribution draws as this rather

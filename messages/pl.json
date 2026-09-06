@@ -3139,6 +3139,7 @@
   "constellation_x_label": "W poziomie",
   "constellation_y_label": "W pionie",
   "constellation_scrub": "Pozycja na ścieżce",
+  "constellation_play": "Odtwórz ścieżkę od początku",
   "constellation_needs_scales": "Zaznacz dwie skale, żeby zestawić je ze sobą.",
   "constellation_aria": "Twoje wpisy na dwóch skalach: {x}, {y}.",
   "constellation_reading_aria": "{date}. {xName}: {x}. {yName}: {y}.",

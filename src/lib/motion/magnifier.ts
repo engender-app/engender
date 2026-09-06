@@ -63,7 +63,69 @@ export function magnify(x: number, centre: number, spread: number, peak: number 
     answer rather than a third copy of the cell math (ticket 99). */
 export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
   const cell = row.width / count;
+  /* Cells, times a cell. MAGNIFIER_SPREAD is a count of cells and `magnify`'s
+     spread is in the coordinates' own units, and this handed the bare 1.7
+     across - so the reach was 1.7 pixels, about three per cent of a cell, and
+     the `cell` computed on the line above went into the centres and nowhere
+     else. Every face was at rest unless the pointer was within two pixels of
+     its exact middle. The fan's own copy of this loop always multiplied
+     (QuickAdd's magnifyMoods), which is why the fan was the row that looked
+     right and these two were the rows Alicja kept calling wrong. */
   return Array.from({ length: count }, (_, i) =>
-    magnify(x, row.left + cell * (i + 0.5), MAGNIFIER_SPREAD, ROW_PEAK)
+    magnify(x, row.left + cell * (i + 0.5), cell * MAGNIFIER_SPREAD, ROW_PEAK)
   );
+}
+
+/* ---------- the gaze ----------
+
+   The magnifier's second channel (phase 9 carpet ticket 01). Size is the
+   answer only the face under the finger can give; every one of the other four
+   is left at rest by it, which is why a row being crossed used to read as one
+   face growing rather than as a row noticing. Direction is an answer all five
+   can give at once, and it costs the eyes alone.
+
+   It is also what the faces do with the aliveness they already had. The blink
+   was an ambient loop that said nothing about the person using it; a face that
+   turns to watch the finger is the same amount of motion spent on the one
+   thing happening on the screen. */
+
+/** How far an eye travels when fully turned, in user units of MoodFace's
+    24-box - so about 2px on the picker's 44px face and under 1.5px on quick
+    add's 34. An eye that moves far enough to be noticed on its own has
+    stopped being an eye; what should be noticeable is five of them agreeing. */
+export const GAZE_REACH = 1.05;
+
+/** A distance in cells, as a turn from -1 to 1.
+
+    One cell is already a full turn: the immediate neighbour looks as hard as
+    it can and everything past it looks the same. Eyes run out of travel,
+    which is the difference between a gaze and a compass needle, and it also
+    means a row of nine would not have its outer faces staring harder than
+    its inner ones. */
+function clampTurn(cells: number): number {
+  return Math.max(-1, Math.min(1, cells));
+}
+
+/** Every face's gaze for a pointer at `x`, as -1 (fully left) to 1 (fully
+    right). The units are the row's cells rather than pixels, so the same
+    turn reads the same on quick add's full-width fan and on the entry
+    editor's narrower picker. */
+export function gazeRow(x: number, row: DOMRect, count: number): number[] {
+  const cell = row.width / count;
+  if (!cell) return Array.from({ length: count }, () => 0);
+  return Array.from({ length: count }, (_, i) => clampTurn((x - (row.left + cell * (i + 0.5))) / cell));
+}
+
+/** Every face's gaze toward the face at `picked`, for the beat after a pick:
+    the four that were not chosen turn to look at the one that was, and the
+    chosen one looks straight out. A cell index rather than a coordinate,
+    because after the pick the pointer is gone and the row's position on the
+    screen is not something any of these surfaces should have to know.
+
+    There is no "nothing was picked" here. A cleared mood is the row letting
+    go, which is moodMagnifier's own resting value of null on every face, and
+    a second spelling of nothing - all zeros, meaning five faces deliberately
+    staring straight ahead - is a different state that nothing wants. */
+export function gazeToCell(picked: number, count: number): number[] {
+  return Array.from({ length: count }, (_, i) => clampTurn(picked - i));
 }
