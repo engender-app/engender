@@ -10,7 +10,7 @@ export const DEFAULT_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 /* snoozeKey stays exported only for its own test (AU-09 test-only review). */
 export function snoozeKey(tileKey: string): string {
-  return `gender-diary-tile-snooze-${tileKey}`;
+  return `engender-tile-snooze-${tileKey}`;
 }
 
 function resolveStorage(storage?: Storage): Storage | null {

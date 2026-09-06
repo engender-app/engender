@@ -20,7 +20,7 @@ import type { LetterSeal } from './journal/letters';
 import type { Letter } from './types';
 
 const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
-const READ_LETTERS_STORAGE_KEY = 'gender-diary-read-letter-ids';
+const READ_LETTERS_STORAGE_KEY = 'engender-read-letter-ids';
 const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {

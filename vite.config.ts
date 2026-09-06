@@ -18,14 +18,14 @@ function writeEmittedClientAssets() {
     mkdirSync('src/lib/pwa', { recursive: true });
     writeFileSync(
       GENERATED,
-      `/* Written by the gender-diary:emitted-client-assets plugin in\n` +
+      `/* Written by the engender:emitted-client-assets plugin in\n` +
         `   vite.config.ts on every build. Not handwritten, not committed. */\n` +
         `export const emittedClientAssets = ${JSON.stringify(assets, null, 2)};\n`
     );
   };
 
   return {
-    name: 'gender-diary:emitted-client-assets',
+    name: 'engender:emitted-client-assets',
     /* Only when there is nothing there at all, so that `npm run dev` and a
        fresh clone have a module to resolve - never over a real list, because
        three builds run through this config and the client one is not last. */
@@ -82,7 +82,7 @@ export default defineConfig(({ command }) => ({
   // contract needs rather than the one Rollup needs: the version
   // the build was given has to be inside the bundle it built, so the About
   // screen can only ever show what was actually shipped. Read once here, from
-  // the signed tag or from GENDER_DIARY_VERSION, and nowhere else.
+  // the signed tag or from ENGENDER_VERSION, and nowhere else.
   define: {
     __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1'),
     __APP_VERSION__: JSON.stringify(appVersion())
@@ -115,7 +115,7 @@ export default defineConfig(({ command }) => ({
     // read from the database. Now that preferences live there too, the
     // preview server needs the headers the dev server already had.
     {
-      name: 'gender-diary:cross-origin-isolate-preview',
+      name: 'engender:cross-origin-isolate-preview',
       configurePreviewServer(server) {
         server.middlewares.use((_req, res, next) => {
           res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');

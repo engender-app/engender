@@ -4,7 +4,7 @@
    tested without a browser at all.
 
    The two databases never overlap in the pool. The source is a
-   `gender-diary.sqlite3` file in the OPFS root, which only SQLocal can read
+   `engender.sqlite3` file in the OPFS root, which only SQLocal can read
    (ADR-0020 replaced the driver, not the file format), and the target lives
    inside the SAHPool directory under the same name - so the conversion
    reads with one library, writes with the other, and neither can be
@@ -23,7 +23,7 @@ import { opfsPhotoFiles } from '../photos/opfs-file-store';
 /** The database SQLocal wrote, and the name the encrypted Journal takes
     inside the pool. The same string on purpose: one Journal, one name, two
     containers that cannot see each other's files. */
-export const JOURNAL_DATABASE = 'gender-diary.sqlite3';
+export const JOURNAL_DATABASE = 'engender.sqlite3';
 
 /** Everything this app has ever written in plaintext at the OPFS root. Not
     a wildcard sweep: the person's photo directory, the keystore and the

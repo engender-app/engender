@@ -63,9 +63,9 @@ const NATIVE_ONLY = new Set(['gd26']);
    rather than per-operation, and androidx.biometric's device-credential
    fallback exists specifically for that floor. */
 const NATIVE_TESTS = [
-  'dev.barankiewicz.genderdiary.sqlite.NativeSqliteCapabilitiesTest',
-  'dev.barankiewicz.genderdiary.keystore.JournalKeystoreTest',
-  'dev.barankiewicz.genderdiary.keystore.BiometricAuthenticatorAvailabilityTest'
+  'dev.engender.app.sqlite.NativeSqliteCapabilitiesTest',
+  'dev.engender.app.keystore.JournalKeystoreTest',
+  'dev.engender.app.keystore.BiometricAuthenticatorAvailabilityTest'
 ].join(',');
 
 const sdkRoot =
@@ -229,9 +229,9 @@ const gradleEnv = { JAVA_HOME: home };
    from the regular test:android run. Run it separately on a real device:
      npx cap sync android
      cd android && ./gradlew :app:connectedDebugAndroidTest \
-       -Pandroid.testInstrumentationRunnerArguments.class=dev.barankiewicz.genderdiary.longjournal.LongJournalBenchmarkTest
+       -Pandroid.testInstrumentationRunnerArguments.class=dev.engender.app.longjournal.LongJournalBenchmarkTest
    Then copy the logged JSON block into android-budgets.json and commit it. */
-const BENCHMARK_TEST = 'dev.barankiewicz.genderdiary.longjournal.LongJournalBenchmarkTest';
+const BENCHMARK_TEST = 'dev.engender.app.longjournal.LongJournalBenchmarkTest';
 
 for (const avd of AVDS) {
   try {

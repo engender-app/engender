@@ -1,7 +1,7 @@
 /* The licence of everything the lockfile installs, checked on every pull
    request (phase 2 ticket 06).
 
-   Gender Diary is GPL-3.0-only, and one channel decides for itself whether it
+   enGender is GPL-3.0-only, and one channel decides for itself whether it
    agrees: F-Droid rebuilds from source and rejects a dependency graph it
    cannot build freely (ticket 18). A dependency that arrives under a licence
    nobody looked at is how that turns into a rejected build months later, when

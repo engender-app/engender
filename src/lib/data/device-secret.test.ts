@@ -138,7 +138,7 @@ test('the versioned label is what gets signed, so a later scheme can derive a di
   await binding.create();
   await binding.read();
 
-  expect(labels).toEqual(['gender-diary/pin-binding/v1', 'gender-diary/pin-binding/v1']);
+  expect(labels).toEqual(['engender/pin-binding/v1', 'engender/pin-binding/v1']);
 });
 
 test('a phone with no alias left is its own failure rather than a wrong PIN', async () => {
