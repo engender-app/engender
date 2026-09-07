@@ -255,7 +255,7 @@
 
   .vg-run {
     height: 4px;
-    border-radius: 999px;
+    border-radius: 2px;
     background: var(--role-wash);
     overflow: hidden;
   }

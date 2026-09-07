@@ -197,7 +197,7 @@
     color: var(--text-2);
     background: var(--surface-2, color-mix(in oklab, var(--text) 6%, transparent));
     padding: 1px 6px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-block);
   }
 
   .is-active-card {

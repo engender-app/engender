@@ -583,7 +583,7 @@
     color: var(--text-2);
     background: color-mix(in oklab, var(--text-2) 14%, transparent);
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: var(--r-block);
     white-space: nowrap;
   }
 

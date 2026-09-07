@@ -193,7 +193,7 @@
     margin-bottom: var(--space-4);
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
   }
 
   .adopt-stat-row {

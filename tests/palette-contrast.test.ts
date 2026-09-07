@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { colorMixOklab, contrast, luminance, toRgb } from '../src/lib/theme/colour';
+import { flagField, flagRoles } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
 const css = readFileSync('src/lib/theme/palettes.css', 'utf8');
@@ -217,6 +218,75 @@ describe('palette contrast coverage', () => {
           expect(
             ratio,
             `${palette}/${theme} heat-${step} (${heat[step]}) vs on-heat-${step} (${onHeat[step]}) has ${ratio.toFixed(2)}:1, needs 4.5:1`
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+});
+
+/* The phase 10 direction's two enumerations (redesign ticket 07,
+   DIRECTION.md rule 11). Both are computed on the exact hexes, never read
+   off a render. */
+describe('the field and the fills (phase 10)', () => {
+  function stripesOf(palette: string): string[] {
+    const raw = /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`));
+    if (!raw) throw new Error(`No --motif-stripes for ${palette}`);
+    return raw[1].split(',').map((s) => s.trim());
+  }
+
+  /* The table DIRECTION.md prints under "Contrast, measured": the flag's
+     second colour, its ink, and the ratio to two places. Only large text
+     sits on the field, which answers to 3:1; nonbinary's 4.41 is why. */
+  const FIELD: Record<string, [string, string, number]> = {
+    trans: ['#F5A9B8', '#101820', 9.59],
+    nonbinary: ['#9C59D1', '#FFFFFF', 4.41],
+    genderfluid: ['#C011D7', '#FFFFFF', 4.88],
+    bisexual: ['#9B4F96', '#FFFFFF', 5.31],
+    lesbian: ['#FF9A56', '#101820', 8.53],
+    pansexual: ['#FFD800', '#101820', 12.85],
+    rainbow: ['#004CFF', '#FFFFFF', 6.04],
+    agender: ['#B9F484', '#101820', 13.92]
+  };
+
+  it("takes the field from the flag's inner bands, never its outermost, and inks it to 3:1", () => {
+    for (const palette of PALETTES) {
+      const field = flagField(stripesOf(palette), palette)!;
+      const stripes = stripesOf(palette).map((s) => s.toUpperCase());
+      expect(field.hex.toUpperCase(), palette).not.toBe(stripes[0]);
+      expect(stripes.slice(1, -1), `${palette}: the field is one of the flag's inner bands`).toContain(
+        field.hex.toUpperCase()
+      );
+      expect(field.ratio, `${palette}: ${field.ink} on ${field.hex}`).toBeGreaterThanOrEqual(3);
+      const [hex, ink, ratio] = FIELD[palette];
+      expect([field.hex, field.ink, Number(field.ratio.toFixed(2))], palette).toEqual([hex, ink, ratio]);
+    }
+  });
+
+  it("names the rainbow's blue and lets the other seven fall to the rule", () => {
+    expect(flagField(stripesOf('rainbow'))!.hex).toBe('#FF8C00');
+    expect(flagField(stripesOf('rainbow'), 'rainbow')!.hex).toBe('#004CFF');
+    expect(flagField([])).toBeUndefined();
+  });
+
+  /* Small text on a fill: a day bar's 13px date and a tag's 12px label sit
+     on --role-draw in --role-fill-ink, and a day card can be handed any
+     role index (on-this-day colours each year in turn), so every stripe of
+     every flag has to carry that ink at 4.5:1 on both themes - not only the
+     two indices Home happens to use. The ink is the one roles.ts computes
+     for the heat ramp's deepest step, which is the stripe undiluted. */
+  it('keeps small text in the fill ink readable on every stripe of every flag, both themes', () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const roles = flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']]);
+        expect(roles.length).toBeGreaterThanOrEqual(3);
+        for (const role of roles) {
+          const ink = role.heat[role.heat.length - 1].ink;
+          const ratio = contrast(ink, role.stripe);
+          expect(
+            ratio,
+            `${palette}/${theme}: ${ink} on ${role.stripe} has ${ratio.toFixed(2)}:1`
           ).toBeGreaterThanOrEqual(4.5);
         }
       }

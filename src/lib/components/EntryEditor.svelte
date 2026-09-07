@@ -1377,7 +1377,7 @@
   .contextual-panel {
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     padding: var(--space-3) var(--space-4);
     display: flex;
     flex-direction: column;
@@ -1416,8 +1416,8 @@
     padding: var(--space-2) var(--space-3);
     min-height: 36px;
     box-sizing: border-box;
-    border-radius: var(--radius-pill);
-    border: 1.5px solid var(--border);
+    border-radius: var(--r-block);
+    border: 1.5px solid var(--outline);
     background: var(--surface);
     color: var(--text);
     font: inherit;
@@ -1453,7 +1453,7 @@
      one a list row or a button uses) - a true pill's fully-rounded ends
      stop reading as a pill the moment its content wraps past one line. */
   .dose-chip {
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     text-align: left;
   }
   .dose-chip-text {
@@ -1524,7 +1524,7 @@
   .editor-media {
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     overflow: hidden;
   }
   .editor-media-group { padding: var(--space-4); }
@@ -1542,7 +1542,7 @@
      adds a tap target without shifting either badge's absolute position. */
   .photo-view {
     display: block; border: none; background: none; padding: 0; cursor: pointer;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
   }
 
   /* Same 44px-touch-target/24px-badge shape as .photo-remove (screens.css),
@@ -1594,7 +1594,7 @@
   }
   .video-countdown {
     position: absolute; top: var(--space-2); right: var(--space-2);
-    padding: 2px 8px; border-radius: var(--radius-pill);
+    padding: 2px 8px; border-radius: var(--r-block);
     background: rgb(0 0 0 / 0.6); color: #fff;
     font-size: 0.8rem; font-variant-numeric: tabular-nums;
   }

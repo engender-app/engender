@@ -343,3 +343,42 @@ function readStripes(doc: Document): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** The colour a door's field wears, and the ink on it (phase 10 direction,
+    rule 3): the flag's second colour - the first inner band of
+    `--motif-stripes` that is a colour and differs from the outermost band -
+    so bisexual's doubled outer stop is skipped by colour rather than by
+    index, and the whole flag stays drawn in the sun with no band stolen. One
+    flag names its own band: the six-stripe rainbow takes its blue rather than
+    its orange (Alicja, 2026-09-07, round two). A flag with no such band falls
+    back to its first colour, then to its first stripe; none of the eight
+    needs either.
+
+    The ink is the dark theme's near-black or white, whichever measures
+    higher on the hex. Only large text may sit on the field: nonbinary's
+    purple carries white at 4.41:1, which clears 3:1 and nothing smaller.
+    tests/palette-contrast.test.ts holds every flag's pair to that floor and
+    to the table DIRECTION.md prints. Ticket 23 publishes the pair beside the
+    roles; this is the arithmetic it publishes. */
+export const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF' };
+
+export interface FlagField {
+  hex: string;
+  ink: '#101820' | '#FFFFFF';
+  ratio: number;
+}
+
+export function flagField(stripes: string[], palette?: string): FlagField | undefined {
+  const bands = stripes.map((s) => s.trim()).filter(Boolean);
+  if (bands.length === 0) return undefined;
+  const outer = bands[0].toUpperCase();
+  const isColour = (s: string) => chromaOf(s) >= ACHROMATIC;
+  const inner = bands.slice(1, -1);
+  const hex =
+    (palette && FIELD_NAMED_BAND[palette]) ||
+    inner.find((s) => isColour(s) && s.toUpperCase() !== outer) ||
+    bands.find(isColour) ||
+    bands[0];
+  const ink = contrast('#101820', hex) >= contrast('#FFFFFF', hex) ? '#101820' : '#FFFFFF';
+  return { hex, ink, ratio: contrast(ink, hex) };
+}

@@ -73,7 +73,7 @@
 }
 .photo-add {
   width: 72px; height: 72px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
   border: 1.5px dashed var(--accent-border);
   background: none; color: var(--accent);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -88,7 +88,7 @@
    drift this file's other comments keep warning about. */
 .video-note-player, .video-preview video {
   width: 100%; max-height: 40vh;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
   background: #000;
 }
 
@@ -136,8 +136,8 @@
    screen that says which period every figure below belongs to, and it sat
    close enough to the switcher above and the figures below to read as part of
    one of them (Alicja, 2026-08-25). */
-.wrapped-head { padding: var(--space-6) 0 var(--space-6); text-align: center; }
-.wrapped-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-display); }
+.wrapped-head { padding: var(--space-5) 0 var(--space-5); text-align: center; }
+.wrapped-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: var(--weight-display); line-height: var(--leading-display); }
 .wrapped-sub { color: var(--text-2); font-size: var(--text-sm); margin-top: var(--space-2); }
 .wrapped-stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
@@ -146,12 +146,12 @@
 }
 .wrapped-stat {
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   box-shadow: var(--shadow-1);
   padding: var(--space-4) var(--space-3);
   text-align: center;
 }
-.wrapped-stat strong { display: block; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; }
+.wrapped-stat strong { display: block; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: var(--weight-display); }
 .wrapped-stat span { display: block; font-size: var(--text-xs); color: var(--text-2); margin-top: 2px; }
 .wrapped-photos { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .wrapped-thin { text-align: center; padding: var(--space-8) var(--space-4); }
@@ -160,11 +160,11 @@
 /* The wrapped card (ticket 16): a self-contained frame, unlike the wrapped
    screens above which lay their stats directly on the page. It reuses
    .wrapped-stats/.wrapped-stat rather than duplicating that tile styling. */
-.wrapped-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: var(--space-5); }
+.wrapped-card { background: var(--surface); border-radius: var(--r-block); box-shadow: var(--shadow-1); padding: var(--space-5); }
 .wrapped-card .wrapped-stats { margin-bottom: 0; }
 .wrapped-card-art {
   height: 96px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   margin-bottom: var(--space-4);
   background: linear-gradient(105deg, var(--motif-stripes));
 }
@@ -219,7 +219,7 @@
 .wrapped-cover-year {
   font-family: var(--font-display);
   font-size: 4rem;
-  font-weight: 700;
+  font-weight: var(--weight-display);
   line-height: 1;
   letter-spacing: var(--display-track);
   margin: var(--space-2) 0 var(--space-3);
@@ -255,8 +255,8 @@
   text-align: center;
   color: var(--text-2);
   font-size: var(--text-sm);
-  margin-top: var(--space-7);
-  padding-bottom: var(--space-7);
+  margin-top: var(--space-8);
+  padding-bottom: var(--space-8);
 }
 
 /* ---------- Calendar & day detail ---------- */
@@ -281,7 +281,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: 600;
+  font-weight: var(--weight-display);
   /* Centred between its two steps, and given the room to stay centred when
      the month's name is long: without this the flex box sizes to the text
      and September pushes the chevrons apart. */
@@ -349,8 +349,8 @@
 .search-box {
   display: flex; align-items: center; gap: var(--space-2);
   background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--outline);
+  border-radius: var(--r-block);
   padding: 0 var(--space-4);
   color: var(--text-2);
 }
@@ -437,7 +437,7 @@
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--outline);
-  border-radius: var(--r-card);
+  border-radius: var(--r-block);
   padding: var(--space-2) var(--space-4);
 }
 
@@ -485,7 +485,7 @@
    Start day" is one fact written twice. */
 .date-row-value {
   font-family: var(--font-display);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-display);
   font-size: var(--text-md);
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -535,7 +535,7 @@
 .date-row input[type='date']:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: -3px;
-  border-radius: 10px;
+  border-radius: var(--r-block);
 }
 
 .compare-metrics-row {
@@ -595,7 +595,7 @@
 .palette-swatch {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
-  padding: var(--space-2) 2px; border-radius: var(--radius-md);
+  padding: var(--space-2) 2px; border-radius: var(--r-block);
   font: inherit;
   min-width: 0;
 }
@@ -632,7 +632,7 @@
 [data-mood-swatch="plum"] { background: linear-gradient(90deg, #ECE5ED, #E5D1E7, #E0B9E5, #DD9AE4, #D975E5); }
 [data-mood-swatch="moss"] { background: linear-gradient(90deg, #E3E9E0, #C8DEBE, #A1D389, #66C835, #51B022); }
 
-.taggroup-toggles { padding: 0 var(--space-4) var(--space-3) calc(var(--space-4) + 34px); border-top: 1px solid var(--border); }
+.taggroup-toggles { padding: 0 var(--space-4) var(--space-3) calc(var(--space-4) + 34px); border-top: 1px solid var(--outline); }
 .taggroup-row { padding: var(--space-2) 0; font-size: var(--text-sm); }
 .manage-tags-link {
   display: inline-flex; align-items: center; gap: 4px;
@@ -649,14 +649,14 @@
 .disguise-preview {
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--outline);
+  border-radius: var(--r-block);
   color: var(--text-2);
   transition: color var(--dur-med), border-color var(--dur-med);
 }
 .disguise-preview.is-on { color: var(--text); border-color: var(--accent-border); }
 .disguise-icon {
-  width: 44px; height: 44px; border-radius: 11px;
+  width: 44px; height: 44px; border-radius: var(--r-block);
   background: var(--surface-2); color: var(--text-2);
   display: flex; align-items: center; justify-content: center;
 }
@@ -688,7 +688,7 @@
   display: flex; align-items: center; gap: 6px;
   font-size: var(--text-sm); color: var(--on-accent-soft);
   background: var(--accent-soft);
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-block);
   padding: var(--space-2) var(--space-3);
 }
 
@@ -743,7 +743,7 @@
 .gate-title {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-display);
   letter-spacing: var(--display-track);
   line-height: var(--leading-display);
   text-wrap: balance;
@@ -785,7 +785,7 @@
 .photo-cell {
   position: relative; border: none; background: none; padding: 0; cursor: pointer;
   display: flex; flex-direction: column; gap: 4px; align-items: center;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
 }
 .photo-cell .photo-thumb { width: 100% !important; aspect-ratio: 1; height: auto !important; }
 .photo-cell.is-selected .photo-thumb { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -815,7 +815,7 @@
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--surface); box-shadow: var(--shadow-1);
 }
-.compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-5); }
+.compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-display); margin-bottom: var(--space-5); }
 .compare-nav { display: flex; align-items: center; gap: var(--space-1); }
 /* SH-106: was 36px; falls back to .icon-btn's 44px default. */
 
@@ -842,8 +842,8 @@
      by this element's own `overflow: hidden`, which clips descendants, not
      the box's own outline. */
   .home {
-    outline: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    outline: 1px solid var(--outline);
+    border-radius: var(--r-block);
     overflow: hidden;
   }
 }
@@ -886,7 +886,7 @@
   padding: 0 var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--outline);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   color: var(--text);
   font: inherit;
   font-size: var(--text-sm);
@@ -919,7 +919,7 @@
 .wrapped-figure-value {
   font-family: var(--font-display);
   font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-display);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -967,7 +967,7 @@
   margin-top: var(--space-4);
   background: var(--surface);
   border: 1px solid var(--outline);
-  border-radius: var(--r-card);
+  border-radius: var(--r-block);
   padding: var(--space-4);
 }
 

@@ -1157,7 +1157,7 @@
 
   .dose-status {
     padding: 2px 8px;
-    border-radius: var(--radius-pill);
+    border-radius: var(--r-block);
     background: var(--surface-2);
     color: var(--text-2);
     font-size: var(--text-xs);
@@ -1227,7 +1227,7 @@
   .dose-line-amount {
     font-family: var(--font-display);
     font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-display);
     letter-spacing: var(--display-track);
     line-height: var(--leading-display);
   }
@@ -1287,8 +1287,8 @@
     width: fit-content;
     max-width: 14rem;
     background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--outline);
+    border-radius: var(--r-block);
     padding: 0 var(--space-4);
     min-height: var(--touch-target);
     transition: border-color var(--dur-fast) var(--ease-out);

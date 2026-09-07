@@ -9,25 +9,35 @@
   --font-body: 'Nunito', system-ui, sans-serif;
   --font-display: 'Outfit', 'Nunito', system-ui, sans-serif;
 
-  --text-xs: 0.75rem;    /* 12px — timestamps, legends */
-  --text-sm: 0.875rem;   /* 14px — secondary text, chips */
+  /* The phase 10 scale (DIRECTION.md rule 2): 48 / 28 / 17 / 15, set from
+     the top down. Secondary text is 15 at weight 600 rather than 14 at 450,
+     because a flashy screen with grey 14px whispers under it is two apps;
+     a content title is 17 in the body face; the section heading is 28 and a
+     door's title 48, both in the display face at weight 800. */
+  --text-xs: 0.75rem;    /* 12px — timestamps, legends, a tag */
+  --text-sm: 0.9375rem;  /* 15px — secondary text, subtitles, a tile's note */
   --text-md: 1rem;       /* 16px — body */
-  --text-lg: 1.125rem;   /* 18px — emphasised body, list titles */
-  --text-xl: 1.3125rem;  /* 21px — section headings */
-  --text-2xl: 1.625rem;  /* 26px — screen titles (display face) */
-  --text-3xl: 2rem;      /* 32px — greeting, big numbers */
+  --text-lg: 1.0625rem;  /* 17px — a content title: a chart's heading, a row's title */
+  --text-xl: 1.3125rem;  /* 21px — a sheet's heading, a row-weight number */
+  --text-2xl: 1.75rem;   /* 28px — a section heading (display face) */
+  --text-3xl: 2.5rem;    /* 40px — a number on a block (display face) */
+  --text-4xl: 3rem;      /* 48px — a door's title, a deep screen's title (display face) */
 
   --leading-body: 1.5;
-  --leading-display: 1.2;
+  --leading-display: 1.05;
 
   /* Outfit sets wide by default and needs pulling in at display sizes; Baloo
      2 did not, and wanted 0. Every rule that reaches for --font-display
-     wants this with it. */
-  --display-track: -0.024em;
+     wants this with it. -0.04em at 28 and above (phase 10); a door's title
+     at 48 tightens one step further, to -0.045em, in its own rule. */
+  --display-track: -0.04em;
 
   --weight-regular: 450;
   --weight-medium: 600;
   --weight-bold: 750;
+  /* Outfit's weight axis at 800 for every display size (phase 10, rule 2):
+     the body face keeps 750 for bold, the display face never sets less. */
+  --weight-display: 800;
 
   /* --- Spacing (4px base) --- */
   --space-1: 4px;
@@ -41,21 +51,16 @@
   --space-9: 48px;
   --space-10: 64px;
 
-  /* --- Shape: soft, rounded, never sharp (warm, not clinical) --- */
-  --radius-xs: 6px;      /* heat-map cells, small chips */
-  --radius-sm: 10px;     /* inputs, small controls */
-  --radius-md: 14px;     /* buttons, list rows */
-  --radius-lg: 18px;     /* cards */
-  --radius-xl: 26px;     /* sheets, hero surfaces */
-  --radius-pill: 999px;  /* tags, mood ring, segmented controls */
-
-  /* The redesign names two shapes rather than picking a step off the ramp
-     above, because both are load-bearing: --r-card is every surface a
-     screen is built from, and --r-add is the floating add button and the
-     nav bar it sits in, which have to agree. Ticket 17 keeps the ticket's
-     and the prototype's names for these two; --radius-* stays the ramp. */
-  --r-card: 20px;
-  --r-add: 18px;
+  /* --- Shape: one radius, and the disc (phase 10, DIRECTION.md rule 5) ---
+     Every block, every control track, every input, the sheet, the floating
+     bar and its add button take --r-block. Discs - a mood face, an icon that
+     is a face - are 50%, written where they are drawn. The pill survives on
+     the one shape that is a capsule, a tag, and nowhere else. The ramp this
+     replaces (--radius-xs..xl, --r-card 20, --r-add 18) counted twenty-three
+     distinct corners across the app; tests/direction-contract.test.ts holds
+     every corner in every sheet and component to this budget. */
+  --r-block: 6px;
+  --radius-pill: 999px;  /* a tag, which is a pill because it is one word */
 
   /* --- Elevation: soft ambient, never harsh --- */
   --shadow-1: 0 1px 2px rgb(15 30 40 / 0.05), 0 2px 8px rgb(15 30 40 / 0.05);
@@ -241,7 +246,11 @@ html[data-a11y-text-size='boost'] {
 html[data-palette][data-theme][data-a11y-legibility='boost'] {
   --leading-body: 1.65;
   --text-2: color-mix(in oklab, var(--text) 76%, var(--bg));
-  --border: color-mix(in oklab, var(--text) 24%, var(--bg));
+  /* The two line strengths the app has left (phase 10, rule 4), each one
+     step darker: --outline 19% -> 28%, --hairline 14% -> 22%. --border,
+     which this used to boost, retired with the ramp it belonged to. */
+  --outline: color-mix(in oklab, var(--text) 28%, transparent);
+  --hairline: color-mix(in oklab, var(--text) 22%, transparent);
 }
 
 /* --dur-breathe is deliberately not clamped here. It belongs to an infinite

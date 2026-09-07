@@ -744,7 +744,7 @@
         </span>
       </span>
       {#if stale}
-        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--radius-pill);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
+        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--r-block);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
       {:else}
         <Icon name="check" size={20} />
       {/if}
@@ -926,7 +926,7 @@
       subtitle={m.daylio_row_sub()}
       onclick={openDaylio}
       data-daylio
-      style="border-radius:var(--radius-md);background:var(--surface-2)"
+      style="border-radius:var(--r-block);background:var(--surface-2)"
     />
     <ListRow
       icon="package"
@@ -934,7 +934,7 @@
       subtitle={m.dlb_row_sub()}
       onclick={openBackup}
       data-daylio-backup
-      style="border-radius:var(--radius-md);background:var(--surface-2);margin-top:var(--space-2)"
+      style="border-radius:var(--r-block);background:var(--surface-2);margin-top:var(--space-2)"
     />
     </div>
   </div>
