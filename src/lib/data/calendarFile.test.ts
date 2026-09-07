@@ -39,15 +39,17 @@ test('an appointment with no time is all-day the same as the other two kinds', (
   const ls = lines(buildCalendarEvent({ kind: 'appointment', epochDay: DAY, title: 'A title', nowEpochMs: NOW }));
   expect(ls).toContain('DTSTART;VALUE=DATE:20260907');
   expect(ls.some((l) => l.startsWith('DURATION'))).toBe(false);
+  expect(ls.some((l) => l.startsWith('RRULE'))).toBe(false);
 });
 
-test('an appointment with a time comes out as a timed event, one hour long', () => {
+test('an appointment with a time comes out as a timed event, one hour long, and still no recurrence', () => {
   const ls = lines(
     buildCalendarEvent({ kind: 'appointment', epochDay: DAY, time: '14:30', title: 'A title', nowEpochMs: NOW })
   );
   expect(ls).toContain('DTSTART:20260907T143000');
   expect(ls).toContain('DURATION:PT1H');
   expect(ls.some((l) => l.startsWith('DTSTART;VALUE=DATE'))).toBe(false);
+  expect(ls.some((l) => l.startsWith('RRULE'))).toBe(false);
 });
 
 test('a caller-supplied title replaces the default verbatim, escaped characters included', () => {
