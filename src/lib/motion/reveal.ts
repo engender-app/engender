@@ -289,6 +289,51 @@ function hasLineBelow(node: Element): boolean {
   return false;
 }
 
+/** Holds the space a rewrapping row is about to lose, under the grid, and
+    eases it away over the same window. Hands back nothing.
+
+    The other half of `dissolveAt`, and without it the dissolve trades one
+    yank for a worse one: out of flow, a tile from the line below rewraps up
+    into the freed slot in a single frame, its own line goes with it, and
+    everything under the grid is pulled up by the whole height of that line at
+    once ("the row closes up - still happens with a yank" - Alicja). The line
+    closing is a real change and it is the one worth animating.
+
+    As a margin under the grid rather than as the grid's own height, which was
+    the first attempt and was worse: `.kit-tiles` stretches its children, so a
+    grid pinned to its old height made every tile on the surviving line as
+    tall as the vacated one too - the dose panel went from 176px to 325px in
+    one frame and eased back down. The space that is actually going is the
+    line's, which sits below everything that stays, so holding it below the
+    grid moves what follows and leaves the grid's own layout alone.
+
+    How much space is read by taking the panel out of the flow for one
+    synchronous measurement, before any frame is painted, because the layout
+    it produces cannot be worked out from the boxes - it depends on how the
+    row rewraps. Two forced layouts, once per dismissal.
+
+    A WAAPI animation rather than the transition's own `tick`, since the
+    transition's `css` is what drives the panel and only one of the two can
+    be. `fill` is left alone, so the grid is back on its own margin the moment
+    it finishes. */
+function settleGridSpace(node: Element, duration: number): void {
+  const parent = node.parentElement;
+  const style = (node as HTMLElement).style;
+  if (!parent || !style) return;
+  const before = parent.getBoundingClientRect().height;
+  const display = style.display;
+  style.display = 'none';
+  const after = parent.getBoundingClientRect().height;
+  style.display = display;
+  const going = before - after;
+  if (going < 1) return;
+  const base = parseFloat(getComputedStyle(parent).marginBottom) || 0;
+  parent.animate(
+    [{ marginBottom: `${base + going}px` }, { marginBottom: `${base}px` }],
+    { duration, easing: EASE_OUT_CSS }
+  );
+}
+
 /** A panel that is not giving its space back: it leaves the flow in the frame
     it is dismissed and dissolves where it stood.
 
@@ -445,7 +490,11 @@ export function collapse(
      below fitted back onto the line. Dissolving instead settles the grid in
      the frame of the tap. The tile that moves up still moves in one frame -
      it changes place and width at once, which a transform cannot carry. */
-  if (hasLineBelow(node)) return dissolveAt(node.getBoundingClientRect());
+  if (hasLineBelow(node)) {
+    const dissolve = dissolveAt(node.getBoundingClientRect());
+    settleGridSpace(node, dissolve.duration ?? 0);
+    return dissolve;
+  }
 
   const width = node.getBoundingClientRect().width;
   const gap = parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0;

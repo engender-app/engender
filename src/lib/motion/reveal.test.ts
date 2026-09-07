@@ -154,10 +154,15 @@ describe('tier 3, a panel giving its space back', () => {
     stubDocument(reduced, true, { height: `${height}px`, columnGap: gap, ...box });
     const rect = { top: 0, bottom: height, width, height };
     const node = {
-      getBoundingClientRect: () => rect
+      getBoundingClientRect: () => rect,
+      /* `collapse` takes a panel out of the flow for one measurement, so a
+         stub needs somewhere to put that. */
+      style: { display: '' }
     } as unknown as Element;
     (node as { parentElement?: unknown }).parentElement = {
-      children: [node, ...beside.map(([top, bottom]) => ({ getBoundingClientRect: () => ({ top, bottom }) }))]
+      children: [node, ...beside.map(([top, bottom]) => ({ getBoundingClientRect: () => ({ top, bottom }) }))],
+      /* One height for both reads, so nothing is eased unless a test says so. */
+      getBoundingClientRect: () => ({ height: 0 })
     };
     return node;
   }
@@ -285,6 +290,32 @@ describe('tier 3, a panel giving its space back', () => {
     expect(duration).toBe(380);
     expect(frame(css!, 1)).toContain('position: fixed');
     expect(frame(css!, 1)).not.toContain('flex:');
+  });
+
+  /* And the line the rewrap empties closes over the same window, or the rows
+     under the grid are pulled up by the whole of it in one frame - which is
+     the yank this case had left ("the row closes up - still happens with a
+     yank", Alicja). The end height cannot be worked out from the boxes, so
+     it is measured with the panel taken out of the flow. */
+  it('holds the space the vacated line took, under the grid', () => {
+    const frames: Keyframe[] = [];
+    const node = panel({ beside: [[0, 100], [120, 220]] });
+    const parent = node.parentElement as unknown as {
+      getBoundingClientRect: () => { height: number };
+      animate: (k: Keyframe[], o: KeyframeAnimationOptions) => void;
+    };
+    stubDocument(false, true, { height: '100px', columnGap: '8px', marginBottom: '8px' });
+    let heights = [420, 260];
+    parent.getBoundingClientRect = () => ({ height: heights.shift() ?? 260 });
+    parent.animate = (keyframes, options) => {
+      frames.push(...keyframes);
+      expect(options.duration).toBe(380);
+    };
+
+    collapse(node);
+    /* 160px of line went, and the grid's own margin is the 8px the stub
+       reports - so the space is held on top of it and eased back to it. */
+    expect(frames).toEqual([{ marginBottom: '168px' }, { marginBottom: '8px' }]);
   });
 
   /* Below the floor the same pair is stacked, and a tile that collapsed its
