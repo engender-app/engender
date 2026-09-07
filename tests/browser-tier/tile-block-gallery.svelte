@@ -130,6 +130,44 @@
     </TileGrid>
   </section>
 
+  <!-- The two-up pair at the width the grid actually resolves to on a
+       390px phone, with one long title and one short, which is where a
+       block's value can end up half a tile higher than its neighbour's. -->
+  <section data-shape="pair">
+    <p class="gallery-note">A pair two-up, at a 412px phone, one title wrapping</p>
+    <div class="wide">
+    <TileGrid {role} {flagFill}>
+      <Tile
+        key="dose"
+        title="Estradiol valerate"
+        value="in 2 days"
+        note="4mg, subcutaneous"
+        href="#dose"
+      />
+      <Tile key="mood" title="Logged" value="6 days" note="in a row" href="#mood" />
+    </TileGrid>
+    </div>
+  </section>
+
+  <!-- 200% zoom on a 390px phone leaves about 195 CSS pixels. The floor the
+       accessibility rules name, and the width a 40px number, a 19px title
+       and a foot all have to survive. -->
+  <section data-shape="zoom">
+    <p class="gallery-note">At 195px, which is 200% zoom on a 390px phone</p>
+    <div class="zoomed">
+      <TileGrid {role} {flagFill} data-rows>
+        <Tile
+          key="dose"
+          title="Estradiol valerate"
+          value="in 2 days"
+          note="Subcutaneous, 4mg, in the morning"
+          href="#dose"
+          dismiss={{ label: 'Not now', onclick: noop }}
+        />
+      </TileGrid>
+    </div>
+  </section>
+
   <section data-shape="disguise">
     <p class="gallery-note">Under disguise: no flag to publish, so one accent block and no bar</p>
     <TileGrid data-rows>
@@ -163,6 +201,17 @@
      weight's timer, its title and its Stop button have to share. */
   .narrow {
     width: 280px;
+  }
+
+  /* A 412px phone less its 20px inset: the narrowest width the pair still
+     stands two-up at. */
+  .wide {
+    width: 372px;
+  }
+
+  /* 195px less the screen inset on each side. */
+  .zoomed {
+    width: 155px;
   }
 
   .gallery-note {

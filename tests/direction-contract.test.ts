@@ -523,6 +523,12 @@ describe('rule 3: a tile is a block with a foot', () => {
     expect(ruleFor(kit, '.kit-tile.has-dismiss > .kit-tile-note')?.body).toMatch(
       /margin-right:\s*calc\(-1 \* var\(--space-7\)\)/
     );
+    /* And it ends at a line, never through one: the clamp is on an inner
+       span because the foot itself is a grid or flex item, which blockifies
+       `display: -webkit-box` away. */
+    const text = ruleFor(kit, '.kit-tile-note-text')?.body ?? '';
+    expect(text).toMatch(/display:\s*-webkit-box/);
+    expect(text).toMatch(/-webkit-line-clamp:\s*2/);
   });
 
   /* The look-back pair, and Safe space's two stats: one colour each, the
