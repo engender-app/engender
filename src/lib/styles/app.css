@@ -155,7 +155,9 @@ body {
   );
   /* Trimmed from --space-3/5px for ticket 08: the four tab labels grew, and
      every px reclaimed from the bar's own margins is a px the five equal
-     columns (below) can give the label instead of the ellipsis. */
+     columns (below) can give the label instead of the ellipsis.
+     --nav-bar-pad is still also what separates the bar's corner radius
+     from --r-add's (below), the reason it had its own variable at all. */
   --nav-float-gap: var(--space-2);
   --nav-bar-pad: 4px;
 }

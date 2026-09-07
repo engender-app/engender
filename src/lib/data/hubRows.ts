@@ -88,6 +88,9 @@ import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
     questions. Its rows went to the groups they were always about, and the two
     that are about somebody needing help rather than tracking anything got a
     group that says so. */
+/* hub_screen_title (messages/*.json) names these five by hand for the
+   hub's own hidden screen title - add, rename or reorder a group here and
+   that string goes stale until it's edited too (ticket 08). */
 export const HUB_GROUP_KEYS = ['body', 'health', 'transition', 'support', 'media'] as const;
 
 export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
