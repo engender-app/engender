@@ -11,11 +11,12 @@
    derived from what onboarding chose.
 
    A **pinned row** is what a person put on Today. A **hub row** is
-   navigation. They are drawn from one registry and they are not the same
-   object, which is why `PinnedRow` below is its own type rather than a
-   `HubSection` with a different heading: the hub groups its rows and sweeps
-   a finished one into a set of its own, and neither of those things may
-   happen to somewhere the person arranged by hand.
+   navigation. One row has one shape - `hubRows.ts`'s `DrawnRow`, which both
+   surfaces use - and the two are still not the same object, because what
+   may be done to them differs: the hub groups its rows and sweeps a
+   finished one into a set of its own, and neither of those may happen to
+   somewhere the person arranged by hand. So this module resolves an order
+   and never touches it again.
 
    Nothing is restated. A pin is a `hubRows.ts` key and nothing else; the
    icon, the route, which areas sit behind the row and what its second line
@@ -27,7 +28,7 @@
    paraglide, no runes. Today arrives inside `HubReading`, the same as it
    does for the hub. */
 
-import { HUB_ROWS, rowHidden, rowLine, type HubLine, type HubReading, type HubRow, type HubRowKey } from './hubRows';
+import { HUB_ROWS, rowHidden, rowLine, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
 import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from './journal/dayAhead';
 import type { PreferenceValues } from './prefs/catalogue';
 
@@ -37,11 +38,15 @@ import type { PreferenceValues } from './prefs/catalogue';
     already means it (`onboarding/steps.ts`).
 
     It is the one central guess in this module, and it is confined to a
-    person who has not answered. Four rows, each of which reports a reading
-    of its own, so day two says something: the transition's dated points, the
-    body, the medication, and what is being tried out. Somebody
-    self-managing removes the medication row; somebody who does not measure
-    removes measurements. That removal is the feature.
+    person who has not answered. Four rows: the transition's dated points,
+    the body, the medication, and what is being tried out. Three of the four
+    report a reading of their own, so day two says something. `care` is the
+    fourth and never reports one - it fronts four medication surfaces and no
+    archive section, so its line is a sentence about what is behind it - and
+    it is here anyway, because a person on HRT meeting no way to their doses
+    on the front page is the thing this default is for. Somebody
+    self-managing removes it; somebody who does not measure removes
+    measurements. That removal is the feature.
 
     Typed `readonly HubRowKey[]` rather than left as strings so a row renamed
     out from under it is a compile error rather than four rows that quietly
@@ -56,16 +61,21 @@ export const DEFAULT_ONBOARDING_AREAS = ['measurements', 'care', 'milestones', '
     would leave this reading a key nobody writes. */
 export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAreas'>;
 
-/** One row as the front page draws it: the registry's declaration, and the
-    line the hub would have given it.
+/** The switch list, the same way and for the same reason. All three of the
+    front page's preferences are nullable lists of strings, so a function
+    taking one of them raw would accept any of the other two: passing the
+    pins to the agenda would have compiled and quietly switched every kind
+    off. */
+export type AgendaSwitches = Pick<PreferenceValues, 'agendaKinds'>;
+
+/** One row as the front page draws it - `hubRows.ts`'s `DrawnRow` under the
+    name `CONTEXT.md` gives it, because a pinned row is the domain object
+    and a drawn row is the shape.
 
     The line is `rowLine`'s, unchanged and not reinterpreted. A pinned row
-    that has gone quiet says the same thing about itself in both places,
-    which is what stops the app having two opinions about one area. */
-export interface PinnedRow {
-  spec: HubRow;
-  line: HubLine;
-}
+    that has gone quiet says the same thing about itself as its hub row
+    does, which is what stops the app having two opinions about one area. */
+export type PinnedRow = DrawnRow;
 
 /** The default set: what onboarding chose, or the pre-ticked answer where it
     was never asked.
@@ -75,10 +85,11 @@ export interface PinnedRow {
     arrangement. The hub's order is one they have already met, and ticket 14
     is where an order of their own is made.
 
-    Exported for that ticket's reset as much as for this one's resolution:
-    "back to what I said at the start" has to stay computable after the front
-    page has been rearranged, which is why the answer is held apart from the
-    arrangement rather than flattened into it. */
+    Held apart from the arrangement rather than flattened into it so that
+    "back to what I said at the start" stays computable after the front page
+    has been rearranged. */
+/* defaultPins stays exported only for its own test (AU-09 test-only
+   review). */
 export function defaultPins(
   onboardingAreas: readonly string[] | null,
   rows: readonly HubRow[] = HUB_ROWS
@@ -117,6 +128,17 @@ function pinKeys(prefs: PinPreferences, rows: readonly HubRow[]): readonly strin
       - the same key twice, which the editing surface cannot produce and an
         edited archive can. The first place it was put wins, because that is
         where they put it
+
+    A row the hub does not draw is not one of them either. Seven rows are
+    hosted on a screen of their own rather than listed on the hub
+    (ADR-0072), and all seven are pinnable: where the hub draws a row is the
+    hub's own ranking of itself, and somebody with a dilation log or a hair
+    progression they check daily is exactly the reader who should be able to
+    put it in front of them. The one row this needs saying about is the
+    cycle log, which ADR-0043 gates one-directionally: pinning it is the
+    person asking for it, but the list they pick from has to apply that gate
+    so it is never *offered* cold. That list is ticket 14's, and this is the
+    note it inherits.
 
     A finished area is **not** one of them. It keeps its row, carrying the
     day it ended, exactly the way its hub row does - finishing is a statement
@@ -168,8 +190,8 @@ export function pinnedRows(
     a taper session, the next hair photo, a revisit - and a stored list is a
     person's answer about the five that earn one, never a way to register a
     sixth. Amending that list means amending the ADR. */
-export function shownAgendaKinds(stored: readonly string[] | null): DayAheadMarkKind[] {
-  if (stored === null) return [...DAY_AHEAD_MARK_KINDS];
-  const on = new Set(stored);
+export function shownAgendaKinds(switches: AgendaSwitches): DayAheadMarkKind[] {
+  if (switches.agendaKinds === null) return [...DAY_AHEAD_MARK_KINDS];
+  const on = new Set(switches.agendaKinds);
   return DAY_AHEAD_MARK_KINDS.filter((kind) => on.has(kind));
 }
