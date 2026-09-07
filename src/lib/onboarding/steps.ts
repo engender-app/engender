@@ -12,7 +12,15 @@
    the rest of the pure model (ADR-0017). */
 
 /** In order. The route renders one of these at a time and nothing else. */
-export type OnboardingStep = 'welcome' | 'name' | 'flag' | 'scales' | 'lock' | 'checkin' | 'done';
+export type OnboardingStep =
+  | 'welcome'
+  | 'name'
+  | 'flag'
+  | 'scales'
+  | 'areas'
+  | 'lock'
+  | 'checkin'
+  | 'done';
 
 /* What a first run settles, and why each one is here rather than left to
    Settings:
@@ -21,11 +29,16 @@ export type OnboardingStep = 'welcome' | 'name' | 'flag' | 'scales' | 'lock' | '
      flag     the app's whole visual identity, and the one choice that
               shows its own result while it is being made
      scales   which sliders appear when logging, i.e. what the journal is
+     areas    which of the hub's areas the front page starts pinned with
+              (phase 10 redesign ticket 22) - the one central guess left in
+              `pinnedRows.ts`, and the cheapest moment to settle it: the
+              person has just ticked their scales, which is the same
+              question about the journal one step earlier
      lock     whether leaving the app locks it
      checkin  the daily prompt, which is the difference between a journal
               kept and a journal installed
 
-   Five settings, five steps, plus a welcome and a finish. Everything else
+   Six settings, six steps, plus a welcome and a finish. Everything else
    the app has a preference for is either already right by default or is
    something a person goes looking for once they know the app. */
 const ALL_STEPS: readonly OnboardingStep[] = [
@@ -33,6 +46,7 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'name',
   'flag',
   'scales',
+  'areas',
   'lock',
   'checkin',
   'done'
@@ -51,7 +65,17 @@ const ALL_STEPS: readonly OnboardingStep[] = [
     So the step is not hidden, it is not in the flow: no gap in the progress
     rail, no back arrow landing on a blank screen, nothing to explain. The
     choice is still in Settings, which is a screen somebody opens on purpose
-    rather than one the app puts in front of them. */
+    rather than one the app puts in front of them.
+
+    `areas` (ticket 22) stays in the flow under disguise, unlike `flag`. Its
+    rows are `hubRows.ts`'s own titles and icons - "measurements", "care", a
+    ruler, a flag glyph - the same words and glyphs Settings and the More hub
+    already show under disguise, in the same list a disguised install can
+    already reach from either of those screens. Nothing on this step says
+    anything a disguised install does not already carry once onboarding
+    finishes; the flag step is different because it is the one screen in the
+    app whose whole content is eight named pride flags, which nothing else
+    ever shows regardless of disguise. */
 export function onboardingSteps(disguised: boolean): readonly OnboardingStep[] {
   return disguised ? ALL_STEPS.filter((step) => step !== 'flag') : ALL_STEPS;
 }

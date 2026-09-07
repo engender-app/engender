@@ -22,12 +22,13 @@ describe('the step list', () => {
     expect(new Set(ONBOARDING_STEPS).size).toBe(ONBOARDING_STEPS.length);
   });
 
-  it('sets the four things a first run has to settle, in that order', () => {
+  it('sets the five things a first run has to settle, in that order', () => {
     expect(ONBOARDING_STEPS).toEqual([
       'welcome',
       'name',
       'flag',
       'scales',
+      'areas',
       'lock',
       'checkin',
       'done'
@@ -57,7 +58,7 @@ describe('under disguise', () => {
 
   it('drops the flag step entirely', () => {
     expect(disguised).not.toContain('flag');
-    expect(disguised).toEqual(['welcome', 'name', 'scales', 'lock', 'checkin', 'done']);
+    expect(disguised).toEqual(['welcome', 'name', 'scales', 'areas', 'lock', 'checkin', 'done']);
   });
 
   it('keeps every other step, in the same order', () => {
@@ -87,6 +88,7 @@ describe('skipping', () => {
       'name',
       'flag',
       'scales',
+      'areas',
       'lock',
       'checkin'
     ]);

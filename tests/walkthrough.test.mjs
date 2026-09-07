@@ -1405,8 +1405,9 @@ try {
 } catch (e) { fail('plain export', e); }
 
 
-/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26: seven steps -
-   welcome, name, flag, scales, lock, check-in, finish) */
+/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
+   redesign ticket 22: eight steps - welcome, name, flag, scales, areas,
+   lock, check-in, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1484,7 +1485,33 @@ try {
   // set this screen chose rather than the one it started with.
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
-  await page.locator('[data-next]').click(); // scales -> lock
+  await page.locator('[data-next]').click(); // scales -> areas
+
+  /* Ticket 22: the hub's own groups and rows, met once here and once more on
+     the hub - the same headings the More screen draws, in the same order. */
+  const areaHeadings = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
+  if (areaHeadings.join() !== ['Body', 'Health', 'Transition', 'Support', 'Media'].join()) {
+    throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
+  }
+
+  // The default four arrive ticked and nothing else does (measurements,
+  // care, milestones, tryouts - pinnedRows.ts's own default set).
+  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
+  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  for (const key of ['measurements', 'care', 'milestones', 'tryouts']) {
+    if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
+      throw new Error(`${key} is not part of the default set on arrival`);
+    }
+  }
+
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+
+  // Untick a default and tick something outside it, so what is stored is a
+  // set this screen chose rather than the one it started with (the same
+  // proof the scales step makes above).
+  await page.locator('[data-list-row="area-care"]').click();
+  await page.locator('[data-list-row="area-eras"]').click();
+  await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
 
   /* Ticket 46: the persona premise this step answers is that it defaults
@@ -1518,7 +1545,7 @@ try {
   await page.waitForSelector('[data-next]');
   await page.locator('[data-next]').click(); // welcome -> name
   await page.locator('#ob-name').fill('Sam');
-  /* Out from the second step, four steps short of the finish. The name that
+  /* Out from the second step, five steps short of the finish. The name that
      had been typed is kept, because leaving is not the same as cancelling. */
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
@@ -1695,7 +1722,14 @@ try {
     throw new Error('the scales step made Continue wait for something');
   }
   // Untouched, then skipped: the stored default has to survive both.
-  await page.locator('[data-skip-step]').click(); // scales -> lock
+  await page.locator('[data-skip-step]').click(); // scales -> areas
+
+  /* Ticket 22's own version of the same proof: the default four arrive
+     ticked, and skipping leaves `onboardingAreas` null rather than storing
+     the default. */
+  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
+  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
   await page.locator('[data-next]').click(); // check-in -> finish
   await page.locator('[data-finish]').click();
