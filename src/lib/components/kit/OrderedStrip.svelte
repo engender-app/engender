@@ -190,9 +190,13 @@
        nothing - no border, no padding - between them), so this has to be
        the tooltip's whole clearance on its own, not a top-up: without it
        the tooltip overlapped the card's heading text (ticket 09 gallery
-       screenshots). --space-7 covers the tooltip's own height (26px) plus
-       its --space-1 gap above the track, with a couple of pixels left over. */
-    margin-top: var(--space-7);
+       screenshots). 32px covers the tooltip's own height (26px) plus its
+       --space-1 gap above the track, with a couple of pixels left over. A
+       literal rather than a spacing step, because this is clearance for a
+       thing drawn over the track, not rhythm between two blocks - which is
+       what the spacing scale's steps above 20 are reserved for (phase 10,
+       DIRECTION.md rule 1). */
+    margin-top: 32px;
     animation: kit-ordered-in var(--dur-slow) var(--ease-out) both;
   }
 
@@ -206,7 +210,7 @@
        intensity apart, which at 26px tall is an edge that wants finding. */
     gap: 1px;
     height: 26px;
-    border-radius: 8px;
+    border-radius: var(--r-block);
     /* One outline around the whole bar rather than one per segment: the
        light end of the ramp on a light card is the card otherwise, and a
        border per step would draw four lines nobody asked for. */
@@ -257,7 +261,7 @@
     bottom: calc(100% + var(--space-1));
     transform: translateX(-50%);
     padding: 3px var(--space-2);
-    border-radius: var(--radius-pill);
+    border-radius: var(--r-block);
     background: var(--surface-2);
     border: 1px solid var(--outline);
     font-size: var(--text-xs);

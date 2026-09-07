@@ -158,7 +158,7 @@
         <img
           src={previewUrl}
           alt={m.wrapped_share_preview_alt()}
-          style="display:block;width:100%;height:auto;border-radius:var(--radius-md)"
+          style="display:block;width:100%;height:auto;border-radius:var(--r-block)"
         />
         <p class="share-note">{m.pj_stays_here()}</p>
         <div class="journey-actions" style="display:flex;gap:var(--space-3);margin-top:var(--space-3)">

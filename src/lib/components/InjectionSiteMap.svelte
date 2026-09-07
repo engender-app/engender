@@ -183,7 +183,7 @@
     width: 100%;
     height: 100%;
     fill: var(--surface-2);
-    stroke: var(--border);
+    stroke: var(--outline);
     stroke-width: 1;
   }
   .site-dot {
@@ -203,14 +203,13 @@
      and the chip on its row in the list. Stated once so the map and its own
      key cannot drift apart.
 
-     --outline-strong, not --border: this is palettes.css's line for a
-     control that has to hold its own edge against a fill, and the dot has
-     to hold it against the silhouette's own surface as well - --border over
-     --surface-2 is close to invisible in both themes. */
+     --outline: palettes.css's line for the edge drawn inside a block
+     (phase 10 left the app two line strengths), and the dot has to hold
+     it against the silhouette's own surface as well as against a fill. */
   .site-dot::after,
   .site-recency-swatch {
     border-radius: 50%;
-    border: 1.5px solid var(--outline-strong);
+    border: 1.5px solid var(--outline);
     background: var(--dot-fill, var(--surface));
   }
   /* Never used: no fill and a firmer edge, at the same size as the rest.
@@ -304,7 +303,7 @@
     height: 14px;
     border-radius: 50%;
     display: inline-block;
-    border: 1.5px solid var(--outline-strong);
+    border: 1.5px solid var(--outline);
     background: var(--dot-fill, var(--surface));
   }
   .site-legend-swatch.is-never {

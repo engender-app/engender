@@ -1004,7 +1004,7 @@
      class, and the desktop size would stop winning. */
   :global(.home-hero) {
     font-family: var(--font-display);
-    font-size: clamp(1.3rem, calc(19.8cqw - 42.2px), 2.4rem); font-weight: 700;
+    font-size: clamp(1.3rem, calc(19.8cqw - 42.2px), 2.4rem); font-weight: var(--weight-display);
     line-height: 1.1;
     letter-spacing: -0.01em;
     color: var(--accent);
@@ -1164,7 +1164,7 @@
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     color: var(--text-2);
     font: inherit;
     font-size: var(--text-sm);
@@ -1175,7 +1175,7 @@
   .home-fold:hover,
   .home-fold:active {
     color: var(--text);
-    border-color: var(--outline-strong);
+    border-color: var(--outline);
   }
 
   /* Tier 3, change within a screen: the mark turns to point at what it has

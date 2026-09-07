@@ -580,8 +580,8 @@
   /* An empty square until it is ticked, so a row reads as a checkbox
      rather than as a link into somewhere. */
   .roadmap-box {
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
+    border: 2px solid var(--outline);
+    border-radius: var(--r-block);
     width: 28px;
     height: 28px;
     display: flex;
@@ -656,7 +656,7 @@
     min-height: var(--touch-target);
     padding: 0 var(--space-2);
     margin-right: calc(var(--space-2) * -1);
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-block);
   }
 
   /* Put back is the way out of a state rather than a second action, so it
