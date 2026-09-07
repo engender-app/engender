@@ -248,7 +248,7 @@ describe('tier 3, a panel giving its space back', () => {
      and the replacement fades in where it stands. */
   it('swaps in place when the fold fills the slot in the same tick', () => {
     stubDocument();
-    markSlotReplacement({ top: 300, left: 20, width: 160, height: 100 });
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
     const leaving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' });
     expect(leaving.duration).toBe(380);
     /* Out of the flow and pinned where it stood, so the grid reaches its
@@ -261,11 +261,45 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(leaving.css!, 0.5)).not.toContain('flex:');
 
     markScreenArrival(performance.now() - 1000);
-    markSlotReplacement({ top: 300, left: 20, width: 160, height: 100 });
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
     const arriving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'in' });
     expect(arriving.duration).toBe(380);
     expect(frame(arriving.css!, 0)).toBe('opacity: 0');
     expect(frame(arriving.css!, 1)).toBe('opacity: 1');
+  });
+
+  /* And the panel taking the slot over travels out of whatever the screen
+     says it came from - the fold, on Home - because two cards changing places
+     in one slot is what a crossfade cannot say. */
+  it('rises out of the fold into the slot it is taking over', () => {
+    stubDocument();
+    markScreenArrival(performance.now() - 1000);
+    markSlotReplacement({
+      slot: { top: 300, left: 20, width: 160, height: 100 },
+      from: { top: 520, left: 20, width: 340, height: 44 }
+    });
+    const node = panel({ beside: [[0, 100]] });
+    (node as unknown as { getBoundingClientRect: () => unknown }).getBoundingClientRect = () => ({
+      top: 300,
+      left: 20,
+      width: 160,
+      height: 100
+    });
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 0)).toContain('translate(0px, 220px)');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+    expect(frame(css!, 1)).toContain('translate(0px, 0px)');
+    expect(frame(css!, 1)).toContain('opacity: 1');
+  });
+
+  /* A screen that cannot say where the replacement came from gets the fade
+     alone. */
+  it('fades alone when nothing says where it came from', () => {
+    stubDocument();
+    markScreenArrival(performance.now() - 1000);
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
+    const { css } = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'in' });
+    expect(frame(css!, 0)).toBe('opacity: 0');
   });
 
   /* Without a slot there is nothing to pin to, so the cut is what is left. */
@@ -279,7 +313,7 @@ describe('tier 3, a panel giving its space back', () => {
      dismissal a second later is a collapse again. */
   it('is over by the time the next change comes', () => {
     stubDocument();
-    markSlotReplacement({ top: 0, left: 0, width: 10, height: 10 }, performance.now() - 400);
+    markSlotReplacement({ slot: { top: 0, left: 0, width: 10, height: 10 } }, performance.now() - 400);
     const { css, duration } = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' });
     expect(duration).toBe(380);
     expect(frame(css!, 0)).toContain('flex: 0 0 0px');
