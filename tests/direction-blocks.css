@@ -464,3 +464,55 @@
     padding-inline: 12px !important;
   }
 }
+
+/* ---------- round two, Alicja's last notes ----------
+   Written as rules for ticket 07 and drawn here only as far as a sheet
+   over the built app can; not re-rendered. */
+
+/* A live tile's block is always a colour of the flag, never one of its
+   shades: on agender the tiles took #1A1A1A and sat as black blocks on a
+   dark page. Ticket 07 hands tiles their role from the chromatic roles
+   only, wrapping; agender has one colour, so every tile is its green. The
+   sheet can only say so per palette. */
+[data-palette='agender'] .kit-tile,
+[data-palette='agender'] .kit-tile.is-split {
+  background: #B9F484 !important;
+}
+[data-palette='agender'] .kit-tile .kit-tile-title,
+[data-palette='agender'] .kit-tile .kit-tile-value {
+  color: #101820 !important;
+}
+
+/* The note foot spans the whole block, whatever shape the tile is: a
+   dismiss-only tile (Safe space) has no action column, so the grid's second
+   column and its gap go, and the foot reaches both edges as it does on the
+   binder timer. */
+.kit-tile.is-split:not(:has(.kit-tile-act)) {
+  grid-template-columns: minmax(0, 1fr) !important;
+  column-gap: 0 !important;
+}
+.kit-tile.is-split > .kit-tile-main > .kit-tile-note {
+  margin-left: -18px !important;
+  margin-right: -18px !important;
+}
+
+/* The two look-back tiles are one colour each, with no foot: the note is
+   set on the block at 19px bold (large text, legal on every band at 3:1)
+   and the flag itself is the motif between value and note, the 6px bar
+   of stripes the kit already draws under a tile's value, squared to 2px. */
+.kit-tiles[data-tight] .kit-tile-note {
+  background: none !important;
+  color: var(--role-fill-ink) !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  margin: 8px 0 0 !important;
+  padding: 0 0 16px !important;
+}
+.kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-value::after {
+  display: block !important;
+  height: 6px !important;
+  border-radius: 2px !important;
+  margin-top: 10px !important;
+}
+
