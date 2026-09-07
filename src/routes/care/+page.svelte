@@ -44,12 +44,11 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* Three areas: the rail, the readings that do not fit on one, and the
-     changes hosted below them (ticket 16). The rail takes role 0, the only
-     index that is a colour on all eight palettes (roles.ts) - it is the one
-     place on this screen where the stripe is carrying meaning rather than
-     decorating a card. */
-  const AREA_ROLE = { rail: 0, readings: 1, changes: 2 };
+  /* Two areas: the rail, and the readings that do not fit on one. The rail
+     takes role 0, the only index that is a colour on all eight palettes
+     (roles.ts) - it is the one place on this screen where the stripe is
+     carrying meaning rather than decorating a card. */
+  const AREA_ROLE = { rail: 0, readings: 1 };
 
   const today = todayEpochDay();
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
@@ -322,7 +321,7 @@
        blocks, which is the call /more's trailing Settings row already
        made. -->
   <div>
-    <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.changes)}>
+    <ListCard>
       <ListRow
         key="effects"
         icon="eye"
