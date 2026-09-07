@@ -85,14 +85,22 @@ export function refreshActiveFlag(doc: Document = document, disguised = false): 
     return;
   }
 
-  activeFlag.stripes = parseMotifStripes(
+  /* Everything below is computed from the document and assigned; nothing
+     reads `activeFlag` back. The shell calls this from the effect that stamps
+     the palette, so a read of a field this function writes would make that
+     effect depend on its own output and loop until Svelte gives up
+     (effect_update_depth_exceeded, and the app never boots) - which is
+     exactly what `flagField(activeFlag.stripes, ...)` did on 2026-09-07. */
+  const stripes = parseMotifStripes(
     getComputedStyle(doc.documentElement).getPropertyValue('--motif-stripes')
   );
+  const field = flagField(stripes, doc.documentElement.dataset.palette);
+  activeFlag.stripes = stripes;
   activeFlag.dark = doc.documentElement.dataset.theme === 'dark';
   // readFlagRoles/readFlagFill own the ground list and the stripe read; a
   // second copy of either here is a second thing to keep in step.
   activeFlag.roles = readFlagRoles(doc);
   activeFlag.fill = readFlagFill(doc);
-  activeFlag.field = flagField(activeFlag.stripes, doc.documentElement.dataset.palette);
-  publishField(doc, activeFlag.field);
+  activeFlag.field = field;
+  publishField(doc, field);
 }
