@@ -160,7 +160,13 @@ describe('tier 3, a panel giving its space back', () => {
       style: { display: '' }
     } as unknown as Element;
     (node as { parentElement?: unknown }).parentElement = {
-      children: [node, ...beside.map(([top, bottom]) => ({ getBoundingClientRect: () => ({ top, bottom }) }))],
+      children: [
+        node,
+        ...beside.map(([top, bottom]) => ({
+          getBoundingClientRect: () => ({ top, bottom, left: 0 }),
+          animate: () => {}
+        }))
+      ],
       /* One height for both reads, so nothing is eased unless a test says so. */
       getBoundingClientRect: () => ({ height: 0 })
     };
@@ -297,6 +303,36 @@ describe('tier 3, a panel giving its space back', () => {
      the yank this case had left ("the row closes up - still happens with a
      yank", Alicja). The end height cannot be worked out from the boxes, so
      it is measured with the panel taken out of the flow. */
+  /* A tile the rewrap moves is already laid out where it is going, so it
+     travels by being translated back to where it was and released - visible
+     the whole way rather than hidden behind the card dissolving over its new
+     slot. The width is not animated with it: a card that scales horizontally
+     stretches its own text, so it takes the new one at the old place. */
+  it('sends a tile that changed place back where it was, and releases it', () => {
+    const travelled: Keyframe[][] = [];
+    const node = panel({ beside: [[0, 100], [120, 220]] });
+    const parent = node.parentElement as unknown as {
+      children: { getBoundingClientRect: () => unknown; animate: unknown }[];
+      getBoundingClientRect: () => { height: number };
+    };
+    parent.getBoundingClientRect = () => ({ height: 0 });
+
+    /* The second sibling stands on the line below and rewraps up beside the
+       first once this panel is out of the flow, which is what taking it out
+       of the flow is for - so the stub answers on that rather than on how
+       many times it has been asked. */
+    const mover = parent.children[2];
+    const style = (node as unknown as { style: { display: string } }).style;
+    mover.getBoundingClientRect = () =>
+      style.display === 'none' ? { top: 0, left: 180 } : { top: 120, left: 0 };
+    mover.animate = (keyframes: Keyframe[]) => travelled.push(keyframes);
+
+    collapse(node);
+    expect(travelled).toEqual([
+      [{ transform: 'translate(-180px, 120px)' }, { transform: 'translate(0, 0)' }]
+    ]);
+  });
+
   it('holds the space the vacated line took, under the grid', () => {
     const frames: Keyframe[] = [];
     const node = panel({ beside: [[0, 100], [120, 220]] });
