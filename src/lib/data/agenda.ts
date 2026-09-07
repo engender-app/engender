@@ -13,9 +13,14 @@
    split from `comingBackReads.ts` and `liveTiles.ts` from its own
    `.svelte.ts`: the window, the ordering, the fold, the absence rule and
    the passed slot are the decisions, they want a Node test with no driver,
-   so they take rows. Nothing here reads a clock or speaks paraglide
-   (ADR-0016) - `todayEpochDay` arrives as an argument and the words are
-   `dayAheadRows.ts`'s business.
+   so they take rows. Nothing here reads a clock: `todayEpochDay` arrives as
+   an argument, the same as every pure module at this seam.
+
+   One sentence does live here, `passedSlotSentence` at the foot of the
+   file, and paraglide is imported for it - `liveTiles.ts` next door carries
+   its tiles' words for the same reason. The marks' own words are
+   `dayAheadRows.ts`'s, because a mark is already drawn there; a slot that
+   passed is not a mark and reaches no other module.
 
    Three rules are worth reading before changing anything:
 
@@ -30,12 +35,16 @@
    ADR-0062's rule for `/coming-back` governs the words as well: what is
    waiting gets named, what did not happen does not.
 
-   *Only a schedule the person set themselves.* The passed item is a dose
-   slot and can be nothing else. A schedule is the one dated thing in the
-   app the person authored, so stating that its day went by states their own
-   arrangement back to them; an appointment's date belongs to a clinic, and
-   an app telling somebody they missed one would be inventing a duty out of
-   somebody else's calendar. */
+   *Only a schedule the person set themselves, and never a daily one.* The
+   passed item is a dose slot and can be nothing else. A schedule is the one
+   dated thing in the app the person authored, so stating that its day went
+   by states their own arrangement back to them; an appointment's date
+   belongs to a clinic, and an app telling somebody they missed one would be
+   inventing a duty out of somebody else's calendar. A daily schedule is
+   excluded for ADR-0067's own reason, restated backwards: a daily slot
+   marks every day a screen can draw, so a daily one that passed would put a
+   row on this screen most mornings, which is wallpaper if it is lucky and a
+   scolding if it is not. */
 
 /* Relative rather than `$lib`, the same as `liveTiles.ts` beside it: this
    file is read by the Node tier, where no alias exists. And the same reason
@@ -43,20 +52,26 @@
    paraglide through `$lib`, so `passedSlotSentence` below is handed the
    formatter rather than reaching for one. */
 import { m } from '../paraglide/messages';
+import { isDailySchedule, mostRecentPassedSlot } from './doseSchedule';
 import type { DayAheadMark, DayAheadMarkKind } from './journal/dayAhead';
 import { DAY_AHEAD_ROUTES } from './journal/dayAheadRoutes';
 import type { DoseScheduleComparison } from './journal/doses';
 
-/** How far ahead the agenda looks, and equally far back for the passed slot
-    below. Seven days is the week a person can hold in their head, and it is
-    also what Home's own week strip covers, so the two halves of the screen
-    are asking about the same stretch of time. */
+/** How many days the agenda covers, today counted as one of them, and how
+    many the week behind holds for the passed slot. Seven is the week a
+    person can hold in their head.
+
+    Not read off `weekStripDayCount`, which is a responsive count of cells a
+    strip has room for rather than a stretch of time, and which leaves Home
+    in this phase's ticket 13 anyway. */
 export const AGENDA_DAYS = 7;
 
-/** The first `AGENDA_CAP` at their own weight, the rest folded. Deliberately
-    the tile grid's own number (`HOME_TILE_CAP`, ADR-0039): the agenda and
-    the tiles are two bands of one screen, and two different caps would be a
-    difference a reader can see and nobody can explain. */
+/** The first `AGENDA_CAP` at their own weight, the rest folded. Three
+    because a first screen that opens on four dated rows is a list rather
+    than a glance, which is also how the tile grid arrived at its own three
+    (`HOME_TILE_CAP`, ADR-0039). Its own constant and not that one: the two
+    bands answer to the same reasoning, not to one number, and either could
+    be argued to a different figure without dragging the other with it. */
 export const AGENDA_CAP = 3;
 
 /** One dated thing, and where to go to read more about it. Carries the day
@@ -102,18 +117,25 @@ export interface AgendaInput {
   doses: DoseScheduleComparison;
   /** Disguise, read from preferences by the caller. True returns nothing at
       all: no drug name, no clinic and no date reaches a screen somebody may
-      be reading over the person's shoulder. */
+      be reading over the person's shoulder.
+
+      `readAgenda` checks the same flag and returns before either read runs,
+      so on the one production path this field is never true. Both checks
+      stay: that one is what keeps the reads from happening, and this one is
+      what makes the rule true of the projection itself, which is where a
+      future caller assembling its own input would meet it. */
   disguised: boolean;
 }
 
-/** The window Today asks `dayAhead` for: today through today plus
-    `AGENDA_DAYS`, both ends inclusive. Today's own appointment is as much a
-    thing arriving as Thursday's. */
+/** The window Today asks `dayAhead` for: `AGENDA_DAYS` days starting today,
+    both ends inclusive, so a week opened on a Monday ends on the Sunday.
+    Today itself is in it - today's own appointment is as much a thing
+    arriving as Thursday's. */
 export function agendaWindow(todayEpochDay: number): { fromEpochDay: number; toEpochDay: number } {
-  return { fromEpochDay: todayEpochDay, toEpochDay: todayEpochDay + AGENDA_DAYS };
+  return { fromEpochDay: todayEpochDay, toEpochDay: todayEpochDay + AGENDA_DAYS - 1 };
 }
 
-/** The window the passed slot is looked for in: the week behind, ending
+/** The window the passed slot is looked for in: the same many days, ending
     yesterday. Today's slot has not passed - the person has all day - and
     Home's own dose panel is what asks about it. */
 export function agendaPassedWindow(todayEpochDay: number): { fromEpochDay: number; toEpochDay: number } {
@@ -128,12 +150,16 @@ export function agendaPassedWindow(todayEpochDay: number): { fromEpochDay: numbe
     two concurrent regimens produce no passed slot at all - `/coming-back`
     narrows the same way. It errs the safe direction: the failure mode of
     guessing which episode a slot belonged to is stating one drug's
-    arrangement under another drug's name. */
+    arrangement under another drug's name.
+
+    The daily check is this surface's own and is why the row selection is
+    shared with `/coming-back` but this function is not. ADR-0067 keeps a
+    daily slot off a forward mark; a daily slot that passed has to be kept
+    off an everyday screen for the same reason, and the return surface -
+    met once, after three weeks away - is a different question. */
 function passedSlot(doses: DoseScheduleComparison, todayEpochDay: number): AgendaPassedSlot | null {
-  if (doses.reason !== null) return null;
-  const passed = doses.comparison.rows
-    .filter((row) => row.dose === null && row.slot.epochDay < todayEpochDay)
-    .sort((a, b) => b.slot.epochDay - a.slot.epochDay)[0];
+  if (doses.reason !== null || isDailySchedule(doses.schedule)) return null;
+  const passed = mostRecentPassedSlot(doses.comparison, todayEpochDay);
   if (!passed) return null;
   return {
     key: `agenda-passed-${passed.slot.epochDay}`,
@@ -154,7 +180,8 @@ function passedSlot(doses: DoseScheduleComparison, todayEpochDay: number): Agend
 
     Lives here, beside the rule that decides the item, rather than in
     `dayAheadRows.ts`: a slot that passed is not a `dayAhead` mark and never
-    reaches that module. */
+    reaches that module. Drawn by this phase's ticket 13; until then its own
+    test is the only caller. */
 export function passedSlotSentence(epochDay: number, fullDay: (epochDay: number) => string): string {
   return m.agenda_passed_dose({ date: fullDay(epochDay) });
 }
