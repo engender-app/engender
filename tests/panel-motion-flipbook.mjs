@@ -24,8 +24,12 @@ import { resolve } from 'node:path';
 import { launchChromium } from './browser-harness.mjs';
 
 /** The band worth keeping. The header and the flag sun are 380px of a screen
-    that never moves in any of these scenes. */
+    that never moves in any of these scenes, and 800px below that reaches the
+    rows under the panel without carrying the milestones list and the entry
+    log to a review page as JPEG. A frame shorter than that keeps what it
+    has. */
 const CROP_TOP = 380;
+const CROP_HEIGHT = 800;
 /** Where the motion is over: --dur-med plus a beat. Every frame up to here,
     every third one after it. */
 const MOTION_MS = 620;
@@ -42,18 +46,18 @@ const page = await browser.newPage();
 /** Crops and re-encodes one JPEG, in the page, and hands back a data URI. */
 async function shrink(bytes, cropTop, quality) {
   return page.evaluate(
-    async ({ b64, cropTop, quality }) => {
+    async ({ b64, cropTop, cropHeight, quality }) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${b64}`;
       await img.decode();
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
-      canvas.height = Math.max(1, img.height - cropTop);
+      canvas.height = Math.max(1, Math.min(cropHeight, img.height - cropTop));
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, -cropTop);
       return { uri: canvas.toDataURL('image/jpeg', quality), w: canvas.width, h: canvas.height };
     },
-    { b64: bytes.toString('base64'), cropTop, quality }
+    { b64: bytes.toString('base64'), cropTop, cropHeight: CROP_HEIGHT, quality }
   );
 }
 

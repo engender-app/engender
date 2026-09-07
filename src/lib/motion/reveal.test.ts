@@ -199,9 +199,6 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).toContain('border-left-width: 1px');
   });
 
-  /* Below the floor the same pair is stacked, and a tile that collapsed its
-     width there would leave a full-height hole behind it. The axis is read
-     off the layout rather than passed in, so one call site covers both. */
   /* A card narrowing along a row reflows its own text on the way, which is a
      broken layout held in front of the reader for the whole travel. The empty
      surface finishes the journey instead. Nothing like this is needed down a
@@ -260,6 +257,9 @@ describe('tier 3, a panel giving its space back', () => {
     expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(240);
   });
 
+  /* Below the floor the same pair is stacked, and a tile that collapsed its
+     width there would leave a full-height hole behind it. The axis is read
+     off the layout rather than passed in, so one call site covers both. */
   it('collapses its height instead when nothing shares its line', () => {
     const { css } = collapse(
       panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' })
