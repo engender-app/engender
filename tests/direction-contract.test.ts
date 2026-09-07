@@ -462,6 +462,115 @@ describe('rule 4: surfaces are flush, block or ink', () => {
   });
 });
 
+/* The tile, which rule 3 spends more words on than anything else and which
+   redesign ticket 24 builds: a solid block of the area's stripe with the
+   title and the value on it, a foot of page colour carrying the note, and
+   the same shape whatever controls the tile has. Held here because the
+   three shapes are three rules and the one that gets forgotten is the one
+   nobody has on screen. */
+describe('rule 3: a tile is a block with a foot', () => {
+  const kit = sheet('kit');
+  const SHAPES = ['.kit-tile', '.kit-tile.is-split'];
+
+  it('grounds every tile shape in the stripe undiluted, edged and cornered once', () => {
+    for (const prelude of SHAPES) {
+      const body = ruleFor(kit, prelude)?.body ?? '';
+      expect(body, prelude).toMatch(/background:\s*var\(--role-draw\)/);
+      expect(body, prelude).toMatch(/border:\s*1px solid var\(--outline\)/);
+      expect(body, prelude).toMatch(/border-radius:\s*var\(--r-block\)/);
+      expect(body, prelude).not.toMatch(/--role-tint|--role-wash/);
+    }
+  });
+
+  it('writes the title and the value on the block in the ink proven on it', () => {
+    const title = ruleFor(kit, '.kit-tile-title')?.body ?? '';
+    expect(title).toMatch(/font-size:\s*var\(--text-block\)/);
+    expect(title).toMatch(/font-weight:\s*var\(--weight-bold\)/);
+    expect(title).toMatch(/color:\s*var\(--role-fill-ink\)/);
+    const value = ruleFor(kit, '.kit-tile-value')?.body ?? '';
+    expect(value).toMatch(/font-size:\s*var\(--text-3xl\)/);
+    expect(value).toMatch(/color:\s*var\(--role-fill-ink\)/);
+    expect(ruleFor(kit, ".kit-tile[data-weight='row'] .kit-tile-value")?.body).toMatch(
+      /font-size:\s*var\(--text-2xl\)/
+    );
+  });
+
+  it('gives a tile with no value one display line of its own', () => {
+    /* Safe space is a title and a note. With the note in the foot, a 19px
+       title was the whole of what the block carried while the tile beside
+       it held a 40px number, and the grid read as a tile that had failed to
+       load. */
+    const promoted = ruleFor(kit, '.kit-tile:not(:has(.kit-tile-value)) .kit-tile-title')?.body ?? '';
+    expect(promoted).toMatch(/font-size:\s*var\(--text-3xl\)/);
+    expect(promoted).toMatch(/font-family:\s*var\(--font-display\)/);
+    expect(
+      ruleFor(kit, ".kit-tile[data-weight='row']:not(:has(.kit-tile-value)) .kit-tile-title")?.body
+    ).toMatch(/font-size:\s*var\(--text-2xl\)/);
+  });
+
+  /* Every band clears 3:1 under the fill ink and none of them clears 4.5:1
+     under it at 15px, so nothing small may sit on a block. 19px bold and
+     40px display are both large text; the note, which is 15px, is the
+     reason the foot exists at all. */
+  it('sets nothing under large text on the block', () => {
+    const t = baseTokens();
+    const rem = (token: string) => Number(/([\d.]+)rem/.exec(t[token] ?? '')?.[1] ?? '0') * 16;
+    expect(rem('--text-block')).toBeGreaterThanOrEqual(18.66);
+    expect(Number(t['--weight-bold'])).toBeGreaterThanOrEqual(700);
+    expect(rem('--text-3xl')).toBeGreaterThanOrEqual(18.66);
+    expect(rem('--text-2xl')).toBeGreaterThanOrEqual(18.66);
+    /* And the one small thing left is off the stripe: the foot's ground is
+       the page. */
+    expect(rem('--text-sm')).toBeLessThan(18.66);
+  });
+
+  it('runs the foot along the bottom edge of the block, in page colour, full width', () => {
+    const note = ruleFor(kit, '.kit-tile-note')?.body ?? '';
+    expect(note).toMatch(/background:\s*var\(--bg\)/);
+    expect(note).toMatch(/color:\s*var\(--text-2\)/);
+    /* Out past the block's own padding on both sides, and on the third the
+       tile's own inset for the dismiss control, so no shape leaves a sliver
+       of stripe beside its foot. */
+    expect(note).toMatch(/margin-left:\s*calc\(-1 \* var\(--space-4\)\)/);
+    expect(note).toMatch(/margin-right:\s*calc\(-1 \* var\(--space-4\)\)/);
+    expect(note).toMatch(/margin-bottom:\s*calc\(-1 \* var\(--space-4\)\)/);
+    expect(ruleFor(kit, '.kit-tile.has-dismiss > .kit-tile-note')?.body).toMatch(
+      /margin-right:\s*calc\(-1 \* var\(--space-7\)\)/
+    );
+    /* And it ends at a line, never through one: the clamp is on an inner
+       span because the foot itself is a grid or flex item, which blockifies
+       `display: -webkit-box` away. */
+    const text = ruleFor(kit, '.kit-tile-note-text')?.body ?? '';
+    expect(text).toMatch(/display:\s*-webkit-box/);
+    expect(text).toMatch(/-webkit-line-clamp:\s*2/);
+  });
+
+  /* The look-back pair, and Safe space's two stats: one colour each, the
+     note on the block rather than in a foot, and the flag bar as the motif
+     between value and note. */
+  it('gives the tight pair no foot, and the flag bar instead', () => {
+    const note = ruleFor(kit, '.kit-tiles[data-tight] .kit-tile-note')?.body ?? '';
+    expect(note).toMatch(/background:\s*none/);
+    expect(note).toMatch(/color:\s*var\(--role-fill-ink\)/);
+    expect(note).toMatch(/font-size:\s*var\(--text-block\)/);
+    expect(note).toMatch(/margin:\s*0/);
+    const bar = rules(kit).find((r) => /--flag-bar/.test(r.prelude) && /::after/.test(r.prelude));
+    expect(bar, 'the flag bar rule').toBeTruthy();
+    expect(bar!.prelude, "the bar is the tight pair's motif").toMatch(/\[data-tight\]/);
+    /* One band of the flag rather than the whole gradient, so the block's
+       own colour is not drawn back into its own mark. */
+    expect(bar!.body).toMatch(/background:\s*var\(--flag-bar\)/);
+    expect(bar!.body).toMatch(/border-radius:\s*2px/);
+  });
+
+  it('sets a control on the block against the block: the page for a button, the fill ink for a dismiss', () => {
+    const act = ruleFor(kit, '.kit-tile-act.btn')?.body ?? '';
+    expect(act).toMatch(/background:\s*var\(--bg\)/);
+    expect(act).toMatch(/color:\s*var\(--text\)/);
+    expect(ruleFor(kit, '.kit-tile-dismiss')?.body).toMatch(/color:\s*var\(--role-fill-ink\)/);
+  });
+});
+
 describe('rule 9: chart ink', () => {
   it('draws a series at 2, a guide at 1, and the donut ring at 12, nothing else', () => {
     const widths = [...kitAllCss.matchAll(/stroke-width:\s*([\d.]+)/g)].map(([, w]) => Number(w));

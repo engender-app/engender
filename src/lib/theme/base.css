@@ -18,6 +18,11 @@
   --text-sm: 0.9375rem;  /* 15px — secondary text, subtitles, a tile's note */
   --text-md: 1rem;       /* 16px — body */
   --text-lg: 1.0625rem;  /* 17px — a content title: a chart's heading, a row's title */
+  /* 19px is where large text starts at bold (18.66px), which is the whole
+     reason for the step: a title written on a block answers to 3:1 rather
+     than 4.5:1, and nonbinary's purple carries 4.41. Anything smaller has
+     to come off the stripe (rule 3's foot). */
+  --text-block: 1.1875rem; /* 19px — a title or a note written on a block */
   --text-xl: 1.3125rem;  /* 21px — a sheet's heading, a row-weight number */
   --text-2xl: 1.75rem;   /* 28px — a section heading (display face) */
   --text-3xl: 2.5rem;    /* 40px — a number on a block (display face) */

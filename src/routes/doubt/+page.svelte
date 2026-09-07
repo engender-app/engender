@@ -61,7 +61,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
 
   const COUNTEREVIDENCE_LIMIT = 20;
@@ -227,9 +227,12 @@
   </ListCard>
 
   <SectionHeading text={m.safe_space_stats_title()} />
+  <!-- `tileRoleAt` rather than `roleAt`: a tile is a block of the stripe
+       undiluted, and index 1 on agender is its near-black band, which as a
+       whole block is the page (phase 10 rule 3). -->
   <TileGrid
-    role={roleAt(activeFlag.roles, 1)}
-    flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+    role={tileRoleAt(activeFlag.roles, 1)}
+    bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, 1))}
     data-safe-space-stats
     data-tight
   >
