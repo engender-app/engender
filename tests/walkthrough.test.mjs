@@ -706,6 +706,36 @@ try {
   ok('stats range, value list, named tag insights and the scale bars');
 } catch (e) { fail('stats', e); }
 
+/* 6a. a tag insight's sheet holds the same set the row's own count named
+   (carpet ticket 19). An unranged read used to open the tag's twenty most
+   recent carriers across the whole journal; this asserts the row's count
+   against the number of entry cards the sheet actually opened, so the two
+   cannot drift apart again without failing here. */
+try {
+  await fresh('/stats');
+  const bar = page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first();
+  await bar.waitFor();
+  const note = await bar.locator('[data-bar-note]').textContent();
+  const claimed = Number((note ?? '').match(/\d+/)?.[0]);
+  if (!claimed) throw new Error('tag insight row has no entry count: ' + note);
+
+  await bar.click();
+  await page.waitForSelector('[data-sheet]');
+  await page.waitForSelector('[data-sheet] [data-entry-card]');
+  const cards = await page.locator('[data-sheet] [data-entry-card]').count();
+  const capped = await page.locator('[data-insight-sheet-capped]').count();
+
+  if (capped) {
+    // A capped list says so rather than silently showing fewer than the
+    // row claimed - the row's count can exceed what the sheet shows, never
+    // the other way round.
+    if (cards > claimed) throw new Error(`sheet held ${cards}, row claimed ${claimed}, and said capped`);
+  } else if (cards !== claimed) {
+    throw new Error(`row said ${claimed} entries, sheet held ${cards}`);
+  }
+  ok('tag insight sheet holds the row\'s own count, or says it is capped');
+} catch (e) { fail('tag insight sheet range', e); }
+
 /* 6b. a second scale on the day-by-day chart (phase 6 ticket 12).
 
    The offer, the pick, and the two things that have to change together: the

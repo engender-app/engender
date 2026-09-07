@@ -1871,6 +1871,7 @@
   "compare_entries_label": "Entries logged",
   "stats_range_group": "Range",
   "insight_row_sub": "{count} entries · avg {with} with · {without} without",
+  "insight_sheet_capped": "Showing the {shown} most recent. More entries carry this tag in this range.",
   "chart_aria": "Line chart, {count} points from {from} to {to}",
   "week_cell_no_entry": "{day}: no entry",
   "week_cell_level": "{day}: level {level} of 4",

@@ -139,7 +139,9 @@ test('the tag word is a tag label, carried by entries, and in no note', async ()
   const match = tags.find((t) => t.label === summary.tagWord);
   expect(match, 'the tag word has to name a tag or the union branch is never taken').toBeDefined();
 
-  expect(await journal.entries.entriesWithTag(match!.id, 10_000)).toHaveLength(summary.tagWordEntries);
+  expect(
+    await journal.entries.entriesWithTag(match!.id, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, 10_000)
+  ).toHaveLength(summary.tagWordEntries);
   expect(summary.tagWordEntries).toBeGreaterThan(0);
   // In no note, or the measurement would not tell the two branches apart.
   expect(await journal.entries.countSearchMatches(summary.tagWord, [])).toBe(0);
