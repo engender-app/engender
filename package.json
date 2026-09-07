@@ -33,6 +33,7 @@
     "gallery:panel-motion": "VITE_DEMO=1 npm run build && node tests/panel-motion-gallery.mjs",
     "gallery:unprompted": "node tests/unprompted-gallery.mjs",
     "gallery:stats": "VITE_DEMO=1 npm run build && node tests/stats-gallery.mjs",
+    "gallery:more-ia": "VITE_DEMO=1 npm run build && node tests/more-ia-gallery.mjs",
     "gallery:highest-days": "VITE_DEMO=1 npm run build && node tests/highest-days-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",

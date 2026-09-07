@@ -6,16 +6,21 @@
      about what was behind it. Every row says something now, and this screen
      owns none of the reasoning: `hubRows.ts` holds the rows and what sits
      behind them, `vocabulary/hubLabels.ts` holds the words. What is left here
-     is three live reads and a loop.
+     is two live reads and a loop.
 
-     Three, not one per row. The readings come out of one assembled call
+     Two, not one per row. The readings come out of one assembled call
      (`journal/lastWrite.ts`, measured as `hub-last-writes` before this screen
-     was written), beside the area record and the regimen episode list
-     ADR-0043's gate needs.
+     was written), beside the area record.
 
-     Nothing gates the screen on them. This is a navigation surface, and a
-     skeleton in front of twenty-six links a person can already read would be
-     slower than the links. */
+     It was three until phase 9 carpet ticket 16: the third was the regimen
+     episode list, read only to answer ADR-0043's gate for the cycle row. That
+     row is drawn on /health/side-effects now, which was already asking the
+     same question for the cycle block it draws, so the gate and the read that
+     feeds it are in one place instead of two.
+
+     Nothing gates the screen on either read. This is a navigation surface,
+     and a skeleton in front of twenty links a person can already read would
+     be slower than the links. */
   import { m } from '$lib/paraglide/messages';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -23,24 +28,12 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { prefs } from '$lib/data/prefs/store.svelte';
-  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { HUB_GROUP_KEYS, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
 
   const today = todayEpochDay();
-
-  /* ADR-0043: the cycle row is the one row here that has to be able to not
-     exist - read cold, a permanent cycle prompt tells a transfemme reader
-     this hub was not drawn for them. It stays written in `hubRows.ts` so its
-     shape is held like any other row's, and this one visibility rule - an
-     active testosterone regimen or the explicit opt-in - decides whether the
-     row is in the card. Hiding the row is all it does: the screen behind it
-     and its records are untouched, and its direct URL still answers. */
-  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
-  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingEnabled));
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
@@ -59,12 +52,13 @@
       : { lastWrites: {}, states: {} }
   );
 
-  let sections = $derived(hubSections({ todayEpochDay: today, ...landed, cycleShown }));
+  let sections = $derived(hubSections({ todayEpochDay: today, ...landed }));
 
   /* The group's own place in the list rather than its place among whatever
      rendered, so Body keeps one stripe whether or not a finished group sits
-     below it and whether or not the cycle row emptied Health. The finished
-     set takes the index after the last group: it is set apart by its heading
+     below it and whether or not hiding an area emptied a group above it.
+     The finished set takes the index after the last group: it is set apart
+     by its heading
      and by every row in it stating the day it ended, not by losing its
      colour - the one uncoloured card on this screen is the Settings row
      below, which is the app talking about itself. */

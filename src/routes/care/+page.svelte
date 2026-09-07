@@ -22,6 +22,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -319,6 +320,18 @@
       href="/settings/stock"
     />
   </ListCard>
+
+  <!-- What came of all of it (phase 9 carpet ticket 16). The list above is
+       what is going in, on what schedule and how much is left; this is the
+       one row about what the person has noticed since, and the two screens
+       under it - side effects, and hair - hang off that one rather than off
+       the hub.
+
+       No SectionHeading: it is one row, and a heading over "Changes you've
+       noticed" would be that title said twice. What separates it from the
+       hormones card is the --space-6 `.screen > *` gives two unrelated
+       blocks. -->
+  <HostedRows host="care" card />
 </div>
 
 <style>
