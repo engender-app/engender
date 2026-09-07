@@ -261,6 +261,31 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
   return roles[index % roles.length];
 }
 
+/** The flag's colours, in the order `flagRoles` put them, with its shades
+    dropped rather than moved to the back.
+
+    For the one consumer whose whole surface is the stripe undiluted: a tile
+    is a block of `--role-draw` now (phase 10 rule 3), and a block of a shade
+    is the page - agender's near-black band is a black rectangle on a
+    near-black page, held apart from it by a 1px line and nothing else. A
+    chart line or an icon glyph on the same band is faint and still a mark,
+    which is why `flagRoles` keeps the shades for everyone else.
+
+    Every flag has at least one colour, so the list is never empty; the
+    fallback is there for a palette nobody has written yet. */
+export function chromaticRoles(roles: Role[]): Role[] {
+  const colours = roles.filter((role) => chromaOf(role.stripe) >= ACHROMATIC);
+  return colours.length > 0 ? colours : roles;
+}
+
+/** The role for the nth area of a screen where that area is drawn as a
+    tile: `roleAt` over the colours alone, so the wrap happens inside them
+    and an area whose index lands on a shade takes the next colour round
+    rather than the shade. */
+export function tileRoleAt(roles: Role[], index: number): Role | undefined {
+  return roleAt(chromaticRoles(roles), index);
+}
+
 /** Which stripe each area of Home takes, named rather than written as a
     number at the call site - one of them is not in reading order and the
     reason is the ordering above.
@@ -275,7 +300,13 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
     Beside `roleAt` rather than in the screen for the same reason
     wrappedDisplay.ts holds WRAPPED_AREA_ROLE: the index is only meaningful
     against the list this module builds, and a table buried in markup is a
-    table nobody can check. */
+    table nobody can check.
+
+    The two tile areas - `liveTiles` and `lookBack` - are resolved through
+    `tileRoleAt` rather than `roleAt`, so their index counts the flag's
+    colours only. Everything the area holds goes through the same call, tiles
+    and the list and the notice beside them, or one area of the screen would
+    be drawn in two stripes. */
 export const HOME_AREA_ROLE = { week: 0, liveTiles: 1, lookBack: 1, milestones: 2, days: 3 } as const;
 
 /** The whole flag as one CSS fill: hard-edged bands, left to right, in
