@@ -1854,6 +1854,40 @@ try {
      serve leaves the flag in the tab and no attribute check would notice. */
   const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
   if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
+
+  /* The field under disguise (redesign ticket 23, ADR-0075): the shell
+     publishes --surface-2 and --text in place of the flag's colour and its
+     ink, and the sun is absent. Read off Home, where the field is painted,
+     rather than off the tokens: a token nothing paints proves nothing. The
+     expected colours come from a probe element wearing the two tokens, so
+     the check follows the palette rather than naming a hex. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-field]');
+  const disguisedField = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--surface-2)';
+    probe.style.color = 'var(--text)';
+    document.body.append(probe);
+    const want = getComputedStyle(probe);
+    const got = getComputedStyle(document.querySelector('[data-home-field]'));
+    const out = {
+      background: got.backgroundColor,
+      surface2: want.backgroundColor,
+      ink: got.color,
+      text: want.color,
+      suns: document.querySelectorAll('[data-flag-sun]').length
+    };
+    probe.remove();
+    return out;
+  });
+  if (disguisedField.background !== disguisedField.surface2 || disguisedField.ink !== disguisedField.text) {
+    throw new Error('the field under disguise is not the neutral pair: ' + JSON.stringify(disguisedField));
+  }
+  if (disguisedField.suns !== 0) throw new Error('the sun drew under disguise');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
@@ -3817,6 +3851,49 @@ try {
   ok('every dot on the injection map is separately tappable at 320px, and the sites the demo never used are drawn apart from the ones it did');
 } catch (e) {
   fail('injection map recency', e);
+} finally {
+  await page.setViewportSize({ width: 440, height: 940 });
+}
+
+/* Today's header at what 200% zoom leaves of a 390px phone (redesign
+   ticket 23, DIRECTION.md rule 7). The old header reserved the sun's full
+   350px beside the hello line, which at 195px is more than the screen, and
+   Playwright read the line as hidden: zero width. The foot under the field
+   has no sun beside it, so the line has its width back, and the sun draws
+   at 0.6 so the wordmark in the field's corner is clear of it. */
+try {
+  await page.setViewportSize({ width: 195, height: 844 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  const zoomed = await page.evaluate(() => {
+    const box = (sel) => document.querySelector(sel).getBoundingClientRect();
+    const hello = box('[data-home-hello]');
+    const hero = box('[data-home-hero]');
+    const field = box('[data-home-field]');
+    const sun = document.querySelector('[data-flag-sun]');
+    /* The outermost ring's box, as drawn: the ring is a disc translated by
+       half its size to centre on the corner and scaled by --sun-scale on
+       the point, so its left edge is the corner minus the drawn radius. */
+    const ring = sun?.firstElementChild?.getBoundingClientRect();
+    return {
+      helloWidth: hello.width,
+      helloBelowField: hello.top >= field.bottom,
+      heroInField: hero.bottom <= field.bottom && hero.left >= field.left,
+      sunScale: getComputedStyle(sun).transform,
+      ringWidth: ring ? ring.width : null
+    };
+  });
+  if (!(zoomed.helloWidth > 100)) throw new Error('the hello line has no width at 195px: ' + JSON.stringify(zoomed));
+  if (!zoomed.helloBelowField) throw new Error('the hello line sits on the field: ' + JSON.stringify(zoomed));
+  if (!zoomed.heroInField) throw new Error('the wordmark left the field: ' + JSON.stringify(zoomed));
+  /* scale(0.6) on a 0x0 point is the matrix (0.6, 0, 0, 0.6, 0, 0). */
+  if (!/^matrix\(0\.6, 0, 0, 0\.6, 0, 0\)$/.test(zoomed.sunScale)) {
+    throw new Error('the sun is not drawn at 0.6 below 240px: ' + JSON.stringify(zoomed));
+  }
+  ok('at 195px the hello line has width, the wordmark stays in the field and the sun draws at 0.6');
+} catch (e) {
+  fail('the field at 200% zoom', e);
 } finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }

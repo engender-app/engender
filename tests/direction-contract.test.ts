@@ -285,10 +285,11 @@ describe('rule 4: two line strengths', () => {
 
 describe('rule 1: rhythm', () => {
   /* The blocks that may reach past 20px vertically: a section heading (40
-     above its rule), the two header blocks, the desktop rail's own inset,
-     and a gate or an empty state centring itself (48 and 64 are theirs). */
+     above its rule), the two header blocks and the field they paint (40
+     above a title, rule 7), the desktop rail's own inset, and a gate or an
+     empty state centring itself (48 and 64 are theirs). */
   const allowedAbove =
-    /\.kit-heading|\.section-title|\.screen-header|\.home-header|\.app-rail|\.gate\b|\.empty-state|\.wrapped-thin|\.wrapped-year-close|\.wrapped-cover/;
+    /\.kit-heading|\.section-title|\.screen-header|\.screen-field|\.home-header|\.app-rail|\.gate\b|\.empty-state|\.wrapped-thin|\.wrapped-year-close|\.wrapped-cover/;
   const tall = /--space-(6|7|8|9|10)\b/;
 
   function vertical(prop: string, value: string): string[] {
@@ -508,5 +509,173 @@ describe('the two 200% zoom defects (ticket 07)', () => {
     const components = sheet('components');
     expect(narrow(components, '.segmented.is-compact')?.body).toMatch(/display:\s*inline-flex/);
     expect(narrow(components, '.segmented.is-compact .segment')?.body).toMatch(/flex:\s*0 0 auto/);
+  });
+});
+
+/* Rules 3, 7 and 8: the field, and the sun drawn on it (redesign ticket 23).
+   The field is a painted thing on two components, so half of this reads
+   markup rather than a sheet: which classes sit inside the field is a fact
+   about ScreenHeader.svelte and +page.svelte, and the type rule below is
+   asked of those classes. Every assertion here failed against the tree at
+   08ada93a, where nothing painted --field. */
+describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
+  const header = read('src/lib/components/ScreenHeader.svelte');
+  const home = read('src/routes/+page.svelte');
+
+  /** The markup between an element's opening tag (found by a data attribute)
+      and its matching close, the element's own tag included. Depth is
+      counted on the element's own tag name, which is enough for the
+      wrappers this asks about. */
+  function element(markup: string, attr: string): string {
+    const open = new RegExp(String.raw`<([a-z]+)([^<>]*\s${attr}\b[^<>]*)>`).exec(markup);
+    if (!open) throw new Error(`no element carries ${attr}`);
+    const tag = open[1];
+    const re = new RegExp(String.raw`<${tag}\b|</${tag}>`, 'g');
+    re.lastIndex = open.index + open[0].length;
+    let depth = 1;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(markup))) {
+      depth += m[0].startsWith('</') ? -1 : 1;
+      if (depth === 0) return markup.slice(open.index, m.index + m[0].length);
+    }
+    throw new Error(`${attr}'s element never closes`);
+  }
+
+  /** Every class the markup names inside a fragment: `class="a b"`, the
+      static part of `class="a {expr}"`, and `class:name=` directives. */
+  function classesIn(fragment: string): Set<string> {
+    const out = new Set<string>();
+    for (const m of fragment.matchAll(/class="([^"]*)"/g)) {
+      for (const token of m[1].replace(/\{[^}]*\}/g, ' ').split(/\s+/)) if (token) out.add(token);
+    }
+    for (const m of fragment.matchAll(/class:([a-zA-Z0-9_-]+)/g)) out.add(m[1]);
+    return out;
+  }
+
+  /** A size or weight declaration as a number, through one level of var():
+      px and rem for a size, a bare number for a weight, and NaN for what the
+      text cannot settle (inherit, a percentage, a cq unit outside clamp).
+      A clamp() resolves to its floor, which is the size a narrow screen gets. */
+  function resolve(value: string | undefined, base: Record<string, string>): number {
+    let v = (value ?? '').trim();
+    const varRef = /^var\((--[a-z0-9-]+)\)$/.exec(v);
+    if (varRef) v = (base[varRef[1]] ?? '').trim();
+    const clamp = /^clamp\(\s*([^,]+),/.exec(v);
+    if (clamp) v = clamp[1].trim();
+    const rem = /^([\d.]+)rem$/.exec(v);
+    if (rem) return Number(rem[1]) * 16;
+    const pixels = /^([\d.]+)px$/.exec(v);
+    if (pixels) return Number(pixels[1]);
+    if (/^\d+$/.test(v)) return Number(v);
+    return NaN;
+  }
+
+  it('wraps back, title and actions in the field and leaves the subtitle on the page', () => {
+    const field = element(header, 'data-screen-field');
+    expect(field).toContain('data-screen-back');
+    expect(field).toContain('data-screen-title');
+    expect(field).toContain('@render actions()');
+    expect(field).not.toContain('data-screen-subtitle');
+    expect(element(header, 'data-screen-header')).toContain('data-screen-subtitle');
+  });
+
+  it("paints the screen's field in --field with --field-ink, bleeding to the screen's edges", () => {
+    const css = sheet('components');
+    const field = ruleFor(css, '.screen-field');
+    expect(field?.body).toMatch(/background:\s*var\(--field\)/);
+    expect(field?.body).toMatch(/color:\s*var\(--field-ink\)/);
+    const bleed = ruleFor(css, '.screen > .screen-header > .screen-field');
+    expect(bleed?.body).toMatch(/margin:\s*calc\(-1 \* var\(--inset-top\)\) calc\(-1 \* var\(--space-5\)\) 0/);
+    expect(bleed?.body).toMatch(
+      /padding:\s*calc\(var\(--space-8\) \+ var\(--inset-top\)\) var\(--space-5\) var\(--space-4\)/
+    );
+  });
+
+  it("puts Today's sun and wordmark in the field, and the hello line, the count and the gear in a foot on the page", () => {
+    const field = element(home, 'data-home-field');
+    expect(field).toContain('<FlagSun />');
+    expect(field).toContain('data-home-hero');
+    expect(field).not.toContain('data-home-hello');
+    const foot = element(home, 'data-home-foot');
+    expect(foot).toContain('data-home-hello');
+    expect(foot).toContain('data-home-count');
+    expect(foot).toContain('data-home-gear');
+    const css = styleBlocks('src/routes/+page.svelte');
+    const rule = ruleFor(css, '.home-field');
+    expect(rule?.body).toMatch(/background:\s*var\(--field\)/);
+    expect(rule?.body).toMatch(/color:\s*var\(--field-ink\)/);
+    expect(rule?.body).toMatch(/--sun-ground:\s*var\(--field\)/);
+    expect(ruleFor(css, '.home-hero')?.body).toMatch(/font-size:\s*clamp\(1\.7rem, 13cqw, 3rem\)/);
+  });
+
+  /* Rule 3's floor: nonbinary's purple carries white at 4.41:1, so nothing
+     under 24px, or under 18.66px bold, may be set on the field. Asked of
+     every rule in the shared sheets and the two components' own blocks
+     whose subject is a class the field's markup contains. */
+  it('sets no small type on the field', () => {
+    const base = baseTokens();
+    const fieldClasses = new Set([
+      ...classesIn(element(header, 'data-screen-field')),
+      ...classesIn(element(home, 'data-home-field'))
+    ]);
+    expect(fieldClasses.size).toBeGreaterThan(3);
+    const sources: Array<[string, string]> = [
+      ['components', sheet('components')],
+      ['kit', sheet('kit')],
+      ['app', sheet('app')],
+      ['screens', sheet('screens')],
+      ['ScreenHeader', styleBlocks('src/lib/components/ScreenHeader.svelte')],
+      ['+page', styleBlocks('src/routes/+page.svelte')]
+    ];
+    let seen = 0;
+    for (const [where, css] of sources) {
+      for (const rule of rules(css)) {
+        const subjects = rule.prelude.split(',').map((s) => s.trim().split(/\s+|>/).pop() ?? '');
+        const onField = subjects.some((s) =>
+          [...s.matchAll(/\.([a-zA-Z0-9_-]+)/g)].some((m) => fieldClasses.has(m[1]))
+        );
+        if (!onField) continue;
+        const decl = Object.fromEntries(declarations(rule.body));
+        if (!decl['font-size']) continue;
+        seen++;
+        const size = resolve(decl['font-size'], base);
+        const weight = resolve(decl['font-weight'], base);
+        const floor = weight >= 700 ? 18.66 : 24;
+        expect(
+          Number.isNaN(size) || size >= floor,
+          `${where}: ${rule.prelude} { font-size: ${decl['font-size']} } is small type on the field`
+        ).toBe(true);
+      }
+    }
+    expect(seen, 'the title and the wordmark both set a size').toBeGreaterThanOrEqual(2);
+  });
+
+  it('separates the rings by 5px of the ground and seams each with 1px of black', () => {
+    const sun = ruleFor(sheet('components'), '.sun i');
+    expect(sun?.body).toMatch(/outline:\s*5px solid var\(--sun-ground, var\(--bg\)\)/);
+    expect(sun?.body).toMatch(/border:\s*1px solid #000\b/);
+    expect(sun?.body).toMatch(/box-sizing:\s*border-box/);
+    expect(ruleFor(sheet('components'), '.sun')?.body).toMatch(/transform:\s*scale\(var\(--sun-scale, 1\)\)/);
+  });
+
+  it('draws the sun at 0.82 below 360px and 0.6 below 240px', () => {
+    const css = styleBlocks('src/routes/+page.svelte');
+    const at = (query: string) => rules(css).find((r) => r.at.includes(query) && /\.home-field/.test(r.prelude));
+    expect(at('(max-width: 359px)')?.body).toMatch(/--sun-scale:\s*0\.82/);
+    expect(at('(max-width: 239px)')?.body).toMatch(/--sun-scale:\s*0\.6\b/);
+  });
+
+  it("makes the field a 6px-cornered banner on the web and retires Home's outline frame", () => {
+    for (const rule of rules(sheet('screens'))) {
+      if (rule.prelude === '.home') expect(rule.body, 'the desktop frame on .home').not.toMatch(/outline/);
+    }
+    const homeField = rules(styleBlocks('src/routes/+page.svelte')).find(
+      (r) => r.at.includes('min-width: 1024px') && r.prelude === '.home-field'
+    );
+    expect(homeField?.body).toMatch(/border-radius:\s*var\(--r-block\)/);
+    const deep = rules(sheet('components')).find(
+      (r) => r.at.includes('min-width: 1024px') && /\.screen-field/.test(r.prelude)
+    );
+    expect(deep?.body).toMatch(/border-radius:\s*var\(--r-block\)/);
   });
 });

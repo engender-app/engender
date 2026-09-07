@@ -234,11 +234,11 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* The header is the screen's own title block: its subtitle already carries
-   the space under it. */
-.screen > .screen-header {
-  margin-bottom: 0;
-}
+/* The header takes the same 20 as every other block. It used to take 0,
+   because its own padding carried the space under the subtitle; the field
+   (components.css, redesign ticket 23) pads nothing below itself, so the
+   first block on a screen sits 20 under the field, or under the subtitle
+   where there is one. */
 
 /* The floor reaches one level down, because most screens put their content
    inside a branch wrapper: `{#if loading}...{:else}<div>` needs an element to
