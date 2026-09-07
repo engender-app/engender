@@ -270,6 +270,11 @@
       <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} subtitle={m.affirmations_row_sub()} href="/settings/affirmations" />
       <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} subtitle={m.body_regions_row_sub()} href="/settings/body-regions" />
       <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} subtitle={m.journaling_pause_row_sub()} href="/settings/journaling-pause" />
+      <!-- Moved off the More hub by phase 9 carpet ticket 16. Every other row
+           in this card is a decision about how journaling works for you, and
+           a ready-made shape for an entry is one of those - it was on the hub
+           beside logs of things that happened, which is not what it is. -->
+      <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/practice/entry-templates" />
     </ListCard>
 
     <!-- ADR-0043: the manual way into cycle tracking, for someone no

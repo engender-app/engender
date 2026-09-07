@@ -86,7 +86,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.words_title()} subtitle={m.words_sub()} back="/more" screen="words" />
+  <ScreenHeader title={m.words_title()} subtitle={m.words_sub()} back="/stats" screen="words" />
 
   <Segmented
     key="words-dimension"

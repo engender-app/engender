@@ -104,7 +104,7 @@ const GROUP_HEADING: Record<HubGroupKey | 'finished', () => string> = {
   body: m.hub_group_body,
   health: m.hub_group_health,
   transition: m.hub_group_transition,
-  practice: m.hub_group_practice,
+  support: m.hub_group_support,
   media: m.hub_group_media,
   finished: m.hub_group_finished
 };

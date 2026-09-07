@@ -26,12 +26,13 @@
      key      the More hub's row key, which is also the walkthrough handle,
               and which is `HubRowKey` rather than a string: a card naming no
               row does not compile
-     group    which of the hub's four groups the card sits in - the same four
-              in the same order, so a person learns one organising idea. The
-              card's own, not the row's, which is the ticket's own scope
-              line: the hub has a fifth group since ticket 02, `media`, and
-              no card can sit in it because both media rows front content
-              that travels inside an entry and has no last write to index
+     group    which group the card sits in. The card's own, not the row's,
+              which is the ticket's own scope line: the hub had a fifth group
+              since ticket 02, `media`, and no card can sit in it because
+              both media rows front content that travels inside an entry and
+              has no last write to index. It was the hub's own four in the
+              hub's own order, so a person learned one organising idea; it is
+              not any more, and `StatsAreaGroup` below says why
      covers   which `lastWrite.ts` areas this row fronts. A row appears when
               **any** of them has ever been written (ADR-0056's emptiness
               rule), because somebody can log hair stages for two years and
@@ -78,7 +79,20 @@ import { groupFinishedOn, groupSuspendedOn, type AreaGroupKey } from './areaGrou
 import { hubRow, rowScreen, type HubRowKey } from './hubRows';
 import type { LastWriteKey } from './journal/lastWrite';
 
-/** The More hub's four groups, in the More hub's order. */
+/** The four groups the More hub had when this index was written.
+
+    They are no longer the hub's: phase 9 carpet ticket 16 dropped Practice,
+    added Support and moved seven rows off the hub onto the screens that own
+    them, so a card here reading "Practice" names a heading that exists
+    nowhere else in the app. That is left standing on purpose rather than
+    re-homed in passing. Issue 36 of the same carpet round is "the stats tab
+    shouldn't show the More list at its end", it is ticket 99's to answer, and
+    this whole block may not survive it - two branches rewriting the same four
+    headings, one of them to delete them, is the more expensive mistake.
+
+    So the group is emphatically the card's own now, in a second sense: it is
+    this index's own vocabulary and no longer a claim about the hub. Whatever
+    settles issue 36 owns settling that. */
 type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
 
 export const STATS_AREA_GROUPS = ['body', 'health', 'transition', 'practice'] as const satisfies readonly StatsAreaGroup[];

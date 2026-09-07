@@ -198,7 +198,7 @@
        screens' intros, and in the header it is seven lines of lead before
        a single change is named. A subtitle is a line; this is a paragraph,
        and it belongs where a paragraph goes. -->
-  <ScreenHeader title={m.effects_timeline()} back="/more">
+  <ScreenHeader title={m.effects_timeline()} back="/care">
     {#snippet actions()}
       <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
@@ -307,6 +307,24 @@
 
     <p class="muted small">{m.effects_source()}</p>
   {/if}
+
+  <!-- The two changes that keep their own screen (phase 9 carpet ticket 16).
+       A side effect and a change you were hoping for are both something you
+       noticed after a regimen started, and hair is the one change with a
+       published scale and a camera behind it - so both hang off this screen
+       rather than sitting beside it on the hub.
+
+       Outside the `anchorEpochDay` branch above on purpose. That branch
+       replaces this whole screen with a "set up a regimen first" notice, and
+       both of these screens are usable without one: somebody logging laser
+       stages or a headache has no reason to have typed a regimen in. Inside
+       it, the two rows would be the dead routes the ticket forbids. -->
+  <div>
+    <ListCard>
+      <ListRow key="side-effects" icon="zap" title={m.side_effects()} subtitle={m.hub_sub_side_effects()} href="/health/side-effects" />
+      <ListRow key="hair-progress" icon="comb" title={m.hair_progress()} subtitle={m.hub_sub_hair_progress()} href="/body/hair-progress" />
+    </ListCard>
+  </div>
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>
     {#if editor}
