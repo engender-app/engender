@@ -94,30 +94,42 @@
        was the one thing out of the column. Above it, the title starts where
        the content does and the arrow keeps its full target. Material's own
        large-title pattern puts it there too. -->
-  <div class="screen-header-row">
-    {#if typeof back === 'string'}
-      <a
-        class="icon-btn press screen-back"
-        href={back}
-        data-screen-back
-        aria-label={backLabel ?? m.back()}
-        onclick={goBack}
-      >
-        <Icon name="arrowLeft" />
-      </a>
-    {:else if back}
-      <button class="icon-btn press screen-back" data-screen-back aria-label={backLabel ?? m.back()} onclick={back}>
-        <Icon name="arrowLeft" />
-      </button>
-    {/if}
+  <!-- The field (phase 10, DIRECTION.md rules 3 and 7; ADR-0075): a solid
+       block of one of the flag's colours, published by activeFlag as
+       --field and --field-ink, behind the back control, the title and the
+       actions. Only large type sits on it - nonbinary's purple carries
+       white at 4.41:1, legal for large text and nothing smaller - which is
+       why the subtitle is outside the field, on the page, and why
+       tests/direction-contract.test.ts holds every rule that sizes type
+       inside this element to 24px, or 18.66px bold. Under disguise the
+       shell publishes --surface-2 and --text instead, so the same markup
+       draws a grey header and nothing here has to know. -->
+  <div class="screen-field" data-screen-field>
+    <div class="screen-header-row">
+      {#if typeof back === 'string'}
+        <a
+          class="icon-btn press screen-back"
+          href={back}
+          data-screen-back
+          aria-label={backLabel ?? m.back()}
+          onclick={goBack}
+        >
+          <Icon name="arrowLeft" />
+        </a>
+      {:else if back}
+        <button class="icon-btn press screen-back" data-screen-back aria-label={backLabel ?? m.back()} onclick={back}>
+          <Icon name="arrowLeft" />
+        </button>
+      {/if}
 
-    <h1 class="screen-title" class:visually-hidden={titleHidden} data-screen-title={screen ?? ''}>
-      {title}
-    </h1>
+      <h1 class="screen-title" class:visually-hidden={titleHidden} data-screen-title={screen ?? ''}>
+        {title}
+      </h1>
 
-    {#if actions}
-      <div class="header-action">{@render actions()}</div>
-    {/if}
+      {#if actions}
+        <div class="header-action">{@render actions()}</div>
+      {/if}
+    </div>
   </div>
 
   {#if subtitle}

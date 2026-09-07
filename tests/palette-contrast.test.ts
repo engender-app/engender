@@ -242,7 +242,7 @@ describe('the field and the fills (phase 10)', () => {
     trans: ['#F5A9B8', '#101820', 9.59],
     nonbinary: ['#9C59D1', '#FFFFFF', 4.41],
     genderfluid: ['#C011D7', '#FFFFFF', 4.88],
-    bisexual: ['#9B4F96', '#FFFFFF', 5.31],
+    bisexual: ['#0038A8', '#FFFFFF', 9.85],
     lesbian: ['#FF9A56', '#101820', 8.53],
     pansexual: ['#FFD800', '#101820', 12.85],
     rainbow: ['#004CFF', '#FFFFFF', 6.04],
@@ -263,9 +263,15 @@ describe('the field and the fills (phase 10)', () => {
     }
   });
 
-  it("names the rainbow's blue and lets the other seven fall to the rule", () => {
+  /* Two flags name their own band (Alicja, 2026-09-07: the rainbow on the
+     ticket 06 renders, bisexual on ticket 23's); the other six fall to the
+     rule. Without the name each would take the rule's answer, which is what
+     the first expectation of each pair pins. */
+  it('names the rainbow blue and the bisexual dark blue, and lets the other six fall to the rule', () => {
     expect(flagField(stripesOf('rainbow'))!.hex).toBe('#FF8C00');
     expect(flagField(stripesOf('rainbow'), 'rainbow')!.hex).toBe('#004CFF');
+    expect(flagField(stripesOf('bisexual'))!.hex).toBe('#9B4F96');
+    expect(flagField(stripesOf('bisexual'), 'bisexual')!.hex).toBe('#0038A8');
     expect(flagField([])).toBeUndefined();
   });
 
