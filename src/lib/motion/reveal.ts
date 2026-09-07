@@ -237,20 +237,25 @@ function stillArriving(): boolean {
 /** A box in viewport coordinates: where a panel stood. */
 export type Slot = { top: number; left: number; width: number; height: number };
 
+/** A swap, as the two boxes it happens between: the slot the leaving panel
+    holds, and where its replacement is coming from. */
+export type Swap = { slot: Slot; from?: Slot };
+
 /* When a grid last handed a leaving panel's slot straight to another one, as
-   a `performance.now()` reading, and the box that slot was. See `collapse`. */
+   a `performance.now()` reading, and the boxes it happened between. See
+   `collapse`. */
 let replacedAt = -Infinity;
-let replacedSlot: Slot | null = null;
+let replacedSwap: Swap | null = null;
 
 /** Called by a screen whose list is swapping one panel for another in a
     single tick - a dismissal its fold fills at once - before the DOM is
-    updated, with the box the leaving panel still occupies at that moment.
-    Measured there because by the time the panel's own transition runs, the
-    replacement is standing in its place and it has been pushed elsewhere.
-    See `collapse`. */
-export function markSlotReplacement(slot: Slot | null, now: number = performance.now()): void {
+    updated, with the box the leaving panel still occupies at that moment and,
+    where the screen knows it, the box its replacement is coming out of.
+    Measured there because a frame later the replacement is standing in the
+    slot and the panel it replaced has been pushed elsewhere. See `collapse`. */
+export function markSlotReplacement(swap: Swap | null, now: number = performance.now()): void {
   replacedAt = now;
-  replacedSlot = slot;
+  replacedSwap = swap;
 }
 
 /** Where a tile leaving along a row has finished taking its content out,
@@ -357,6 +362,35 @@ function settleGrid(node: Element, duration: number): void {
     duration,
     easing
   });
+}
+
+/** The panel taking a slot over: it travels out of wherever it was promoted
+    from and fades in as it goes.
+
+    Two cards changing places in one slot is what a crossfade cannot say -
+    "it looks fine as-is, but just the opacity animation can be confusing"
+    (Alicja). What the arriving panel actually did is come out of the fold
+    below the grid, and travelling from there says so: one card leaves, and
+    the thing that was folded under the grid rises into its place.
+
+    The travel is a transform, so nothing around it moves and the panel is
+    laid out at its own size from the first frame - the same reason the tiles
+    a rewrap moves do not animate their width. Without an origin, which is a
+    screen that cannot say where the replacement came from, it is the fade
+    alone. */
+function risesIntoSlot(node: Element, from?: Slot): TransitionConfig {
+  const duration = motionDuration('--dur-slow');
+  const here = node.getBoundingClientRect();
+  const dx = from ? from.left - here.left : 0;
+  const dy = from ? from.top - here.top : 0;
+  if (!from || (Math.abs(dx) < 1 && Math.abs(dy) < 1)) {
+    return { duration, easing: EASE_OUT, css: (t) => `opacity: ${t}` };
+  }
+  return {
+    duration,
+    easing: EASE_OUT,
+    css: (t, u) => `opacity: ${t};` + `transform: translate(${u * dx}px, ${u * dy}px);`
+  };
 }
 
 /** A panel that is not giving its space back: it leaves the flow in the frame
@@ -486,16 +520,10 @@ export function collapse(
   if (isReducedMotion() || params?.skip) return { duration: 0 };
   if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
   if (replacingSlot()) {
-    if (options?.direction === 'in') {
-      return {
-        duration: motionDuration('--dur-slow'),
-        easing: EASE_OUT,
-        css: (t) => `opacity: ${t}`
-      };
-    }
+    if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
     /* The screen measures the slot before the DOM changes; without one there
        is nothing to pin the panel to and the cut is the honest fallback. */
-    return replacedSlot ? dissolveAt(replacedSlot) : { duration: 0 };
+    return replacedSwap ? dissolveAt(replacedSwap.slot) : { duration: 0 };
   }
   /* The column case is `disclose`, on this primitive's own duration rather
      than `disclose`'s. A panel giving its space back is the largest layout

@@ -138,12 +138,22 @@
          only this moment knows: a frame later the promoted tile is standing
          in it. */
       const going = shownKeys.find((key) => !keys.includes(key));
-      const box = going
+      const slot = going
         ? document.querySelector(`[data-live-tile="${going}"]`)?.getBoundingClientRect()
         : undefined;
-      markSlotReplacement(
-        box ? { top: box.top, left: box.left, width: box.width, height: box.height } : null
-      );
+      /* And where the replacement is coming from, which is the fold: a tile
+         is promoted out of it in the same tick, so travelling out of it is
+         what says a swap happened rather than two cards crossfading. Read
+         here for the same reason as the slot - a frame later the fold may be
+         gone, since the tile it gave up can be the last one it held. */
+      const fold = document.querySelector('[data-home-tiles-fold]')?.getBoundingClientRect();
+      const box = (rect: DOMRect) => ({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+      markSlotReplacement(slot ? { slot: box(slot), from: fold && box(fold) } : null);
     }
     shownKeys = keys;
   });
