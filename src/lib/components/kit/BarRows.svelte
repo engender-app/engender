@@ -69,9 +69,9 @@
         and the full width of the card to be read across.
 
         `inline` writes the label inside the bar. The bar is then the row -
-        40px of it, with only the touch floor's spare 8px between one and
-        the next - rather than a mark under a line of text, and a set of
-        them reads as one stack instead of ten separate drawings. It is for
+        36px of it, with only the touch floor's spare between one and the
+        next - rather than a mark under a line of text, and a set of them
+        reads as one stack instead of ten separate drawings. It is for
         a ranking, where the rows are the same kind of thing in order: the
         highest days are that, and stacked they cost 870px at 390px wide to
         say what a column of ten numbers says exactly. Same data, same
