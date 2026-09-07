@@ -59,7 +59,13 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
-  import { nativeValue, signedValue, spreadNote, tagInsightRows } from '$lib/data/wrappedDisplay';
+  import {
+    nativeAmount,
+    nativeValue,
+    signedValue,
+    spreadNote,
+    tagInsightRows
+  } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -311,7 +317,9 @@
            same way a scale with no days shows an empty value in the bars
            above: docs/ui-copy.md has no dashes in it. */
         value: point ? fmtNativeValue(shown.key, point.value) : '',
-        amount: point ? (point.value - shown.min) / Math.max(shown.max - shown.min, 1) : 0
+        amount: point
+          ? (nativeAmount(shown.key, point.value) - shown.min) / Math.max(shown.max - shown.min, 1)
+          : 0
       };
     })
   );
@@ -464,7 +472,8 @@
       note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
       value: fmtNativeValue(highestMetric.key, point.value),
       amount:
-        (point.value - highestMetric.min) / Math.max(highestMetric.max - highestMetric.min, 1)
+        (nativeAmount(highestMetric.key, point.value) - highestMetric.min) /
+        Math.max(highestMetric.max - highestMetric.min, 1)
     }))
   );
 

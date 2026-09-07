@@ -253,6 +253,7 @@ html[data-a11y-motion='reduce'] {
   --dur-slow: 1ms;
   --dur-press: 1ms;
   --dur-authored: 1ms;
+  --stagger-step: 0ms;
 }
 
 html[data-a11y-motion='reduce'] *,
@@ -269,6 +270,7 @@ html[data-a11y-motion='reduce'] *::after {
     --dur-slow: 1ms;
     --dur-press: 1ms;
     --dur-authored: 1ms;
+    --stagger-step: 0ms;
   }
   *, *::before, *::after {
     animation-duration: 1ms !important;
