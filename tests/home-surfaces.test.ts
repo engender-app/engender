@@ -168,19 +168,24 @@ describe('what spec 08 took off Home', () => {
     for (const kind of LIVE_TILE_ORDER) expect(UNPROMPTED_KINDS).toContain(kind);
   });
 
-  it('gives every tile the same slide-in rule', () => {
-    /* The bug deepening ticket 07 fixed: seven tiles asked `liveTilesCount >
-       1` and four asked a hand-written disjunction of only the original
-       five, so a journal showing the wear and measurements tiles slid one in
-       and let the other appear. One occurrence: both weights that render a
-       grid - today above the mood pick and moment below it, since phase 8
-       features ticket 63 - now call the same `#snippet`, so the rule is
-       still written exactly once, over what is on screen rather than over
-       one grid's own length. */
-    const rules = markup.match(/transition:tileSlide=\{\{[^}]*\}\}/g) ?? [];
-    expect(rules.length, 'said once for every weight, not once per tile').toBe(1);
-    for (const rule of rules) expect(rule).toBe('transition:tileSlide={{ enabled: shownTiles.length > 1 }}');
+  it('declares no tile transition of its own, and leaves through the one primitive', () => {
+    /* Deepening ticket 07 got every tile onto one rule; phase 9 carpet
+       ticket 04 moved that rule off this screen entirely. Home's own slide
+       was on the x axis whatever the layout was doing, so at the 390px floor
+       - where this grid is one tile per line - a closing tile shrank its
+       width while its neighbours were giving back height. `collapse` rides
+       Tile itself and reads the axis off the layout, which makes it the same
+       rule for every tile in every grid rather than this screen's guess.
+
+       The blocks Home does still animate are its own: the two tier wrappers
+       and getting started, each a block of this screen rather than a kit
+       surface, and each on the same `collapse` with the same `skip`. */
+    expect(home).not.toContain('tileSlide');
+    expect(home).not.toContain("from 'svelte/transition'");
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
+    const rules = markup.match(/transition:collapse=\{panel\}/g) ?? [];
+    expect(rules.length, 'the screen animates its own blocks and nothing else').toBe(3);
+    expect(home).toContain('let panel = $derived({ skip: navigating.to !== null })');
   });
 
   it('draws the three tiers as three weights, and asks one module for the split', () => {

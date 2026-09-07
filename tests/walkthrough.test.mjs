@@ -1199,7 +1199,24 @@ try {
 
   await notice.getByRole('button').click();
   await notice.waitFor({ state: 'detached' });
-  ok('the stale-backup notice reads 34 days and dismisses');
+
+  /* And it stays dismissed on the way back (phase 9 carpet ticket 04,
+     ADR-0071's "closed stays closed"). Every close on Home persists
+     somewhere - a preference, a journal write, a 24-hour key in localStorage
+     - and the ADR re-decided none of them, which is a claim nothing was
+     checking. This notice is the one whose close is a preference, and
+     navigating away and back is where a close that only lived in component
+     state would come undone. The greeting is waited for first: an absence
+     assertion on a screen that has not drawn yet passes for the wrong
+     reason. */
+  await page.locator('[data-nav-item="calendar"]').first().click();
+  await page.waitForURL('**/calendar');
+  await page.locator('[data-nav-item="home"]').first().click();
+  await page.waitForSelector('[data-home-hello]');
+  if (await page.locator('[data-backup-notice]').count()) {
+    throw new Error('the dismissed backup notice came back from the calendar');
+  }
+  ok('the stale-backup notice reads 34 days, dismisses, and stays dismissed across a navigation');
 } catch (e) { fail('backup notice', e); }
 
 /* 11. import: a file that is not an archive */

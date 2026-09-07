@@ -48,6 +48,7 @@
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
+  import { markScreenArrival } from '$lib/motion/reveal';
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -212,6 +213,22 @@
        to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
     if (navigation.to) restoreScroll(navigation.to.url.pathname);
+    /* And a screen that just arrived is not a screen changing (phase 9
+       carpet ticket 04). Its panels are gated on reads that answer a few
+       dozen milliseconds from here, so without this every one of them would
+       play an entrance on the way back from the calendar and the screen
+       would assemble itself in front of you. The shell is the only thing
+       that knows a screen arrived; `collapse` is what asks. */
+    markScreenArrival();
+  });
+
+  /* The other way a screen arrives: boot handing one over. `afterNavigate`
+     fires on the first load too, but that is before the journal is open, so
+     the window it opens has long closed by the time Home has anything to
+     draw - which would make opening the app the one arrival that yanked. */
+  $effect(() => {
+    void bootState.status;
+    markScreenArrival();
   });
 
   onNavigate((navigation) => {
@@ -225,6 +242,20 @@
 
     /* Before the capture, while the outgoing screen can still be measured. */
     rememberScroll(navigation.from?.url.pathname);
+
+    /* The arrival window opens here rather than only in `afterNavigate`
+       below, and the difference is most of the second defect this ticket was
+       filed for (phase 9 carpet ticket 04). A screen whose panels have their
+       reads cached draws them in the same tick it mounts, which is before
+       `afterNavigate` runs - so the window was still holding the *previous*
+       arrival, the panels read it as a change and played entrances, and
+       Home's tile block animated from a height measured while it was still
+       filling to a height 194px short of the one it settled at, then snapped
+       the rest in the frame the transition ended (measured on the demo
+       journal, returning from the calendar). Marking on the way out covers
+       the panels that are there on mount; the mark after arrival covers the
+       ones whose reads answer a few dozen milliseconds later. */
+    markScreenArrival();
 
     if (!navigation.to) return;
     const pattern = screenTransition({

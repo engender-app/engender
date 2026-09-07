@@ -212,6 +212,393 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
   };
 }
 
+/* When the screen under the panels last changed, as a `performance.now()`
+   reading. Set at module load, because that is the app opening, and then by
+   the shell on every navigation and every boot state change (+layout.svelte)
+   - the two ways one screen becomes another. */
+let arrivedAt = typeof performance === 'undefined' ? 0 : performance.now();
+
+/** Called by the shell when a screen arrives. See `collapse`. */
+export function markScreenArrival(now: number = performance.now()): void {
+  arrivedAt = now;
+}
+
+/* A screen's panels are gated on reads that answer a few dozen milliseconds
+   after it mounts, so their `{#if}`s all flip shortly *after* arrival rather
+   than during it. The window is the screen's own arrival duration: while the
+   screen is still moving, a panel appearing is part of it arriving; once it
+   has stopped, a panel appearing is a change. Measured on the demo journal,
+   Home's slowest panel lands 111-119ms after the tab is tapped, so --dur-med
+   covers it with room over. */
+function stillArriving(): boolean {
+  return performance.now() - arrivedAt < motionDuration('--dur-med');
+}
+
+/** A box in viewport coordinates: where a panel stood. */
+export type Slot = { top: number; left: number; width: number; height: number };
+
+/** A swap, as the two boxes it happens between: the slot the leaving panel
+    holds, and where its replacement is coming from. */
+export type Swap = { slot: Slot; from?: Slot };
+
+/* When a grid last handed a leaving panel's slot straight to another one, as
+   a `performance.now()` reading, and the boxes it happened between. See
+   `collapse`. */
+let replacedAt = -Infinity;
+let replacedSwap: Swap | null = null;
+
+/** Called by a screen whose list is swapping one panel for another in a
+    single tick - a dismissal its fold fills at once - before the DOM is
+    updated, with the box the leaving panel still occupies at that moment and,
+    where the screen knows it, the box its replacement is coming out of.
+    Measured there because a frame later the replacement is standing in the
+    slot and the panel it replaced has been pushed elsewhere. See `collapse`. */
+export function markSlotReplacement(swap: Swap | null, now: number = performance.now()): void {
+  replacedAt = now;
+  replacedSwap = swap;
+}
+
+/** Where a tile leaving along a row has finished taking its content out,
+    as a fraction of its own width. Below this the surface travels empty. */
+const CONTENT_GONE_AT = 0.35;
+
+/** How long a swap stays true, in milliseconds. Not a token, because it is
+    not a duration anybody sees: the signal only has to survive the flush that
+    renders the swap, and both transitions are created microseconds after the
+    screen marks it. Three frames of slack covers a slow flush without ever
+    reaching the next change. */
+const SWAP_WINDOW_MS = 50;
+
+/* A window rather than a flag because the swap has two consumers - the panel
+   leaving and the one taking its slot - and neither can be told which of them
+   goes first. */
+function replacingSlot(): boolean {
+  return performance.now() - replacedAt < SWAP_WINDOW_MS;
+}
+
+/** Whether a sibling stands on a line below this node's own.
+
+    A wrapping row can hand a panel's space to a tile from the line under it
+    rather than to the one beside it, and that tile arrives by rewrapping,
+    which is a jump nothing can animate. Asked so `collapse` can tell the two
+    apart: space given back to a neighbour is worth animating, space a
+    rewrap is about to claim is not. */
+function hasLineBelow(node: Element): boolean {
+  const parent = node.parentElement;
+  const box = node.getBoundingClientRect();
+  if (!parent || box.height <= 0) return false;
+  for (const sibling of parent.children) {
+    if (sibling === node) continue;
+    if (sibling.getBoundingClientRect().top > box.top + box.height / 2) return true;
+  }
+  return false;
+}
+
+/** Settles the grid around a panel that is leaving the flow: every tile that
+    changes place travels there, and the space the vacated line held is eased
+    away under the grid. Hands back nothing.
+
+    The other half of `dissolveAt`, and without it the dissolve trades one
+    yank for a worse one. Out of flow, a tile from the line below rewraps up
+    into the freed slot in a single frame, its own line goes with it, and
+    everything under the grid is pulled up by the whole height of that line at
+    once ("the row closes up - still happens with a yank" - Alicja). Both
+    halves of that are real changes and both are worth animating.
+
+    **The tiles that move.** A rewrapped tile is already laid out where it is
+    going by the time this runs, so it is translated back to where it was and
+    released - the tile travels while the closed card dissolves over its slot,
+    and is never hidden behind it. Its width is not animated with it: a card
+    that scales horizontally stretches its own text, so it takes its new width
+    in the frame the travel starts, at its old place (Alicja's call, on the
+    two frames where the tile was in neither place).
+
+    **The space.** As a margin under the grid rather than as the grid's own
+    height, which was the first attempt and was worse: `.kit-tiles` stretches
+    its children, so a grid pinned to its old height made every tile on the
+    surviving line as tall as the vacated one - the dose panel went from 176px
+    to 325px in one frame and eased back down. The space that is actually
+    going is the line's, and it sits below everything that stays.
+
+    Both are read from one pair of measurements, taken with the panel out of
+    the flow for a single synchronous moment before any frame is painted,
+    because what a rewrap does to a row cannot be worked out from the boxes.
+    Two forced layouts, once per dismissal.
+
+    WAAPI rather than the transition's own `tick`, since the transition's
+    `css` is what drives the panel itself and only one of the two can be.
+    `fill` is left alone, so everything is back on its own geometry the moment
+    the travel finishes. */
+function settleGrid(node: Element, duration: number): void {
+  const parent = node.parentElement;
+  const style = (node as HTMLElement).style;
+  if (!parent || !style) return;
+
+  const moving = [...parent.children].filter((child) => child !== node) as HTMLElement[];
+  const before = moving.map((child) => child.getBoundingClientRect());
+  const spaceBefore = parent.getBoundingClientRect().height;
+
+  const display = style.display;
+  style.display = 'none';
+  const after = moving.map((child) => child.getBoundingClientRect());
+  const spaceAfter = parent.getBoundingClientRect().height;
+  style.display = display;
+
+  const easing = EASE_OUT_CSS;
+  moving.forEach((child, i) => {
+    const dx = before[i].left - after[i].left;
+    const dy = before[i].top - after[i].top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], {
+      duration,
+      easing
+    });
+  });
+
+  const going = spaceBefore - spaceAfter;
+  if (going < 1) return;
+  const base = parseFloat(getComputedStyle(parent).marginBottom) || 0;
+  parent.animate([{ marginBottom: `${base + going}px` }, { marginBottom: `${base}px` }], {
+    duration,
+    easing
+  });
+}
+
+/** The panel taking a slot over: it travels out of wherever it was promoted
+    from and fades in as it goes.
+
+    Two cards changing places in one slot is what a crossfade cannot say -
+    "it looks fine as-is, but just the opacity animation can be confusing"
+    (Alicja). What the arriving panel actually did is come out of the fold
+    below the grid, and travelling from there says so: one card leaves, and
+    the thing that was folded under the grid rises into its place.
+
+    The travel is a transform, so nothing around it moves and the panel is
+    laid out at its own size from the first frame - the same reason the tiles
+    a rewrap moves do not animate their width. Without an origin, which is a
+    screen that cannot say where the replacement came from, it is the fade
+    alone. */
+function risesIntoSlot(node: Element, from?: Slot): TransitionConfig {
+  const duration = motionDuration('--dur-slow');
+  const here = node.getBoundingClientRect();
+  const dx = from ? from.left - here.left : 0;
+  const dy = from ? from.top - here.top : 0;
+  if (!from || (Math.abs(dx) < 1 && Math.abs(dy) < 1)) {
+    return { duration, easing: EASE_OUT, css: (t) => `opacity: ${t}` };
+  }
+  return {
+    duration,
+    easing: EASE_OUT,
+    css: (t, u) => `opacity: ${t};` + `transform: translate(${u * dx}px, ${u * dy}px);`
+  };
+}
+
+/** A panel that is not giving its space back: it leaves the flow in the frame
+    it is dismissed and dissolves where it stood.
+
+    Pinned to the box rather than left in place, and the pinning is the whole
+    point - out of flow, the grid reaches its final layout in the frame of the
+    tap, so nothing grows into space that is about to be reclaimed and nothing
+    snaps back when the node is finally removed. `position: fixed` rather than
+    absolute because the box is in viewport coordinates and no containing
+    block has to be arranged for it.
+
+    --dur-slow, and it starts the same frame as the arriving panel's own fade,
+    so a swap reads as one card dissolving into another rather than as a hole
+    that fills in afterwards ("the animation is too fast, it looks like a
+    yank" - Alicja, on the 240ms cut this replaces). */
+function dissolveAt(slot: Slot): TransitionConfig {
+  return {
+    duration: motionDuration('--dur-slow'),
+    easing: EASE_OUT,
+    css: (t) =>
+      `position: fixed;` +
+      `top: ${slot.top}px;` +
+      `left: ${slot.left}px;` +
+      `width: ${slot.width}px;` +
+      `height: ${slot.height}px;` +
+      `margin: 0;` +
+      `z-index: 2;` +
+      `pointer-events: none;` +
+      `opacity: ${t};`
+  };
+}
+
+/** Whether anything else in this node's parent stands on the same line.
+
+    More than half of this node's own height has to overlap, so a tile beside
+    it counts and the row above it does not. Asked of the live layout rather
+    than of a prop, which is what lets one call site cover both a pair side by
+    side and the same pair stacked below the 390px floor. */
+function sharesItsLine(node: Element): boolean {
+  const parent = node.parentElement;
+  const box = node.getBoundingClientRect();
+  if (!parent || box.height <= 0) return false;
+  for (const sibling of parent.children) {
+    if (sibling === node) continue;
+    const other = sibling.getBoundingClientRect();
+    const overlap = Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top);
+    if (overlap > box.height / 2) return true;
+  }
+  return false;
+}
+
+/**
+ * Tier 3, change within a screen: a panel giving back the space it held,
+ * along whichever axis its neighbours will take it back on.
+ *
+ * The one system phase 9 carpet ticket 04 asks for. Every live panel on Home
+ * leaves through this - a notice, a live tile, a look-back tile, the block a
+ * whole tier of tiles sits in - and the surface it sits on decides how,
+ * rather than each screen patching its own case:
+ *
+ * - **A row.** Something stands beside it, so the space is horizontal. The
+ *   panel shrinks its own width to nothing and takes the row's gap with it,
+ *   and because `.kit-tiles` is a flex row (kit.css) the tile beside it grows
+ *   into that space on every frame rather than snapping to full width the
+ *   frame this node is finally removed. That snap is the defect: a Svelte
+ *   out-transition keeps the leaving node in the DOM for its whole duration,
+ *   so `:only-child` did not apply until it was over - the yank arrived
+ *   *after* the animation looked finished.
+ * - **A column.** Nothing is beside it, so the space is vertical and this is
+ *   `disclose`, unchanged. The same pair below the 390px floor is stacked,
+ *   which is why the axis is read off the layout instead of passed in.
+ * - **Neither, when the slot is not actually being given up.** Home's grid is
+ *   capped, so dismissing a tile while the fold is holding others promotes
+ *   one into the slot the same tick. Nothing is given back there and the
+ *   neighbours have nothing to do, so the panel leaving goes at once and the
+ *   one taking its place fades in where it stands. It is not a choice of
+ *   taste: by the time the leaving panel's transition is created the
+ *   replacement is already in its slot, which in a two-up row has bumped the
+ *   leaver onto a line of its own - it collapsed a full-width bar below a row
+ *   that had already snapped shut, one defect standing in for another. The
+ *   screen says so through `markSlotReplacement` because only the list knows
+ *   a promotion happened; the DOM at that point cannot tell one from a tile
+ *   that was always on the line below.
+ *
+ * `flex: 0 0 <width>px` rather than a grow: shrink and grow both leave the
+ * used width to be negotiated against the siblings mid-travel, and this
+ * animation is the one thing that should be deciding it. At t=1 that is the
+ * width the element already had, which is the resting-state invariant every
+ * animation here is held to.
+ *
+ * **On the way in it is silent while the screen is still arriving.** Returning
+ * to Home from the calendar remounts every panel and their reads answer a
+ * moment later, so an entrance played then is the screen assembling itself in
+ * front of you - "panels yank into place", the second of this ticket's three
+ * defects. After the screen has settled the same entrance is a change worth
+ * showing: closing one live tile promotes another out of the fold, and that
+ * one should open its own height rather than appear at full size and shove
+ * the rows below it. Leaving is never suppressed, because a panel that goes
+ * during the arrival window went because somebody dismissed it.
+ *
+ * `skip` is the same escape `disclose` documents, for the caller that can see
+ * a SvelteKit navigation and this module cannot.
+ */
+export function collapse(
+  node: Element,
+  params?: { skip?: boolean },
+  options?: { direction?: 'in' | 'out' | 'both' }
+): TransitionConfig {
+  /* Every caller reaches this through `transition:`, which is bidirectional,
+     and Svelte answers a bidirectional directive by calling the primitive
+     once with direction 'both'. A primitive that behaves differently coming
+     and going therefore has to hand back a function for Svelte to ask again
+     when it knows which way this is - which it does at the moment the
+     animation starts, so the measurements below still happen against the
+     layout the transition is actually running on. Without this the two
+     direction tests below are the only place the distinction existed: the
+     arrival gate had never once suppressed an entrance. */
+  if (options?.direction === 'both') {
+    /* Cast because the shape is Svelte's own and svelte2tsx's shim cannot
+       say it: the shim types the function form as nullary, and a signature
+       that took the direction it is actually called with would fail every
+       call site's type check instead. */
+    return ((each?: { direction: 'in' | 'out' }) =>
+      collapse(node, params, each)) as unknown as TransitionConfig;
+  }
+  if (isReducedMotion() || params?.skip) return { duration: 0 };
+  if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
+  if (replacingSlot()) {
+    if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
+    /* The screen measures the slot before the DOM changes; without one there
+       is nothing to pin the panel to and the cut is the honest fallback. */
+    return replacedSwap ? dissolveAt(replacedSwap.slot) : { duration: 0 };
+  }
+  /* The column case is `disclose`, on this primitive's own duration rather
+     than `disclose`'s. A panel giving its space back is the largest layout
+     change tier 3 makes and it reads as a yank at --dur-med (Alicja, on the
+     recording: "the animation is too fast, it looks like a yank"); a group
+     opening inside a screen, which is what `disclose`'s other callers are,
+     has less to move and keeps the faster one. Both axes of a panel take the
+     same duration, or closing the last of a pair would be slower than
+     closing one of two. */
+  if (!sharesItsLine(node)) {
+    return { ...disclose(node, params), duration: motionDuration('--dur-slow') };
+  }
+  /* Something on the line below is about to rewrap into this space, so it is
+     not being given back to the neighbour and the neighbour must not grow
+     into it: measured at 700px with the fold open, the dose panel grew to
+     638px and snapped back to 318px at 174ms of the travel, when the tile
+     below fitted back onto the line. Dissolving instead settles the grid in
+     the frame of the tap. The tile that moves up still moves in one frame -
+     it changes place and width at once, which a transform cannot carry. */
+  if (hasLineBelow(node)) {
+    const dissolve = dissolveAt(node.getBoundingClientRect());
+    settleGrid(node, dissolve.duration ?? 0);
+    return dissolve;
+  }
+
+  const width = node.getBoundingClientRect().width;
+  const gap = parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0;
+  /* The side padding travels with the width and the two vertical edges go on
+     the first frame. A tile is a padded, bordered box under `box-sizing:
+     border-box`, so a zero flex-basis still draws all of that: the safe-space
+     card stalled at 34px - its own padding plus the room its close control
+     keeps - for the last third of the travel and lost the rest in the frame
+     the node was removed. This is `disclose`'s own treatment of the vertical
+     padding and borders, turned ninety degrees; an edge is one pixel that
+     reads as an edge or as a hairline artefact, so it is cut rather than
+     thinned. */
+  const style = getComputedStyle(node);
+  const paddingLeft = parseFloat(style.paddingLeft) || 0;
+  const paddingRight = parseFloat(style.paddingRight) || 0;
+  const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+  const borderRight = parseFloat(style.borderRightWidth) || 0;
+
+  return {
+    duration: motionDuration('--dur-slow'),
+    easing: EASE_OUT,
+    /* `min-width: 0` because a flex item's automatic minimum is its content,
+       and a tile whose title will not wrap would otherwise stall at that
+       width for the whole travel and lose the rest in one frame. The gap
+       leaves as a negative margin on the leading edge: whether this panel is
+       first on its line or last, the gap beside it plus its own zero width
+       comes to nothing, so the survivor lands exactly on the full width.
+
+       And the content goes before the box does. A card narrowing along a row
+       reflows its own text on the way - "3 Aug 2025" became "3 A… 2…" over a
+       tile 60px wide - which is the reader being shown a broken layout for
+       240ms rather than a tile leaving. Down a column that never happens,
+       because `disclose` shrinks a box whose lines keep their width. So the
+       row case fades what is inside out as the tile narrows - gone by the
+       time it is down to a third of its width, so the empty surface finishes
+       the journey alone; the survivor's growth,
+       which is the thing actually worth watching, carries on either way.
+       Opacity is the one property this contract spends freely. */
+    css: (t, u) =>
+      `overflow: hidden;` +
+      `min-width: 0;` +
+      `flex: 0 0 ${t * width}px;` +
+      `opacity: ${Number(Math.max(0, Math.min(1, (t - CONTENT_GONE_AT) / (1 - CONTENT_GONE_AT))).toFixed(3))};` +
+      `padding-left: ${t * paddingLeft}px;` +
+      `padding-right: ${t * paddingRight}px;` +
+      `border-left-width: ${t >= 1 ? borderLeft : 0}px;` +
+      `border-right-width: ${t >= 1 ? borderRight : 0}px;` +
+      `margin-inline-start: ${-(u * gap)}px;`
+  };
+}
+
 /**
  * Tier 3, change within a screen: a skeleton crossfading into the content it
  * was standing in for.
