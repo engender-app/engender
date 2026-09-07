@@ -290,8 +290,13 @@ describe('the charts', () => {
        what this rule is about. The ordered strip needed none: its width
        is --bar-share and its fill is --dist-fill, the same two the bars
        and the distribution already use. */
+    /* --role-fill-ink joins them for the same reason --role-ink is here: it
+       is the role's own colour again, not a second one. It is what a label
+       written on top of --role-draw is drawn in - the ink the role's heat
+       ramp carries for the step whose fill is the stripe itself - so the
+       card still wears one hue and the words on the bar can be read. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-draw|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
+      /^(--role-ink|--role-mark|--role-draw|--role-fill-ink|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--bar-delay|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
     /* The second hue, admitted for the area chart's second series and for
        nothing else. Read per rule rather than over the whole of markCss:
        allowing it globally would let the next bar set or distribution take a
@@ -308,7 +313,7 @@ describe('the charts', () => {
       const prelude = rule.split('{')[0] ?? '';
       const isAreaChart = /\.kit-area/.test(prelude);
       for (const [, token] of rule.matchAll(/var\((--[a-z0-9-]+)/g)) {
-        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display)/.test(token)) continue;
+        if (/^--(space|text|radius|r-card|dur|ease|font|weight|leading|display|touch)/.test(token)) continue;
         if (isAreaChart && secondSeries.test(token)) continue;
         if (isHighlightRule.test(prelude) && token === '--highlight') continue;
         expect(token, `${token} in the chart rules`).toMatch(allowed);
@@ -323,6 +328,27 @@ describe('the charts', () => {
     expect(markCss).toMatch(/\.kit-dist-mark/);
     expect(markCss).toMatch(/\.kit-donut-arc/);
     expect(markCss).toMatch(/\.kit-ordered-seg/);
+  });
+
+  /* The one place the kit writes a label on top of a fill: the inline bar
+     row, where the day is drawn on the bar (phase 9 UX carpet ticket 11).
+
+     The pair matters, not either half. The ink handed in through
+     --role-fill-ink is the one the role's heat ramp carries for the step
+     whose fill is the stripe undiluted, and tests/kit-roles.test.ts holds
+     every step of that ramp to 4.5:1 against its own fill. That proof only
+     transfers here while the thing under the label really is that fill:
+     diluting it - `color-mix(--role-draw 62%, --surface)`, which is what
+     the stacked bar paints - would leave the label in an ink proven
+     against a colour nothing on the card is drawing. */
+  it('writes the label on the bar in the ink the fill under it was proven with', () => {
+    const inline = /\.kit-bars\.is-inline \.kit-bar-mark\s*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];
+    expect(inline, 'the inline bar row should still paint its own mark').toBeTruthy();
+    expect(inline).toMatch(/background:\s*var\(--role-draw\);/);
+
+    const label = /\.kit-bars\.is-inline \.kit-bar-mark \.kit-bar-inside[^{]*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];
+    expect(label, 'the clipped label copy should still take a colour').toBeTruthy();
+    expect(label).toMatch(/color:\s*var\(--role-fill-ink\);/);
   });
 
   it('draws no gridline, no axis and no tick', () => {
