@@ -401,6 +401,55 @@ export interface PreferenceValues {
       a choice about what this installation's screen currently shows, not
       something the journal itself remembers. */
   adherenceRegimenPick: string | null;
+  /** Which areas the person put on the front page, in their order (phase 10
+      redesign ticket 05). `hubRows.ts` row keys, resolved by
+      `pinnedRows.ts`.
+
+      Three values, and the third is the one that carries the meaning. A
+      list is the arrangement the person made. An **empty** list is the
+      arrangement in which they pinned nothing, and the front page shows no
+      rows - "nothing pinned means nothing shown" is the rule, so unpinning
+      the last row may not read as a fresh install. **Null** is a person who
+      has never arranged it, and resolves to the default set derived from
+      `onboardingAreas`. The same null-is-not-empty distinction onboarding
+      already makes for `activeScales`, for the same reason.
+
+      Nothing writes this except the person: the default set is *resolved*
+      rather than stored, so the app never puts a pin somewhere by itself
+      and a reset is this going back to null.
+
+      Row keys and not the archive section names `area_state` rows use,
+      which is the one place a stored key here departs from ADR-0052's rule,
+      on purpose - a pin is a statement about a row on a screen rather than
+      about a record, and a row the registry no longer holds has no front
+      page to be on. A stale key resolves to nothing rather than to a
+      guess. */
+  pinnedRows: string[] | null;
+  /** Which of ADR-0067's five mark kinds the agenda draws, by kind (phase 10
+      redesign ticket 05). Null while the person has switched none of them
+      off, which is every kind; a list is exactly the kinds left on.
+
+      A switch rather than a dismissal, which is the whole of why it is
+      stored: a kind somebody does not want is one they would otherwise
+      dismiss every week for the life of the journal. A stored kind
+      `DAY_AHEAD_MARK_KINDS` does not name resolves to nothing, the same way
+      a stale pin does. */
+  agendaKinds: string[] | null;
+  /** Which areas the person said they were keeping track of, when
+      onboarding asked (phase 10 redesign ticket 05; the step itself is its
+      own ticket). `hubRows.ts` row keys.
+
+      Held apart from `pinnedRows` rather than written straight into it,
+      because the default has to stay computable after the front page has
+      been rearranged: ticket 14's reset is "back to what I said at the
+      start", and a default that had been flattened into the arrangement
+      would have nothing to go back to.
+
+      Null is a skipped question - and a journal that predates the step -
+      which resolves to `DEFAULT_ONBOARDING_AREAS`. An empty list is
+      somebody who unticked everything, and it means a front page with no
+      pinned rows, the same way an empty `pinnedRows` does. */
+  onboardingAreas: string[] | null;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -481,7 +530,10 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   areaFinishOfferDeclined: [],
   comingBackSeenSince: null,
   clinicianSummaryDrugExcluded: {},
-  adherenceRegimenPick: null
+  adherenceRegimenPick: null,
+  pinnedRows: null,
+  agendaKinds: null,
+  onboardingAreas: null
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -504,7 +556,18 @@ export const PORTABLE_KEYS = [
   'cycleTrackingEnabled',
   'voiceComfortLowHz',
   'voiceComfortHighHz',
-  'areaFinishOfferDeclined'
+  'areaFinishOfferDeclined',
+  /* All three of phase 10's front-page preferences travel, on
+     `areaFinishOfferDeclined`'s own argument next door: each is something
+     the person said about their own journal rather than something this
+     installation happens to be showing, and a restore that handed somebody
+     a front page they never arranged would be the app forgetting an answer
+     they gave. `adherenceRegimenPick` is the other side of that line - a
+     choice about what one screen shows right now - and stays device-local
+     for it. */
+  'pinnedRows',
+  'agendaKinds',
+  'onboardingAreas'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
