@@ -7,6 +7,7 @@ bloom
 bloom-core
 body-region-feeling
 cal-num
+can-scroll
 can-scroll-end
 can-scroll-start
 chart-area

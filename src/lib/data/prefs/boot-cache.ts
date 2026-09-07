@@ -13,7 +13,7 @@
 
 import type { BootPreferences, PreferenceCache } from './preferences.ts';
 
-export const BOOT_CACHE_KEY = 'gender-diary-boot-prefs';
+export const BOOT_CACHE_KEY = 'engender-boot-prefs';
 
 export function localStorageCache(): PreferenceCache {
   return {

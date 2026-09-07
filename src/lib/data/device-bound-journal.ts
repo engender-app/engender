@@ -1,7 +1,7 @@
 const DEVICE_BOUND_VERSION = 1;
 const DATA_KEY_LENGTH = 32;
 const DEVICE_BOUND_FILE = 'device-key.json';
-const DEVICE_BOUND_DB = 'gender-diary-device-key';
+const DEVICE_BOUND_DB = 'engender-device-key';
 const DEVICE_BOUND_STORE = 'keys';
 const DEVICE_BOUND_SLOT = 'journal-device-key';
 

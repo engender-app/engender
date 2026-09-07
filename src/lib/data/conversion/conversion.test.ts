@@ -282,7 +282,7 @@ describe('what each kill leaves behind', () => {
 
         expect(world.sourceNotes()).toEqual(NOTES);
         expect((await world.photos()).ciphertext).toEqual([]);
-        expect(world.rootFiles()).toContain('gender-diary.sqlite3');
+        expect(world.rootFiles()).toContain('engender.sqlite3');
       } finally {
         world.dispose();
       }

@@ -93,7 +93,7 @@
 
   let hasAccessSecret = $derived(accessModeHasSecret(bootState.accessMode, isAndroid()));
 
-  const SITE_URL = 'https://gender-diary.barankiewicz.dev/';
+  const SITE_URL = 'https://engender.dev/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
 
   /* Ticket ux/06: ships disabled - an empty URL is what makes the row below

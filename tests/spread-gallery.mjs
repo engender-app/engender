@@ -1,6 +1,5 @@
 /* Screenshots of the spread mark (phase 6 unprompted ticket 11): the
-   calendar month and the values sheet on /stats, across all 8 palettes and
-   both themes.
+   calendar month, across all 8 palettes and both themes.
 
    Two sweeps, because the screen has two colour systems on it. A gender
    dimension shades in the active flag's stripe, so it sweeps all 8 palettes
@@ -104,24 +103,12 @@ for (const preset of MOOD_PRESETS) {
   }
 }
 
-/* And the values sheet, which is words rather than colour and so needs one
-   of each theme rather than a sweep. */
-for (const theme of THEMES) {
-  await dress('lesbian', theme);
-  await settle('/stats');
-  await page.waitForSelector('[data-values-open]');
-  await page.locator('[data-values-open]').click();
-  await page.waitForSelector('[data-sheet] [data-bar-row]');
-  await page.waitForTimeout(600);
-  // text-under-test: the English catalogue's own wording for a spread.
-  // A gallery is a dev script and this is the cheapest way to find a row
-  // that has one; under `pl`, or after a copy edit, it finds nothing and
-  // the scroll below fails rather than quietly shooting the wrong row.
-  const marked = page.locator('[data-sheet] [data-bar-row]').filter({ hasText: ' to ' }).first();
-  await marked.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(200);
-  await shoot(`values-${theme}`, '[data-sheet]');
-}
+/* The values sheet used to be shot here, one per theme: it was words
+   rather than colour, so it needed one of each rather than a sweep. Ticket
+   99 item 26 removed the "All values" link and the sheet with it, and the
+   spread wording now lives only in the screen's hidden value list - there
+   is no rendered surface left to photograph. The calendar's spread mark
+   above is the whole of this gallery now. */
 
 await browser.close();
 await app.close();

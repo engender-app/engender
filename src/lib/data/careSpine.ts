@@ -60,11 +60,29 @@ export const SPINE_MIN_BACK_DAYS = 14;
 export const SPINE_MIN_FORWARD_DAYS = 14;
 
 /** How close two labels may sit in the same lane, as a fraction of the
-    rail. A date label is around 48px wide and a mark owes a 48px target
-    (PRODUCT.md's floor), so at the 330px of rail a 390px screen leaves,
-    0.17 is about the 56px two adjacent labels need to stay apart. */
+    rail.
+
+    0.17 was sized against "a date label is around 48px wide", which is the
+    date line and not the label above it. Measured at the 330px of rail a
+    390px screen leaves: "Next dose" is 54.8px and "Runs out" 48.3px, so two
+    marks the old rule called far enough apart printed into each other -
+    next dose and runs out overlapped by a third of a pixel on the demo
+    journal, and last dose sat 23px from next dose (Alicja, ticket 99 item
+    42: "the last dose and next dose texts are too close to each other").
+
+    Polish is what sets the number rather than English: "Następna dawka" is
+    91.2px in the same place, and the labels are `white-space: nowrap` on a
+    lane of fixed height, so a wide one cannot wrap its way out of the
+    collision. 0.30 is that 91.2px plus a little air over 330px, which holds
+    for both catalogues at the narrowest screen the app supports.
+
+    The cost is paid by the narrow labels: "Today" is 32.6px and now claims
+    room it does not need, so a crowded rail opens a lane sooner than it
+    strictly must. A lane is what this algorithm has for crowding - it
+    alternates sides and keeps a stem to the line - so the trade is a taller
+    card against two captions printed on top of each other. */
 /* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
-export const MIN_LABEL_GAP = 0.17;
+export const MIN_LABEL_GAP = 0.3;
 
 export type SpineMarkKind = 'labDraw' | 'lastDose' | 'today' | 'nextDose' | 'runOut';
 

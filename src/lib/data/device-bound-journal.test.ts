@@ -89,7 +89,7 @@ test('resetting takes the whole device-key database, not one named slot', async 
 
   await deleteDeviceKeyDatabase();
 
-  expect(calls).toEqual(['gender-diary-device-key']);
+  expect(calls).toEqual(['engender-device-key']);
   vi.unstubAllGlobals();
 });
 
