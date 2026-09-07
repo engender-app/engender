@@ -1020,6 +1020,11 @@ export interface MedicationStock {
   /** As typed, or null when a window in days was typed instead - never
       derived from `inUseWindowDays`. */
   inUseEndEpochDay: number | null;
+  /** How many days a restock takes for this drug (redesign phase 10 ticket
+      01). Null is the normal state - the app assumes nothing until a person
+      types one. Feeds `reorderByEpochDay` (stockProjection.ts) alongside the
+      run-out day; never folded into the run-out projection itself. */
+  leadTimeDays: number | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
