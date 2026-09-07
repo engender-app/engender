@@ -7,6 +7,7 @@ import {
   isStockNoticeSnoozed,
   projectEveryStock,
   projectStock,
+  reorderByEpochDay,
   snoozeStockNotice,
   STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS,
   TRAILING_WINDOW_DAYS,
@@ -425,4 +426,17 @@ test('projectEveryStock asks for ranges that tile the window exactly', async () 
 
 test('projectEveryStock answers nothing for no entries', async () => {
   assert.deepEqual(await projectEveryStock([], [ESTRADIOL], DAY_0, counterOver([])), []);
+});
+
+test('reorderByEpochDay moves the run-out day earlier by the lead time', () => {
+  assert.equal(reorderByEpochDay(DAY_0 + 20, 5), DAY_0 + 15);
+});
+
+test('reorderByEpochDay is the run-out day itself when no lead time is set', () => {
+  assert.equal(reorderByEpochDay(DAY_0 + 20, null), DAY_0 + 20);
+});
+
+test('reorderByEpochDay is null when there is no run-out day to project from, lead time or not', () => {
+  assert.equal(reorderByEpochDay(null, 5), null);
+  assert.equal(reorderByEpochDay(null, null), null);
 });
