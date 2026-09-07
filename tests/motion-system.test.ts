@@ -270,6 +270,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'fill: transparent - an invisible hit target has nothing visible to press'
   },
   {
+    file: 'src/lib/components/kit/BarRows.svelte',
+    count: 1,
+    reason:
+      'a bar row is the width of its card and fills with a wash instead; the compact depth walked a 306px row 9.2px inward on every tap (carpet ticket 10)'
+  },
+  {
     file: 'src/lib/components/kit/DayEntry.svelte',
     count: 1,
     reason: 'an entry row in a day card is list content being read, not a control - the row press read as text jumping (ticket 99 item 10)'

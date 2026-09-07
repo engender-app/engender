@@ -6,6 +6,7 @@ const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string 
   type: 'link',
   isAndroid: false,
   isChromeless: false,
+  fromSheet: false,
   ...over
 });
 
@@ -101,6 +102,32 @@ describe('choosing a tier-2 pattern', () => {
     expect(screenTransition(nav({ from: '/entry/41', to: '/', type: 'popstate', delta: -1 }))).toBe(
       'fade-through'
     );
+  });
+
+  it('fades an entry open out of a sheet, because a modal is not a container', () => {
+    /* Why, in screen-transition.ts beside the branch. What is pinned here
+       is the pair the reasoning turns on: a sheet is carved out, and the
+       same screen with nothing open over it is not. */
+    expect(screenTransition(nav({ from: '/stats', to: '/entry/41', fromSheet: true }))).toBe(
+      'fade-through'
+    );
+    /* And the same screen with nothing open over it is still a container:
+       the carve-out is the sheet, not /stats. */
+    expect(screenTransition(nav({ from: '/stats', to: '/entry/41' }))).toBe('container');
+  });
+
+  it('leaves the way back out of an entry to the table it already had', () => {
+    /* Deliberately not carved out, unlike /doubt's return leg. That one had
+       to be, because a nameless `container` there would have been a plain
+       crossfade over the transform's own --dur-slow. This one is not: only
+       the named entry-open group takes --dur-slow, and the forward leg
+       above having answered fade-through means the layout dropped the
+       container name, so nothing on the way back is named at all. What is
+       left is the screen pair, which crossfades on the same --dur-fast out
+       and --dur-med in a fade-through uses. */
+    expect(
+      screenTransition(nav({ from: '/entry/41', to: '/stats', type: 'popstate', delta: -1 }))
+    ).toBe('container');
   });
 
   it('opens an entry from the counterevidence screen on the axis, both ways', () => {

@@ -181,11 +181,17 @@ export interface EntriesArea {
       group with how many entries it holds - a row limit would cut a group
       in half and make the count a lie (PRD F1). */
   recentDays(dayCount: number): Promise<Entry[]>;
-  /** The entries carrying a tag, newest first, at most `limit` of them. The
-      id is a tag's domain id: a built-in's key or a custom's uuid
-      (ADR-0002). An unknown id yields nothing rather than throwing - this
-      is a read. */
-  entriesWithTag(tagId: string, limit: number): Promise<Entry[]>;
+  /** The entries carrying a tag in `[fromEpochDay, toEpochDay]`, newest
+      first, at most `limit` of them. The id is a tag's domain id: a
+      built-in's key or a custom's uuid (ADR-0002). An unknown id yields
+      nothing rather than throwing - this is a read.
+
+      Ranged because its one production caller, the stats screen's tag
+      insight sheet, is standing behind a row computed over a range
+      (`stats.tagInsights`) - an unranged read opened whatever the twenty
+      most recent carriers of the tag were across the whole journal, which
+      is not what the row's count described (carpet ticket 19). */
+  entriesWithTag(tagId: string, fromEpochDay: number, toEpochDay: number, limit: number): Promise<Entry[]>;
   /** Entries carrying any of `tagIds` or starred (CONTEXT: "Starred"),
       newest first, at most `limit` of them - the doubt journal's
       counterevidence pool (ticket 14 widened this from a tag-only query so
@@ -907,7 +913,7 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       return hydrate(rows);
     },
 
-    async entriesWithTag(tagId, limit) {
+    async entriesWithTag(tagId, fromEpochDay, toEpochDay, limit) {
       // Resolved first so the second query can join on tag_id directly:
       // matching COALESCE(key, uuid) = ? inline left the planner no usable
       // index on tag, so it reversed the join and scanned entry through
@@ -925,10 +931,10 @@ export function makeEntriesArea(driver: SqliteDriver, files: PhotoFileStore): En
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
-         WHERE et.tag_id = ? AND e.trashed_at IS NULL
+         WHERE et.tag_id = ? AND e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
-        [tagPk, limit]
+        [tagPk, fromEpochDay, toEpochDay, limit]
       );
       return hydrate(rows);
     },
