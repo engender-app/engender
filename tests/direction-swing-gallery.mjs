@@ -148,7 +148,12 @@ const settle = async (path) => {
          colour stands in. */
       const inner = stripes.slice(1, -1);
       const outer = stripes[0].toUpperCase();
+      /* One flag names its own band: the six-stripe rainbow takes its blue
+         rather than its orange (Alicja, round two). The rule stays "an
+         inner colour"; this is which one. */
+      const named = { rainbow: '#004CFF' }[html.dataset.palette];
       const field =
+        named ??
         inner.find((s) => chroma(s) > 0.15 && s.toUpperCase() !== outer) ??
         stripes.find((s) => chroma(s) > 0.15) ??
         stripes[0];

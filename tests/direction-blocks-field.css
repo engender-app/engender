@@ -67,11 +67,13 @@
   bottom: 4px;
   color: var(--text-2) !important;
 }
-/* Every ring drawn, gaps in the field's own colour, seam in the line. */
+/* Every ring drawn, gaps in the field's own colour. The seam between bands
+   is black or nothing (Alicja, round two), never a theme-mixed grey: 1px
+   of #000, which on a dark page around a dark band is nothing. */
 .sun i {
   outline-color: var(--flag-0) !important;
   box-sizing: border-box;
-  border: 1px solid var(--outline);
+  border: 1px solid #000;
 }
 
 /* ---------- a door with a title ---------- */
