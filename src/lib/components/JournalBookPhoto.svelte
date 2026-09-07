@@ -51,7 +51,7 @@
     width: 100%;
     max-width: 420px;
     height: auto;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     margin-top: var(--space-2);
   }
 

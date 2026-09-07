@@ -100,7 +100,7 @@
     overflow: visible;
   }
   .track-baseline {
-    stroke: var(--border);
+    stroke: var(--outline);
     stroke-width: 1;
   }
   .band-regimen {
@@ -140,7 +140,7 @@
     flex: none;
   }
   .swatch-regimen {
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-block);
     background: var(--band-regimen);
   }
   .swatch-period {

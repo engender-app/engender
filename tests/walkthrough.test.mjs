@@ -1054,6 +1054,16 @@ try {
   await fresh('/settings');
   await page.locator('[data-palette-pick="pansexual"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'pansexual');
+  /* The door's field follows the palette (redesign ticket 07): activeFlag
+     publishes the flag's second colour and its ink on <html> beside the
+     roles. Pansexual's is its yellow, which carries the near-black ink. */
+  const field = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return [style.getPropertyValue('--field').trim(), style.getPropertyValue('--field-ink').trim()];
+  });
+  if (field[0].toUpperCase() !== '#FFD800' || field[1] !== '#101820') {
+    throw new Error(`field tokens after the switch: ${field.join(' / ')}`);
+  }
   ok('palette switch recolours app');
 } catch (e) { fail('palette', e); }
 

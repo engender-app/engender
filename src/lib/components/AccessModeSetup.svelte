@@ -382,8 +382,8 @@
     text-align: left;
     margin-top: var(--space-4);
     padding: var(--space-4);
-    border: 1px solid var(--outline-strong);
-    border-radius: var(--r-card);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
   }
 
   .am-notice-ico {

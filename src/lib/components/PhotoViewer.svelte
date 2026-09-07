@@ -62,7 +62,7 @@
   .photo-viewer-frame {
     width: 100%; max-height: 70vh;
     display: flex; align-items: center; justify-content: center;
-    border-radius: var(--radius-md); overflow: hidden;
+    border-radius: var(--r-block); overflow: hidden;
     background: var(--surface-2);
   }
   .photo-viewer-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }

@@ -206,8 +206,8 @@
     padding: var(--space-2) var(--space-3);
     min-height: 36px;
     box-sizing: border-box;
-    border-radius: var(--radius-pill);
-    border: 1.5px solid var(--border);
+    border-radius: var(--r-block);
+    border: 1.5px solid var(--outline);
     background: var(--surface);
     color: var(--text);
     font: inherit;

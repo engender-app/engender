@@ -584,7 +584,7 @@
   .swatch-bloom {
     position: absolute;
     inset: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     border: 2px solid var(--accent);
     background: var(--accent-soft);
     pointer-events: none;
@@ -608,7 +608,7 @@
   .setup-title {
     font-family: var(--font-display);
     font-size: var(--text-3xl);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-display);
     letter-spacing: var(--display-track);
     line-height: var(--leading-display);
     text-wrap: balance;

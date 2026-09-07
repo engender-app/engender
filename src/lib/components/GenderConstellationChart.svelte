@@ -483,7 +483,7 @@
     align-items: baseline;
     gap: var(--space-2);
     padding: 3px var(--space-2);
-    border-radius: var(--radius-pill);
+    border-radius: var(--r-block);
     background: var(--surface-2);
     border: 1px solid var(--outline);
     font-size: var(--text-xs);

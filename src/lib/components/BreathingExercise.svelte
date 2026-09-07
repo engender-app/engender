@@ -301,7 +301,7 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -322,7 +322,7 @@
     position: relative;
     width: 240px;
     height: 240px;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: 50%;
     border: var(--role-hairline);
     background: var(--bg-card);
     display: flex;
@@ -338,7 +338,7 @@
     position: absolute;
     width: 210px;
     height: 210px;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: 50%;
     border: 1px solid var(--role-draw);
     background: var(--bg-subtle);
     transform-origin: center center;
@@ -352,7 +352,7 @@
     z-index: 2;
     width: 170px;
     height: 170px;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: 50%;
     background: var(--role-tint);
     border: 2px solid var(--role-draw);
     display: flex;
@@ -407,14 +407,14 @@
   .breathing-phase-text {
     font-family: var(--font-display);
     font-size: var(--text-xl, 1.25rem);
-    font-weight: 700;
+    font-weight: var(--weight-display);
     color: var(--text);
     letter-spacing: -0.01em;
   }
 
   .breathing-count {
     font-size: var(--text-4xl, 2.25rem);
-    font-weight: 800;
+    font-weight: var(--weight-display);
     font-family: var(--font-display);
     color: var(--role-ink, var(--text));
     line-height: 1.1;
@@ -424,7 +424,7 @@
   .breathing-idle-title {
     font-family: var(--font-display);
     font-size: var(--text-lg, 1.125rem);
-    font-weight: 700;
+    font-weight: var(--weight-display);
     color: var(--text);
   }
 
@@ -444,8 +444,8 @@
   .breathing-dot {
     width: 7px;
     height: 7px;
-    border-radius: var(--radius-full, 9999px);
-    background: var(--role-mark, var(--outline-strong));
+    border-radius: 50%;
+    background: var(--role-mark, var(--outline));
     opacity: 0.4;
     transition: background 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
   }
@@ -454,7 +454,7 @@
     /* Same token the inactive dot's fallback already reaches for: a small
        mark sitting on --role-tint (the core's own background) is exactly
        the case --role-mark exists for (kit.css). */
-    background: var(--role-mark, var(--outline-strong));
+    background: var(--role-mark, var(--outline));
     opacity: 1;
     transform: scale(1.4);
   }
