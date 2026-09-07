@@ -70,7 +70,8 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
       reminderDismissed: false,
       openedEpochDay: null,
       inUseWindowDays: null,
-      inUseEndEpochDay: null
+      inUseEndEpochDay: null,
+      leadTimeDays: null
     }
   ]);
 });
@@ -201,6 +202,72 @@ test('getProjections derives remaining from the dose log, matched by drug', asyn
 
   assert.equal(row.entry.drug, 'estradiol');
   assert.equal(row.projection.remaining, 8);
+});
+
+test('a lead time round-trips, stored as typed', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    leadTimeDays: 21
+  });
+
+  const [entry] = await journal.stock.getEntries();
+  assert.equal(entry.leadTimeDays, 21);
+});
+
+test('a fresh count with no lead time clears one previously recorded', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    leadTimeDays: 21
+  });
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 8,
+    unit: 'vials',
+    recordedEpochDay: 19010
+  });
+
+  const [entry] = await journal.stock.getEntries();
+  assert.equal(entry.leadTimeDays, null);
+});
+
+test('a lead time does not change the run-out projection, only the reorder-by day', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol');
+  await journal.stock.upsertEntry({
+    drug: 'estradiol',
+    quantity: 10,
+    unit: 'pills',
+    recordedEpochDay: 19000,
+    leadTimeDays: 3
+  });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.doses.upsertDose({ timestamp: at(19002), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  const [row] = await journal.stock.getProjections(19002);
+
+  assert.equal(row.projection.remaining, 8);
+  assert.equal(row.projection.runOutEpochDay, 19014);
+  assert.equal(row.reorderByEpochDay, 19011);
+});
+
+test('getProjections reorder-by day is the run-out day itself with no lead time set', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol');
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: 19000 });
+  await journal.doses.upsertDose({ timestamp: at(19001), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.doses.upsertDose({ timestamp: at(19002), route: 'oral', dose: 2, doseUnit: 'mg' });
+
+  const [row] = await journal.stock.getProjections(19002);
+
+  assert.equal(row.projection.runOutEpochDay, row.reorderByEpochDay);
 });
 
 test('reconciling with no data to project from does nothing', async () => {
