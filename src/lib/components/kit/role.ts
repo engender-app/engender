@@ -22,11 +22,16 @@
    against the surfaces and the two tints a role paints, never against the
    stripe itself, and 59 of the 66 stripe/theme pairs the eight flags hold
    put it below 4.5:1 on their own stripe. On trans's dark theme the ink for
-   the blue band is the blue band, so a label in it is not dim, it is gone. Rather than compute a second ink here, it is the one
-   the role's heat ramp already carries for its deepest step - that step's
-   fill is the stripe itself, and every step of that ramp is held to 4.5:1
-   by tests/kit-roles.test.ts. A calendar cell and a bar are the same
-   problem: a number written on the flag's own colour.
+   the blue band is the blue band, so a label in it is not dim, it is gone.
+
+   Rather than compute a second ink here, it is the one the role's heat ramp
+   already carries for its deepest step: that step's fill is the stripe
+   itself, and every step of that ramp is held to 4.5:1 against its own fill
+   by tests/kit-roles.test.ts. Those inks were computed for the calendar
+   cell's day number and have had no consumer at all since phase 6's ticket
+   11 moved the date off the cell - the ramp kept computing them and the
+   test kept holding them, and this is the first thing to write on a fill
+   since.
 
    A surface that only inherits a role rather than taking one of its own -
    ListRow inside ListCard, Tile inside TileGrid - needs none of this: the

@@ -466,12 +466,16 @@
      something to offer and somebody who keeps no gender scale still gets
      their highest mood days. */
   let highestKey = $state<string | null>(null);
-  let highestMetric = $derived(
-    metrics.find(
-      (mt) =>
-        mt.key === highestMetricKey(highestKey, metrics.map((each) => each.key), shown.key)
-    ) ?? shown
+  let highestRanks = $derived(
+    highestMetricKey(
+      highestKey,
+      metrics.map((each) => each.key),
+      shown.key
+    )
   );
+  /* `?? shown` is the type's, not a case: every key `highestMetricKey` can
+     answer with came out of `metrics` in the first place. */
+  let highestMetric = $derived(metrics.find((mt) => mt.key === highestRanks) ?? shown);
   let highestRows = $derived<BarRow[]>(
     rankHighestDays(today, seriesFor(highestMetric.key)).map((point) => ({
       key: String(point.day),

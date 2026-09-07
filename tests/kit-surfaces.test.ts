@@ -296,7 +296,7 @@ describe('the charts', () => {
        ramp carries for the step whose fill is the stripe itself - so the
        card still wears one hue and the words on the bar can be read. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-draw|--role-fill-ink|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
+      /^(--role-ink|--role-mark|--role-draw|--role-fill-ink|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--bar-delay|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
     /* The second hue, admitted for the area chart's second series and for
        nothing else. Read per rule rather than over the whole of markCss:
        allowing it globally would let the next bar set or distribution take a
@@ -342,8 +342,8 @@ describe('the charts', () => {
      the stacked bar paints - would leave the label in an ink proven
      against a colour nothing on the card is drawing. */
   it('writes the label on the bar in the ink the fill under it was proven with', () => {
-    const inline = /\.kit-bars\.is-inline \.kit-bar-fill\s*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];
-    expect(inline, 'the inline bar row should still paint a .kit-bar-fill').toBeTruthy();
+    const inline = /\.kit-bars\.is-inline \.kit-bar-mark\s*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];
+    expect(inline, 'the inline bar row should still paint its own mark').toBeTruthy();
     expect(inline).toMatch(/background:\s*var\(--role-draw\);/);
 
     const label = /\.kit-bars\.is-inline \.kit-bar-mark \.kit-bar-inside[^{]*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];

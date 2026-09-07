@@ -99,9 +99,9 @@
      one copy in one colour could not be: a bar is the stripe undiluted, and
      no single colour is readable on both agender's near-black stripe and
      the card it is drawn on. -->
-{#snippet inside(row: DrawnBar, handles: boolean)}
+{#snippet inside(row: DrawnBar, onCard: boolean)}
   <span class="kit-bar-inside">
-    <span class="kit-bar-name" data-bar-name={handles ? '' : undefined}>{row.name}</span>
+    <span class="kit-bar-name" data-bar-name={onCard ? '' : undefined}>{row.name}</span>
     {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
   </span>
 {/snippet}
@@ -110,13 +110,9 @@
   {#if form === 'inline'}
     <div class="kit-bar-track">
       {@render inside(row, true)}
-      <span
-        class="kit-bar-mark"
-        class:is-leader={row.isLeader}
-        style={`--bar-share: ${row.share}`}
-        aria-hidden="true"
-      >
-        <span class="kit-bar-fill"></span>
+      <!-- No `is-leader` here: it is only ever set by the `leader` measure,
+           and this form is a ranking on a scale. -->
+      <span class="kit-bar-mark" style={`--bar-share: ${row.share}`} aria-hidden="true">
         {@render inside(row, false)}
       </span>
     </div>

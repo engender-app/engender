@@ -2031,6 +2031,12 @@ a.kit-entry:active {
      every press in the app does not inherit a bar's settling time. */
   --dur-bar-in: 600ms;
   --ease-bar-in: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Capped, because the index is a row's place in the set and a set can be
+     long: the values list is one row per day, and at 365 rows an uncapped
+     stagger is eighteen seconds of bars arriving. Twelve steps is the point
+     where a set reads as arriving in order rather than as arriving at
+     once. */
+  --bar-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
 }
 
 /* A bar row that opens what is behind it (the Stats hub's tag insights).
@@ -2123,11 +2129,7 @@ a.kit-entry:active {
      to answer to while it moves, so it settles longer than a control ever
      could. The two numbers are on .kit-bars, which both painters read. */
   animation: kit-bar-in var(--dur-bar-in) var(--ease-bar-in) both;
-  /* Capped, because the index is a row's place in the set and a set can be
-     long: the values list is one row per day, and at 365 rows an uncapped
-     stagger is eighteen seconds of bars arriving. Twelve steps is the point
-     where a set reads as arriving in order rather than as arriving at once. */
-  animation-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
+  animation-delay: var(--bar-delay);
   transition-property: width;
   transition-duration: var(--dur-slow);
   transition-timing-function: var(--ease-out);
@@ -2158,9 +2160,10 @@ a.kit-entry:active {
    and the set reads as one stack rather than as ten drawings.
 
    40px of bar and nothing else in the row, so the 48dp touch floor the row
-   still owes is the only space between one bar and the next: 8px. That is
-   the whole of "much closer to each other" - the air came from the label
-   needing a line, not from the gap, which was already --space-1.
+   still owes is the only space between one bar and the next: 8px. The
+   set's own gap goes to zero, and it was never what took the room: it was
+   --space-2, against a row of 48px whose bar was ten of them. What took the
+   room is the label needing a line of its own.
 
    The bar keeps its honest `track` measure: its length is the reading's
    place on the whole scale, not its share of the day at the top. The value
@@ -2194,32 +2197,39 @@ a.kit-entry:active {
 }
 
 /* The mark stops being the painted thing and becomes the window: it holds
-   its width and the width transition, clips what is drawn inside it, and
-   the fill under it takes the paint and the entrance. Painting and clipping
-   cannot be the same element here - the entrance scales the fill on its x
-   axis, and a label inside something being scaled is a label being
-   stretched. */
+   the width, the width transition and the entrance, and clips everything
+   drawn inside it, and it paints itself. An inner element held the paint
+   while the entrance was a scale, because a label inside something being
+   scaled is a label being stretched; a clip needs no such thing.
+
+   So the entrance is a clip and not a scale, which is the other thing this
+   form needs of it. Growing the fill inside a mark already at its full
+   width leaves the clipped label sitting over bare card for the length of
+   the animation, in an ink chosen for the stripe - on trans's dark theme,
+   near-black words on a near-black card, doubled over the card's own copy
+   of them underneath. Clipping the mark moves the paint and the words
+   together, so at every frame the label is only ever on the ground it was
+   proven against. What that looks like is the point rather than the price:
+   the words are on the card until the bar reaches them and switch ink where
+   it passes under them, left to right, once. `round` on the inset, or the
+   growing bar's leading edge is square until the last frame. */
 .kit-bars.is-inline .kit-bar-mark {
   position: absolute;
   inset: 0 auto 0 0;
   width: calc(var(--bar-share) * 1%);
   height: 100%;
-  min-width: 0;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: none;
-  animation: none;
+  background: var(--role-draw);
+  animation: kit-bar-reveal var(--dur-bar-in) var(--ease-bar-in) both;
+  animation-delay: var(--bar-delay);
 }
 
-.kit-bars.is-inline .kit-bar-fill {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--role-draw);
-  transform-origin: left center;
-  animation: kit-bar-in var(--dur-bar-in) var(--ease-bar-in) both;
-  animation-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
+@keyframes kit-bar-reveal {
+  from { clip-path: inset(0 100% 0 0 round var(--radius-md)); }
+  to { clip-path: inset(0 round var(--radius-md)); }
 }
+
 
 /* The day and its note, at the same place in the row whichever copy this
    is: the one on the card and the one the mark clips have to land on the
