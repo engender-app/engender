@@ -278,7 +278,15 @@ export interface PreferenceValues {
       selected type, so dismissing it dismisses it for every type, not just
       the one on screen when it was closed). Guidance is opt-in, never
       required to save a measurement, so this only ever hides a card - it
-      blocks nothing. */
+      blocks nothing.
+
+      A row already on disk from before ticket 14 still reads correctly:
+      preferences.ts's `JSON.parse` on the raw column delivers whatever the
+      old writer left there rather than coercing it, so a stale
+      `{ waist: true }` shows up here as an object, not `false` - but every
+      truthy value, including any non-empty object, satisfies `!dismissed`
+      the same way `true` does, and the old writer never persisted an empty
+      one. `preferences.test.ts` locks this in. */
   measurementProtocolDismissed: boolean;
   /** Whether the hair-photo capture-protocol guidance has been dismissed
       (phase 4 ticket 09). Hair progress has only the one photo kind, so
