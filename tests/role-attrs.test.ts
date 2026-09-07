@@ -17,21 +17,42 @@ import { describe, expect, it } from 'vitest';
 import { roleAttrs } from '../src/lib/components/kit/role';
 import type { Role } from '../src/lib/theme/roles';
 
-// roleAttrs() reads only stripe/ink/mark; paired and heat are here to
-// satisfy the type. `paired` is handed straight to whichever component
-// draws a mark beside another one, and never through these attributes.
+// roleAttrs() reads stripe, ink, mark and the ramp's deepest step; `paired`
+// is here to satisfy the type, and is handed straight to whichever component
+// draws a mark beside another one rather than through these attributes. The
+// ramp is agender's yellow through a light card, shortened to the two ends
+// that matter here: the fill nobody writes on, and the stripe somebody does.
 const role: Role = {
   stripe: '#FCF434',
   ink: '#665f00',
   mark: '#8f8500',
   paired: '#FCF434',
-  heat: []
+  heat: [
+    { fill: '#FFFFFF', ink: '#131019' },
+    { fill: '#FCF434', ink: '#131019' }
+  ]
 };
 
 describe('roleAttrs', () => {
-  it('sets the three inputs a role needs, given one', () => {
+  it('sets the four inputs a role needs, given one', () => {
     const attrs = roleAttrs(role);
-    expect(attrs.style).toBe('--role: #FCF434; --role-ink-in: #665f00; --role-mark-in: #8f8500');
+    expect(attrs.style).toBe(
+      '--role: #FCF434; --role-ink-in: #665f00; --role-mark-in: #8f8500; --role-fill-ink-in: #131019'
+    );
+  });
+
+  /* The ink a label on a fill takes is the ramp's, not the role's own
+     (phase 9 UX carpet ticket 11). --role-ink-in is proven against the
+     surfaces and the two tints a role paints, and never against the stripe
+     itself: measured across all eight palettes, both themes and every
+     stripe, 59 of the 66 roles put their own ink below 4.5:1 on their own
+     stripe, and on trans/dark the ink for the blue band is the blue band -
+     1:1, a label nobody can see at all. The ramp's deepest step is #000000
+     there, at 11.65:1. */
+  it('takes the label-on-a-fill ink from the ramp\'s deepest step, not from the role ink', () => {
+    const style = roleAttrs(role).style!;
+    expect(style).toContain(`--role-fill-ink-in: ${role.heat[role.heat.length - 1].ink}`);
+    expect(style).not.toContain(`--role-fill-ink-in: ${role.ink}`);
   });
 
   it('carries data-kit-role even with no role, so the accent fallback still runs', () => {
