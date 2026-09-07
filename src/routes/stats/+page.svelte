@@ -324,12 +324,19 @@
     })
   );
 
+  /* Ranged to the screen's own `from`/`today` (carpet ticket 19), so the
+     list behind a row is the row's own evidence and not whatever the tag's
+     twenty most recent carriers happened to be across the whole journal.
+     Fetched one past the cap so a full page can say it is one: past
+     `INSIGHT_ENTRIES` there is no way to tell "exactly the cap" from "more
+     exist" without asking for one more. */
   let insightEntriesQuery = liveList((j) => {
     const sheet = insightSheet;
     if (!sheet) return Promise.resolve([]);
-    return j.entries.entriesWithTag(sheet.id, INSIGHT_ENTRIES);
+    return j.entries.entriesWithTag(sheet.id, from, today, INSIGHT_ENTRIES + 1);
   });
-  let insightEntries = $derived(insightEntriesQuery.rows);
+  let insightEntriesCapped = $derived(insightEntriesQuery.rows.length > INSIGHT_ENTRIES);
+  let insightEntries = $derived(insightEntriesQuery.rows.slice(0, INSIGHT_ENTRIES));
 
   /* Correlation cards (phase 4 ticket 21) - a deliberate reversal of
      phase 3's explicit exclusion of correlation analysis, not scope
@@ -1173,6 +1180,12 @@
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>
     {#if insightSheet}
       <h3>{insightSheet.label}</h3>
+      <p class="stats-inline-note" data-insight-sheet-range>{m.stats_range_sub({ days: String(range) })}</p>
+      {#if insightEntriesCapped}
+        <p class="stats-inline-note" data-insight-sheet-capped>
+          {m.insight_sheet_capped({ shown: String(INSIGHT_ENTRIES) })}
+        </p>
+      {/if}
       <div class="stack-3">
         {#each insightEntries as e (e.id)}
           <EntryCard entry={e} />

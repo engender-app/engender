@@ -71,10 +71,10 @@ test('entriesWithTag drives its join from entry_tag, not a scan of every untrash
     db,
     `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
      JOIN entry_tag et ON et.entry_id = e.id
-     WHERE et.tag_id = ? AND e.trashed_at IS NULL
+     WHERE et.tag_id = ? AND e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL
      ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
      LIMIT ?`,
-    [1, 10]
+    [1, 0, 100, 10]
   );
   assert.match(plan, /USING (?:COVERING )?INDEX idx_entry_tag_tag_id/);
   assert.doesNotMatch(plan, /idx_entry_trashed_at/);
