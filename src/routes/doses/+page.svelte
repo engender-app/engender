@@ -28,6 +28,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { activeEpisodesAt, attributeDose, nearestActiveEpisode } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
@@ -102,14 +103,6 @@
       not a new query. A drug with no stock entry adds no row here. */
   let stockQuery = liveList((j) => j.stock.getProjections(today));
   let stockRows = $derived(stockQuery.rows);
-  /** The whole schedule view in one question (phase 5 audit-deepening
-      ticket 17): which episode is in effect, its schedule, its pauses, and
-      the comparison over the doses attributed to it - or the reason there
-      is nothing to compare. The six-step assembly that used to stand here
-      is doses.ts's getComparison, which is also what the long-journal
-      benchmark measures, so "the same way the screen does" is the same
-      function rather than a comment. */
-  let comparisonQuery = liveQuery((j) => j.doses.getComparison({ fromEpochDay: from, toEpochDay: today }));
   /** Read separately from the windowed `dosesQuery` above (ticket 10): a
       rotation site's last use routinely predates the log's 90-day window,
       and "never used" has to mean never, not merely not in that window. */
@@ -124,7 +117,6 @@
   let doses = $derived(dosesQuery.rows);
   let schedules = $derived(schedulesQuery.rows);
   let pauses = $derived(pausesQuery.rows);
-  let scheduleView = $derived(comparisonQuery.value ?? null);
   let loading = $derived(episodesQuery.loading || dosesQuery.loading);
 
   /* Newest first, each row carrying the episode it was attributed to. Derived
@@ -164,8 +156,45 @@
   );
   /** The drugs to choose between when logging a new dose while more than
       one episode is active - empty whenever activeEpisode already answers
-      the question on its own. */
+      the question on its own. Also what the schedule view's own regimen
+      picker below offers (ticket 15): both ask "which of the concurrently
+      active drugs", so one list answers them both. */
   let activeDrugChoices = $derived([...new Set(activeEpisodes.map((e) => e.drug))]);
+
+  /** Which regimen the schedule view compares against, while more than one
+      episode is active at once (ticket 15): the person's own stored pick,
+      when it still names one of the active drugs, or else the same default
+      `activeEpisode` above already resolves to for the new-dose editor.
+      Always one of `activeDrugChoices`, or null with none of them - a
+      `prefs.adherenceRegimenPick` left over from a regimen that has since
+      ended is never handed to `getComparison` as though still active. */
+  let selectedRegimenDrug = $derived.by(() => {
+    const picked = prefs.adherenceRegimenPick;
+    if (picked && activeDrugChoices.includes(picked)) return picked;
+    return activeEpisode?.drug ?? activeDrugChoices[0] ?? null;
+  });
+
+  /** The whole schedule view in one question (phase 5 audit-deepening
+      ticket 17): which episode is in effect, its schedule, its pauses, and
+      the comparison over the doses attributed to it - or the reason there
+      is nothing to compare. The six-step assembly that used to stand here
+      is doses.ts's getComparison, which is also what the long-journal
+      benchmark measures, so "the same way the screen does" is the same
+      function rather than a comment.
+
+      `drug` only travels down while more than one regimen is active
+      (ticket 15) - with at most one, getComparison's own default already
+      answers the question and there is no picker on screen to have chosen
+      anything else, so the common single-regimen journal asks exactly the
+      question it always has. */
+  let comparisonQuery = liveQuery((j) =>
+    j.doses.getComparison({
+      fromEpochDay: from,
+      toEpochDay: today,
+      drug: activeDrugChoices.length > 1 ? (selectedRegimenDrug ?? undefined) : undefined
+    })
+  );
+  let scheduleView = $derived(comparisonQuery.value ?? null);
 
   /* Null when the row has no site rather than when the route has none: a
      dose imported without one shows no site line instead of a blank bullet. */
@@ -650,99 +679,126 @@
         />
       </div>
     {/if}
-  {:else if comparisonQuery.loading}
-    <!-- The comparison is one read, so the schedule view waits for it rather
-         than deciding on half an answer: the old shape read four lists and
-         showed "no schedule yet" for as long as the schedules were in
-         flight. On `loading` alone, though, and not on "no value yet" - a
-         read that failed reports itself done with nothing, and a placeholder
-         held forever tells the reader less than a statement does
-         (kit/readGate.ts). -->
-    <div out:crossfade><Skeleton variant="line" count={3} /></div>
-  {:else if !scheduleView || scheduleView.reason === 'noEpisode'}
-    <!-- Either nothing is in effect to compare against, or the read did not
-         work. readGate.ts's rule for a screen that passes no failed snippet
-         is that the two share the empty state, and this is the schedule
-         view's: there is nothing to compare. Telling them apart here would
-         be a fourth notice and its own copy, which is a call for the ticket
-         that wants it. -->
-    <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
-  {:else if scheduleView.reason === 'multipleEpisodes'}
-    <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
-  {:else if scheduleView.reason === 'noSchedule'}
-    <Notice
-      icon="info"
-      key="adherence-no-schedule"
-      text={m.adherence_no_schedule({ drug: scheduleView.activeEpisode.drug })}
-    />
   {:else}
-    <!-- Every remaining reason is `null`, which is the one that means there is
-         a comparison to show. Named rather than read through `scheduleView`
-         so the branch below says `comparison.rows` where it means them; not
-         `view`, which is the tab this screen is on. -->
-    {@const comparison = scheduleView}
-    <div class="screen-part">
-      <p class="muted small" style="margin:var(--space-3) 0">
-        {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
-      </p>
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
-        {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
-          <ListRow
-            static
-            data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
-            title={fmtDayLong(row.slot.epochDay)}
-            subtitle={[
-              comparison.schedule.dosesPerDay > 1 &&
-                m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
-              row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
-            ]}
-          >
-            {#snippet trailing()}
-              {#if row.dose}
-                {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
-              {:else}
-                {m.adherence_nothing_logged()}
-              {/if}
-            {/snippet}
-          </ListRow>
-        {/each}
-      </ListCard>
+    {#if activeDrugChoices.length > 1}
+      <!-- Only drawn while more than one regimen is active (ticket 15): with
+           at most one there is nothing to choose between, and the picker
+           would be a control with a single, forced answer.
 
-      {#if comparison.pauses.length}
-        <SectionHeading text={m.adherence_paused_heading()} />
-        <p class="muted small">{m.adherence_paused_note()}</p>
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-          {#each comparison.pauses as pause (pause.id)}
+           Scoped to this tab alone, not to the Logged tab or the stock rows
+           above it: those already say which drug each row is about (a log
+           row's own trailing attribution, a stock row's own title), so
+           nothing there was actually broken by more than one regimen being
+           active. This tab was the one screen that had no single answer to
+           give at all - `adherence_multiple_episodes` used to say so
+           outright - which is the gap the ticket names. -->
+      <div class="screen-part">
+        <Segmented
+          name={m.adherence_drug_label()}
+          value={selectedRegimenDrug ?? ''}
+          options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
+          onChange={(v) => (prefs.adherenceRegimenPick = v)}
+          key="doses-regimen"
+        />
+      </div>
+    {/if}
+    {#if comparisonQuery.loading}
+      <!-- The comparison is one read, so the schedule view waits for it rather
+           than deciding on half an answer: the old shape read four lists and
+           showed "no schedule yet" for as long as the schedules were in
+           flight. On `loading` alone, though, and not on "no value yet" - a
+           read that failed reports itself done with nothing, and a placeholder
+           held forever tells the reader less than a statement does
+           (kit/readGate.ts). -->
+      <div out:crossfade><Skeleton variant="line" count={3} /></div>
+    {:else if !scheduleView || scheduleView.reason === 'noEpisode'}
+      <!-- Either nothing is in effect to compare against, or the read did not
+           work. readGate.ts's rule for a screen that passes no failed snippet
+           is that the two share the empty state, and this is the schedule
+           view's: there is nothing to compare. Telling them apart here would
+           be a fourth notice and its own copy, which is a call for the ticket
+           that wants it. -->
+      <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
+    {:else if scheduleView.reason === 'multipleEpisodes'}
+      <!-- Reachable only when two active episodes share one drug name
+           (ticket 15) - the picker above already resolves the ordinary
+           concurrent-regimens case to a single one. -->
+      <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
+    {:else if scheduleView.reason === 'noSchedule'}
+      <Notice
+        icon="info"
+        key="adherence-no-schedule"
+        text={m.adherence_no_schedule({ drug: scheduleView.activeEpisode.drug })}
+      />
+    {:else}
+      <!-- Every remaining reason is `null`, which is the one that means there is
+           a comparison to show. Named rather than read through `scheduleView`
+           so the branch below says `comparison.rows` where it means them; not
+           `view`, which is the tab this screen is on. -->
+      {@const comparison = scheduleView}
+      <div class="screen-part">
+        <p class="muted small" style="margin:var(--space-3) 0">
+          {m.adherence_for_episode({ drug: comparison.activeEpisode.drug })}
+        </p>
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>
+          {#each [...comparison.comparison.rows].reverse() as row (`${row.slot.epochDay}-${row.slot.indexInDay}`)}
             <ListRow
               static
-              data-pause={pause.id}
-              title={pause.endEpochDay === null
-                ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
-                : m.adherence_paused_range({
-                    from: fmtDayLong(pause.startEpochDay),
-                    to: fmtDayLong(pause.endEpochDay)
-                  })}
-              subtitle={pauseReasonLabel(pause.reason)}
-            />
+              data-slot={`${row.slot.epochDay}-${row.slot.indexInDay}`}
+              title={fmtDayLong(row.slot.epochDay)}
+              subtitle={[
+                comparison.schedule.dosesPerDay > 1 &&
+                  m.adherence_slot_numbered({ index: row.slot.indexInDay + 1, count: comparison.schedule.dosesPerDay }),
+                row.slot.amount && m.adherence_slot_amount({ dose: row.slot.amount.dose, unit: row.slot.amount.doseUnit })
+              ]}
+            >
+              {#snippet trailing()}
+                {#if row.dose}
+                  {row.dose.dose} {row.dose.doseUnit} · {statusLabel(row.dose.status)}
+                {:else}
+                  {m.adherence_nothing_logged()}
+                {/if}
+              {/snippet}
+            </ListRow>
           {/each}
         </ListCard>
-      {/if}
 
-      {#if comparison.comparison.unmatched.length}
-        <SectionHeading text={m.adherence_unmatched_heading()} />
-        <p class="muted small">{m.adherence_unmatched_note()}</p>
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
-          {#each comparison.comparison.unmatched as dose (dose.id)}
-            <ListRow
-              static
-              data-unmatched={dose.id}
-              title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
-              subtitle={whenOf(dose)}
-            />
-          {/each}
-        </ListCard>
-      {/if}
-    </div>
+        {#if comparison.pauses.length}
+          <SectionHeading text={m.adherence_paused_heading()} />
+          <p class="muted small">{m.adherence_paused_note()}</p>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
+            {#each comparison.pauses as pause (pause.id)}
+              <ListRow
+                static
+                data-pause={pause.id}
+                title={pause.endEpochDay === null
+                  ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
+                  : m.adherence_paused_range({
+                      from: fmtDayLong(pause.startEpochDay),
+                      to: fmtDayLong(pause.endEpochDay)
+                    })}
+                subtitle={pauseReasonLabel(pause.reason)}
+              />
+            {/each}
+          </ListCard>
+        {/if}
+
+        {#if comparison.comparison.unmatched.length}
+          <SectionHeading text={m.adherence_unmatched_heading()} />
+          <p class="muted small">{m.adherence_unmatched_note()}</p>
+          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.leftover)}>
+            {#each comparison.comparison.unmatched as dose (dose.id)}
+              <ListRow
+                static
+                data-unmatched={dose.id}
+                title={`${dose.dose} ${dose.doseUnit} · ${routeLabel(dose.route)}`}
+                subtitle={whenOf(dose)}
+              />
+            {/each}
+          </ListCard>
+        {/if}
+      </div>
+    {/if}
   {/if}
 
   <Sheet
