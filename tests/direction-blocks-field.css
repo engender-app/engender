@@ -1,0 +1,47 @@
+/* Blocks, raised by Field: the same world with the door's header set as a
+   solid field of the flag's first colour (role 0) instead of type on the
+   page. Loaded after direction-blocks.css. Uses --flag-0 / --flag-0-ink /
+   --sun-first, which tests/direction-swing-gallery.mjs computes in-page. */
+.home-header {
+  background: var(--flag-0) !important;
+  color: var(--flag-0-ink) !important;
+  padding: calc(60px + var(--inset-top)) 20px 24px !important;
+  border-radius: 0 0 6px 6px;
+}
+.home-hero,
+.home-hello,
+.home-count {
+  color: var(--flag-0-ink) !important;
+}
+.home-hello,
+.home-count {
+  opacity: 0.88;
+}
+/* The field is the outermost ring, extended; the remaining rings sit inside
+   it with gaps of the field's own colour. */
+.sun i:first-child {
+  display: var(--sun-first, block);
+}
+.sun i {
+  outline-color: var(--flag-0) !important;
+}
+.direction-gear {
+  color: var(--flag-0-ink) !important;
+}
+.screen > .screen-header {
+  background: var(--flag-0);
+  color: var(--flag-0-ink);
+  margin: calc(-1 * var(--inset-top)) -20px 0 !important;
+  padding: calc(28px + var(--inset-top)) 20px 20px !important;
+  border-radius: 0 0 6px 6px;
+}
+.screen-title,
+.screen-subtitle {
+  color: inherit !important;
+}
+.screen-subtitle {
+  opacity: 0.88;
+}
+.screen-header + * {
+  margin-top: 20px !important;
+}
