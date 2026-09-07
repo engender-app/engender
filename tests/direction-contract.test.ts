@@ -198,10 +198,11 @@ describe('rule 5: the radius budget', () => {
   const exempt = /DecoyNotes\.svelte|DemoBar\.svelte/;
 
   function resolve(value: string, t: Record<string, string>): string {
-    /* Two passes, so a component's own `--r: var(--r-block)` lands on the
-       base token it points at. */
+    /* Until nothing is left to substitute, so a component's own
+       `--r: var(--r-block)` lands on the base token it points at however
+       many hops away that is. */
     let out = value;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 8 && /var\(/.test(out); i++) {
       out = out.replace(/var\((--[a-z0-9-]+)\)/g, (_, name) => t[name] ?? `unresolved(${name})`);
     }
     return out;

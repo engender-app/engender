@@ -154,8 +154,7 @@ body {
     var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
   --nav-float-gap: var(--space-3);
-  /* The gap between the bar's edge and the controls inside it, which is
-     also what separates the bar's corner radius from --r-add's. */
+  /* The gap between the bar's edge and the controls inside it. */
   --nav-bar-pad: 5px;
 }
 
@@ -308,11 +307,11 @@ body {
   z-index: 30;
 }
 
-/* The bar's corner and the add button's are the same shape, one padding
-   step apart, so the button reads as sitting inside the plane rather than
-   as a second unrelated rounded thing. That is the agreement DIRECTION.md
-   asks --r-add to carry, and it is why the bar's radius is derived from it
-   here instead of being its own number. */
+/* The bar's corner and the add button's are the same shape: both take
+   --r-block (phase 10, rule 5), the one corner the app has, so the button
+   reads as sitting inside the plane rather than as a second unrelated
+   rounded thing. The bar used to derive its corner from the button's
+   --r-add plus the pad; with one radius there is nothing to derive. */
 .nav-item {
   display: grid;
   justify-items: center;
@@ -819,7 +818,8 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
     --surface-2: #FFFFFF;
     --text: #000000;
     --text-2: #444444;
-    --border: #CCCCCC;
+    --outline: #CCCCCC;
+    --hairline: #CCCCCC;
     --shadow-1: none;
     --shadow-2: none;
   }

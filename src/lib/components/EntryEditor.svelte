@@ -1449,9 +1449,9 @@
   }
 
   /* The dose chip earns two lines when a stock entry adds what it leaves,
-     so it drops the pill radius for a rounded rect (--radius-md, the same
-     one a list row or a button uses) - a true pill's fully-rounded ends
-     stop reading as a pill the moment its content wraps past one line. */
+     so it drops the pill radius for a rounded rect (--r-block, the one
+     corner the app has) - a true pill's fully-rounded ends stop reading as
+     a pill the moment its content wraps past one line. */
   .dose-chip {
     border-radius: var(--r-block);
     text-align: left;

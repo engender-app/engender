@@ -685,9 +685,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
    already-similar surface tones. A mood face sits straight on the bare app
    background instead, which is what ticket 99 item 2's regression report
-   caught: the intended border read as no border at all. --outline-strong
-   (30%) is the token this app already names for a control holding its own
-   edge, which is what a face is. */
+   caught: the intended border read as no border at all. It took the 30%
+   line for a while; phase 10 (rule 4) left the app two line strengths and
+   the disc takes --outline, since ticket 31's faces separate the five
+   steps by their drawing rather than by a ring. */
 .mood-face-disc {
   fill: var(--face-mood);
   stroke: var(--outline);
@@ -786,9 +787,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
-   already failed: 1px of --outline-strong disappears against a coloured fill
-   on the dark theme, at full strength, and the dimming rules made it worse
-   besides. Outside the circle nothing can sit on top of it.
+   already failed: 1px of the app's darkest line disappears against a
+   coloured fill on the dark theme, at full strength, and the dimming rules
+   made it worse besides. Outside the circle nothing can sit on top of it.
 
    It is drawn only on the face that was chosen (Alicja, phase 9 carpet
    ticket 01: "remove the second stroke around them, that stroke should only
@@ -956,9 +957,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .slider-tick {
   width: 1.5px; height: 5px;
   border-radius: 1px;
-  /* Not --border: at #2B3C49 on the dark card's #151F27 that is 1.6:1, and a
-     1.5px mark at 1.6:1 is not a quiet mark, it is an absent one. Mixed from
-     --text so it lands the same distance from the surface on both themes. */
+  /* Not --outline: a 19% mix of --text on the dark card is about 1.6:1, and
+     a 1.5px mark at 1.6:1 is not a quiet mark, it is an absent one. Mixed
+     from --text at 45% so it lands the same distance from the surface on
+     both themes. */
   background: color-mix(in oklab, var(--text) 45%, transparent);
   transform-origin: top center;
   transition: background-color var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out);
