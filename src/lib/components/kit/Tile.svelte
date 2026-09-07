@@ -7,22 +7,27 @@
      the slop audit removed from Home. Here the number sits under the title
      it belongs to and a tile with nothing to report is a title and a note.
 
-     Under the number is the flag itself, as a bar the width of the number:
-     the real stripes at their real hex values, in stripe order and in the
-     flag's own proportions, nudged for nothing. It is the one place in the
-     kit where the flag is shown as itself rather than used as a screen's
-     colour, and it is drawn from --flag-fill, which the grid above sets
-     from $lib/theme/roles.
+     The tile is a block of its area's stripe (phase 10 rule 3): the exact
+     hex, with the title and the value written on it, and the note in a foot
+     of page colour along the bottom edge, because small text is what no
+     band can carry. A grid marked `data-tight` - the two look-back tiles,
+     Safe space's two stats - has no foot and wears the flag itself instead,
+     a bar of the real stripes at their real hex values in stripe order and
+     the flag's own proportions, nudged for nothing. That bar is the one
+     place in the kit where the flag is shown as itself rather than used as
+     a screen's colour, and it is drawn from --flag-fill, which the grid
+     above sets from $lib/theme/roles.
 
      `.press` is tier 1, from $lib/motion/press.css: the whole tile answers
      a press by scaling, which a full-width list row cannot do without
      moving the card around it.
 
-     Two weights. A card is the two-up default: title, value under it at
-     display size, note under that. A row takes the whole width and reads
-     along one line instead - title and value together, note beneath - so a
-     screen ordering its tiles by urgency can draw the difference rather
-     than only sorting by it.
+     Two weights. A card is the two-up default: title at the top of the
+     block, value at display size on its bottom edge, foot under that. A row
+     takes the whole width and is half the height, so its title and value
+     stack tight against whatever control it carries - so a screen ordering
+     its tiles by urgency can draw the difference rather than only sorting
+     by it.
 
      Anything else the caller puts on it lands on the anchor. That is how a
      screen stamps its own walkthrough handle without the kit learning what
@@ -69,9 +74,10 @@
     href: string;
     key?: string;
     /** How much of the screen the tile is worth. A card is the two-up
-        default. A row takes the grid's whole width, puts its value beside
-        its title rather than under it and drops the flag bar, which is what
-        a thing bound to today gets on Home (phase 8 UX ticket 01) - the
+        default. A row takes the grid's whole width and is shorter, stacking
+        its title and value tight rather than spending a card's height on
+        them, which is what a thing bound to today gets on Home (phase 8 UX
+        ticket 01) - the
         weight is the tile's own layout, so it belongs here rather than as
         an override reaching in from a screen. */
     weight?: 'card' | 'row';
