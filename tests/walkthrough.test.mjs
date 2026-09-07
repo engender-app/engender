@@ -3135,7 +3135,7 @@ try {
 
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="wear"][data-hub-section="finished"]', { timeout: 8000 });
-  if ((await page.locator('[data-list-row="wear"][data-hub-section="practice"]').count()) !== 0) {
+  if ((await page.locator('[data-list-row="wear"][data-hub-section="transition"]').count()) !== 0) {
     throw new Error('the finished row is drawn in two places at once');
   }
   if ((await page.locator('[data-list-row="wear"][data-hub-line="finished"]').count()) === 0) {
@@ -3150,11 +3150,74 @@ try {
   await page.locator('[data-area-finish-undo]').click();
   await page.waitForSelector('[data-area-finish]', { timeout: 8000 });
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="wear"][data-hub-section="practice"]', { timeout: 8000 });
+  await page.waitForSelector('[data-list-row="wear"][data-hub-section="transition"]', { timeout: 8000 });
 
   ok('the More hub reads its own data: a reading where there is a write, what is behind the row where there is no stream and where nothing is written yet, and a finished area moving out of its group and back');
 } catch (e) {
   fail('the hub reads its own data', e);
+}
+
+/* The reorganised tree, tapped rather than asserted (phase 9 carpet ticket
+   16). Seven rows left the hub for the screen that owns them, and the whole
+   claim of the ticket's last acceptance line is that each is still reachable
+   from exactly one place. `more-surfaces.test.ts` holds that each host screen
+   links to its rows; what only a walk can say is that following those links
+   actually arrives.
+
+   Handles, not headings: every step is a `data-list-row` click and a URL
+   wait, so rewording any of these rows leaves the flow alone (ADR-0029). */
+try {
+  // Health > Care > Changes you've noticed > Side effects.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="care"]').click();
+  await page.waitForURL('**/care');
+  await page.locator('[data-list-row="effects"]').click();
+  await page.waitForURL('**/practice/personal-effects');
+  await page.locator('[data-list-row="side-effects"]').click();
+  await page.waitForURL('**/health/side-effects');
+
+  // Back out the way in, which is what the host's own `back` names.
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL('**/practice/personal-effects');
+
+  // ... and the other change hanging off the same screen.
+  await page.locator('[data-list-row="hair-progress"]').click();
+  await page.waitForURL('**/body/hair-progress');
+
+  // Health > Surgery journey > Dilation. The row is gated on the person
+  // having a surgery journey at all, which "Fill every feature" writes -
+  // ticket 17 replaces that gate with a kind on the procedure.
+  await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="dilation"]').click();
+  await page.waitForURL('**/health/dilation');
+
+  // Words moved to Stats, templates to Settings, and neither is on the hub.
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="words"]').click();
+  await page.waitForURL('**/transition/words');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('[data-list-row="entry-templates"]').click();
+  await page.waitForURL('**/practice/entry-templates');
+
+  /* Safe space and Support and resources are one group now, and the hub
+     draws no Practice heading at all. Asserted on the section handle rather
+     than on the heading's words. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-hub-section="support"]', { timeout: 8000 });
+  const supportRows = await page.locator('[data-hub-section="support"]').evaluateAll((rows) =>
+    rows.map((row) => row.getAttribute('data-list-row'))
+  );
+  if (supportRows.join(',') !== 'doubt,resources') {
+    throw new Error(`the support group holds ${supportRows.join(',') || 'nothing'}, not safe space and resources`);
+  }
+  if (await page.locator('[data-hub-section="practice"]').count()) {
+    throw new Error('the hub still draws a Practice group');
+  }
+
+  ok('the reorganised hub: every row that left it is reachable from the screen that hosts it, and Support replaced Practice');
+} catch (e) {
+  fail('the reorganised hub tree', e);
 }
 
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
@@ -4066,11 +4129,14 @@ try {
      and its direct URL. Two ways in, walked one after the other: the
      explicit opt-in switch in Settings, and an active testosterone
      episode, which surfaces it with the switch back off. */
-  await fresh('/more');
-  if (await page.locator('[data-list-row="cycle-events"]').count()) {
-    throw new Error('the cycle row showed in More with no testosterone and no opt-in');
-  }
-  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  /* No step on /more any more: phase 9 carpet ticket 16 took the cycle row
+     off the hub entirely and hosted it under the side effects screen, so
+     "the hub does not name it" is now structural and an absence check there
+     would pass whatever this gate did. What is left to walk is the surface
+     that does name it behind the gate, and `all-cycle-events` is a handle
+     this flow goes on to wait for - so its absence here means something
+     (ADR-0029, and a deleted handle cannot assert it is gone). */
+  await fresh('/health/side-effects');
   if ((await page.locator('[data-cycle-event]').count()) || (await page.locator('[data-list-row="all-cycle-events"]').count())) {
     throw new Error('side effects named the cycle log with no testosterone and no opt-in');
   }
@@ -4093,8 +4159,6 @@ try {
     null,
     { timeout: 8000 }
   );
-  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
   await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
@@ -4127,8 +4191,8 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForSelector('[data-cycle-events-link]', { timeout: 8000 });
 
-  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-list-row="cycle-events"]', { timeout: 8000 });
+  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-list-row="all-cycle-events"]', { timeout: 8000 });
 
   // End the episode the way the concurrent-episodes flow does: an end date
   // of yesterday, so it stops being active today, saved from the editor.
@@ -4144,8 +4208,8 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
 
-  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => !document.querySelector('[data-list-row="cycle-events"]'), null, { timeout: 8000 });
+  await page.goto(BASE + '/health/side-effects', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => !document.querySelector('[data-list-row="all-cycle-events"]'), null, { timeout: 8000 });
   ok('cycle tracking: an active testosterone episode surfaces it, and ending that episode withdraws it again');
 } catch (e) { fail('cycle tracking testosterone', e); }
 

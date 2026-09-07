@@ -39,8 +39,11 @@
        goes only when every hideable section behind it is hidden, and
        `cycleEvents` is not hideable at all (ADR-0043), so the row fronting
        only it can never disappear this way. That much is structural rather
-       than a special case. ADR-0043's *positive* gate is not: it belongs to
-       one named row and is written out as one, below.
+       than a special case. ADR-0043's *positive* gate used to be written out
+       here as a named special case beside it; ticket 16 hosted the cycle row
+       on /health/side-effects, which was already asking that question for
+       the cycle block it draws, so the gate is that screen's alone and this
+       file has no special case left.
      - the finished group, and the day it shows.
 
    Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
