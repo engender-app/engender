@@ -37,11 +37,10 @@
      Out of scope, and named because it is the obvious next question: live
      reads and writes are wired already, but the integration effort ticket
      15 excluded is not this ticket's - what is new here is the shape. */
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
-  import { slide } from 'svelte/transition';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -58,11 +57,6 @@
   import { appWordmark } from '$lib/disguise/identity';
   import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
-
-  function tileSlide(node: HTMLElement, { enabled }: { enabled: boolean | undefined }) {
-    if (!enabled) return { duration: 0, css: () => '' };
-    return slide(node, { axis: 'x', duration: 250 });
-  }
 
   import FlagSun from '$lib/components/FlagSun.svelte';
   import MilestoneCard from '$lib/components/MilestoneCard.svelte';
@@ -88,13 +82,19 @@
     snoozeStockNotice
   } from '$lib/data/stockProjection';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, markSlotReplacement } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
 
   const today = todayEpochDay();
+
+  /* Every block on this screen that appears and disappears takes the same
+     `skip` (phase 9 carpet ticket 04): a screen leaving should not spend
+     240ms folding its own panels up on the way out, and Svelte cannot tell
+     "this block's condition went false" from "the page unmounted it". */
+  let panel = $derived({ skip: navigating.to !== null });
 
   /* The live tiles, as one read (deepening ticket 07). Home used to hold
      thirteen queries, eleven predicates and an eleven-ternary count for
@@ -119,6 +119,44 @@
   let tilesExpanded = $state(false);
   let tileSplit = $derived(splitHomeTiles(liveTiles.tiles));
   let shownTiles = $derived(tilesExpanded ? liveTiles.tiles : tileSplit.shown);
+  /* A dismissal the fold fills in the same tick is a swap, not a panel giving
+     its space back, and `collapse` cannot see the difference: the grid keeps
+     every slot it had, and by the time the leaving tile's transition is
+     created the promoted one is already standing in its slot. Only this list
+     knows a promotion happened, so it says so before the DOM is updated -
+     `$effect.pre`, which is what puts it ahead of the `{#each}` below.
+
+     Same length and a different membership is the whole test. Expanding the
+     fold changes the length, a tile's own reading changing leaves the keys
+     alone, and a dismissal with nothing left to promote shortens the list -
+     none of those are a swap. */
+  let shownKeys: HomeTile['key'][] = [];
+  $effect.pre(() => {
+    const keys = shownTiles.map((tile) => tile.key);
+    if (keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
+      /* And the box the leaving tile still occupies, which is the one thing
+         only this moment knows: a frame later the promoted tile is standing
+         in it. */
+      const going = shownKeys.find((key) => !keys.includes(key));
+      const slot = going
+        ? document.querySelector(`[data-live-tile="${going}"]`)?.getBoundingClientRect()
+        : undefined;
+      /* And where the replacement is coming from, which is the fold: a tile
+         is promoted out of it in the same tick, so travelling out of it is
+         what says a swap happened rather than two cards crossfading. Read
+         here for the same reason as the slot - a frame later the fold may be
+         gone, since the tile it gave up can be the last one it held. */
+      const fold = document.querySelector('[data-home-tiles-fold]')?.getBoundingClientRect();
+      const box = (rect: DOMRect) => ({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+      markSlotReplacement(slot ? { slot: box(slot), from: fold && box(fold) } : null);
+    }
+    shownKeys = keys;
+  });
   /* What each tier is drawn as. `LIVE_TILE_TIER` says which band a kind is
      in and this says what a band looks like, which is the half that belongs
      to a screen: the same three tiers on another surface could be drawn
@@ -492,24 +530,26 @@
         data-live-tile-grid
         data-rows={block.rows}
       >
-        <!-- One slide rule for every tile on screen (deepening ticket 07) -
-             `shownTiles`, not just this tier, so a journal with one today
-             tile and one moment tile still slides both in together. -->
+        <!-- No transition declared here any more (phase 9 carpet ticket 04).
+             It used to be a slide of Home's own, on the x axis whatever the
+             layout was doing - so at the 390px floor, where this grid is one
+             tile per line, a closing tile shrank its width while its
+             neighbours were giving back height. `collapse` rides Tile itself
+             and reads the axis off the layout, which is the same rule for
+             every tile in every grid rather than this screen's guess. -->
         {#each tiles as tile (tile.key)}
-          <div transition:tileSlide={{ enabled: shownTiles.length > 1 }}>
-            <Tile
-              key={tile.tileKey}
-              weight={block.weight}
-              title={tile.title}
-              value={tile.value}
-              note={tile.note}
-              href={tile.href}
-              action={tile.action}
-              dismiss={tile.dismiss}
-              {...tile.attrs}
-              data-live-tile={tile.key}
-            />
-          </div>
+          <Tile
+            key={tile.tileKey}
+            weight={block.weight}
+            title={tile.title}
+            value={tile.value}
+            note={tile.note}
+            href={tile.href}
+            action={tile.action}
+            dismiss={tile.dismiss}
+            {...tile.attrs}
+            data-live-tile={tile.key}
+          />
         {/each}
       </TileGrid>
     {/if}
@@ -523,7 +563,7 @@
        its own turn, only moved. Empty, and nothing here renders at all -
        Home looks exactly as it did before this ticket. -->
   {#if todayTiles.length > 0}
-    <div transition:disclose>
+    <div transition:collapse={panel}>
       {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
     </div>
   {/if}
@@ -545,7 +585,7 @@
        Separation is an opaque surface and a line: box-shadow is banned in
        the kit and tested for. -->
   {#if momentTiles.length > 0 || quietTiles.length > 0 || tileSplit.folded.length > 0}
-    <div class="home-tiles" transition:disclose>
+    <div class="home-tiles" transition:collapse={panel}>
       {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
 
       <!-- Carpet ticket 03: this one dormant tile gets a Notice instead of a
@@ -760,7 +800,7 @@
     <!-- The handle rides the wrapper: ListCard takes a role and its children
          and nothing else, and widening a kit surface to pass one screen's
          walkthrough handle through would be the wrong file to change. -->
-    <div transition:disclose data-getting-started>
+    <div transition:collapse={panel} data-getting-started>
       <SectionHeading text={m.home_start_title()} />
       <p class="home-start-intro">{m.home_start_intro()}</p>
       <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>

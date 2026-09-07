@@ -683,13 +683,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
             title: m.safe_space_title(),
             note: m.tile_safe_space_nudge_sub(),
             href: '/doubt',
-            action: {
-              icon: 'x',
+            dismiss: {
               label: m.tile_safe_space_nudge_dismiss(),
               attrs: { 'data-safe-space-nudge-dismiss': '' },
-              onclick: (e) => {
-                e.stopPropagation();
-                e.preventDefault();
+              onclick: () => {
                 if (entryId != null) actions.dismissSafeSpace(entryId);
               }
             }
@@ -713,15 +710,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         value: format.fullDay(letter.epochDay),
         note: others > 0 ? m.tile_letter_more({ count: String(others) }) : m.tile_letter_single_note(),
         href: `/transition/letters?read=${letter.id}`,
-        action: {
-          icon: 'x',
+        dismiss: {
           label: m.tile_letter_dismiss_action(),
           attrs: { 'data-letter-dismiss': '' },
-          onclick: (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            actions.openLetterDismiss();
-          }
+          onclick: () => actions.openLetterDismiss()
         }
       };
     },
@@ -738,15 +730,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         value: format.fullDay(revisit.entryEpochDay),
         note: rest.length > 0 ? m.tile_revisit_more({ count: String(rest.length) }) : m.tile_revisit_single_note(),
         href: `/entry/${revisit.entryId}`,
-        action: {
-          icon: 'x',
+        dismiss: {
           label: m.dismiss(),
           attrs: { 'data-revisit-dismiss': '' },
-          onclick: (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            actions.dismissRevisit(revisit.id);
-          }
+          onclick: () => actions.dismissRevisit(revisit.id)
         }
       };
     },

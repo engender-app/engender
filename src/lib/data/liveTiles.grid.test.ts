@@ -434,7 +434,7 @@ describe('what each tile says', () => {
     expect(tile.tileKey).toBe('safe-space-nudge');
     expect(tile.attrs).toEqual({ 'data-safe-space-nudge-tile': true });
     expect(tile.href).toBe('/doubt');
-    tile.action!.onclick!(CLICK);
+    tile.dismiss!.onclick(CLICK);
     expect(actions.dismissSafeSpace).toHaveBeenCalledWith(42);
   });
 
@@ -451,10 +451,10 @@ describe('what each tile says', () => {
     expect(tile.value).toBe(`full:${TODAY - 40}`);
     // Two unread, so the note counts the other one.
     expect(tile.note).toBe(m.tile_letter_more({ count: '1' }));
-    // Its dismiss is a sheet on Home rather than a snooze in place.
-    tile.action!.onclick!(CLICK);
+    // Its dismiss opens a sheet on Home rather than snoozing in place.
+    tile.dismiss!.onclick(CLICK);
     expect(actions.openLetterDismiss).toHaveBeenCalled();
-    expect(tile.dismiss).toBeUndefined();
+    expect(tile.action).toBeUndefined();
   });
 
   it('the revisit tile names the entry due and deletes the row on dismiss', () => {
@@ -466,9 +466,9 @@ describe('what each tile says', () => {
     expect(tile.value).toBe(`full:${TODAY - 60}`);
     // One due revisit, so the note names it rather than counting others.
     expect(tile.note).toBe(m.tile_revisit_single_note());
-    tile.action!.onclick!(CLICK);
+    tile.dismiss!.onclick(CLICK);
     expect(actions.dismissRevisit).toHaveBeenCalledWith('revisit-1');
-    expect(tile.dismiss).toBeUndefined();
+    expect(tile.action).toBeUndefined();
   });
 
   it('the revisit tile counts the rest when more than one is due', () => {
@@ -611,24 +611,39 @@ describe('the dismiss controls', () => {
     expect(snooze).toHaveBeenCalledWith(kind);
   });
 
-  it('gives no dismiss to the seven that never had one', () => {
-    /* Wear, dose, surgery, safe space, the ready letter and revisit each
-       resolve themselves - a running session cannot be hidden while it runs
-       (ADR-0039's amendment), the letter's dismiss opens a sheet, and a
-       revisit's own action deletes the row outright rather than snoozing
-       it. The appointment tile joins them for a different reason: it names
-       a single day's own fact, gone on its own tomorrow, so there is
-       nothing a snooze would buy (ticket 63). */
+  it('gives no dismiss to the four that close nothing', () => {
+    /* Wear, dose and surgery each resolve themselves - a running session
+       cannot be hidden while it runs (ADR-0039's amendment), and the other
+       two are facts about the day rather than nudges. The appointment tile
+       joins them for the nearest reason: it names a single day's own fact,
+       gone on its own tomorrow, so there is nothing a snooze would buy
+       (ticket 63).
+
+       Safe space, the ready letter and the revisit left this list in phase 9
+       carpet ticket 04 (ADR-0071). All three were closable all along - each
+       carried an `action` whose icon was an x - and only the registry field
+       said otherwise, which drew one job as two controls: a corner X on six
+       tiles and a soft button on these three. What each close does is
+       unchanged: the letter opens Home's sheet, the revisit deletes its row,
+       safe space forgets the entry it was about. */
     for (const kind of [
       'wear-timer',
       'dose-panel',
       'surgery-countdown',
-      'safe-space-nudge',
-      'ready-letter',
-      'revisit',
       'appointment-today'
     ] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
+    }
+  });
+
+  it('draws every close as the tile\'s own dismiss, never as an action wearing an x', () => {
+    /* The rule the three above were breaking, held over the whole registry
+       so a fourth cannot quietly reintroduce it. An `action` is the tile's
+       other control - log this dose, stop this session, take a measurement -
+       and none of those is a close. */
+    for (const kind of LIVE_TILE_ORDER) {
+      const tile = tileNamed(kind);
+      expect(tile?.action?.icon, `${kind} states its close as an action`).not.toBe('x');
     }
   });
 
