@@ -266,6 +266,7 @@
   "chart_annotations_more": "{names} i jeszcze {count}",
   "chart_annotations_and_more": "i jeszcze {count}",
   "tag_insights": "Tagi w liczbach",
+  "tag_insights_of": "Tagi a {metric}",
   "insights_note": "Obserwacje, nie wnioski. Tagi z mniej niż 3 wpisami w zakresie są ukryte.",
   "insights_empty": "Za mało otagowanych wpisów w tym zakresie.",
   "correlation_cards_title": "Co pojawia się razem",
