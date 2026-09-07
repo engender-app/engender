@@ -3884,7 +3884,9 @@ try {
       ringWidth: ring ? ring.width : null
     };
   });
-  if (!(zoomed.helloWidth > 100)) throw new Error('the hello line has no width at 195px: ' + JSON.stringify(zoomed));
+  /* The line's column at 195px is the screen minus the inset, the gear and
+     the gap, about 95px; what the old header gave it was 0. */
+  if (!(zoomed.helloWidth > 40)) throw new Error('the hello line has no width at 195px: ' + JSON.stringify(zoomed));
   if (!zoomed.helloBelowField) throw new Error('the hello line sits on the field: ' + JSON.stringify(zoomed));
   if (!zoomed.heroInField) throw new Error('the wordmark left the field: ' + JSON.stringify(zoomed));
   /* scale(0.6) on a 0x0 point is the matrix (0.6, 0, 0, 0.6, 0, 0). */
