@@ -55,7 +55,7 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
+  import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -548,8 +548,8 @@
   {#snippet tileRow(tiles: HomeTile[], block: (typeof TILE_BLOCKS)[number])}
     {#if tiles.length > 0}
       <TileGrid
-        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+        bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles))}
         data-live-tile-grid
         data-rows={block.rows}
       >
@@ -628,7 +628,7 @@
         <Notice
           icon="heart"
           key="active-tryout-tile"
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
           title={feltSenseGapTile.title}
           text={feltSenseGapTile.note}
           action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
@@ -647,7 +647,7 @@
            thing. Its value goes with them - "40 days" is what the note
            already says. -->
       {#if quietListTiles.length > 0}
-        <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
           {#each quietListTiles as tile (tile.key)}
             <ListRow
               key={tile.tileKey}
@@ -697,8 +697,8 @@
        handles. -->
   {#if hasEntries}
     <TileGrid
-      role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
-      flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+      role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
+      bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack))}
       data-tight
     >
       {#if prefs.wrappedEnabled}
@@ -826,7 +826,7 @@
     <div transition:collapse={panel} data-getting-started>
       <SectionHeading text={m.home_start_title()} />
       <p class="home-start-intro">{m.home_start_intro()}</p>
-      <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+      <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
         {#each GETTING_STARTED as offer (offer.key)}
           <ListRow
             key={offer.key}
