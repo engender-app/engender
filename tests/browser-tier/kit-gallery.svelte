@@ -30,7 +30,7 @@
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import { annotationsInRange, type ChartAnnotationSource } from '$lib/charts/annotations';
-  import { readFlagFill, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
+  import { flagBarRole, readFlagFill, readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
   import { PALETTES } from '../palettes.mjs';
 
   let palette = $state('trans');
@@ -253,7 +253,7 @@
   </DayCard>
 
   <p class="gallery-note">Tile grid, two-up, the flag under the number</p>
-  <TileGrid role={roleAt(roles, 1)} {flagFill}>
+  <TileGrid role={roleAt(roles, 1)} bar={flagBarRole(roles, roleAt(roles, 1))}>
     <Tile key="onthisday" title="On this day" value="3" note="entries a year ago" href="#a" />
     <Tile key="wrapped" title="This month" value="21" note="days logged" href="#b" />
   </TileGrid>

@@ -55,7 +55,7 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import { HOME_AREA_ROLE, roleAt, tileRoleAt } from '$lib/theme/roles';
+  import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -526,7 +526,7 @@
     {#if tiles.length > 0}
       <TileGrid
         role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles))}
         data-live-tile-grid
         data-rows={block.rows}
       >
@@ -675,7 +675,7 @@
   {#if hasEntries}
     <TileGrid
       role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
-      flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+      bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack))}
       data-tight
     >
       {#if prefs.wrappedEnabled}

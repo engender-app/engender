@@ -61,7 +61,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt, tileRoleAt } from '$lib/theme/roles';
+  import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
 
   const COUNTEREVIDENCE_LIMIT = 20;
@@ -232,7 +232,7 @@
        whole block is the page (phase 10 rule 3). -->
   <TileGrid
     role={tileRoleAt(activeFlag.roles, 1)}
-    flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+    bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, 1))}
     data-safe-space-stats
     data-tight
   >

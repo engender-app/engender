@@ -286,6 +286,34 @@ export function tileRoleAt(roles: Role[], index: number): Role | undefined {
   return roleAt(chromaticRoles(roles), index);
 }
 
+/** The stripe the bar under a tight tile's value is drawn in: another band
+    of the same flag, picked for being the one that can actually be seen on
+    the block it sits on.
+
+    It was the whole flag, the `flagFill` gradient the kit had always drawn
+    there - and on a block of one of that flag's own colours the matching
+    band disappears into the ground, so trans read as a pink block with a
+    pink-and-white bar and rainbow's orange band vanished entirely (Alicja,
+    2026-09-07: "instead of a trans colored underline, just pick another
+    colour from the flag"). One solid band instead, and the flag's own hex.
+
+    Colours before shades, as everywhere else a role is handed out, and
+    within them the highest contrast against the block: on a flag with one
+    colour and three shades - agender - there is no second colour to take,
+    so the shades are the candidates and its near-black band is what a green
+    block gets. */
+export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefined {
+  if (!on) return undefined;
+  const others = roles.filter((role) => role.stripe.toUpperCase() !== on.stripe.toUpperCase());
+  const colours = others.filter((role) => chromaOf(role.stripe) >= ACHROMATIC);
+  const candidates = colours.length > 0 ? colours : others;
+  return candidates.reduce<Role | undefined>(
+    (best, role) =>
+      !best || contrast(role.stripe, on.stripe) > contrast(best.stripe, on.stripe) ? role : best,
+    undefined
+  );
+}
+
 /** Which stripe each area of Home takes, named rather than written as a
     number at the call site - one of them is not in reading order and the
     reason is the ordering above.

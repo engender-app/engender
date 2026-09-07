@@ -1159,16 +1159,33 @@ a.kit-entry:active {
 }
 
 /* A tile with nothing to report is a title and a note (Safe space is the
-   standing one), and the title takes the place the value would have had:
-   down on the block's bottom edge, above the foot. Left at the top it sat
-   over 100px of empty stripe while the tile beside it carried a number
-   there, and the pair read as one tile that had failed to load. */
+   standing one), and the title takes the value's place entirely: its
+   position, down on the block's bottom edge above the foot, and its size.
+   Left at the top at 19px it sat over 100px of empty stripe while the tile
+   beside it carried a 40px number there, and a grid of blocks read as one
+   tile that had failed to load (Alicja, 2026-09-07: "the safe space nudge
+   only has small text rn - looks bad"). Every block carries exactly one
+   line at display size, whatever the tile has to report. */
 .kit-tile:not(:has(.kit-tile-value)) > .kit-tile-title {
   margin-top: auto;
 }
 
 .kit-tile:not(:has(.kit-tile-value)) > .kit-tile-main {
   align-content: end;
+}
+
+.kit-tile:not(:has(.kit-tile-value)) .kit-tile-title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--display-track);
+  line-height: 1.1;
+}
+
+/* A row is half a card's height, so its own display line steps down with
+   the value's. */
+.kit-tile[data-weight='row']:not(:has(.kit-tile-value)) .kit-tile-title {
+  font-size: var(--text-2xl);
 }
 
 .kit-tile-value {
@@ -1214,15 +1231,21 @@ a.kit-entry:active {
   align-self: stretch;
 }
 
-.kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-value::after,
-.kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
+/* One band of the flag rather than all of them: the grid hands in
+   `--flag-bar` from roles.ts's flagBarRole, which is another colour of the
+   same flag chosen for contrast against the block. The whole-flag gradient
+   this replaces put the block's own colour back into the bar, so on trans a
+   pink block carried a pink-and-white mark and rainbow's orange band was
+   not there at all (Alicja, 2026-09-07). */
+.kit-tiles[data-tight][style*='--flag-bar'] .kit-tile-value::after,
+.kit-tiles[data-tight][style*='--flag-bar'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
   content: '';
   display: block;
   width: 100%;
   height: 6px;
   margin-top: var(--space-2);
   border-radius: 2px;
-  background-image: var(--flag-fill);
+  background: var(--flag-bar);
 }
 
 /* The foot. The note is the one small thing a tile says, and small text is
