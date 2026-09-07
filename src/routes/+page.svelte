@@ -987,17 +987,12 @@
      pulls itself back up by exactly that inset, so the sun's centre lands
      on the window's true top right corner, and pads its own content back
      down by the same amount. Decoration crosses the inset; nothing readable
-     does.
-
-     --sun-ground is what the gaps between the sun's rings are drawn in
-     (components.css, rule 8): here the field, so on trans they are pink and
-     on nonbinary purple. */
+     does. */
   .home-field {
     position: relative; z-index: 1;
     display: flex; align-items: flex-end;
     background: var(--field);
     color: var(--field-ink);
-    --sun-ground: var(--field);
     padding: calc(var(--space-4) + var(--inset-top)) var(--space-5) var(--space-4);
     margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
     overflow: hidden;

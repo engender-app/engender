@@ -348,11 +348,12 @@ function readStripes(doc: Document): string[] {
     rule 3): the flag's second colour - the first inner band of
     `--motif-stripes` that is a colour and differs from the outermost band -
     so bisexual's doubled outer stop is skipped by colour rather than by
-    index, and the whole flag stays drawn in the sun with no band stolen. One
-    flag names its own band: the six-stripe rainbow takes its blue rather than
-    its orange (Alicja, 2026-09-07, round two). A flag with no such band falls
-    back to its first colour, then to its first stripe; none of the eight
-    needs either.
+    index, and the whole flag stays drawn in the sun with no band stolen. Two
+    flags name their own band: the six-stripe rainbow takes its blue rather
+    than its orange (Alicja, 2026-09-07, round two), and bisexual takes its
+    dark blue rather than its purple (Alicja, 2026-09-07, on ticket 23's
+    renders). A flag with no such band falls back to its first colour, then
+    to its first stripe; none of the eight needs either.
 
     The ink is the dark theme's near-black or white, whichever measures
     higher on the hex. Only large text may sit on the field: nonbinary's
@@ -360,7 +361,7 @@ function readStripes(doc: Document): string[] {
     tests/palette-contrast.test.ts holds every flag's pair to that floor and
     to the table DIRECTION.md prints. Ticket 23 publishes the pair beside the
     roles; this is the arithmetic it publishes. */
-export const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF' };
+export const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8' };
 
 export interface FlagField {
   hex: string;

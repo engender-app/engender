@@ -604,7 +604,6 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
     const rule = ruleFor(css, '.home-field');
     expect(rule?.body).toMatch(/background:\s*var\(--field\)/);
     expect(rule?.body).toMatch(/color:\s*var\(--field-ink\)/);
-    expect(rule?.body).toMatch(/--sun-ground:\s*var\(--field\)/);
     expect(ruleFor(css, '.home-hero')?.body).toMatch(/font-size:\s*clamp\(1\.7rem, 13cqw, 3rem\)/);
   });
 
@@ -650,10 +649,13 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
     expect(seen, 'the title and the wordmark both set a size').toBeGreaterThanOrEqual(2);
   });
 
-  it('separates the rings by 5px of the ground and seams each with 1px of black', () => {
+  /* The bands touch and each carries a 3px black seam (Alicja, on the
+     first renders: "a fatter stroke and no emptiness between bands"). No
+     outline: an outline in the ground's colour was the gap. */
+  it('seams the rings with 3px of black and leaves no gap between the bands', () => {
     const sun = ruleFor(sheet('components'), '.sun i');
-    expect(sun?.body).toMatch(/outline:\s*5px solid var\(--sun-ground, var\(--bg\)\)/);
-    expect(sun?.body).toMatch(/border:\s*1px solid #000\b/);
+    expect(sun?.body).not.toMatch(/outline/);
+    expect(sun?.body).toMatch(/border:\s*3px solid #000\b/);
     expect(sun?.body).toMatch(/box-sizing:\s*border-box/);
     expect(ruleFor(sheet('components'), '.sun')?.body).toMatch(/transform:\s*scale\(var\(--sun-scale, 1\)\)/);
   });
