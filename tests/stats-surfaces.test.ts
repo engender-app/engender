@@ -113,7 +113,7 @@ describe('the summary panels wait for the floor', () => {
      preference two other screens shade by, and that no ranking is drawn
      before the journal clears the entry floor. */
   it('ranks by the chooser, over the floor, without touching the stored metric', () => {
-    expect(stats).toMatch(/highestMetricKey\(highestKey, /);
+    expect(stats).toMatch(/highestMetricKey\(\s*highestKey,/);
     expect(stats).toMatch(/key="highest-metric"[\s\S]*?onPick=\{\(value\) => \(highestKey = value\)\}/);
     expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows\s+rows=\{highestRows\}/);
   });

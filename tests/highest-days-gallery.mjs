@@ -1,14 +1,14 @@
-/* Screenshots of the "Your highest days" card on the stats hub (phase 9 UX
+/* Screenshots of the "Highest days" card on the stats hub (phase 9 UX
    carpet ticket 11).
 
    `gallery:stats` shoots the whole screen, several thousand pixels of it,
-   and this card is nine rows somewhere in the middle. What this ticket's
+   and this card is ten rows somewhere in the middle. What this ticket's
    sign-off is about is the card on its own: the chooser on its heading line,
    and how tight the rows under it read.
 
-   Three shots per theme: the card as the persona lands on it, the card after
-   the chooser has been moved to another scale, and the card at the seven-day
-   range, where the ranking has the fewest days to pick from.
+   Four shots per theme: the card as the persona lands on it, the card on
+   each of the two scales the chooser is moved to, and the card at the
+   seven-day range, where the ranking has the fewest days to pick from.
 
    The demo persona keeps euphoria and femininity, so the chooser has three
    options - mood, euphoria, femininity - which is the shape the control has
@@ -106,15 +106,15 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1500);
   await shootCard('01-default');
 
+  /* Not guarded: the chooser is what this ticket added, so a run that
+     cannot find it should stop rather than quietly shoot two fewer states. */
   const picker = page.locator('[data-chart-picker="highest-metric"]');
-  if (await picker.count()) {
-    await picker.selectOption('mood');
-    await page.waitForTimeout(1200);
-    await shootCard('02-mood');
-    await picker.selectOption('femininity');
-    await page.waitForTimeout(1200);
-    await shootCard('03-femininity');
-  }
+  await picker.selectOption('mood');
+  await page.waitForTimeout(1200);
+  await shootCard('02-mood');
+  await picker.selectOption('femininity');
+  await page.waitForTimeout(1200);
+  await shootCard('03-femininity');
 
   await page.locator('[data-segment="7"]').click();
   await page.waitForTimeout(1500);
