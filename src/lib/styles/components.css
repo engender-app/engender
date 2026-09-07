@@ -7,14 +7,39 @@
 /* ScreenHeader.svelte's own styles (phase 5 ticket 18); nothing else
    should wear these class names.
 
-   The horizontal padding is gone. It used to be var(--space-5) on top of
-   the same value on .screen, so every screen title sat 40px in while the
-   content under it sat 20px in, and the two never lined up. Aligned to the
-   left, the title now starts a screen where its first card does. */
+   The header is two things now (phase 10, DIRECTION.md rule 7; redesign
+   ticket 23): the field, a solid block of one of the flag's colours that
+   holds the back control, the title and the actions, and under it, on the
+   page, the subtitle. The header itself paints nothing and pads nothing;
+   the field does both. */
 .screen-header {
-  padding: var(--space-5) 0 var(--space-3);
   position: relative;
 }
+/* The field. `--field` and `--field-ink` are published on <html> by
+   activeFlag (the flag's second colour and black or white, whichever
+   measures higher; `--surface-2` and `--text` under disguise), so this rule
+   never reads a stripe and never decides anything per screen. Its height
+   is its content plus 40 above and 16 below, never fixed, so a Polish
+   title that wraps grows it rather than clipping. The bottom corners are
+   the one radius; the top corners meet the window's edge and have none. */
+.screen-field {
+  background: var(--field);
+  color: var(--field-ink);
+  padding: var(--space-8) 0 var(--space-4);
+  border-radius: 0 0 var(--r-block) var(--r-block);
+}
+/* On a screen, the field runs from the window's top edge to both side
+   edges: back up through the inset the scroll region pads every screen by
+   (the same bleed Home's sun makes, app.css) and out through .screen's own
+   20px, then padded back in by the same amounts so the title starts where
+   the content under it does and sits as clear of the status bar as any
+   other first line. Decoration crosses the inset; nothing readable does. */
+.screen > .screen-header > .screen-field {
+  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
+  padding: calc(var(--space-8) + var(--inset-top)) var(--space-5) var(--space-4);
+}
+/* The controls on the field take its ink, not the page's text colour. */
+.screen-field .icon-btn { color: inherit; }
 .screen-back {
   grid-column: 1 / -1;
   justify-self: start;
@@ -23,15 +48,25 @@
      title under it. The target keeps its full width; only the box moves. */
   margin-left: calc(-1 * var(--space-3));
 }
-/* A hidden title is taken out of the flow, so the header's own padding
-   would otherwise be 32px of nothing above the screen's first group
-   heading - which is most of the gap the redundant title was leaving
-   behind in the first place. The heading below brings its own space.
+/* A hidden title with no back control and no actions leaves the field
+   nothing to hold, so the header collapses to nothing visible rather than
+   painting an empty band: the in-the-room screen is chromeless on purpose,
+   and the two hubs that hide their title gain their field's contents from
+   tickets 09 and 15. A screen can hide its title and still show a back
+   control or an action, and those keep the field.
 
-   Only when the title was the whole row, though: a screen can hide its
-   title and still have a back control or an action, and those still need
-   somewhere to sit. */
-.screen-header.is-collapsed { padding: 0; }
+   Unpainted, not display: none. The visually hidden title inside is still
+   the screen's heading for a screen reader and the document outline (the
+   component's own reason for hiding rather than dropping it), and a
+   display: none ancestor would take it out of the accessibility tree; the
+   walkthrough's hub characterisation reads that heading. */
+.screen-header.is-collapsed .screen-field,
+.screen > .screen-header.is-collapsed > .screen-field {
+  background: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+}
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
    starts at the screen's own content edge instead of 48px inside it, and the
@@ -55,13 +90,20 @@
   line-height: 0.95;
   margin: 0;
 }
+/* Small type, so it sits on the page under the field rather than on it
+   (rule 3), 12 below the field's edge. */
 .screen-subtitle {
   color: var(--text-2);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  margin: var(--space-2) 0 0;
+  margin: var(--space-3) 0 0;
 }
 .header-action { display: flex; gap: var(--space-2); }
+/* On the web the field is a banner across the column rather than a block
+   meeting the window's edges, so it takes the radius on all four corners. */
+@container app (min-width: 1024px) {
+  .screen > .screen-header > .screen-field { border-radius: var(--r-block); }
+}
 
 .section-title {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -1833,20 +1875,40 @@ html[data-a11y-motion='reduce'] .bloom-core {
    point via translate(-50%, -50%) and is sized/coloured per-instance
    through --d/--c, set inline by FlagSun.svelte from --motif-stripes.
 
-   Confined to .home-header on purpose: that header is already the app's
+   Confined to Home's field on purpose: that block is already the app's
    one deliberately-stacked surface (position: relative; z-index: 1), so
-   the sun's negative z-index only has to beat its own header siblings, and
-   can never end up in front of a later .card the way the aurora's did
+   the sun's negative z-index only has to beat its own siblings, and can
+   never end up in front of a later .card the way the aurora's did
    (ADR-0035's "Consequences": a positioned element paints over a static
-   sibling regardless of DOM order, however z-index reads). */
+   sibling regardless of DOM order, however z-index reads).
+
+   The rings are seamed (phase 10, DIRECTION.md rule 8 as Alicja settled it
+   on ticket 23's renders, 2026-09-07): the bands touch, with no gap of the
+   ground between them, and each ring carries a 3px black edge - #000,
+   never a theme-mixed line, which on a dark page around a dark band reads
+   as nothing, and that is the second half of the rule. The first render
+   had 5px gaps in the ground's colour between the bands and a 1px seam,
+   and she asked for the opposite: a fatter stroke and no emptiness. The
+   seam is a border inside the ring's own box, so the diameters flagSun.ts
+   computes do not change and flagSun.test.ts still holds every ring to
+   --motif-stripes; a band is its ring minus the next ring in, and the
+   stroke sits on the outer edge of each. Bisexual's doubled stops read as
+   one band with a line through it, which is the flag's own 2:1:2.
+
+   --sun-scale is how the sun shrinks on a narrow screen (0.82 below 360px,
+   0.6 below 240px, set by Home's field); the point it scales about is the
+   corner it is pinned to, since the element has no size of its own. */
 .sun {
   position: absolute; top: 0; right: 0; width: 0; height: 0;
   z-index: -1;
   pointer-events: none;
+  transform: scale(var(--sun-scale, 1));
 }
 .sun i {
   position: absolute; top: 0; left: 0; display: block; border-radius: 50%;
   width: var(--d); height: var(--d); background: var(--c);
+  box-sizing: border-box;
+  border: 3px solid #000;
   transform: translate(-50%, -50%);
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,

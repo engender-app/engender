@@ -822,30 +822,12 @@
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  .home-hero { font-size: 3rem; }
   .editor-savebar { bottom: var(--space-4); }
 
-  /* Home's own frame on the web (phase 5 ticket 32.11, redone). Drawn on
-     `.home` itself rather than the whole app: this box is already the exact
-     edge `.home-header` bleeds its sun against - the negative margin above
-     cancels precisely this element's own padding - so the sun's existing
-     clip and this frame land on the same line, and the rounded corner
-     reads as cutting the sun rather than as a frame drawn somewhere past
-     where it already stopped.
-
-     An outline, not a border, for the same reason app.css's own removed
-     whole-app version used one: a border takes its width out of the
-     content box under global border-box sizing, which would have narrowed
-     `.home`'s content by 1px a side and, with it, the exact alignment with
-     `.home-header`'s own edge this comment calls load-bearing. An outline
-     draws in the same place without taking any of that space - unaffected
-     by this element's own `overflow: hidden`, which clips descendants, not
-     the box's own outline. */
-  .home {
-    outline: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    overflow: hidden;
-  }
+  /* Home's outline frame on the web (phase 5 ticket 32.11) is gone with
+     redesign ticket 23: the field is the column's top edge now, a
+     6px-cornered banner the sun is clipped by (+page.svelte), so there is
+     nothing left for a frame to mark. */
 }
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */

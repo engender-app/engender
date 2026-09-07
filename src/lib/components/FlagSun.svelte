@@ -25,7 +25,7 @@
   let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark));
 </script>
 
-<div class="sun" aria-hidden="true">
+<div class="sun" aria-hidden="true" data-flag-sun>
   {#each rings as ring, i (i)}
     <i
       style={`--d: ${ring.diameter}px; --c: ${ring.color}; --in-delay: ${ring.inDelay}s; --breathe-delay: ${ring.breatheDelay}s`}
