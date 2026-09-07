@@ -15,6 +15,7 @@ import {
   rowHidden,
   rowLine,
   rowReads,
+  rowsHostedBy,
   type HubReading,
   type HubRowSpec
 } from './hubRows.ts';
@@ -320,6 +321,56 @@ test('the hub draws its groups in order and leaves out the ones with nothing in 
     sections.map((section) => section.key),
     ['body', 'health', 'transition', 'support', 'media']
   );
+});
+
+test('a hidden area takes a hosted row out of its host, the way it took it off the hub', () => {
+  /* ADR-0052's own consequence - "hiding takes an area out of the
+     navigation" - and the case a hosted row could quietly lose: it is not in
+     `hubSections` any more, so nothing on the hub can answer for it.
+     `HostedRows.svelte` applies exactly this filter over the area record. */
+  const hosted = rowsHostedBy('effects').map((row) => row.key);
+  assert.deepEqual(hosted, ['side-effects', 'hair-progress']);
+
+  const left = rowsHostedBy('effects')
+    .filter((row) => !rowHidden(row, { sideEffects: hidden }))
+    .map((row) => row.key);
+  assert.deepEqual(left, ['hair-progress']);
+
+  /* Both sections behind hair progress, or the row stays - the same
+     every-section rule the hub applies. */
+  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden }), false);
+  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden, hairPhotos: hidden }), true);
+});
+
+test('a hosted row states the day its area ended, since the hub no longer can', () => {
+  /* `HostedRows.svelte` calls `rowLine` with an empty `lastWrites`, which is
+     what this passes too: finished and suspended are settled before the
+     reading is consulted, so a hosted row shows an ending and otherwise its
+     standing line. A reading would cost every host screen the hub's own
+     assembled last-write call for a date the next screen opens on. */
+  const noReads = { todayEpochDay: TODAY, lastWrites: {}, states: {} };
+
+  assert.deepEqual(rowLine(spec('effects'), { ...noReads, states: { personalEffects: finished(TODAY - 90) } }), {
+    kind: 'finished',
+    epochDay: TODAY - 90
+  });
+  assert.deepEqual(rowLine(spec('side-effects'), { ...noReads, states: { sideEffects: suspended(TODAY - 5) } }), {
+    kind: 'suspended',
+    epochDay: TODAY - 5
+  });
+  assert.equal(rowLine(spec('dilation'), noReads).kind, 'not-yet');
+  assert.equal(rowLine(spec('words'), noReads).kind, 'no-stream');
+});
+
+test('every host draws something, or is the one that writes its row by hand', () => {
+  /* `rowsHostedBy` empty for a host means `HostedRows.svelte` renders
+     nothing there, which is right for exactly one of them and a dead host
+     for any other. */
+  const empty = Object.keys(HUB_ROW_HOSTS).filter(
+    (host) => rowsHostedBy(host as keyof typeof HUB_ROW_HOSTS).length === 0
+  );
+
+  assert.deepEqual(empty, []);
 });
 
 test('a hosted row is not on the hub at all, and its screen is named (ticket 16)', () => {

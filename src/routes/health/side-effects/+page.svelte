@@ -44,8 +44,15 @@
      spotting are physiological effects like anything else listed here, so
      the most recent ones sit beneath the effects list once cycle tracking
      is surfaced at all - an active testosterone regimen or the explicit
-     opt-in (cycleTracking.ts, the one rule the More hub reads too). The
-     rows state, they do not open anything: editing happens on the cycle
+     opt-in (cycleTracking.ts).
+
+     This screen is where that gate lives now, and the only place. The More
+     hub used to read the same rule for a cycle row of its own; phase 9
+     carpet ticket 16 took that row off the hub and made this screen its
+     host (`HUB_ROW_HOSTS`), so the trailing row below is the one way in and
+     the hub fetches nothing to decide it.
+
+     The rows state, they do not open anything: editing happens on the cycle
      screen the trailing row links to, which owns the chart and the range
      pickers this list deliberately does not duplicate. */
   let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());

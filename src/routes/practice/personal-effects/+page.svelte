@@ -27,6 +27,7 @@
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { PersonalEffectCatalogEntry } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
+  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -319,12 +320,7 @@
        both of these screens are usable without one: somebody logging laser
        stages or a headache has no reason to have typed a regimen in. Inside
        it, the two rows would be the dead routes the ticket forbids. -->
-  <div>
-    <ListCard>
-      <ListRow key="side-effects" icon="zap" title={m.side_effects()} subtitle={m.hub_sub_side_effects()} href="/health/side-effects" />
-      <ListRow key="hair-progress" icon="comb" title={m.hair_progress()} subtitle={m.hub_sub_hair_progress()} href="/body/hair-progress" />
-    </ListCard>
-  </div>
+  <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>
     {#if editor}

@@ -146,18 +146,56 @@ describe('every row the hub carries', () => {
     expect([...HUB_GROUP_KEYS].filter((key) => !used.has(key))).toEqual([]);
   });
 
-  it('sends every hosted row to a screen that links to it', () => {
-    /* The ticket's own last line: a row that left the hub is reachable from
-       exactly one place, and that place is what `home` names. A host screen
-       writes its own row - the copy beside it is that screen's, and two of
-       them wrap it in a gate of their own - so what is checkable from here is
-       that the link is there at all. A hosted row whose host forgot it is
-       the dead route this asserts against. */
+  it('draws every hosted row through the component that applies the hidden rule', () => {
+    /* The ticket's own last line - a row that left the hub is reachable from
+       exactly one place - and the rule that came off the hub with it.
+
+       Hosted rows started as a literal `<ListRow>` on each host, which
+       reached them but silently dropped ADR-0052's consequence: hiding an
+       area takes it out of the navigation, and nothing on the host was
+       asking. `HostedRows.svelte` applies `rowHidden` and `rowLine` over the
+       area record for all of them, so what this asserts is that each host
+       goes through it rather than writing the row again - a literal row is
+       both a second copy of the icon and href and a row no `hidden` flag can
+       reach.
+
+       `side-effects` is the one exception, named in `HUB_ROW_HOSTS`: its
+       way-in row is inside a block that screen gates on
+       `cycleTrackingVisible`, carries copy of its own, and fronts the one
+       area no `hidden` flag can reach at all (ADR-0043). It is held to the
+       href instead. */
+    const BY_HAND = new Set(['side-effects']);
+
     for (const [key, , href, home] of EXPECTED) {
       if ((HUB_GROUP_KEYS as readonly string[]).includes(home)) continue;
       const host = HUB_ROW_HOSTS[home as HubRowHostKey];
       expect(host, `${key} names ${home}, which hosts nothing`).toBeTruthy();
-      expect(read(`src/routes${host}/+page.svelte`), `${host} does not link to ${key}`).toContain(href);
+      const source = read(`src/routes${host}/+page.svelte`);
+
+      if (BY_HAND.has(home)) {
+        expect(source, `${host} does not link to ${key}`).toContain(href);
+        continue;
+      }
+      expect(source, `${host} does not draw its rows through HostedRows`).toContain(`<HostedRows host="${home}"`);
+      expect(source, `${host} writes ${key} out by hand instead`).not.toContain(href);
     }
+  });
+
+  it('leaves the hidden rule and the row line to hubRows, not to the component', () => {
+    /* The component is a .svelte file, so the Node tier cannot mount it and
+       `hubRows.test.ts` holds the rules themselves. What is checkable here is
+       that it calls them rather than restating either: a `hidden` read of its
+       own, or a subtitle picked at the call site, is how this stops being one
+       place the rule lives. */
+    const hosted = read('src/lib/components/HostedRows.svelte');
+
+    expect(hosted).toContain("from '$lib/data/hubRows'");
+    expect(hosted).toContain('rowHidden(');
+    expect(hosted).toContain('rowLine(');
+    expect(hosted).toContain('hubRowLine(');
+    /* No wording of its own: every title and line it draws comes from
+       `hubLabels.ts`'s full records over the row keys, the same rule the hub
+       screen itself is held to above. */
+    expect(hosted.match(/\bm\.[a-z_]+\(/g)).toBeNull();
   });
 });

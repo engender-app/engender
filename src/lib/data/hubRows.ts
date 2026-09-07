@@ -102,14 +102,19 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     wrote. A hub that lists all of them at the top level is a hub that has
     stopped ranking anything.
 
-    Keyed by the row key of the screen that hosts them where there is one, and
-    by the tab otherwise. The host screen writes the row itself, because the
-    copy beside it is that screen's business and two of the seven are behind a
-    gate the hub could not ask about (`cycleTrackingVisible`, and whether a
-    surgery journey involves dilation at all). What this map is for is naming
-    the one screen that owes each row its link, which is what
+    Six hosts for seven rows, keyed by the row key of the screen that hosts
+    them where there is one and by the tab otherwise. What this map is for is
+    naming the one screen that owes each row its link, which is what
     `more-surfaces.test.ts` holds them to - a hosted row whose host forgot it
-    is a screen nothing reaches. */
+    is a screen nothing reaches.
+
+    Five of the seven are drawn by `HostedRows.svelte`, which reads
+    `rowsHostedBy` below. `cycle-events` is the exception and stays written by
+    hand on /health/side-effects: it sits inside a block that screen already
+    gates on `cycleTrackingVisible`, its way-in row carries copy about the
+    chart behind it rather than the standing line, and `cycleEvents` is the
+    one area no `hidden` flag can reach (ADR-0043), so the rule the component
+    exists to apply has nothing to do there. */
 export const HUB_ROW_HOSTS = {
   care: '/care',
   effects: '/practice/personal-effects',
@@ -734,14 +739,14 @@ export interface HubSection {
     still one tap away and its screen still works, which is the whole point of
     an area ending rather than being deleted.
 
-    A hosted row is not here at all, finished or not (ticket 16). Its screen
-    is one of the seven `HUB_ROW_HOSTS` names, and it stays there once the
-    person says that area ended: the alternative is the hub adding it to the
-    finished set while its host still draws it, which is the appearing-twice
-    the paragraph above is about. Four of the nine finishable groups are
-    hosted, so the finished set is a smaller place than it was; where an
-    ending is stated instead is on the area's own screen, which is where the
-    person said it, and on its stats card. */
+    A hosted row is not here at all, finished or not (ticket 16). It stays on
+    the screen named by its `home`, and states its ending there: the
+    alternative is the hub adding it to the finished set while its host still
+    draws it, which is the appearing-twice the paragraph above is about. Four
+    of the nine finishable groups are hosted, so the finished set is a smaller
+    place than it was - and `HostedRows.svelte` draws those four through
+    `rowLine`, the same function this one calls, so a hosted row says what
+    ended and when in the same words the hub would have used. */
 export function hubSections(reading: HubReading): HubSection[] {
   const byKey = new Map<HubGroupKey | 'finished', HubSection['rows']>();
   for (const key of [...HUB_GROUP_KEYS, 'finished'] as const) byKey.set(key, []);
@@ -754,6 +759,21 @@ export function hubSections(reading: HubReading): HubSection[] {
   }
 
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
+}
+
+/** The rows one screen hosts, in declaration order.
+
+    `hubSections`' counterpart for the other side of `home`, and the reason
+    the two are worth one function each rather than one filter at five call
+    sites: what a host owes its rows is the same thing the hub owes them -
+    a row goes when every area behind it is hidden, and states the day the
+    person said it ended. `HostedRows.svelte` reads this and applies
+    `rowHidden` and `rowLine` over the area record, so the rule lives once.
+
+    Empty for a host whose only row is written by hand (`side-effects`), which
+    is a host with nothing to render rather than a mistake. */
+export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
+  return HUB_ROWS.filter((row) => row.home === host);
 }
 
 /** Which row fronts each finishable group's finish.

@@ -21,6 +21,7 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import HostedRows from '$lib/components/HostedRows.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -273,8 +274,12 @@
       <!-- Moved off the More hub by phase 9 carpet ticket 16. Every other row
            in this card is a decision about how journaling works for you, and
            a ready-made shape for an entry is one of those - it was on the hub
-           beside logs of things that happened, which is not what it is. -->
-      <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} subtitle={m.hub_sub_entry_templates()} href="/practice/entry-templates" />
+           beside logs of things that happened, which is not what it is.
+
+           Joins this card rather than making one of its own, so `card` is
+           off: hiding the templates area takes the row out and leaves the
+           card it sits in alone. -->
+      <HostedRows host="settings" />
     </ListCard>
 
     <!-- ADR-0043: the manual way into cycle tracking, for someone no

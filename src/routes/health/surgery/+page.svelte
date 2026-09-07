@@ -20,6 +20,7 @@
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
+  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -602,11 +603,7 @@
        Matching the typed name against a word list would be a worse answer
        wearing the right one's clothes, in two languages. -->
   {#if procedures.length > 0}
-    <div>
-      <ListCard>
-        <ListRow key="dilation" icon="flask" title={m.dilation()} subtitle={m.hub_sub_dilation()} href="/health/dilation" />
-      </ListCard>
-    </div>
+    <HostedRows host="surgery" card />
   {/if}
 
   <RecordSheet
