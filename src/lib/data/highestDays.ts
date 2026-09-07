@@ -1,13 +1,18 @@
-/* The top days on the person's own euphoria reading (phase 8 features
+/* The top days on one of the person's own readings (phase 8 features
    ticket 20, ADR-0010, ADR-0012).
 
-   euphoria_dysphoria is a dimension on the person's own 0-to-100 scale
-   (ADR-0012), so `byDay` is a `dayAverages('euphoria_dysphoria', ...)`
-   result the caller already fetched - a journal that has never used the
-   dimension hands this an empty array, and there is no fallback to mood
-   to write here.
+   `byDay` is a `dayAverages(key, ...)` result the caller already fetched,
+   for whichever scale the panel is ranking - a scale that has never been
+   logged hands this an empty array.
 
-   `rankHighestDays` is the pure half and the one this ticket's tests hold
+   Which scale that is used to be fixed here at euphoria_dysphoria, and the
+   panel simply did not render for somebody who does not keep it. Phase 9
+   carpet ticket 11 gave the panel a chooser, so the decision moved into
+   `highestMetricKey` rather than out of this module: naming which scale a
+   high day is measured on is still this module's call, and euphoria is
+   still the call it makes until a person says otherwise.
+
+   `rankHighestDays` is the pure half and the one this module's tests hold
    to TDD: sorting is all it does. It still takes `todayEpochDay` and
    drops anything past it, rather than trusting that whatever fetched
    `byDay` already bounded it. Ties break on the more recent day so the same journal
@@ -28,6 +33,27 @@ import type { DayArea, DayRecords } from './journal/day';
 /* HIGHEST_DAYS_CAP stays exported only for its own test (AU-09 test-only
    review). */
 export const HIGHEST_DAYS_CAP = 10;
+
+/** The scale a high day is measured on where nobody has said otherwise.
+    A dimension on the person's own 0-to-100 scale (ADR-0012). */
+export const HIGHEST_DAYS_METRIC = 'euphoria_dysphoria';
+
+/** Which scale the panel ranks by: what the chooser holds, then euphoria,
+    then whatever the screen is already showing.
+
+    The chooser is local to its card, so `chosen` is null on arrival and
+    stays null until somebody moves it - and a choice can outlive the scale
+    it names, since the person can untick a dimension in settings and come
+    back. Both cases end on a key that is actually in `available`. */
+export function highestMetricKey(
+  chosen: string | null,
+  available: string[],
+  fallback: string
+): string {
+  if (chosen && available.includes(chosen)) return chosen;
+  if (available.includes(HIGHEST_DAYS_METRIC)) return HIGHEST_DAYS_METRIC;
+  return fallback;
+}
 
 interface HighestDay {
   epochDay: number;

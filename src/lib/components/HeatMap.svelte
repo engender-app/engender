@@ -231,6 +231,10 @@
           anything landed here at all: which kind, and how many, is the day
           view's own business once it reads `dayAhead` too (ticket 62). */
       hasMark: boolean;
+      /** Whether an empty cell opens a new entry for the day (ticket 99 item
+          13): true for today and every day behind it, never for a day still
+          ahead, since there is nothing yet to log there. */
+      isPastOrToday: boolean;
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;
@@ -273,7 +277,8 @@
         eraName: covering?.era.name ?? null,
         eraMark: covering?.role.mark ?? null,
         highlightMark: highlight && highlightedDays.has(epochDay) ? highlight.role.mark : null,
-        hasMark
+        hasMark,
+        isPastOrToday: epochDay <= today
       });
     }
     return { startDow, days: out };
@@ -314,6 +319,15 @@
            `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
            this cell only says that there is something. -->
       <a class="cal-day has-mark press" data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+        {@render swatch(c)}
+        <span class="cal-num">{c.day}</span>
+      </a>
+    {:else if c.isPastOrToday}
+      <!-- A past or today cell with nothing on it opens a new entry for
+           that day (ticket 99 item 13) - the same route the "+" affordances
+           elsewhere in the app seed a day for, rather than leaving an empty
+           cell with nothing to tap. -->
+      <a class="cal-day press" data-hm-cell-empty class:is-today={c.isToday} href="/entry/new/{c.epochDay}" aria-label={c.label}>
         {@render swatch(c)}
         <span class="cal-num">{c.day}</span>
       </a>
@@ -487,6 +501,17 @@
     position: absolute;
     inset: 0;
     border-radius: var(--r);
+    /* The month recolours rather than cutting when the metric changes
+       (ticket 99 item 22, "there should be some animation when switching
+       from mood to another metric in calendar"). Every cell's fill is the
+       one thing that actually differs between two metrics over the same
+       month - the grid, the dates and the marks all stay - so the change
+       has nothing to reveal and everything to restate, and a transition on
+       the fill is the whole of it. Cheaper than the alternative, too: the
+       month is a live read, so keying it to replay a wipe would remount
+       thirty-odd cells and re-ask the journal for a picture it already has.
+       --dur-med and --ease-out are the tier-3 pair, and the reduced-motion
+       clamp in base.css takes both to 1ms without this rule knowing. */
     /* The empty cells carry the same edge the shaded ones get from their
        fill, so a month reads as a grid rather than as scattered colour - and
        so a day with nothing logged is still a day. It is what separates one
@@ -495,6 +520,13 @@
   }
   .cal-card { left: calc(var(--card) * -3px); }
   .cal-swatch { background: var(--heat-0); }
+  /* Every piece of a cell that carries a fill, in one rule: the swatch, the
+     stacked cards of a deck behind it, and a split day's two halves. */
+  .cal-card,
+  .cal-swatch,
+  .cal-half {
+    transition: background-color var(--dur-med) var(--ease-out);
+  }
 
   /* A split is two pieces laid over each other rather than two halves butted
      together, which is the detail Alicja read off Daylio's month on

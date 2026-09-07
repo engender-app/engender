@@ -99,6 +99,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
+  import { disclose } from '$lib/motion/reveal';
 
   /** One page of hits, and what the "show more" control asks for again. */
   const PAGE = 30;
@@ -414,7 +415,14 @@
     <!-- Offered once a query has actually run, never for a blank box - a
          question nobody has asked yet is not worth naming (the ticket's
          own line). -->
-    <button class="btn btn-soft" data-search-save onclick={() => (savingOpen = true)}>
+    <!-- `disclose`, because this arrives in the middle of a screen the
+         person is reading rather than with the screen: typing the first
+         character inserted a full-height button between the box and the
+         results in one frame and shoved everything under it down to meet
+         it (ticket 99 item 14, "searching happens with an extra yank").
+         DIRECTION.md names exactly this - an insertion opens its own
+         height instead of making everything below it jump. -->
+    <button class="btn btn-soft" data-search-save transition:disclose onclick={() => (savingOpen = true)}>
       <Icon name="bookmark" size={20} /><span>{m.saved_question_save()}</span>
     </button>
   {/if}
@@ -423,7 +431,7 @@
     <!-- A draw from the question currently being asked, not a mode of its
          own (spec.md's own line) - absent with nothing asked, which
          `hits.length` already says without a second `hasCriteria` check. -->
-    <button class="btn btn-soft search-random" data-search-random onclick={drawRandom}>
+    <button class="btn btn-soft search-random" data-search-random transition:disclose onclick={drawRandom}>
       <Icon name="shuffle" size={20} /><span>{m.random_draw_label()}</span>
     </button>
   {/if}
@@ -433,7 +441,11 @@
       <!-- Nothing typed yet, so the screen says what it can find rather than
            drawing an empty result area. -->
       <Notice icon="search" key="search-idle" text={m.search_try()} />
-      <p class="search-hint">{m.search_hint()}</p>
+      <!-- Out only, and matching the notice above it: the notice collapses
+           through its own `disclose` while this line vanished in a single
+           frame beside it, so the pair left in two different ways at once
+           (the other half of ticket 99 item 14). -->
+      <p class="search-hint" out:disclose>{m.search_hint()}</p>
     {:else if loading}
       <Skeleton variant="card" count={3} />
     {:else if !foundNothing}

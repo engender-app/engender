@@ -501,6 +501,49 @@ test('two episodes in effect on the last day of the range leave nothing to compa
   assert.equal(result.reason, 'multipleEpisodes');
 });
 
+test('a drug names which of several active episodes the comparison picks (ticket 15)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const estradiolId = await injectableEpisode(journal, 19000, 'estradiol');
+  const spiroId = await injectableEpisode(journal, 19000, 'spironolactone');
+  await journal.doses.upsertSchedule({
+    episodeId: estradiolId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+
+  const estradiolResult = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003, drug: 'estradiol' });
+  assert.ok(estradiolResult.reason === null);
+  assert.equal(estradiolResult.activeEpisode.id, estradiolId);
+
+  // spironolactone has no schedule of its own, so naming it answers that
+  // reason rather than falling through to estradiol's.
+  const spiroResult = await journal.doses.getComparison({ fromEpochDay: 19000, toEpochDay: 19003, drug: 'spironolactone' });
+  assert.equal(spiroResult.reason, 'noSchedule');
+  assert.ok(spiroResult.reason === 'noSchedule');
+  assert.equal(spiroResult.activeEpisode.id, spiroId);
+});
+
+test('a drug matching no active episode falls back to the ordinary rule (ticket 15)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const episodeId = await injectableEpisode(journal, 19000, 'estradiol');
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 1 },
+    dosesPerDay: 1,
+    doseAmounts: null
+  });
+
+  const result = await journal.doses.getComparison({
+    fromEpochDay: 19000,
+    toEpochDay: 19003,
+    drug: 'testosterone'
+  });
+
+  assert.ok(result.reason === null);
+  assert.equal(result.activeEpisode.id, episodeId);
+});
+
 test('no episode in effect on the last day of the range leaves nothing to compare', async () => {
   const { journal } = await journalWithBuiltIns();
   await injectableEpisode(journal, 19000, 'estradiol', 19001);

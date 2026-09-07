@@ -184,7 +184,18 @@
        or stock count yet gets no rail - and while this block sat inside that
        branch the screen answered "nothing to put on the line" without ever
        naming the regimen that was running. -->
-  {#if activeEpisode}
+  <!-- Held until every read the rail waits on has answered, not just the
+       episode read this block itself needs (ticket 99 item 42, "the 'doses,
+       draws and stock' fades in a little too yankily"). The rail below is
+       gated on all six; this block was gated on one, so it appeared a
+       couple of hundred milliseconds earlier and inserted 66px *above* the
+       skeleton that was still standing in for the rail. The card then
+       crossfaded in while the whole block was travelling down the screen,
+       which is what read as a yank rather than a fade - the fade itself was
+       always clean. Still outside the rail's own branch, which is what its
+       comment above is about: a regimen with nothing to draw yet is named
+       either way. -->
+  {#if !loading && activeEpisode}
     <a class="care-regimen" href="/settings/regimen" data-care-regimen>
       <span class="care-regimen-lines">
         <span class="care-regimen-drug">{activeEpisode.drug}</span>
@@ -198,7 +209,7 @@
       </span>
       <Icon name="chevronRight" size={22} cls="care-regimen-go" />
     </a>
-  {:else if severalRegimens}
+  {:else if !loading && severalRegimens}
     <!-- No single regimen to name, so nothing is named. This is a note about
          why the rail has no next-dose mark, at the size a note is: the
          display line above belongs to a drug's name, and a sentence set in

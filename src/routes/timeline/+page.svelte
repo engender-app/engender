@@ -20,6 +20,7 @@
      colour carries a meaning - and it is a fact about time, not a judgement,
      so ADR-0012 has nothing to say about it. */
   import { m } from '$lib/paraglide/messages';
+  import { goto } from '$app/navigation';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
@@ -82,18 +83,25 @@
           <div class="tl-item" class:is-future={item.future} data-tl-item={item.milestone.id}>
             <span class="tl-dot"></span>
             <div class="tl-body">
-              <div class="tl-head">
-                <span class="tl-name" data-tl-name>{item.milestone.name}</span>
-                {#if item.future}<span class="tl-count">{statusOf(item.milestone)}</span>{/if}
-              </div>
-              <span class="tl-date">
-                {fmtDay(item.milestone.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{item.future
-                  ? ''
-                  : ` · ${statusOf(item.milestone)}`}
-              </span>
-              {#if item.milestone.photo}
-                <div class="tl-photo"><PhotoThumb photo={item.milestone.photo} size={88} /></div>
-              {/if}
+              <button
+                type="button"
+                class="tl-body-link"
+                data-tl-open
+                onclick={() => goto(`/transition/milestones?edit=${item.milestone.id}`)}
+              >
+                <div class="tl-head">
+                  <span class="tl-name" data-tl-name>{item.milestone.name}</span>
+                  {#if item.future}<span class="tl-count">{statusOf(item.milestone)}</span>{/if}
+                </div>
+                <span class="tl-date">
+                  {fmtDay(item.milestone.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{item.future
+                    ? ''
+                    : ` · ${statusOf(item.milestone)}`}
+                </span>
+                {#if item.milestone.photo}
+                  <div class="tl-photo"><PhotoThumb photo={item.milestone.photo} size={88} /></div>
+                {/if}
+              </button>
               {#if origin}
                 <p class="tl-provenance muted small">
                   {origin.text}
@@ -198,6 +206,22 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-card);
     padding: var(--space-4);
+  }
+
+  /* Wraps everything but the provenance line - the row's own click target
+     (ticket 99 item 4), kept out of the provenance <a> so the two never
+     nest. */
+  .tl-body-link {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
   }
 
   .tl-head {

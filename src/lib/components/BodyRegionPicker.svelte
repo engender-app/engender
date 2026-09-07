@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { slide } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN, feelingToSliderValue, sliderToFeeling } from '$lib/data/bodyMap';
-  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { disclose } from '$lib/motion/reveal';
   import DimensionSlider from './DimensionSlider.svelte';
   import type { BodyRegionFeeling } from '$lib/data/types';
 
@@ -38,10 +37,15 @@
     {/each}
   </div>
   {#each regions.filter((r) => r.id in values) as r (r.id)}
-    <div
-      class="body-region-feeling"
-      transition:slide={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}
-    >
+    <!-- `disclose`, not svelte/transition's `slide` (ticket 99 item 20,
+         "body map sliders come out with a very slight yank, they also hide
+         like that"). `slide` animates height and padding and leaves margin
+         alone, and this row carries 16px of margin-top - so the box
+         travelled smoothly and then gained or lost that 16px in the single
+         frame at the end. `disclose` is this app's own answer to exactly
+         that, margin and border included, and it is what every other
+         opening box here already uses. -->
+    <div class="body-region-feeling" transition:disclose>
       <DimensionSlider
         dim={{
           name: m.body_region_axis_slider({ region: r.name, axis: m.dim_euphoria_dysphoria() }),
