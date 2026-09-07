@@ -39,7 +39,7 @@
    belt and braces on a safety feature rather than a duplicate check. */
 
 import { parseMotifStripes } from '$lib/motion/flagSun';
-import { readFlagFill, readFlagRoles, type Role } from './roles';
+import { flagField, readFlagFill, readFlagRoles, type FlagField, type Role } from './roles';
 
 export const activeFlag = $state<{
   /** `--motif-stripes` in stripe order, exactly as the palette writes it. */
@@ -51,7 +51,22 @@ export const activeFlag = $state<{
   roles: Role[];
   /** The whole flag as one CSS fill. */
   fill: string;
-}>({ stripes: [], dark: true, roles: [], fill: 'none' });
+  /** The door's field: the flag's second colour and its ink (phase 10,
+      rule 3), or nothing under disguise. Also published on `<html>` as
+      `--field` and `--field-ink`, so a stylesheet can paint the field
+      without a component reading the stripes for itself; ticket 23 is
+      what paints it. */
+  field: FlagField | undefined;
+}>({ stripes: [], dark: true, roles: [], fill: 'none', field: undefined });
+
+/** Under disguise the field falls to the page's own second surface and its
+    ink to the text colour (DIRECTION.md rule 3), so a screen that paints
+    `--field` shows a grey header rather than a flag colour. */
+function publishField(doc: Document, field: FlagField | undefined): void {
+  const style = doc.documentElement.style;
+  style.setProperty('--field', field?.hex ?? 'var(--surface-2)');
+  style.setProperty('--field-ink', field?.ink ?? 'var(--text)');
+}
 
 /** Re-read the flag from the document. Called from the shell, right after the
     palette and the theme land on <html>.
@@ -64,7 +79,9 @@ export function refreshActiveFlag(doc: Document = document, disguised = false): 
     activeFlag.stripes = [];
     activeFlag.roles = [];
     activeFlag.fill = 'none';
+    activeFlag.field = undefined;
     activeFlag.dark = doc.documentElement.dataset.theme === 'dark';
+    publishField(doc, undefined);
     return;
   }
 
@@ -76,4 +93,6 @@ export function refreshActiveFlag(doc: Document = document, disguised = false): 
   // second copy of either here is a second thing to keep in step.
   activeFlag.roles = readFlagRoles(doc);
   activeFlag.fill = readFlagFill(doc);
+  activeFlag.field = flagField(activeFlag.stripes, doc.documentElement.dataset.palette);
+  publishField(doc, activeFlag.field);
 }

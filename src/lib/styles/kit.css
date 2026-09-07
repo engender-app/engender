@@ -277,11 +277,12 @@
    a pixel to the row's height, and it draws under the last row unless a
    second rule removes it. An inset ::before does neither.
 
-   --hairline rather than --border, which is what the three border-based
-   rows were still using: a separator inside a surface is exactly what
-   --hairline is for (palettes.css). --border is --text at 24% where
-   --hairline is 14%, so those rows had been drawing a visibly heavier line
-   than the same separator one card over. */
+   --hairline rather than the old --border, which is what the three
+   border-based rows were still using: a separator inside a surface is
+   exactly what --hairline is for (palettes.css). --border was --text at
+   24% where --hairline is 14%, so those rows had been drawing a visibly
+   heavier line than the same separator one card over; phase 10 retired
+   --border altogether. */
 .kit-row + .kit-row::before,
 .rows-divide + .rows-divide::before {
   content: '';
@@ -1347,11 +1348,12 @@ a.kit-entry:active {
 
 /* ---------- notice ----------
 
-   One outline, no coloured bar down its side. A 4px accent border-left is
-   named in the craft floor as the single most recognisable AI-UI tell, and
-   the slop audit took it off the backup notice this replaces. The notice
-   earns its weight from --outline-strong instead: the same line as a card,
-   one step darker. */
+   Flush on the page between two hairlines, with a 40px square of ink as
+   its mark (phase 10, rule 4). No coloured bar down its side: a 4px accent
+   border-left is named in the craft floor as the single most recognisable
+   AI-UI tell, and the slop audit took it off the backup notice this
+   replaces. It had an outline one step darker than a card's until the
+   cards went; the app talking about itself borrows no stripe and no box. */
 .kit-notice {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1930,9 +1932,9 @@ a.kit-entry:active {
    is a stadium: the corner arc runs the full height of the box, so the first
    and last rows lose their horizontal padding to the curve and sit against
    the edge, however much padding is declared (Alicja, 2026-09-01: "the text
-   almost overlaps with the edges"). --radius-md is the corner the app's
-   buttons and rows take, it holds its padding at any height, and on a
-   single-line readout 14px still reads as a chip.
+   almost overlaps with the edges"). --r-block is the one corner the app
+   has (phase 10, rule 5); it holds its padding at any height, and on a
+   single-line readout 6px still reads as a chip.
 
    What it does not get is a shadow. It can still land close to a mark even
    once picking its own corner (two series' marks pulling the choice two

@@ -56,6 +56,17 @@ const SCREENS = [
   ['home', '/', '[data-home-header]'],
   ['stats', '/stats', '[data-list-row="words"], [data-chart-card="highest-days"]']
 ];
+/* Ticket 07's sweep shoots more than the two: `--routes name=/path,...`
+   replaces the list, waiting on the shell's boot mark rather than on a
+   screen-specific handle, so a screen this ticket never opened can be
+   rendered without teaching the script what is on it. */
+if (flag('routes', null)) {
+  SCREENS.length = 0;
+  for (const pair of flag('routes').split(',')) {
+    const [name, path] = pair.split('=');
+    SCREENS.push([name, path, '[data-app-root][data-boot="ready"]']);
+  }
+}
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
