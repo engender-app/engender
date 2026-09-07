@@ -1489,8 +1489,10 @@ try {
 
   /* Ticket 22: the hub's own groups and rows, met once here and once more on
      the hub - the same headings the More screen draws, in the same order. */
+  /* Support and Media are left off this step (Alicja, sign-off): neither is
+     something a person tracks. */
   const areaHeadings = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
-  if (areaHeadings.join() !== ['Body', 'Health', 'Transition', 'Support', 'Media'].join()) {
+  if (areaHeadings.join() !== ['Body', 'Health', 'Transition'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
