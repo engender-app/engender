@@ -30,6 +30,7 @@
   import { MOOD_RANGE } from '$lib/data/metricRange';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import {
     WRAPPED_AREA_ROLE,
     nativeValue,
@@ -103,7 +104,13 @@
     return `${fmtDay(point.x, short)} - ${fmtDay(point.x + GRAIN_WEEK_SPAN, short)}`;
   };
 
-  let insightRows = $derived(tagInsightRows(insights, metricKey(prefs)));
+  /* Which scale the insight bars are of, named once in the heading. The
+     rows carry only their counts (wrappedDisplay.ts): a wrapped draws these
+     against whichever metric the preference held, and unlike /stats it has
+     no picker for the heading line to hold, because a retrospective cannot
+     change the scale it is a retrospective of. */
+  let metric = $derived(metricKey(prefs));
+  let insightRows = $derived(tagInsightRows(insights, metric));
   let tally_rows = $derived(tallyRows(tally));
 </script>
 
@@ -172,7 +179,9 @@
 {/if}
 
 {#if insightRows.length}
-  <ChartCard heading={m.tag_insights()} kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+  <ChartCard
+    heading={m.tag_insights_of({ metric: vocabulary.metricNameOf(metric) })}
+    kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={insightRows} />
   </ChartCard>
   <p class="wrapped-note">{m.insights_note()}</p>
