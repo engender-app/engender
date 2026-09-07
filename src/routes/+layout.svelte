@@ -44,6 +44,7 @@
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
+  import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
@@ -542,6 +543,7 @@
   <div
     class="app"
     data-app-root
+    use:hoverHints
     class:disguised={prefs.disguise}
     class:is-chromeless={chromeless}
     data-boot={bootState.status}
