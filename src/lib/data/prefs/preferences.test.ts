@@ -147,6 +147,21 @@ test('a preference this build does not know is left alone rather than crashing t
   ]);
 });
 
+test('a row from before ticket 14 collapsed the per-type dismiss record still reads as dismissed', async () => {
+  // measurementProtocolDismissed was a Partial<Record<string, boolean>>
+  // keyed by measurement type before ticket 14 flattened it to one
+  // boolean. A row already on disk from that shape - any non-empty object,
+  // since the old writer only ever added a `true` entry, never persisted
+  // `{}` - has to keep reading as "dismissed" rather than silently
+  // un-dismissing the notice for someone who already closed it.
+  const driver = await migratedDb();
+  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['measurementProtocolDismissed', '{"waist":true}']);
+
+  const prefs = await openPreferences(driver);
+
+  expect(prefs.get('measurementProtocolDismissed')).toBeTruthy();
+});
+
 test('works without a cache at all, which is what the Node tier and Android boot look like', async () => {
   const prefs = await openPreferences(await migratedDb());
 
