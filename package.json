@@ -32,6 +32,7 @@
     "gallery:roadmap-goal": "VITE_DEMO=1 npm run build && node tests/roadmap-goal-gallery.mjs",
     "gallery:unprompted": "node tests/unprompted-gallery.mjs",
     "gallery:stats": "VITE_DEMO=1 npm run build && node tests/stats-gallery.mjs",
+    "gallery:highest-days": "VITE_DEMO=1 npm run build && node tests/highest-days-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",

@@ -88,7 +88,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Donut from '$lib/components/kit/Donut.svelte';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { rankHighestDays } from '$lib/data/highestDays';
+  import { highestMetricKey, rankHighestDays } from '$lib/data/highestDays';
   import type { Part } from '$lib/charts/parts';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -423,8 +423,9 @@
      arcs add up to or the hole disagrees with the ring around it. */
   let tagUses = $derived(tagParts.reduce((sum, part) => sum + part.amount, 0));
 
-  /* The highest days on the person's own euphoria reading (phase 8 features
-     ticket 20), which shipped its ranking and left the panel here.
+  /* The highest days on one of the person's own readings (phase 8 features
+     ticket 20, which shipped the ranking and left the panel here; phase 9
+     carpet ticket 11, which gave the panel its chooser).
 
      `rankHighestDays` rather than `highestDays`: the async half asks the day
      assembler for each ranked day, which is ten days times nineteen areas of
@@ -432,22 +433,39 @@
      behind the row. So the panel ranks what `seriesQuery` fetched for the
      range - no read of its own at all - and the row opens the day.
 
-     Gated on the dimension being one the person keeps. Nothing falls back to
-     mood: naming which scale a "high day" is measured on is the module's own
-     decision and there is no second scale it means. */
-  const HIGHEST_METRIC = 'euphoria_dysphoria';
-  let euphoriaScale = $derived(metrics.find((mt) => mt.key === HIGHEST_METRIC));
+     The chooser is local to this card and not `selectMetric`, which is the
+     screen's stored preference (Alicja's call, ticket 11). Home's week strip
+     and the calendar's month grid shade by that preference, so a control
+     near the bottom of this screen writing to it would repaint two other
+     screens; re-ranking ten days is not that big a decision. `highestKey` is
+     null until somebody moves it, and `highestMetricKey` decides what null
+     means - euphoria where it is kept, the screen's own scale otherwise. It
+     also drops a choice whose scale has since been unticked in settings.
+
+     No gate on the card any more. It used to render only for somebody
+     keeping euphoria; every journal has mood, so the chooser always has
+     something to offer and somebody who keeps no gender scale still gets
+     their highest mood days. */
+  let highestKey = $state<string | null>(null);
+  let highestRanks = $derived(
+    highestMetricKey(
+      highestKey,
+      metrics.map((each) => each.key),
+      shown.key
+    )
+  );
+  /* `?? shown` is the type's, not a case: every key `highestMetricKey` can
+     answer with came out of `metrics` in the first place. */
+  let highestMetric = $derived(metrics.find((mt) => mt.key === highestRanks) ?? shown);
   let highestRows = $derived<BarRow[]>(
-    euphoriaScale
-      ? rankHighestDays(today, seriesFor(HIGHEST_METRIC)).map((point) => ({
-          key: String(point.day),
-          name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
-          note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
-          value: fmtNativeValue(HIGHEST_METRIC, point.value),
-          amount:
-            (point.value - euphoriaScale.min) / Math.max(euphoriaScale.max - euphoriaScale.min, 1)
-        }))
-      : []
+    rankHighestDays(today, seriesFor(highestMetric.key)).map((point) => ({
+      key: String(point.day),
+      name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
+      note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
+      value: fmtNativeValue(highestMetric.key, point.value),
+      amount:
+        (point.value - highestMetric.min) / Math.max(highestMetric.max - highestMetric.min, 1)
+    }))
   );
 
   const occurrenceLabel = (card: CorrelationCard) =>
@@ -966,32 +984,45 @@
     </ReadGate>
   </ChartCard>
 
-  <!-- The highest days on the person's own euphoria reading (phase 8
+  <!-- The highest days on one of the person's own readings (phase 8
        features ticket 20, which shipped the ranking and left the panel to
-       this screen). Bar rows and not a list, because the reading somebody
-       wants off ten high days is how far apart they were, and ten numbers in
-       a column do not say that. Each row opens its day, which is where the
-       rest of what happened already lives.
+       this screen; phase 9 carpet ticket 11, which gave it the chooser).
+       Bar rows and not a list, because the reading somebody wants off ten
+       high days is how far apart they were, and ten numbers in a column do
+       not say that. Each row opens its day, which is where the rest of what
+       happened already lives.
 
-       Absent entirely where the person does not keep that scale: there is no
-       fallback to mood, and inventing one would be the app deciding which
-       number a high day is measured on. -->
-  {#if euphoriaScale}
-    <ChartCard
-      heading={m.stats_highest_days()}
-      kind="highest-days"
-      role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
-    >
-      {#if seriesQuery.loading || recapQuery.loading}
-        <Skeleton variant="line" count={3} />
-      {:else if enoughEntries && highestRows.length}
-        <BarRows rows={highestRows} measure="track" onPick={(key) => goto(`/day/${key}`)} />
-        <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
-      {:else}
-        <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
-      {/if}
-    </ChartCard>
-  {/if}
+       The chooser writes `highestKey` and not the screen's stored metric,
+       so ranking these ten days by femininity does not also repaint Home's
+       week strip and the calendar's month grid. -->
+  <ChartCard
+    heading={m.stats_highest_days()}
+    kind="highest-days"
+    role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+  >
+    {#snippet control()}
+      <ChartPicker
+        key="highest-metric"
+        label={m.stats_highest_days()}
+        value={highestMetric.key}
+        options={metricOptions}
+        onPick={(value) => (highestKey = value)}
+      />
+    {/snippet}
+    {#if seriesQuery.loading || recapQuery.loading}
+      <Skeleton variant="line" count={3} />
+    {:else if enoughEntries && highestRows.length}
+      <BarRows
+        rows={highestRows}
+        measure="track"
+        form="inline"
+        onPick={(key) => goto(`/day/${key}`)}
+      />
+      <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
+    {:else}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+    {/if}
+  </ChartCard>
 
   <ChartCard
     heading={m.interval_mood_title()}

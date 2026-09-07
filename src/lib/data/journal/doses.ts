@@ -150,8 +150,13 @@ export interface DosesArea {
 
       The slots are anchored on the episode's own start day, so an
       every-N-days rhythm belongs to the episode rather than shifting with
-      the range. */
-  getComparison(params: { fromEpochDay: number; toEpochDay: number }): Promise<DoseScheduleComparison>;
+      the range.
+
+      `drug` narrows which of several concurrently active episodes counts as
+      the one in effect (phase 9 UX carpet ticket 15) - omitted or matching
+      none of them, the comparison falls back to its original rule: the sole
+      active episode, or `multipleEpisodes` when more than one qualifies. */
+  getComparison(params: { fromEpochDay: number; toEpochDay: number; drug?: string }): Promise<DoseScheduleComparison>;
   /** The day of the most recent dose at or before `todayEpochDay`, or null
       if there is none (phase 8 features ticket 03, lastWrite.ts). The table
       stores a `timestamp`, not an `epoch_day`, so the bound is the start of
@@ -569,7 +574,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       await driver.run('DELETE FROM dose_pause WHERE uuid = ?', [id]);
     },
 
-    async getComparison({ fromEpochDay, toEpochDay }) {
+    async getComparison({ fromEpochDay, toEpochDay, drug }) {
       const [episodes, doses, schedules, pauses] = await Promise.all([
         regimen.getEpisodes(),
         area.getDoses(fromEpochDay, toEpochDay),
@@ -580,10 +585,16 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       /* Concurrent episodes for different drugs make this two (phase 5
          ticket 38), and then there is no single schedule to compare
          against - the same answer as none at all as far as the comparison
-         goes, worded apart because the two read differently on screen. */
+         goes, worded apart because the two read differently on screen.
+         `drug` (phase 9 UX carpet ticket 15) narrows to the episode a
+         screen's own picker chose; a `drug` naming none of the active
+         episodes falls back to the full list rather than reporting nothing
+         active, since a stale pick is not the same fact as no episode. */
       const active = activeEpisodesAt(episodes, startOfDayTimestamp(toEpochDay));
-      if (active.length > 1) return { reason: 'multipleEpisodes' };
-      const activeEpisode = active[0];
+      const matchingDrug = drug === undefined ? active : active.filter((episode) => episode.drug.trim() === drug.trim());
+      const resolvedActive = matchingDrug.length > 0 ? matchingDrug : active;
+      if (resolvedActive.length > 1) return { reason: 'multipleEpisodes' };
+      const activeEpisode = resolvedActive[0];
       if (!activeEpisode) return { reason: 'noEpisode' };
 
       const schedule = schedules.find((s) => s.episodeId === activeEpisode.id);

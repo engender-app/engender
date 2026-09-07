@@ -72,6 +72,12 @@
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
   --role-mark: var(--role-mark-in, var(--role-ink));
+  /* What a label written on --role-draw is drawn in: the role's own answer
+     where a screen handed one over, and --on-accent where it did not, which
+     is the on-colour of the fill --role-c falls back to. No formula of our
+     own here - a ratio against the undiluted stripe is not something CSS
+     can work out, which is why it is computed in roles.ts and handed in. */
+  --role-fill-ink: var(--role-fill-ink-in, var(--on-accent));
   /* Fills are the flag's own stripe, undiluted by any contrast floor: a
      tinted disc and a shaded week cell carry no information and sit under
      nothing that has to be read, so nothing about them owes a ratio. This
@@ -2121,6 +2127,21 @@ a.kit-entry:active {
 .kit-bars {
   display: grid;
   gap: var(--space-2);
+  /* The entrance, held here because two rules draw it now: the mark paints
+     itself in the stacked form and a fill inside the mark paints it in the
+     inline one, where the mark has to stay unscaled to hold a label. The
+     numbers themselves are Alicja's, 2026-08-28: "longer fade in animation,
+     more ease-out" - longer than --dur-slow and a harder decelerate than
+     --ease-out, on purpose rather than borrowed, and kept off those two so
+     every press in the app does not inherit a bar's settling time. */
+  --dur-bar-in: 600ms;
+  --ease-bar-in: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Capped, because the index is a row's place in the set and a set can be
+     long: the values list is one row per day, and at 365 rows an uncapped
+     stagger is eighteen seconds of bars arriving. Twelve steps is the point
+     where a set reads as arriving in order rather than as arriving at
+     once. */
+  --bar-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
 }
 
 /* A bar row that opens what is behind it (the Stats hub's tag insights).
@@ -2226,19 +2247,11 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
   transform: scaleX(1);
   transform-origin: left center;
-  /* Longer than --dur-slow and a harder decelerate than the shared
-     --ease-out, on purpose rather than borrowed: a bar growing from nothing
-     is the one drawing in the kit with no value to answer to while it
-     moves, so it can spend longer settling than a control ever could
-     (Alicja, 2026-08-28: "longer fade in animation, more ease-out"). Kept
-     local rather than folded into --ease-out itself, which every press and
-     transition in the app also reads. */
-  animation: kit-bar-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  /* Capped, because the index is a row's place in the set and a set can be
-     long: the values list is one row per day, and at 365 rows an uncapped
-     stagger is eighteen seconds of bars arriving. Twelve steps is the point
-     where a set reads as arriving in order rather than as arriving at once. */
-  animation-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
+  /* A bar growing from nothing is the one drawing in the kit with no value
+     to answer to while it moves, so it settles longer than a control ever
+     could. The two numbers are on .kit-bars, which both painters read. */
+  animation: kit-bar-in var(--dur-bar-in) var(--ease-bar-in) both;
+  animation-delay: var(--bar-delay);
   transition-property: width;
   transition-duration: var(--dur-slow);
   transition-timing-function: var(--ease-out);
@@ -2256,6 +2269,127 @@ a.kit-entry:active {
 
 .kit-bar-mark.is-leader {
   background: var(--role-draw);
+}
+
+/* The inline row: the bar is the row, and the day is written on it (phase
+   9 UX carpet ticket 11).
+
+   The highest days card is what this exists for. Ten days ranked on one
+   0-to-100 scale come out within a few points of each other, so ten
+   full-width tracks under ten lines of text were ten near-identical lengths
+   costing 870px at 390px wide, which is more than a viewport for a list of
+   ten numbers. Here the bar carries the day instead of standing under it,
+   and the set reads as one stack rather than as ten drawings.
+
+   36px of bar and nothing else in the row. The set's own gap goes to zero,
+   and it was never what took the room: it was --space-2, against a row of
+   48px whose bar was ten of them. What took the room is the label needing a
+   line of its own.
+
+   The row still owes the 48dp touch floor, so what is left over is the only
+   space between one bar and the next: 12px. That is the one direction this
+   form cannot be pushed further - a shorter bar is a wider gap, because the
+   row underneath it cannot shrink (Alicja, 2026-09-07: "the bar just a
+   little smaller in terms of height please. a little tighter" - 40px was
+   the first answer and read heavy).
+
+   The bar keeps its honest `track` measure: its length is the reading's
+   place on the whole scale, not its share of the day at the top. The value
+   column beside it is fixed, so every bar starts and ends on the same two x
+   positions and two days on the same reading draw the same length. Each row
+   is its own grid - a pressable row is a button, and a button cannot be
+   `display: contents` without losing its box and its press wash - and
+   subgrid is out at the WebView 87 floor, so a shared geometry has to be a
+   fixed width rather than a shared track. 3.5em holds four tabular figures,
+   and the column gap absorbs a fifth before anything touches the bar. */
+.kit-bars.is-inline {
+  gap: 0;
+}
+
+.kit-bars.is-inline .kit-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5em;
+  align-items: center;
+  column-gap: var(--space-3);
+  padding-block: 0;
+  min-height: var(--touch-target);
+  font-size: var(--text-sm);
+}
+
+.kit-bars.is-inline .kit-bar-track {
+  position: relative;
+  display: block;
+  grid-column: 1;
+  height: 36px;
+  margin-top: 0;
+}
+
+/* The mark stops being the painted thing and becomes the window: it holds
+   the width, the width transition and the entrance, and clips everything
+   drawn inside it, and it paints itself. An inner element held the paint
+   while the entrance was a scale, because a label inside something being
+   scaled is a label being stretched; a clip needs no such thing.
+
+   So the entrance is a clip and not a scale, which is the other thing this
+   form needs of it. Growing the fill inside a mark already at its full
+   width leaves the clipped label sitting over bare card for the length of
+   the animation, in an ink chosen for the stripe - on trans's dark theme,
+   near-black words on a near-black card, doubled over the card's own copy
+   of them underneath. Clipping the mark moves the paint and the words
+   together, so at every frame the label is only ever on the ground it was
+   proven against. What that looks like is the point rather than the price:
+   the words are on the card until the bar reaches them and switch ink where
+   it passes under them, left to right, once. `round` on the inset, or the
+   growing bar's leading edge is square until the last frame. */
+.kit-bars.is-inline .kit-bar-mark {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--bar-share) * 1%);
+  height: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--role-draw);
+  animation: kit-bar-reveal var(--dur-bar-in) var(--ease-bar-in) both;
+  animation-delay: var(--bar-delay);
+}
+
+@keyframes kit-bar-reveal {
+  from { clip-path: inset(0 100% 0 0 round var(--radius-md)); }
+  to { clip-path: inset(0 round var(--radius-md)); }
+}
+
+
+/* The day and its note, at the same place in the row whichever copy this
+   is: the one on the card and the one the mark clips have to land on the
+   same pixel or the words look doubled at the bar's end. */
+.kit-bars.is-inline .kit-bar-inside {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.kit-bars.is-inline .kit-bar-mark .kit-bar-inside,
+.kit-bars.is-inline .kit-bar-mark .kit-bar-name,
+.kit-bars.is-inline .kit-bar-mark .kit-bar-note {
+  color: var(--role-fill-ink);
+}
+
+.kit-bars.is-inline .kit-bar-note {
+  margin-top: 0;
+  line-height: 1.2;
+}
+
+/* Right, so the figures line up on their last digit down the card: the
+   column is fixed and 85 is a character narrower than 100. */
+.kit-bars.is-inline .kit-bar-value {
+  grid-column: 2;
+  margin-left: 0;
+  text-align: right;
 }
 
 /* --- a year of moods ---
