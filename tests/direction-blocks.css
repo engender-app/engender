@@ -1,0 +1,518 @@
+/* Direction B, "Blocks": the flag as solid blocks, set sharp.
+
+   Colour is spent as content: a tile is the stripe itself, undiluted, with
+   its number written on it in the fill's own ink; an icon sits on a solid
+   square of its stripe; a day's date bar is a solid band. Everything else
+   is flush on the page - no cards, no tints - and sections are divided by
+   a 3px rule in the text colour under a heading set large. Corners are
+   6px, the segmented control is a square track with an inverted active
+   segment, and the sun's rings are separated by the page rather than by a
+   line, the way a printed target is.
+
+   Laid over the built app by tests/direction-swing-gallery.mjs. Nothing
+   here ships. */
+
+/* ---------- rhythm: 8 under a heading, 20 between blocks, 40 over ---------- */
+.screen > *,
+.screen > .screen-part > *,
+.home > * {
+  margin-bottom: 20px !important;
+}
+.kit-heading,
+.screen > .kit-heading,
+.screen > .screen-part > .kit-heading,
+.home > .kit-heading {
+  padding: 12px 0 0 !important;
+  margin: 40px 0 12px !important;
+  border-top: 3px solid var(--text);
+}
+.screen-header + .kit-heading,
+.home-header + .kit-heading,
+.kit-heading:first-child {
+  margin-top: 16px !important;
+}
+.screen > .screen-header,
+.home > .home-header {
+  margin-bottom: 0 !important;
+}
+.home > .kit-strip {
+  margin-bottom: 10px !important;
+}
+.screen > :last-child,
+.screen > .screen-part > :last-child {
+  margin-bottom: 0 !important;
+}
+[data-kit-surface] + [data-kit-surface] {
+  margin-top: 20px !important;
+}
+:is(.segmented, .stats-caption) + [data-kit-surface] {
+  margin-top: 28px !important;
+}
+
+/* ---------- type: 48 / 28 / 16 ---------- */
+.kit-heading h2 {
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1.05 !important;
+}
+.kit-heading-action {
+  color: var(--text) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
+.kit-chart-head h3 {
+  font-family: var(--font-body) !important;
+  font-size: 17px !important;
+  font-weight: var(--weight-bold) !important;
+  letter-spacing: 0 !important;
+}
+
+/* ---------- Today's header: type in ink, the sun drawn with gaps ---------- */
+.home-header {
+  padding: calc(60px + var(--inset-top)) 20px 20px !important;
+}
+.home-hero {
+  color: var(--text) !important;
+  font-size: clamp(1.7rem, 13cqw, 3rem) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 0.95 !important;
+}
+.home-hello,
+.home-count {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--text) !important;
+}
+.home-count {
+  color: var(--text-2) !important;
+}
+/* Each ring is set off from the one outside it by a gap of page: the flag
+   as a printed target. Every ring keeps its own hex. */
+.sun i {
+  outline: 5px solid var(--bg);
+}
+.direction-gear {
+  position: absolute;
+  top: calc(8px + var(--inset-top));
+  left: 8px;
+  color: var(--text);
+}
+
+/* ---------- a door with a title ---------- */
+.screen > .screen-header {
+  padding: 28px 0 8px !important;
+}
+.screen-title {
+  font-size: 3rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 0.95 !important;
+}
+.screen-subtitle {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  margin-top: 6px !important;
+}
+
+/* ---------- surfaces: flush, or solid ---------- */
+.kit-list,
+.kit-day,
+.kit-chart,
+.kit-panel,
+.card {
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.kit-list {
+  border-top: 1px solid var(--hairline) !important;
+  border-bottom: 1px solid var(--hairline) !important;
+}
+.kit-chart {
+  padding: 0 !important;
+}
+.kit-chart + .kit-chart {
+  border-top: 1px solid var(--hairline) !important;
+  padding-top: 20px !important;
+}
+/* The app talking about itself has no block: the notice is text on the
+   page between two hairlines, like a list, with a small ink square as its
+   mark. Second round: the inverted block read too loud. */
+.kit-notice {
+  background: none !important;
+  color: var(--text) !important;
+  border: 0 !important;
+  border-top: 1px solid var(--hairline) !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  border-radius: 0 !important;
+  padding: 14px 0 !important;
+}
+.kit-notice-title {
+  color: var(--text) !important;
+  font-size: 17px !important;
+}
+.kit-notice-text {
+  color: var(--text-2) !important;
+  font-size: 15px !important;
+}
+.kit-notice-x {
+  color: var(--text-2) !important;
+}
+.kit-notice-ico {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 6px !important;
+  background: var(--text) !important;
+  color: var(--bg) !important;
+  border: 0 !important;
+}
+.kit-notice-act {
+  color: var(--text) !important;
+}
+.kit-row-ico {
+  border-radius: 6px !important;
+  background: var(--role-draw) !important;
+  color: var(--role-fill-ink) !important;
+  border: 1px solid var(--outline) !important;
+}
+.kit-row {
+  padding: 10px 4px 10px 0 !important;
+}
+/* A live tile is a block of its stripe: the title at 19px bold and the
+   value at 40px both sit on the flag's own hex in the block's ink, and
+   both are large text, so every band is legal at 3:1 (nonbinary's purple,
+   the one that cannot carry small text, is 4.41:1). The note is small, so
+   it sits in a foot of page colour under the block rather than on it.
+   Second round: the first version put only the number on a block and the
+   words loose on the page, which read as scraps. */
+.kit-tile,
+.kit-tile.is-split {
+  background: var(--role-draw) !important;
+  border: 0 !important;
+  outline: 1px solid var(--outline);
+  outline-offset: -1px;
+  border-radius: 6px !important;
+  padding: 16px 18px 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  gap: 6px 12px !important;
+}
+.kit-tile:not(:has(.kit-tile-note)) {
+  padding-bottom: 16px !important;
+}
+.kit-tile-title {
+  color: var(--role-fill-ink) !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+}
+.kit-tile-value {
+  color: var(--role-fill-ink) !important;
+  font-size: 2.5rem !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+  max-width: none !important;
+}
+/* A row-weight tile stacks its title over its value inside the block, so a
+   timer's "9h 0m 12s" is one line beside its Stop button at every width. */
+.kit-tile[data-weight='row'] .kit-tile-main {
+  grid-template-columns: minmax(0, 1fr) !important;
+  row-gap: 2px;
+}
+.kit-tile[data-weight='row'] .kit-tile-title {
+  font-size: 17px !important;
+}
+.kit-tile[data-weight='row'] .kit-tile-value {
+  font-size: 2rem !important;
+  justify-self: start !important;
+}
+/* The note foot is the block's last row and sits on its bottom edge
+   whatever height the grid gave the tile. */
+.kit-tile:not(.is-split) {
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  align-content: stretch !important;
+}
+.kit-tile.is-split {
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  align-content: stretch !important;
+}
+/* A tile with a dismiss and no action keeps its note inside its main
+   link (Tile.svelte), so that link is the column the foot has to reach
+   the bottom of. */
+.kit-tile.is-split {
+  align-items: stretch !important;
+}
+.kit-tile.is-split > .kit-tile-main {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch !important;
+}
+.kit-tile.is-split > .kit-tile-main > .kit-tile-note {
+  grid-row: 3;
+}
+.kit-tile.is-split > .kit-tile-act {
+  align-self: start !important;
+  margin-top: 2px;
+}
+.kit-tile-note {
+  align-self: end;
+  grid-column: 1 / -1;
+  background: var(--bg);
+  color: var(--text-2) !important;
+  font-size: 15px !important;
+  margin: 6px -18px 0 !important;
+  padding: 10px 18px 12px !important;
+  -webkit-line-clamp: 3 !important;
+}
+.kit-tile-value::after,
+.kit-tile-title::after {
+  display: none !important;
+}
+.kit-tile-act.btn {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  border-radius: 6px !important;
+  min-height: 40px !important;
+  padding: 0 16px !important;
+}
+.kit-tile-dismiss {
+  color: var(--role-fill-ink) !important;
+}
+.kit-day-bar {
+  background: var(--role-draw) !important;
+  color: var(--role-fill-ink) !important;
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  letter-spacing: 0.02em !important;
+}
+.kit-day-aside {
+  color: var(--role-fill-ink) !important;
+  opacity: 0.85;
+}
+.kit-entry {
+  padding: 0 4px !important;
+}
+.kit-pill {
+  border-radius: 4px !important;
+  background: var(--role-draw) !important;
+  color: var(--role-fill-ink) !important;
+  border: 1px solid var(--outline) !important;
+}
+/* Flush, like every other block: the moods are five discs on the page
+   between two hairlines. */
+.kit-moods {
+  border-radius: 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--hairline) !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  padding: 14px 0 !important;
+}
+.home-fold {
+  border-radius: 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--hairline) !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  padding-inline: 0 !important;
+}
+.kit-strip-cell {
+  border-radius: 4px !important;
+}
+.kit-strip-day.is-today .kit-strip-cell {
+  outline: 2px solid var(--text) !important;
+}
+
+/* ---------- controls: square track, inverted active ---------- */
+.segmented {
+  border-radius: 8px !important;
+  background: var(--surface-2) !important;
+  padding: 3px !important;
+}
+.segment,
+.segment-pill {
+  border-radius: 6px !important;
+}
+.segment-pill {
+  background: var(--text) !important;
+  border: 0 !important;
+}
+.segment.is-active {
+  color: var(--bg) !important;
+}
+.kit-chart-pick-face {
+  border-radius: 6px !important;
+  border: 2px solid var(--text) !important;
+  background: none !important;
+  height: 28px !important;
+}
+.btn {
+  border-radius: 6px !important;
+}
+.kit-notice-act {
+  border-radius: 6px !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- chart ink: 2 series, 1 guide, 14 bar, square ends ---------- */
+.kit-area-line,
+.kit-area-ring {
+  stroke-width: 2 !important;
+}
+.kit-area-line {
+  stroke-linecap: square !important;
+  stroke-linejoin: miter !important;
+}
+.kit-bar-track,
+.kit-bar-mark {
+  height: 14px !important;
+}
+.kit-bar-mark {
+  border-radius: 2px !important;
+}
+.kit-bars.is-inline .kit-bar-mark {
+  border-radius: 4px !important;
+}
+.kit-dist-mark {
+  border-radius: 2px !important;
+}
+.kit-area-readout {
+  border-radius: 6px !important;
+}
+
+/* ---------- 320px and 200% zoom ----------
+   The sun is the same 350px for every flag, and below 360px that leaves the
+   greeting a column of single words. The sun draws at 0.82 there - a flag's
+   proportions are unchanged by its size - and the header text takes the
+   width that frees. A row-weight tile stacks its value under its title
+   instead of beside it, so "9h 0m 17s" is one line on a block again. */
+@media (max-width: 359px) {
+  .sun {
+    transform: scale(0.82);
+  }
+  .home-header {
+    min-height: calc(175px * 0.82 * var(--sun-breathe-scale) + var(--inset-top)) !important;
+  }
+  .home-hero,
+  .home-hello,
+  .home-count {
+    max-width: calc(100% - 175px * 0.82 * var(--sun-breathe-scale) + 12px) !important;
+  }
+  .kit-tile[data-weight='row'] .kit-tile-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    row-gap: 6px;
+  }
+  .kit-tile[data-weight='row'] .kit-tile-value {
+    justify-self: start !important;
+  }
+}
+@media (max-width: 240px) {
+  .sun {
+    transform: scale(0.6);
+  }
+  .home-header {
+    min-height: calc(175px * 0.6 * var(--sun-breathe-scale) + var(--inset-top)) !important;
+  }
+  .home-hero,
+  .home-hello,
+  .home-count {
+    max-width: 100% !important;
+  }
+  .home-hero {
+    margin-top: calc(175px * 0.6 * var(--sun-breathe-scale) - 40px) !important;
+  }
+}
+
+/* At 200% zoom (about 195px of CSS viewport) two controls break in the app
+   today as well as under this sheet: the notice's three-column grid leaves
+   its text one word per line, and the compact segmented control's six
+   labels overlap because each segment is told to share a width that no
+   longer holds a word. The notice drops its icon square - the title says
+   what it is - and the segmented control stops being compact and scrolls,
+   which is the shape the kit already has for a long set. */
+@media (max-width: 240px) {
+  .kit-notice {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+  .kit-notice-ico {
+    display: none !important;
+  }
+  .kit-notice-body,
+  .kit-notice-act,
+  .kit-notice-cta {
+    grid-column: 1 !important;
+  }
+  .kit-notice-x {
+    grid-column: 2 !important;
+  }
+  .segmented-wrap.is-compact {
+    width: auto !important;
+    max-width: 100%;
+  }
+  .segmented.is-compact {
+    display: inline-flex !important;
+    width: auto !important;
+  }
+  .segmented.is-compact .segment {
+    flex: 0 0 auto !important;
+    padding-inline: 12px !important;
+  }
+}
+
+/* ---------- round two, Alicja's last notes ----------
+   Written as rules for ticket 07 and drawn here only as far as a sheet
+   over the built app can; not re-rendered. */
+
+/* A live tile's block is always a colour of the flag, never one of its
+   shades: on agender the tiles took #1A1A1A and sat as black blocks on a
+   dark page. Ticket 07 hands tiles their role from the chromatic roles
+   only, wrapping; agender has one colour, so every tile is its green. The
+   sheet can only say so per palette. */
+[data-palette='agender'] .kit-tile,
+[data-palette='agender'] .kit-tile.is-split {
+  background: #B9F484 !important;
+}
+[data-palette='agender'] .kit-tile .kit-tile-title,
+[data-palette='agender'] .kit-tile .kit-tile-value {
+  color: #101820 !important;
+}
+
+/* The note foot spans the whole block, whatever shape the tile is: a
+   dismiss-only tile (Safe space) has no action column, so the grid's second
+   column and its gap go, and the foot reaches both edges as it does on the
+   binder timer. */
+.kit-tile.is-split:not(:has(.kit-tile-act)) {
+  grid-template-columns: minmax(0, 1fr) !important;
+  column-gap: 0 !important;
+}
+.kit-tile.is-split > .kit-tile-main > .kit-tile-note {
+  margin-left: -18px !important;
+  margin-right: -18px !important;
+}
+
+/* The two look-back tiles are one colour each, with no foot: the note is
+   set on the block at 19px bold (large text, legal on every band at 3:1)
+   and the flag itself is the motif between value and note, the 6px bar
+   of stripes the kit already draws under a tile's value, squared to 2px. */
+.kit-tiles[data-tight] .kit-tile-note {
+  background: none !important;
+  color: var(--role-fill-ink) !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  margin: 8px 0 0 !important;
+  padding: 0 0 16px !important;
+}
+.kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-value::after {
+  display: block !important;
+  height: 6px !important;
+  border-radius: 2px !important;
+  margin-top: 10px !important;
+}
+
