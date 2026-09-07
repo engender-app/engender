@@ -153,10 +153,11 @@ body {
   --nav-clearance: calc(
     var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
-  --nav-float-gap: var(--space-3);
-  /* The gap between the bar's edge and the controls inside it, which is
-     also what separates the bar's corner radius from --r-add's. */
-  --nav-bar-pad: 5px;
+  /* Trimmed from --space-3/5px for ticket 08: the four tab labels grew, and
+     every px reclaimed from the bar's own margins is a px the five equal
+     columns (below) can give the label instead of the ellipsis. */
+  --nav-float-gap: var(--space-2);
+  --nav-bar-pad: 4px;
 }
 
 /* The gates and onboarding, which render instead of the app and have no bar
@@ -321,7 +322,7 @@ body {
   justify-self: stretch;
   min-width: 0;
   min-height: var(--touch-target);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1);
   border-radius: var(--r-add);
   color: var(--text-2);
   text-decoration: none;
@@ -337,7 +338,17 @@ body {
 }
 .nav-icon { display: grid; place-items: center; }
 /* One line, ellipsed rather than wrapped: a two-line label would grow the
-   bar's height on one tab and not the others. */
+   bar's height on one tab and not the others.
+
+   Ticket 08 measured every label's fit at the 320px floor after widening
+   the cells as far as this bar's own margins allow (Alicja, 2026-09-07):
+   Today/Dzisiaj and Journal/Dziennik clear it, Look back and Transition
+   (English) do not, by 5-6px, and closing that without shrinking the text
+   or giving up the floating bar's own margin needs more room than five
+   equal columns have at 320px. Accepted as a truncation this ellipsis
+   already existed to catch, at the narrowest phone still supported - it
+   is not one this ticket's wording made possible that wasn't already true
+   of "Calendar"/"Kalendarz"/"Statystyki" at the same width. */
 .nav-label {
   max-width: 100%;
   overflow: hidden;

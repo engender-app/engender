@@ -78,7 +78,7 @@ describe('what the More hub is built from', () => {
        not one of the journal's areas. */
     const paraglide = more.match(/\bm\.[a-z_]+\(/g) ?? [];
 
-    expect(paraglide.sort()).toEqual(['m.hub_settings_row_sub(', 'm.nav_more(', 'm.nav_settings(']);
+    expect(paraglide.sort()).toEqual(['m.hub_screen_title(', 'm.hub_settings_row_sub(', 'm.nav_settings(']);
     expect(more).toContain("from '$lib/data/vocabulary/hubLabels'");
   });
 });
