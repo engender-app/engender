@@ -1,47 +1,124 @@
-/* Blocks, raised by Field: the same world with the door's header set as a
-   solid field of the flag's first colour (role 0) instead of type on the
-   page. Loaded after direction-blocks.css. Uses --flag-0 / --flag-0-ink /
-   --sun-first, which tests/direction-swing-gallery.mjs computes in-page. */
+/* Blocks, raised by Field: the door's header is a solid field of the
+   flag's second colour (the first inner band that is a colour), the whole
+   flag drawn as the sun on top of it, and only large type on the field.
+
+   Second round (Alicja, 2026-09-07): the field no longer takes the
+   outermost band, so no ring is stolen from the sun; the greeting, the
+   count and the gear move off the field onto the first line under it, so
+   nothing small has to hold 4.5:1 on a band and the gear stops competing
+   with the wordmark; the field runs edge to edge.
+
+   Loaded after direction-blocks.css. Uses --flag-0 / --flag-0-ink, which
+   tests/direction-swing-gallery.mjs computes in-page. */
+
+/* ---------- Today: the field holds the wordmark and the sun ---------- */
+/* The header keeps its overflow clip for the sun, so the two quiet lines
+   cannot hang below it; instead the header's own bottom is a foot of page
+   colour and they sit in that. The field is everything above the foot. */
 .home-header {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
   background: var(--flag-0) !important;
   color: var(--flag-0-ink) !important;
-  padding: calc(60px + var(--inset-top)) 20px 24px !important;
-  border-radius: 0 0 6px 6px;
+  min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top) + 76px) !important;
+  padding: calc(16px + var(--inset-top)) 20px 0 !important;
+  margin-bottom: 0 !important;
 }
-.home-hero,
-.home-hello,
-.home-count {
+.home-hero {
+  grid-row: 2;
+  align-self: end;
   color: var(--flag-0-ink) !important;
+  max-width: 100% !important;
+  font-size: clamp(2rem, 14cqw, 3.25rem) !important;
+  margin: 0 !important;
+  padding-bottom: 18px;
 }
 .home-hello,
 .home-count {
-  opacity: 0.88;
+  max-width: none !important;
+  margin: 0 -20px !important;
+  padding: 0 76px 0 20px !important;
+  background: var(--bg);
+  color: var(--text) !important;
 }
-/* The field is the outermost ring, extended; the remaining rings sit inside
-   it with gaps of the field's own colour. */
-.sun i:first-child {
-  display: var(--sun-first, block);
+.home-hello {
+  grid-row: 3;
+  padding-top: 12px !important;
 }
+.home-count {
+  grid-row: 4;
+  padding-bottom: 6px !important;
+  color: var(--text-2) !important;
+}
+/* Without a count line the hello carries the foot's bottom on its own. */
+.home-hello:last-child {
+  padding-bottom: 6px !important;
+}
+.home > .home-header {
+  margin-bottom: 16px !important;
+}
+/* In the foot, at the end of the date line: a quiet control on the page
+   rather than a mark on the field competing with the wordmark. */
+.direction-gear {
+  position: absolute;
+  top: auto !important;
+  left: auto !important;
+  right: 12px;
+  bottom: 4px;
+  color: var(--text-2) !important;
+}
+/* Every ring drawn, gaps in the field's own colour, seam in the line. */
 .sun i {
   outline-color: var(--flag-0) !important;
+  box-sizing: border-box;
+  border: 1px solid var(--outline);
 }
-.direction-gear {
-  color: var(--flag-0-ink) !important;
-}
+
+/* ---------- a door with a title ---------- */
 .screen > .screen-header {
   background: var(--flag-0);
   color: var(--flag-0-ink);
   margin: calc(-1 * var(--inset-top)) -20px 0 !important;
-  padding: calc(28px + var(--inset-top)) 20px 20px !important;
+  padding: calc(40px + var(--inset-top)) 20px 16px !important;
   border-radius: 0 0 6px 6px;
 }
-.screen-title,
-.screen-subtitle {
+.screen-title {
   color: inherit !important;
 }
+/* The subtitle carries state in small type, so it leaves the field too. */
 .screen-subtitle {
-  opacity: 0.88;
+  position: absolute;
+  left: 20px;
+  top: calc(100% + 12px);
+  margin: 0 !important;
+  color: var(--text-2) !important;
 }
-.screen-header + * {
-  margin-top: 20px !important;
+.screen > .screen-header + * {
+  margin-top: 48px !important;
+}
+
+/* ---------- narrow ---------- */
+@media (max-width: 359px) {
+  .home-hello,
+  .home-count {
+    font-size: 14px !important;
+  }
+  .home-count {
+    top: calc(100% + 34px);
+  }
+}
+
+/* ---------- web: the column, not the window ---------- */
+@container app (min-width: 1024px) {
+  .home {
+    outline: none !important;
+    border-radius: 0 !important;
+  }
+  .home-header,
+  .screen > .screen-header {
+    border-radius: 6px !important;
+  }
+  .home-header {
+    min-height: calc(175px * var(--sun-breathe-scale) + 76px) !important;
+  }
 }

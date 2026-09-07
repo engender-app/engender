@@ -139,31 +139,39 @@
   border-top: 1px solid var(--hairline) !important;
   padding-top: 20px !important;
 }
-/* The app talking about itself is the one block set in ink rather than in a
-   stripe: the notice inverts. */
+/* The app talking about itself has no block: the notice is text on the
+   page between two hairlines, like a list, with a small ink square as its
+   mark. Second round: the inverted block read too loud. */
 .kit-notice {
+  background: none !important;
+  color: var(--text) !important;
+  border: 0 !important;
+  border-top: 1px solid var(--hairline) !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  border-radius: 0 !important;
+  padding: 14px 0 !important;
+}
+.kit-notice-title {
+  color: var(--text) !important;
+  font-size: 17px !important;
+}
+.kit-notice-text {
+  color: var(--text-2) !important;
+  font-size: 15px !important;
+}
+.kit-notice-x {
+  color: var(--text-2) !important;
+}
+.kit-notice-ico {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 6px !important;
   background: var(--text) !important;
   color: var(--bg) !important;
   border: 0 !important;
-  border-radius: 6px !important;
-  padding: 16px !important;
-}
-.kit-notice-title,
-.kit-notice-text,
-.kit-notice-x {
-  color: var(--bg) !important;
-}
-.kit-notice-text {
-  opacity: 0.8;
-}
-.kit-notice-ico {
-  border-radius: 6px !important;
-  background: var(--bg) !important;
-  color: var(--text) !important;
-  border: 0 !important;
 }
 .kit-notice-act {
-  color: var(--bg) !important;
+  color: var(--text) !important;
 }
 .kit-row-ico {
   border-radius: 6px !important;
@@ -174,64 +182,106 @@
 .kit-row {
   padding: 10px 4px 10px 0 !important;
 }
-/* A tile is a number on its stripe and words on the page. The value - the
-   one thing set large enough to answer 3:1 - sits on a solid block of the
-   flag's own hex in the block's ink; the title above it and the note under
-   it are set on the page in the text colour, so no small text is ever
-   asked to hold 4.5:1 on a stripe that cannot carry it (nonbinary's purple
-   is 4.41:1 under black or white). The tile itself has no box: a hairline
-   above, and the block does the rest. */
+/* A live tile is a block of its stripe: the title at 19px bold and the
+   value at 40px both sit on the flag's own hex in the block's ink, and
+   both are large text, so every band is legal at 3:1 (nonbinary's purple,
+   the one that cannot carry small text, is 4.41:1). The note is small, so
+   it sits in a foot of page colour under the block rather than on it.
+   Second round: the first version put only the number on a block and the
+   words loose on the page, which read as scraps. */
 .kit-tile,
 .kit-tile.is-split {
-  background: none !important;
-  border: 0 !important;
-  border-top: 1px solid var(--hairline) !important;
-  border-radius: 0 !important;
-  padding: 12px 0 0 !important;
-  min-height: 0 !important;
-}
-.kit-tile.is-split {
-  column-gap: 12px !important;
-}
-.kit-tile-title {
-  color: var(--text) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-}
-.kit-tile-value {
-  display: inline-block !important;
-  padding: 6px 12px 8px !important;
-  border-radius: 6px !important;
   background: var(--role-draw) !important;
-  color: var(--role-fill-ink) !important;
+  border: 0 !important;
   outline: 1px solid var(--outline);
   outline-offset: -1px;
+  border-radius: 6px !important;
+  padding: 16px 18px 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  gap: 6px 12px !important;
+}
+.kit-tile:not(:has(.kit-tile-note)) {
+  padding-bottom: 16px !important;
+}
+.kit-tile-title {
+  color: var(--role-fill-ink) !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+}
+.kit-tile-value {
+  color: var(--role-fill-ink) !important;
   font-size: 2.5rem !important;
   letter-spacing: -0.045em !important;
   line-height: 1 !important;
   overflow: visible !important;
   max-width: none !important;
 }
+/* A row-weight tile stacks its title over its value inside the block, so a
+   timer's "9h 0m 12s" is one line beside its Stop button at every width. */
+.kit-tile[data-weight='row'] .kit-tile-main {
+  grid-template-columns: minmax(0, 1fr) !important;
+  row-gap: 2px;
+}
+.kit-tile[data-weight='row'] .kit-tile-title {
+  font-size: 17px !important;
+}
 .kit-tile[data-weight='row'] .kit-tile-value {
-  font-size: 1.75rem !important;
-  padding: 4px 10px 6px !important;
+  font-size: 2rem !important;
+  justify-self: start !important;
+}
+/* The note foot is the block's last row and sits on its bottom edge
+   whatever height the grid gave the tile. */
+.kit-tile:not(.is-split) {
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  align-content: stretch !important;
+}
+.kit-tile.is-split {
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  align-content: stretch !important;
+}
+/* A tile with a dismiss and no action keeps its note inside its main
+   link (Tile.svelte), so that link is the column the foot has to reach
+   the bottom of. */
+.kit-tile.is-split {
+  align-items: stretch !important;
+}
+.kit-tile.is-split > .kit-tile-main {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch !important;
+}
+.kit-tile.is-split > .kit-tile-main > .kit-tile-note {
+  grid-row: 3;
+}
+.kit-tile.is-split > .kit-tile-act {
+  align-self: start !important;
+  margin-top: 2px;
 }
 .kit-tile-note {
+  align-self: end;
+  grid-column: 1 / -1;
+  background: var(--bg);
   color: var(--text-2) !important;
+  font-size: 15px !important;
+  margin: 6px -18px 0 !important;
+  padding: 10px 18px 12px !important;
+  -webkit-line-clamp: 3 !important;
 }
 .kit-tile-value::after,
 .kit-tile-title::after {
   display: none !important;
 }
 .kit-tile-act.btn {
-  background: var(--text) !important;
-  color: var(--bg) !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
   border-radius: 6px !important;
   min-height: 40px !important;
   padding: 0 16px !important;
 }
 .kit-tile-dismiss {
-  color: var(--text-2) !important;
+  color: var(--role-fill-ink) !important;
 }
 .kit-day-bar {
   background: var(--role-draw) !important;
