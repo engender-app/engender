@@ -171,8 +171,15 @@
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{value}</span>{/if}
-      {#if note}<span class="kit-tile-note">{note}</span>{/if}
     </a>
+    <!-- Outside the link, as on the action shape above and for the reason
+         phase 10's rule 3 gives: the note is a foot of page colour along the
+         bottom edge of the block, and a foot spans the block's full width
+         whatever controls the tile carries. Inside the link it was one cell
+         of the tile's grid, so the foot stopped short of both edges and left
+         a sliver of stripe down each side. The whole tile still taps
+         through - the block above the foot is the link. -->
+    {#if note}<span class="kit-tile-note">{note}</span>{/if}
     <button
       type="button"
       class="kit-tile-dismiss press"
