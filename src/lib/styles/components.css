@@ -1321,7 +1321,38 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  box-shadow: var(--shadow-3);
+  /* The bar's shadow, and a hairline, which is what quick add's fan already
+     does with the same problem: a sheet genuinely floats, so it casts the
+     app's one shadow rather than picking a second elevation for itself.
+
+     It used to cast --shadow-3, the top of a three-step ramp, over a scrim
+     that had already darkened and blurred everything behind it - so the
+     heaviest shadow in the app was doing its work against a background that
+     was no longer there to be lifted off of (Alicja, on the screencast:
+     remove the popup's heavy shadow). base.css states the rule this breaks:
+     the redesign separates surfaces with a line, not a plane, and it has one
+     shadow. The line is what carries the sheet's own edge now, and the ramp
+     is left to the surfaces that still read as stacked planes.
+
+     The line is a second shadow layer rather than a `border`, because a
+     border takes layout width and there is none to take: at the 320px floor
+     the sheet's content box is exactly 280px, which is exactly the
+     injection map's `max-width`, so the figure sat on its own cap with no
+     slack. A 1px border narrowed it to 278 and scaled every dot's spacing
+     by 0.993 - the closest pair of touch targets went from 56px apart to
+     55.6, under the clearance a 48px target and its 8px gap need, and the
+     walkthrough caught it. An `outline` would also stay out of layout but
+     is a square ring around a radius on the WebView floor this ships to.
+
+     Outside the box and not `inset`, which is the difference between a line
+     and a line that is sometimes there. An inset shadow paints in the
+     background layer, and a scroll container's content is not clipped until
+     the padding box - so with `overflow-y: auto` here, rows scrolled up to
+     the top edge painted straight over it (measured: an entry card's mood
+     dot sitting on the line at scrollTop 400). A spread of 1px with no
+     offset draws the ring just outside the border box instead, where it
+     follows the same corners and nothing inside the sheet can reach it. */
+  box-shadow: var(--shadow-float), 0 0 0 1px var(--border);
 }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border); margin: 0 auto var(--space-4); }
 

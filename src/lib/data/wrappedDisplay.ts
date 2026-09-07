@@ -25,10 +25,22 @@ import type { DaySpread } from './journal/stats';
 import { coveredGround } from './statsCharts';
 import type { WrappedTagInsight, WrappedTallyCounts } from './wrappedSections';
 
+/** `value` rounded to the precision `nativeValue` prints it at (ADR-0012):
+    one decimal for mood, none for a dimension.
+
+    Anything measured from `value` itself instead of this - a bar's length,
+    a sort key - draws at a precision the reader was never shown, and two
+    rows that print the same number stop agreeing on which is longer
+    (carpet ticket 18). */
+export function nativeAmount(metric: string, value: number): number {
+  return metric === 'mood' ? Math.round(value * 10) / 10 : Math.round(value);
+}
+
 /** A value in its metric's own units (ADR-0012). Mood arrives on 1 to 5 and
     wants a decimal place; a dimension arrives in its own range and does not. */
 export function nativeValue(metric: string, value: number): string {
-  return metric === 'mood' ? value.toFixed(1) : String(Math.round(value));
+  const amount = nativeAmount(metric, value);
+  return metric === 'mood' ? amount.toFixed(1) : String(amount);
 }
 
 /** A day's two ends in words, or null for a day that covered no ground
@@ -59,7 +71,26 @@ export function signedValue(value: number, format: (n: number) => string): strin
     Length comes from the size of the movement and never from its direction:
     the two ends of a scale are not better and worse, so a tag that went with
     lower days draws the same length as one that went with higher and says
-    which way in its own number. */
+    which way in its own number.
+
+    The metric is named by the card and never on the row, which is a
+    correction rather than the original state: "9 entries · avg 1.9 with ·
+    2.9 without" beside a "−1.0" named no scale at all (Alicja, on the
+    screencast: what are 63 and 71), and the first fix put the metric's name
+    on the front of every note, the way the correlation cards do. That was
+    the wrong read of the neighbour. There the metric varies per row, which
+    is why it belongs on the row; here it is one value for the whole card by
+    construction, so per-row it was six copies of one fact - and on any
+    two-ended scale it wrapped every note to two lines, orphaning "without"
+    and adding 108px to the card (measured, `Dysphoria ↔ euphoria` at
+    390px). Five of the eight built-in dimensions are two-ended and a custom
+    scale's name is unbounded.
+
+    So the caller names it once, in `ChartCard`'s own control slot on the
+    heading line where a chart card's context already lives - a picker on
+    /stats, which also puts the choice on the card it governs instead of
+    four cards up the screen, and the heading itself on a wrapped, which
+    cannot change it. */
 export function tagInsightRows(
   insights: (WrappedTagInsight & { label: string })[],
   metric: string
@@ -74,7 +105,7 @@ export function tagInsightRows(
       without: format(insight.withoutAvg)
     }),
     value: signedValue(insight.delta, format),
-    amount: Math.abs(insight.delta)
+    amount: nativeAmount(metric, Math.abs(insight.delta))
   }));
 }
 

@@ -102,7 +102,7 @@
 {#snippet inside(row: DrawnBar, onCard: boolean)}
   <span class="kit-bar-inside">
     <span class="kit-bar-name" data-bar-name={onCard ? '' : undefined}>{row.name}</span>
-    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+    {#if row.note}<span class="kit-bar-note" data-bar-note>{row.note}</span>{/if}
   </span>
 {/snippet}
 
@@ -126,7 +126,7 @@
          note as long as "7 entries · avg 4.4 with · 3.3 without" took the
          whole row and ellipsised the name down to "social eu..." - the label
          is the one part of a bar that cannot be guessed from the drawing. -->
-    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+    {#if row.note}<span class="kit-bar-note" data-bar-note>{row.note}</span>{/if}
     {@render track(row)}
   {/if}
 {/snippet}
@@ -134,10 +134,20 @@
 <div class="kit-bars" class:is-inline={form === 'inline'} data-chart="bars">
   {#each drawn as row, i (row.key)}
     {#if onPick}
+      <!-- The wash in kit.css is the whole answer to a press here, which is
+           DIRECTION.md's tier 1: a row the width of the screen fills rather
+           than scales, because scaling a row moves the card it sits in. The
+           note beside that wash has said so since the row became pressable,
+           and it was only a claim - press.css is opt-out, so this row took
+           the compact depth like any other button, and 0.94 on a 306px row
+           walks each edge 9.2px inward while the card around it holds still
+           (Alicja, on the screencast: the click animation yanks). ListRow
+           and DayEntry opted out for the same reason. -->
       <button
         type="button"
         class="kit-bar is-open"
         data-bar-row={row.key}
+        data-no-press
         style={`--bar-index: ${i}`}
         onclick={() => onPick(row.key)}>{@render bar(row)}</button
       >
