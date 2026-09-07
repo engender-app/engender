@@ -102,7 +102,7 @@
 {#snippet inside(row: DrawnBar, onCard: boolean)}
   <span class="kit-bar-inside">
     <span class="kit-bar-name" data-bar-name={onCard ? '' : undefined}>{row.name}</span>
-    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+    {#if row.note}<span class="kit-bar-note" data-bar-note>{row.note}</span>{/if}
   </span>
 {/snippet}
 
@@ -126,7 +126,7 @@
          note as long as "7 entries · avg 4.4 with · 3.3 without" took the
          whole row and ellipsised the name down to "social eu..." - the label
          is the one part of a bar that cannot be guessed from the drawing. -->
-    {#if row.note}<span class="kit-bar-note">{row.note}</span>{/if}
+    {#if row.note}<span class="kit-bar-note" data-bar-note>{row.note}</span>{/if}
     {@render track(row)}
   {/if}
 {/snippet}
