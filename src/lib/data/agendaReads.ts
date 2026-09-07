@@ -1,4 +1,4 @@
-/* The reads behind the agenda (phase 10 redesign ticket 04, ADR-0073).
+/* The reads behind the agenda (phase 10 redesign ticket 04, ADR-0074).
 
    Split from `agenda.ts` for the reason `comingBackReads.ts` is split from
    `comingBack.ts`: the projection is where the window, the cap and the

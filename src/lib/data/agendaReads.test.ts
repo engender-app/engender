@@ -1,4 +1,4 @@
-/* The agenda's reads (phase 10 redesign ticket 04, ADR-0073): which windows
+/* The agenda's reads (phase 10 redesign ticket 04, ADR-0074): which windows
    reach which area, that the forward read is `dayAhead` and nothing else,
    and that a disguised screen asks the journal nothing at all. */
 

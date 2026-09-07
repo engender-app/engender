@@ -1,5 +1,5 @@
 /* The agenda: one projection of what is coming (phase 10 redesign ticket 04,
-   ADR-0073, CONTEXT: "Agenda").
+   ADR-0074, CONTEXT: "Agenda").
 
    Everything the app draws looks backwards. The half of a transition that
    arrives with dates on it - an appointment, a surgery day, a milestone
