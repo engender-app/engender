@@ -43,7 +43,8 @@ const tag = flag('tag', 'before');
 const cssPaths = flag('css', null) ? flag('css').split(',').map((p) => resolve(p)) : [];
 const cssPath = cssPaths[0] ?? null;
 const width = Number(flag('width', '390'));
-const scale = width < 300 ? 4 : 2;
+const scale = width < 300 ? 4 : width > 800 ? 1 : 2;
+const height = width > 800 ? 900 : 844;
 const PALETTES = flag('palettes', 'trans,nonbinary,agender').split(',');
 const THEMES = flag('themes', 'light,dark').split(',');
 const outDir = resolve(here, `../.claude/direction-shots/${tag}`);
@@ -63,7 +64,7 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const shots = [];
 
 const page = await browser.newPage({
-  viewport: { width, height: 844 },
+  viewport: { width, height },
   deviceScaleFactor: scale
 });
 
@@ -71,6 +72,15 @@ const strip = () =>
   page.evaluate(() => {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
     for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
+    /* Headless Chromium draws a classic scrollbar gutter beside the scroll
+       region; a phone draws an overlay one over the content. Hidden for the
+       shot so the header's right edge is the screen's, as it is on device. */
+    if (!document.getElementById('direction-shot-css')) {
+      const style = document.createElement('style');
+      style.id = 'direction-shot-css';
+      style.textContent = '[data-app-scroll-region]{scrollbar-width:none}[data-app-scroll-region]::-webkit-scrollbar{display:none}';
+      document.head.append(style);
+    }
   });
 
 /* The app scrolls `[data-app-scroll-region]` rather than the document, so
@@ -86,7 +96,7 @@ const shoot = async (name) => {
   await page.setViewportSize({ width, height: tall });
   await page.waitForTimeout(600);
   await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
-  await page.setViewportSize({ width, height: 844 });
+  await page.setViewportSize({ width, height });
   await page.waitForTimeout(300);
   shots.push(name);
 };
@@ -131,12 +141,21 @@ const settle = async (path) => {
         const c = rgb(hex);
         return Math.max(...c) - Math.min(...c);
       };
-      const field = stripes.find((s) => chroma(s) > 0.15) ?? stripes[0];
+      /* The field is the flag's second colour: the first band that is a
+         colour and is not the outermost, so the whole flag stays drawn in
+         the sun and the field is one of its inner bands (Alicja, on the
+         agender render). Where a flag has no such band the outermost
+         colour stands in. */
+      const inner = stripes.slice(1, -1);
+      const outer = stripes[0].toUpperCase();
+      const field =
+        inner.find((s) => chroma(s) > 0.15 && s.toUpperCase() !== outer) ??
+        stripes.find((s) => chroma(s) > 0.15) ??
+        stripes[0];
       const ink = contrast('#101820', field) >= contrast('#FFFFFF', field) ? '#101820' : '#FFFFFF';
       html.style.setProperty('--flag-0', field);
       html.style.setProperty('--flag-0-ink', ink);
       html.style.setProperty('--flag-0-contrast', contrast(ink, field).toFixed(2));
-      html.style.setProperty('--sun-first', field.toUpperCase() === stripes[0].toUpperCase() ? 'none' : 'block');
     });
     /* The one thing a stylesheet cannot propose: Today's gear (spec: Settings
        is a gear in this screen's header). A decoy control, positioned by the
