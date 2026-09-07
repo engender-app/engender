@@ -386,6 +386,14 @@ export interface PreferenceValues {
       local: which drug a printout leaves out is a choice about a specific
       visit on this installation, not portable journal data (ADR-0003). */
   clinicianSummaryDrugExcluded: Partial<Record<string, boolean>>;
+  /** Which drug's schedule /doses' "against the schedule" view compares
+      against, while more than one regimen episode is active at once
+      (phase 9 UX carpet ticket 15). Null until chosen, and a stored pick
+      that no longer names a currently active drug resolves back to the
+      screen's own default rather than showing nothing. Device-local: it is
+      a choice about what this installation's screen currently shows, not
+      something the journal itself remembers. */
+  adherenceRegimenPick: string | null;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -465,7 +473,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   roadmapMilestoneSyncEnabled: true,
   areaFinishOfferDeclined: [],
   comingBackSeenSince: null,
-  clinicianSummaryDrugExcluded: {}
+  clinicianSummaryDrugExcluded: {},
+  adherenceRegimenPick: null
 };
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -550,7 +559,8 @@ export const DEVICE_LOCAL_KEYS = [
   'hairPhotoProtocolDismissed',
   'hormoneCurveFitToOwnLabs',
   'comingBackSeenSince',
-  'clinicianSummaryDrugExcluded'
+  'clinicianSummaryDrugExcluded',
+  'adherenceRegimenPick'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Mirrored outside SQLite because it is needed before the database opens
