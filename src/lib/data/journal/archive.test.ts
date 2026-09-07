@@ -519,6 +519,32 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
   ]);
 });
 
+/* Redesign phase 10 ticket 01: a lead time is a person's own typed figure,
+   not derivable, so it has to travel rather than defaulting silently to
+   null on the other end - the same reasoning ticket 43's end reason test
+   above gives. */
+test('a lead time travels, and a restore keeps it', async () => {
+  const { journal, stock } = await populated();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    leadTimeDays: 21
+  });
+
+  const snapshot = await journal.archive.snapshot();
+
+  assert.equal(snapshot.journal.medicationStock.find((s) => s.id === stock)?.leadTimeDays, 21);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  const restored = (await target.stock.getEntries()).find((s) => s.id === stock);
+  assert.equal(restored?.leadTimeDays, 21);
+});
+
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
   const { journal, photo, milestonePhoto, tryoutPhoto, recording, videoNote } = await populated();
 
