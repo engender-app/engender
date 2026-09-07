@@ -111,9 +111,11 @@
     return step === null ? day : `${day} · ${moodName(step)}`;
   };
 
-  /* Which scale the insight bars are of, said on every row: a wrapped
-     draws them against whichever metric the preference held, and the
-     screen has no picker to read that off. */
+  /* Which scale the insight bars are of, named once in the heading. The
+     rows carry only their counts (wrappedDisplay.ts): a wrapped draws these
+     against whichever metric the preference held, and unlike /stats it has
+     no picker for the heading line to hold, because a retrospective cannot
+     change the scale it is a retrospective of. */
   let metric = $derived(metricKey(prefs));
   let insightRows = $derived(tagInsightRows(insights, metric));
   let tally_rows = $derived(tallyRows(tally));

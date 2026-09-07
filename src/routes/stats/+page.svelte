@@ -450,8 +450,6 @@
       : []
   );
 
-  const metricName = (key: string) => vocabulary.metricNameOf(key);
-
   const occurrenceLabel = (card: CorrelationCard) =>
     card.occurrence.kind === 'doseDay'
       ? m.correlation_card_dose_day()
@@ -478,7 +476,7 @@
         without: card.withoutAvg,
         ...bounds,
         gap: signedValue(card.withAvg - card.withoutAvg, (v) => fmtNativeValue(card.metric, v)),
-        note: `${metricName(card.metric)} · ${m.insight_row_sub({
+        note: `${vocabulary.metricNameOf(card.metric)} · ${m.insight_row_sub({
           count: String(card.count),
           with: fmtNativeValue(card.metric, card.withAvg),
           without: fmtNativeValue(card.metric, card.withoutAvg)
@@ -905,15 +903,9 @@
 
   <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <!-- Which scale the six bars are of, named once, on the heading's line
-         where a chart card keeps its context.
-
-         The rows themselves say only the counts. Naming the metric on each
-         one was six copies of a fact that is constant across the card by
-         construction, and on any two-ended scale it wrapped every note
-         ("Dysphoria ↔ euphoria · 4 entries · avg 30 with · 47 without" in a
-         290px track), orphaning "without" on a line of its own and adding
-         108px to the card. Five of the eight built-in dimensions read that
-         way and a custom scale's name has no ceiling.
+         where a chart card keeps its context. Why it is not on each row is
+         in `tagInsightRows` (../lib/data/wrappedDisplay.ts), which is where
+         the rows are built.
 
          A picker rather than a label, because the second half of the same
          problem is that this fact was only changeable from the day-by-day

@@ -1334,7 +1334,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
      shadow. The line is what carries the sheet's own edge now, and the ramp
      is left to the surfaces that still read as stacked planes.
 
-     The line is inset on the shadow rather than a `border`, because a
+     The line is a second shadow layer rather than a `border`, because a
      border takes layout width and there is none to take: at the 320px floor
      the sheet's content box is exactly 280px, which is exactly the
      injection map's `max-width`, so the figure sat on its own cap with no
@@ -1342,10 +1342,17 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
      by 0.993 - the closest pair of touch targets went from 56px apart to
      55.6, under the clearance a 48px target and its 8px gap need, and the
      walkthrough caught it. An `outline` would also stay out of layout but
-     is a square ring around a radius on the WebView floor this ships to;
-     inset on a property this rule already sets follows the corners
-     everywhere and costs no second declaration. */
-  box-shadow: var(--shadow-float), inset 0 0 0 1px var(--border);
+     is a square ring around a radius on the WebView floor this ships to.
+
+     Outside the box and not `inset`, which is the difference between a line
+     and a line that is sometimes there. An inset shadow paints in the
+     background layer, and a scroll container's content is not clipped until
+     the padding box - so with `overflow-y: auto` here, rows scrolled up to
+     the top edge painted straight over it (measured: an entry card's mood
+     dot sitting on the line at scrollTop 400). A spread of 1px with no
+     offset draws the ring just outside the border box instead, where it
+     follows the same corners and nothing inside the sheet can reach it. */
+  box-shadow: var(--shadow-float), 0 0 0 1px var(--border);
 }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border); margin: 0 auto var(--space-4); }
 
