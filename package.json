@@ -35,6 +35,7 @@
     "gallery:stats": "VITE_DEMO=1 npm run build && node tests/stats-gallery.mjs",
     "gallery:more-ia": "VITE_DEMO=1 npm run build && node tests/more-ia-gallery.mjs",
     "gallery:highest-days": "VITE_DEMO=1 npm run build && node tests/highest-days-gallery.mjs",
+    "gallery:direction": "VITE_DEMO=1 npm run build && node tests/direction-gallery.mjs && node tests/direction-gallery.mjs --css tests/direction-proposal.css",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",
