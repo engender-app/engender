@@ -244,6 +244,7 @@
   "chart_annotations_more": "{names}, and {count} more",
   "chart_annotations_and_more": "and {count} more",
   "tag_insights": "Tag insights",
+  "tag_insights_of": "Tags and {metric}",
   "insights_note": "Observations, not conclusions. Tags with fewer than 3 entries in range are hidden.",
   "insights_empty": "Not enough tagged entries in this range yet.",
   "correlation_cards_title": "What shows up together",

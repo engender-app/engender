@@ -71,7 +71,26 @@ export function signedValue(value: number, format: (n: number) => string): strin
     Length comes from the size of the movement and never from its direction:
     the two ends of a scale are not better and worse, so a tag that went with
     lower days draws the same length as one that went with higher and says
-    which way in its own number. */
+    which way in its own number.
+
+    The metric is named by the card and never on the row, which is a
+    correction rather than the original state: "9 entries · avg 1.9 with ·
+    2.9 without" beside a "−1.0" named no scale at all (Alicja, on the
+    screencast: what are 63 and 71), and the first fix put the metric's name
+    on the front of every note, the way the correlation cards do. That was
+    the wrong read of the neighbour. There the metric varies per row, which
+    is why it belongs on the row; here it is one value for the whole card by
+    construction, so per-row it was six copies of one fact - and on any
+    two-ended scale it wrapped every note to two lines, orphaning "without"
+    and adding 108px to the card (measured, `Dysphoria ↔ euphoria` at
+    390px). Five of the eight built-in dimensions are two-ended and a custom
+    scale's name is unbounded.
+
+    So the caller names it once, in `ChartCard`'s own control slot on the
+    heading line where a chart card's context already lives - a picker on
+    /stats, which also puts the choice on the card it governs instead of
+    four cards up the screen, and the heading itself on a wrapped, which
+    cannot change it. */
 export function tagInsightRows(
   insights: (WrappedTagInsight & { label: string })[],
   metric: string

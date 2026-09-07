@@ -233,7 +233,25 @@
       type: navigation.type,
       delta: navigation.delta,
       isAndroid: isAndroid(),
-      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname)
+      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname),
+      /* Gathered here for the same reason `isAndroid` is: whether a sheet is
+         open over the outgoing screen is not something the two URLs can
+         answer, and screen-transition.ts stays a pure table by being told
+         rather than by looking. Read off the shell rather than plumbed down
+         from Sheet, because a navigation out of a sheet is started by
+         whatever is inside it and none of those callers know they are in
+         one. Still open at this point - the sheet unmounts with the screen
+         it belongs to, which happens inside the capture below.
+
+         The selector is the dialog's ARIA, not `[data-sheet]`, which is a
+         walkthrough handle: ADR-0029 grants those on the terms that they
+         "carry no styling and change no component's behavior", and a
+         navigation animation keyed on one makes renaming it a silent
+         behaviour change that only the walkthrough would catch. `role` and
+         `aria-modal` are Sheet's own contract with assistive tech and
+         cannot be renamed at all, and any future modal that sets them
+         honestly is a modal for this purpose too. */
+      fromSheet: document.querySelector('[role="dialog"][aria-modal="true"]') !== null
     });
     /* Before the capture below, and on every navigation rather than only the
        animated ones: a card left wearing the container name is pulled out of

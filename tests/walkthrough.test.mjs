@@ -739,6 +739,39 @@ try {
   ok('a second scale joins the day-by-day chart and can be put down again');
 } catch (e) { fail('a second scale on the day-by-day chart', e); }
 
+/* 6b2. a tag insight opens the entries carrying that tag, and one of them
+   opens (carpet ticket 10).
+
+   The sheet is the only place /stats draws an entry card, and the ticket's
+   own acceptance asks whether those cards reach the entries they name. The
+   assertion is the card's own href against the URL the tap landed on, not
+   just that a navigation happened: a click that navigates anywhere would
+   pass the weaker version of this check.
+
+   It is also the surface behind the ticket's fade-through carve-out. The
+   pattern itself is pinned in screen-transition.test.ts, where it is a
+   pure function; what this proves is that the tap still arrives, which is
+   the half a table cannot answer. */
+try {
+  await fresh('/stats');
+  await page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first().click();
+  /* The sheet, and then the entries in it: the read behind them is its own
+     query, so the card can arrive a frame after the sheet does. */
+  await page.waitForSelector('[data-sheet] [data-entry-card]');
+  const opens = page.locator('[data-sheet] [data-entry-card]').first();
+  const href = await opens.getAttribute('href');
+  if (!/^\/entry\/\d+$/.test(href ?? '')) {
+    throw new Error('a tag insight entry links nowhere in particular: ' + href);
+  }
+  await opens.click();
+  await page.waitForURL('**' + href);
+  /* And it is the editor for that entry rather than a screen that merely
+     answers to the URL - #ed-note is the note field every other editor
+     flow in this file waits on. */
+  await page.waitForSelector('#ed-note');
+  ok('a tag insight opens its entries, and one of them opens the editor');
+} catch (e) { fail('tag insight entries', e); }
+
 /* 6c. the custom-interval card's length field waits for the typist (phase 8
    audit ticket 16, the same debounce ticket 15 gave /search's query).
 
