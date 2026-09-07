@@ -683,10 +683,18 @@
     {#if activeDrugChoices.length > 1}
       <!-- Only drawn while more than one regimen is active (ticket 15): with
            at most one there is nothing to choose between, and the picker
-           would be a control with a single, forced answer. -->
+           would be a control with a single, forced answer.
+
+           Scoped to this tab alone, not to the Logged tab or the stock rows
+           above it: those already say which drug each row is about (a log
+           row's own trailing attribution, a stock row's own title), so
+           nothing there was actually broken by more than one regimen being
+           active. This tab was the one screen that had no single answer to
+           give at all - `adherence_multiple_episodes` used to say so
+           outright - which is the gap the ticket names. -->
       <div class="screen-part">
         <Segmented
-          name={m.adherence_regimen_label()}
+          name={m.adherence_drug_label()}
           value={selectedRegimenDrug ?? ''}
           options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
           onChange={(v) => (prefs.adherenceRegimenPick = v)}
