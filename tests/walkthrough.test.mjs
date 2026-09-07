@@ -2710,6 +2710,41 @@ try {
   fail('More hub route characterization', e);
 }
 
+/* Carpet ticket 14: the measurements screen's capture-protocol notice is one
+   instance whose text follows the segmented type picker, not one notice per
+   type - so dismissing it on whichever type is showing has to dismiss it for
+   every other type of the same switcher too, not just the one on screen when
+   it was closed. */
+try {
+  await fresh('/body/measurements');
+
+  await page.waitForSelector('[data-notice="protocol"]');
+  if ((await page.locator('[data-notice="protocol"]').count()) !== 1) {
+    throw new Error('more than one protocol notice instance rendered');
+  }
+
+  await page.locator('[data-segment="hips"]').click();
+  await page.waitForSelector('[data-notice="protocol"][data-protocol="hips"]');
+
+  await page.locator('[data-notice="protocol"] [data-notice-dismiss]').click();
+  await page.waitForSelector('[data-notice="protocol"]', { state: 'detached' });
+
+  await page.locator('[data-segment="chest"]').click();
+  if (await page.locator('[data-notice="protocol"]').count()) {
+    throw new Error('dismissing on one type left the notice showing again on another');
+  }
+
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  if (await page.locator('[data-notice="protocol"]').count()) {
+    throw new Error('dismissal did not survive leaving and returning to the screen');
+  }
+
+  ok('measurements protocol notice is a single instance and stays dismissed across every switcher value');
+} catch (e) {
+  fail('measurements protocol notice dedup and dismiss persistence', e);
+}
+
 /* Phase 5 ticket 36: the persona alone leaves most of the More hub in its
    empty state, which is why this ticket exists - a review pass through
    those screens was "a tour of empty states with a few exceptions"
