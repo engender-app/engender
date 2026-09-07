@@ -1034,7 +1034,12 @@ a.kit-entry:active {
      the foot stays on the bottom edge rather than floating up the block
      with the slack shared between the two rows. */
   grid-template-rows: 1fr auto;
-  align-items: center;
+  /* The link takes the whole main row so its value can sit on the block's
+     bottom edge, where a plain tile's already does; a tile with an action
+     beside a tile without one would otherwise carry its number half a block
+     higher. The button centres itself against it (below), which is what
+     `align-items: center` was here for. */
+  align-items: stretch;
   column-gap: var(--space-4);
   row-gap: var(--space-3);
   min-height: 108px;
@@ -1072,7 +1077,9 @@ a.kit-entry:active {
 .kit-tile-main {
   display: grid;
   gap: var(--space-2);
-  align-content: center;
+  /* Title at the top of the block, value at the bottom, as the flex shape
+     above puts them. */
+  align-content: space-between;
   color: inherit;
   text-decoration: none;
 }
@@ -1151,6 +1158,19 @@ a.kit-entry:active {
   color: var(--role-fill-ink);
 }
 
+/* A tile with nothing to report is a title and a note (Safe space is the
+   standing one), and the title takes the place the value would have had:
+   down on the block's bottom edge, above the foot. Left at the top it sat
+   over 100px of empty stripe while the tile beside it carried a number
+   there, and the pair read as one tile that had failed to load. */
+.kit-tile:not(:has(.kit-tile-value)) > .kit-tile-title {
+  margin-top: auto;
+}
+
+.kit-tile:not(:has(.kit-tile-value)) > .kit-tile-main {
+  align-content: end;
+}
+
 .kit-tile-value {
   font-family: var(--font-display);
   /* No viewport clamp: at phone width 5vw pulled the value down to --text-xl
@@ -1222,6 +1242,20 @@ a.kit-entry:active {
   font-weight: var(--weight-medium);
   color: var(--text-2);
   line-height: 1.25;
+}
+
+/* Two lines and an ellipsis, and the reason it is an inner span rather than
+   the foot itself: `-webkit-line-clamp` needs `display: -webkit-box`, and
+   the foot is a grid item on the split shapes and a flex item on the plain
+   one, both of which blockify that away - Chromium computes it to
+   `flow-root` and the clamp silently does nothing. That was invisible while
+   the note sat on the page in the tile's own padding and a third line
+   simply ran on. With the foot clipped to the block's bottom edge it showed
+   as half a line with its descenders cut off, found at 195px, which is 200%
+   zoom on a 390px phone. Clipping the foot instead does not fix it: overflow
+   clips at the padding box, so the third line goes on showing through the
+   foot's own 12px of bottom padding. */
+.kit-tile-note-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

@@ -126,7 +126,7 @@
          actually reads on the first of those two lines, sat visibly above
          the action button's true centre. Out here, the title/value line and
          the action button share one row and centre against each other. -->
-    {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     {#if action.href}
       <a
         class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
@@ -179,7 +179,7 @@
          of the tile's grid, so the foot stopped short of both edges and left
          a sliver of stripe down each side. The whole tile still taps
          through - the block above the foot is the link. -->
-    {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     <button
       type="button"
       class="kit-tile-dismiss press"
@@ -199,6 +199,6 @@
   <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse|global={panel} {...rest}>
     <span class="kit-tile-title">{title}</span>
     {#if value}<span class="kit-tile-value">{value}</span>{/if}
-    {#if note}<span class="kit-tile-note">{note}</span>{/if}
+    {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
   </a>
 {/if}
