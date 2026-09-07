@@ -122,7 +122,13 @@ export function agendaPassedWindow(todayEpochDay: number): { fromEpochDay: numbe
 
 /** The most recent slot that went by with nothing logged against it, or
     null. `rows` is already the schedule's own answer with pauses removed
-    (doseSchedule.ts): a break somebody declared is not a slot that passed. */
+    (doseSchedule.ts): a break somebody declared is not a slot that passed.
+
+    Every arm with a `reason` answers null, `multipleEpisodes` included, so
+    two concurrent regimens produce no passed slot at all - `/coming-back`
+    narrows the same way. It errs the safe direction: the failure mode of
+    guessing which episode a slot belonged to is stating one drug's
+    arrangement under another drug's name. */
 function passedSlot(doses: DoseScheduleComparison, todayEpochDay: number): AgendaPassedSlot | null {
   if (doses.reason !== null) return null;
   const passed = doses.comparison.rows

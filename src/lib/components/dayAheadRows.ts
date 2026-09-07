@@ -19,9 +19,9 @@ import type { DayAheadMark, DayAheadMarkKind } from '$lib/data/journal/dayAhead'
 import { DAY_AHEAD_ROUTES } from '../data/journal/dayAheadRoutes';
 import type { DayRow } from './dayRows';
 
-/* Only the icon and the words are decided here. Where a row goes is the
-   registry's own `route` (dayAhead.ts), so a mark's screen is named once
-   and Today's agenda links to the same place this row does. */
+/* Only the icon and the words are decided here. Where a row goes is
+   `dayAheadRoutes.ts`, so a mark's screen is named once and Today's agenda
+   links to the same place this row does. */
 const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> = {
   appointment: () => ({ icon: 'calendar', title: m.appointments_untitled() }),
   surgery: () => ({ icon: 'flag', title: m.surgery_date_label() }),
