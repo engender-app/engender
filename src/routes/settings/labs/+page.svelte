@@ -691,7 +691,7 @@
               <input type="checkbox" checked={row.include} onchange={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, include: (e.target as HTMLInputElement).checked } : r); handleOcrRowsChange(updated); }} />
               <span>{m.labs_ocr_row_include()}</span>
               {#if row.duplicate}
-                <span class="notice-warn" style="padding:2px 8px;border-radius:var(--radius-pill);font-size:var(--text-xs)">{m.labs_ocr_duplicate()}</span>
+                <span class="notice-warn" style="padding:2px 8px;border-radius:var(--r-block);font-size:var(--text-xs)">{m.labs_ocr_duplicate()}</span>
               {/if}
             </label>
             {#if row.lowConfidence}

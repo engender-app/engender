@@ -150,16 +150,28 @@
      'however it feels...' and 'gender feeling' are all starting at different
      points in x axis"). The 4px this used to carry put every section heading
      in the app 4px right of the surface it heads. */
-  padding: var(--space-5) 0 var(--space-3);
+  /* The rhythm (phase 10, DIRECTION.md rule 1): 40 above the heading's 3px
+     rule, of which the block before it already owns 20 (`.screen > *`) and
+     the two margins collapse; 12 between the rule and the words; 12 under
+     them. The rule in --text is what makes a screen read as named areas
+     without a single card - a heading, a rule, the content, and the next
+     rule further away than the content is from its heading (Tonal,
+     Polestar, in the reference sweep). */
+  padding: var(--space-3) 0 0;
+  margin: var(--space-8) 0 var(--space-3);
+  border-top: 3px solid var(--text);
 }
 
-.kit-heading:first-child {
-  padding-top: var(--space-2);
+/* The first heading on a screen sits under the header rather than under a
+   block, so the 40 it would otherwise ask for collapses to a breath. */
+.kit-heading:first-child,
+.screen-header + .kit-heading {
+  margin-top: var(--space-4);
 }
 
 .kit-heading h2 {
   font-family: var(--font-display);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-display);
   font-size: var(--text-2xl);
   line-height: var(--leading-display);
   letter-spacing: var(--display-track);
@@ -176,10 +188,14 @@
   min-height: var(--touch-target);
   min-width: var(--touch-target);
   padding-inline: var(--space-3);
-  color: var(--accent-ink);
+  /* Underlined ink rather than the accent (phase 10): on a page whose colour
+     is spent as blocks, an accent-coloured word is a fourth voice. */
+  color: var(--text);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
 }
 
 /* ---------- list card ----------
@@ -192,11 +208,11 @@
    Subtitles are earned rather than standard (DIRECTION.md 3b) - the More
    hub's 22 rows carry titles alone - so the row draws whatever it is
    given and nothing reserves space for a subtitle that is not there. */
+/* Flush (phase 10, rule 4): a list is its rows between two full-width
+   hairlines, on the page. The card around it is gone. */
 .kit-list {
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-card);
-  overflow: hidden;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
 }
 
 /* ---------- the plain panel ----------
@@ -220,10 +236,9 @@
    (DIRECTION.md decisions 2 and 3). A screen reaching for it where one of
    the six would do is the failure mode; the six come first. */
 .kit-panel {
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-card);
-  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-4) 0;
 }
 
 .kit-row {
@@ -233,7 +248,9 @@
   width: 100%;
   min-height: var(--touch-target);
   position: relative;
-  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  /* No horizontal inset (phase 10, rule 6): the screen's own 20px is the
+     row's edge now that the row has no card. */
+  padding: var(--space-2) 0;
   border: 0;
   background: none;
   color: inherit;
@@ -303,12 +320,17 @@
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  /* A block of the area's stripe, the exact hex, with the glyph in the ink
+     proven on that fill (phase 10, rules 3 and 6). The tinted disc it
+     replaces was the 15% wash that made Home five pink smudges. The 1px
+     edge is drawn so a white band on the light page and a black one on the
+     dark page still have an edge. */
+  border-radius: var(--r-block);
   display: grid;
   place-items: center;
-  color: var(--role-mark);
-  background: var(--role-tint);
-  border: var(--role-hairline);
+  color: var(--role-fill-ink);
+  background: var(--role-draw);
+  border: 1px solid var(--outline);
 }
 
 .kit-row-text {
@@ -318,14 +340,16 @@
 
 .kit-row-title {
   display: block;
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   line-height: 1.25;
 }
 
+/* 15 at weight 600, not 14 at 450 (phase 10, rule 2). */
 .kit-row-sub {
   display: block;
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   color: var(--text-2);
   line-height: 1.25;
 }
@@ -370,7 +394,7 @@
   align-items: center;
   gap: var(--space-3);
   min-height: var(--touch-target);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
   border: 0;
   background: none;
   color: inherit;
@@ -561,8 +585,8 @@
   height: 24px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-xs);
-  border: 1.5px solid var(--border);
+  border-radius: var(--r-block);
+  border: 1.5px solid var(--outline);
   background: var(--surface);
   color: var(--on-accent-soft);
   transition-property: background-color, border-color;
@@ -623,28 +647,32 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
    separator lines were doing between entries, so those are gone and the
    rows close up; DIRECTION.md's decision 3 asks for tighter rather than
    airier, and two entries a whole card-padding apart was the opposite. */
+/* Flush (phase 10, rule 4): a day is its date bar plus its entries on the
+   page, with no outline around the group. */
 .kit-day {
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-card);
-  overflow: hidden;
+  position: relative;
 }
 
+/* The date bar is a block of the stripe (rule 3): the exact hex, 6px
+   corners, the date in the ink proven on that fill. 13px is the one small
+   size the kit writes on a block, and tests/palette-contrast.test.ts holds
+   the ink to 4.5:1 on every stripe of every flag for it. */
 .kit-day-bar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--role-tint);
-  color: var(--role-ink);
-  font-size: var(--text-xs);
+  padding: 10px 14px;
+  background: var(--role-draw);
+  color: var(--role-fill-ink);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-block);
+  font-size: 0.8125rem;
   font-weight: var(--weight-bold);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .kit-day-aside {
   margin-left: auto;
-  color: var(--text-2);
   font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
 }
@@ -658,7 +686,7 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   grid-template-columns: auto 26px minmax(0, 1fr);
   align-items: stretch;
   gap: 0 var(--space-3);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-1);
   position: relative;
   color: inherit;
   text-decoration: none;
@@ -746,7 +774,7 @@ a.kit-entry:active {
   height: 10px;
   border-radius: 50%;
   background: var(--surface);
-  border: 1.5px solid var(--outline-strong);
+  border: 1.5px solid var(--outline);
 }
 
 .kit-entry-body {
@@ -817,10 +845,13 @@ a.kit-entry:active {
    which is the same object doing the same job in the same colour. */
 .kit-pill {
   padding: 1px var(--space-2);
+  /* The one capsule left in the kit (phase 10, rule 5): a tag is a pill
+     because it is one word. A block of the stripe like the date bar above
+     it, in the same proven ink. */
   border-radius: var(--radius-pill);
-  background: var(--role-tint);
-  border: var(--role-hairline);
-  color: var(--role-ink);
+  background: var(--role-draw);
+  border: 1px solid var(--outline);
+  color: var(--role-fill-ink);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   white-space: nowrap;
@@ -920,7 +951,7 @@ a.kit-entry:active {
      side by side each take their own colour from the flag, so the pair
      reads as two of its bands rather than as one tinted block repeated. */
   border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
-  border-radius: var(--r-card);
+  border-radius: var(--r-block);
   color: inherit;
   text-decoration: none;
 }
@@ -944,7 +975,7 @@ a.kit-entry:active {
   background: transparent;
   border: 0;
   color: var(--text-2);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   cursor: pointer;
 }
 
@@ -983,7 +1014,7 @@ a.kit-entry:active {
   padding: var(--space-4);
   background: var(--role-tint);
   border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
-  border-radius: var(--r-card);
+  border-radius: var(--r-block);
 }
 
 .kit-tile.is-split > .kit-tile-main { grid-area: main; }
@@ -1023,7 +1054,7 @@ a.kit-entry:active {
   padding: 0 var(--space-3.5);
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   background: color-mix(in oklab, var(--role-mark) 18%, transparent);
   color: var(--role-ink);
   white-space: nowrap;
@@ -1037,7 +1068,7 @@ a.kit-entry:active {
   width: 36px;
   height: 36px;
   padding: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
 }
 
 /* The row weight. A card stacks title, value and note down the tile; a row
@@ -1102,7 +1133,7 @@ a.kit-entry:active {
      as shrunken (Alicja, ticket 99 round 4: "the text got smaller - don't
      change the font size"). */
   font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-display);
   letter-spacing: var(--display-track);
   line-height: 1.1;
   /* Display size, so it answers to the 3:1 floor and keeps the stripe. */
@@ -1122,12 +1153,13 @@ a.kit-entry:active {
   width: 100%;
   height: 6px;
   margin-top: var(--space-2);
-  border-radius: 3px;
+  border-radius: 2px;
   background-image: var(--flag-fill);
 }
 
 .kit-tile-note {
   font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   color: var(--text-2);
   line-height: 1.25;
   display: -webkit-box;
@@ -1170,9 +1202,11 @@ a.kit-entry:active {
      the fill that came with the border made it a card - and this row is a
      control on the page, not another surface stacked on it (Alicja,
      2026-08-25: "the border is good, but it shouldnt have bg color"). */
-  padding: var(--space-3) var(--space-2);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-card);
+  /* Flush (phase 10, rule 4): five discs between two hairlines. In a world
+     with no cards the outline was the only box on the screen. */
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .kit-mood {
@@ -1276,14 +1310,14 @@ a.kit-entry:active {
   width: 100%;
   aspect-ratio: 1;
   max-width: 44px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-block);
   border: 1px solid var(--outline);
   display: block;
   background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
 }
 
 .kit-strip-day.is-today .kit-strip-cell {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--text);
   outline-offset: 2px;
 }
 
@@ -1328,10 +1362,13 @@ a.kit-entry:active {
   grid-template-rows: auto auto;
   align-items: center;
   gap: 0 var(--space-3);
-  padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--outline-strong);
-  border-radius: var(--r-card);
+  /* Flush (phase 10, rule 4): the app talking about itself borrows no
+     stripe and no box. Text on the page between two hairlines, like a list,
+     with the ink square below as its mark. The first render set the whole
+     notice in ink and Alicja read it as too loud. */
+  padding: 14px 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
   font-size: var(--text-sm);
 }
 
@@ -1359,14 +1396,15 @@ a.kit-entry:active {
   grid-column: 1;
   grid-row: 1;
   align-self: start;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  /* Ink (phase 10, rule 4): --text as a ground with --bg as the glyph, the
+     inverse of the page, kept for the smallest things. */
+  border-radius: var(--r-block);
   display: grid;
   place-items: center;
-  color: var(--role-mark);
-  background: var(--role-tint);
-  border: var(--role-hairline);
+  color: var(--bg);
+  background: var(--text);
 }
 
 .kit-notice-body {
@@ -1380,7 +1418,7 @@ a.kit-entry:active {
    the two would stop being level for no reason anyone could see. */
 .kit-notice-title {
   display: block;
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
   line-height: 1.3;
   font-weight: var(--weight-bold);
   color: var(--text);
@@ -1388,6 +1426,8 @@ a.kit-entry:active {
 
 .kit-notice-text {
   margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   color: var(--text-2);
 }
 
@@ -1401,17 +1441,20 @@ a.kit-entry:active {
   margin: 0 0 calc(var(--space-2) * -1) calc(var(--space-3) * -1);
   padding-inline: var(--space-3);
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-block);
   background: none;
   font: inherit;
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  color: var(--accent-ink);
+  color: var(--text);
   cursor: pointer;
-  /* The link half of the same control (Notice.svelte): an anchor brings an
-     underline and the theme's link colour with it, and this is one control
-     drawn one way whichever element it turns out to be. */
-  text-decoration: none;
+  /* Underlined ink, the same whichever element it turns out to be
+     (Notice.svelte renders a link where it navigates and a button where it
+     acts): an anchor would bring the theme's link colour with it, and this
+     is one control drawn one way. */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
 }
 
 /* Drawn as the app's primary button instead (Notice.svelte), which means it
@@ -1441,7 +1484,7 @@ a.kit-entry:active {
   grid-column: 2;
   grid-row: 2;
   justify-self: stretch;
-  margin-top: var(--space-6);
+  margin-top: var(--space-5);
 }
 
 .kit-notice-x {
@@ -1455,7 +1498,7 @@ a.kit-entry:active {
      centre, which is what this pulls it up by. Hard-coded at -10px before,
      which was near enough on one font size and drifted on every other. */
   align-self: start;
-  margin: calc((var(--text-md) * 1.3 - var(--touch-target)) / 2) -10px 0 0;
+  margin: calc((var(--text-lg) * 1.3 - var(--touch-target)) / 2) -10px 0 0;
   display: grid;
   place-items: center;
   border: 0;
@@ -1463,6 +1506,27 @@ a.kit-entry:active {
   background: none;
   color: var(--text-2);
   cursor: pointer;
+}
+
+/* At 200% zoom a 390px phone leaves about 195px of CSS viewport, and the
+   notice's three-column grid left its text one word per line there (the
+   redesign's 200% render, ticket 07). The icon square drops - the title
+   says what the notice is - and the text takes the column. */
+@media (max-width: 240px) {
+  .kit-notice {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .kit-notice-ico {
+    display: none;
+  }
+  .kit-notice-body,
+  .kit-notice-act,
+  .kit-notice-cta {
+    grid-column: 1;
+  }
+  .kit-notice-x {
+    grid-column: 2;
+  }
 }
 
 /* ============================================================
@@ -1482,11 +1546,16 @@ a.kit-entry:active {
    go, which is the point.
    ============================================================ */
 
+/* Unboxed (phase 10, rule 4): heading, plot, range, on the page. The chart
+   card is gone; consecutive charts are separated by a hairline, which sits
+   in the middle of the 40px the two rules below add up to. */
 .kit-chart {
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-card);
-  padding: var(--space-4);
+  padding: 0;
+}
+
+.kit-chart + .kit-chart {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-5);
 }
 
 .kit-chart-head {
@@ -1499,11 +1568,12 @@ a.kit-entry:active {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-family: var(--font-display);
+  /* A content title (phase 10, rule 2): 17px in the body face. The display
+     face is for the screen's structure; what a chart shows is content. */
+  font-family: var(--font-body);
   font-weight: var(--weight-bold);
   font-size: var(--text-lg);
-  line-height: var(--leading-display);
-  letter-spacing: var(--display-track);
+  line-height: 1.25;
   color: var(--text);
 }
 
@@ -1561,11 +1631,11 @@ a.kit-entry:active {
   align-items: center;
   gap: var(--space-1);
   max-width: 100%;
-  height: calc(var(--text-lg) * var(--leading-display));
+  height: 28px;
   padding: 0 var(--space-2) 0 var(--space-3);
-  background: var(--surface-2);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-pill);
+  background: none;
+  border: 2px solid var(--text);
+  border-radius: var(--r-block);
   color: var(--text);
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
@@ -1639,7 +1709,7 @@ a.kit-entry:active {
    to the two-surface rule instead, which is a different number. */
 :is(.segmented, .stats-caption, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
   + :is([data-kit-surface], .skeleton-stack) {
-  margin-top: var(--space-7);
+  margin-top: var(--space-5);
 }
 
 /* A note is a remark about the block above it, not a control for the block
@@ -1688,7 +1758,7 @@ a.kit-entry:active {
    this is the same gap by another route, where a heading isn't between
    the two blocks to already own the space. */
 [data-kit-surface] + [data-kit-surface] {
-  margin-top: var(--space-6);
+  margin-top: var(--space-5);
 }
 
 /* Day cards are the exception: adjacent ones are items of a day list -
@@ -1773,12 +1843,14 @@ a.kit-entry:active {
   fill: color-mix(in oklab, var(--role-draw) 16%, transparent);
 }
 
+/* 2px, square caps, mitred joins (phase 10, rule 9): one weight for a
+   series, one for a guide. */
 .kit-area-line {
   fill: none;
   stroke: var(--role-draw);
-  stroke-width: 2.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
+  stroke-width: 2;
+  stroke-linejoin: miter;
+  stroke-linecap: square;
 }
 
 /* The second metric (phase 6 ticket 12). A second stripe and a dash, at the
@@ -1807,7 +1879,7 @@ a.kit-entry:active {
 .kit-area-ring {
   fill: var(--surface);
   stroke: var(--role-draw);
-  stroke-width: 2.5;
+  stroke-width: 2;
 }
 
 .kit-area-ring.is-overlay,
@@ -1891,7 +1963,7 @@ a.kit-entry:active {
   align-items: flex-end;
   gap: 1px;
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
   background: var(--surface-2);
   border: 1px solid var(--outline);
   font-size: var(--text-xs);
@@ -2008,7 +2080,7 @@ a.kit-entry:active {
    anybody who cannot separate the two colours. */
 .kit-area-legend-mark {
   width: 18px;
-  border-top: 2.5px solid var(--role-draw);
+  border-top: 2px solid var(--role-draw);
 }
 
 .kit-area-legend-mark.is-overlay {
@@ -2061,7 +2133,7 @@ a.kit-entry:active {
    happened below them without either one crossing the line. */
 .kit-annotation-edge {
   stroke: color-mix(in oklab, var(--text) 42%, transparent);
-  stroke-width: 1.5;
+  stroke-width: 1;
   stroke-linecap: round;
 }
 
@@ -2070,7 +2142,7 @@ a.kit-entry:active {
    happened", and two marks that mean different things may not look alike. */
 .kit-annotation-mark {
   stroke: color-mix(in oklab, var(--text) 52%, transparent);
-  stroke-width: 1.5;
+  stroke-width: 1;
   stroke-linecap: round;
 }
 
@@ -2108,7 +2180,7 @@ a.kit-entry:active {
   gap: 1px;
   max-width: 168px;
   padding: 3px var(--space-2);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   background: var(--surface-2);
   border: 1px solid var(--outline);
   font-size: var(--text-xs);
@@ -2194,7 +2266,7 @@ a.kit-entry:active {
   margin: 0 calc(var(--space-2) * -1);
   padding: var(--space-2);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-block);
   background: none;
   color: inherit;
   font: inherit;
@@ -2267,16 +2339,18 @@ a.kit-entry:active {
 }
 
 .kit-bar-track {
-  height: 26px;
+  height: 14px;
   display: flex;
   align-items: center;
   margin-top: 4px;
 }
 
+/* A 14px flat block with 2px ends (phase 10, rule 9), down from a 26px
+   pill. */
 .kit-bar-mark {
   display: block;
-  height: 26px;
-  border-radius: 8px;
+  height: 14px;
+  border-radius: 2px;
   width: calc(var(--bar-share) * 1%);
   min-width: 2px;
   background: color-mix(in oklab, var(--role-draw) 62%, var(--surface));
@@ -2381,7 +2455,9 @@ a.kit-entry:active {
   inset: 0 auto 0 0;
   width: calc(var(--bar-share) * 1%);
   height: 100%;
-  border-radius: var(--radius-md);
+  /* 4px ends: the inline bar keeps its 36px because the day is written on
+     it, and a 2px end on a bar that tall reads as a cut. */
+  border-radius: 4px;
   overflow: hidden;
   background: var(--role-draw);
   animation: kit-bar-reveal var(--dur-bar-in) var(--ease-bar-in) both;
@@ -2389,8 +2465,8 @@ a.kit-entry:active {
 }
 
 @keyframes kit-bar-reveal {
-  from { clip-path: inset(0 100% 0 0 round var(--radius-md)); }
-  to { clip-path: inset(0 round var(--radius-md)); }
+  from { clip-path: inset(0 100% 0 0 round 4px); }
+  to { clip-path: inset(0 round 4px); }
 }
 
 
@@ -2653,7 +2729,7 @@ a.kit-entry:active {
   align-self: end;
   height: calc(var(--bar-share) * 1%);
   min-height: 6px;
-  border-radius: 6px 6px 2px 2px;
+  border-radius: 2px;
   border: 1px solid var(--outline);
   background: var(--dist-fill, var(--role-draw));
   /* The set rises as it arrives, left to right, on the horizontal bars' own

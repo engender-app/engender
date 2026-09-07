@@ -385,8 +385,8 @@
      the same struck-through-when-done rule - a checked item is not hidden or
      removed, only marked handled. */
   .ap-box {
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
+    border: 2px solid var(--outline);
+    border-radius: var(--r-block);
     width: 28px;
     height: 28px;
     display: flex;

@@ -158,7 +158,7 @@
     text-align: left;
     background: none;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-block);
     padding: var(--space-1) var(--space-2);
     cursor: pointer;
     transition-property: background-color;
@@ -208,7 +208,7 @@
     padding: var(--space-1) var(--space-2);
     background: none;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-block);
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     color: var(--text-2);

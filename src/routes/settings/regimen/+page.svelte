@@ -749,7 +749,7 @@
      beside it around. */
   .regimen-badge {
     padding: 2px var(--space-2);
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     font-size: var(--text-xs);
     white-space: nowrap;
   }

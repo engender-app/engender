@@ -367,7 +367,7 @@
   .care-regimen-drug {
     font-family: var(--font-display);
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-display);
   }
   .care-regimen-detail {
     font-size: var(--text-sm);

@@ -325,7 +325,7 @@
     display: block;
     width: 100%;
     height: auto;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
   }
   .journey-actions {
     display: flex;

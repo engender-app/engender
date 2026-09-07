@@ -183,7 +183,7 @@
     width: 100%;
     height: 100%;
     fill: var(--surface-2);
-    stroke: var(--border);
+    stroke: var(--outline);
     stroke-width: 1;
   }
   .site-dot {
@@ -210,7 +210,7 @@
   .site-dot::after,
   .site-recency-swatch {
     border-radius: 50%;
-    border: 1.5px solid var(--outline-strong);
+    border: 1.5px solid var(--outline);
     background: var(--dot-fill, var(--surface));
   }
   /* Never used: no fill and a firmer edge, at the same size as the rest.
@@ -304,7 +304,7 @@
     height: 14px;
     border-radius: 50%;
     display: inline-block;
-    border: 1.5px solid var(--outline-strong);
+    border: 1.5px solid var(--outline);
     background: var(--dot-fill, var(--surface));
   }
   .site-legend-swatch.is-never {

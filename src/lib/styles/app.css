@@ -218,21 +218,21 @@ body {
    The trailing margin on the last block is deliberate and harmless: the
    scroll region already clears the floating bar with its own padding.
 
-   --space-6, not --space-4: two cards read as one with a line through it at
-   16px (Alicja, 2026-08-26, register finding 32.14). This is a different
-   axis from DIRECTION.md decision 3's "tighter, not airier" - that gap
-   (--space-3) is between related items inside a section and deliberately
-   shrank; this one is between unrelated blocks that need to read as
-   separate, and grows for the same reason the other one shrank. */
+   20 between two blocks (phase 10, DIRECTION.md rule 1). It was 24, set
+   when two outlined cards at 16px read as one card with a line through it
+   (Alicja, 2026-08-26, register finding 32.14); two flush blocks separated
+   by hairlines can sit closer than two outlined cards, and 20 is one of
+   the three distances the rhythm names. A section heading asks for 40
+   above its rule and owns that margin itself (kit.css). */
 .screen > * {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
 /* A heading belongs to what comes after it. Less space under it than over it
    is what makes a screen read as named areas rather than as an even column
-   of blocks. */
+   of blocks: 12 under the heading (rule 1). */
 .screen > .kit-heading {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 /* The header is the screen's own title block: its subtitle already carries
@@ -253,13 +253,13 @@ body {
    Named rather than reached through with `.screen > * > *`, which would put
    a margin inside every card, list and chart on the screen.
 
-   --space-6 to match the floor above it (32.14). */
+   --space-5 to match the floor above it. */
 .screen > .screen-part > * {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
 .screen > .screen-part > .kit-heading {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 /* The wrapper's own last child would otherwise add its margin to the
@@ -293,9 +293,9 @@ body {
   right: calc(var(--nav-float-gap) + var(--inset-right));
   bottom: calc(var(--nav-float-gap) + var(--inset-bottom));
   height: var(--bottom-nav-height);
-  border-radius: calc(var(--r-add) + var(--nav-bar-pad));
+  border-radius: var(--r-block);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--outline);
   box-shadow: var(--shadow-float);
   padding: var(--nav-bar-pad);
   /* Five equal cells: two tabs, the add button, two tabs. Equal rather
@@ -322,7 +322,7 @@ body {
   min-width: 0;
   min-height: var(--touch-target);
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--r-add);
+  border-radius: var(--r-block);
   color: var(--text-2);
   text-decoration: none;
   font-size: var(--text-xs);
@@ -391,7 +391,7 @@ body {
   height: var(--pill-h, 0);
   translate: var(--pill-x, 0) var(--pill-y, 0);
   scale: 1 1;
-  border-radius: var(--r-add);
+  border-radius: var(--r-block);
   background: var(--accent-soft);
   opacity: 0;
   pointer-events: none;
@@ -454,7 +454,7 @@ body {
   position: relative;
   z-index: 1;
   width: 56px; height: 56px;
-  border-radius: var(--r-add);
+  border-radius: var(--r-block);
   border: none;
   background: var(--accent);
   color: var(--on-accent);
@@ -674,7 +674,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
     padding: calc(var(--space-6) + var(--inset-top)) var(--space-4)
              calc(var(--space-6) + var(--inset-bottom))
              calc(var(--space-4) + var(--inset-left));
-    border-right: 1px solid var(--border);
+    border-right: 1px solid var(--outline);
     background: var(--surface);
     overflow-y: auto;
   }
@@ -707,7 +707,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
    instead of the sun stopping at an edge and a border being drawn
    somewhere else. */
 .rail-brand {
-  font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg);
+  font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-lg);
   letter-spacing: var(--display-track);
   padding: 0 var(--space-3) var(--space-5);
   display: flex; align-items: center; gap: var(--space-2);
@@ -731,7 +731,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   width: 100%; min-height: var(--touch-target);
   margin-bottom: var(--space-4);
   padding: 0 var(--space-4);
-  border: none; border-radius: var(--r-add);
+  border: none; border-radius: var(--r-block);
   background: var(--accent); color: var(--on-accent);
   font: inherit; font-weight: var(--weight-bold);
   cursor: pointer;
@@ -740,7 +740,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   position: relative;
   display: flex; align-items: center; gap: var(--space-3);
   padding: 10px var(--space-3); min-height: var(--touch-target);
-  border-radius: var(--r-add);
+  border-radius: var(--r-block);
   color: var(--text-2); text-decoration: none; font-weight: var(--weight-medium);
   transition-property: color, background-color;
   transition-duration: var(--dur-fast);
@@ -760,7 +760,7 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   position: absolute; top: -48px; left: var(--space-3); z-index: 100;
   background: var(--accent); color: var(--on-accent);
   padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-block);
   text-decoration: none; font-weight: var(--weight-bold);
   transition: top var(--dur-fast) var(--ease-out);
 }
@@ -878,6 +878,6 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
 .icon-btn.is-outlined {
   outline: 1.5px solid var(--outline);
   outline-offset: -1.5px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
 }
-.icon-btn.is-outlined:hover { outline-color: var(--outline-strong); }
+.icon-btn.is-outlined:hover { outline-color: var(--outline); }
