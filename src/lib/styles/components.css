@@ -53,8 +53,20 @@
    painting an empty band: the in-the-room screen is chromeless on purpose,
    and the two hubs that hide their title gain their field's contents from
    tickets 09 and 15. A screen can hide its title and still show a back
-   control or an action, and those keep the field. */
-.screen-header.is-collapsed .screen-field { display: none; }
+   control or an action, and those keep the field.
+
+   Unpainted, not display: none. The visually hidden title inside is still
+   the screen's heading for a screen reader and the document outline (the
+   component's own reason for hiding rather than dropping it), and a
+   display: none ancestor would take it out of the accessibility tree; the
+   walkthrough's hub characterisation reads that heading. */
+.screen-header.is-collapsed .screen-field,
+.screen > .screen-header.is-collapsed > .screen-field {
+  background: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+}
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
    starts at the screen's own content edge instead of 48px inside it, and the
@@ -1870,20 +1882,18 @@ html[data-a11y-motion='reduce'] .bloom-core {
    (ADR-0035's "Consequences": a positioned element paints over a static
    sibling regardless of DOM order, however z-index reads).
 
-   The rings are separated (phase 10, DIRECTION.md rule 8; redesign ticket
-   23). Each ring is set off from the one outside it by 5px of the ground
-   it sits on, and each carries a 1px edge that is black or nothing: #000,
-   never a theme-mixed line, which on a dark page around a dark band is
-   nothing, and that is the second half of the rule. The gap is drawn as an
-   outline in the ground's colour outside the ring's own box, so the
-   diameters flagSun.ts computes do not change and flagSun.test.ts still
-   holds every ring to --motif-stripes; the seam is a border inside the box
-   for the same reason. The ground is whatever paints behind the sun -
-   Home's field sets --sun-ground to --field, so on trans the gaps are pink
-   and on nonbinary purple; onboarding's flag step has no field and the
-   gaps fall to the page. Bisexual's doubled stops still read as one
-   thicker band: two adjacent rings of one colour with a gap between them
-   in the flag's own colour is a band with an invisible line through it.
+   The rings are seamed (phase 10, DIRECTION.md rule 8 as Alicja settled it
+   on ticket 23's renders, 2026-09-07): the bands touch, with no gap of the
+   ground between them, and each ring carries a 3px black edge - #000,
+   never a theme-mixed line, which on a dark page around a dark band reads
+   as nothing, and that is the second half of the rule. The first render
+   had 5px gaps in the ground's colour between the bands and a 1px seam,
+   and she asked for the opposite: a fatter stroke and no emptiness. The
+   seam is a border inside the ring's own box, so the diameters flagSun.ts
+   computes do not change and flagSun.test.ts still holds every ring to
+   --motif-stripes; a band is its ring minus the next ring in, and the
+   stroke sits on the outer edge of each. Bisexual's doubled stops read as
+   one band with a line through it, which is the flag's own 2:1:2.
 
    --sun-scale is how the sun shrinks on a narrow screen (0.82 below 360px,
    0.6 below 240px, set by Home's field); the point it scales about is the
@@ -1898,8 +1908,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
   position: absolute; top: 0; left: 0; display: block; border-radius: 50%;
   width: var(--d); height: var(--d); background: var(--c);
   box-sizing: border-box;
-  border: 1px solid #000;
-  outline: 5px solid var(--sun-ground, var(--bg));
+  border: 3px solid #000;
   transform: translate(-50%, -50%);
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
