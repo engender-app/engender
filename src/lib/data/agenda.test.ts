@@ -25,7 +25,16 @@ const mark = (kind: DayAheadMarkKind, epochDay: number): DayAheadMark => ({ kind
 /** The comparison arm that carries slots, with one unlogged slot per day
     listed. Only the fields the projection reads are filled in - the rest of
     `getComparison`'s answer belongs to the screens that draw amounts. */
-function comparison(unloggedDays: readonly number[], loggedDays: readonly number[] = []): DoseScheduleComparison {
+/** A weekly injection: the rhythm ADR-0067 says is genuinely a calendar
+    fact, as opposed to `DAILY` below. */
+const WEEKLY = { kind: 'weekdays', weekdays: [2] };
+const DAILY = { kind: 'everyNDays', everyNDays: 1 };
+
+function comparison(
+  unloggedDays: readonly number[],
+  loggedDays: readonly number[] = [],
+  recurrence: object = WEEKLY
+): DoseScheduleComparison {
   const row = (epochDay: number, logged: boolean) => ({
     slot: { epochDay, indexInDay: 0, amount: null },
     dose: logged ? ({ id: `dose-${epochDay}` } as never) : null
@@ -33,7 +42,7 @@ function comparison(unloggedDays: readonly number[], loggedDays: readonly number
   return {
     reason: null,
     activeEpisode: { id: 'episode-1' } as never,
-    schedule: {} as never,
+    schedule: { recurrence } as never,
     pauses: [],
     comparison: {
       rows: [
@@ -55,9 +64,11 @@ function input(over: Partial<AgendaInput> = {}): AgendaInput {
   };
 }
 
-test('the window is today through today plus seven, inclusive at both ends', () => {
-  assert.deepEqual(agendaWindow(TODAY), { fromEpochDay: TODAY, toEpochDay: TODAY + AGENDA_DAYS });
+test('the window is seven days, today counted as one of them', () => {
   assert.equal(AGENDA_DAYS, 7);
+  const { fromEpochDay, toEpochDay } = agendaWindow(TODAY);
+  assert.equal(fromEpochDay, TODAY);
+  assert.equal(toEpochDay - fromEpochDay + 1, AGENDA_DAYS);
 });
 
 test('marks come back in date order, whatever order they arrived in', () => {
@@ -132,7 +143,23 @@ test('a passed slot alone is still an agenda', () => {
 test('the passed slot is one item: the most recent one, never a count', () => {
   const projection = agenda(input({ doses: comparison([TODAY - 5, TODAY - 2, TODAY - 4]) }));
   assert.equal(projection!.passed?.epochDay, TODAY - 2);
-  assert.equal(Object.values(projection!.passed!).some((value) => value === 3), false);
+  /* Three slots passed and the item carries no field that could say so.
+     Asserted on the shape rather than on a value, so adding a `count` to
+     `AgendaPassedSlot` fails here rather than shipping a tally. */
+  assert.deepEqual(Object.keys(projection!.passed!).sort(), ['epochDay', 'key', 'route']);
+});
+
+test('a daily schedule never states a slot that passed', () => {
+  // ADR-0067 keeps a daily slot off a forward mark because it lands on
+  // every day a screen could draw; a daily slot that passed would put a row
+  // on this screen most mornings for the same reason.
+  const projection = agenda(input({ doses: comparison([TODAY - 1], [], DAILY) }));
+  assert.equal(projection, null);
+});
+
+test('a weekly schedule still states one, so the daily rule is a rule and not a mute', () => {
+  const projection = agenda(input({ doses: comparison([TODAY - 1], [], WEEKLY) }));
+  assert.equal(projection!.passed?.epochDay, TODAY - 1);
 });
 
 test("today's own slot has not passed", () => {

@@ -37,7 +37,7 @@ function recordingAreas(marks: DayAheadMark[] = []) {
   return { areas, asked, dayAheadCalls, doseWindows };
 }
 
-test('the forward read is dayAhead, asked for today through today plus seven', async () => {
+test('the forward read is dayAhead, asked for the seven days from today', async () => {
   const { areas, asked, dayAheadCalls } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
 
   const projection = await readAgenda(areas, TODAY, false);
@@ -45,7 +45,7 @@ test('the forward read is dayAhead, asked for today through today plus seven', a
   assert.equal(projection?.shown.length, 1);
   assert.equal(asked.filter((call) => call === 'dayAhead').length, 1);
   assert.deepEqual(dayAheadCalls, [
-    { fromEpochDay: TODAY, toEpochDay: TODAY + AGENDA_DAYS, todayEpochDay: TODAY }
+    { fromEpochDay: TODAY, toEpochDay: TODAY + AGENDA_DAYS - 1, todayEpochDay: TODAY }
   ]);
 });
 
