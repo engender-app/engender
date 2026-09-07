@@ -19,7 +19,7 @@ import { bool, mintUuid, now } from './support';
 import type { DosesArea } from './doses';
 import type { RegimenArea } from './regimen';
 import type { RemindersArea } from './reminders';
-import { projectEveryStock, type StockProjection } from '../stockProjection';
+import { projectEveryStock, reorderByEpochDay, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 
@@ -36,11 +36,21 @@ interface StockEntryInput {
   openedEpochDay?: number | null;
   inUseWindowDays?: number | null;
   inUseEndEpochDay?: number | null;
+  /** How many days a restock takes for this drug (redesign phase 10 ticket
+      01). Optional and defaulted to null, so every caller before this ticket
+      keeps working unchanged. */
+  leadTimeDays?: number | null;
 }
 
 export interface StockProjectionRow {
   entry: MedicationStock;
   projection: StockProjection;
+  /** The day an order has to be placed: `entry.leadTimeDays` days ahead of
+      `projection.runOutEpochDay`, or that same day where no lead time is set
+      (`reorderByEpochDay`, stockProjection.ts). Carried on this row rather
+      than left for a caller to work out, so a caller cannot compute a third
+      answer by combining the other two differently. */
+  reorderByEpochDay: number | null;
 }
 
 export interface StockArea {
@@ -79,6 +89,7 @@ type StockRow = {
   opened_epoch_day: number | null;
   in_use_window_days: number | null;
   in_use_end_epoch_day: number | null;
+  lead_time_days: number | null;
 };
 
 const toStock = (row: StockRow): MedicationStock => ({
@@ -91,12 +102,13 @@ const toStock = (row: StockRow): MedicationStock => ({
   reminderDismissed: bool(row.reminder_dismissed),
   openedEpochDay: row.opened_epoch_day,
   inUseWindowDays: row.in_use_window_days,
-  inUseEndEpochDay: row.in_use_end_epoch_day
+  inUseEndEpochDay: row.in_use_end_epoch_day,
+  leadTimeDays: row.lead_time_days
 });
 
 const STOCK_COLUMNS =
   'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, ' +
-  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day';
+  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days';
 
 /** Where box 4's reminder marks which drug it belongs to
     (stockReminder.ts). The marker itself lives in autoSource.ts, which is
@@ -141,7 +153,10 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     const projected = await projectEveryStock(entries, episodes, asOfEpochDay, (ranges) =>
       doses.countConsumingDosesByDrug(ranges)
     );
-    return entries.map((entry, index) => ({ entry, projection: projected[index] }));
+    return entries.map((entry, index) => {
+      const projection = projected[index];
+      return { entry, projection, reorderByEpochDay: reorderByEpochDay(projection.runOutEpochDay, entry.leadTimeDays) };
+    });
   };
 
   return {
@@ -172,6 +187,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         input.openedEpochDay ?? null,
         input.inUseWindowDays ?? null,
         input.inUseEndEpochDay ?? null,
+        input.leadTimeDays ?? null,
         now()
       ];
 
@@ -179,7 +195,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         await driver.run(
           `UPDATE medication_stock
               SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, updated_at = ?
+                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, updated_at = ?
             WHERE drug = ?`,
           [...values, drug]
         );
@@ -190,8 +206,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
       await driver.run(
         `INSERT INTO medication_stock
            (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
-            opened_epoch_day, in_use_window_days, in_use_end_epoch_day, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, drug, ...values]
       );
       return uuid;
