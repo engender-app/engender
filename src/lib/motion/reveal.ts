@@ -234,15 +234,23 @@ function stillArriving(): boolean {
   return performance.now() - arrivedAt < motionDuration('--dur-med');
 }
 
+/** A box in viewport coordinates: where a panel stood. */
+export type Slot = { top: number; left: number; width: number; height: number };
+
 /* When a grid last handed a leaving panel's slot straight to another one, as
-   a `performance.now()` reading. See `collapse`. */
+   a `performance.now()` reading, and the box that slot was. See `collapse`. */
 let replacedAt = -Infinity;
+let replacedSlot: Slot | null = null;
 
 /** Called by a screen whose list is swapping one panel for another in a
     single tick - a dismissal its fold fills at once - before the DOM is
-    updated. See `collapse`. */
-export function markSlotReplacement(now: number = performance.now()): void {
+    updated, with the box the leaving panel still occupies at that moment.
+    Measured there because by the time the panel's own transition runs, the
+    replacement is standing in its place and it has been pushed elsewhere.
+    See `collapse`. */
+export function markSlotReplacement(slot: Slot | null, now: number = performance.now()): void {
   replacedAt = now;
+  replacedSlot = slot;
 }
 
 /** Where a tile leaving along a row has finished taking its content out,
@@ -261,6 +269,55 @@ const SWAP_WINDOW_MS = 50;
    goes first. */
 function replacingSlot(): boolean {
   return performance.now() - replacedAt < SWAP_WINDOW_MS;
+}
+
+/** Whether a sibling stands on a line below this node's own.
+
+    A wrapping row can hand a panel's space to a tile from the line under it
+    rather than to the one beside it, and that tile arrives by rewrapping,
+    which is a jump nothing can animate. Asked so `collapse` can tell the two
+    apart: space given back to a neighbour is worth animating, space a
+    rewrap is about to claim is not. */
+function hasLineBelow(node: Element): boolean {
+  const parent = node.parentElement;
+  const box = node.getBoundingClientRect();
+  if (!parent || box.height <= 0) return false;
+  for (const sibling of parent.children) {
+    if (sibling === node) continue;
+    if (sibling.getBoundingClientRect().top > box.top + box.height / 2) return true;
+  }
+  return false;
+}
+
+/** A panel that is not giving its space back: it leaves the flow in the frame
+    it is dismissed and dissolves where it stood.
+
+    Pinned to the box rather than left in place, and the pinning is the whole
+    point - out of flow, the grid reaches its final layout in the frame of the
+    tap, so nothing grows into space that is about to be reclaimed and nothing
+    snaps back when the node is finally removed. `position: fixed` rather than
+    absolute because the box is in viewport coordinates and no containing
+    block has to be arranged for it.
+
+    --dur-slow, and it starts the same frame as the arriving panel's own fade,
+    so a swap reads as one card dissolving into another rather than as a hole
+    that fills in afterwards ("the animation is too fast, it looks like a
+    yank" - Alicja, on the 240ms cut this replaces). */
+function dissolveAt(slot: Slot): TransitionConfig {
+  return {
+    duration: motionDuration('--dur-slow'),
+    easing: EASE_OUT,
+    css: (t) =>
+      `position: fixed;` +
+      `top: ${slot.top}px;` +
+      `left: ${slot.left}px;` +
+      `width: ${slot.width}px;` +
+      `height: ${slot.height}px;` +
+      `margin: 0;` +
+      `z-index: 2;` +
+      `pointer-events: none;` +
+      `opacity: ${t};`
+  };
 }
 
 /** Whether anything else in this node's parent stands on the same line.
@@ -359,14 +416,36 @@ export function collapse(
   if (isReducedMotion() || params?.skip) return { duration: 0 };
   if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
   if (replacingSlot()) {
-    if (options?.direction !== 'in') return { duration: 0 };
-    return {
-      duration: motionDuration('--dur-med'),
-      easing: EASE_OUT,
-      css: (t) => `opacity: ${t}`
-    };
+    if (options?.direction === 'in') {
+      return {
+        duration: motionDuration('--dur-slow'),
+        easing: EASE_OUT,
+        css: (t) => `opacity: ${t}`
+      };
+    }
+    /* The screen measures the slot before the DOM changes; without one there
+       is nothing to pin the panel to and the cut is the honest fallback. */
+    return replacedSlot ? dissolveAt(replacedSlot) : { duration: 0 };
   }
-  if (!sharesItsLine(node)) return disclose(node, params);
+  /* The column case is `disclose`, on this primitive's own duration rather
+     than `disclose`'s. A panel giving its space back is the largest layout
+     change tier 3 makes and it reads as a yank at --dur-med (Alicja, on the
+     recording: "the animation is too fast, it looks like a yank"); a group
+     opening inside a screen, which is what `disclose`'s other callers are,
+     has less to move and keeps the faster one. Both axes of a panel take the
+     same duration, or closing the last of a pair would be slower than
+     closing one of two. */
+  if (!sharesItsLine(node)) {
+    return { ...disclose(node, params), duration: motionDuration('--dur-slow') };
+  }
+  /* Something on the line below is about to rewrap into this space, so it is
+     not being given back to the neighbour and the neighbour must not grow
+     into it: measured at 700px with the fold open, the dose panel grew to
+     638px and snapped back to 318px at 174ms of the travel, when the tile
+     below fitted back onto the line. Dissolving instead settles the grid in
+     the frame of the tap. The tile that moves up still moves in one frame -
+     it changes place and width at once, which a transform cannot carry. */
+  if (hasLineBelow(node)) return dissolveAt(node.getBoundingClientRect());
 
   const width = node.getBoundingClientRect().width;
   const gap = parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0;
@@ -386,7 +465,7 @@ export function collapse(
   const borderRight = parseFloat(style.borderRightWidth) || 0;
 
   return {
-    duration: motionDuration('--dur-med'),
+    duration: motionDuration('--dur-slow'),
     easing: EASE_OUT,
     /* `min-width: 0` because a flex item's automatic minimum is its content,
        and a tile whose title will not wrap would otherwise stall at that

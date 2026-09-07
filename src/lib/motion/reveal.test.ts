@@ -34,7 +34,7 @@ afterEach(() => {
   delete g.CSS;
   /* The swap signal is a short window rather than a flag, and these tests
      run inside it. */
-  markSlotReplacement(-Infinity);
+  markSlotReplacement(null, -Infinity);
 });
 
 const node = {} as Element;
@@ -168,7 +168,7 @@ describe('tier 3, a panel giving its space back', () => {
      full width the frame the node is finally removed. */
   it('shrinks along the row when a sibling shares its line', () => {
     const { css, duration } = collapse(panel({ beside: [[0, 100]] }));
-    expect(duration).toBe(240);
+    expect(duration).toBe(380);
     expect(frame(css!, 0)).toContain('flex: 0 0 0px');
     expect(frame(css!, 1)).toContain('flex: 0 0 160px');
   });
@@ -225,7 +225,7 @@ describe('tier 3, a panel giving its space back', () => {
     markScreenArrival();
     const asked = both as (o: { direction: 'in' | 'out' }) => TransitionConfig;
     expect(asked({ direction: 'in' }).duration).toBe(0);
-    expect(asked({ direction: 'out' }).duration).toBe(240);
+    expect(asked({ direction: 'out' }).duration).toBe(380);
   });
 
   /* A dismissal the fold fills in the same tick is a swap rather than a
@@ -237,24 +237,54 @@ describe('tier 3, a panel giving its space back', () => {
      and the replacement fades in where it stands. */
   it('swaps in place when the fold fills the slot in the same tick', () => {
     stubDocument();
-    markSlotReplacement();
+    markSlotReplacement({ top: 300, left: 20, width: 160, height: 100 });
     const leaving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' });
-    expect(leaving.duration).toBe(0);
+    expect(leaving.duration).toBe(380);
+    /* Out of the flow and pinned where it stood, so the grid reaches its
+       final layout in the frame of the tap rather than after the travel. */
+    expect(frame(leaving.css!, 1)).toContain('position: fixed');
+    expect(frame(leaving.css!, 1)).toContain('top: 300px');
+    expect(frame(leaving.css!, 1)).toContain('width: 160px');
+    expect(frame(leaving.css!, 1)).toContain('opacity: 1');
+    expect(frame(leaving.css!, 0)).toContain('opacity: 0');
+    expect(frame(leaving.css!, 0.5)).not.toContain('flex:');
 
     markScreenArrival(performance.now() - 1000);
-    markSlotReplacement();
+    markSlotReplacement({ top: 300, left: 20, width: 160, height: 100 });
     const arriving = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'in' });
-    expect(arriving.duration).toBe(240);
+    expect(arriving.duration).toBe(380);
     expect(frame(arriving.css!, 0)).toBe('opacity: 0');
     expect(frame(arriving.css!, 1)).toBe('opacity: 1');
+  });
+
+  /* Without a slot there is nothing to pin to, so the cut is what is left. */
+  it('cuts rather than guessing where the panel stood', () => {
+    stubDocument();
+    markSlotReplacement(null);
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(0);
   });
 
   /* The window is the flush that renders the swap and nothing after it: a
      dismissal a second later is a collapse again. */
   it('is over by the time the next change comes', () => {
     stubDocument();
-    markSlotReplacement(performance.now() - 400);
-    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(240);
+    markSlotReplacement({ top: 0, left: 0, width: 10, height: 10 }, performance.now() - 400);
+    const { css, duration } = collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' });
+    expect(duration).toBe(380);
+    expect(frame(css!, 0)).toContain('flex: 0 0 0px');
+  });
+
+  /* A wrapping row can hand the space to a tile from the line below instead
+     of to the neighbour, and that tile arrives by rewrapping - it changes
+     place and width at once, which nothing can carry. So the neighbour must
+     not grow into space it is about to lose: at 700px with the fold open the
+     dose panel grew to 638px and snapped back to 318px at 174ms. */
+  it('dissolves rather than growing a neighbour into space a rewrap will claim', () => {
+    const node = panel({ beside: [[0, 100], [120, 220]] });
+    const { css, duration } = collapse(node);
+    expect(duration).toBe(380);
+    expect(frame(css!, 1)).toContain('position: fixed');
+    expect(frame(css!, 1)).not.toContain('flex:');
   });
 
   /* Below the floor the same pair is stacked, and a tile that collapsed its
@@ -288,7 +318,7 @@ describe('tier 3, a panel giving its space back', () => {
   it('travels on the way in once the screen has settled', () => {
     const node = panel({ beside: [[0, 100]] });
     markScreenArrival(performance.now() - 1000);
-    expect(collapse(node, undefined, { direction: 'in' }).duration).toBe(240);
+    expect(collapse(node, undefined, { direction: 'in' }).duration).toBe(380);
   });
 
   /* Leaving is never suppressed: a panel dismissed during the arrival window
@@ -296,7 +326,7 @@ describe('tier 3, a panel giving its space back', () => {
   it('still collapses on the way out during the arrival window', () => {
     const node = panel({ beside: [[0, 100]] });
     markScreenArrival();
-    expect(collapse(node, undefined, { direction: 'out' }).duration).toBe(240);
+    expect(collapse(node, undefined, { direction: 'out' }).duration).toBe(380);
   });
 
   it('cuts instantly under reduced motion and when the caller says to skip', () => {
