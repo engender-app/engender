@@ -1907,6 +1907,7 @@
   "compare_entries_label": "Liczba wpisów",
   "stats_range_group": "Zakres",
   "insight_row_sub": "wpisy: {count} · śr. {with} z tagiem · {without} bez",
+  "insight_sheet_capped": "Pokazano {shown} najnowszych. Więcej wpisów ma ten tag w tym zakresie.",
   "chart_aria": "Wykres liniowy, punkty: {count}, od {from} do {to}",
   "week_cell_no_entry": "{day}: bez wpisu",
   "week_cell_level": "{day}: poziom {level} z 4",
