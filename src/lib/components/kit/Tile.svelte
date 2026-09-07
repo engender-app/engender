@@ -147,6 +147,7 @@
       <button
         type="button"
         class="kit-tile-dismiss press"
+        data-tile-dismiss
         aria-label={dismiss.label}
         onclick={(e) => {
           e.stopPropagation();
@@ -169,6 +170,7 @@
     <button
       type="button"
       class="kit-tile-dismiss press"
+      data-tile-dismiss
       aria-label={dismiss.label}
       onclick={(e) => {
         e.stopPropagation();

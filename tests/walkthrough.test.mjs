@@ -1104,6 +1104,48 @@ try {
   ok('the stale-backup notice reads 34 days and dismisses');
 } catch (e) { fail('backup notice', e); }
 
+/* 10c. A closed panel stays closed (phase 9 carpet ticket 04, ADR-0071's
+   "closed stays closed"). Every close on Home persists somewhere - a
+   preference, a journal write, a 24-hour key in localStorage - and the ADR
+   re-decided none of them, which is a claim about eleven tiles that nothing
+   was checking. Navigating away and back is where a close that only lived in
+   component state would come undone.
+
+   The tile is found rather than named: which ones qualify depends on the
+   demo journal, and this is about the mechanism, not about one kind. The
+   ready letter is skipped because its close opens a sheet instead of acting
+   in place. A second tile is held onto as the live handle - an absence
+   assertion on a screen that failed to draw its grid would pass for the
+   wrong reason. */
+try {
+  await fresh('/');
+  await page.waitForSelector('[data-live-tile-grid] [data-tile]');
+  const closable = page
+    .locator('[data-live-tile-grid] [data-tile]:not([data-live-tile="ready-letter"])')
+    .filter({ has: page.locator('[data-tile-dismiss]') })
+    .first();
+  const closed = await closable.getAttribute('data-live-tile');
+  if (!closed) throw new Error('no live tile on Home states a close of its own');
+
+  const survivor = await page
+    .locator(`[data-live-tile]:not([data-live-tile="${closed}"])`)
+    .first()
+    .getAttribute('data-live-tile');
+  if (!survivor) throw new Error('only one live tile on Home, so nothing can hold the grid open');
+
+  await closable.locator('[data-tile-dismiss]').click();
+  await page.waitForSelector(`[data-live-tile="${closed}"]`, { state: 'detached' });
+
+  await page.locator('[data-nav-item="calendar"]').first().click();
+  await page.waitForURL('**/calendar');
+  await page.locator('[data-nav-item="home"]').first().click();
+  await page.waitForSelector(`[data-live-tile="${survivor}"]`);
+  if (await page.locator(`[data-live-tile="${closed}"]`).count()) {
+    throw new Error(`${closed} came back on the way home from the calendar`);
+  }
+  ok(`a closed live tile (${closed}) is still closed after leaving Home and coming back`);
+} catch (e) { fail('live tile stays closed', e); }
+
 /* 11. import: a file that is not an archive */
 try {
   await fresh('/settings/export');

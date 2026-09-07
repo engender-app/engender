@@ -151,14 +151,6 @@ const dress = async (theme) => {
   await page.waitForFunction((want) => document.documentElement.dataset.theme === want, theme);
 };
 
-/** The close control of the first side-by-side live tile that has one.
-    `data-rows` grids are the full-width today tier, which is the stacked
-    case rather than the side-by-side one this looks for.
-
-    Two selectors because Home draws a tile's close two ways: `.kit-tile-dismiss`
-    is the corner X, and three tiles state theirs as an `action` carrying an x
-    icon instead, which comes out as a soft button. Both are named here so the
-    recording finds whichever pair the demo state actually produces. */
 /** Puts back every tile the scene before closed. A close is a 24-hour snooze
     in localStorage (liveTilesSnooze.ts, letterStatus.ts), so without this
     each scene records a grid one tile smaller than the last. */
@@ -171,15 +163,12 @@ const unsnoozeTiles = () =>
     }
   });
 
+/** The close control of the first side-by-side live tile that has one.
+    `data-rows` grids are the full-width today tier, which is the stacked case
+    rather than the side-by-side one this looks for. Every close on Home is
+    one control since ADR-0071, and `data-tile-dismiss` is it. */
 const pairedDismiss = () =>
-  page
-    .locator(
-      '[data-live-tile-grid]:not([data-rows]) [data-tile] .kit-tile-dismiss,' +
-        '[data-live-tile-grid]:not([data-rows]) [data-safe-space-nudge-dismiss],' +
-        '[data-live-tile-grid]:not([data-rows]) [data-letter-dismiss],' +
-        '[data-live-tile-grid]:not([data-rows]) [data-revisit-dismiss]'
-    )
-    .first();
+  page.locator('[data-live-tile-grid]:not([data-rows]) [data-tile-dismiss]').first();
 
 try {
   for (const theme of THEMES) {
@@ -251,7 +240,7 @@ try {
          than acting in place (ADR-0071), and with the fold open it is the
          first two-up tile carrying one. */
       .locator(
-        '[data-live-tile-grid]:not([data-rows]) [data-tile]:not([data-live-tile="ready-letter"]) .kit-tile-dismiss'
+        '[data-live-tile-grid]:not([data-rows]) [data-tile]:not([data-live-tile="ready-letter"]) [data-tile-dismiss]'
       )
       .first();
     if (await unfoldedDismiss.count()) {

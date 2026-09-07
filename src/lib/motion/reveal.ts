@@ -221,14 +221,22 @@ export function markSlotReplacement(now: number = performance.now()): void {
   replacedAt = now;
 }
 
-/* The signal only has to survive the flush that renders the swap: both
-   transitions are created microseconds after the screen marks it, and a
-   couple of frames of slack covers a slow flush without ever reaching the
-   next change. A window rather than a flag because the swap has two
-   consumers - the panel leaving and the one taking its slot - and neither
-   can be told which of them goes first. */
+/** Where a tile leaving along a row has finished taking its content out,
+    as a fraction of its own width. Below this the surface travels empty. */
+const CONTENT_GONE_AT = 0.35;
+
+/** How long a swap stays true, in milliseconds. Not a token, because it is
+    not a duration anybody sees: the signal only has to survive the flush that
+    renders the swap, and both transitions are created microseconds after the
+    screen marks it. Three frames of slack covers a slow flush without ever
+    reaching the next change. */
+const SWAP_WINDOW_MS = 50;
+
+/* A window rather than a flag because the swap has two consumers - the panel
+   leaving and the one taking its slot - and neither can be told which of them
+   goes first. */
 function replacingSlot(): boolean {
-  return performance.now() - replacedAt < 50;
+  return performance.now() - replacedAt < SWAP_WINDOW_MS;
 }
 
 /** Whether anything else in this node's parent stands on the same line.
@@ -338,12 +346,15 @@ export function collapse(
 
   const width = node.getBoundingClientRect().width;
   const gap = parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0;
-  /* The side padding and the edges travel with the width. A tile is a padded,
-     bordered box under `box-sizing: border-box`, so a zero flex-basis still
-     draws all of that: the safe-space card stalled at 34px - its own padding
-     plus the room its close control keeps - for the last third of the travel
-     and lost the rest in the frame the node was removed. This is `disclose`'s
-     own treatment of the vertical padding, turned ninety degrees. */
+  /* The side padding travels with the width and the two vertical edges go on
+     the first frame. A tile is a padded, bordered box under `box-sizing:
+     border-box`, so a zero flex-basis still draws all of that: the safe-space
+     card stalled at 34px - its own padding plus the room its close control
+     keeps - for the last third of the travel and lost the rest in the frame
+     the node was removed. This is `disclose`'s own treatment of the vertical
+     padding and borders, turned ninety degrees; an edge is one pixel that
+     reads as an edge or as a hairline artefact, so it is cut rather than
+     thinned. */
   const style = getComputedStyle(node);
   const paddingLeft = parseFloat(style.paddingLeft) || 0;
   const paddingRight = parseFloat(style.paddingRight) || 0;
@@ -374,7 +385,7 @@ export function collapse(
       `overflow: hidden;` +
       `min-width: 0;` +
       `flex: 0 0 ${t * width}px;` +
-      `opacity: ${Number(Math.max(0, Math.min(1, (t - 0.35) / 0.65)).toFixed(3))};` +
+      `opacity: ${Number(Math.max(0, Math.min(1, (t - CONTENT_GONE_AT) / (1 - CONTENT_GONE_AT))).toFixed(3))};` +
       `padding-left: ${t * paddingLeft}px;` +
       `padding-right: ${t * paddingRight}px;` +
       `border-left-width: ${t >= 1 ? borderLeft : 0}px;` +

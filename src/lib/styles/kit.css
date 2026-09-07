@@ -838,9 +838,13 @@ a.kit-entry:active {
    nothing left to snap. $lib/motion/reveal.ts's `collapse` is the other
    half.
 
-   The basis is half the line less the gap, so two tiles plus the gap between
-   them come to exactly the line - the arithmetic the two-column grid was
-   doing. `flex-grow: 1` is what makes a lone tile take the whole width
+   The basis is half the line less a whole gap rather than half a gap, so a
+   pair starts a gap short of the line and `flex-grow: 1` hands each of them
+   half of what is left. That lands on the same two columns the grid drew,
+   and it is the growing rather than the basis that does it - which is the
+   point, because growing is what a survivor can do on every frame of a
+   neighbour leaving and a grid column cannot. `flex-grow: 1` is also what
+   makes a lone tile take the whole width
    instead, which is the `:only-child` rule this replaces: where a grid's two
    destinations are each gated on their own - Home's look back, where wrapped
    and on-this-day qualify independently - the lone survivor sat in the left
