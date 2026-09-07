@@ -155,7 +155,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.dilation()} back="/more" subtitle={m.dilation_intro()}>
+  <ScreenHeader title={m.dilation()} back="/health/surgery" subtitle={m.dilation_intro()}>
     {#snippet actions()}
       {#if taper}
         <button

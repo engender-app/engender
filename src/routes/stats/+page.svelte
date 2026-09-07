@@ -69,6 +69,7 @@
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -1175,6 +1176,12 @@
       subtitle={m.compare_sub()}
       href="/compare"
     />
+    <!-- Moved off the More hub by phase 9 carpet ticket 16. It belongs in
+         this list: what it draws is a reading of the words in your notes,
+         which is the same kind of look-back the wrapped recaps and the body
+         map are, and it stores nothing of its own - so no `hidden` flag can
+         reach it and the row is only ever there. -->
+    <HostedRows host="stats" />
   </ListCard>
 
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>

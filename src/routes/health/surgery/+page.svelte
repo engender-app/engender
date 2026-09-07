@@ -20,6 +20,7 @@
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
+  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -586,6 +587,23 @@
            link. -->
       <LinkedDocuments kind="procedure" id={selected.id} />
     </div>
+  {/if}
+
+  <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
+       Health row, which put a dilation log in front of everyone who opened
+       More whatever their surgery was or was not.
+
+       The gate is wrong and is meant to be. Ticket 16 asked for the row
+       "only for vaginal reconstruction surgery" and nothing in the record can
+       answer that: a Procedure is a free-text name, a date, its consults and
+       its notes (CONTEXT.md, Surgery - "the app ships no list of procedures
+       and never matches two spellings of one"). So this is the loosest honest
+       gate available, which is that the person has a surgery journey at all,
+       and phase 9 carpet ticket 17 replaces it with a kind on the procedure.
+       Matching the typed name against a word list would be a worse answer
+       wearing the right one's clothes, in two languages. -->
+  {#if procedures.length > 0}
+    <HostedRows host="surgery" card />
   {/if}
 
   <RecordSheet

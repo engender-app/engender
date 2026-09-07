@@ -26,12 +26,14 @@
      key      the More hub's row key, which is also the walkthrough handle,
               and which is `HubRowKey` rather than a string: a card naming no
               row does not compile
-     group    which of the hub's four groups the card sits in - the same four
-              in the same order, so a person learns one organising idea. The
-              card's own, not the row's, which is the ticket's own scope
-              line: the hub has a fifth group since ticket 02, `media`, and
-              no card can sit in it because both media rows front content
-              that travels inside an entry and has no last write to index
+     group    which group the card sits in. The card's own, not the row's,
+              which is the ticket's own scope line: the hub had a fifth group
+              since ticket 02, `media`, and no card can sit in it because
+              both media rows front content that travels inside an entry and
+              has no last write to index. It was the hub's own four in the
+              hub's own order, so a person learned one organising idea. It is
+              neither the hub's four nor drawn anywhere now - see
+              `StatsAreaGroup` below
      covers   which `lastWrite.ts` areas this row fronts. A row appears when
               **any** of them has ever been written (ADR-0056's emptiness
               rule), because somebody can log hair stages for two years and
@@ -78,7 +80,21 @@ import { groupFinishedOn, groupSuspendedOn, type AreaGroupKey } from './areaGrou
 import { hubRow, rowScreen, type HubRowKey } from './hubRows';
 import type { LastWriteKey } from './journal/lastWrite';
 
-/** The More hub's four groups, in the More hub's order. */
+/** The four groups the More hub had when this index was written, and no
+    longer the hub's.
+
+    Nothing renders any of this. Ticket 99 item 36 took the area index off the
+    stats tab - "stats shouldnt have the 'more' list at the end" - so no
+    screen imports this module now; what is left importing it is its own test
+    and its own label record. Phase 9 carpet ticket 16 then dropped Practice
+    from the hub and added Support, which leaves the union below naming a
+    heading that exists nowhere in the app.
+
+    Both facts are recorded rather than acted on. Deleting a registry
+    somebody may want back is not this ticket's call, and re-homing four
+    group names on a list nobody draws would be work with no reader. Whoever
+    decides whether ADR-0056's index comes back in some other form owns
+    deciding this too. */
 type StatsAreaGroup = 'body' | 'health' | 'transition' | 'practice';
 
 export const STATS_AREA_GROUPS = ['body', 'health', 'transition', 'practice'] as const satisfies readonly StatsAreaGroup[];

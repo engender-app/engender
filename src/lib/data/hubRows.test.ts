@@ -8,16 +8,23 @@ import {
   AREA_GROUP_ROW_KEYS,
   HUB_GROUP_KEYS,
   HUB_ROWS,
+  HUB_ROW_HOSTS,
   LAST_WRITE_WITHOUT_A_ROW,
   hubSections,
+  isHubGroup,
   rowHidden,
   rowLine,
   rowReads,
+  rowsHostedBy,
   type HubReading,
   type HubRowSpec
 } from './hubRows.ts';
 
 const TODAY = 20000;
+
+/** How many rows the hub itself draws, which is every row minus the seven
+    drawn on a screen of their own (ticket 16). */
+const drawnRowCount = HUB_ROWS.filter((row) => isHubGroup(row.home)).length;
 
 const spec = (key: string): HubRowSpec => {
   const found = HUB_ROWS.find((row) => row.key === key);
@@ -29,7 +36,6 @@ const reading = (over: Partial<HubReading> = {}): HubReading => ({
   todayEpochDay: TODAY,
   lastWrites: {},
   states: {},
-  cycleShown: true,
   ...over
 });
 
@@ -39,12 +45,13 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
 
 // --- the row list itself ----------------------------------------------------
 
-test('every row has its own key, and every group it names is drawn', () => {
+test('every row has its own key, and every home it names is drawn somewhere', () => {
   const keys = HUB_ROWS.map((row) => row.key);
+  const homes = [...HUB_GROUP_KEYS, ...Object.keys(HUB_ROW_HOSTS)] as readonly string[];
 
   assert.equal(new Set(keys).size, keys.length);
   for (const row of HUB_ROWS) {
-    assert.ok((HUB_GROUP_KEYS as readonly string[]).includes(row.group), `${row.key} is in no drawn group`);
+    assert.ok(homes.includes(row.home), `${row.key} is drawn nowhere`);
   }
 });
 
@@ -308,12 +315,85 @@ test('nothing in the area record can hide the cycle row (ADR-0043)', () => {
 // --- the assembled hub ------------------------------------------------------
 
 test('the hub draws its groups in order and leaves out the ones with nothing in them', () => {
-  const sections = hubSections(reading({ cycleShown: false }));
+  const sections = hubSections(reading());
 
   assert.deepEqual(
     sections.map((section) => section.key),
-    ['body', 'health', 'transition', 'practice', 'media']
+    ['body', 'health', 'transition', 'support', 'media']
   );
+});
+
+test('a hidden area takes a hosted row out of its host, the way it took it off the hub', () => {
+  /* ADR-0052's own consequence - "hiding takes an area out of the
+     navigation" - and the case a hosted row could quietly lose: it is not in
+     `hubSections` any more, so nothing on the hub can answer for it.
+     `HostedRows.svelte` applies exactly this filter over the area record. */
+  const hosted = rowsHostedBy('effects').map((row) => row.key);
+  assert.deepEqual(hosted, ['side-effects', 'hair-progress']);
+
+  const left = rowsHostedBy('effects')
+    .filter((row) => !rowHidden(row, { sideEffects: hidden }))
+    .map((row) => row.key);
+  assert.deepEqual(left, ['hair-progress']);
+
+  /* Both sections behind hair progress, or the row stays - the same
+     every-section rule the hub applies. */
+  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden }), false);
+  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden, hairPhotos: hidden }), true);
+});
+
+test('a hosted row states the day its area ended, since the hub no longer can', () => {
+  /* `HostedRows.svelte` calls `rowLine` with an empty `lastWrites`, which is
+     what this passes too: finished and suspended are settled before the
+     reading is consulted, so a hosted row shows an ending and otherwise its
+     standing line. A reading would cost every host screen the hub's own
+     assembled last-write call for a date the next screen opens on. */
+  const noReads = { todayEpochDay: TODAY, lastWrites: {}, states: {} };
+
+  assert.deepEqual(rowLine(spec('effects'), { ...noReads, states: { personalEffects: finished(TODAY - 90) } }), {
+    kind: 'finished',
+    epochDay: TODAY - 90
+  });
+  assert.deepEqual(rowLine(spec('side-effects'), { ...noReads, states: { sideEffects: suspended(TODAY - 5) } }), {
+    kind: 'suspended',
+    epochDay: TODAY - 5
+  });
+  assert.equal(rowLine(spec('dilation'), noReads).kind, 'not-yet');
+  assert.equal(rowLine(spec('words'), noReads).kind, 'no-stream');
+});
+
+test('every host draws something, or is the one that writes its row by hand', () => {
+  /* `rowsHostedBy` empty for a host means `HostedRows.svelte` renders
+     nothing there, which is right for exactly one of them and a dead host
+     for any other. */
+  const empty = Object.keys(HUB_ROW_HOSTS).filter(
+    (host) => rowsHostedBy(host as keyof typeof HUB_ROW_HOSTS).length === 0
+  );
+
+  assert.deepEqual(empty, []);
+});
+
+test('a hosted row is not on the hub at all, and its screen is named (ticket 16)', () => {
+  const drawn = hubSections(reading()).flatMap((section) => section.rows.map((row) => row.spec.key));
+
+  for (const row of HUB_ROWS) {
+    if (isHubGroup(row.home)) continue;
+    assert.ok(!drawn.includes(row.key), `${row.key} is hosted and still on the hub`);
+    assert.ok(HUB_ROW_HOSTS[row.home], `${row.key} names a host that draws nothing`);
+  }
+  assert.deepEqual(
+    HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
+    ['effects', 'side-effects', 'hair-progress', 'cycle-events', 'dilation', 'words', 'entry-templates']
+  );
+});
+
+test('a hosted row stays on its host once it is finished, rather than joining the finished set', () => {
+  /* The finished set is the hub's, and the hub does not draw this row. Its
+     host still does, and the day the person named is on the area's own
+     screen where they said it. */
+  const sections = hubSections(reading({ states: { personalEffects: finished(TODAY - 90) } }));
+
+  assert.ok(!sections.some((section) => section.key === 'finished'));
 });
 
 test('a finished row leaves its group for the finished set, and the set comes last', () => {
@@ -324,8 +404,8 @@ test('a finished row leaves its group for the finished set, and the set comes la
     sections.at(-1)?.rows.map((row) => row.spec.key),
     ['wear']
   );
-  const practice = sections.find((section) => section.key === 'practice');
-  assert.ok(!practice?.rows.some((row) => row.spec.key === 'wear'), 'the row is in two places at once');
+  const transition = sections.find((section) => section.key === 'transition');
+  assert.ok(!transition?.rows.some((row) => row.spec.key === 'wear'), 'the row is in two places at once');
 });
 
 test('a suspended row stays under its own group, unlike a finished one - it is not done', () => {
@@ -335,8 +415,8 @@ test('a suspended row stays under its own group, unlike a finished one - it is n
     !sections.some((section) => section.key === 'finished'),
     'nothing is finished, so there is no finished set at all'
   );
-  const body = sections.find((section) => section.key === 'body');
-  assert.ok(body?.rows.some((row) => row.spec.key === 'hair-removal'), 'the suspended row left its own group');
+  const transition = sections.find((section) => section.key === 'transition');
+  assert.ok(transition?.rows.some((row) => row.spec.key === 'hair-removal'), 'the suspended row left its own group');
 });
 
 test('a finished row keeps its icon and its screen', () => {
@@ -347,38 +427,42 @@ test('a finished row keeps its icon and its screen', () => {
   assert.equal(row?.spec.href, '/practice/wear');
 });
 
-test('the cycle row is drawn only behind its own gate', () => {
-  const shown = hubSections(reading({ cycleShown: true }));
-  const not = hubSections(reading({ cycleShown: false }));
-  const keys = (sections: ReturnType<typeof hubSections>) => sections.flatMap((s) => s.rows.map((r) => r.spec.key));
-
-  assert.ok(keys(shown).includes('cycle-events'));
-  assert.ok(!keys(not).includes('cycle-events'));
-});
-
 test('a hidden area is absent from the assembled hub rather than moved', () => {
-  const sections = hubSections(reading({ states: { personalEffects: hidden } }));
+  const sections = hubSections(reading({ states: { sizeRecords: hidden } }));
   const keys = sections.flatMap((section) => section.rows.map((row) => row.spec.key));
 
-  assert.ok(!keys.includes('effects'));
-  assert.equal(keys.length, HUB_ROWS.length - 1);
+  assert.ok(!keys.includes('sizes'));
+  assert.equal(keys.length, drawnRowCount - 1);
 });
 
-test('a fresh journal draws every row, each saying what is behind it', () => {
+test('a fresh journal draws every row the hub owns, each saying what is behind it', () => {
   const sections = hubSections(reading());
   const rows = sections.flatMap((section) => section.rows);
 
-  assert.equal(rows.length, HUB_ROWS.length);
+  assert.equal(rows.length, drawnRowCount);
   for (const row of rows) {
     assert.ok(['not-yet', 'no-stream'].includes(row.line.kind), `${row.spec.key} has a reading on an empty journal`);
   }
 });
 
-test('the media group is photos, voice memos and documents, and body keeps the other four', () => {
+test('every group is the list phase 9 carpet ticket 16 asked for', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
+  assert.deepEqual(group('body'), ['measurements', 'sizes']);
+  assert.deepEqual(group('health'), ['care', 'surgery', 'appointments', 'clinician-summary']);
+  assert.deepEqual(group('transition'), [
+    'eras',
+    'milestones',
+    'tryouts',
+    'voice-benchmark',
+    'wear',
+    'hair-removal',
+    'roadmap',
+    'letters',
+    'presentations'
+  ]);
+  assert.deepEqual(group('support'), ['doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
-  assert.deepEqual(group('body'), ['measurements', 'sizes', 'hair-progress', 'hair-removal']);
 });
