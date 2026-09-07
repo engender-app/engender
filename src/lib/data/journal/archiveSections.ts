@@ -940,7 +940,8 @@ const SECTIONS = [
       reminder_dismissed: { field: 'reminderDismissed', bool: true },
       opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
       in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
-      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null }
+      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
+      lead_time_days: { field: 'leadTimeDays', whenAbsent: null }
     }
   }),
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
