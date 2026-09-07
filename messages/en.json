@@ -604,6 +604,8 @@
   "ob_flag_body": "It colours the whole app, and the sun in the corner is drawn from its own stripes. Change it any time in Settings.",
   "ob_track_title": "How do you want to track gender?",
   "ob_track_body": "Tick the scales you want when you log. You can change this any time in Settings.",
+  "ob_areas_title": "What do you want to keep track of?",
+  "ob_areas_body": "Tick what you want on the front page when you open the app.",
   "ob_lock_title": "Lock when you leave?",
   "ob_lock_body": "The app can lock itself the moment it goes to the background, so a glance at your phone in a pocket or on a desk shows nothing. Getting back in asks for whatever opens your journal. You chose that a moment ago and can change it in Settings.",
   "ob_checkin_title": "A nudge each day?",
