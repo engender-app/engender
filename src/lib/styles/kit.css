@@ -941,19 +941,38 @@ a.kit-entry:active {
   }
 }
 
+/* The block (phase 10 rule 3, redesign ticket 24). A tile was a 15% tint of
+   its stripe with the number in the stripe's mark; it is the stripe itself
+   now, at full strength, with the title and the number written on it in the
+   ink roles.ts proved against that exact hex. The tint is what made Home
+   five pink washes on trans: the same colour at 100% over a tenth of the
+   area reads as the flag, and the same colour at 15% over half the screen
+   reads as a theme.
+
+   Flex rather than the grid it was, so the foot can be pushed to the bottom
+   edge with `margin-top: auto` on a tile of any height, and so the value can
+   be pushed down under a title that wrapped - two tiles side by side then
+   line their numbers up whatever their titles did (Mobbin: Brick's block
+   sets its value at the bottom left under a small label, TIDE's sets it in
+   the block's bottom corner; both were read for where the number sits on a
+   block, not for their rounded corners or their icons).
+
+   The edge is the app's own outline rather than a mix of the stripe: a block
+   of the stripe needs separating from the page, not restating - and it is
+   the one line that is there whatever band the area got, which is what
+   agender's near-black and every flag's white band need. */
 .kit-tile {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
-  align-content: start;
   min-height: 108px;
   padding: var(--space-4);
-  background: var(--role-tint);
-  /* The edge is the stripe rather than the app's grey outline: two tiles
-     side by side each take their own colour from the flag, so the pair
-     reads as two of its bands rather than as one tinted block repeated. */
-  border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
+  background: var(--role-draw);
+  border: 1px solid var(--outline);
   border-radius: var(--r-block);
-  color: inherit;
+  /* The foot bleeds out to the block's edges, so the block clips it. */
+  overflow: hidden;
+  color: var(--role-fill-ink);
   text-decoration: none;
 }
 
@@ -975,7 +994,10 @@ a.kit-entry:active {
   justify-content: center;
   background: transparent;
   border: 0;
-  color: var(--text-2);
+  /* On the block, so it is the block's own ink rather than the page's grey
+     (rule 3): --text-2 on nonbinary's purple is not a control, it is a
+     smudge. */
+  color: var(--role-fill-ink);
   border-radius: var(--r-block);
   cursor: pointer;
 }
@@ -988,8 +1010,7 @@ a.kit-entry:active {
 
 .kit-tile-dismiss:hover,
 .kit-tile-dismiss:active {
-  color: var(--text);
-  background: color-mix(in oklab, var(--role-mark) 14%, transparent);
+  background: color-mix(in oklab, var(--role-fill-ink) 18%, transparent);
 }
 
 /* Named areas rather than relying on source order (ticket 99 item 9): the
@@ -1009,13 +1030,20 @@ a.kit-entry:active {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas: 'main act' 'note note';
+  /* The main row takes whatever height the tile has over its content, so
+     the foot stays on the bottom edge rather than floating up the block
+     with the slack shared between the two rows. */
+  grid-template-rows: 1fr auto;
   align-items: center;
-  gap: var(--space-4);
+  column-gap: var(--space-4);
+  row-gap: var(--space-3);
   min-height: 108px;
   padding: var(--space-4);
-  background: var(--role-tint);
-  border: 1px solid color-mix(in oklab, var(--role-mark) 55%, transparent);
+  background: var(--role-draw);
+  border: 1px solid var(--outline);
   border-radius: var(--r-block);
+  overflow: hidden;
+  color: var(--role-fill-ink);
 }
 
 .kit-tile.is-split > .kit-tile-main { grid-area: main; }
@@ -1049,6 +1077,11 @@ a.kit-entry:active {
   text-decoration: none;
 }
 
+/* The reverse pairing (rule 4): a page-coloured block with the page's own
+   text on it, so the control reads as a control sitting on the stripe
+   rather than as a paler patch of it. --text on --bg is the one pair
+   proven on every palette and both themes without asking anything of the
+   band underneath. */
 .kit-tile-act.btn {
   align-self: center;
   min-height: 36px;
@@ -1056,13 +1089,13 @@ a.kit-entry:active {
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   border-radius: var(--r-block);
-  background: color-mix(in oklab, var(--role-mark) 18%, transparent);
-  color: var(--role-ink);
+  background: var(--bg);
+  color: var(--text);
   white-space: nowrap;
 }
 
 .kit-tile-act.btn:active {
-  background: color-mix(in oklab, var(--role-mark) 32%, transparent);
+  background: color-mix(in oklab, var(--text) 12%, var(--bg));
 }
 
 .kit-tile-act.icon-btn {
@@ -1072,14 +1105,18 @@ a.kit-entry:active {
   border-radius: var(--r-block);
 }
 
-/* The row weight. A card stacks title, value and note down the tile; a row
-   reads along one line, so its value sits beside its title and only the note
-   goes underneath. Shorter, because a row that keeps a card's 108px is a card
-   that has been stretched.
+/* The row weight. A card stacks title, value and note down a tall tile; a
+   row takes the grid's whole width and is short, so its title and value
+   stack tight and the pair sits beside whatever control the row carries.
+   Shorter, because a row that keeps a card's 108px is a card that has been
+   stretched.
 
-   The value steps down from --text-3xl to --text-xl for the same reason:
-   at display size on one line it outweighs the title it is meant to be the
-   reading for. It keeps --role-mark and so keeps answering the 3:1 floor. */
+   Title over value rather than the two on one line (rule 3, redesign ticket
+   24): at 320px "9h 0m 15s" beside "Time since your last dose" beside a Stop
+   button is three things competing for one line, and the number - the
+   reading the row exists for - is the one that wrapped. Stacked, the number
+   is one line whatever the title did. It steps down from 40 to 28, still
+   large text, because a row is half a card's height. */
 .kit-tile[data-weight='row'] {
   min-height: 0;
   padding: var(--space-3) var(--space-4);
@@ -1087,14 +1124,12 @@ a.kit-entry:active {
 
 .kit-tile[data-weight='row'] .kit-tile-main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-  column-gap: var(--space-3);
+  gap: var(--space-1);
+  justify-items: start;
 }
 
 .kit-tile[data-weight='row'] .kit-tile-value {
-  font-size: var(--text-xl);
-  justify-self: end;
+  font-size: var(--text-2xl);
 }
 
 /* The note runs under both of them rather than under the title alone - a
@@ -1106,25 +1141,14 @@ a.kit-entry:active {
   grid-area: note;
 }
 
-/* A row with no value has nothing in the second column, so the title takes
-   the width instead of sitting in a narrow first one. */
-.kit-tile[data-weight='row'] .kit-tile-main:not(:has(.kit-tile-value)) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* No flag bar on a row: the bar is drawn under a card's value as a block of
-   the flag, and under a value that is now sharing a line it reads as an
-   underline on a number. */
-.kit-tiles[style*='--flag-fill'] .kit-tile[data-weight='row'] .kit-tile-value::after,
-.kit-tiles[style*='--flag-fill'] .kit-tile[data-weight='row'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
-  content: none;
-}
-
 .kit-tile-title {
-  font-size: var(--text-sm);
+  font-size: var(--text-block);
   font-weight: var(--weight-bold);
   line-height: 1.2;
-  color: var(--role-ink);
+  /* On the block, so it is the ink proven against that exact hex rather
+     than the one proven against the page. 19px bold is large text, which is
+     the floor every band clears (rule 3). */
+  color: var(--role-fill-ink);
 }
 
 .kit-tile-value {
@@ -1137,9 +1161,16 @@ a.kit-entry:active {
   font-weight: var(--weight-display);
   letter-spacing: var(--display-track);
   line-height: 1.1;
-  /* Display size, so it answers to the 3:1 floor and keeps the stripe. */
-  color: var(--role-mark);
-  justify-self: start;
+  /* Written on the block, so it takes the ink proven against the stripe
+     itself. At 40px it is large text and clears 3:1 on every band with room
+     to spare - the ink is the heat ramp's deepest step, which is held to
+     4.5:1 on the undiluted stripe. */
+  color: var(--role-fill-ink);
+  /* Under the title rather than beside it, and pushed to the block's bottom
+     edge: two tiles side by side line their numbers up whatever their
+     titles did. */
+  margin-top: auto;
+  align-self: start;
   font-variant-numeric: tabular-nums;
   display: inline-block;
   max-width: 100%;
@@ -1147,8 +1178,14 @@ a.kit-entry:active {
   text-overflow: ellipsis;
 }
 
-.kit-tiles[style*='--flag-fill'] .kit-tile-value::after,
-.kit-tiles[style*='--flag-fill'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
+/* The flag bar, and only on the tight pair now (rule 3): the two look-back
+   tiles have no foot, so the bar is what separates the value from the note
+   and it is the flag itself - the one place the whole flag is drawn rather
+   than one of its bands used as a colour. A live tile has its foot for that
+   job, and a bar of every stripe drawn across a block of one of them is two
+   flags on one tile. */
+.kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-value::after,
+.kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
   content: '';
   display: block;
   width: 100%;
@@ -1158,7 +1195,19 @@ a.kit-entry:active {
   background-image: var(--flag-fill);
 }
 
+/* The foot. The note is the one small thing a tile says, and small text is
+   what no band can carry (nonbinary's purple is 4.41:1 under either ink),
+   so it comes off the stripe onto the page's own colour - a strip along the
+   bottom edge of the block, spanning its full width on every tile shape.
+   The negative margins are what take it out past the block's padding; the
+   block clips the corners. */
 .kit-tile-note {
+  margin-top: auto;
+  margin-left: calc(-1 * var(--space-4));
+  margin-right: calc(-1 * var(--space-4));
+  margin-bottom: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-2);
@@ -1167,6 +1216,25 @@ a.kit-entry:active {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* The dismiss control's inset is on the tile, so the foot has that much
+   further to reach on that side. */
+.kit-tile.has-dismiss > .kit-tile-note {
+  margin-right: calc(-1 * var(--space-7));
+}
+
+/* The tight pair (the two look-back tiles, Safe space's two stats): one
+   colour each, no foot. Their notes are one or two words - short enough to
+   sit on the block, which at 19px bold is large text and legal on every
+   band - and the flag bar above is the motif in the foot's place. */
+.kit-tiles[data-tight] .kit-tile-note {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-size: var(--text-block);
+  font-weight: var(--weight-bold);
+  color: var(--role-fill-ink);
 }
 
 /* ---------- mood row ----------
