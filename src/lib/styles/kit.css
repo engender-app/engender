@@ -1184,6 +1184,16 @@ a.kit-entry:active {
    than one of its bands used as a colour. A live tile has its foot for that
    job, and a bar of every stripe drawn across a block of one of them is two
    flags on one tile. */
+/* Across the block rather than across the number. The bar is drawn as the
+   value's own ::after, so its width is the value's - which on a pair
+   reading "21" and "3" is two bars of different lengths, each looking like
+   a sticker somebody left on the tile rather than like the flag. A block
+   value takes the tile's width and the bar with it, and the two tiles then
+   carry the same mark. */
+.kit-tiles[data-tight] .kit-tile-value {
+  align-self: stretch;
+}
+
 .kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-value::after,
 .kit-tiles[data-tight][style*='--flag-fill'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
   content: '';
