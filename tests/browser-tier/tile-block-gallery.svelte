@@ -13,19 +13,18 @@
   import { onMount } from 'svelte';
   import Tile from '$lib/components/kit/Tile.svelte';
   import TileGrid from '$lib/components/kit/TileGrid.svelte';
-  import { readFlagFill, readFlagRoles, tileRoleAt, type Role } from '$lib/theme/roles';
+  import { flagBarRole, readFlagRoles, tileRoleAt, type Role } from '$lib/theme/roles';
   import { PALETTES } from '../palettes.mjs';
 
   let palette = $state('trans');
   let theme = $state('dark');
   let roles = $state<Role[]>([]);
-  let flagFill = $state('none');
 
   let role = $derived(tileRoleAt(roles, 1));
+  let bar = $derived(flagBarRole(roles, role));
 
   function readRoles() {
     roles = readFlagRoles();
-    flagFill = readFlagFill();
   }
 
   onMount(readRoles);
@@ -52,7 +51,7 @@
 <div class="phone">
   <section data-shape="plain">
     <p class="gallery-note">Plain, two-up</p>
-    <TileGrid {role} {flagFill} data-rows>
+    <TileGrid {role} {bar} data-rows>
       <Tile
         key="dose"
         title="Next dose"
@@ -65,7 +64,7 @@
 
   <section data-shape="action">
     <p class="gallery-note">With an action</p>
-    <TileGrid {role} {flagFill} data-rows>
+    <TileGrid {role} {bar} data-rows>
       <Tile
         key="tryout"
         title="Trying he/him"
@@ -79,7 +78,7 @@
 
   <section data-shape="dismiss">
     <p class="gallery-note">With a dismiss, which is the shape whose note had to leave its link</p>
-    <TileGrid {role} {flagFill} data-rows>
+    <TileGrid {role} {bar} data-rows>
       <Tile
         key="safe"
         title="Safe space"
@@ -92,7 +91,7 @@
 
   <section data-shape="both">
     <p class="gallery-note">Both controls</p>
-    <TileGrid {role} {flagFill} data-rows>
+    <TileGrid {role} {bar} data-rows>
       <Tile
         key="letter"
         title="A letter is ready"
@@ -108,7 +107,7 @@
   <section data-shape="row">
     <p class="gallery-note">The row weight, at the width its timer has to survive</p>
     <div class="narrow">
-      <TileGrid {role} {flagFill} data-rows>
+      <TileGrid {role} {bar} data-rows>
         <Tile
           key="timer"
           title="Time since your last dose"
@@ -124,7 +123,7 @@
 
   <section data-shape="tight">
     <p class="gallery-note">The look-back pair: one colour each, the flag bar, no foot</p>
-    <TileGrid {role} {flagFill} data-tight>
+    <TileGrid {role} {bar} data-tight>
       <Tile key="wrapped" title="This month" value="21" note="days logged" href="#wrapped" />
       <Tile key="onthisday" title="On this day" value="3" note="a year ago" href="#onthisday" />
     </TileGrid>
@@ -136,7 +135,7 @@
   <section data-shape="pair">
     <p class="gallery-note">A pair two-up, at a 412px phone, one title wrapping</p>
     <div class="wide">
-    <TileGrid {role} {flagFill}>
+    <TileGrid {role} {bar}>
       <Tile
         key="dose"
         title="Estradiol valerate"
@@ -155,7 +154,7 @@
   <section data-shape="zoom">
     <p class="gallery-note">At 195px, which is 200% zoom on a 390px phone</p>
     <div class="zoomed">
-      <TileGrid {role} {flagFill} data-rows>
+      <TileGrid {role} {bar} data-rows>
         <Tile
           key="dose"
           title="Estradiol valerate"

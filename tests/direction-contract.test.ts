@@ -494,6 +494,19 @@ describe('rule 3: a tile is a block with a foot', () => {
     );
   });
 
+  it('gives a tile with no value one display line of its own', () => {
+    /* Safe space is a title and a note. With the note in the foot, a 19px
+       title was the whole of what the block carried while the tile beside
+       it held a 40px number, and the grid read as a tile that had failed to
+       load. */
+    const promoted = ruleFor(kit, '.kit-tile:not(:has(.kit-tile-value)) .kit-tile-title')?.body ?? '';
+    expect(promoted).toMatch(/font-size:\s*var\(--text-3xl\)/);
+    expect(promoted).toMatch(/font-family:\s*var\(--font-display\)/);
+    expect(
+      ruleFor(kit, ".kit-tile[data-weight='row']:not(:has(.kit-tile-value)) .kit-tile-title")?.body
+    ).toMatch(/font-size:\s*var\(--text-2xl\)/);
+  });
+
   /* Every band clears 3:1 under the fill ink and none of them clears 4.5:1
      under it at 15px, so nothing small may sit on a block. 19px bold and
      40px display are both large text; the note, which is 15px, is the
@@ -540,10 +553,12 @@ describe('rule 3: a tile is a block with a foot', () => {
     expect(note).toMatch(/color:\s*var\(--role-fill-ink\)/);
     expect(note).toMatch(/font-size:\s*var\(--text-block\)/);
     expect(note).toMatch(/margin:\s*0/);
-    const bar = rules(kit).find((r) => /--flag-fill/.test(r.prelude) && /::after/.test(r.prelude));
+    const bar = rules(kit).find((r) => /--flag-bar/.test(r.prelude) && /::after/.test(r.prelude));
     expect(bar, 'the flag bar rule').toBeTruthy();
-    expect(bar!.prelude, 'the bar is the tight pair\'s motif').toMatch(/\[data-tight\]/);
-    expect(bar!.body).toMatch(/background-image:\s*var\(--flag-fill\)/);
+    expect(bar!.prelude, "the bar is the tight pair's motif").toMatch(/\[data-tight\]/);
+    /* One band of the flag rather than the whole gradient, so the block's
+       own colour is not drawn back into its own mark. */
+    expect(bar!.body).toMatch(/background:\s*var\(--flag-bar\)/);
     expect(bar!.body).toMatch(/border-radius:\s*2px/);
   });
 

@@ -22,6 +22,7 @@ import {
   ROLE_TINT_PCT,
   ROLE_WASH_PCT,
   chromaticRoles,
+  flagBarRole,
   flagRoles,
   heatRamp,
   legibleInk,
@@ -181,6 +182,31 @@ describe("a tile's role", () => {
 
   it('has nothing to give under disguise, where there is no flag at all', () => {
     expect(tileRoleAt([], 1)).toBeUndefined();
+  });
+
+  /* The bar under a tight tile's value: another band of the same flag,
+     never the one the block is already painted in. */
+  it('draws the bar in a band the block is not, on every palette', () => {
+    for (const palette of PALETTES) {
+      const tokens = tokensOf(palette, 'dark');
+      const roles = flagRoles(stripesOf(palette), tokens.text, [tokens.bg, tokens.surface]);
+      const tile = tileRoleAt(roles, 1)!;
+      const bar = flagBarRole(roles, tile)!;
+      expect(bar.stripe.toUpperCase(), palette).not.toBe(tile.stripe.toUpperCase());
+      expect(stripesOf(palette).map((s) => s.toUpperCase()), palette).toContain(
+        bar.stripe.toUpperCase()
+      );
+    }
+  });
+
+  it("takes a colour where the flag has a second one, and agender's black where it does not", () => {
+    const dark = tokensOf('nonbinary', 'dark');
+    const nonbinary = flagRoles(stripesOf('nonbinary'), dark.text, [dark.bg, dark.surface]);
+    expect(flagBarRole(nonbinary, tileRoleAt(nonbinary, 1))!.stripe).toBe('#FCF434');
+    const ag = tokensOf('agender', 'dark');
+    const agender = flagRoles(stripesOf('agender'), ag.text, [ag.bg, ag.surface]);
+    expect(flagBarRole(agender, tileRoleAt(agender, 1))!.stripe).toBe('#1A1A1A');
+    expect(flagBarRole(agender, undefined)).toBeUndefined();
   });
 });
 
