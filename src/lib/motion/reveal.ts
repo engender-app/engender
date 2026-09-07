@@ -289,49 +289,74 @@ function hasLineBelow(node: Element): boolean {
   return false;
 }
 
-/** Holds the space a rewrapping row is about to lose, under the grid, and
-    eases it away over the same window. Hands back nothing.
+/** Settles the grid around a panel that is leaving the flow: every tile that
+    changes place travels there, and the space the vacated line held is eased
+    away under the grid. Hands back nothing.
 
     The other half of `dissolveAt`, and without it the dissolve trades one
-    yank for a worse one: out of flow, a tile from the line below rewraps up
+    yank for a worse one. Out of flow, a tile from the line below rewraps up
     into the freed slot in a single frame, its own line goes with it, and
     everything under the grid is pulled up by the whole height of that line at
-    once ("the row closes up - still happens with a yank" - Alicja). The line
-    closing is a real change and it is the one worth animating.
+    once ("the row closes up - still happens with a yank" - Alicja). Both
+    halves of that are real changes and both are worth animating.
 
-    As a margin under the grid rather than as the grid's own height, which was
-    the first attempt and was worse: `.kit-tiles` stretches its children, so a
-    grid pinned to its old height made every tile on the surviving line as
-    tall as the vacated one too - the dose panel went from 176px to 325px in
-    one frame and eased back down. The space that is actually going is the
-    line's, which sits below everything that stays, so holding it below the
-    grid moves what follows and leaves the grid's own layout alone.
+    **The tiles that move.** A rewrapped tile is already laid out where it is
+    going by the time this runs, so it is translated back to where it was and
+    released - the tile travels while the closed card dissolves over its slot,
+    and is never hidden behind it. Its width is not animated with it: a card
+    that scales horizontally stretches its own text, so it takes its new width
+    in the frame the travel starts, at its old place (Alicja's call, on the
+    two frames where the tile was in neither place).
 
-    How much space is read by taking the panel out of the flow for one
-    synchronous measurement, before any frame is painted, because the layout
-    it produces cannot be worked out from the boxes - it depends on how the
-    row rewraps. Two forced layouts, once per dismissal.
+    **The space.** As a margin under the grid rather than as the grid's own
+    height, which was the first attempt and was worse: `.kit-tiles` stretches
+    its children, so a grid pinned to its old height made every tile on the
+    surviving line as tall as the vacated one - the dose panel went from 176px
+    to 325px in one frame and eased back down. The space that is actually
+    going is the line's, and it sits below everything that stays.
 
-    A WAAPI animation rather than the transition's own `tick`, since the
-    transition's `css` is what drives the panel and only one of the two can
-    be. `fill` is left alone, so the grid is back on its own margin the moment
-    it finishes. */
-function settleGridSpace(node: Element, duration: number): void {
+    Both are read from one pair of measurements, taken with the panel out of
+    the flow for a single synchronous moment before any frame is painted,
+    because what a rewrap does to a row cannot be worked out from the boxes.
+    Two forced layouts, once per dismissal.
+
+    WAAPI rather than the transition's own `tick`, since the transition's
+    `css` is what drives the panel itself and only one of the two can be.
+    `fill` is left alone, so everything is back on its own geometry the moment
+    the travel finishes. */
+function settleGrid(node: Element, duration: number): void {
   const parent = node.parentElement;
   const style = (node as HTMLElement).style;
   if (!parent || !style) return;
-  const before = parent.getBoundingClientRect().height;
+
+  const moving = [...parent.children].filter((child) => child !== node) as HTMLElement[];
+  const before = moving.map((child) => child.getBoundingClientRect());
+  const spaceBefore = parent.getBoundingClientRect().height;
+
   const display = style.display;
   style.display = 'none';
-  const after = parent.getBoundingClientRect().height;
+  const after = moving.map((child) => child.getBoundingClientRect());
+  const spaceAfter = parent.getBoundingClientRect().height;
   style.display = display;
-  const going = before - after;
+
+  const easing = EASE_OUT_CSS;
+  moving.forEach((child, i) => {
+    const dx = before[i].left - after[i].left;
+    const dy = before[i].top - after[i].top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    child.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], {
+      duration,
+      easing
+    });
+  });
+
+  const going = spaceBefore - spaceAfter;
   if (going < 1) return;
   const base = parseFloat(getComputedStyle(parent).marginBottom) || 0;
-  parent.animate(
-    [{ marginBottom: `${base + going}px` }, { marginBottom: `${base}px` }],
-    { duration, easing: EASE_OUT_CSS }
-  );
+  parent.animate([{ marginBottom: `${base + going}px` }, { marginBottom: `${base}px` }], {
+    duration,
+    easing
+  });
 }
 
 /** A panel that is not giving its space back: it leaves the flow in the frame
@@ -492,7 +517,7 @@ export function collapse(
      it changes place and width at once, which a transform cannot carry. */
   if (hasLineBelow(node)) {
     const dissolve = dissolveAt(node.getBoundingClientRect());
-    settleGridSpace(node, dissolve.duration ?? 0);
+    settleGrid(node, dissolve.duration ?? 0);
     return dissolve;
   }
 
