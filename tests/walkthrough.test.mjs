@@ -1082,7 +1082,7 @@ try {
 try {
   await fresh('/settings');
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
@@ -1810,7 +1810,7 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
 
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */

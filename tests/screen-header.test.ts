@@ -85,15 +85,19 @@ describe('every screen gets its header from one component', () => {
        the header shape every other screen already has and the one 3d
        describes. A title doing two jobs was the thing to fix, not the
        repetition. */
+    /* One door's tab (the fourth) can say either of two things depending on
+       disguise (ticket 08, hubTabLabel) - both are listed, so the guard
+       still catches whichever one a header regresses to repeating. */
     const TAB_TITLES = new Map([
-      ['src/routes/calendar/+page.svelte', 'm.nav_calendar()'],
-      ['src/routes/more/+page.svelte', 'm.nav_more()']
+      ['src/routes/calendar/+page.svelte', ['m.nav_journal()']],
+      ['src/routes/more/+page.svelte', ['m.nav_more()', 'm.nav_transition()']]
     ]);
 
     const repeating: string[] = [];
-    for (const [file, tabTitle] of TAB_TITLES) {
+    for (const [file, tabTitles] of TAB_TITLES) {
       const header = read(file).match(/<ScreenHeader[^>]*\/?>/s)?.[0] ?? '';
-      if (header.includes(`title={${tabTitle}}`) && !header.includes('titleHidden')) {
+      const repeatsTab = tabTitles.some((tabTitle) => header.includes(`title={${tabTitle}}`));
+      if (repeatsTab && !header.includes('titleHidden')) {
         repeating.push(file);
       }
     }

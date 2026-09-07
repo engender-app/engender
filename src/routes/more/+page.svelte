@@ -68,11 +68,13 @@
 
 <div class="screen">
   <!-- DIRECTION.md 3d: the hub had "More" stacked directly above its first
-       group heading, which is two headers saying nearly the same thing, and
-       the tab that reaches this screen is already labelled More. The title
-       stays in the document for a screen reader and stops being a second
-       visible label. -->
-  <ScreenHeader title={m.nav_more()} titleHidden />
+       group heading, which is two headers saying nearly the same thing. The
+       title stays in the document for a screen reader and stops being a
+       second visible label - and since ticket 08 the tab and this title no
+       longer even say the same word: the tab now names the whole subject
+       (Transition, or More disguised) and the title names the five groups
+       actually behind it. -->
+  <ScreenHeader title={m.hub_screen_title()} titleHidden />
 
   {#each sections as section (section.key)}
     <SectionHeading text={hubGroupHeading(section.key)} />
