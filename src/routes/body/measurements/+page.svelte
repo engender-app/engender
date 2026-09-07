@@ -155,8 +155,8 @@
     type = created.key;
   }
 
-  function dismissProtocol(t: string) {
-    prefs.measurementProtocolDismissed = { ...prefs.measurementProtocolDismissed, [t]: true };
+  function dismissProtocol() {
+    prefs.measurementProtocolDismissed = true;
   }
 </script>
 
@@ -173,7 +173,7 @@
   </ScreenHeader>
   <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (type = v)} />
 
-  {#if !prefs.measurementProtocolDismissed[type] && PROTOCOL[type]}
+  {#if !prefs.measurementProtocolDismissed && PROTOCOL[type]}
     <div class="screen-part">
       <Notice
         icon="ruler"
@@ -182,7 +182,7 @@
         role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
         title={m.measurement_protocol_title()}
         text={PROTOCOL[type]!()}
-        dismiss={{ label: m.measurement_protocol_dismiss_aria(), onclick: () => dismissProtocol(type) }}
+        dismiss={{ label: m.measurement_protocol_dismiss_aria(), onclick: dismissProtocol }}
       />
     </div>
   {/if}
