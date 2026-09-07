@@ -115,7 +115,7 @@
      draws them against whichever metric the preference held, and the
      screen has no picker to read that off. */
   let metric = $derived(metricKey(prefs));
-  let insightRows = $derived(tagInsightRows(insights, metric, vocabulary.metricNameOf(metric)));
+  let insightRows = $derived(tagInsightRows(insights, metric));
   let tally_rows = $derived(tallyRows(tally));
 
   let figures = $derived([
@@ -196,7 +196,9 @@
 </ListCard>
 
 {#if insightRows.length}
-  <ChartCard heading={m.tag_insights()} kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+  <ChartCard
+    heading={m.tag_insights_of({ metric: vocabulary.metricNameOf(metric) })}
+    kind="wrapped-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     <BarRows rows={insightRows} />
   </ChartCard>
   <p class="wrapped-note">{m.insights_note()}</p>

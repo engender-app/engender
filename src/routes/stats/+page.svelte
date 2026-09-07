@@ -218,11 +218,7 @@
         withoutAvg: insight.withoutAvg,
         delta: insight.withAvg - insight.withoutAvg
       })),
-      vocabulary.activeMetric,
-      /* The word for it, on every row. The scale these bars are of is the
-         one the day-by-day picker holds four cards up the screen, and
-         nothing on this card said so. */
-      vocabulary.metricName
+      vocabulary.activeMetric
     )
   );
 
@@ -908,6 +904,31 @@
   </ChartCard>
 
   <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+    <!-- Which scale the six bars are of, named once, on the heading's line
+         where a chart card keeps its context.
+
+         The rows themselves say only the counts. Naming the metric on each
+         one was six copies of a fact that is constant across the card by
+         construction, and on any two-ended scale it wrapped every note
+         ("Dysphoria ↔ euphoria · 4 entries · avg 30 with · 47 without" in a
+         290px track), orphaning "without" on a line of its own and adding
+         108px to the card. Five of the eight built-in dimensions read that
+         way and a custom scale's name has no ceiling.
+
+         A picker rather than a label, because the second half of the same
+         problem is that this fact was only changeable from the day-by-day
+         card four cards up the screen. Same stored preference, so the two
+         pickers mirror rather than drift; its own `key`, because that is the
+         select's DOM id and there cannot be two of one id. -->
+    {#snippet control()}
+      <ChartPicker
+        key="stats-insight-metric"
+        label={m.tag_insights()}
+        value={shown.key}
+        options={metricOptions}
+        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
+      />
+    {/snippet}
     <ReadGate read={insightsQuery} variant="line" count={3}>
       {#snippet rows()}
         <BarRows
