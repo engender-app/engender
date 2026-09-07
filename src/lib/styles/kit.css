@@ -2166,11 +2166,28 @@ a.kit-entry:active {
   text-align: left;
   cursor: pointer;
   transition-property: background-color;
+  /* The release. The press itself is instant, below. */
   transition-duration: var(--dur-fast);
 }
 
+/* The fill lands on the frame the finger does, and fades out behind it.
+
+   It used to ramp in over --dur-fast as well, which was survivable while the
+   row also scaled - a scale arrives on the same frame as the touch, so
+   something answered immediately and the wash was the slow half of a pair.
+   With the scale gone (`data-no-press` in BarRows.svelte) the wash is the
+   whole answer, and a tap is 80 to 120ms against a 150ms ramp: a real press
+   never reached more than about two thirds of it before releasing. A quiet
+   colour that also arrives late is indistinguishable from nothing happening,
+   which is the one thing tier 1 exists to prevent.
+
+   Response immediate, recovery eased - the asymmetry is the point, and it is
+   the same shape the app's own screen transitions take in the other
+   direction (an exit faster than an entrance, app.css). Reduced motion clamps
+   both ends to 1ms and the state still changes, which is the substitute. */
 .kit-bar.is-open:active {
   background: var(--role-wash);
+  transition-duration: 0s;
 }
 
 .kit-bar.is-open:focus-visible {

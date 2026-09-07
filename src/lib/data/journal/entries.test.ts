@@ -364,7 +364,7 @@ test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag,
   assert.equal(forDay.length, 1);
   assert.ok(!forDay.some((e) => e.id === trashed));
   assert.ok(!(await journal.entries.recentDays(5)).some((e) => e.id === trashed));
-  assert.ok(!(await journal.entries.entriesWithTag('e-happy', 10)).some((e) => e.id === trashed));
+  assert.ok(!(await journal.entries.entriesWithTag('e-happy', 0, 200, 10)).some((e) => e.id === trashed));
   await assert.rejects(journal.entries.upsertEntry({ id: trashed, mood: 5 }), /unknown entry/);
 });
 
@@ -596,12 +596,26 @@ test('entriesWithTag reads newest first, up to the limit, by key or by uuid', as
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-sad'] });
   await journal.entries.upsertEntry({ epochDay: 103, mood: 4, tags: ['e-happy'] });
 
-  const happy = await journal.entries.entriesWithTag('e-happy', 10);
+  const happy = await journal.entries.entriesWithTag('e-happy', 0, 200, 10);
   assert.deepEqual(happy.map((e) => e.epochDay), [103, 101, 100]);
 
-  assert.deepEqual((await journal.entries.entriesWithTag('e-happy', 2)).map((e) => e.epochDay), [103, 101]);
-  assert.deepEqual((await journal.entries.entriesWithTag(custom.id, 10)).map((e) => e.epochDay), [101]);
-  assert.deepEqual(await journal.entries.entriesWithTag('no-such-tag', 10), []);
+  assert.deepEqual((await journal.entries.entriesWithTag('e-happy', 0, 200, 2)).map((e) => e.epochDay), [103, 101]);
+  assert.deepEqual((await journal.entries.entriesWithTag(custom.id, 0, 200, 10)).map((e) => e.epochDay), [101]);
+  assert.deepEqual(await journal.entries.entriesWithTag('no-such-tag', 0, 200, 10), []);
+});
+
+test('entriesWithTag is bound to its range, not the whole journal (carpet ticket 19)', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 90, mood: 1, tags: ['e-happy'] });
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['e-happy'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-happy'] });
+  await journal.entries.upsertEntry({ epochDay: 110, mood: 4, tags: ['e-happy'] });
+
+  // day 90 and day 110 both carry the tag, but only 100 and 101 fall inside
+  // the row's own range - the ticket's own repro, an unranged read pulling
+  // in a carrier from outside the period the count described.
+  const inRange = await journal.entries.entriesWithTag('e-happy', 100, 101, 10);
+  assert.deepEqual(inRange.map((e) => e.epochDay), [101, 100]);
 });
 
 test('searchEntries stops at the limit it is given, keeping the newest hits', async () => {

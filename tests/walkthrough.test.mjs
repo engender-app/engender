@@ -706,6 +706,36 @@ try {
   ok('stats range, value list, named tag insights and the scale bars');
 } catch (e) { fail('stats', e); }
 
+/* 6a. a tag insight's sheet holds the same set the row's own count named
+   (carpet ticket 19). An unranged read used to open the tag's twenty most
+   recent carriers across the whole journal; this asserts the row's count
+   against the number of entry cards the sheet actually opened, so the two
+   cannot drift apart again without failing here. */
+try {
+  await fresh('/stats');
+  const bar = page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first();
+  await bar.waitFor();
+  const note = await bar.locator('[data-bar-note]').textContent();
+  const claimed = Number((note ?? '').match(/\d+/)?.[0]);
+  if (!claimed) throw new Error('tag insight row has no entry count: ' + note);
+
+  await bar.click();
+  await page.waitForSelector('[data-sheet]');
+  await page.waitForSelector('[data-sheet] [data-entry-card]');
+  const cards = await page.locator('[data-sheet] [data-entry-card]').count();
+  const capped = await page.locator('[data-insight-sheet-capped]').count();
+
+  if (capped) {
+    // A capped list says so rather than silently showing fewer than the
+    // row claimed - the row's count can exceed what the sheet shows, never
+    // the other way round.
+    if (cards > claimed) throw new Error(`sheet held ${cards}, row claimed ${claimed}, and said capped`);
+  } else if (cards !== claimed) {
+    throw new Error(`row said ${claimed} entries, sheet held ${cards}`);
+  }
+  ok('tag insight sheet holds the row\'s own count, or says it is capped');
+} catch (e) { fail('tag insight sheet range', e); }
+
 /* 6b. a second scale on the day-by-day chart (phase 6 ticket 12).
 
    The offer, the pick, and the two things that have to change together: the
@@ -738,6 +768,39 @@ try {
   await card.locator('[data-chart-scale]').waitFor();
   ok('a second scale joins the day-by-day chart and can be put down again');
 } catch (e) { fail('a second scale on the day-by-day chart', e); }
+
+/* 6b2. a tag insight opens the entries carrying that tag, and one of them
+   opens (carpet ticket 10).
+
+   The sheet is the only place /stats draws an entry card, and the ticket's
+   own acceptance asks whether those cards reach the entries they name. The
+   assertion is the card's own href against the URL the tap landed on, not
+   just that a navigation happened: a click that navigates anywhere would
+   pass the weaker version of this check.
+
+   It is also the surface behind the ticket's fade-through carve-out. The
+   pattern itself is pinned in screen-transition.test.ts, where it is a
+   pure function; what this proves is that the tap still arrives, which is
+   the half a table cannot answer. */
+try {
+  await fresh('/stats');
+  await page.locator('[data-chart-card="tag-insights"] [data-bar-row]').first().click();
+  /* The sheet, and then the entries in it: the read behind them is its own
+     query, so the card can arrive a frame after the sheet does. */
+  await page.waitForSelector('[data-sheet] [data-entry-card]');
+  const opens = page.locator('[data-sheet] [data-entry-card]').first();
+  const href = await opens.getAttribute('href');
+  if (!/^\/entry\/\d+$/.test(href ?? '')) {
+    throw new Error('a tag insight entry links nowhere in particular: ' + href);
+  }
+  await opens.click();
+  await page.waitForURL('**' + href);
+  /* And it is the editor for that entry rather than a screen that merely
+     answers to the URL - #ed-note is the note field every other editor
+     flow in this file waits on. */
+  await page.waitForSelector('#ed-note');
+  ok('a tag insight opens its entries, and one of them opens the editor');
+} catch (e) { fail('tag insight entries', e); }
 
 /* 6c. the custom-interval card's length field waits for the typist (phase 8
    audit ticket 16, the same debounce ticket 15 gave /search's query).
@@ -2754,6 +2817,41 @@ try {
   ok(`all ${SETTINGS_AREA_ROUTES.length} settings-area routes still answer at their own address`);
 } catch (e) {
   fail('More hub route characterization', e);
+}
+
+/* Carpet ticket 14: the measurements screen's capture-protocol notice is one
+   instance whose text follows the segmented type picker, not one notice per
+   type - so dismissing it on whichever type is showing has to dismiss it for
+   every other type of the same switcher too, not just the one on screen when
+   it was closed. */
+try {
+  await fresh('/body/measurements');
+
+  await page.waitForSelector('[data-notice="protocol"]');
+  if ((await page.locator('[data-notice="protocol"]').count()) !== 1) {
+    throw new Error('more than one protocol notice instance rendered');
+  }
+
+  await page.locator('[data-segment="hips"]').click();
+  await page.waitForSelector('[data-notice="protocol"][data-protocol="hips"]');
+
+  await page.locator('[data-notice="protocol"] [data-notice-dismiss]').click();
+  await page.waitForSelector('[data-notice="protocol"]', { state: 'detached' });
+
+  await page.locator('[data-segment="chest"]').click();
+  if (await page.locator('[data-notice="protocol"]').count()) {
+    throw new Error('dismissing on one type left the notice showing again on another');
+  }
+
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/body/measurements', { waitUntil: 'networkidle' });
+  if (await page.locator('[data-notice="protocol"]').count()) {
+    throw new Error('dismissal did not survive leaving and returning to the screen');
+  }
+
+  ok('measurements protocol notice is a single instance and stays dismissed across every switcher value');
+} catch (e) {
+  fail('measurements protocol notice dedup and dismiss persistence', e);
 }
 
 /* Phase 5 ticket 36: the persona alone leaves most of the More hub in its

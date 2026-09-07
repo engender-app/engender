@@ -325,12 +325,19 @@
     })
   );
 
+  /* Ranged to the screen's own `from`/`today` (carpet ticket 19), so the
+     list behind a row is the row's own evidence and not whatever the tag's
+     twenty most recent carriers happened to be across the whole journal.
+     Fetched one past the cap so a full page can say it is one: past
+     `INSIGHT_ENTRIES` there is no way to tell "exactly the cap" from "more
+     exist" without asking for one more. */
   let insightEntriesQuery = liveList((j) => {
     const sheet = insightSheet;
     if (!sheet) return Promise.resolve([]);
-    return j.entries.entriesWithTag(sheet.id, INSIGHT_ENTRIES);
+    return j.entries.entriesWithTag(sheet.id, from, today, INSIGHT_ENTRIES + 1);
   });
-  let insightEntries = $derived(insightEntriesQuery.rows);
+  let insightEntriesCapped = $derived(insightEntriesQuery.rows.length > INSIGHT_ENTRIES);
+  let insightEntries = $derived(insightEntriesQuery.rows.slice(0, INSIGHT_ENTRIES));
 
   /* Correlation cards (phase 4 ticket 21) - a deliberate reversal of
      phase 3's explicit exclusion of correlation analysis, not scope
@@ -478,8 +485,6 @@
     }))
   );
 
-  const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
-
   const occurrenceLabel = (card: CorrelationCard) =>
     card.occurrence.kind === 'doseDay'
       ? m.correlation_card_dose_day()
@@ -506,7 +511,7 @@
         without: card.withoutAvg,
         ...bounds,
         gap: signedValue(card.withAvg - card.withoutAvg, (v) => fmtNativeValue(card.metric, v)),
-        note: `${metricName(card.metric)} · ${m.insight_row_sub({
+        note: `${vocabulary.metricNameOf(card.metric)} · ${m.insight_row_sub({
           count: String(card.count),
           with: fmtNativeValue(card.metric, card.withAvg),
           without: fmtNativeValue(card.metric, card.withoutAvg)
@@ -932,6 +937,25 @@
   </ChartCard>
 
   <ChartCard heading={m.tag_insights()} kind="tag-insights" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
+    <!-- Which scale the six bars are of, named once, on the heading's line
+         where a chart card keeps its context. Why it is not on each row is
+         in `tagInsightRows` (../lib/data/wrappedDisplay.ts), which is where
+         the rows are built.
+
+         A picker rather than a label, because the second half of the same
+         problem is that this fact was only changeable from the day-by-day
+         card four cards up the screen. Same stored preference, so the two
+         pickers mirror rather than drift; its own `key`, because that is the
+         select's DOM id and there cannot be two of one id. -->
+    {#snippet control()}
+      <ChartPicker
+        key="stats-insight-metric"
+        label={m.tag_insights()}
+        value={shown.key}
+        options={metricOptions}
+        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
+      />
+    {/snippet}
     <ReadGate read={insightsQuery} variant="line" count={3}>
       {#snippet rows()}
         <BarRows
@@ -1163,6 +1187,12 @@
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>
     {#if insightSheet}
       <h3>{insightSheet.label}</h3>
+      <p class="stats-inline-note" data-insight-sheet-range>{m.stats_range_sub({ days: String(range) })}</p>
+      {#if insightEntriesCapped}
+        <p class="stats-inline-note" data-insight-sheet-capped>
+          {m.insight_sheet_capped({ shown: String(INSIGHT_ENTRIES) })}
+        </p>
+      {/if}
       <div class="stack-3">
         {#each insightEntries as e (e.id)}
           <EntryCard entry={e} />
