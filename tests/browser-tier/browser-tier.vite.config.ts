@@ -33,7 +33,7 @@ function mutableServiceWorker() {
   let generation = 1;
 
   return {
-    name: 'gender-diary:mutable-service-worker',
+    name: 'engender:mutable-service-worker',
     configureServer(server: {
       middlewares: {
         use(handler: (req: { url?: string }, res: ServerResponse, next: () => void) => void): void;

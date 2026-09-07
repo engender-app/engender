@@ -34,7 +34,6 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { smartBack } from '$lib/navigation/smart-back';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
@@ -141,7 +140,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.on_this_day()} screen="on-this-day" back={() => smartBack('/')} />
+  <ScreenHeader title={m.on_this_day()} screen="on-this-day" back="/" />
 
   {#if !prefs.onThisDayEnabled}
     <Notice

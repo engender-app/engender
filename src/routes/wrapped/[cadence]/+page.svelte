@@ -25,7 +25,7 @@
 
      The layout split is two components: WrappedCompact for a week, a month
      or a range, WrappedYear for a year. */
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtDuration, fmtMonthName } from '$lib/data/dates';
@@ -40,7 +40,6 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { smartBack } from '$lib/navigation/smart-back';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
   import { wrappedTagInsights, wrappedTallyCounts } from '$lib/data/wrappedSections';
   import { wrappedLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
@@ -190,28 +189,25 @@
     const goesToCadence = wrappedRangeCadence(choice);
     if (goesToCadence) {
       rangePicker = false;
-      goto(`/wrapped/${goesToCadence}`, { replaceState: true });
+      void replaceRoute(`/wrapped/${goesToCadence}`);
       return;
     }
     if (choice === 'custom') {
       /* The custom range needs both boundaries, so the sheet stays open on
          the fields until it has them. */
       if (!resolveWrappedRange('custom', today, { start: customStart, end: customEnd })) {
-        goto(`/wrapped/range${wrappedRangeQuery('custom', { start: customStart, end: customEnd })}`, {
-          replaceState: true,
+        void replaceRoute(`/wrapped/range${wrappedRangeQuery('custom', { start: customStart, end: customEnd })}`, {
           keepFocus: true,
           noScroll: true
         });
         return;
       }
       rangePicker = false;
-      goto(`/wrapped/range${wrappedRangeQuery('custom', { start: customStart, end: customEnd })}`, {
-        replaceState: true
-      });
+      void replaceRoute(`/wrapped/range${wrappedRangeQuery('custom', { start: customStart, end: customEnd })}`);
       return;
     }
     rangePicker = false;
-    goto(`/wrapped/range${wrappedRangeQuery(choice)}`, { replaceState: true });
+    void replaceRoute(`/wrapped/range${wrappedRangeQuery(choice)}`);
   }
 
   /* An era is picked whole, the way every other choice but `custom` is:
@@ -219,7 +215,7 @@
      first tap. */
   function chooseEra(eraId: string) {
     rangePicker = false;
-    goto(`/wrapped/range${wrappedRangeQuery('era', undefined, eraId)}`, { replaceState: true });
+    void replaceRoute(`/wrapped/range${wrappedRangeQuery('era', undefined, eraId)}`);
   }
 
   /* The preference is read inside every query rather than around them, so
@@ -354,7 +350,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.wrapped()} screen="wrapped" back={() => smartBack('/')}>
+  <ScreenHeader title={m.wrapped()} screen="wrapped" back="/">
     {#snippet actions()}
       {#if canShare}
         <a class="icon-btn press" href="/wrapped/{cadence}/share" aria-label={m.wrapped_share_open()}>

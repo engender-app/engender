@@ -44,11 +44,12 @@
   import { startAndroidPlatformSync } from '$lib/android/platform-sync';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
+  import { hoverHints } from '$lib/a11y/hoverHint';
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { markScreenArrival } from '$lib/motion/reveal';
-  import { recordNavigation } from '$lib/navigation/smart-back';
+  import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
@@ -542,7 +543,9 @@
       }),
       isValidLaunchRoute: isValidAndroidLaunchRoute,
       currentPathname: () => page.url.pathname,
-      goto
+      goto,
+      replaceRoute,
+      navigationDepth
     });
   });
 </script>
@@ -571,6 +574,7 @@
   <div
     class="app"
     data-app-root
+    use:hoverHints
     class:disguised={prefs.disguise}
     class:is-chromeless={chromeless}
     data-boot={bootState.status}

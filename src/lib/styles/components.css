@@ -312,8 +312,17 @@
    read as a label that did not fit its background (Alicja, 2026-08-26, on a
    new hair-removal session and on side effects). A spacer the width of that
    padding is the standard answer: it is content, so the scroll box includes
-   it. */
-.segmented::after {
+   it.
+
+   Only on a track that actually scrolls (ticket 99 item 24, "last value
+   highlight in switcher doesn't reach the end of the bg"). On one that
+   fits - every compact track, and most of the rest - there is no end of a
+   scroll for the padding to be dropped at, and the spacer was simply an
+   extra flex item: 3px of it plus the 8px gap in front of it left 11px of
+   bare background after the last segment, against 3px of padding before
+   the first. The sliding pill matches its segment exactly, so that dead
+   strip is what read as the highlight stopping short of the end. */
+.segmented.can-scroll::after {
   content: '';
   flex: 0 0 3px;
 }
@@ -540,7 +549,15 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .mood-picker { position: relative; }
 .mood-row { display: flex; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  /* --space-4, not --space-2, and the extra 8px is all ring (ticket 99 item
+     15, "mood icon text too close to the icon"). The face wears a 2px
+     outline at 3px offset, and an outline is painted outside the box
+     without taking any layout space, so 8px of gap was only 3px of visible
+     air. A picked face then scales to 1.18, which drops its own bottom
+     edge another ~4px and takes the scaled ring down with it - the label
+     ended up all but touching the ring it belongs to. 16px clears both and
+     leaves the row looking like a row again. */
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--radius-md);
   transition: transform var(--dur-med) var(--ease-out);
@@ -553,6 +570,51 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    add's 34, a chip's 26, a day card's 22. The size arrives as --face-size and
    the mood's own colour as --face-mood, both set by the component, so a
    surface asks for a size rather than getting a rule of its own here. */
+/* ---------- why these two are registered ----------
+
+   An unregistered custom property has no type, so it substitutes at
+   computed-value time and the properties reading it never interpolate: the
+   specified value of `scale` is still the same `var(--mood-mag, 1)` token
+   before and after, so nothing transitions and the face jumps to its new
+   size in one frame. Every transition written against these two - the
+   magnifier's, since phase 5 ticket 31, and the gaze's - has therefore never
+   run once, on any build, while reading correctly in the stylesheet.
+
+   Measured rather than reasoned: sampling the computed `scale` on a face
+   every 25ms while a pointer crossed the row gave 1 then 1.6 with nothing in
+   between, and 1.6 then 1 on the way out (Alicja, phase 9 carpet ticket 01:
+   "the scale appears immediately on hover, it has to have a fade in and fade
+   out"). Registering them gives each a type, which is what makes the
+   variable itself animatable; the transition then goes on the variable and
+   everything computed from it follows per frame.
+
+   Both inherit, because both are set on an ancestor of what reads them:
+   --mood-mag on the button, read by the face and its lift; --gaze on the
+   face, read by the eyes' outer group. A runtime without @property keeps
+   today's instant snap rather than breaking, which is the right way round. */
+@property --mood-mag {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+@property --gaze {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* --dur-med rather than tier 1's --dur-fast, and this is the one control in
+   the app that gets to say so. 150ms is right for a press, which is a state
+   arriving once; this is a value re-aimed on every pointermove, where the
+   duration is the width of the filter over a moving finger rather than a
+   delay before an answer. At 150 the row still reads as snapping to each new
+   size. The same number covers the release, so the row settles back at the
+   speed it rose. */
+.mood-btn,
+.kit-mood {
+  transition: --mood-mag var(--dur-med) var(--ease-out);
+}
+
 .mood-face {
   width: var(--face-size);
   height: var(--face-size);
@@ -570,7 +632,27 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      reads as picked up. The lift's reach is the row's to set: the fan's
      card clips at 20px, the bare rows answer with more. */
   translate: 0 calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px));
-  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast), scale var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+  /* No `scale` or `translate` in this list any more. Both are computed from
+     --mood-mag, which is the thing that transitions now, so naming them here
+     as well would put a second filter behind the first and the face would
+     arrive twice. `transform` stays because the picked state writes it
+     directly, and opacity because the dimming does. */
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
+}
+/* Standalone scale/translate shipped in Chrome 104; the WebView floor is
+   Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
+   gap) - seventeen versions short, so the whole magnifier silently did
+   nothing there. No hover/press growth on any device at or under that
+   floor is ticket 99 items 1 and 2's report, round two of the same "phase 5
+   ticket 99" bug above, this time in the property rather than the border.
+   transform is the one form every engine back to Chrome 1 reads, so the
+   fallback trades that for losing composition with .mood-btn.is-selected's
+   own transform below - which only an engine this old would ever notice. */
+@supports not (scale: 1) {
+  .mood-face {
+    transform: translateY(calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px))) scale(var(--mood-mag, 1));
+    transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+  }
 }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
    already-similar surface tones. A mood face sits straight on the bare app
@@ -596,13 +678,59 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   fill: none;
   stroke: var(--text); stroke-width: 1.6; stroke-linecap: round;
 }
-/* Only where a surface asked for it, and never on a day card: six entries
-   would be six blinking faces, and the app spends its one ambient loop on
-   the flag sun (DIRECTION.md, tier 0). The delay comes from the step, so a
-   row of five is staggered on any surface rather than only under .mood-btn. */
+/* ---------- the eyes ----------
+
+   Two groups, two authors, no argument between them (MoodFace.svelte). The
+   outer one takes the row's gaze; the inner one runs the face's own glance
+   and stops the moment the row has something to say.
+
+   Only where a surface asked for it, and never on a day card or a calendar
+   cell: six entries would be six faces looking around at a screen nobody is
+   choosing on, and 365 of them would be weather. The three surfaces that set
+   `alive` are the three where five faces are being chosen between. */
+
+/* The gaze. Tier 1, --dur-fast on --ease-out, the same filter-on-a-moving-
+   finger the magnifier's scale is: the value is re-aimed on every pointermove
+   and never more than a frame old, so the easing reads as the eyes following
+   rather than as a delay behind them. --gaze is -1 to 1 and --gaze-reach is
+   how far that is, set by the component off GAZE_REACH so one number governs
+   both the travel and the test that keeps it inside the disc. */
+.mood-face-gaze {
+  translate: calc(var(--gaze, 0) * var(--gaze-reach, 1.05px)) 0;
+  /* The variable, not the translate computed from it - see the two
+     @property blocks above for why that distinction is the whole of
+     whether this animates at all. --dur-fast rather than the magnifier's
+     --dur-med on purpose: eyes are the fast part of a face, and a gaze
+     that lagged the body would read as the head turning first. */
+  transition: --gaze var(--dur-fast) var(--ease-out);
+}
+
+/* The glance: three positions a cycle, each arrived at behind a closed lid.
+   The percentages are not round because they are not free - a blink is a
+   third of a glance and shuts hardest at 95% of itself, which lands at
+   31.67%, 65% and 98.33% of the cycle, and the eyes move across those instants
+   rather than near them. Move them and the saccade happens in the open, which
+   is the one thing a real eye never does. The travel is 1.4% of the cycle,
+   about 190ms: a real saccade is nearer 50, but at 44px an instant jump reads
+   as a dropped frame rather than as an eye. */
+.mood-face.is-alive .mood-face-look {
+  animation: face-glance var(--look-cycle, 13.8s) linear infinite;
+  animation-delay: var(--look-delay, 0s);
+}
+/* The row is being crossed, or a mood was just picked: the face has somewhere
+   to look and stops looking around on its own. Paused rather than cancelled,
+   so it resumes from where it was when the finger leaves instead of snapping
+   the eyes back to centre and then letting them drift out again. */
+.mood-face.is-held .mood-face-look { animation-play-state: paused; }
+@keyframes face-glance {
+  0%, 31% { translate: 0 0; }
+  32.4%, 64.3% { translate: calc(var(--look-dir, 1) * var(--gaze-reach, 1.05px)) 0.24px; }
+  65.7%, 97.6% { translate: calc(var(--look-dir, 1) * var(--gaze-reach, 1.05px) * -0.66) -0.28px; }
+  99%, 100% { translate: 0 0; }
+}
 .mood-face.is-alive .mood-face-eye {
-  animation: face-blink 4.6s infinite;
-  animation-delay: var(--blink-delay, 0s);
+  animation: face-blink var(--blink-cycle, 4.6s) infinite;
+  animation-delay: var(--look-delay, 0s);
 }
 @keyframes face-blink {
   0%, 92%, 100% { transform: scaleY(1); }
@@ -611,23 +739,43 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* MO-001: the global reduce rule below clamps every animation's duration to
    1ms, which turns an infinite loop into a restart-every-millisecond
    flicker rather than stillness - a photosensitivity hazard, not a comfort
-   feature. These five decorative loops stop outright instead; each rests on
+   feature. These decorative loops stop outright instead; each rests on
    a frame already inside its own keyframes (open eyes is face-blink's
-   resting frame with no transform applied at all). */
+   resting frame with no transform applied at all, and eyes front is
+   face-glance's).
+
+   The gaze needs no rule of its own. Both rows return early under reduced
+   motion (moodMagnifier, QuickAdd), so --gaze never leaves the 0 MoodFace
+   writes for a face with nothing to look at, and the armed colour is the
+   whole answer - the same substitution the magnifier's scale makes. The
+   transition on it is left to base.css's 1ms clamp, which is correct for a
+   movement that has somewhere to arrive, and wrong only for a loop. */
 html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: none; }
+html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .mood-face.is-alive .mood-face-eye { animation: none; }
+  .mood-face.is-alive .mood-face-look { animation: none; }
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
-/* The border is a ring OUTSIDE the circle, the same treatment Home's chips
-   wear, for the simple reason that every border inside the disc had
-   already failed: 1px of --outline-strong disappears against a coloured
-   fill on the dark theme, at full strength, and the dimming rules made it
-   worse besides. Outside the circle nothing can sit on top of it, and it
-   takes the picked state's accent like the chips' ring does. */
+/* The ring sits OUTSIDE the circle, because every border inside the disc had
+   already failed: 1px of --outline-strong disappears against a coloured fill
+   on the dark theme, at full strength, and the dimming rules made it worse
+   besides. Outside the circle nothing can sit on top of it.
+
+   It is drawn only on the face that was chosen (Alicja, phase 9 carpet
+   ticket 01: "remove the second stroke around them, that stroke should only
+   be around the CHOSEN icon"). A resting ring on all five was a second
+   stroke around a face that already carries one - the disc's own edge, which
+   ticket 99 put there - and five identical rings say nothing about which
+   face is picked, which is the only thing a ring here is for. Transparent
+   rather than absent so the ring arrives by taking a colour instead of by
+   changing the geometry, which would shift every face by 5px on pick.
+
+   Home's chips reached this answer first (kit.css, .kit-mood): the picker is
+   the surface that had drifted. */
 .mood-btn .mood-face {
   border-radius: 50%;
-  outline: 2px solid var(--outline-strong);
+  outline: 2px solid transparent;
   outline-offset: 3px;
   transition: outline-color var(--dur-fast) var(--ease-out);
 }
@@ -644,10 +792,17 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    "no hover-dependent motion" is about inventing motion for hover, not
    about a hover pointer being denied the response a finger gets. */
 .mood-btn:hover .mood-face-disc { fill-opacity: 0.75; }
+/* The pick's own beat. It used to tilt the face 5 degrees at the top of the
+   swell, which was the one piece of this motion nothing could say the meaning
+   of - a mood does not lean. What carries the moment instead is the row: the
+   picked face looks straight out and the other four turn to look at it for a
+   beat before letting go (moodMagnifier), which is the gaze channel already
+   built for the finger, pointed at a cell. The scale is what is left here,
+   and it only has to say "this one". */
 .mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
   0% { transform: scale(0.9); }
-  55% { transform: scale(1.32) rotate(-5deg); }
+  55% { transform: scale(1.32); }
   100% { transform: scale(1.18); }
 }
 .mood-btn.is-selected .mood-face-disc { stroke: var(--text); stroke-width: 0.8; }
@@ -855,7 +1010,21 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
    instead of appearing with it. */
 .body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
-.tag-chip-wrap .tag-info-btn { margin-left: -6px; color: var(--text-2); }
+/* Shrunk from .icon-btn's 48px hover circle (ticket 99 item 17): a 14px
+   glyph inline after a chip's label read as an oversized highlight the
+   moment the pointer neared it. 24px visual, 48px hit area restored by
+   ::after the same way .tag-chip already extends past its own pill. */
+.tag-chip-wrap .tag-info-btn {
+  width: 24px; height: 24px;
+  margin-left: -6px;
+  color: var(--text-2);
+  position: relative;
+}
+.tag-chip-wrap .tag-info-btn::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
 /* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
    checking the controls it does own. What is fixed here is the floor, not the
    chip: the pill stays 36px because a chip is a 36px pill in every reference
@@ -1042,6 +1211,33 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: 
   [data-app-root] > [inert] {
     filter: blur(var(--blur-withdraw));
   }
+}
+/* Behind the screen while it is withdrawn, and this is the whole of ticket
+   99 item 40 ("overall - the menu renders over the popups", and Alicja
+   confirmed she meant a sheet).
+
+   The bar really did paint in front of an open sheet, and z-index said it
+   should not: the bar is 30 and the sheet's scrim is 40. The two numbers
+   were never compared, though. `.app-main` carries `view-transition-name:
+   screen`, and a view-transition-name makes an element a stacking context
+   - so the scrim's 40 is spent *inside* `.app-main`, which itself sits at
+   `z-index: auto` beside the bar's 30 in `.app`. Every sheet in the app was
+   painting one level below the bar, and no z-index on the sheet could have
+   fixed it from in there.
+
+   The bar is inert exactly when a sheet is up, which is when it should be
+   behind the screen rather than above it, so the withdrawal is where this
+   belongs. A negative index puts it under `.app-main` and still above
+   `.app`'s own background, which is what leaves it visible through the
+   scrim where the sheet does not cover - the blurred, receded bar the
+   withdrawal was always meant to be.
+
+   An earlier round of this ticket read the same symptom as the blur failing
+   to composite and dimmed the bar to 0.5 to compensate. The blur was
+   painting all along; it was painting in the wrong place. The dim goes with
+   the diagnosis that asked for it. */
+[data-app-root] > [inert] {
+  z-index: -1;
 }
 html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   filter: none;

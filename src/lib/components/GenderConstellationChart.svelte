@@ -57,10 +57,18 @@
      and the older marks stay marks. */
   import { untrack } from 'svelte';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
-  import { tracedThrough, type ConstellationPoint, type PlottedPoint } from '$lib/data/constellationData';
+  import {
+    labelOffset,
+    labeledSlots,
+    tracedThrough,
+    type ConstellationPoint,
+    type PlottedPoint
+  } from '$lib/data/constellationData';
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
+  import Icon from './Icon.svelte';
   import Slider from './Slider.svelte';
+  import { m } from '$lib/paraglide/messages';
 
   /** A presentation as this chart needs it: a name to write and a role to
       paint with, already resolved from the stored index (ADR-0048). */
@@ -125,6 +133,12 @@
       end of either scale. */
   const PAD = 8;
   const DOT = 3;
+  /** No two point labels closer than this, in real pixels. A day label runs
+      up to about 45px wide and 14px tall, off-centre from its own point - so
+      the gap has to clear a label's whole box, not just the dot it is
+      anchored to (ticket CARPET-07, tests/constellation-gallery.mjs's own
+      pairwise check is what this was tuned against). */
+  const MIN_LABEL_GAP = 48;
 
   /* Which dataset this is, as cheaply as it can be asked. A live query
      hands back a fresh array on any journal write, and replaying the sweep
@@ -139,7 +153,14 @@
       is made of. */
   let head = $state(0);
 
+  /** Bumped by the play button to ask for the sweep again without a new
+      dataset arriving (ticket CARPET-07). The effect below reads it only to
+      be woken by it - the sweep itself always walks 0 to last, same as the
+      dataset-arrives sweep it shares its one mechanism with. */
+  let replay = $state(0);
+
   $effect(() => {
+    void replay;
     if (signature === '') {
       head = 0;
       return;
@@ -206,6 +227,12 @@
   );
 
   let headMode = $derived(modes.find((mode) => mode.id === at?.presentationId));
+
+  /** Which of the drawn points also get their day written beside them
+      (ticket CARPET-07). Off the same `traced` window everything else on
+      the plot draws from, so a label never names a reading the plot itself
+      has scrolled past. */
+  let labeled = $derived(labeledSlots(traced, plot, PAD, MIN_LABEL_GAP));
 </script>
 
 {#if points.length}
@@ -261,6 +288,33 @@
           </g>
         {/each}
 
+        <!-- One day per point that earned a label without landing on
+             another (labeledSlots, ticket CARPET-07), the head's own
+             excepted: it already has its date in the readout below, so
+             writing it twice over the same mark would be one fact said
+             twice rather than two facts. The day is what is written; the
+             `<title>` carries the whole reading - the same sentence the
+             head's own visually-hidden span speaks - as a native tooltip
+             for a pointer that lingers, so "a point's underlying data" is
+             not only its date for anyone who can hover one. -->
+        <g class="cn-labels" aria-hidden="true">
+          {#each traced as point (point.slot)}
+            {#if labeled.has(point.slot) && point.slot !== at?.slot}
+              {@const offset = labelOffset(point)}
+              <text
+                class="cn-point-label"
+                x={px(point) + offset.dx}
+                y={py(point) + offset.dy}
+                text-anchor={offset.anchor}
+                opacity={point.weight}
+              >
+                <title>{readingLabel(point)}</title>
+                {dayLabel(point.day)}
+              </text>
+            {/if}
+          {/each}
+        </g>
+
         {#if at}
           <!-- The head, ringed on the plane rather than labelled beside it:
                the mark is the label, and the readout says the date. In the
@@ -298,6 +352,19 @@
 
     {#if points.length > 1}
       <div class="cn-scrub">
+        <!-- Re-runs the same sweep the chart already plays once on arrival
+             (the $effect above) rather than a second animation of its own -
+             one mechanism for "walk the path", asked for twice (ticket
+             CARPET-07). -->
+        <button
+          type="button"
+          class="icon-btn press cn-play"
+          data-constellation-play
+          aria-label={m.constellation_play()}
+          onclick={() => replay++}
+        >
+          <Icon name="play" size={20} />
+        </button>
         <Slider min={0} max={points.length - 1} value={head} onInput={(v) => (head = v)} label={scrubLabel} />
       </div>
     {/if}
@@ -440,5 +507,24 @@
   .cn-scrub {
     grid-column: 1 / -1;
     margin-top: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* The slider is the control that takes the rest of the row; the play
+     button is one touch target beside it, not a second one it has to
+     share width with. */
+  .cn-scrub :global(.slider) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Ink rather than a role, the same call the trail makes: a point's day is
+     a fact about when, which belongs to no mode. */
+  .cn-point-label {
+    fill: var(--text-2);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
   }
 </style>

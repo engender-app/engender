@@ -11,10 +11,10 @@ import { join } from 'node:path';
  */
 export function expectedArtifactNames(version) {
   return [
-    `gender-diary-web-${version}.tar.gz`,
-    `gender-diary-src-${version}.tar.gz`,
-    `gender-diary-android-release-${version}.apk`,
-    `gender-diary-android-release-${version}.aab`
+    `engender-web-${version}.tar.gz`,
+    `engender-src-${version}.tar.gz`,
+    `engender-android-release-${version}.apk`,
+    `engender-android-release-${version}.aab`
   ];
 }
 
@@ -115,17 +115,17 @@ function commandExists(command) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const version = process.env.GENDER_DIARY_VERSION?.trim();
-  const versionCode = Number.parseInt(process.env.GENDER_DIARY_VERSION_CODE ?? '', 10);
+  const version = process.env.ENGENDER_VERSION?.trim();
+  const versionCode = Number.parseInt(process.env.ENGENDER_VERSION_CODE ?? '', 10);
   if (!version || !Number.isInteger(versionCode)) {
-    console.error('GENDER_DIARY_VERSION and GENDER_DIARY_VERSION_CODE are required.');
+    console.error('ENGENDER_VERSION and ENGENDER_VERSION_CODE are required.');
     process.exit(1);
   }
 
-  const releaseDir = process.env.GENDER_DIARY_RELEASE_DIR ?? 'dist/release';
-  const androidBuildDir = process.env.GENDER_DIARY_ANDROID_BUILD_DIR ?? 'android/app/build';
-  const apk = join(releaseDir, `gender-diary-android-release-${version}.apk`);
-  const aab = join(releaseDir, `gender-diary-android-release-${version}.aab`);
+  const releaseDir = process.env.ENGENDER_RELEASE_DIR ?? 'dist/release';
+  const androidBuildDir = process.env.ENGENDER_ANDROID_BUILD_DIR ?? 'android/app/build';
+  const apk = join(releaseDir, `engender-android-release-${version}.apk`);
+  const aab = join(releaseDir, `engender-android-release-${version}.aab`);
 
   const problems = releaseArtifactProblems({ version, releaseDir, androidBuildDir, versionCode });
 

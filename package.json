@@ -1,5 +1,5 @@
 {
-  "name": "gender-diary",
+  "name": "engender",
   "private": true,
   "type": "module",
   "license": "GPL-3.0-only",
@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:browser": "svelte-kit sync && node tests/browser-tier/run.mjs",
     "test:android": "node tests/android-tier/run.mjs",
-    "test:walkthrough": "node scripts/prepare-vendor-assets.mjs && GENDER_DIARY_VERSION=9.9.9-walkthrough VITE_DEMO=1 npm run build && node tests/walkthrough.test.mjs",
+    "test:walkthrough": "node scripts/prepare-vendor-assets.mjs && ENGENDER_VERSION=9.9.9-walkthrough VITE_DEMO=1 npm run build && node tests/walkthrough.test.mjs",
     "verify:build": "node scripts/prepare-vendor-assets.mjs && npm run build && node tests/browser-tier/verify-build.mjs",
     "verify:hosting": "node tests/hosting/run.mjs",
     "gallery:icons": "node tests/icon-gallery.mjs",

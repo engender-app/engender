@@ -49,7 +49,7 @@ export function clearBrowserMirrors(storage: Storage): void {
   const doomed: string[] = [];
   for (let index = 0; index < storage.length; index++) {
     const key = storage.key(index);
-    if (key && key !== BOOT_CACHE_KEY && (key.startsWith('gender-diary-') || key === 'letter_tile_snooze_until')) doomed.push(key);
+    if (key && key !== BOOT_CACHE_KEY && (key.startsWith('engender-') || key === 'letter_tile_snooze_until')) doomed.push(key);
   }
   // Collected first: removing while enumerating by index skips keys.
   for (const key of doomed) storage.removeItem(key);

@@ -577,7 +577,7 @@ await block('ticket 10 (phase 2) browser tier', 14, async () => {
     ok(`closed-app scan after conversion: none of the 8 sentinels readable in any of ${r.scan.length} OPFS files`);
   else fail('closed-app scan after conversion finds no readable journal content', r.dirtyFiles.join('; ') || `only ${r.scan.length} files scanned`);
 
-  const remnants = r.rootNames.filter((p) => p.includes('gender-diary.sqlite3'));
+  const remnants = r.rootNames.filter((p) => p.includes('engender.sqlite3'));
   if (remnants.length === 0) ok('no plaintext database, pre-migration copy or side file survives in the OPFS root');
   else fail('no plaintext database or side file survives in the OPFS root', JSON.stringify(remnants));
 
@@ -1218,6 +1218,88 @@ await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
   const cleared = await five.getAttribute('aria-checked');
   if (cleared === 'false') ok('Enter on the picked face clears it, the same as a click would');
   else fail('Enter on the picked face clears it', cleared);
+});
+
+// --- Ticket 09: bar and donut hover interactivity ---------------------------
+/* A mouse hover and a keyboard focus are both real DOM events Playwright can
+   drive; a finger is the one input this suite has to fake, since headless
+   Chromium has nothing to tap with. dispatchEvent gives pointerType: 'touch'
+   directly rather than trying to coax a real touch out of the mouse, which
+   is what a synthetic PointerEvent is for. */
+await block('ticket 09 chart hover interactivity', 10, async () => {
+  await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
+
+  // The gallery's mood strip: step 1 is 2 of 34, under the strip's own 10%
+  // floor for printing a static percentage - the case the tooltip exists for.
+  const narrowSegment = page.locator('[data-strip-step="1"]');
+  await narrowSegment.hover();
+  const tooltipText = await page.locator('[data-strip-tooltip]').textContent();
+  if (tooltipText?.replace(/\s+/g, ' ').trim() === '2 · 6%')
+    ok('hovering a segment too narrow for its own label shows count and percent in a tooltip');
+  else fail('hovering a narrow segment shows count and percent', tooltipText);
+
+  const segmentHighlighted = await narrowSegment.evaluate((el) => el.classList.contains('is-hovered'));
+  if (segmentHighlighted) ok('the hovered segment carries a visible highlight');
+  else fail('the hovered segment carries a visible highlight', segmentHighlighted);
+
+  await page.locator('[data-chart="ordered-strip"] .kit-ordered-ends').hover();
+  const tooltipGone = (await page.locator('[data-strip-tooltip]').count()) === 0;
+  if (tooltipGone) ok('moving the pointer off the segment closes the tooltip');
+  else fail('moving the pointer off the segment closes the tooltip', await page.locator('[data-strip-tooltip]').count());
+
+  await narrowSegment.dispatchEvent('pointerup', { pointerType: 'touch' });
+  const tappedOpen = await page.locator('[data-strip-tooltip]').count();
+  if (tappedOpen === 1) ok('a touch tap is the segment\'s equivalent of a hover: it opens the tooltip');
+  else fail('a touch tap opens the tooltip', tappedOpen);
+
+  await narrowSegment.dispatchEvent('pointerup', { pointerType: 'touch' });
+  const tappedClosed = await page.locator('[data-strip-tooltip]').count();
+  if (tappedClosed === 0) ok('tapping the same segment again closes the tooltip');
+  else fail('tapping the same segment again closes the tooltip', tappedClosed);
+
+  // The gallery's "Share by tag" donut: 'work' is its largest slice, 34 of 76.
+  // Scoped to that one chart - the gallery renders more than one donut, and
+  // an unscoped .kit-donut-total would be ambiguous between them.
+  const workDonut = page.locator('[data-chart="donut"]:has([data-donut-slice="work"])');
+  const legendButton = workDonut.locator('[data-donut-slice="work"]');
+  const arc = workDonut.locator('[data-donut-arc="work"]');
+  const shareBefore = await legendButton.locator('.kit-donut-share').textContent();
+
+  await legendButton.hover();
+  const shareHovered = await legendButton.locator('.kit-donut-share').textContent();
+  const arcHoveredWhileLegendHovered = await arc.evaluate((el) => el.classList.contains('is-hovered'));
+  if (shareHovered === `${shareBefore} · 34` && arcHoveredWhileLegendHovered)
+    ok('hovering a donut legend row reveals its count and highlights its arc');
+  else
+    fail(
+      'hovering a legend row reveals its count and highlights its arc',
+      `share: ${shareHovered}, arc highlighted: ${arcHoveredWhileLegendHovered}`
+    );
+
+  await workDonut.locator('.kit-donut-total').hover();
+  const shareAfterLeave = await legendButton.locator('.kit-donut-share').textContent();
+  if (shareAfterLeave === shareBefore) ok('moving the pointer off the legend row hides the count again');
+  else fail('moving the pointer off the legend row hides the count again', shareAfterLeave);
+
+  await arc.dispatchEvent('pointerup', { pointerType: 'touch' });
+  const shareAfterArcTap = await legendButton.locator('.kit-donut-share').textContent();
+  if (shareAfterArcTap === `${shareBefore} · 34`)
+    ok('tapping the arc itself is also a touch equivalent, not only its legend row');
+  else fail('tapping the arc is also a touch equivalent', shareAfterArcTap);
+  await arc.dispatchEvent('pointerup', { pointerType: 'touch' });
+
+  await legendButton.focus();
+  await page.keyboard.press('Enter');
+  const shareAfterEnter = await legendButton.locator('.kit-donut-share').textContent();
+  if (shareAfterEnter === `${shareBefore} · 34`)
+    ok('Enter on the focused legend row is the keyboard path to the same reveal');
+  else fail('Enter on the focused legend row reveals the count', shareAfterEnter);
+
+  await page.keyboard.press('Enter');
+  const shareAfterSecondEnter = await legendButton.locator('.kit-donut-share').textContent();
+  if (shareAfterSecondEnter === shareBefore) ok('Enter again toggles the reveal back off');
+  else fail('Enter again toggles the reveal back off', shareAfterSecondEnter);
 });
 
 // --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
