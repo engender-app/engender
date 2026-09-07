@@ -13,17 +13,24 @@
    nothing. */
 import { m } from '$lib/paraglide/messages';
 import type { DayAheadMark, DayAheadMarkKind } from '$lib/data/journal/dayAhead';
+/* Relative rather than `$lib`, unlike the two imports around it: this one is
+   a value and the Node tier that runs this module's test has no alias to
+   resolve (the reason liveTiles.ts imports the way it does). */
+import { DAY_AHEAD_ROUTES } from '../data/journal/dayAheadRoutes';
 import type { DayRow } from './dayRows';
 
-const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title' | 'href'>> = {
-  appointment: () => ({ icon: 'calendar', title: m.appointments_untitled(), href: '/health/appointments' }),
-  surgery: () => ({ icon: 'flag', title: m.surgery_date_label(), href: '/health/surgery' }),
+/* Only the icon and the words are decided here. Where a row goes is the
+   registry's own `route` (dayAhead.ts), so a mark's screen is named once
+   and Today's agenda links to the same place this row does. */
+const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> = {
+  appointment: () => ({ icon: 'calendar', title: m.appointments_untitled() }),
+  surgery: () => ({ icon: 'flag', title: m.surgery_date_label() }),
   // `sparkle` rather than the `flag` surgery takes: the two can share a day,
   // and hubRows.ts already resolved this exact pair apart for the same
   // reason - a duplicate icon reads as one row drawn twice.
-  milestone: () => ({ icon: 'sparkle', title: m.ms_default_name(), href: '/transition/milestones' }),
-  letterUnlock: () => ({ icon: 'book', title: m.day_ahead_letter_unlock(), href: '/transition/letters' }),
-  doseSlot: () => ({ icon: 'clock', title: m.dose_amount_label(), href: '/doses' })
+  milestone: () => ({ icon: 'sparkle', title: m.ms_default_name() }),
+  letterUnlock: () => ({ icon: 'book', title: m.day_ahead_letter_unlock() }),
+  doseSlot: () => ({ icon: 'clock', title: m.dose_amount_label() })
 };
 
 /** Every mark as a row, in the order `dayAhead` returned them - already
@@ -32,5 +39,9 @@ const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title' | 
     the same kind twice (dayAhead.ts's `distinctSorted` dedupes within a
     kind), so `kind` alone is a stable key. */
 export function dayAheadRows(marks: readonly DayAheadMark[]): DayRow[] {
-  return marks.map((mark) => ({ key: `coming-${mark.kind}`, ...MARK_ROWS[mark.kind]() }));
+  return marks.map((mark) => ({
+    key: `coming-${mark.kind}`,
+    ...MARK_ROWS[mark.kind](),
+    href: DAY_AHEAD_ROUTES[mark.kind]
+  }));
 }
