@@ -636,7 +636,6 @@ export function rowReads(spec: HubRowSpec): LastWriteKey[] {
 /** Whether a row has gone with a hidden area: `areasHidden` over the sections
     it fronts, which is where the rule lives now that the stats tab's cards
     ask it too (`areaState.ts`). */
-/* rowHidden stays exported only for its own test (AU-09 test-only review). */
 export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
   return areasHidden(spec.areas, states);
 }
@@ -674,8 +673,11 @@ export type HubLine =
     cycle row was a row on the hub that had to be able to not exist. Ticket 16
     moved that row onto /health/side-effects, which was already asking
     `cycleTrackingVisible` for the cycle block it draws, so the gate is that
-    screen's alone now and the hub reads nothing to support it. */
-/* HubReading stays exported only for its own test (AU-09 test-only review). */
+    screen's alone now and the hub reads nothing to support it.
+
+    Read by the front page too since phase 10 redesign ticket 05: a pinned
+    row asks the same three questions a hub row does, off the same one
+    assembled read (`pinnedRows.ts`). */
 export interface HubReading {
   todayEpochDay: number;
   /** One assembled call, `journal/lastWrite.ts` - not a query per row.
@@ -708,7 +710,6 @@ function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: num
 }
 
 /** What one row says under its title. */
-/* rowLine stays exported only for its own test (AU-09 test-only review). */
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
@@ -723,13 +724,29 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   return { kind: daysAgo >= FINISH_SUGGESTION_QUIET_DAYS ? 'quiet' : 'last', epochDay, daysAgo };
 }
 
+/** A row as a screen draws it: what the registry declared, and what its
+    second line says today.
+
+    Named here rather than written out at each surface, because two surfaces
+    draw it now - the hub's own sections below, and the front page's pinned
+    rows (`pinnedRows.ts`). The two are different objects and the difference
+    is what may be done to them: the hub groups its rows and sweeps a
+    finished one into a set of its own, while a pinned row stays where the
+    person put it. What one row *is* does not differ, and restating the
+    shape per surface is how `statsAreas.ts` came to carry four wrong
+    fields. */
+export interface DrawnRow {
+  spec: HubRow;
+  line: HubLine;
+}
+
 /** One drawn section of the hub. */
 export interface HubSection {
   /** A group, or the finished set, which is not one of them: a finished row
       keeps its icon and its screen and only stops sitting under the heading
       it used to. */
   key: HubGroupKey | 'finished';
-  rows: { spec: HubRow; line: HubLine }[];
+  rows: DrawnRow[];
 }
 
 /** The hub, assembled: every group in order with its rows, then the finished

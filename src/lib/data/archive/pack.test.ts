@@ -208,7 +208,7 @@ test('the front page somebody arranged survives an archive, in their order', asy
     pinnedRows(restored, reading).map((row) => row.spec.key),
     ['sizes', 'measurements', 'care']
   );
-  assert.deepEqual(shownAgendaKinds(restored.agendaKinds), ['appointment', 'letterUnlock']);
+  assert.deepEqual(shownAgendaKinds(restored), ['appointment', 'letterUnlock']);
 });
 
 test('a wrong password is rejected cleanly, and says only that', async () => {

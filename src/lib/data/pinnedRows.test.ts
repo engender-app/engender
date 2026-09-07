@@ -24,7 +24,7 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
 
 /** The two preferences the resolution reads, as somebody who has arranged
     their own front page holds them. */
-const arranged = (pinnedRows: string[] | null): PinPreferences => ({ pinnedRows, onboardingAreas: [] });
+const arranged = (pins: string[] | null): PinPreferences => ({ pinnedRows: pins, onboardingAreas: [] });
 
 const keysOf = (rows: ReturnType<typeof pinnedRows>) => rows.map((row) => row.spec.key);
 
@@ -186,15 +186,15 @@ test('the default set answers to a hidden area the same way any other pin does',
 // --- the agenda's switches --------------------------------------------------
 
 test('every one of the five kinds is on until somebody switches one off', () => {
-  assert.deepEqual(shownAgendaKinds(null), [...DAY_AHEAD_MARK_KINDS]);
+  assert.deepEqual(shownAgendaKinds({ agendaKinds: null }), [...DAY_AHEAD_MARK_KINDS]);
 });
 
 test('a switched-off kind stays off, and the rest keep the ADR order', () => {
-  assert.deepEqual(shownAgendaKinds(['doseSlot', 'appointment']), ['appointment', 'doseSlot']);
+  assert.deepEqual(shownAgendaKinds({ agendaKinds: ['doseSlot', 'appointment'] }), ['appointment', 'doseSlot']);
 });
 
 test('switching every kind off leaves no agenda at all', () => {
-  assert.deepEqual(shownAgendaKinds([]), []);
+  assert.deepEqual(shownAgendaKinds({ agendaKinds: [] }), []);
 });
 
 test('a stored kind that is not one of the five cannot switch anything on', () => {
@@ -202,5 +202,6 @@ test('a stored kind that is not one of the five cannot switch anything on', () =
      a taper session, the next hair photo, a revisit - are refusals about
      what earns a mark. A switch list is a person's answer about the five
      that do, and cannot be the back door that adds a sixth. */
-  assert.deepEqual(shownAgendaKinds(['appointment', 'runOut', 'reminder']), ['appointment']);
+  assert.deepEqual(shownAgendaKinds({ agendaKinds: ['appointment', 'runOut', 'reminder'] }), ['appointment']);
 });
+
