@@ -513,7 +513,8 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       reminderDismissed: false,
       openedEpochDay: null,
       inUseWindowDays: null,
-      inUseEndEpochDay: null
+      inUseEndEpochDay: null,
+      leadTimeDays: null
     }
   ]);
 });

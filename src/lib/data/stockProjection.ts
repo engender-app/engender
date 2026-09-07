@@ -280,6 +280,19 @@ export function projectStock(
   );
 }
 
+/** The day an order has to be placed: `runOutEpochDay` minus `leadTimeDays`
+    where a lead time is set, the run-out day itself where none is set
+    (redesign phase 10 ticket 01). Null wherever `runOutEpochDay` is null -
+    there is nothing to place an order ahead of. Kept separate from
+    `projectStockFromCounts` rather than folded into `StockProjection`, so the
+    run-out projection itself stays exactly what it was before a lead time
+    existed (ADR-0046). */
+export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: number | null): number | null {
+  if (runOutEpochDay === null) return null;
+  if (leadTimeDays === null) return runOutEpochDay;
+  return runOutEpochDay - leadTimeDays;
+}
+
 /** Threshold in days below which a medication stock triggers a low-stock notice. */
 /* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
    (AU-09 test-only review). */
