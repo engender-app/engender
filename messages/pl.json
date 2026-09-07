@@ -3469,5 +3469,6 @@
   "pj_running": "Rysowanie podróży…",
   "calendar_event_appointment_title": "Wizyta",
   "calendar_event_surgery_title": "Operacja",
-  "calendar_event_letter_unlock_title": "List"
+  "calendar_event_letter_unlock_title": "List",
+  "agenda_passed_dose": "Zaplanowana dawka na {date}"
 }
