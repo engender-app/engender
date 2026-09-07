@@ -53,7 +53,7 @@
   } from '$lib/onboarding/steps';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
-  import { hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
+  import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -131,9 +131,23 @@
      `not-yet` case - the same line the hub shows a fresh journal. Hosted rows
      (seven of the twenty-seven) are not `hubSections`' business and so do not
      appear here either; pinning one of them is ticket 14's screen, which
-     `pinnedRows.ts` already notes it inherits. */
+     `pinnedRows.ts` already notes it inherits.
+
+     Support and Media are left off (Alicja, on the sign-off renders):
+     neither is something a person tracks. Support fronts Safe space and a
+     resource list, and Media fronts what an entry carries rather than a
+     practice of its own - a photo, a recording, a document, all attached to
+     something written rather than kept on their own dated stream. Filtered
+     here rather than in `hubSections` itself, which the More hub still
+     draws whole: this is a question about what to track, and the hub is
+     navigation to everything regardless. */
+  const TRACKABLE_GROUPS = new Set<HubSection['key']>(['body', 'health', 'transition']);
   const today = todayEpochDay();
-  let sections = $derived(hubSections({ todayEpochDay: today, lastWrites: {}, states: {} }));
+  let sections = $derived(
+    hubSections({ todayEpochDay: today, lastWrites: {}, states: {} }).filter((section) =>
+      TRACKABLE_GROUPS.has(section.key)
+    )
+  );
 
   let lockOnLeave = $state(false);
   let checkIn = $state(false);
