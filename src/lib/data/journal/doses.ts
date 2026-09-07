@@ -591,10 +591,10 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
          episodes falls back to the full list rather than reporting nothing
          active, since a stale pick is not the same fact as no episode. */
       const active = activeEpisodesAt(episodes, startOfDayTimestamp(toEpochDay));
-      const named = drug === undefined ? active : active.filter((episode) => episode.drug.trim() === drug.trim());
-      const scoped = named.length > 0 ? named : active;
-      if (scoped.length > 1) return { reason: 'multipleEpisodes' };
-      const activeEpisode = scoped[0];
+      const matchingDrug = drug === undefined ? active : active.filter((episode) => episode.drug.trim() === drug.trim());
+      const resolvedActive = matchingDrug.length > 0 ? matchingDrug : active;
+      if (resolvedActive.length > 1) return { reason: 'multipleEpisodes' };
+      const activeEpisode = resolvedActive[0];
       if (!activeEpisode) return { reason: 'noEpisode' };
 
       const schedule = schedules.find((s) => s.episodeId === activeEpisode.id);

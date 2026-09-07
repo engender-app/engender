@@ -1337,7 +1337,7 @@
   "adherence_no_episode": "There is no regimen episode yet, so there is no schedule to compare against.",
   "adherence_multiple_episodes": "Two active episodes are logged under the same drug name, so there's nothing to choose between them. Rename one on the regimen screen to tell them apart.",
   "adherence_no_schedule": "{drug} has no schedule yet. Add one on the regimen screen and the expected doses show up here.",
-  "adherence_regimen_label": "Regimen",
+  "adherence_drug_label": "Drug",
   "adherence_for_episode": "Expected doses for {drug}, counted from its start date.",
   "adherence_slot_numbered": "dose {index} of {count}",
   "adherence_slot_amount": "{dose} {unit} expected",

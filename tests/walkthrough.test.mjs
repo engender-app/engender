@@ -2672,6 +2672,17 @@ try {
   const doseRow = await page.locator('[data-dose]').first().innerText();
   if (!doseRow.includes('Spironolactone')) throw new Error(`the logged dose should be labelled Spironolactone, got: ${doseRow}`);
 
+  // With both episodes still active, the schedule-comparison tab has no
+  // single answer of its own (ticket 15) - a picker lets the person choose
+  // which regimen it compares, rather than the tab going blank the way
+  // `adherence_multiple_episodes` used to describe unconditionally.
+  await page.click('[data-segmented="doses-view"] [data-segment="schedule"]');
+  if ((await page.locator('[data-segmented="doses-regimen"] [data-segment]').count()) !== 2) {
+    throw new Error('the schedule tab should offer a picker between the two active regimens');
+  }
+  await page.click('[data-segmented="doses-regimen"] [data-segment="Spironolactone"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Spironolactone'));
+
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
   await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
@@ -2710,7 +2721,7 @@ try {
     throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
   }
 
-  ok('two concurrent regimen episodes stay active together, a dose logged during the overlap is attributed by an explicit pick, and ending one restores single-episode behaviour');
+  ok('two concurrent regimen episodes stay active together, a dose logged during the overlap is attributed by an explicit pick, the schedule tab offers a picker between them, and ending one restores single-episode behaviour');
 } catch (e) {
   fail('concurrent regimen episodes and dose attribution', e);
 }
