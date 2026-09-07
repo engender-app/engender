@@ -2159,11 +2159,17 @@ a.kit-entry:active {
    ten numbers. Here the bar carries the day instead of standing under it,
    and the set reads as one stack rather than as ten drawings.
 
-   40px of bar and nothing else in the row, so the 48dp touch floor the row
-   still owes is the only space between one bar and the next: 8px. The
-   set's own gap goes to zero, and it was never what took the room: it was
-   --space-2, against a row of 48px whose bar was ten of them. What took the
-   room is the label needing a line of its own.
+   36px of bar and nothing else in the row. The set's own gap goes to zero,
+   and it was never what took the room: it was --space-2, against a row of
+   48px whose bar was ten of them. What took the room is the label needing a
+   line of its own.
+
+   The row still owes the 48dp touch floor, so what is left over is the only
+   space between one bar and the next: 12px. That is the one direction this
+   form cannot be pushed further - a shorter bar is a wider gap, because the
+   row underneath it cannot shrink (Alicja, 2026-09-07: "the bar just a
+   little smaller in terms of height please. a little tighter" - 40px was
+   the first answer and read heavy).
 
    The bar keeps its honest `track` measure: its length is the reading's
    place on the whole scale, not its share of the day at the top. The value
@@ -2192,7 +2198,7 @@ a.kit-entry:active {
   position: relative;
   display: block;
   grid-column: 1;
-  height: 40px;
+  height: 36px;
   margin-top: 0;
 }
 
