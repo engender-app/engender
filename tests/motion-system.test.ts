@@ -680,6 +680,19 @@ describe('the token layer behind the five tiers', () => {
       );
     }
   });
+
+  it('takes --stagger-step to 0 under both reduced-motion paths, beside the duration clamp', () => {
+    /* animation-duration: 1ms !important below covers the growth, never the
+       delay - a staggered set still arrived member by member, just each one
+       instantly. --stagger-step has to be zeroed at the token, next to the
+       five --dur-* tokens it sits beside in :root. */
+    const base = stripComments(readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8'));
+    const clamped = rules(base).filter(isReduceContext).filter((rule) => rule.body.includes('--dur-fast'));
+    expect(clamped.length, 'both reduced-motion paths declare the duration-clamp block').toBe(2);
+    for (const rule of clamped) {
+      expect(rule.body, 'a stagger member still waits its own turn otherwise').toContain('--stagger-step: 0ms');
+    }
+  });
 });
 
 
