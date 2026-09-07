@@ -48,10 +48,19 @@ import type { MilestonesArea } from './milestones';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 
-/** The five kinds a mark comes in, and nothing else - the ADR's own list.
-    A mark carries no other information: never which appointment, never
-    which letter, never an amount or a status. */
-export type DayAheadMarkKind = 'appointment' | 'surgery' | 'milestone' | 'letterUnlock' | 'doseSlot';
+/** The five kinds a mark comes in, and nothing else - the ADR's own list,
+    in its own order. A mark carries no other information: never which
+    appointment, never which letter, never an amount or a status.
+
+    The array rather than the union is what is declared, so the two cannot
+    drift: the union below is read off it, the way `FINISHABLE_AREAS` and
+    `HUB_GROUP_KEYS` are read off theirs. Phase 10's agenda switches need
+    the kinds at runtime - a person turns one off rather than dismissing it
+    every time (`pinnedRows.ts`) - and a hand-written second list beside the
+    union is the drift `statsAreas.ts` already paid for once. */
+export const DAY_AHEAD_MARK_KINDS = ['appointment', 'surgery', 'milestone', 'letterUnlock', 'doseSlot'] as const;
+
+export type DayAheadMarkKind = (typeof DAY_AHEAD_MARK_KINDS)[number];
 
 /** A day and a kind, in the words `careSpine.ts`'s own `SpineMark` already
     uses for the rail it owns - no countdown, no due date, no verdict here

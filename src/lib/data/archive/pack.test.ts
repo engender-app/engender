@@ -20,6 +20,7 @@ import {
   unframeArchive
 } from './container.ts';
 import { packArchive, openArchive, type ArchiveContents } from './pack.ts';
+import { pinnedRows, shownAgendaKinds } from '../pinnedRows.ts';
 import { portablePreferences, type ArchiveJournal } from './payload.ts';
 
 /* The archive parameters take about a second per derivation by design
@@ -85,7 +86,10 @@ function everyPreferenceSet(): PreferenceValues {
     autoExportEnabled: true,
     autoExportSchedule: 'monthly',
     lastBackupAt: 1_700_000_000_000,
-    backupNoticeDismissed: true
+    backupNoticeDismissed: true,
+    pinnedRows: ['sizes', 'measurements', 'care'],
+    agendaKinds: ['appointment', 'letterUnlock'],
+    onboardingAreas: ['measurements']
   };
 }
 
@@ -180,6 +184,31 @@ test('an archive made with a password under the floor still opens', async () => 
   const { payload } = await unpack(await pack(contents, 'four'), 'four');
 
   assert.deepEqual(payload.journal, contents.journal);
+});
+
+test('the front page somebody arranged survives an archive, in their order', async () => {
+  /* The claim is not that three keys are present - `payload.test.ts` covers
+     the allowlist. It is that a restore lands somebody back on the front
+     page they built: the same rows, in the same order, with the same
+     agenda kinds switched on. So the round trip is asserted through the
+     resolution the screen itself calls, over the preferences as the archive
+     hands them back.
+
+     The pins deliberately disagree with the onboarding answer travelling
+     beside them - three rows against one - so an import that dropped the
+     arrangement and fell back to the default would come back as
+     `measurements` alone rather than as a passing test. */
+  const { contents } = await contentsOf();
+
+  const { payload } = await unpack(await pack(contents));
+  const restored = payload.preferences;
+  const reading = { todayEpochDay: 20_000, lastWrites: {}, states: {} };
+
+  assert.deepEqual(
+    pinnedRows(restored, reading).map((row) => row.spec.key),
+    ['sizes', 'measurements', 'care']
+  );
+  assert.deepEqual(shownAgendaKinds(restored), ['appointment', 'letterUnlock']);
 });
 
 test('a wrong password is rejected cleanly, and says only that', async () => {
