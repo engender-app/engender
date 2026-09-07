@@ -1172,6 +1172,12 @@
       subtitle={m.compare_sub()}
       href="/compare"
     />
+    <!-- Moved off the More hub by phase 9 carpet ticket 16. It belongs in
+         this list rather than in the area index above it: what it draws is
+         a reading of the words in your notes, which is the same kind of
+         look-back the wrapped recaps and the body map are, and it indexes
+         no area of its own - it stores nothing. -->
+    <ListRow key="words" icon="note" title={m.words_title()} subtitle={m.hub_sub_words()} href="/transition/words" />
   </ListCard>
 
   <!-- Every reading in the range, as numbers. It was three columns of text

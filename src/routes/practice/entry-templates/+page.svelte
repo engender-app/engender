@@ -79,7 +79,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.entry_templates_title()} back="/more" subtitle={m.entry_templates_intro()}>
+  <ScreenHeader title={m.entry_templates_title()} back="/settings" subtitle={m.entry_templates_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.entry_templates_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />

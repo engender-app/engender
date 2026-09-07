@@ -40,7 +40,7 @@
   import { compareStretchNoticeProps } from '$lib/data/compareStretch';
 
   /* The procedures, and the record kept against whichever one is open. */
-  const SECTION_ROLE = { procedures: 0, recovery: 1 };
+  const SECTION_ROLE = { procedures: 0, recovery: 1, dilation: 2 };
 
   const today = todayEpochDay();
 
@@ -585,6 +585,27 @@
            the procedure is in now. The procedure stores nothing about the
            link. -->
       <LinkedDocuments kind="procedure" id={selected.id} />
+    </div>
+  {/if}
+
+  <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
+       Health row, which put a dilation log in front of everyone who opened
+       More whatever their surgery was or was not.
+
+       The gate is wrong and is meant to be. Ticket 16 asked for the row
+       "only for vaginal reconstruction surgery" and nothing in the record can
+       answer that: a Procedure is a free-text name, a date, its consults and
+       its notes (CONTEXT.md, Surgery - "the app ships no list of procedures
+       and never matches two spellings of one"). So this is the loosest honest
+       gate available, which is that the person has a surgery journey at all,
+       and phase 9 carpet ticket 17 replaces it with a kind on the procedure.
+       Matching the typed name against a word list would be a worse answer
+       wearing the right one's clothes, in two languages. -->
+  {#if procedures.length > 0}
+    <div>
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.dilation)}>
+        <ListRow key="dilation" icon="flask" title={m.dilation()} subtitle={m.hub_sub_dilation()} href="/health/dilation" />
+      </ListCard>
     </div>
   {/if}
 

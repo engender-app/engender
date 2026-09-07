@@ -44,11 +44,12 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* Two areas: the rail, and the readings that do not fit on one. The rail
-     takes role 0, the only index that is a colour on all eight palettes
-     (roles.ts) - it is the one place on this screen where the stripe is
-     carrying meaning rather than decorating a card. */
-  const AREA_ROLE = { rail: 0, readings: 1 };
+  /* Three areas: the rail, the readings that do not fit on one, and the
+     changes hosted below them (ticket 16). The rail takes role 0, the only
+     index that is a colour on all eight palettes (roles.ts) - it is the one
+     place on this screen where the stripe is carrying meaning rather than
+     decorating a card. */
+  const AREA_ROLE = { rail: 0, readings: 1, changes: 2 };
 
   const today = todayEpochDay();
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
@@ -308,6 +309,29 @@
       href="/settings/stock"
     />
   </ListCard>
+
+  <!-- What came of all of it (phase 9 carpet ticket 16). The list above is
+       what is going in, on what schedule and how much is left; this is the
+       one row about what the person has noticed since, and the two screens
+       under it - side effects, and hair - hang off that one rather than off
+       the hub.
+
+       No SectionHeading: it is one row, and a heading over "Changes you've
+       noticed" would be that title said twice. What separates it from the
+       hormones card is the --space-6 `.screen > *` gives two unrelated
+       blocks, which is the call /more's trailing Settings row already
+       made. -->
+  <div>
+    <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.changes)}>
+      <ListRow
+        key="effects"
+        icon="eye"
+        title={m.effects_timeline()}
+        subtitle={m.hub_sub_effects()}
+        href="/practice/personal-effects"
+      />
+    </ListCard>
+  </div>
 </div>
 
 <style>

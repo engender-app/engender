@@ -86,7 +86,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.side_effects()} back="/more" subtitle={m.side_effects_intro()}>
+  <ScreenHeader title={m.side_effects()} back="/practice/personal-effects" subtitle={m.side_effects_intro()}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.side_effect_add_aria()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
