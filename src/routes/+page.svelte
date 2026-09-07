@@ -130,11 +130,20 @@
      fold changes the length, a tile's own reading changing leaves the keys
      alone, and a dismissal with nothing left to promote shortens the list -
      none of those are a swap. */
-  let shownKeys: string[] = [];
+  let shownKeys: HomeTile['key'][] = [];
   $effect.pre(() => {
     const keys = shownTiles.map((tile) => tile.key);
     if (keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
-      markSlotReplacement();
+      /* And the box the leaving tile still occupies, which is the one thing
+         only this moment knows: a frame later the promoted tile is standing
+         in it. */
+      const going = shownKeys.find((key) => !keys.includes(key));
+      const box = going
+        ? document.querySelector(`[data-live-tile="${going}"]`)?.getBoundingClientRect()
+        : undefined;
+      markSlotReplacement(
+        box ? { top: box.top, left: box.left, width: box.width, height: box.height } : null
+      );
     }
     shownKeys = keys;
   });

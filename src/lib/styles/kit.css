@@ -925,6 +925,7 @@ a.kit-entry:active {
   text-decoration: none;
 }
 
+
 .kit-tile.has-dismiss {
   position: relative;
   padding-right: var(--space-7);
@@ -987,6 +988,26 @@ a.kit-entry:active {
 
 .kit-tile.is-split > .kit-tile-main { grid-area: main; }
 .kit-tile.is-split > .kit-tile-act { grid-area: act; }
+
+/* A card's floor is the tallest a card ever needs to be, which makes its
+   height the same at every width - "when a text is broken, for example
+   'estradiol valerate' and it gets more horizontal space, it gets smaller and
+   it happens without any animation" (Alicja, phase 9 carpet ticket 04). A
+   card that widens unwraps its title, so its height fell as it grew, and
+   whatever sat under the grid was pulled up by the difference partway through
+   the animation. Measured across the widths the two-up grid actually resolves
+   to: 176px at 177px wide, where the dose panel's title takes three lines and
+   which is what a 412px phone gives it; 159px at 321px, two lines; 124px at
+   421px, one. So the floor is the first of those, and a widening card now
+   holds still.
+
+   A floor rather than a fixed height, because a tile that genuinely needs
+   more - a long note at 200% zoom - still has to be able to take it. The rows
+   weight is not in this: a row states its title and value on one line and has
+   nothing to unwrap. */
+.kit-tile[data-weight='card'] {
+  min-height: 176px;
+}
 
 .kit-tile-main {
   display: grid;
