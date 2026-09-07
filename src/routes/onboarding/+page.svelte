@@ -53,7 +53,7 @@
   } from '$lib/onboarding/steps';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
-  import { HUB_GROUP_KEYS, hubSections, type HubSection } from '$lib/data/hubRows';
+  import { hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -134,8 +134,6 @@
      `pinnedRows.ts` already notes it inherits. */
   const today = todayEpochDay();
   let sections = $derived(hubSections({ todayEpochDay: today, lastWrites: {}, states: {} }));
-  const roleIndex = (key: HubSection['key']) =>
-    key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
 
   let lockOnLeave = $state(false);
   let checkIn = $state(false);
@@ -366,11 +364,20 @@
             <!-- The hub's own groups and rows, ticked rather than tapped
                  through - the flag step and the scales step both already
                  solved "a list you tick" on this screen, so this is that
-                 shape again rather than a new one. -->
+                 shape again rather than a new one.
+
+                 The wrapper carries no style of its own; it exists so the
+                 repeated SectionHeading/ListCard pairs are plain block
+                 children of one element rather than direct children of
+                 `.setup-step`'s flex column. A flex container never
+                 collapses margins between its items, so without this a
+                 heading's own 40px top margin would add to the column's
+                 12px gap instead of the two collapsing into one another the
+                 way `.kit-heading`'s own comment assumes. -->
             <div class="setup-areas">
               {#each sections as section (section.key)}
                 <SectionHeading text={hubGroupHeading(section.key)} />
-                <ListCard role={roleAt(activeFlag.roles, roleIndex(section.key))}>
+                <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
                   {#each section.rows as row (row.spec.key)}
                     <ListRow
                       key={`area-${row.spec.key}`}
