@@ -17,6 +17,22 @@
    icon or a display number is drawn in, which stays closer to the flag
    because those answer to 3:1 rather than 4.5:1.
 
+   --role-fill-ink-in is the fourth, and it is the one a label written on
+   top of a fill takes. --role-ink-in will not do there: it is proven
+   against the surfaces and the two tints a role paints, never against the
+   stripe itself, and 59 of the 66 stripe/theme pairs the eight flags hold
+   put it below 4.5:1 on their own stripe. On trans's dark theme the ink for
+   the blue band is the blue band, so a label in it is not dim, it is gone.
+
+   Rather than compute a second ink here, it is the one the role's heat ramp
+   already carries for its deepest step: that step's fill is the stripe
+   itself, and every step of that ramp is held to 4.5:1 against its own fill
+   by tests/kit-roles.test.ts. Those inks were computed for the calendar
+   cell's day number and have had no consumer at all since phase 6's ticket
+   11 moved the date off the cell - the ramp kept computing them and the
+   test kept holding them, and this is the first thing to write on a fill
+   since.
+
    A surface that only inherits a role rather than taking one of its own -
    ListRow inside ListCard, Tile inside TileGrid - needs none of this: the
    values kit.css derives are custom properties too, so they inherit down
@@ -25,8 +41,14 @@
 import type { Role } from '$lib/theme/roles';
 
 export function roleAttrs(role: Role | undefined): { 'data-kit-role': ''; style?: string } {
+  if (!role) return { 'data-kit-role': '' };
+  /* The ramp's deepest step is the stripe undiluted, which is what a fill
+     paints, so the ink that step carries is the ink a label on a fill takes.
+     flagRoles() builds every ramp from the same five steps, so the last one
+     is always there. */
+  const onFill = role.heat[role.heat.length - 1].ink;
   return {
     'data-kit-role': '',
-    style: role ? `--role: ${role.stripe}; --role-ink-in: ${role.ink}; --role-mark-in: ${role.mark}` : undefined
+    style: `--role: ${role.stripe}; --role-ink-in: ${role.ink}; --role-mark-in: ${role.mark}; --role-fill-ink-in: ${onFill}`
   };
 }
