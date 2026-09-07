@@ -319,7 +319,7 @@ export function expectedSlots(
     against it, or null if nothing was. A `skipped` dose fills its slot -
     that is the difference between a gap someone recorded and one they
     never mentioned. */
-interface AdherenceRow {
+export interface AdherenceRow {
   slot: DoseSlot;
   dose: DoseEvent | null;
 }
@@ -369,6 +369,27 @@ export function adherence(
 
   const unmatched = [...byDay.values()].flat().filter((dose) => !matched.has(dose));
   return { rows, unmatched };
+}
+
+/** The most recent slot before `todayEpochDay` with nothing logged against
+    it, or null. Today's own slot is never it: the person has all day, and
+    a surface asking about it would be asking about a dose they are still
+    free to take.
+
+    `rows` is already the schedule's own answer with pauses removed above:
+    a break somebody declared is not a slot that passed.
+
+    Named here rather than written twice because two surfaces select the
+    same row and neither may quietly select a different one - the return
+    surface (comingBack.ts) and Today's agenda (agenda.ts). Deliberately no
+    verdict and no plural, like the rest of this file: one row, and nothing
+    about how many there were. */
+export function mostRecentPassedSlot({ rows }: Adherence, todayEpochDay: number): AdherenceRow | null {
+  return (
+    rows
+      .filter((row) => row.dose === null && row.slot.epochDay < todayEpochDay)
+      .sort((a, b) => b.slot.epochDay - a.slot.epochDay)[0] ?? null
+  );
 }
 
 /** The amount the schedule is still expecting on `epochDay`: the first slot
