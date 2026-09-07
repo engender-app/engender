@@ -1885,7 +1885,8 @@
       "reminderDismissed": false,
       "openedEpochDay": null,
       "inUseWindowDays": null,
-      "inUseEndEpochDay": null
+      "inUseEndEpochDay": null,
+      "leadTimeDays": null
     }
   ],
   "tryouts": [

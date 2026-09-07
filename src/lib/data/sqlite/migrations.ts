@@ -19,4 +19,18 @@
 import type { Migration } from './migration-runner.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 
-export const migrations: Migration[] = [{ version: 78, sql: BASELINE_SCHEMA }];
+/* v79: a lead time per drug, in days (redesign phase 10 ticket 01). Nullable
+   and defaulted to NULL - every row recorded before this ticket has none
+   typed, and the app assumes nothing rather than guessing a figure. Hangs off
+   medication_stock rather than a second notion of a drug, per ADR-0046: it is
+   already one row per drug. Feeds reorderByEpochDay (stockProjection.ts)
+   alongside the run-out day the projection already computed; the projection
+   itself is untouched. */
+const SCHEMA_V79 = `
+ALTER TABLE medication_stock ADD COLUMN lead_time_days INTEGER;
+`;
+
+export const migrations: Migration[] = [
+  { version: 78, sql: BASELINE_SCHEMA },
+  { version: 79, sql: SCHEMA_V79 }
+];

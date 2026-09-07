@@ -3409,5 +3409,8 @@
   "exp_running_packing": "Packing your journal…",
   "exp_auto_running_writing": "Saving to the backup folder…",
   "pj_running": "Drawing your journey…",
+  "calendar_event_appointment_title": "Appointment",
+  "calendar_event_surgery_title": "Procedure",
+  "calendar_event_letter_unlock_title": "Letter",
   "agenda_passed_dose": "A scheduled dose on {date}"
 }
