@@ -279,10 +279,19 @@ export const vocabulary = {
   get activeMetric(): string {
     return reference.activeMetric;
   },
+  /** What a metric is called on screen: mood, or the gender dimension the
+      key names. Keyed rather than only asked of the active metric, because
+      the readings that carry a metric name are not always on the active
+      one - a correlation card spans several, and a wrapped names whichever
+      the preference held. Both were deriving this by hand from
+      `metricDimension`. */
+  metricNameOf(metric: string): string {
+    return this.metricDimension(metric)?.name ?? m.mood();
+  },
   /** What the metric is called on screen: mood, or the chosen gender
       dimension. Four screens derived this identically before. */
   get metricName(): string {
-    return this.metricDimension(this.activeMetric)?.name ?? m.mood();
+    return this.metricNameOf(this.activeMetric);
   },
   /** A metric's own range, for turning a native value into colour
       intensity (metricRange.ts). Mood's range is not a stored row. */
