@@ -25,10 +25,22 @@ import type { DaySpread } from './journal/stats';
 import { coveredGround } from './statsCharts';
 import type { WrappedTagInsight, WrappedTallyCounts } from './wrappedSections';
 
+/** `value` rounded to the precision `nativeValue` prints it at (ADR-0012):
+    one decimal for mood, none for a dimension.
+
+    Anything measured from `value` itself instead of this - a bar's length,
+    a sort key - draws at a precision the reader was never shown, and two
+    rows that print the same number stop agreeing on which is longer
+    (carpet ticket 18). */
+export function nativeAmount(metric: string, value: number): number {
+  return metric === 'mood' ? Math.round(value * 10) / 10 : Math.round(value);
+}
+
 /** A value in its metric's own units (ADR-0012). Mood arrives on 1 to 5 and
     wants a decimal place; a dimension arrives in its own range and does not. */
 export function nativeValue(metric: string, value: number): string {
-  return metric === 'mood' ? value.toFixed(1) : String(Math.round(value));
+  const amount = nativeAmount(metric, value);
+  return metric === 'mood' ? amount.toFixed(1) : String(amount);
 }
 
 /** A day's two ends in words, or null for a day that covered no ground
@@ -93,7 +105,7 @@ export function tagInsightRows(
       without: format(insight.withoutAvg)
     }),
     value: signedValue(insight.delta, format),
-    amount: Math.abs(insight.delta)
+    amount: nativeAmount(metric, Math.abs(insight.delta))
   }));
 }
 
