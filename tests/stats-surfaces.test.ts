@@ -19,10 +19,15 @@ describe('the two folds say they read the whole journal, and only when they draw
      The header above them names the range picker's window and these two
      cards ignore it on purpose, so the line that used to explain the fold
      now says which journal it read. Inside the ReadGate's `rows` snippet, so
-     it prints on exactly the branch the chart prints on. */
+     it prints on exactly the branch the chart prints on.
+
+     The window is generous because what is being checked is which branch the
+     line sits on, never how far down it sits: ticket 99 item 34 put an
+     explainer and its comment above it, which is the kind of thing that
+     belongs there and should not fail this. */
   it('puts the all-history line inside the interval fold that draws it', () => {
     expect(stats).toMatch(
-      /<ReadGate read=\{intervalMoodQuery\}[\s\S]{0,120}\{#snippet rows\(\)\}[\s\S]{0,900}?<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
+      /<ReadGate read=\{intervalMoodQuery\}[\s\S]{0,120}\{#snippet rows\(\)\}[\s\S]{0,2000}?<p class="stats-inline-note">\{m\.stats_all_history\(\)\}<\/p>/
     );
   });
 
@@ -91,8 +96,12 @@ describe('the summary panels wait for the floor', () => {
      all sat near the bottom drew the same near-full wall as one whose scales
      all sat near the top. */
   it('asks for the track where the bar is an absolute position', () => {
-    for (const rows of ['scaleRows', 'highestRows', 'valueRows']) {
-      expect(stats).toMatch(new RegExp(`<BarRows rows=\\{${rows}\\}[^>]*measure="track"`));
+    /* `valueRows` was a third caller until ticket 99 item 26 took the values
+       sheet away; the rows it built are a hidden text list now and draw no
+       bar at all. `\\s+` and not a space: the highest days card passes four
+       props and wraps them a line each. */
+    for (const rows of ['scaleRows', 'highestRows']) {
+      expect(stats).toMatch(new RegExp(`<BarRows\\s+rows=\\{${rows}\\}[^>]*measure="track"`));
     }
   });
 
@@ -100,38 +109,35 @@ describe('the summary panels wait for the floor', () => {
     expect(stats).toContain('{#if metrics.length > 1 && plotted.points.length}');
   });
 
-  it('offers the values sheet only where there are values', () => {
-    expect(stats).toMatch(/\{#if valueRows\.length\}\s*<button class="stats-open"/);
+  /* The sheet and the link that opened it went in ticket 99 item 26. The
+     gate did not: the series is still written out for a screen reader, and
+     an empty list under an empty chart would be as wrong as an empty sheet
+     was. tests/accessibility-audit.test.ts holds the other half - that the
+     numbers are still readable as text at all. */
+  it('writes the values out only where there are values', () => {
+    expect(stats).toMatch(/\{#if valueRows\.length\}\s*<ul class="visually-hidden" data-values-list/);
   });
 
-  it('draws the highest days only where that scale is kept and the floor is cleared', () => {
-    expect(stats).toMatch(/\{#if euphoriaScale\}/);
-    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows rows=\{highestRows\} measure="track"/);
+  /* The card used to render only for somebody who keeps euphoria (phase 8
+     features ticket 20). Phase 9 carpet ticket 11 gave it a chooser, so it
+     renders for everybody and which scale it ranks is `highestMetricKey`'s
+     answer - the euphoria default and the unticked-since case are held
+     there, with their own tests. What is still this screen's to get right is
+     that the chooser writes the card's own state and not the stored metric
+     preference two other screens shade by, and that no ranking is drawn
+     before the journal clears the entry floor. */
+  it('ranks by the chooser, over the floor, without touching the stored metric', () => {
+    expect(stats).toMatch(/highestMetricKey\(\s*highestKey,/);
+    expect(stats).toMatch(/key="highest-metric"[\s\S]*?onPick=\{\(value\) => \(highestKey = value\)\}/);
+    expect(stats).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows\s+rows=\{highestRows\}/);
   });
 });
 
-describe('the area index', () => {
-  it('decides which cards exist through the shared seam, not a predicate of its own', () => {
-    expect(stats).toContain("import { cardsInGroup, statsAreaCards, STATS_AREA_GROUPS");
-    expect(stats).toContain('j.lastWrite.getLastWrites(today)');
-    expect(stats).toContain('j.areaStates.getAreaStates()');
-  });
-
-  it('renders no heading for a group the person uses nothing in', () => {
-    expect(stats).toMatch(/\{#if groupCards\(group\)\.length\}\s*<SectionHeading text=\{GROUP_NAME\[group\]\(\)\}/);
-  });
-
-  /* Alicja's call on the rendered screen: no graphs in this block. Every one
-     of these areas owns its chart on its own screen, and a second drawing
-     here is a second thing to keep in agreement. The index is rows, and each
-     row is the way to the screen that draws the real one. */
-  it('draws no chart in the index, only rows into the owning screens', () => {
-    const index = stats.slice(stats.indexOf('{#each STATS_AREA_GROUPS as group'));
-    expect(index).not.toContain('<AreaChart');
-    expect(index).not.toContain('<ChartCard');
-    expect(index).toMatch(/<ListRow[\s\S]{0,200}href=\{card\.panel\.href\}/);
-  });
-
+/* The area index - a row per area in the More hub's own four groups - was
+   removed by ticket 99 item 36: "stats shouldnt have the 'more' list at the
+   end. it is only the stats tab." What survives it is the rule the index was
+   held to, which outlives the block itself. */
+describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   it('asks for no per-area read at all', () => {
     for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'wearTimeTrend', 'tallyTrend']) {
       expect(stats).not.toContain(call);

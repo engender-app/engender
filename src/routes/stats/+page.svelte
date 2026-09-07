@@ -22,14 +22,13 @@
      holds too little, because it is the tab's own content and somebody
      arriving on day two should see what the tab becomes.
 
-     The block below it is one row per area the person actually uses, in the
-     More hub's four groups in the More hub's order. A row appears where the
-     area has ever been written and never otherwise, decided in
-     `$lib/data/statsAreas.ts` over one `getLastWrites` call. Rows and no
-     charts (Alicja, on the rendered screen): every one of these areas owns
-     its chart on its own screen, the wear trend included, and a second
-     drawing here is a second thing to keep in agreement for a reading you
-     get by tapping through.
+     Under it was an index: one row per area the person uses, in the More
+     hub's four groups and order. Ticket 99 item 36 took it off - "stats
+     shouldnt have the 'more' list at the end. it is only the stats tab" -
+     which reverses that half of ADR-0056. Discovery is the hub's job, and
+     this tab is the numbers. What is left below the charts is the
+     look-back list, which points at wrapped and the body map: destinations
+     no hub row covers.
 
      One floor, an existing constant and not restated: a summary panel needs
      `WRAPPED_ENTRY_FLOOR` entries in range, and the two folds want the same
@@ -60,7 +59,13 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
-  import { nativeValue, signedValue, spreadNote, tagInsightRows } from '$lib/data/wrappedDisplay';
+  import {
+    nativeAmount,
+    nativeValue,
+    signedValue,
+    spreadNote,
+    tagInsightRows
+  } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -89,9 +94,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Donut from '$lib/components/kit/Donut.svelte';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { rankHighestDays } from '$lib/data/highestDays';
-  import { cardsInGroup, statsAreaCards, STATS_AREA_GROUPS, type StatsAreaCard } from '$lib/data/statsAreas';
-  import { statsAreaName } from '$lib/data/vocabulary/statsAreaLabels';
+  import { highestMetricKey, rankHighestDays } from '$lib/data/highestDays';
   import type { Part } from '$lib/charts/parts';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -120,21 +123,6 @@
      ramp (ADR-0025), the one colour system here that is not the flag's, and
      a stripe on that card would put two scales on one surface. */
   const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
-
-  /* The index's four groups take the four stripes the More hub gives the
-     same four groups, in the same order - `roleAt(roles, i)` over the group's
-     own index, which is the hub's own line. Somebody who has learned that
-     Body is the first stripe on one screen finds it the first stripe on the
-     other, and the two surfaces recolour together on a palette switch. */
-  const groupRole = (group: (typeof STATS_AREA_GROUPS)[number]) =>
-    roleAt(activeFlag.roles, STATS_AREA_GROUPS.indexOf(group));
-
-  const GROUP_NAME: Record<(typeof STATS_AREA_GROUPS)[number], () => string> = {
-    body: m.hub_group_body,
-    health: m.hub_group_health,
-    transition: m.hub_group_transition,
-    practice: m.hub_group_practice
-  };
 
   let range = $state(30);
 
@@ -187,7 +175,6 @@
   let lastMonth = $derived(previousCalendarMonthRange(today));
   let lastYear = $derived(previousCalendarYearRange(today).year);
 
-  let valueSheet = $state(false);
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
   // Native units both ways (ADR-0012), from $lib/data/wrappedDisplay so this
@@ -330,7 +317,9 @@
            same way a scale with no days shows an empty value in the bars
            above: docs/ui-copy.md has no dashes in it. */
         value: point ? fmtNativeValue(shown.key, point.value) : '',
-        amount: point ? (point.value - shown.min) / Math.max(shown.max - shown.min, 1) : 0
+        amount: point
+          ? (nativeAmount(shown.key, point.value) - shown.min) / Math.max(shown.max - shown.min, 1)
+          : 0
       };
     })
   );
@@ -442,8 +431,9 @@
      arcs add up to or the hole disagrees with the ring around it. */
   let tagUses = $derived(tagParts.reduce((sum, part) => sum + part.amount, 0));
 
-  /* The highest days on the person's own euphoria reading (phase 8 features
-     ticket 20), which shipped its ranking and left the panel here.
+  /* The highest days on one of the person's own readings (phase 8 features
+     ticket 20, which shipped the ranking and left the panel here; phase 9
+     carpet ticket 11, which gave the panel its chooser).
 
      `rankHighestDays` rather than `highestDays`: the async half asks the day
      assembler for each ranked day, which is ten days times nineteen areas of
@@ -451,61 +441,41 @@
      behind the row. So the panel ranks what `seriesQuery` fetched for the
      range - no read of its own at all - and the row opens the day.
 
-     Gated on the dimension being one the person keeps. Nothing falls back to
-     mood: naming which scale a "high day" is measured on is the module's own
-     decision and there is no second scale it means. */
-  const HIGHEST_METRIC = 'euphoria_dysphoria';
-  let euphoriaScale = $derived(metrics.find((mt) => mt.key === HIGHEST_METRIC));
+     The chooser is local to this card and not `selectMetric`, which is the
+     screen's stored preference (Alicja's call, ticket 11). Home's week strip
+     and the calendar's month grid shade by that preference, so a control
+     near the bottom of this screen writing to it would repaint two other
+     screens; re-ranking ten days is not that big a decision. `highestKey` is
+     null until somebody moves it, and `highestMetricKey` decides what null
+     means - euphoria where it is kept, the screen's own scale otherwise. It
+     also drops a choice whose scale has since been unticked in settings.
+
+     No gate on the card any more. It used to render only for somebody
+     keeping euphoria; every journal has mood, so the chooser always has
+     something to offer and somebody who keeps no gender scale still gets
+     their highest mood days. */
+  let highestKey = $state<string | null>(null);
+  let highestRanks = $derived(
+    highestMetricKey(
+      highestKey,
+      metrics.map((each) => each.key),
+      shown.key
+    )
+  );
+  /* `?? shown` is the type's, not a case: every key `highestMetricKey` can
+     answer with came out of `metrics` in the first place. */
+  let highestMetric = $derived(metrics.find((mt) => mt.key === highestRanks) ?? shown);
   let highestRows = $derived<BarRow[]>(
-    euphoriaScale
-      ? rankHighestDays(today, seriesFor(HIGHEST_METRIC)).map((point) => ({
-          key: String(point.day),
-          name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
-          note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
-          value: fmtNativeValue(HIGHEST_METRIC, point.value),
-          amount:
-            (point.value - euphoriaScale.min) / Math.max(euphoriaScale.max - euphoriaScale.min, 1)
-        }))
-      : []
+    rankHighestDays(today, seriesFor(highestMetric.key)).map((point) => ({
+      key: String(point.day),
+      name: fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short' }),
+      note: point.count > 1 ? m.avg_of({ count: String(point.count) }) : undefined,
+      value: fmtNativeValue(highestMetric.key, point.value),
+      amount:
+        (nativeAmount(highestMetric.key, point.value) - highestMetric.min) /
+        Math.max(highestMetric.max - highestMetric.min, 1)
+    }))
   );
-
-  /* ---------------------------------------------------------------------
-     The area index (ADR-0056).
-
-     One query answers for every area at once - `lastWrite.ts` assembles its
-     nineteen bounded reads concurrently, which is the whole reason that seam
-     exists - and the area record says which of them the person has hidden or
-     finished. A row with nothing written never reaches the DOM, so an area
-     somebody does not use costs this screen nothing beyond its slot in a
-     `Record` that was already fetched. */
-  let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
-  let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  let areaCards = $derived(
-    lastWritesQuery.value && areaStatesQuery.value
-      ? statsAreaCards(lastWritesQuery.value, areaStatesQuery.value)
-      : []
-  );
-  /* What a row says under its title: the day it ended where the person has
-     said it ended, and the last thing written there otherwise. Never a gap,
-     never a nudge - the hub is where an area that has gone quiet gets asked
-     about. */
-  const areaLine = (card: StatsAreaCard) => {
-    if (card.finishedEpochDay !== null) {
-      return m.area_finish_done_title({
-        date: fmtDay(card.finishedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-      });
-    }
-    if (card.suspendedEpochDay !== null) {
-      return m.area_suspend_done_title({
-        date: fmtDay(card.suspendedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-      });
-    }
-    return m.stats_area_last({
-      date: fmtDay(card.lastWriteEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-    });
-  };
-
-  const groupCards = (group: (typeof STATS_AREA_GROUPS)[number]) => cardsInGroup(areaCards, group);
 
   const metricName = (key: string) => vocabulary.metricDimension(key)?.name ?? m.mood();
 
@@ -613,6 +583,14 @@
      off the query, because a scale can hold readings that all fall outside
      the range the screen is showing. */
   let comparedHasReadings = $derived(aligned?.some((row) => row.b !== null) ?? false);
+  /* Named after both scales while both are on the chart: the numbers are
+     one series read two ways - the plot and the hidden list under it - and
+     a name that mentioned one of them would be hiding the other's. */
+  let valuesLabel = $derived(
+    compared && comparedHasReadings
+      ? m.values_two_title({ first: shown.name, second: compared.name })
+      : m.values_title({ name: shown.name })
+  );
   /* One role along from the card's own, so the two lines are two stripes of
      the same flag and a palette switch recolours both. */
   let compareRole = $derived(roleAt(activeFlag.roles, AREA_ROLE.charts + 1));
@@ -781,9 +759,7 @@
         formatValue={(v) => fmtNativeValue(shown.key, v)}
         scrubLabel={grainLabel(plotted.grain)}
         annotations={annotationsQuery.rows}
-        ariaLabel={compared && comparedHasReadings
-          ? m.values_two_title({ first: shown.name, second: compared.name })
-          : m.values_title({ name: shown.name })}
+        ariaLabel={valuesLabel}
       />
       {#if compared && !comparedHasReadings}
         <p class="stats-inline-note">{m.stats_compare_empty()}</p>
@@ -833,13 +809,19 @@
        ends of the scale are and the marks carry the shape; this is the one
        place an exact number for a given day can be read, and it is also the
        path a screen reader takes through the series. -->
-  <!-- Only where there is something behind it. An "All values" link opening
-       an empty sheet was one of the five panels this screen rendered for
-       somebody who had logged nothing (ADR-0056). -->
+  <!-- The link and the sheet it opened are gone (ticket 99 item 26, "get rid
+       of the 'all values'"), but not the numbers themselves: this list was
+       also the only path a screen reader had through the series - the
+       chart's own hidden list covers its annotations and says so - and a
+       chart that is a picture to everybody and nothing to anybody else is
+       not what removing a link was meant to buy. Visually hidden, so it
+       costs nothing on the screen Alicja was looking at. -->
   {#if valueRows.length}
-    <button class="stats-open" data-values-open onclick={() => (valueSheet = true)}>
-      {m.stats_values_open()}
-    </button>
+    <ul class="visually-hidden" data-values-list aria-label={valuesLabel}>
+      {#each valueRows as row (row.key)}
+        <li>{row.name}: {row.value}{row.note ? `, ${row.note}` : ''}</li>
+      {/each}
+    </ul>
   {/if}
 
   <ChartCard
@@ -994,32 +976,45 @@
     </ReadGate>
   </ChartCard>
 
-  <!-- The highest days on the person's own euphoria reading (phase 8
+  <!-- The highest days on one of the person's own readings (phase 8
        features ticket 20, which shipped the ranking and left the panel to
-       this screen). Bar rows and not a list, because the reading somebody
-       wants off ten high days is how far apart they were, and ten numbers in
-       a column do not say that. Each row opens its day, which is where the
-       rest of what happened already lives.
+       this screen; phase 9 carpet ticket 11, which gave it the chooser).
+       Bar rows and not a list, because the reading somebody wants off ten
+       high days is how far apart they were, and ten numbers in a column do
+       not say that. Each row opens its day, which is where the rest of what
+       happened already lives.
 
-       Absent entirely where the person does not keep that scale: there is no
-       fallback to mood, and inventing one would be the app deciding which
-       number a high day is measured on. -->
-  {#if euphoriaScale}
-    <ChartCard
-      heading={m.stats_highest_days()}
-      kind="highest-days"
-      role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
-    >
-      {#if seriesQuery.loading || recapQuery.loading}
-        <Skeleton variant="line" count={3} />
-      {:else if enoughEntries && highestRows.length}
-        <BarRows rows={highestRows} measure="track" onPick={(key) => goto(`/day/${key}`)} />
-        <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
-      {:else}
-        <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
-      {/if}
-    </ChartCard>
-  {/if}
+       The chooser writes `highestKey` and not the screen's stored metric,
+       so ranking these ten days by femininity does not also repaint Home's
+       week strip and the calendar's month grid. -->
+  <ChartCard
+    heading={m.stats_highest_days()}
+    kind="highest-days"
+    role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
+  >
+    {#snippet control()}
+      <ChartPicker
+        key="highest-metric"
+        label={m.stats_highest_days()}
+        value={highestMetric.key}
+        options={metricOptions}
+        onPick={(value) => (highestKey = value)}
+      />
+    {/snippet}
+    {#if seriesQuery.loading || recapQuery.loading}
+      <Skeleton variant="line" count={3} />
+    {:else if enoughEntries && highestRows.length}
+      <BarRows
+        rows={highestRows}
+        measure="track"
+        form="inline"
+        onPick={(key) => goto(`/day/${key}`)}
+      />
+      <p class="stats-inline-note">{m.stats_highest_days_note()}</p>
+    {:else}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+    {/if}
+  </ChartCard>
 
   <ChartCard
     heading={m.interval_mood_title()}
@@ -1036,6 +1031,16 @@
                ChartCard takes no prop for a paragraph and still does not; this
                is body content, drawn beside the chart it belongs to and gated
                on the same read. -->
+          <!-- What the fold actually is, in the card rather than in a term
+               somebody has to already know (ticket 99 item 34: "i dont know
+               what it means"). The domain keeps calling this a day of
+               interval - CONTEXT.md's own vocabulary, and the axis still
+               counts "Day 1" from the injection day - but a chart heading
+               is not the place to teach a term, so the heading says what it
+               is and this says how to read it. The second sentence is the
+               one ADR-0012 asks for: a position says where days fell and
+               never where they ought to. -->
+          <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
           <p class="stats-inline-note">{m.stats_all_history()}</p>
           {@const ends = positionEnds(intervalMoodPattern)}
           <AreaChart
@@ -1109,39 +1114,13 @@
       {/snippet}
     </ReadGate>
   </ChartCard>
-  <!-- The area index (ADR-0056). One row per area the person actually uses,
-       in the More hub's own four groups in the More hub's own order, so
-       somebody learns one organising idea rather than two.
-
-       A row appears where the area has ever been written and is not hidden,
-       decided once in `statsAreas.ts` over one `getLastWrites` call. An area
-       nobody uses is not in the DOM at all - no row, no heading, no footer
-       offering it. Discovery stays the hub's job, and somebody who has never
-       logged a dose is not told the app could have charted one.
-
-       Rows and no charts, which is Alicja's call on the rendered screen:
-       every one of these areas owns its chart on its own screen, and a
-       second drawing of it here is a second thing to keep in agreement for
-       the sake of a preview nobody asked to read twice. The wear trend lives
-       on the wear screen. What this block is for is knowing which parts of
-       your own life the app is holding, and getting to them. -->
-  {#each STATS_AREA_GROUPS as group (group)}
-    {#if groupCards(group).length}
-      <SectionHeading text={GROUP_NAME[group]()} />
-      <ListCard role={groupRole(group)}>
-        {#each groupCards(group) as card (card.panel.key)}
-          <ListRow
-            key={card.panel.key}
-            icon={card.panel.icon}
-            title={statsAreaName(card.panel.key)}
-            subtitle={areaLine(card)}
-            href={card.panel.href}
-          />
-        {/each}
-      </ListCard>
-    {/if}
-  {/each}
-
+  <!-- The area index that used to sit here is gone (ticket 99 item 36,
+       "stats shouldnt have the 'more' list at the end. it is only the stats
+       tab"): it was one row per area the person uses, in the More hub's own
+       four groups and order, and it made the bottom of this tab a second
+       copy of that hub. Discovery is the hub's job; this tab is the
+       numbers. What is left below is the look-back list, which goes
+       somewhere no hub row does. -->
   <!-- The six deeper screens as one list rather than six cards. Four
        same-size icon-plus-heading-plus-text tiles were what the slop audit
        took off this screen; a destination with nothing to show on it is a
@@ -1179,27 +1158,6 @@
          no area of its own - it stores nothing. -->
     <ListRow key="words" icon="note" title={m.words_title()} subtitle={m.hub_sub_words()} href="/transition/words" />
   </ListCard>
-
-  <!-- Every reading in the range, as numbers. It was three columns of text
-       per row, which is a table of one column that matters (Alicja,
-       2026-08-25: "crowded and boring"). It is the bar rows the rest of the
-       screen is drawn in: the date names the row, the value is the reading,
-       and the bar puts it where it sits in the scale - so a run of quiet days
-       is visible in the list and not only in the chart above it. Newest
-       first, because that is the end of the range you came from. -->
-  <!-- Named after both scales while both are on the chart: this is where
-       their numbers are read, and a sheet titled after one of them would be
-       hiding the other's. -->
-  <Sheet
-    open={valueSheet}
-    title={compared ? m.values_two_title({ first: shown.name, second: compared.name }) : shown.name}
-    onClose={() => (valueSheet = false)}
-  >
-    <BarRows rows={valueRows} measure="track" />
-    <button class="btn btn-ghost" onclick={() => (valueSheet = false)}>
-      <span>{m.done()}</span>
-    </button>
-  </Sheet>
 
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>
     {#if insightSheet}

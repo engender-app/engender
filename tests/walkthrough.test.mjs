@@ -668,17 +668,22 @@ try {
    The handles moved with ticket 23's rebuild: the range is the shared
    Segmented control's, the period is the header's subtitle rather than half
    of its title, the values open from their own control instead of by
-   pressing a chart, and a tag insight is a bar rather than a list row. */
+   pressing a chart, and a tag insight is a bar rather than a list row. The
+   values control itself went in ticket 99 item 26; what it used to open is
+   a hidden list now. */
 try {
   await fresh('/stats');
   await page.locator('[data-segment="90"]').click();
   const period = await page.locator('[data-screen-subtitle]').textContent();
   if (!period.includes('90')) throw new Error('period: ' + period);
-  await page.locator('[data-values-open]').click();
-  /* The sheet is the screen's own bar rows now: a row per day, the date
-     naming it and the value on it as text. */
-  await page.waitForSelector('[data-bar-row] [data-bar-value]');
-  await page.locator('[data-sheet-scrim]').first().click();
+  /* The values are a visually hidden list on the screen itself since ticket
+     99 item 26 removed the "All values" link and its sheet - no control to
+     press, and the numbers still there in text for anything that reads the
+     page rather than looks at it. Counted rather than clicked, since a
+     hidden node cannot be interacted with. */
+  if (!(await page.locator('[data-values-list] li').count())) {
+    throw new Error('the stats series is no longer readable as text');
+  }
   /* Tag insights name a built-in tag, so a blank label means the key never
      got resolved. */
   const insight = await page
@@ -2667,6 +2672,17 @@ try {
   const doseRow = await page.locator('[data-dose]').first().innerText();
   if (!doseRow.includes('Spironolactone')) throw new Error(`the logged dose should be labelled Spironolactone, got: ${doseRow}`);
 
+  // With both episodes still active, the schedule-comparison tab has no
+  // single answer of its own (ticket 15) - a picker lets the person choose
+  // which regimen it compares, rather than the tab going blank the way
+  // `adherence_multiple_episodes` used to describe unconditionally.
+  await page.click('[data-segmented="doses-view"] [data-segment="schedule"]');
+  if ((await page.locator('[data-segmented="doses-regimen"] [data-segment]').count()) !== 2) {
+    throw new Error('the schedule tab should offer a picker between the two active regimens');
+  }
+  await page.click('[data-segmented="doses-regimen"] [data-segment="Spironolactone"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Spironolactone'));
+
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
   await page.goto(BASE + '/settings/regimen', { waitUntil: 'networkidle' });
@@ -2705,7 +2721,7 @@ try {
     throw new Error('logging a dose with exactly one active episode should not prompt for a drug');
   }
 
-  ok('two concurrent regimen episodes stay active together, a dose logged during the overlap is attributed by an explicit pick, and ending one restores single-episode behaviour');
+  ok('two concurrent regimen episodes stay active together, a dose logged during the overlap is attributed by an explicit pick, the schedule tab offers a picker between them, and ending one restores single-episode behaviour');
 } catch (e) {
   fail('concurrent regimen episodes and dose attribution', e);
 }

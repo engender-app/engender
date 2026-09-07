@@ -223,7 +223,22 @@ html[data-a11y-text-size='boost'] {
   font-size: 112.5%;
 }
 
-html[data-a11y-legibility='boost'] {
+/* [data-palette][data-theme] on the same element, for the same reason the
+   print sheet gives where it does this (app.css): every palette states
+   --text-2 and --border outright at (0,2,0), and this rule was a plain
+   attribute selector at (0,1,1) in a sheet that loads before them. So two
+   of the three declarations here lost to whichever palette was on, in
+   silence - the boost turned on, --leading-body changed because no palette
+   names it, and the contrast half of "stronger secondary text and clearer
+   separators" did exactly nothing on every palette in the app (ticket 99
+   item 54, "contrast and legibility boost doesnt do anything").
+
+   Both attributes are stamped on <html> beside this one, so naming them
+   costs nothing and puts the rule at (0,3,1) - above any palette, whichever
+   one is on. The values still mix against the live --text and --bg, so
+   each palette boosts toward its own ink rather than toward a colour
+   chosen here. */
+html[data-palette][data-theme][data-a11y-legibility='boost'] {
   --leading-body: 1.65;
   --text-2: color-mix(in oklab, var(--text) 76%, var(--bg));
   --border: color-mix(in oklab, var(--text) 24%, var(--bg));
@@ -238,6 +253,7 @@ html[data-a11y-motion='reduce'] {
   --dur-slow: 1ms;
   --dur-press: 1ms;
   --dur-authored: 1ms;
+  --stagger-step: 0ms;
 }
 
 html[data-a11y-motion='reduce'] *,
@@ -254,6 +270,7 @@ html[data-a11y-motion='reduce'] *::after {
     --dur-slow: 1ms;
     --dur-press: 1ms;
     --dur-authored: 1ms;
+    --stagger-step: 0ms;
   }
   *, *::before, *::after {
     animation-duration: 1ms !important;

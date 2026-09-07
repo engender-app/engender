@@ -83,6 +83,16 @@
   let track = $state<HTMLElement | undefined>();
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
+  /* Whether the track has anywhere to scroll at all, which is a different
+     question from either of the two above: those say which edge still has
+     something past it *right now*, and both are false at rest on a track
+     that does scroll but happens to be sitting at one end. The trailing
+     spacer is keyed to this one (ticket 99 item 24, "last value highlight
+     in switcher doesn't reach the end of the bg") - on a track that fits,
+     the spacer and the gap in front of it were 11px of dead background
+     after the last segment, so the pill stopped short of the end while the
+     first segment sat flush against the start. */
+  let canScroll = $state(false);
 
   function updateScrollFade() {
     if (!track) return;
@@ -99,10 +109,17 @@
     if (!first || !last) {
       canScrollStart = false;
       canScrollEnd = false;
+      canScroll = false;
       return;
     }
     canScrollStart = first.offsetLeft < track.scrollLeft - 1;
     canScrollEnd = last.offsetLeft + last.offsetWidth > track.scrollLeft + track.clientWidth + 1;
+    /* Where the last segment ends, measured against the segments rather
+       than the raw scroll range: the spacer this answer controls is itself
+       part of `scrollWidth`, so asking that would make adding the spacer
+       the reason the spacer is wanted. Asked this way the answer stays the
+       same once it is there. */
+    canScroll = last.offsetLeft + last.offsetWidth > track.clientWidth + 1;
   }
 
   // Re-measured whenever the option set changes shape, not only on scroll.
@@ -219,6 +236,7 @@
       class:is-compact={compact}
       class:can-scroll-start={canScrollStart}
       class:can-scroll-end={canScrollEnd}
+      class:can-scroll={canScroll}
       data-segmented={key}
       aria-label={name}
       onpointerdown={onTrackPointerDown}
@@ -257,6 +275,7 @@
       class:is-compact={compact}
       class:can-scroll-start={canScrollStart}
       class:can-scroll-end={canScrollEnd}
+      class:can-scroll={canScroll}
       data-segmented={key}
       role="radiogroup"
       tabindex="-1"
