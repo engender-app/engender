@@ -105,24 +105,9 @@ describe('choosing a tier-2 pattern', () => {
   });
 
   it('fades an entry open out of a sheet, because a modal is not a container', () => {
-    /* The tag insights on /stats open a sheet of the entries carrying a
-       tag, and by the rule those cards are a correct source: they draw an
-       entry and they link into the editor. What that produced was the
-       card's box growing out of an open modal into the whole screen while
-       the sheet sat behind it, which is item 23's complaint again on a
-       different surface (Alicja, carpet ticket 10, screencast 32_2 - she
-       took it for an animation already removed elsewhere).
-
-       A sheet is not a place a screen grows out of. The thing tapped
-       belongs to the modal, and the modal is what the tap is inside; the
-       transform claims the card became the screen when what happened is
-       that a modal was dismissed and a screen replaced the one underneath
-       it. So it fades through, which is what Home gets and what she asked
-       for by name there.
-
-       A fact rather than a route: /stats draws entry cards only inside that
-       sheet today, and a table keyed on the route would be right by
-       accident and wrong the day a screen draws them both ways. */
+    /* Why, in screen-transition.ts beside the branch. What is pinned here
+       is the pair the reasoning turns on: a sheet is carved out, and the
+       same screen with nothing open over it is not. */
     expect(screenTransition(nav({ from: '/stats', to: '/entry/41', fromSheet: true }))).toBe(
       'fade-through'
     );
