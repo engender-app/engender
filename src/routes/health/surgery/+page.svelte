@@ -40,7 +40,7 @@
   import { compareStretchNoticeProps } from '$lib/data/compareStretch';
 
   /* The procedures, and the record kept against whichever one is open. */
-  const SECTION_ROLE = { procedures: 0, recovery: 1, dilation: 2 };
+  const SECTION_ROLE = { procedures: 0, recovery: 1 };
 
   const today = todayEpochDay();
 
@@ -603,7 +603,7 @@
        wearing the right one's clothes, in two languages. -->
   {#if procedures.length > 0}
     <div>
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.dilation)}>
+      <ListCard>
         <ListRow key="dilation" icon="flask" title={m.dilation()} subtitle={m.hub_sub_dilation()} href="/health/dilation" />
       </ListCard>
     </div>
