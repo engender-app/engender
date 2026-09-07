@@ -207,7 +207,10 @@ function portableWith(marker: string) {
     cycleTrackingEnabled: values.cycleTrackingEnabled,
     voiceComfortLowHz: values.voiceComfortLowHz,
     voiceComfortHighHz: values.voiceComfortHighHz,
-    areaFinishOfferDeclined: values.areaFinishOfferDeclined
+    areaFinishOfferDeclined: values.areaFinishOfferDeclined,
+    pinnedRows: values.pinnedRows,
+    agendaKinds: values.agendaKinds,
+    onboardingAreas: values.onboardingAreas
   };
 }
 
