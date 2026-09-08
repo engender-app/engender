@@ -30,6 +30,7 @@
      square is worse than a circle - and the only place it is. */
 
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MOOD_BLOCK, MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from '../src/lib/components/moodFace';
@@ -192,4 +193,24 @@ describe('the five mood faces', () => {
     expect(fallback, '--gaze-reach has no fallback in components.css').toBeTruthy();
     expect(parseFloat(fallback![1])).toBeCloseTo(GAZE_REACH, 10);
   });
+});
+
+/* Redesign ticket 19's invariant: the mood icons are byte-identical to
+   ticket 27's drawing (ADR-0077), measured against that drawing rather than
+   against whatever shipped before it. The ticket builds motion around the
+   faces and touches neither file; a hash is the only assertion that can
+   tell "unchanged" from "changed in a way every other test still passes".
+   A ticket that redraws the face on purpose updates the two hashes here in
+   the same commit and says so. */
+describe("the drawing is ticket 27's, byte for byte", () => {
+  const PINNED: Record<string, string> = {
+    'src/lib/components/moodFace.ts': '017aee0fa552cac1d3bcf09a146fbe8c85410e9d2b2019586a6a78a8de8885b2',
+    'src/lib/components/MoodFace.svelte': 'c48eab556a82ce8de021e4972c84c5812074379ce4157a1fe512c1c5c702a32a'
+  };
+  for (const [file, sha256] of Object.entries(PINNED)) {
+    it(`${file} is unchanged since redesign ticket 27 (6b78081a)`, () => {
+      const bytes = readFileSync(join(process.cwd(), file));
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(sha256);
+    });
+  }
 });
