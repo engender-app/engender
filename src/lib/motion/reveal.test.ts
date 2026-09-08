@@ -7,6 +7,7 @@ import {
   disclose,
   markScreenArrival,
   markSlotReplacement,
+  maskHeight,
   resize,
   wipe
 } from './reveal';
@@ -523,5 +524,59 @@ describe('tier 3, a box resizing under its own content', () => {
     } finally {
       if (hadResizeObserver) g.ResizeObserver = prior;
     }
+  });
+});
+
+/* Tier 3, the third and last spend of the height exception: a box that has
+   already been relaid out uncovering itself from the height it had. */
+describe('tier 3, a panel uncovering its new height', () => {
+  /** A node that records what was animated and what was set on its style. */
+  function panel(height: number, rows = '40px 20px') {
+    const style: Record<string, string> = { overflow: '', gridTemplateRows: '' };
+    let settle: (() => void) | undefined;
+    const calls: { keyframes: Keyframe[]; options: KeyframeAnimationOptions }[] = [];
+    const node = {
+      style,
+      getBoundingClientRect: () => ({ height }) as DOMRect,
+      animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
+        calls.push({ keyframes, options });
+        return {
+          finished: {
+            then: (done: () => void) => {
+              settle = done;
+            }
+          }
+        };
+      }
+    } as unknown as HTMLElement;
+    (globalThis as Record<string, unknown>).getComputedStyle = () => ({ gridTemplateRows: rows });
+    return { node, style, calls, finish: () => settle?.() };
+  }
+
+  it('travels from the height the caller measured to the one the box now has', () => {
+    const { node, calls } = panel(420);
+    maskHeight(node, 36, 380);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].keyframes).toEqual([{ height: '36px' }, { height: '420px' }]);
+    expect(calls[0].options.duration).toBe(380);
+  });
+
+  it('clips and pins the tracks for the travel, and only for the travel', () => {
+    const { node, style, finish } = panel(420, '40px 20px 16px');
+    maskHeight(node, 36, 380);
+    expect(style.overflow).toBe('clip');
+    expect(style.gridTemplateRows).toBe('40px 20px 16px');
+    finish();
+    expect(style.overflow).toBe('');
+    expect(style.gridTemplateRows).toBe('');
+  });
+
+  it('gives back whatever the box was already saying about its own overflow', () => {
+    const { node, style, finish } = panel(420);
+    style.overflow = 'auto';
+    maskHeight(node, 36, 380);
+    expect(style.overflow).toBe('clip');
+    finish();
+    expect(style.overflow).toBe('auto');
   });
 });
