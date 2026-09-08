@@ -256,8 +256,17 @@
        to be announced; empty it takes no room, and while a query is being
        answered it holds its line rather than letting the list jump (the two
        rules beside it in screens.css). -->
-  <p class="hub-count" class:is-searching={searching} data-hub-count aria-live="polite">
-    {searching && settled ? m.results_count({ count: resultCount }) : ''}
+  <!-- The line inside opens and closes its own height (redesign ticket 25):
+       it used to reserve its line the moment typing began and drop it the
+       moment the box was cleared, and both moved the list under the finger
+       in one frame (Alicja, on the flipbooks: "the '0 results' simply
+       disappears and yanks the whole content underneath"). The region stays
+       the <p>, empty until both halves have answered, so the count is still
+       announced once. -->
+  <p class="hub-count" data-hub-count aria-live="polite">
+    {#if searching && settled}
+      <span class="hub-count-line" transition:disclose={{ skip: leaving }}>{m.results_count({ count: resultCount })}</span>
+    {/if}
   </p>
 
   {#if searching}

@@ -80,6 +80,15 @@
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
   import { collapse, disclose, markSlotReplacement } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+
+  /* A fold's label changes under a standing button - "Ready letter, Active
+     tryout" loses a name when a tile is closed - and words cut, as a rule
+     (ADR-0078); Alicja asked this one for "some very small animation, a
+     simple crossfade" on the round-one flipbooks (redesign ticket 25). The
+     two labels stack in one grid cell so the button keeps its width while
+     they cross, and the fade is --dur-fast, which the clamp takes to zero. */
+  const labelFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
@@ -226,6 +235,11 @@
   );
   let agenda = $derived(agendaQuery.value ?? null);
   let agendaExpanded = $state(false);
+  /* The two fold labels, keyed in the markup so a change crosses (labelFade). */
+  let agendaFoldLabel = $derived(
+    agendaExpanded ? m.home_tiles_fewer() : m.list_more({ count: agenda?.folded.length ?? 0 })
+  );
+  let tilesFoldLabel = $derived(tilesExpanded ? m.home_tiles_fewer() : foldLabel);
   let agendaRows = $derived(agenda ? (agendaExpanded ? [...agenda.shown, ...agenda.folded] : agenda.shown) : []);
   /** When a row falls: today, tomorrow, or the day written out. The mark is
       a day and a kind and nothing else, so the day is the whole of the
@@ -674,7 +688,7 @@
             <Icon name="chevronDown" size={16} />
           </span>
           <span class="home-fold-text">
-            {agendaExpanded ? m.home_tiles_fewer() : m.list_more({ count: agenda.folded.length })}
+            {#key agendaFoldLabel}<span transition:labelFade>{agendaFoldLabel}</span>{/key}
           </span>
         </button>
       {/if}
@@ -858,7 +872,9 @@
           <span class="home-fold-mark" class:is-open={tilesExpanded} aria-hidden="true">
             <Icon name="chevronDown" size={16} />
           </span>
-          <span class="home-fold-text">{tilesExpanded ? m.home_tiles_fewer() : foldLabel}</span>
+          <span class="home-fold-text">
+            {#key tilesFoldLabel}<span transition:labelFade>{tilesFoldLabel}</span>{/key}
+          </span>
         </button>
       {/if}
     </div>
@@ -1321,7 +1337,14 @@
     .home-fold-mark { transition: none; }
   }
 
+  /* A grid of one cell, so the outgoing and incoming labels stand on the
+     same spot while they cross and the button keeps its width. */
   .home-fold-text {
+    display: grid;
+    min-width: 0;
+  }
+  .home-fold-text > span {
+    grid-area: 1 / 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

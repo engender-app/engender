@@ -126,8 +126,22 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * 16, "when i go back to more there is a sliding-up animation with a yank at
  * the end... i just want a smooth quick transition").
  */
-export function disclose(node: Element, params?: { skip?: boolean }): TransitionConfig {
+export function disclose(
+  node: Element,
+  params?: { skip?: boolean },
+  /* `fadeEdges`: the panel primitive's closing (redesign ticket 25). A
+     box's hairlines were cut to nothing on the first frame of a close,
+     because a border cannot shrink below a device pixel and stalled the
+     box at its own edge; Alicja read that first frame as the line simply
+     disappearing and asked for it to "fade out with scale like other
+     lines". So the edges stay for the travel and the whole box fades over
+     its last third, lines included - the box is nearly nothing by then, so
+     what fades is the line. Arrivals never take this: a block arriving
+     from nothing must not fade in. */
+  options?: { fadeEdges?: boolean }
+): TransitionConfig {
   if (isReducedMotion() || params?.skip) return { duration: 0 };
+  const fadeEdges = options?.fadeEdges === true;
 
   const style = getComputedStyle(node);
   const height = parseFloat(style.height) || 0;
@@ -195,21 +209,142 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
      does exactly that - and a missing `display` is "not a grid", not a
      crash. */
   const rows = style.display?.includes('grid') ? style.gridTemplateRows : '';
+  /* Where the box's bottom margin ends, and it is not always zero (redesign
+     ticket 25, Alicja on the flipbooks: a notice dismissed on Home jumped
+     20px "at the very end - between frames 32 and 33"). While the box is
+     open, `overflow: hidden` makes it a formatting context, so the margins
+     on either side of it do not collapse through it: the block above's 20
+     and the heading below's 40 are both spent, 60 in all. The frame the
+     node is gone they collapse into one, 40. Animating this margin to zero
+     therefore lands 20px short of where the neighbours will meet, and the
+     page takes that 20 in the frame of removal. The end value is the
+     negative of the smaller neighbouring margin, which is exactly what
+     collapsing would have taken away: 20 + 0 + (40 - 20) = 40. Block flow
+     only - flex and grid items never collapse margins - and only with a
+     neighbour on each side to collapse between. */
+  const restMargin = restingMarginBelow(node);
+  /* The other side of `overflow: hidden` making the box a formatting
+     context: a first child's top margin that collapsed through the box's
+     top edge at rest stops collapsing and lands inside it, so the content
+     drops by that margin in the first frame and the box, measured without
+     it, clips that much off its bottom (the Transition door's index: the
+     first heading's 16px, "Body" moving down on the keystroke). The box is
+     pulled up by the same margin and made taller by it, so the content
+     stays where it was and the edge below it does too. */
+  const swallowed = collapsedTopMargin(node, style);
 
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
+    /* `min-height: 0`, because a floor under the box would hold it open: a
+       card tile carries min-height 176px (kit.css, so a widening card holds
+       still) and its height travel went nowhere - the box stood at full
+       size from the first frame and the rows under it teleported (redesign
+       ticket 25, "the 'pinned' and content underneath simply teleports
+       lower"). The animated height is the box's whole size for the travel. */
     css: (t) =>
       `overflow: hidden;` +
+      `min-height: 0;` +
       (rows ? `grid-template-rows: ${rows};` : '') +
-      `height: ${t * height}px;` +
+      `height: ${t * (height + swallowed)}px;` +
       `padding-top: ${t * paddingTop}px;` +
       `padding-bottom: ${t * paddingBottom}px;` +
-      `border-top-width: ${t >= 1 ? borderTop : 0}px;` +
-      `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;` +
-      `margin-top: ${t * marginTop}px;` +
-      `margin-bottom: ${t * marginBottom}px;`
+      `border-top-width: ${fadeEdges || t >= 1 ? borderTop : 0}px;` +
+      `border-bottom-width: ${fadeEdges || t >= 1 ? borderBottom : 0}px;` +
+      `margin-top: ${t * (marginTop - swallowed)}px;` +
+      `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;` +
+      (fadeEdges ? `opacity: ${Number(Math.min(1, t / EDGES_GONE_OVER).toFixed(3))};` : '')
   };
+}
+
+/** The last share of a closing panel's travel over which it fades, hairlines
+    and all: with the edges kept for the travel, this is what takes the last
+    device pixel of a line away without a frame in which it vanishes. */
+const EDGES_GONE_OVER = 0.35;
+
+/** The top margin of a box's first child that collapses through the box's
+    own top edge at rest: block flow, nothing between the two edges
+    (no padding or border on top), and a box that is not already a
+    formatting context. Zero anywhere else. */
+function collapsedTopMargin(node: Element, style: CSSStyleDeclaration): number {
+  const parent = node.parentElement;
+  if (!parent || /flex|grid/.test(getComputedStyle(parent).display ?? '')) return 0;
+  if ((style.overflow ?? 'visible') !== 'visible') return 0;
+  if ((parseFloat(style.paddingTop) || 0) > 0 || (parseFloat(style.borderTopWidth) || 0) > 0) return 0;
+  const first = node.firstElementChild;
+  return first ? parseFloat(getComputedStyle(first).marginTop) || 0 : 0;
+}
+
+/**
+ * Tier 3, change within a screen: a panel arriving on a settled screen
+ * comes down from above (phase 10 redesign ticket 25).
+ *
+ * The first cut opened the panel's height with its content pinned to the
+ * top, which is `disclose` run forwards: the box's bottom edge descends
+ * over content that is already in place. Alicja asked for the reverse of
+ * the way a tile closes, "with the only difference being the new one comes
+ * from above": the block itself slides down into its slot from behind the
+ * element above it, as an object arriving rather than a box unrolling.
+ *
+ * So the box keeps its full size and is pulled up by a negative top margin
+ * for the part of the travel that is still to come, and that same part is
+ * clipped off its top - the rows below move by the box's laid-out height,
+ * which grows from nothing to the whole, and what shows is the block's
+ * bottom edge first, its top edge descending into view last. clip-path and
+ * a margin: the margin is the same layout spend `disclose` already makes on
+ * height, and there is no height to fight a min-height with.
+ *
+ * Reduced motion never reaches this: `collapse` has already cut.
+ */
+function arrivesFromAbove(node: Element): TransitionConfig {
+  const style = getComputedStyle(node);
+  const height = parseFloat(style.height) || 0;
+  const marginTop = parseFloat(style.marginTop) || 0;
+  const marginBottom = parseFloat(style.marginBottom) || 0;
+  /* The margin under the block grows with it from where the neighbours
+     were meeting, the same arithmetic `disclose` uses on the way out: a
+     block arriving at full margin pushed the list under it 20px in its
+     first frame (the Transition door's search results wrapper, empty and
+     margined, on the keystroke). */
+  const restMargin = restingMarginBelow(node);
+  return {
+    duration: motionDuration('--dur-slow'),
+    easing: EASE_OUT,
+    css: (t, u) =>
+      `clip-path: inset(${u * height}px 0 0 0);` +
+      `margin-top: ${marginTop - u * height}px;` +
+      `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;`
+  };
+}
+
+/** How tall a panel may be and still arrive from above. A block does - a
+    tile is 176px, a notice about 120 - and the travel is its own height. A
+    list opens in place instead: the Transition door's index is some
+    1500px, and a block that tall coming down from above is the whole door
+    rushing past in 380ms. The line is a phone screen's half, which is
+    where a block stops being a block a thumb can cover. */
+const FROM_ABOVE_MAX = 400;
+
+/** Where a collapsing or arriving box's bottom margin ends in block flow.
+
+    An open box with `overflow: hidden` or content is a formatting context,
+    so the margins on either side of it are both spent; the frame it is
+    absent they collapse into the larger. The margin therefore has to end at
+    minus the smaller neighbour, which is exactly what collapsing takes away
+    - 20 + 0 + (40 - 20) = 40 - or the page takes that difference in one
+    frame (Alicja, a notice dismissed on Home, frames 32 to 33). Zero inside
+    a flex or grid parent, where margins never collapse, and zero without a
+    neighbour on each side to collapse between. */
+function restingMarginBelow(node: Element): number {
+  const parent = node.parentElement;
+  const flow = parent ? !/flex|grid/.test(getComputedStyle(parent).display ?? '') : false;
+  const prev = node.previousElementSibling;
+  const next = node.nextElementSibling;
+  if (!flow || !prev || !next) return 0;
+  return -Math.min(
+    parseFloat(getComputedStyle(prev).marginBottom) || 0,
+    parseFloat(getComputedStyle(next).marginTop) || 0
+  );
 }
 
 /* When the screen under the panels last changed, as a `performance.now()`
@@ -519,6 +654,13 @@ export function collapse(
   }
   if (isReducedMotion() || params?.skip) return { duration: 0 };
   if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
+  /* A panel arriving on a settled screen does not wait its turn in the
+     grid's stagger (kit.css, --tile-index): the stagger is for a grid
+     arriving together, and the third tile out of the fold sat as a blank
+     block for its two steps before it clipped open (redesign ticket 25,
+     tiles-unfold frames 1 to 9). Inline, so the grid's own nth-child rule
+     is overridden for this one element and nothing else. */
+  if (options?.direction === 'in') (node as HTMLElement).style?.setProperty?.('--tile-index', '0');
   if (replacingSlot()) {
     if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
     /* The screen measures the slot before the DOM changes; without one there
@@ -534,7 +676,18 @@ export function collapse(
      same duration, or closing the last of a pair would be slower than
      closing one of two. */
   if (!sharesItsLine(node)) {
-    return { ...disclose(node, params), duration: motionDuration('--dur-slow') };
+    /* Arriving, the panel comes down from above (`arrivesFromAbove`);
+       leaving, it gives its height back from the bottom up, which is
+       `disclose` run backwards and the closing Alicja signed off. */
+    if (options?.direction === 'in' && node.getBoundingClientRect().height <= FROM_ABOVE_MAX) {
+      return arrivesFromAbove(node);
+    }
+    /* A tall panel arriving opens in place with no fade; only a close fades
+       its edges out. */
+    return {
+      ...disclose(node, params, { fadeEdges: options?.direction !== 'in' }),
+      duration: motionDuration('--dur-slow')
+    };
   }
   /* Something on the line below is about to rewrap into this space, so it is
      not being given back to the neighbour and the neighbour must not grow
