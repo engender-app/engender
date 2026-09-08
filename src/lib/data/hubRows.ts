@@ -782,15 +782,23 @@ export function hubSections(reading: HubReading): HubSection[] {
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
 }
 
-/** The rows whose name contains what somebody typed, flat and in the order
-    the groups draw them (phase 10 redesign ticket 15).
+/** The rows whose name contains what somebody typed, flat: the hub's own in
+    the order its groups draw them, then the rows drawn on a screen of their
+    own (phase 10 redesign ticket 15).
 
-    Over `hubSections`' output rather than over `HUB_ROWS`, which is what
-    makes the three rules about a row's existence hold here for free: a
-    hidden area is not in the sections and so cannot be searched up, a
-    finished one is, and every row arrives carrying the second line its
-    section gave it. A hosted row is absent for the same reason it is absent
-    from the hub - the screen that owns it is where it is reached.
+    All twenty-seven of them, which is the number the ticket's scope line
+    uses. The seven hosted rows are not on this screen and are still areas of
+    this app: somebody looking for dilation or entry templates looks for them
+    here, and leaving them out would make the one index with a search box the
+    one place they cannot be found. A match draws the row the registry
+    declares - the same row its host screen draws - and following it lands on
+    the area's own screen rather than on the host.
+
+    Assembled here rather than filtered out of `hubSections`' output, so the
+    three rules about a row's existence hold for both halves in one place: a
+    hidden area cannot be searched up, a finished one can and states the day
+    it ended, and every match carries the second line its section would have
+    given it.
 
     The titles are handed in, not resolved: they are paraglide's and nothing
     the Node tier touches may import that (ADR-0016). `tagIdsMatching` takes
@@ -803,16 +811,55 @@ export function hubSections(reading: HubReading): HubSection[] {
     An empty query matches nothing rather than everything, because the screen
     shows the grouped list for an empty box; a flat copy of every row would
     be the same list twice. */
+/** The one row a search by name may not reach, and why.
+
+    ADR-0043: whether the cycle row exists at all is not this file's to say.
+    `cycleEvents` is outside `HideableArea` precisely so that nothing here
+    can reverse the decision, and the row's *positive* gate - an active
+    testosterone regimen or an explicit opt-in - belongs to
+    /health/side-effects, which is the only screen that asks. A search that
+    answered "Cycle events" to somebody the app has decided not to ask about
+    cycles would put that prompt back on the hub through the box, which is
+    exactly what ticket 16 took off it.
+
+    Named here rather than left to fall out of a rule, because every rule
+    that would exclude it also excludes something that should be found: the
+    row fronts one area, that area is not hideable, and a row fronting no
+    area at all is a screen somebody may well look for by name (words). */
+const NOT_SEARCHABLE: readonly HubRowKey[] = ['cycle-events'];
+
 export function hubRowsMatching(
-  sections: HubSection[],
+  reading: HubReading,
   query: string,
   titleOf: (key: HubRowKey) => string
-): DrawnRow[] {
+): MatchedRow[] {
   const folded = foldText(query).trim();
   if (!folded) return [];
-  return sections.flatMap((section) =>
-    section.rows.filter((row) => foldText(titleOf(row.spec.key)).includes(folded))
-  );
+  const named = (spec: HubRow) => foldText(titleOf(spec.key)).includes(folded);
+
+  const matches: MatchedRow[] = [];
+  for (const section of hubSections(reading)) {
+    for (const row of section.rows) if (named(row.spec)) matches.push({ ...row, where: section.key });
+  }
+  for (const spec of HUB_ROWS) {
+    if (isHubGroup(spec.home)) continue;
+    if (NOT_SEARCHABLE.includes(spec.key)) continue;
+    if (rowHidden(spec, reading.states)) continue;
+    if (!named(spec)) continue;
+    matches.push({ spec, line: rowLine(spec, reading), where: spec.home });
+  }
+  return matches;
+}
+
+/** A row a search found: the row as it is drawn, and where it is drawn -
+    one of the hub's sections, or the screen that hosts it.
+
+    A flat list has no heading over a row to say which it was, so the row
+    says it: a finished row found by name carries `finished`, which is what
+    the heading it lost was saying, rather than the screen deciding that
+    again from the line. */
+export interface MatchedRow extends DrawnRow {
+  where: HubSection['key'] | HubRowHostKey;
 }
 
 /** A section's own place in the flag's stripes, for whichever screen is

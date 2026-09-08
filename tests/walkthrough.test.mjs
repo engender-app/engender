@@ -3474,6 +3474,31 @@ try {
   await page.locator('[data-hub-results] [data-list-row="wear"]').click();
   await page.waitForURL('**/practice/wear');
 
+  /* A row this door does not draw. Seven areas are drawn on a screen of
+     their own (phase 9 carpet ticket 16) and this is the only index with a
+     box in it, so a name reaches all twenty-seven; the row says which screen
+     hosts it, and following it lands on the area, not on the host. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('dilation');
+  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="surgery"]', {
+    timeout: 8000
+  });
+  await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
+  await page.waitForURL('**/health/dilation');
+
+  /* ADR-0043 through the box: the one row whose existence is a screen's call
+     and not the registry's cannot be typed into being. The demo persona has
+     no testosterone regimen and has not opted in, so nothing here may
+     answer "cycle events" - and the query is one that does match, since
+     `cycleEvents` records exist in the seed and the record half finds them
+     under their own area's name. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('cycle');
+  await page.waitForTimeout(1200);
+  if (await page.locator('[data-list-row="cycle-events"]').count()) {
+    throw new Error('the cycle row can be searched into existence (ADR-0043)');
+  }
+
   // A record inside an area, which is the registry's read rather than this
   // screen's (textSearch.ts). The hit goes where the record is.
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });

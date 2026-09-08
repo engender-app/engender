@@ -81,7 +81,8 @@
       : { lastWrites: {}, states: {} }
   );
 
-  let sections = $derived(hubSections({ todayEpochDay: today, ...landed }));
+  let reading = $derived({ todayEpochDay: today, ...landed });
+  let sections = $derived(hubSections(reading));
 
   /** One page of record hits, and what "show more" asks for again. Twenty
       rather than the search screen's thirty: this is a door, and a query that
@@ -99,6 +100,8 @@
   let query = $state('');
   let debouncedQuery = $state('');
   let pages = $state(1);
+  /** The box itself, so clearing it can put the cursor back in it. */
+  let box = $state<HTMLInputElement | undefined>(undefined);
 
   let typed = $derived(query.trim());
   let searching = $derived(typed.length > 0);
@@ -124,11 +127,11 @@
     pages = 1;
   });
 
-  /** The areas whose name contains what is in the box, flat and in the order
-      the groups draw them. Hidden areas are absent and a finished one still
-      states the day it ended, both because this filters the assembled
-      sections rather than the row list (`hubRows.ts`). */
-  let matches = $derived(searching ? hubRowsMatching(sections, typed, hubRowTitle) : []);
+  /** The areas whose name contains what is in the box, flat: all
+      twenty-seven, the seven drawn on a screen of their own included. Hidden
+      areas are absent and a finished one still states the day it ended,
+      because the assembling is `hubRows.ts`'s rather than this screen's. */
+  let matches = $derived(searching ? hubRowsMatching(reading, typed, hubRowTitle) : []);
 
   /* Everything the journal holds that is not an entry, in one scan across the
      registry (`textSearch.ts`) - the read the search screen's second half
@@ -155,12 +158,14 @@
   /* One count over both halves. Stating the areas alone while five letters
      sat underneath it would be the screen describing part of what it found. */
   let resultCount = $derived(matches.length + found.total);
-  /* Nothing matched, and nothing is still on its way: the record read lags
-     the box by the debounce, so a notice keyed off the areas alone would
-     appear for a moment on every query that only records answer. */
-  let foundNothing = $derived(
-    matches.length === 0 && hitRows.length === 0 && !records.loading && debouncedQuery === typed
-  );
+  /* Whether both halves have answered the question currently in the box. The
+     areas answer on the keystroke and the records 250ms later, so anything
+     that would otherwise describe a half-answer waits on this: the notice
+     that says nothing was found, and the count, which is read out loud and
+     would otherwise announce "0 results" and then "4 results" for one
+     query. */
+  let settled = $derived(!records.loading && debouncedQuery === typed);
+  let foundNothing = $derived(settled && matches.length === 0 && hitRows.length === 0);
 
   /* One area of colour per list, in reading order: the areas take role 0, the
      only index guaranteed to be a colour on all eight palettes, and the
@@ -194,14 +199,23 @@
     {#snippet field()}
       <div class="search-box">
         <Icon name="search" size={20} />
+        <!-- Android's own keyboard hints, since this is where the app is
+             mostly typed into: a search key rather than a return key, and
+             none of the corrections a phone applies to prose - an area's
+             name is not a sentence, and autocapitalising it would fight the
+             match on the first letter. -->
         <input
           class="search-input"
+          bind:this={box}
           id="hub-q"
           name="hub-q"
           type="search"
           placeholder={m.hub_search_placeholder()}
           aria-label={m.hub_search_placeholder()}
           autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          enterkeyhint="search"
           data-hub-search
           bind:value={query}
         />
@@ -210,14 +224,23 @@
              the whole door back - a 48px target for that, not a browser
              detail. It arrives and leaves along the row it is in, which is
              `collapse`'s own case (reveal.ts): it grows its width from
-             nothing and takes the box's gap with it. -->
+             nothing and takes the box's gap with it.
+
+             Clearing puts the cursor back in the box rather than letting
+             focus fall to the document: the button unmounts the moment the
+             query goes, and on a phone that closes the keyboard somebody
+             was about to type the next word into (Amazon's and Best Buy's
+             search fields both keep it, in the Mobbin pass). -->
         {#if searching}
           <button
             class="field-search-clear press"
             data-hub-search-clear
             aria-label={m.hub_search_clear()}
             transition:collapse={{ skip: leaving }}
-            onclick={() => (query = '')}
+            onclick={() => {
+              query = '';
+              box?.focus();
+            }}
           >
             <Icon name="x" size={20} />
           </button>
@@ -228,10 +251,13 @@
 
   <!-- The one thing that is announced rather than seen: the list changes
        under a box somebody is typing into, and a screen reader is told how
-       many things are in it. Empty while the box is, and an empty paragraph
-       takes no room (the rule beside it in screens.css). -->
-  <p class="hub-count" data-hub-count aria-live="polite">
-    {searching ? m.results_count({ count: resultCount }) : ''}
+       many things are in it. In the document at rest and empty, because a
+       live region has to be there before its content changes for the change
+       to be announced; empty it takes no room, and while a query is being
+       answered it holds its line rather than letting the list jump (the two
+       rules beside it in screens.css). -->
+  <p class="hub-count" class:is-searching={searching} data-hub-count aria-live="polite">
+    {searching && settled ? m.results_count({ count: resultCount }) : ''}
   </p>
 
   {#if searching}
@@ -257,8 +283,9 @@
                  element could not.
 
                  A searched row keeps `data-hub-section`, which here says
-                 which group the row belongs to rather than which heading is
-                 above it: in this list there is no heading above it at all. -->
+                 where the row is drawn - one of the hub's sections, or the
+                 screen that hosts it - since in this list there is no
+                 heading above it to say so. -->
             <!-- The wrapper is the row's own height, and giving it back is
                  how a row leaves (rule 10): the rows under it close up with
                  it instead of jumping. `.rows-divide` is the kit's opt-in for
@@ -271,7 +298,7 @@
                 title={hubRowTitle(row.spec.key)}
                 subtitle={hubRowLine(row.spec.key, row.line, today)}
                 href={row.spec.href}
-                data-hub-section={row.spec.home}
+                data-hub-section={row.where}
                 data-hub-line={row.line.kind}
               />
             </div>
@@ -281,8 +308,14 @@
 
       {#if hitRows.length}
         <!-- The records, under the areas and named once, in the words the
-             search screen already uses for the same read. -->
-        <SectionHeading text={m.search_elsewhere_heading()} />
+             search screen already uses for the same read - and named only
+             when there are areas above them to be elsewhere from. On a
+             screen of nothing but record hits the heading would be the
+             largest thing on it, naming the only list there is, which is
+             the call the search screen makes about its own two halves. -->
+        {#if matches.length}
+          <SectionHeading text={m.search_elsewhere_heading()} />
+        {/if}
         <ListCard role={recordsRole}>
           {#each hitRows as row (row.key)}
             <div class="rows-divide" transition:disclose={{ skip: leaving }}>
