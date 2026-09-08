@@ -30,7 +30,11 @@
    with a fixed stretch. Left alone on purpose - it is a working control and
    this ticket is not its ticket (redesign ticket 30 is) - but if a third
    travelling indicator ever turns up, that is the moment the two should
-   become one. */
+   become one. The two now differ in technique as well as in code: this one
+   is pinned by four insets and that one by `translate` plus an animated
+   `width`. Worth knowing that the difference is not one of expense - a
+   transitioned `width` is a layout property too, and motion-system.test.ts
+   lists `.segment-pill` beside this pill for exactly that reason. */
 
 export type Box = { x: number; y: number; w: number; h: number };
 

@@ -757,9 +757,29 @@ describe('the token layer behind the five tiers', () => {
        too. `.bloom i` is the rule that gets cancelled and
        `.bloom i:nth-child(2)` the one that carries the delay, so a stopped
        selector counts for the same element further qualified. */
+    const reasserts = new Map<string, boolean>();
+    for (const rule of allRules) {
+      if (isReduceContext(rule) || rule.prelude.startsWith('@')) continue;
+      const decls = declarations(rule.body);
+      const names = decls.animation ?? decls['animation-name'] ?? '';
+      if (!names || names === 'none') continue;
+      for (const selector of rule.prelude.split(',').map((s) => s.trim())) reasserts.set(selector, true);
+    }
     const isStopped = (selector: string) =>
       stopped.has(selector) ||
-      [...stopped].some((base) => selector.startsWith(base) && /^[:[]/.test(selector.slice(base.length)));
+      /* A stopped selector covers the same element further qualified - but
+         only while the qualified rule does not name an animation of its own.
+         `.bloom i` is cancelled and `.bloom i:nth-child(2)` only adds a
+         delay, so the delay is dead; a qualified rule that re-declared
+         `animation` at higher specificity would be alive again and its
+         delay would outlive the clamp, which prefix matching alone cannot
+         see. */
+      [...stopped].some(
+        (base) =>
+          selector.startsWith(base) &&
+          /^[:[]/.test(selector.slice(base.length)) &&
+          !reasserts.get(selector)
+      );
     const offenders: string[] = [];
 
     for (const { path, css } of styleSources()) {
@@ -792,6 +812,159 @@ describe('the token layer behind the five tiers', () => {
   });
 });
 
+
+describe('the cap on animating layout', () => {
+  /* materials.css's contract says only transform and opacity animate,
+     because the target is a Capacitor WebView on a mid-range Android phone.
+     Phase 5 ticket 28 amended it for three materials and redesign ticket 26
+     for one more - the travelling highlight's two edges, which cannot be
+     said with a transform at all, since a translate moves both edges
+     together and the width between them is the live difference of two
+     curves rather than a value with a curve of its own.
+
+     Enumerated here rather than prohibited, so the next one is argued
+     instead of added. Every entry names the selector, the properties and
+     why; anything else animating a layout property fails.
+
+     Writing this check is how it came out that the contract was already
+     not being kept. Six rules were animating a layout property before this
+     ticket touched anything, `.segment-pill`'s own `width` among them -
+     which is the other travelling indicator, doing this ticket's job by
+     the same class of means. They are listed below as INHERITED, and the
+     distinction between the two lists is exactly what each one is worth:
+     an EXEMPT entry has an argument and a measurement behind it, an
+     INHERITED entry has only the fact that it is already shipped. Nobody
+     has benchmarked the second list; this check found it and does not
+     bless it. */
+  const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string }[] = [
+    {
+      selector: "[data-nav-pill='bar']",
+      props: ['left', 'right'],
+      reason:
+        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling'
+    },
+    {
+      selector: "[data-nav-pill='rail']",
+      props: ['top', 'bottom'],
+      reason: "the same box on the rail's axis, for the same reason (redesign ticket 26)"
+    },
+    {
+      selector: '.skip-link',
+      props: ['top'],
+      reason:
+        'the skip link is off-screen until focused and is the only thing in its own stacking context; it predates the contract and moves once per keyboard session'
+    }
+  ];
+
+  /** Already shipping when this check was written, unaudited. Each one is a
+      candidate for a carpet ticket rather than a decision anyone made
+      against the contract. Moving an entry up to LAYOUT_EXEMPT means
+      arguing the bound and measuring it; deleting one means the rule
+      stopped animating layout. */
+  const LAYOUT_INHERITED: { selector: string; props: string[]; note: string }[] = [
+    {
+      selector: '.segment-pill',
+      props: ['width'],
+      note: "the segmented control's travelling pill (ticket 30 owns it), the nav's own sibling problem solved the same way"
+    },
+    { selector: '.kit-bar-mark', props: ['width'], note: 'the inline bar in a tile' },
+    { selector: '.kit-dist-mark', props: ['height'], note: 'a distribution column' },
+    { selector: '.kit-ordered-seg', props: ['width'], note: "OrderedStrip's segments" },
+    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" },
+    {
+      selector: '.setup-reveal',
+      props: ['grid-template-rows'],
+      note: "onboarding's fold, the one grid-template animation in the app"
+    }
+  ];
+
+  const LAYOUT = [
+    'width',
+    'height',
+    'top',
+    'right',
+    'bottom',
+    'left',
+    'inset',
+    'margin',
+    'margin-top',
+    'margin-right',
+    'margin-bottom',
+    'margin-left',
+    'padding',
+    'gap',
+    'flex-basis',
+    'grid-template-columns',
+    'grid-template-rows'
+  ];
+
+  it('animates a layout property only where this file enumerates it', () => {
+    const allowed = new Map(
+      [...LAYOUT_EXEMPT, ...LAYOUT_INHERITED].map((entry) => [entry.selector, entry.props])
+    );
+    const offenders: string[] = [];
+
+    for (const { path, css } of styleSources()) {
+      for (const rule of rules(css)) {
+        if (rule.prelude.startsWith('@')) continue;
+        const decls = declarations(rule.body);
+        const named = new Set<string>();
+        for (const part of splitTopLevel(decls.transition ?? '')) {
+          const property = words(part)[0];
+          if (property) named.add(property);
+        }
+        for (const property of splitTopLevel(decls['transition-property'] ?? '')) {
+          named.add(property.trim());
+        }
+        for (const property of named) {
+          if (!LAYOUT.includes(property) && property !== 'all') continue;
+          const selectors = rule.prelude.split(',').map((s) => s.trim());
+          if (selectors.every((selector) => allowed.get(selector)?.includes(property))) continue;
+          offenders.push(`${path}: ${rule.prelude} transitions ${property}`);
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      'reaching past transform and opacity needs an entry in LAYOUT_EXEMPT with a bounded-layout reason and a benchmark'
+    ).toEqual([]);
+  });
+
+  /* Both lists are cross-checked against the sheets, so an entry that stops
+     being true fails instead of sitting here forever - which is the only
+     thing that keeps the inherited list shrinking rather than growing. */
+  it('lists nothing that has stopped animating its layout property', () => {
+    const found = new Set<string>();
+    for (const { css } of styleSources()) {
+      for (const rule of rules(css)) {
+        if (rule.prelude.startsWith('@')) continue;
+        const decls = declarations(rule.body);
+        const named = [
+          ...splitTopLevel(decls.transition ?? '').map((part) => words(part)[0]),
+          ...splitTopLevel(decls['transition-property'] ?? '').map((part) => part.trim())
+        ];
+        for (const selector of rule.prelude.split(',').map((s) => s.trim())) {
+          for (const property of named) if (property) found.add(`${selector} ${property}`);
+        }
+      }
+    }
+    const stale: string[] = [];
+    for (const entry of [...LAYOUT_EXEMPT, ...LAYOUT_INHERITED]) {
+      for (const property of entry.props) {
+        if (!found.has(`${entry.selector} ${property}`)) stale.push(`${entry.selector} ${property}`);
+      }
+    }
+    expect(stale, 'an entry here no longer animates what it claims - delete it').toEqual([]);
+  });
+
+  it('gives every exemption a reason, so the list cannot grow silently', () => {
+    for (const entry of LAYOUT_EXEMPT) {
+      expect(entry.props.length, `${entry.selector} exempts nothing`).toBeGreaterThan(0);
+      expect(entry.reason.length, `${entry.selector} has no reason`).toBeGreaterThan(40);
+    }
+  });
+});
 
 describe('the curves the tiers reach for', () => {
   /* Phase 5 ticket 29 retired --ease-spring, a cubic-bezier whose control
