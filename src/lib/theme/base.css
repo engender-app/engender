@@ -58,8 +58,12 @@
 
   /* --- Shape: one radius, and the disc (phase 10, DIRECTION.md rule 5) ---
      Every block, every control track, every input, the sheet, the floating
-     bar and its add button take --r-block. Discs - a mood face, an icon that
-     is a face - are 50%, written where they are drawn. The pill survives on
+     bar and its add button take --r-block. A disc - an icon that is a face, a
+     heat cell that is a day - is 50%, written where it is drawn. A mood face
+     is neither: it sits on a block of its own drawn inside a 24-unit viewBox,
+     so its corner is 6.4 of those units and scales with the face
+     (moodFace.ts's MOOD_BLOCK, ADR-0077) - the one proportional corner in the
+     app, and the one exception direction-contract.test.ts carries. The pill survives on
      the one shape that is a capsule, a tag, and nowhere else. The ramp this
      replaces (--radius-xs..xl, --r-card 20, --r-add 18) counted twenty-three
      distinct corners across the app; tests/direction-contract.test.ts holds

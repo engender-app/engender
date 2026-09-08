@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { colorMixOklab, contrast, luminance, toRgb } from '../src/lib/theme/colour';
+import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf } from '../src/lib/theme/colour';
 import { flagField, flagRoles } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
@@ -41,6 +41,27 @@ function moodPresetTokenMap(preset: string, theme: (typeof THEMES)[number]) {
     out[match[1]] = match[2];
   }
   return out;
+}
+
+/** A preset's five steps, in order, for a theme. */
+function moodRamp(preset: string, theme: (typeof THEMES)[number]) {
+  const tokens = moodPresetTokenMap(preset, theme);
+  return [1, 2, 3, 4, 5].map((step) => tokens[`mood-${step}`]);
+}
+
+/** Signed shorter way round the wheel, from one hue to another. */
+function hueGap(from: number, to: number) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+/** How far apart two colours are in OKLab, out of the polar readings the
+    token layer already exposes: two chromas and the angle between them are
+    a triangle, and the lightnesses are the third dimension. */
+function oklabDistance(a: string, b: string) {
+  const [ca, cb] = [chromaOf(a), chromaOf(b)];
+  const angle = (hueGap(hueOf(a), hueOf(b)) * Math.PI) / 180;
+  const flat = ca * ca + cb * cb - 2 * ca * cb * Math.cos(angle);
+  return Math.hypot(lightnessOf(a) - lightnessOf(b), Math.sqrt(Math.max(0, flat)));
 }
 
 /** The accent percentage in `--heat-N: color-mix(in oklab, var(--accent)
@@ -175,6 +196,106 @@ describe('palette contrast coverage', () => {
             ).toBeGreaterThanOrEqual(4.5);
           }
         }
+      }
+    }
+  });
+
+  /* ADR-0077: each preset runs between two deliberately chosen hues instead
+     of tinting one, so "two colours, not one" is the claim these three hold.
+     Read on the shipped hexes, in OKLab, which is the space palettes.css
+     mixes in.
+
+     Hue distance is where the two-hue reading comes from; monotone travel is
+     what keeps it a gradient rather than a wander through a third hue the
+     ends do not sit either side of; and rising chroma is the "how much"
+     channel mood keeps whichever way the hue goes - in the dark theme it is
+     the only one it has, because the luminance ceiling there is what stops
+     the ramp descending (ADR-0077's band). */
+  it('runs every mood preset between two hues at least 60 degrees apart', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const ramp = moodRamp(preset, theme);
+        const gap = Math.abs(hueGap(hueOf(ramp[0]), hueOf(ramp[4])));
+        expect(
+          gap,
+          `${preset}/${theme} runs ${hueOf(ramp[0]).toFixed(0)} deg to ${hueOf(ramp[4]).toFixed(
+            0
+          )} deg, which is ${gap.toFixed(0)} deg of travel - one hue tinted, not two`
+        ).toBeGreaterThanOrEqual(60);
+      }
+    }
+  });
+
+  it('travels one way round the wheel, never through a third hue', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const hues = moodRamp(preset, theme).map(hueOf);
+        const whole = hueGap(hues[0], hues[4]);
+        for (let step = 1; step < 5; step++) {
+          const leg = hueGap(hues[step - 1], hues[step]);
+          expect(
+            Math.sign(leg) === Math.sign(whole) && Math.abs(leg) < Math.abs(whole),
+            `${preset}/${theme} turns back on itself between steps ${step} and ${step + 1}: ${leg.toFixed(
+              0
+            )} deg against the ramp's ${whole.toFixed(0)}`
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  /* "How much" is the other half of the ramp's job, and with the hue moving
+     it cannot be read off lightness alone: the light theme descends as it
+     saturates, and the dark theme cannot descend at all (its band is a
+     ceiling, and a gold at the bottom of it is a brown), so it holds one
+     lightness and spends chroma. What both have to be is five colours a
+     person can tell apart, which is one measurement rather than two rules -
+     the OKLab distance between neighbours. 0.031 is the smallest the shipped
+     ramps have, on teal dark's first pair. */
+  it('keeps every neighbouring pair of steps a visibly different colour', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const ramp = moodRamp(preset, theme);
+        for (let step = 1; step < 5; step++) {
+          const gap = oklabDistance(ramp[step - 1], ramp[step]);
+          expect(
+            gap,
+            `${preset}/${theme} steps ${step} and ${step + 1} are ${gap.toFixed(
+              3
+            )} apart in OKLab (${ramp[step - 1]} and ${ramp[step]})`
+          ).toBeGreaterThanOrEqual(0.025);
+        }
+      }
+    }
+  });
+
+  it('ends far more saturated than it starts, whichever theme is on', () => {
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const ramp = moodRamp(preset, theme);
+        const ratio = chromaOf(ramp[4]) / chromaOf(ramp[0]);
+        expect(
+          ratio,
+          `${preset}/${theme} only gains ${ratio.toFixed(2)}x chroma from step 1 to step 5`
+        ).toBeGreaterThanOrEqual(1.5);
+      }
+    }
+  });
+
+  /* The one hue pair the app may not draw, ADR-0012 and palettes.css's own
+     header rule: red to green is the judgment scale, and mood is the metric
+     most likely to be handed one by a well-meaning edit. Both ends are
+     checked, either way round. */
+  it('never runs a preset from red to green', () => {
+    const red = (h: number) => h < 45 || h > 340;
+    const green = (h: number) => h > 120 && h < 180;
+    for (const preset of MOOD_PRESETS) {
+      for (const theme of THEMES) {
+        const [first, , , , last] = moodRamp(preset, theme).map(hueOf);
+        expect(
+          (red(first) && green(last)) || (green(first) && red(last)),
+          `${preset}/${theme} runs ${first.toFixed(0)} deg to ${last.toFixed(0)} deg, which is a red-green scale`
+        ).toBe(false);
       }
     }
   });

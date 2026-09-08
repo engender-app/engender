@@ -191,6 +191,14 @@ describe('rule 5: the radius budget', () => {
      half-discs, and a half-disc is 100% on its two round corners. */
   const allowed = new Set(['0', '1px', '2px', '4px', '6px', '8px', '50%', '100%', 'inherit']);
   const capsule = /\.kit-pill|\.tag-chip/;
+  /* The one corner in the app that is a proportion rather than a px, and the
+     only place a proportion is right: a mood face is a drawing inside a
+     24-unit viewBox, so its block's corner is 6.4 of those units
+     (moodFace.ts's MOOD_BLOCK) and scales with whatever size a surface asks
+     the face for. The ring the picked face takes has to follow the same
+     corner or it cuts across it, which is why this exception is a selector
+     rather than a value (phase 10 ticket 27, ADR-0077). */
+  const moodBlock = /\.mood-face/;
   /* Two files draw something that is deliberately not this app: the decoy
      notes screen (ADR-0035's disguise has to look like somebody else's notes
      app, and a 6px world is now this app's tell) and the demo bar, which is
@@ -227,6 +235,7 @@ describe('rule 5: the radius budget', () => {
           /* The elliptical syntax's separator, not a corner. */
           if (corner === '/') continue;
           if (corner === '999px' && capsule.test(rule.prelude)) continue;
+          if (corner === '26.7%' && moodBlock.test(rule.prelude)) continue;
           expect(
             allowed.has(corner),
             `${where}: ${rule.prelude} { border-radius: ${value} } resolves a corner to ${corner}`
@@ -236,7 +245,7 @@ describe('rule 5: the radius budget', () => {
     }
   }
 
-  it('resolves every corner in the shared sheets to 6px, 8px, 50%, a bar end, or a tag', () => {
+  it("resolves every corner in the shared sheets to 6px, 8px, 50%, a bar end, a tag, or a mood face's own block", () => {
     for (const name of ['kit', 'components', 'app', 'screens'] as const) check(sheet(name), SHEETS[name]);
   });
 
