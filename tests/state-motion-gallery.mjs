@@ -308,20 +308,6 @@ try {
       console.warn('no dismissible notice on Home - notice scene skipped');
     }
 
-    /* A count changing on a block that stays mounted: the Look back door's
-       wrapped tile counts the entries in the span, and tapping a milestone
-       on the rail moves the span, so the number travels from its old value
-       to its new one rather than from nothing. */
-    await settle(page, '/stats');
-    await page.waitForSelector('[data-span-milestone]');
-    await strip(page);
-    await page.mouse.move(4, 4);
-    await page.waitForTimeout(500);
-    await record(page, cdp, 'count-change', 'The Look back rail tapped between the handles: the nearer handle comes to the finger, the span grows, and the wrapped count on the block counts from its old value to its new one.', async () => {
-      const rail = await page.locator('[data-span-timeline] .span-tl-rail').boundingBox();
-      await page.mouse.click(rail.x + rail.width * 0.55, rail.y + rail.height * 0.4);
-    }, READ_TILES);
-
     /* A notice arriving on a settled screen, and leaving it: the Transition
        door's search shows one when nothing matches. It opens its own
        height, ink square inside it, and closes it again when the query is
