@@ -221,7 +221,7 @@
     margin: 0;
     font-family: var(--font-display);
     font-size: var(--text-3xl);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-display);
     line-height: var(--leading-display);
     letter-spacing: var(--display-track);
     text-wrap: balance;

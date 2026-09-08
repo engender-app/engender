@@ -3,9 +3,9 @@
 
      No coloured bar down its side. A 4px accent border-left is named
      outright in the craft floor as the most recognisable AI-UI tell there
-     is, and the slop audit took it off the backup notice this replaces. The
-     weight comes from --outline-strong instead, which is the card's own
-     line one step darker.
+     is, and the slop audit took it off the backup notice this replaces. It
+     is flush on the page between two hairlines (phase 10, rule 4), with a
+     40px square of ink as its mark; kit.css draws it.
 
      The dismiss is a drawn icon, not a multiplication sign standing in for
      one - the same audit, the same list.

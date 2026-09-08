@@ -331,8 +331,8 @@
     gap: var(--space-3);
     padding: var(--space-3);
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
     margin-bottom: var(--space-3);
   }
 
@@ -348,7 +348,7 @@
     width: 100%;
     height: 100%;
     fill: var(--surface-2);
-    stroke: var(--border);
+    stroke: var(--outline);
     stroke-width: 1.5;
   }
 

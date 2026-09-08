@@ -387,7 +387,7 @@
     height: 148px;
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-input);
+    border-radius: var(--r-block);
     overflow: hidden;
   }
 

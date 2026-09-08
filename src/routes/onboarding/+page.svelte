@@ -6,9 +6,9 @@
      someone decides in the first minute and almost never revisits: the flag
      because it is the app's whole look, the check-in because a journal
      nobody is reminded about is a journal that stops after a week. So the
-     flow is welcome, name, flag, scales, lock, check-in, finish, and the
-     order and the skip rules live in $lib/onboarding/steps.ts rather than in
-     a run of `step === 3` comparisons here.
+     flow is welcome, name, flag, scales, areas, lock, check-in, finish, and
+     the order and the skip rules live in $lib/onboarding/steps.ts rather than
+     in a run of `step === 3` comparisons here.
 
      Two rules the user set for this ticket, and they are why the foot of
      every step looks the way it does. Every step that stores something
@@ -51,12 +51,19 @@
     sunGrowth,
     type OnboardingStep
   } from '$lib/onboarding/steps';
+  import { todayEpochDay } from '$lib/data/epochDay';
+  import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
+  import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
+  import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   /* Keyed, not worded, so the flag names translate with the rest of the
      catalogue. The same eight, in the same order, as Settings' own picker -
@@ -99,6 +106,49 @@
       ? tickedScales.filter((k) => k !== key)
       : [...tickedScales, key];
   }
+
+  /* Null until touched, `scales`' own reason: Skip has to mean "leave
+     `onboardingAreas` alone" rather than "store nothing" (phase 10 redesign
+     ticket 22). Reads `prefs.onboardingAreas` rather than
+     `DEFAULT_ONBOARDING_AREAS` directly for the same reason `tickedScales`
+     reads `prefs.activeScales` - a first run reached a second time meets
+     whatever it answered last time, not the app's own default. */
+  let areas = $state<string[] | null>(null);
+  let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
+
+  function toggleArea(key: string) {
+    areas = tickedAreas.includes(key)
+      ? tickedAreas.filter((k) => k !== key)
+      : [...tickedAreas, key];
+  }
+
+  /* The hub's own groups and rows, exactly as `hubRows.ts` and `hubLabels.ts`
+     hand them to the More hub - so this step is the same list under the same
+     headings, met once here and once more on the hub (the ticket's own
+     phrase). Passed a bare, empty reading rather than a real one: nobody has
+     written anything or hidden an area yet on a first run, which resolves
+     every row to its standing "what is behind it" line, `hubRowLine`'s
+     `not-yet` case - the same line the hub shows a fresh journal. Hosted rows
+     (seven of the twenty-seven) are not `hubSections`' business and so do not
+     appear here either; pinning one of them is ticket 14's screen, which
+     `pinnedRows.ts` already notes it inherits.
+
+     Support and Media are left off (Alicja, on the sign-off renders):
+     neither is something a person tracks. Support fronts Safe space and a
+     resource list, and Media fronts what an entry carries rather than a
+     practice of its own - a photo, a recording, a document, all attached to
+     something written rather than kept on their own dated stream. Filtered
+     here rather than in `hubSections` itself, which the More hub still
+     draws whole: this is a question about what to track, and the hub is
+     navigation to everything regardless. */
+  const TRACKABLE_GROUPS = new Set<HubSection['key']>(['body', 'health', 'transition']);
+  const today = todayEpochDay();
+  let sections = $derived(
+    hubSections({ todayEpochDay: today, lastWrites: {}, states: {} }).filter((section) =>
+      TRACKABLE_GROUPS.has(section.key)
+    )
+  );
+
   let lockOnLeave = $state(false);
   let checkIn = $state(false);
   let checkInTime = $state(prefs.checkInTime);
@@ -179,6 +229,7 @@
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
+    else if (step === 'areas') areas = null;
     else if (step === 'lock') lockOnLeave = false;
     else if (step === 'checkin') checkIn = false;
     go(stepAfter(steps, step));
@@ -206,6 +257,7 @@
        draft of it. */
     if (name.trim()) prefs.name = name.trim();
     if (scales) prefs.activeScales = scales;
+    if (areas) prefs.onboardingAreas = areas;
     if (lockOnLeave) prefs.lockOnLeave = true;
     if (checkIn) {
       prefs.checkInEnabled = true;
@@ -320,6 +372,41 @@
                  leaves the flow, and the first run has nowhere to come
                  back to. -->
             <ScaleChecklist ticked={tickedScales} onToggle={toggleScale} />
+          {:else if step === 'areas'}
+            <h1 class="setup-title">{m.ob_areas_title()}</h1>
+            <p class="setup-body">{m.ob_areas_body()}</p>
+            <!-- The hub's own groups and rows, ticked rather than tapped
+                 through - the flag step and the scales step both already
+                 solved "a list you tick" on this screen, so this is that
+                 shape again rather than a new one.
+
+                 The wrapper carries no style of its own; it exists so the
+                 repeated SectionHeading/ListCard pairs are plain block
+                 children of one element rather than direct children of
+                 `.setup-step`'s flex column. A flex container never
+                 collapses margins between its items, so without this a
+                 heading's own 40px top margin would add to the column's
+                 12px gap instead of the two collapsing into one another the
+                 way `.kit-heading`'s own comment assumes. -->
+            <div class="setup-areas">
+              {#each sections as section (section.key)}
+                <SectionHeading text={hubGroupHeading(section.key)} />
+                <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
+                  {#each section.rows as row (row.spec.key)}
+                    <ListRow
+                      key={`area-${row.spec.key}`}
+                      icon={row.spec.icon}
+                      title={hubRowTitle(row.spec.key)}
+                      subtitle={hubRowLine(row.spec.key, row.line, today)}
+                      checked={tickedAreas.includes(row.spec.key)}
+                      chevron={false}
+                      onclick={() => toggleArea(row.spec.key)}
+                      data-hub-section={section.key}
+                    />
+                  {/each}
+                </ListCard>
+              {/each}
+            </div>
           {:else if step === 'lock'}
             {#if awaitingAccessMode}
               <!-- The app-lock toggle that used to head this list is gone
@@ -584,7 +671,7 @@
   .swatch-bloom {
     position: absolute;
     inset: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--r-block);
     border: 2px solid var(--accent);
     background: var(--accent-soft);
     pointer-events: none;
@@ -608,7 +695,7 @@
   .setup-title {
     font-family: var(--font-display);
     font-size: var(--text-3xl);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-display);
     letter-spacing: var(--display-track);
     line-height: var(--leading-display);
     text-wrap: balance;
