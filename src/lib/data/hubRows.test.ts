@@ -1,5 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { AREA_GROUPS, AREA_GROUP_KEYS, FINISH_SUGGESTION_QUIET_DAYS } from './areaGroups.ts';
 import type { AreaStates } from './areaState.ts';
 import { PATHS } from '../components/icons.ts';
@@ -43,6 +44,85 @@ const reading = (over: Partial<HubReading> = {}): HubReading => ({
 const finished = (epochDay: number) => ({ hidden: false, finishedEpochDay: epochDay, suspendedEpochDay: null });
 const suspended = (epochDay: number) => ({ hidden: false, finishedEpochDay: null, suspendedEpochDay: epochDay });
 const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null };
+
+// --- the registry is the only enumeration --------------------------------
+
+/** Every production file that reads this module - phase 10 redesign ticket
+    12's own proof, after `statsAreas.ts` was deleted as a second enumeration
+    of areas kept alive by nothing since ticket 99 item 36. Named rather than
+    globbed, the choice `feature-screens.test.ts` already made and for the
+    same reason - a surface silently added to this list and a surface
+    silently dropped from it read identically to a glob.
+
+    What this proves and what it does not: every file that imports `hubRows`
+    is one of these five, so a sixth reader appearing anywhere fails here
+    rather than passing silently. It cannot see a second registry built
+    without importing this module at all - no scan can - which is why the
+    stronger claim is the deletion itself: `statsAreas.ts` was the one file
+    doing that, confirmed by grep before it was removed, and nothing has
+    replaced it. */
+const REGISTRY_SURFACES = [
+  'src/lib/components/HostedRows.svelte',
+  'src/lib/data/pinnedRows.ts',
+  'src/lib/data/vocabulary/hubLabels.ts',
+  'src/routes/more/+page.svelte',
+  'src/routes/onboarding/+page.svelte'
+].sort();
+
+/** Every file under `src` whose source imports `hubRows`, minus this file's
+    own test and the tests that cross-check the registry rather than read
+    it to draw something. A `.svelte` file's script block is where the
+    import lives; reading the whole file catches it the same as reading a
+    `.ts` file whole does. */
+function filesReadingTheRegistry(): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync('src', { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (!/\.(ts|svelte)$/.test(entry.name)) continue;
+    if (/\.test\.ts$/.test(entry.name)) continue;
+    const path = `${entry.parentPath}/${entry.name}`.replace(/^\.\//, '');
+    if (path === 'src/lib/data/hubRows.ts') continue;
+    const source = readFileSync(path, 'utf8');
+    if (/from ['"][^'"]*\bhubRows(?:\.ts)?['"]/.test(source)) found.push(path);
+  }
+  return found.sort();
+}
+
+test('the registry is the only enumeration of areas, and these are the surfaces that read it', () => {
+  assert.deepEqual(filesReadingTheRegistry(), REGISTRY_SURFACES);
+});
+
+test('one registration reaches exactly the surface a row names as its home, and search, for every row - not just a sample', () => {
+  /* Not a fabricated row - HUB_ROWS is a `const` array and injecting one
+     would need a second entry point this file does not have, which is
+     itself part of the proof: there is nowhere else to register one. So
+     this proves the general claim over every real row instead, each
+     standing for the hypothetical one its own shape would be: a row whose
+     `home` is a hub group is drawn there and nowhere else; a row whose
+     `home` names a host is drawn there and nowhere else; and either kind is
+     found by search. One declaration in `ROWS`, checked against all three
+     surfaces, with nothing else to edit for any of them. */
+  const onHub = new Set(hubSections(reading()).flatMap((section) => section.rows.map((row) => row.spec.key)));
+
+  for (const row of HUB_ROWS) {
+    if (isHubGroup(row.home)) {
+      assert.ok(onHub.has(row.key), `${row.key} names a hub group but the hub never draws it`);
+    } else {
+      assert.ok(!onHub.has(row.key), `${row.key} is hosted and still drawn by the hub`);
+      assert.ok(
+        rowsHostedBy(row.home).some((hosted) => hosted.key === row.key),
+        `${row.key} names ${row.home} as its home but that host never draws it`
+      );
+    }
+
+    /* The one row search may not reach, whatever it is called (ADR-0043) -
+       see the dedicated test below, which is where that exception is
+       argued rather than just applied. */
+    if (row.key === 'cycle-events') continue;
+    const matches = hubRowsMatching(reading(), row.key, (key) => key);
+    assert.ok(matches.some((match) => match.spec.key === row.key), `${row.key} is registered but search cannot find it`);
+  }
+});
 
 // --- the row list itself ----------------------------------------------------
 

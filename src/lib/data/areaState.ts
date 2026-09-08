@@ -264,10 +264,13 @@ export function areaStateResting(state: Pick<AreaState, 'hidden' | 'finishedEpoc
     fronting only it can never go this way - the asymmetry the ADR asks for,
     expressed rather than special-cased.
 
-    Here rather than in either caller because both surfaces that front areas
-    ask it: the More hub's rows (`hubRows.ts`) and the stats tab's cards
-    (`statsAreas.ts`), which used to answer it per card off a single named
-    area and so could disagree with the row it sits behind. */
+    Here rather than in its caller because it used to answer this for two
+    surfaces that front areas - the More hub's rows and the stats tab's
+    cards (`statsAreas.ts`, deleted by phase 10 redesign ticket 12), which
+    each asked it per card off a single named area and so could disagree
+    with the row it sits behind. One caller is left, `hubRows.ts`'s
+    `rowHidden`, and the seam stays: the rule an area's own screen and the
+    hub have to agree on belongs to neither. */
 export function areasHidden(areas: readonly ArchiveSectionName[], states: AreaStates): boolean {
   if (areas.length === 0) return false;
   return areas.every((area) => area !== 'cycleEvents' && areaHidden(area, states));
