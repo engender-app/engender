@@ -3414,5 +3414,10 @@
   "calendar_event_appointment_title": "Appointment",
   "calendar_event_surgery_title": "Procedure",
   "calendar_event_letter_unlock_title": "Letter",
+  "calendar_handoff_button": "Add to calendar",
+  "calendar_handoff_disclosure": "Whoever can see this calendar sees the title below.",
+  "calendar_handoff_title_label": "Title",
+  "calendar_handoff_time_label": "Time (optional)",
+  "calendar_handoff_share": "Share",
   "agenda_passed_dose": "A scheduled dose on {date}"
 }

@@ -4224,6 +4224,55 @@ try {
 } catch (e) { fail('the appointment record', e); }
 
 try {
+  /* The calendar handoff (phase 10 redesign ticket 18, ADR-0067): the
+     sheet's default title stays neutral until the person changes it, and
+     an edited title and a typed time both reach the file that gets
+     shared. Runs against the appointment surface; the surgery date and a
+     letter's unlock day share this same component rather than a second
+     implementation. */
+  await fresh('/health/appointments');
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  await page.fill('#appointment-kind', 'ginekolog');
+  await fillDate(page, '#appointment-date', '2026-11-03');
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("ginekolog")', { timeout: 8000 }); // text-under-test
+  await page.locator('[data-appointment]', { hasText: 'ginekolog' }).click(); // text-under-test
+
+  await page.waitForSelector('[data-add-to-calendar]');
+  await page.click('[data-add-to-calendar]');
+  await page.waitForSelector('#calendar-handoff-title');
+  const defaultTitle = await page.inputValue('#calendar-handoff-title');
+  if (!defaultTitle || /ginekolog/i.test(defaultTitle)) {
+    throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
+  }
+  await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
+  await page.fill('#calendar-handoff-time', '09:15');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-share-to-calendar]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.ics')) {
+    throw new Error(`the calendar handoff is not named as an .ics file: ${download.suggestedFilename()}`);
+  }
+  const ics = await readFile(await download.path(), 'utf8');
+  if (!ics.includes('SUMMARY:Wizyta u lekarza')) {
+    throw new Error('the shared file does not carry the edited title');
+  }
+  if (!ics.includes('DTSTART:20261103T091500')) {
+    throw new Error('the shared file does not carry the day and time that were set');
+  }
+
+  // The editor sheet stayed open behind the handoff sheet the whole time -
+  // this is cleanup, not a fresh open.
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  ok('calendar handoff: the default title stays neutral, an edited title and time reach the shared file');
+} catch (e) { fail('the calendar handoff', e); }
+
+try {
   /* In the room (phase 8 features ticket 60): the standing prep list read
      one question per screen, and what gets jotted arriving in the debrief
      attributed to the question it was typed under.
