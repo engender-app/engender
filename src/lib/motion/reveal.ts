@@ -126,8 +126,22 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * 16, "when i go back to more there is a sliding-up animation with a yank at
  * the end... i just want a smooth quick transition").
  */
-export function disclose(node: Element, params?: { skip?: boolean }): TransitionConfig {
+export function disclose(
+  node: Element,
+  params?: { skip?: boolean },
+  /* `fadeEdges`: the panel primitive's closing (redesign ticket 25). A
+     box's hairlines were cut to nothing on the first frame of a close,
+     because a border cannot shrink below a device pixel and stalled the
+     box at its own edge; Alicja read that first frame as the line simply
+     disappearing and asked for it to "fade out with scale like other
+     lines". So the edges stay for the travel and the whole box fades over
+     its last third, lines included - the box is nearly nothing by then, so
+     what fades is the line. Arrivals never take this: a block arriving
+     from nothing must not fade in. */
+  options?: { fadeEdges?: boolean }
+): TransitionConfig {
   if (isReducedMotion() || params?.skip) return { duration: 0 };
+  const fadeEdges = options?.fadeEdges === true;
 
   const style = getComputedStyle(node);
   const height = parseFloat(style.height) || 0;
@@ -235,12 +249,18 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
       `height: ${t * (height + swallowed)}px;` +
       `padding-top: ${t * paddingTop}px;` +
       `padding-bottom: ${t * paddingBottom}px;` +
-      `border-top-width: ${t >= 1 ? borderTop : 0}px;` +
-      `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;` +
+      `border-top-width: ${fadeEdges || t >= 1 ? borderTop : 0}px;` +
+      `border-bottom-width: ${fadeEdges || t >= 1 ? borderBottom : 0}px;` +
       `margin-top: ${t * (marginTop - swallowed)}px;` +
-      `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;`
+      `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;` +
+      (fadeEdges ? `opacity: ${Number(Math.min(1, t / EDGES_GONE_OVER).toFixed(3))};` : '')
   };
 }
+
+/** The last share of a closing panel's travel over which it fades, hairlines
+    and all: with the edges kept for the travel, this is what takes the last
+    device pixel of a line away without a frame in which it vanishes. */
+const EDGES_GONE_OVER = 0.35;
 
 /** The top margin of a box's first child that collapses through the box's
     own top edge at rest: block flow, nothing between the two edges
@@ -662,7 +682,12 @@ export function collapse(
     if (options?.direction === 'in' && node.getBoundingClientRect().height <= FROM_ABOVE_MAX) {
       return arrivesFromAbove(node);
     }
-    return { ...disclose(node, params), duration: motionDuration('--dur-slow') };
+    /* A tall panel arriving opens in place with no fade; only a close fades
+       its edges out. */
+    return {
+      ...disclose(node, params, { fadeEdges: options?.direction !== 'in' }),
+      duration: motionDuration('--dur-slow')
+    };
   }
   /* Something on the line below is about to rewrap into this space, so it is
      not being given back to the neighbour and the neighbour must not grow
