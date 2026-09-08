@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { DECOY_NAME, appWordmark, tabIdentity } from './identity.ts';
+import { DECOY_NAME, appWordmark, hubTabLabel, tabIdentity } from './identity.ts';
 
 describe('the wordmark a surface prints', () => {
   it('is the decoy name under disguise, whatever the app is called', () => {
@@ -27,6 +27,16 @@ describe('the wordmark a surface prints', () => {
     /* The name is a parameter because it is a catalogue lookup and this
        tier may not import paraglide (ADR-0016). */
     expect(appWordmark(false, 'enGender')).toBe('enGender');
+  });
+});
+
+describe('what the fourth tab says (ticket 08)', () => {
+  it('reads the generic hub label under disguise, not the subject', () => {
+    expect(hubTabLabel(true, 'More', 'Transition')).toBe('More');
+  });
+
+  it('names the whole subject otherwise', () => {
+    expect(hubTabLabel(false, 'More', 'Transition')).toBe('Transition');
   });
 });
 

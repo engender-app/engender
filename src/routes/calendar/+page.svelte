@@ -364,27 +364,30 @@
          twice. Here the region stands still and only its contents change,
          and aria-relevant defaults to additions, so the outgoing month's
          removal says nothing and the incoming month is announced once. -->
-    {#snippet lead()}
-      <h2 class="cal-month" data-cal-month aria-live="polite">
-        <span class="cal-month-slot">
-          {#key monthLabel}
-            <span in:labelIn out:labelOut>
-              <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
-                {monthLabel}
-              </button>
-            </span>
-          {/key}
-        </span>
-      </h2>
-    {/snippet}
-    {#snippet actions()}
-      <a class="icon-btn press" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
-      <!-- Starred was reachable only from inside search, which is a shelf
-           nobody finds by looking for it. Both entry points are the field's
-           now, since this is the door they belong to. -->
-      <a class="icon-btn press" href="/search/starred" aria-label={m.starred_shelf_open()}>
-        <Icon name="star" size={22} />
-      </a>
+    {#snippet field()}
+      <div class="cal-field">
+        <h2 class="cal-month" data-cal-month aria-live="polite">
+          <span class="cal-month-slot">
+            {#key monthLabel}
+              <span in:labelIn out:labelOut>
+                <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
+                  {monthLabel}
+                </button>
+              </span>
+            {/key}
+          </span>
+        </h2>
+        <!-- On the month's own line, not in `actions`, which is the title's
+             line: rule 7 puts all three of these on one line, and the title
+             this door does not show is what the line above would have been
+             for. Starred was reachable only from inside search until now,
+             which is a shelf nobody finds by looking for it; both entry
+             points are the field's, since this is the door they belong to. -->
+        <a class="icon-btn press" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
+        <a class="icon-btn press" href="/search/starred" aria-label={m.starred_shelf_open()}>
+          <Icon name="star" size={22} />
+        </a>
+      </div>
     {/snippet}
   </ScreenHeader>
 
@@ -522,6 +525,14 @@
      ticket rewrites all of them, so it takes them with it.
 
      ---------- The month, on the field ---------- */
+
+  /* The field's one line: the month, then the two controls at its end. */
+  .cal-field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .cal-field .cal-month { flex: 1; }
 
   /* The section-heading size (rule 2), which is what rule 7 gives this door
      in place of a title: it names the month the strip under it is drawing,

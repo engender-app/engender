@@ -271,6 +271,28 @@
 .day-add { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
 .day-add .btn { width: 100%; }
 
+/* ---------- The Transition door ----------
+
+   The count above the results, which exists to be announced rather than
+   read: a list changing under a box somebody is typing into says nothing to
+   a screen reader on its own (redesign ticket 15). It is in the document at
+   rest, empty, because a live region has to be there before its content
+   changes for the change to be announced - and an empty one may not take a
+   block's margin with it. */
+.hub-count {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  margin-top: 0;
+}
+/* Empty, it is out of the flow entirely rather than a block with the
+   screen's 20 under it: at rest the field meets the first group heading. */
+.hub-count:empty { display: none; }
+/* While a query is being answered it is empty and still holds its line: the
+   count waits for both halves of the search, and a line that came and went
+   during the wait would move the list under a reading finger. After the
+   `:empty` rule, which it has to beat at equal specificity. */
+.hub-count.is-searching { display: block; min-height: 1.5em; }
+
 /* ---------- Search ---------- */
 .search-box {
   display: flex; align-items: center; gap: var(--space-2);
@@ -281,9 +303,29 @@
   color: var(--text-2);
 }
 .search-box:focus-within { border-color: var(--accent); }
+/* The magnifier is a glyph, not something to be squeezed: a flex item's
+   automatic minimum is its content, and an `<input>`'s is roughly twenty
+   characters, so the input claimed the whole row and the icon shrank to
+   nothing. Both halves of the fix are needed - the icon refuses to shrink,
+   and the input is allowed to. Found at 195px, which is what 200% zoom on a
+   390px phone leaves: the icon had vanished and the Polish placeholder ran
+   out of the box and off the screen (redesign ticket 15's renders). */
+.search-box .icon { flex: 0 0 auto; }
 .search-input {
-  flex: 1; border: none; background: none; font: inherit; color: var(--text);
+  flex: 1; min-width: 0; border: none; background: none; font: inherit; color: var(--text);
   min-height: 48px; outline: none;
+}
+/* The placeholder is a colour like any other, and this box never set it:
+   Chromium's own #757575 measured 4.31:1 on the light page and 4.03:1 on
+   the dark one, both under the 4.5:1 body floor, and on the Transition
+   door the placeholder is the field's only visible label. --text-2 is what
+   `.input::placeholder` already uses (components.css) and what
+   palette-contrast.test.ts holds against the page on all eight flags.
+   `opacity: 1` because Firefox dims a placeholder by default and would
+   take the token back under the floor. */
+.search-input::placeholder {
+  color: var(--text-2);
+  opacity: 1;
 }
 /* components.css's global :focus-visible rule outranks the bare outline:
    none above ((0,2,0) against (0,1,0)), and wins on a click too - Chromium's
