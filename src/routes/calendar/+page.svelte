@@ -275,15 +275,24 @@
     monthOpen = !monthOpen;
     flushSync();
     const duration = motionDuration('--dur-slow');
+    /* Clipped, and its rows pinned at what they measure now. A definite
+       height smaller than the content compresses a grid's auto tracks, so
+       the panel would squash its own contents on the way instead of
+       uncovering them - which is the finding disclose() in
+       motion/reveal.ts carries, and it pins the same property for it.
+       Measured here it is 6px of drift rather than the notice's whole
+       icon, but a mask that is 6px of scale is still not a mask. Both go
+       back the moment the travel is over. */
     body.style.overflow = 'clip';
-    const opening = body.animate(
-      [{ height: `${from}px` }, { height: `${body.getBoundingClientRect().height}px` }],
-      { duration, easing: EASE_OUT_CSS }
-    );
-    opening.finished.then(
-      () => (body.style.overflow = ''),
-      () => (body.style.overflow = '')
-    );
+    body.style.gridTemplateRows = getComputedStyle(body).gridTemplateRows;
+    const settle = () => {
+      body.style.overflow = '';
+      body.style.gridTemplateRows = '';
+    };
+    body.animate([{ height: `${from}px` }, { height: `${body.getBoundingClientRect().height}px` }], {
+      duration,
+      easing: EASE_OUT_CSS
+    }).finished.then(settle, settle);
     for (const box of regroupSteps(swatches, boxesOf('data-cal-cell'))) {
       travel(box, 'data-cal-cell', duration, true);
     }
