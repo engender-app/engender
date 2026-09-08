@@ -800,6 +800,15 @@ export function hubSections(reading: HubReading): HubSection[] {
     it ended, and every match carries the second line its section would have
     given it.
 
+    The hidden half of that is navigation, not search, and ADR-0052 draws the
+    line where this does: "hiding takes an area out of the navigation" and
+    "a hidden or finished area stays searchable, because a search that stops
+    finding things a person wrote" is the risk the whole idea carries. What
+    this function answers is which of the door's *rows* a word reaches, and a
+    hidden area has no row anywhere; the records inside it are the other half
+    of the door's search and are not filtered by any of this
+    (`textSearch.ts`), so nothing somebody wrote goes missing.
+
     The titles are handed in, not resolved: they are paraglide's and nothing
     the Node tier touches may import that (ADR-0016). `tagIdsMatching` takes
     the labels a screen showed for exactly the same reason, and this matches
