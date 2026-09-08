@@ -34,9 +34,12 @@ describe('what the More hub is built from', () => {
     expect(markup).toMatch(/<ScreenHeader\s[^>]*titleHidden/);
   });
 
-  it('draws every group row from one templated ListRow, plus the trailing Settings row', () => {
+  it('draws every group row from one templated ListRow, and no other', () => {
+    /* The trailing Settings row left this screen entirely (ticket 09,
+       ADR-0076): preferences are chrome now, reached from Today's gear and
+       the rail's fifth row, not a row of the hub's own. */
     const rowTags = markup.match(/<ListRow\b[^>]*\/>/gs) ?? [];
-    expect(rowTags.length).toBe(2); // the templated hub row, and the Settings row
+    expect(rowTags.length).toBe(1);
   });
 
   it('reads its section colours from the shell rather than from the document', () => {
@@ -73,12 +76,12 @@ describe('what the More hub is built from', () => {
 
   it('leaves every word of every row to the vocabulary module', () => {
     /* A title or a line written inline here is one `hubLabels.ts`'s full
-       `Record` over the row keys cannot see missing. The two `m.` calls left
-       are the hidden screen title and the trailing Settings row, which is
-       not one of the journal's areas. */
+       `Record` over the row keys cannot see missing. The one `m.` call left
+       is the hidden screen title - the trailing Settings row that used to
+       account for the other two left with it (ticket 09). */
     const paraglide = more.match(/\bm\.[a-z_]+\(/g) ?? [];
 
-    expect(paraglide.sort()).toEqual(['m.hub_screen_title(', 'm.hub_settings_row_sub(', 'm.nav_settings(']);
+    expect(paraglide.sort()).toEqual(['m.hub_screen_title(']);
     expect(more).toContain("from '$lib/data/vocabulary/hubLabels'");
   });
 });

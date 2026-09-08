@@ -257,6 +257,18 @@
       <Icon name={item.icon} size={22} /><span>{item.label()}</span>
     </a>
   {/each}
+  <!-- Preferences are chrome, not content (ticket 09; ADR-0076): a fifth
+       row, sunk to the rail's foot by its own margin and set apart from the
+       four doors by a rule, since the rail has room to say "Settings" where
+       the bar does not. Not one of `NAV`'s four - it carries no
+       `data-rail-item` and takes no pill, because activeTabKey already
+       resolves `/settings` to the fourth door's own key (ADR-0036's href/key
+       split) and a second lit row for the same key would be a lie about
+       there being two. Plain text, since "Settings" says nothing about what
+       the app is under disguise either. -->
+  <a class="rail-item rail-settings press" data-rail-settings href="/settings">
+    <Icon name="settings" size={22} /><span>{m.nav_settings()}</span>
+  </a>
 </nav>
 
 <!-- The indicator is on the anchor, not on a wrapper inside it, so it covers
