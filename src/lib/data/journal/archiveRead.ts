@@ -20,6 +20,7 @@
    through readFlatTable like any other flat area's. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import type { ProcedureKind } from '../types';
 import type {
   ArchiveAffirmation,
   ArchiveBodyRegion,
@@ -617,8 +618,10 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     name: string;
     surgery_epoch_day: number | null;
     notes: string;
+    kind: ProcedureKind;
+    dilation_opt_in: number;
   }>(
-    'SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
+    'SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in FROM procedure ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id'
   );
   const photosById = groupBy(
     procedurePhotos,
@@ -631,7 +634,9 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
     name: procedure.name,
     surgeryEpochDay: procedure.surgery_epoch_day,
     notes: procedure.notes,
-    photos: photosById.get(procedure.id) ?? []
+    photos: photosById.get(procedure.id) ?? [],
+    kind: procedure.kind,
+    dilationOptIn: procedure.dilation_opt_in !== 0
   }));
 }
 

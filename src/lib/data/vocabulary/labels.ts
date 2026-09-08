@@ -24,7 +24,7 @@ import type {
   EntryTemplateKey,
   MilestoneTemplateKey
 } from './builtins';
-import type { CycleEventKind, HairRemovalMethod, TryoutKind } from '../types';
+import type { CycleEventKind, HairRemovalMethod, ProcedureKind, TryoutKind } from '../types';
 import type { HairScale, NorwoodHamiltonStage, SinclairGrade } from '../hairStageScales';
 import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 import type { GarmentCategoryKey } from '../garmentCategories';
@@ -371,6 +371,50 @@ const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
 
 /** The name of a cycle event kind. */
 export const cycleEventKindName = (kind: CycleEventKind): string => CYCLE_EVENT_KIND_NAME[kind]();
+
+/* A procedure's kind (phase 9 carpet ticket 17) is a fixed set, not a
+   built-in row, the same reasoning TRYOUT_KIND_NAME gives - `custom` gets a
+   name here too, since the picker lists it beside the compiled-in ones. */
+const PROCEDURE_KIND_NAME: Record<ProcedureKind, Message> = {
+  vaginoplasty: m.procedure_kind_vaginoplasty,
+  vulvoplasty: m.procedure_kind_vulvoplasty,
+  orchiectomy: m.procedure_kind_orchiectomy,
+  breast_augmentation: m.procedure_kind_breast_augmentation,
+  facial_feminization: m.procedure_kind_facial_feminization,
+  tracheal_shave: m.procedure_kind_tracheal_shave,
+  voice_surgery: m.procedure_kind_voice_surgery,
+  chest_reconstruction: m.procedure_kind_chest_reconstruction,
+  hysterectomy: m.procedure_kind_hysterectomy,
+  oophorectomy: m.procedure_kind_oophorectomy,
+  phalloplasty: m.procedure_kind_phalloplasty,
+  metoidioplasty: m.procedure_kind_metoidioplasty,
+  body_contouring: m.procedure_kind_body_contouring,
+  hair_transplant: m.procedure_kind_hair_transplant,
+  custom: m.procedure_kind_custom
+};
+
+/** The name of a procedure's kind, including `custom`. */
+export const procedureKindName = (kind: ProcedureKind): string => PROCEDURE_KIND_NAME[kind]();
+
+/** Every procedure kind, compiled-in set first and `custom` last (CONTEXT.md,
+    Surgery) - what the procedure editor's kind picker offers. */
+export const PROCEDURE_KINDS: ProcedureKind[] = [
+  'vaginoplasty',
+  'vulvoplasty',
+  'orchiectomy',
+  'breast_augmentation',
+  'facial_feminization',
+  'tracheal_shave',
+  'voice_surgery',
+  'chest_reconstruction',
+  'hysterectomy',
+  'oophorectomy',
+  'phalloplasty',
+  'metoidioplasty',
+  'body_contouring',
+  'hair_transplant',
+  'custom'
+];
 
 
 const TAG_GROUP_NAME: Record<BuiltInTagGroupKey, Message> = {

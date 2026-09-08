@@ -86,7 +86,9 @@ const procedure: Procedure = {
   name: 'Vaginoplasty',
   surgeryEpochDay: TODAY + 10,
   consults: [],
-  notes: ''
+  notes: '',
+  kind: 'vaginoplasty',
+  dilationOptIn: false
 };
 
 const letters: LetterSeal[] = [

@@ -30,7 +30,7 @@
    removeFilesOf reclaims them the same way on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure } from '../types';
+import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure, ProcedureKind } from '../types';
 import type { AppointmentsArea } from './appointments';
 import type { ChecklistsArea } from './checklists';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -60,6 +60,12 @@ interface ProcedureInput {
       notes in one call; `setNotes` is how notes are edited afterwards, so
       an ordinary name/date edit cannot blank them by omission. */
   notes?: string;
+  /** Defaults to `custom` (phase 9 carpet ticket 17) - an existing
+      procedure's editor always echoes its current kind back here, so this
+      default is only ever reached by a brand-new procedure. */
+  kind?: ProcedureKind;
+  /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
+  dilationOptIn?: boolean;
 }
 
 /** One dated recovery photo. Its own shape rather than hairProgress.ts's
@@ -153,6 +159,8 @@ type ProcedureRow = {
   name: string;
   surgery_epoch_day: number | null;
   notes: string;
+  kind: ProcedureKind;
+  dilation_opt_in: number;
 };
 
 export function makeProceduresArea(
@@ -174,7 +182,7 @@ export function makeProceduresArea(
       // would sort NULL to the front in SQLite, putting a procedure with no
       // date yet ahead of one already had.
       const rows = await driver.query<ProcedureRow>(
-        `SELECT id, uuid, name, surgery_epoch_day, notes FROM procedure
+        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
       // The appointments that name a procedure, grouped by it and read in
@@ -188,17 +196,21 @@ export function makeProceduresArea(
         name: row.name,
         surgeryEpochDay: row.surgery_epoch_day,
         notes: row.notes,
-        consults: consults.get(row.uuid) ?? []
+        consults: consults.get(row.uuid) ?? [],
+        kind: row.kind,
+        dilationOptIn: row.dilation_opt_in !== 0
       }));
     },
 
     async upsertProcedure(input) {
       const surgeryEpochDay = input.surgeryEpochDay ?? null;
+      const kind = input.kind ?? 'custom';
+      const dilationOptIn = input.dilationOptIn ?? false;
 
       if (input.id) {
         const result = await driver.run(
-          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, updated_at = ? WHERE uuid = ?',
-          [input.name, surgeryEpochDay, now(), input.id]
+          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, updated_at = ? WHERE uuid = ?',
+          [input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, now(), input.id]
         );
         assertChanged(result, `procedure: ${input.id}`);
         return input.id;
@@ -206,8 +218,8 @@ export function makeProceduresArea(
 
       const uuid = mintUuid();
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [uuid, input.name, surgeryEpochDay, input.notes ?? '', now()]
+        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, now()]
       );
       return uuid;
     },
