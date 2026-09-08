@@ -284,6 +284,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     file: 'src/lib/components/kit/ListRow.svelte',
     count: 5,
     reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it (ticket 99 item 10)'
+  },
+  {
+    file: 'src/lib/components/SpanTimeline.svelte',
+    count: 3,
+    reason:
+      'the rail answers a touch by moving the span itself - a handle follows the finger and the clip travels - so a scale on an era, a mark or a handle would be a second answer to the same touch (redesign ticket 11)'
   }
 ];
 
