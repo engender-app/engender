@@ -93,6 +93,26 @@
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
+  /* Two curves for the two edges of a shape that travels in stages
+     (redesign ticket 26), and what separates them is only how much of a
+     gather each one starts with.
+
+     --ease-out-soft is --ease-out with the instant off the front. --ease-out
+     leaves at four times its average speed, which is right for something
+     appearing and wrong for a long edge setting off: at 16ms it was already
+     29% of the way there, so the leading edge read as a jump followed by a
+     drift (Alicja, on the first flipbook: "the lead must be a little bit
+     ease-in too").
+
+     --ease-in-out is the edge left behind. It starts from a stop after the
+     edge ahead of it has gone, so it gathers before it sheds - but only
+     just: a full ease-in held it still for another 80ms after its delay had
+     already passed, which read as a snap rather than a catch-up. Its own
+     initial slope is 0.4 against the leading curve's 0.84, so the two are
+     the same gesture at two weights rather than two different ideas. */
+  --ease-out-soft: cubic-bezier(0.38, 0.32, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.45, 0.18, 0.3, 1);
+
   /* Phase 5 ticket 29 removed an --ease-spring from beside this. Its
      numbers are deliberately not repeated here: the detector scans
      comments too, and quoting them keeps it flagging a curve nothing uses.
