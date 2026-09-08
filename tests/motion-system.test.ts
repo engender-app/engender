@@ -838,13 +838,32 @@ describe('ticket 25: every state change moves', () => {
     expect(declarations(halves?.body ?? '')['animation-duration']).toBe('var(--dur-med)');
   });
 
-  it('crossfades the field over --dur-crossfade under both reduced-motion paths', () => {
-    const reduced = rules(app)
-      .filter(isReduceContext)
-      .filter((rule) => rule.prelude.includes('view-transition-group(field)'));
-    expect(reduced.length, 'both reduced-motion paths clamp the field group').toBe(2);
-    for (const rule of reduced) {
-      expect(declarations(rule.body)['animation-duration']).toMatch(/var\(--dur-crossfade\) !important/);
+  /* Under reduced motion the field's box cuts (a box tweening between two
+     heights is movement) and its two halves fade out, then in, with the
+     screen's: the outgoing image to the page over --dur-crossfade, the
+     incoming one up from it over the next, so no frame holds two doors at
+     once. Both paths, both halves. */
+  it('cuts the field box and fades its halves out then in under both reduced-motion paths', () => {
+    const reduced = rules(app).filter(isReduceContext);
+    const group = reduced.filter((rule) => rule.prelude.includes('view-transition-group(field)'));
+    expect(group.length, 'both reduced-motion paths clamp the field group').toBe(2);
+    for (const rule of group) expect(declarations(rule.body)['animation-duration']).toBe('1ms !important');
+
+    const old = reduced.filter((rule) => rule.prelude.includes('view-transition-old(field)'));
+    const fresh = reduced.filter((rule) => rule.prelude.includes('view-transition-new(field)'));
+    expect(old.length, 'the outgoing half, both paths').toBe(2);
+    expect(fresh.length, 'the incoming half, both paths').toBe(2);
+    for (const rule of old) {
+      const d = declarations(rule.body);
+      expect(d['animation-name']).toBe('screen-fade-away');
+      expect(d['animation-duration']).toBe('var(--dur-crossfade) !important');
+      expect(d['animation-delay']).toBeUndefined();
+    }
+    for (const rule of fresh) {
+      const d = declarations(rule.body);
+      expect(d['animation-name']).toBe('screen-crossfade');
+      expect(d['animation-delay'], 'the incoming half waits for the outgoing one').toBe('var(--dur-crossfade)');
+      expect(d['animation-fill-mode'], 'held at its first frame through the wait').toBe('both');
     }
   });
 });

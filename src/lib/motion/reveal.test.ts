@@ -142,6 +142,47 @@ describe('tier 3, a group opening its own height', () => {
     stubDocument(true, true, { height: '180px' });
     expect(disclose(node).duration).toBe(0);
   });
+
+  /* Redesign ticket 25: a card tile carries min-height 176px, and a height
+     travel under a floor goes nowhere - the box stood at full size from the
+     first frame. The travel owns the whole box for its length. */
+  it('lifts any min-height for the travel, so a floored box can actually close', () => {
+    stubDocument(false, true, { height: '176px', paddingTop: '0px', paddingBottom: '0px' });
+    expect(frame(disclose(node).css!, 0.5)).toContain('min-height: 0');
+  });
+
+  /* The 20px at the very end (Alicja, notice dismissed on Home, frames 32 to
+     33). An open box is a formatting context, so the margins either side of
+     it are both spent; the frame it is gone they collapse into the larger.
+     The bottom margin therefore ends at minus the smaller neighbour, which
+     is what collapsing takes away, and the page never has to. */
+  it('ends its bottom margin where the neighbours will collapse to, in block flow', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', display: 'block' });
+    const between = {
+      parentElement: {},
+      previousElementSibling: {},
+      nextElementSibling: {}
+    } as unknown as Element;
+    /* One computed style for every element in the stub: the node's own
+       margin-bottom is 20 and so is the block above's; the heading below
+       gets its 40 through the same table, so the smaller of the pair is
+       20 and the box ends at -20. */
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) =>
+      el === (between as unknown as { nextElementSibling: unknown }).nextElementSibling
+        ? { ...shared(), marginTop: '40px' }
+        : shared();
+    const { css } = disclose(between);
+    expect(frame(css!, 1)).toContain('margin-bottom: 20px');
+    expect(frame(css!, 0)).toContain('margin-bottom: -20px');
+  });
+
+  it('leaves the bottom margin at zero inside a flex or grid parent, where margins never collapse', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '20px', display: 'flex' });
+    const inRow = { parentElement: {}, previousElementSibling: {}, nextElementSibling: {} } as unknown as Element;
+    expect(frame(disclose(inRow).css!, 0)).toContain('margin-bottom: 0px');
+  });
 });
 
 describe('tier 3, a panel giving its space back', () => {
@@ -421,6 +462,30 @@ describe('tier 3, a panel giving its space back', () => {
     const node = panel({ beside: [[0, 100]] });
     markScreenArrival(performance.now() - 1000);
     expect(collapse(node, undefined, { direction: 'in' }).duration).toBe(380);
+  });
+
+  /* Redesign ticket 25, Alicja on the fold: the new tile should arrive the
+     way a tile closes, "with the only difference being the new one comes
+     from above". Down a column the block keeps its size, is pulled up by the
+     travel still to come and clipped by the same amount, so its laid-out
+     height grows from nothing and its top edge is the last thing to show. */
+  it('comes down from above when it arrives alone in a column', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px' });
+    markScreenArrival(performance.now() - 1000);
+    const { css, duration } = collapse(node, undefined, { direction: 'in' });
+    expect(duration).toBe(380);
+    expect(frame(css!, 0)).toContain('clip-path: inset(100px 0 0 0)');
+    expect(frame(css!, 0)).toContain('margin-top: -100px');
+    expect(frame(css!, 1)).toContain('clip-path: inset(0px 0 0 0)');
+    expect(frame(css!, 1)).toContain('margin-top: 0px');
+    expect(frame(css!, 0.5)).not.toContain('height:');
+  });
+
+  it('still gives its height back from the bottom on the way out', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    const { css } = collapse(node, undefined, { direction: 'out' });
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 1)).toContain('height: 100px');
   });
 
   /* Redesign ticket 25: the grid's stagger (kit.css, --tile-index by
