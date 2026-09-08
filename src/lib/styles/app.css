@@ -796,15 +796,19 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    1ms at the token, so the blind cuts to its new height, which is the
    substitute the contract asks for. */
 /* Over the content and in the order the field itself paints them: the
-   blind's colour, the sun's rings on it, the type over both. Written out
+   blind's colour, the type on it, and the sun over both. Written out
    because a group with no z-index of its own falls in where its name was
    first encountered, which is under the two groups above.
 
    The blind's group is pinned rather than tweened: it holds the incoming
    blind's box, and the edge is the only thing that moves. */
 ::view-transition-group(blind) { z-index: 3; animation: none; }
-::view-transition-group(*.sun-ring) { z-index: 4; }
-::view-transition-group(*.field-part) { z-index: 5; }
+::view-transition-group(*.field-part) { z-index: 4; }
+/* The sun above everything the field carries, both closing and opening: it
+   is the app's own mark rather than one more thing painted on a card, and a
+   ring passing behind a title that is on its way out reads as the drawing
+   being interrupted (Alicja, 2026-09-09, on Transition to Today). */
+::view-transition-group(*.sun-ring) { z-index: 5; }
 ::view-transition-old(blind),
 ::view-transition-new(blind) {
   animation: blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
