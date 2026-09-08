@@ -2483,7 +2483,12 @@ a.kit-entry:active {
 }
 
 /* A 14px flat block with 2px ends (phase 10, rule 9), down from a 26px
-   pill. */
+   pill. Two floors stack here, on two different things: `min-width: 2px`
+   below is about there being a bar here at all, for a `--bar-share` of
+   zero. `--bar-share` itself never reads below 8 under the `leader`
+   measure (barRow.ts, `LEADER_FLOOR_SHARE`) for any row that isn't zero -
+   that one is about legibility, so a real reading still draws as a
+   length rather than as this rule's 2px nothing. */
 .kit-bar-mark {
   display: block;
   height: 14px;
