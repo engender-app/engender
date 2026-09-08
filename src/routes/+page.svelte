@@ -531,7 +531,7 @@
       <Notice
         icon="sparkle"
         key="celebration"
-        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}
+        role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}
         aria-live="polite"
         title={landing?.s.years
           ? m.home_anniv_years({
@@ -596,7 +596,11 @@
   <!-- The agenda (ticket 04, ADR-0074): the week ahead as a list, since it
        is one (rule 6), each row carrying its day as a block because a date
        is a value (rule 3) and the kind in the day view's own words, going
-       to the screen that owns the fact. Absent rather than empty: a window
+       to the screen that owns the fact. The block is always one of the
+       flag's colours (tileRoleAt, ticket 24's rule for a block): on trans
+       the agenda's slot lands on the white band, and a white day block on a
+       light page is the outline the passed slot below draws, so the two
+       would read as one. Absent rather than empty: a window
        with nothing in it hands the screen nothing to draw, so day one and a
        quiet week both render no heading and no card. The passed slot is
        the one row that looks backwards, stated once with its date under
@@ -606,7 +610,7 @@
   {#if agenda}
     <div class="home-agenda" transition:collapse={panel} data-home-agenda>
       <SectionHeading text={m.home_agenda_heading()} />
-      <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+      <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
         {#each agendaRows as item (item.key)}
           {@const label = dayAheadMarkLabel(item.kind)}
           <!-- Each row owns its height and gives it back (rule 10): a row
