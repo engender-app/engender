@@ -1846,7 +1846,7 @@ try {
   if (!/browser tab|launcher/.test(disguiseReason)) {
     throw new Error('the disguise row says nothing about what changes: ' + JSON.stringify(disguiseReason));
   }
-  const previewName = await page.locator('.disguise-preview strong').textContent();
+  const previewName = await page.locator('[data-disguise-name]').textContent();
   if (previewName !== 'Notes') throw new Error('the disguise preview names: ' + previewName);
 
   /* Skipped rather than answered, which is this flow's half of the AC: a
@@ -1951,7 +1951,7 @@ try {
      through to `prefs.disguise` - which on Android would close the app
      mid-setup and is the reason the step is last. */
   await page.getByRole('switch', { name: 'Disguise app' }).click();
-  await page.waitForSelector('.disguise-preview.is-on');
+  await page.waitForSelector('[data-disguise-preview][data-on="true"]');
   if ((await page.title()) === 'Notes') {
     throw new Error('the disguise applied itself on the step rather than at the finish');
   }
