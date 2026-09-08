@@ -176,17 +176,15 @@
   animation: kit-rule-in var(--dur-slow) var(--ease-out) both;
 }
 
+/* The same clip, a --dur-fast behind: the words are uncovered by the rule's
+   own movement, delayed, so what the eye follows is one wipe with the
+   words trailing it. */
 .kit-heading > * {
-  animation: kit-words-in var(--dur-slow) var(--ease-out) both;
+  animation: kit-rule-in var(--dur-slow) var(--ease-out) both;
   animation-delay: var(--dur-fast);
 }
 
 @keyframes kit-rule-in {
-  from { clip-path: inset(-6px 100% -6px -6px); }
-  to { clip-path: inset(-6px); }
-}
-
-@keyframes kit-words-in {
   from { clip-path: inset(-6px 100% -6px -6px); }
   to { clip-path: inset(-6px); }
 }
