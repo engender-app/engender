@@ -761,6 +761,15 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
    instead of across. What stays here is the colour and the weight. */
 .rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
+/* Pushed to the rail's foot by the flex column's own auto margin, and cut
+   off from the four doors above it by a hairline rather than a gap alone -
+   a gap reads as spacing, a rule reads as a different kind of row (ticket
+   09, ADR-0076). */
+.rail-settings {
+  margin-top: auto;
+  padding-top: calc(10px + var(--space-2));
+  border-top: 1px solid var(--outline);
+}
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 

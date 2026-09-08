@@ -45,10 +45,10 @@ describe('what the More hub is built from', () => {
 
   it('holds no Settings row and no pointer to preferences (redesign tickets 09 and 15)', () => {
     /* A door named Transition cannot hold a row about appearance and data:
-       preferences are chrome, not part of anybody's transition (ADR-0036).
-       They are reached from the gear in Today's header, which ticket 23
-       placed. `/settings` as a *host* is untouched - the entry-templates row
-       is drawn there, by that screen. */
+       preferences are chrome, not part of anybody's transition (ADR-0036,
+       ADR-0076). They are reached from the gear in Today's header and the
+       rail's fifth row, which ticket 09 owns. `/settings` as a *host* is
+       untouched - the entry-templates row is drawn there, by that screen. */
     expect(more).not.toContain('/settings');
     expect(more).not.toContain('nav_settings');
   });

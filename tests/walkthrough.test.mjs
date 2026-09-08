@@ -1762,6 +1762,60 @@ try {
   ok('desktop rail via container query');
 } catch (e) { fail('desktop', e); }
 
+/* 14a. Today's gear reaches Settings, and no other screen's header carries
+   one (ticket 09). Mobile width, then back to desktop for 14b and for step
+   15, which follows expecting the wide viewport. */
+try {
+  await page.setViewportSize({ width: 440, height: 940 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok("Today's gear reaches Settings");
+
+  /* The rail's chrome is expected everywhere (ADR-0076); what "no other
+     screen header does" actually means is ScreenHeader's own root, which
+     every deep screen and every door but Today renders. `attached`, not
+     the default `visible`: More's header has a hidden title and nothing
+     else to hold, so it collapses to nothing on screen (ADR-0075) - true
+     of its content, not of whether a link exists in the DOM. */
+  for (const path of ['/calendar', '/stats', '/more']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-screen-header]', { state: 'attached' });
+    const inHeader = await page.locator('[data-screen-header] a[href="/settings"]').count();
+    if (inHeader) throw new Error(`${path}'s header links to /settings`);
+  }
+  ok('no other screen header links to Settings');
+} catch (e) { fail('home gear settings', e); }
+
+/* 14a-zoom. The gear is reachable, not just visible, at 200% zoom on a
+   320px-class phone - the pre-existing 195px check (ticket 23) only holds
+   the hello line and the sun's layout, never clicks the gear itself. */
+try {
+  await page.setViewportSize({ width: 195, height: 700 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('the gear opens Settings at 195px (200% zoom on a 390px phone)');
+} catch (e) { fail('home gear settings at 200% zoom', e); }
+
+/* 14b. the rail's fifth row reaches Settings too, set apart from the four
+   doors (ticket 09). */
+try {
+  await page.setViewportSize({ width: 1400, height: 980 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  const doorCount = await page.locator('[data-rail-item]').count();
+  if (doorCount !== 4) throw new Error(`rail has ${doorCount} doors, not 4`);
+  await page.locator('[data-rail-settings]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('rail settings row reaches Settings, four doors stay four');
+} catch (e) { fail('rail settings row', e); }
+
 /* 15. reminders web note at desktop */
 try {
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
@@ -4317,6 +4371,55 @@ try {
 } catch (e) { fail('the appointment record', e); }
 
 try {
+  /* The calendar handoff (phase 10 redesign ticket 18, ADR-0067): the
+     sheet's default title stays neutral until the person changes it, and
+     an edited title and a typed time both reach the file that gets
+     shared. Runs against the appointment surface; the surgery date and a
+     letter's unlock day share this same component rather than a second
+     implementation. */
+  await fresh('/health/appointments');
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  await page.fill('#appointment-kind', 'ginekolog');
+  await fillDate(page, '#appointment-date', '2026-11-03');
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("ginekolog")', { timeout: 8000 }); // text-under-test
+  await page.locator('[data-appointment]', { hasText: 'ginekolog' }).click(); // text-under-test
+
+  await page.waitForSelector('[data-add-to-calendar]');
+  await page.click('[data-add-to-calendar]');
+  await page.waitForSelector('#calendar-handoff-title');
+  const defaultTitle = await page.inputValue('#calendar-handoff-title');
+  if (!defaultTitle || /ginekolog/i.test(defaultTitle)) {
+    throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
+  }
+  await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
+  await page.fill('#calendar-handoff-time', '09:15');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-share-to-calendar]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.ics')) {
+    throw new Error(`the calendar handoff is not named as an .ics file: ${download.suggestedFilename()}`);
+  }
+  const ics = await readFile(await download.path(), 'utf8');
+  if (!ics.includes('SUMMARY:Wizyta u lekarza')) {
+    throw new Error('the shared file does not carry the edited title');
+  }
+  if (!ics.includes('DTSTART:20261103T091500')) {
+    throw new Error('the shared file does not carry the day and time that were set');
+  }
+
+  // The editor sheet stayed open behind the handoff sheet the whole time -
+  // this is cleanup, not a fresh open.
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  ok('calendar handoff: the default title stays neutral, an edited title and time reach the shared file');
+} catch (e) { fail('the calendar handoff', e); }
+
+try {
   /* In the room (phase 8 features ticket 60): the standing prep list read
      one question per screen, and what gets jotted arriving in the debrief
      attributed to the question it was typed under.
@@ -5404,8 +5507,10 @@ try {
      current now, so the module must have stopped offering it and must say so.
      This is the last thing the suite does, so the journal is left in PIN mode
      deliberately - see the note at the top of this flow. */
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   if (!/PIN/i.test(await page.locator('[data-list-row="access-mode"]').innerText())) {
     throw new Error('the security row does not name PIN as the mode');
@@ -5456,8 +5561,10 @@ try {
   await booted();
   await page.waitForSelector('[data-home-hello]');
 
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
   await page.locator('a[href="/settings/recovery-key"]').click();
