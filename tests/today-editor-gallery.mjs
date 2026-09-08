@@ -229,7 +229,7 @@ try {
         to keep the touch floor beside a wrapping title. */
   await reopen(320, 2);
   await openEditor();
-  await cropBand('pins-320', '[data-today-editor] [data-section-heading]', '[data-edit-pinned-row]:last-of-type', '320px: the two controls keep their 44px beside the titles');
+  await cropBand('pins-320', '[data-today-editor] [data-section-heading]', '[data-edit-pinned-row]:last-of-type', '320px: the two controls keep their 48px beside the titles');
   await page.locator('[data-edit-done]').click();
 
   await reopen(195, 2);

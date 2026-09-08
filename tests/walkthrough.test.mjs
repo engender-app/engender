@@ -639,9 +639,12 @@ try {
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row="doubt"]');
 
-  /* It survives a reload, which is the same read the app makes after a
-     lock: the arrangement is a preference in the journal, not screen
-     state. */
+  /* It survives a reload, which is the stronger half of the ticket's
+     "survives a reload and a lock". A reload re-opens the journal and
+     reads the preference back; the lock does not - `lockNow`
+     (stores/lock.svelte.ts) clears one flag and the same mounted app comes
+     back with the same store behind it, so a lock has nothing to lose.
+     Flow 18 is where the gate itself is exercised. */
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-pinned-row="doubt"]');
