@@ -728,11 +728,11 @@ describe('ticket 25: every state change moves', () => {
   const ruleOf = (css: string, prelude: string) =>
     rules(css).find((rule) => rule.prelude === prelude && !isReduceContext(rule));
 
-  /* The three keyframes this ticket writes. clip-path is the one property
+  /* The two keyframes this ticket writes. clip-path is the one property
      beside transform and opacity the performance contract admits, because a
      block that clips open moves like an object and a block that fades in
      arrives from nothing. */
-  const NEW_KEYFRAMES = ['kit-block-in', 'kit-rule-in', 'kit-words-in'];
+  const NEW_KEYFRAMES = ['kit-block-in', 'kit-rule-in'];
   const ALLOWED = new Set(['clip-path', 'transform', 'opacity']);
 
   it('animates only clip-path, transform or opacity in every keyframe it adds', () => {
@@ -768,7 +768,7 @@ describe('ticket 25: every state change moves', () => {
     const heading = declarations(ruleOf(kit, '.kit-heading')?.body ?? '');
     expect(heading.animation).toMatch(/^kit-rule-in var\(--dur-slow\) var\(--ease-out\) both$/);
     const words = declarations(ruleOf(kit, '.kit-heading > *')?.body ?? '');
-    expect(words.animation).toMatch(/^kit-words-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    expect(words.animation).toMatch(/^kit-rule-in var\(--dur-slow\) var\(--ease-out\) both$/);
     expect(words['animation-delay'], 'the words wait for the rule').toMatch(/var\(--dur-fast\)/);
   });
 

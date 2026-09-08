@@ -20,7 +20,7 @@
    back a cancel, so the component that owns the number keeps owning it and
    this module never touches a node. */
 
-import { EASE_OUT, isReducedMotion, motionDuration } from './tokens';
+import { EASE_OUT, motionDuration } from './tokens';
 
 /** The whole number a tile's value is, or null where the value is anything
     else. Digits only, deliberately: a thousands separator differs by
@@ -49,8 +49,10 @@ export function countAt(from: number, to: number, t: number): number {
  * and schedule nothing.
  */
 export function countUp(from: number, to: number, show: (n: number) => void): () => void {
+  /* motionDuration is 0 under reduced motion already, so the one check
+     covers both the clamp and a token authored at nothing. */
   const duration = motionDuration('--dur-slow');
-  if (duration === 0 || from === to || isReducedMotion()) {
+  if (duration === 0 || from === to) {
     show(to);
     return () => {};
   }
