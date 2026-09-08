@@ -39,6 +39,7 @@
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { collapse } from '$lib/motion/reveal';
+  import { asCount, countUp } from '$lib/motion/countUp';
 
   export type TileAction = {
     icon?: string;
@@ -118,13 +119,35 @@
      The entrance's counterpart is inside `collapse` - a tile that appears
      while the screen is still arriving is simply there. */
   let panel = $derived({ skip: navigating.to !== null });
+
+  /* The value on the block counts up where it is a count (phase 10 rule 10,
+     redesign ticket 25): from nothing on arrival, from the last number on a
+     change, over --dur-slow so it lands on the frame the block's own clip
+     does (kit.css, kit-block-in). A name, a duration or a date is not a
+     count and is written straight; `asCount` is what decides, so a tile
+     never guesses from its own key. The runner reads the token layer and
+     substitutes the final number under reduced motion, and the effect's
+     cleanup cancels a travel the next change or an unmount interrupts. */
+  let shown = $state<string | undefined>();
+  let landed: number | null = null;
+  $effect(() => {
+    const target = asCount(value);
+    if (target === null) {
+      shown = value;
+      landed = null;
+      return;
+    }
+    const from = landed ?? 0;
+    landed = target;
+    return countUp(from, target, (n) => (shown = String(n)));
+  });
 </script>
 
 {#if action}
   <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={!!dismiss} transition:collapse|global={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
-      {#if value}<span class="kit-tile-value">{value}</span>{/if}
+      {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
     <!-- Its own row rather than inside .kit-tile-main (ticket 99 item 9): the
          note used to make .kit-tile-main a two-line block, which is-split's
@@ -176,7 +199,7 @@
   <div class="kit-tile is-split" data-tile={key} data-weight={weight} class:has-dismiss={true} transition:collapse|global={panel} {...rest}>
     <a class="kit-tile-main press" {href}>
       <span class="kit-tile-title">{title}</span>
-      {#if value}<span class="kit-tile-value">{value}</span>{/if}
+      {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
     <!-- Outside the link, as on the action shape above and for the reason
          phase 10's rule 3 gives: the note is a foot of page colour along the
@@ -204,7 +227,7 @@
 {:else}
   <a class="kit-tile press" data-tile={key} data-weight={weight} {href} transition:collapse|global={panel} {...rest}>
     <span class="kit-tile-title">{title}</span>
-    {#if value}<span class="kit-tile-value">{value}</span>{/if}
+    {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
   </a>
 {/if}
