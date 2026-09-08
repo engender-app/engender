@@ -80,6 +80,7 @@
     isReducedMotion,
     motionDuration
   } from '$lib/motion/tokens';
+  import { maskHeight } from '$lib/motion/reveal';
   import { regroupSteps, type CellBox, type CellStep } from '$lib/motion/regroup';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, roleAt, type Role } from '$lib/theme/roles';
@@ -275,24 +276,12 @@
     monthOpen = !monthOpen;
     flushSync();
     const duration = motionDuration('--dur-slow');
-    /* Clipped, and its rows pinned at what they measure now. A definite
-       height smaller than the content compresses a grid's auto tracks, so
-       the panel would squash its own contents on the way instead of
-       uncovering them - which is the finding disclose() in
-       motion/reveal.ts carries, and it pins the same property for it.
-       Measured here it is 6px of drift rather than the notice's whole
-       icon, but a mask that is 6px of scale is still not a mask. Both go
-       back the moment the travel is over. */
-    body.style.overflow = 'clip';
-    body.style.gridTemplateRows = getComputedStyle(body).gridTemplateRows;
-    const settle = () => {
-      body.style.overflow = '';
-      body.style.gridTemplateRows = '';
-    };
-    body.animate([{ height: `${from}px` }, { height: `${body.getBoundingClientRect().height}px` }], {
-      duration,
-      easing: EASE_OUT_CSS
-    }).finished.then(settle, settle);
+    /* The panel gives or takes its own height while the cells travel inside
+       it, so nothing under the month arrives at its new place in the frame
+       of the tap. It is motion/reveal.ts's, beside disclose and resize,
+       because animating a height is the performance contract's one named
+       exception and every spend of it is tracked in that one file. */
+    maskHeight(body, from, duration);
     for (const box of regroupSteps(swatches, boxesOf('data-cal-cell'))) {
       travel(box, 'data-cal-cell', duration, true);
     }
@@ -444,8 +433,15 @@
   {/if}
 
   <!-- What somebody came here for. Uncapped, in the shape Home draws it:
-       a day is its date bar and every entry logged on it. -->
-  <SectionHeading text={m.recent_entries()} />
+       a day is its date bar and every entry logged on it.
+
+       The heading waits for the first entry, which is Home's own rule and
+       its own citation: "a row of grey cells and a heading over an empty
+       list are two more of day one's four placeholders" (phase 8 UX ticket
+       01). Day one gets the notice under the field and nothing else. -->
+  {#if hasEntries}
+    <SectionHeading text={m.recent_entries()} />
+  {/if}
   <div class="cal-swap">
     <ReadGate read={recent} variant="card" count={3}>
       {#snippet rows()}
@@ -497,7 +493,7 @@
        month's line. -->
   {#if hasEntries}
     <SectionHeading text={m.recent_days()} />
-    <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, 0)} />
+    <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
   {/if}
 </div>
 
@@ -572,6 +568,15 @@
     padding: 0;
     cursor: pointer;
     text-align: left;
+    /* The one way into the jump sheet, so it answers to the app's own touch
+       floor rather than to the height of 28px of ink - 29px of line box was
+       what it had, and it is a control on a door. The room comes out of the
+       field, which rule 7 sizes to its content; the slot's two walls move
+       with it, so the label travels 48px instead of 29 on the way in and
+       out. */
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
     text-decoration: underline;
     /* A hair of the ink rather than the ink: at 28px in the display face,
        a full-strength rule under the words reads as a second line of the

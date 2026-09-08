@@ -518,8 +518,12 @@
      square because the row holds 31 of them inside 280px at the narrowest -
      7px of width is all a day gets, and 7px tall as well would be a speck.
      Tall and thin it reads as a month the way a barcode reads as a barcode,
-     and it is still a block: 2px corners and the swatch's own 1px edge, so
-     an unlogged day is a day and a quiet month is not a blank line.
+     and it is still a block: the swatch's own 1px edge, so an unlogged day
+     is a day and a quiet month is not a blank line, and 2px corners, which
+     is what DIRECTION.md rule 9 already gives a bar's ends
+     (`.kit-bar-mark`) rather than a fourth radius - 6px on 7px of width is a
+     lozenge, and rule 5's budget is about what a block is, not about
+     refusing the one value the kit's own bars use.
 
      Everything a bar has no room for goes to opacity 0 rather than out of
      the markup - the date, the split's two halves, the face, the deck, the
@@ -635,11 +639,28 @@
       outline-color var(--dur-med) var(--ease-out),
       opacity var(--dur-med) var(--ease-out);
   }
-  .cal-num,
+  /* The date travels rather than scaling (see the screen's own travel), so
+     it can fade with everything else. */
+  .cal-num {
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
+  /* A disc cannot be stretched, and these three are discs: the mood face,
+     the coming-up mark and the highlight dot. The travel scales a cell 0.17
+     across and 0.6 down, which on the recording turned every dot into an
+     ellipse and every face into an egg - debris in the middle of a
+     choreography whose whole premise is that nothing is unaccounted for. So
+     they sit the travel out: gone in the frame of the tap, and back over a
+     beat once the cells have landed. Delay plus duration is --dur-med +
+     --dur-fast, which is the travel's own --dur-slow. */
   .cal-face,
   .cal-mark,
   .cal-highlight {
-    transition: opacity var(--dur-med) var(--ease-out);
+    transition: opacity var(--dur-fast) var(--ease-out) var(--dur-med);
+  }
+  .cal-grid.is-compact .cal-face,
+  .cal-grid.is-compact .cal-mark,
+  .cal-grid.is-compact .cal-highlight {
+    transition: opacity 0s;
   }
 
   /* A split is two pieces laid over each other rather than two halves butted
