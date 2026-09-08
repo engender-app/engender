@@ -714,10 +714,30 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
   animation-timing-function: var(--ease-out);
   animation-fill-mode: both;
 }
+/* Two animations, because the incoming screen is doing two things at once
+   and they are not on the same clock (redesign ticket 28). Its own pattern
+   - the fade-through's scale, the shared axis's X - runs on --dur-med as it
+   always has; the follow, which is the content travelling with the blind's
+   bottom edge, runs on the blind's --dur-slow. They compose rather than
+   overwrite each other because the follow is written as `translate` and
+   every pattern's own movement as `transform`: the individual property is
+   applied first, and neither animation touches the other's. A pattern that
+   names only one animation simply leaves the second duration unused. */
 ::view-transition-new(screen) {
-  animation-duration: var(--dur-med);
+  animation-duration: var(--dur-med), var(--dur-slow);
   animation-timing-function: var(--ease-out);
   animation-fill-mode: both;
+}
+/* Plain --ease-out, and deliberately not the blind's settle: the blind is
+   painted over the page and covers the difference between the two curves,
+   while a page that bounced with the edge would rock the whole screen at
+   the end of every navigation. --blind-delta is the height the field lost,
+   so the content starts where the old edge was and arrives at its own
+   place; it is 0 where the two fields are the same height, which makes
+   this a no-op rather than a case to switch off. */
+@keyframes screen-blind-follow {
+  from { translate: 0 var(--blind-delta, 0px); }
+  to { translate: 0 0; }
 }
 
 /* Between the four tabs: fade-through. The outgoing screen settles to 0.97
@@ -728,48 +748,126 @@ html[data-nav='fade-through']::view-transition-old(screen) {
   animation-name: screen-fade-out;
 }
 html[data-nav='fade-through']::view-transition-new(screen) {
-  animation-name: screen-fade-in;
+  animation-name: screen-fade-in, screen-blind-follow;
 }
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
 @keyframes screen-fade-in { from { opacity: 0; transform: scale(1.03); } }
 
-/* The field is the shared element between the doors (phase 10 rule 10,
-   redesign ticket 25). Every door wears one - Today's with the sun, the
-   other three from ScreenHeader - and a tab change is one object changing
-   its label, so the field is pulled out of the screen's snapshot under its
-   own name: the browser tweens its box between the two doors (the heights
-   differ, Today's is the sun's quarter) and crossfades what is on it, while
-   the screens fade through behind it at 0.97 and 1.03. The one place a
-   tonal-looking transition is allowed, because nothing is arriving from
-   nowhere - the block was there and is still there.
+/* The field is a blind over the content (redesign ticket 28, which amends
+   rule 10 and ADR-0078's field paragraph).
 
-   The name itself is not written here. $lib/motion/sharedField hands it
-   from the outgoing field to the incoming one from the shell's onNavigate,
-   because a rule naming both sides at once names two elements at the new
-   capture - the outgoing screen is still in the DOM finishing its outros -
-   and the browser aborts the whole transition. What is here is the
-   group's timing, and the clamp. */
-::view-transition-group(field) {
-  animation-duration: var(--dur-med);
-  animation-timing-function: var(--ease-out);
+   Ticket 25 gave the whole card one name on both sides, so the browser
+   tweened its box between the two doors' heights and crossfaded what was
+   drawn on it. That crossfade is a photograph of the card, contents
+   included, stretched between two heights: the smear Alicja named at frame
+   5 of Journal to Look back (2026-09-08). Her instruction was that the
+   field be "a separate module painted over the content" which "slides out a
+   little bit further down" on the way to a taller door and back up on the
+   way to a shorter one.
+
+   So the card is split. The blind is its paint - a flat block, one window
+   tall, hanging from the field's top edge, carrying the name `blind` on
+   every screen - and the field's height is a clip on it rather than a size.
+   Nothing is ever scaled: a snapshot squashed from 175px to 102px would
+   deform the two bottom corners, and this cannot, because the corners are
+   the clip's own `round` and the picture behind them never changes shape.
+   The group is pinned rather than tweened for the same reason - it holds
+   the incoming blind's box, and the edge is the only thing that moves.
+
+   Both halves run the same slide rather than one fading into the other.
+   They are the same flat colour on every screen (--field is published once,
+   on <html>, by activeFlag), so two identical opaque images on one clip
+   read as one block; a crossfade between them would dip through the middle
+   frames and read as the card blinking.
+
+   --blind-from, --blind-to and the settle on --blind-ease are measured and
+   published per navigation by $lib/motion/fieldBlind. The name is handed
+   over from there too, never written as a rule: a rule names both blinds at
+   once at the new capture - the outgoing screen can still be in the DOM -
+   and Chromium aborts the whole transition on the duplicate.
+
+   Reduced motion needs nothing of its own here: --dur-slow is clamped to
+   1ms at the token, so the blind cuts to its new height, which is the
+   substitute the contract asks for. */
+/* Over the content and in the order the field itself paints them: the
+   blind's colour, the sun's rings on it, the type over both. Written out
+   because a group with no z-index of its own falls in where its name was
+   first encountered, which is under the two groups above.
+
+   The blind's group is pinned rather than tweened: it holds the incoming
+   blind's box, and the edge is the only thing that moves. */
+::view-transition-group(blind) { z-index: 3; animation: none; }
+::view-transition-group(*.sun-ring) { z-index: 4; }
+::view-transition-group(*.field-part) { z-index: 5; }
+::view-transition-old(blind),
+::view-transition-new(blind) {
+  animation: blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
 }
-::view-transition-old(field),
-::view-transition-new(field) {
-  animation-duration: var(--dur-med);
-  animation-timing-function: var(--ease-out);
-}
-/* Substitute, never delete, as the screens below it: the box cuts to its
-   new height - a box tweening between two heights is movement, which the
-   clamp is for - and the two labels fade out and in over the one duration
-   the clamp leaves alone, timed with the screen's halves below. */
-html[data-a11y-motion='reduce']::view-transition-group(field) {
-  animation-duration: 1ms !important;
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(field) {
-    animation-duration: 1ms !important;
+@keyframes blind-slide {
+  from {
+    clip-path: inset(0 0 calc(100vh - var(--blind-from, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
+  }
+  to {
+    clip-path: inset(0 0 calc(100vh - var(--blind-to, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
   }
 }
+
+/* What is painted on the field leaves and arrives under its own animation,
+   and no frame carries two of them: the outgoing element fades out where it
+   stands over --dur-fast, the incoming one fades in where it stands over
+   the --dur-fast after that, and the blind slides under both for --dur-slow.
+   Nothing travels between two screens' positions - each element is named per
+   side (fieldBlind.ts), so the browser has an old with no new and a new with
+   no old, and there is nothing for it to morph.
+
+   The travel is 14px: down for the element leaving, from above for the one
+   arriving, which is the direction the blind is being pulled in the
+   commonest case. No clip tracks the moving edge - a title sliding under
+   the field's own bottom edge was the first reading of the note and the
+   wrong one. */
+::view-transition-old(*.field-part) {
+  animation: field-part-out var(--dur-fast) var(--ease-in-out) both;
+}
+::view-transition-new(*.field-part) {
+  animation: field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both;
+}
+@keyframes field-part-out { to { opacity: 0; translate: 0 14px; } }
+@keyframes field-part-in { from { opacity: 0; translate: 0 -14px; } }
+
+/* The sun leaves as a movement rather than as part of a photograph: every
+   ring is its own group, and they close outermost first on --stagger-ring,
+   which is the entrance's 110ms beat compressed into the door's clock.
+   Agender is the longest flag at seven rings, so the last one starts at
+   180ms and lands at 330, inside --dur-slow; tests/motion-system.test.ts
+   fails if a palette is ever given more stripes than there are steps
+   written here. Coming back to Today is the same run the other way.
+
+   A delay per ring is a rule per ring, because a view transition's pseudo
+   element cannot read a custom property off the element it was taken from.
+   Both sides in one rule: the outgoing ring closes on the same beat the
+   incoming one opens on. */
+::view-transition-old(*.sun-ring) {
+  animation: sun-ring-close var(--dur-fast) var(--ease-in-out) both;
+}
+::view-transition-new(*.sun-ring) {
+  animation: sun-ring-open var(--dur-fast) var(--ease-out) both;
+}
+@keyframes sun-ring-close { to { scale: 0; } }
+@keyframes sun-ring-open { from { scale: 0; } }
+::view-transition-old(sun-a-0),
+::view-transition-new(sun-b-0) { animation-delay: calc(0 * var(--stagger-ring)); }
+::view-transition-old(sun-a-1),
+::view-transition-new(sun-b-1) { animation-delay: calc(1 * var(--stagger-ring)); }
+::view-transition-old(sun-a-2),
+::view-transition-new(sun-b-2) { animation-delay: calc(2 * var(--stagger-ring)); }
+::view-transition-old(sun-a-3),
+::view-transition-new(sun-b-3) { animation-delay: calc(3 * var(--stagger-ring)); }
+::view-transition-old(sun-a-4),
+::view-transition-new(sun-b-4) { animation-delay: calc(4 * var(--stagger-ring)); }
+::view-transition-old(sun-a-5),
+::view-transition-new(sun-b-5) { animation-delay: calc(5 * var(--stagger-ring)); }
+::view-transition-old(sun-a-6),
+::view-transition-new(sun-b-6) { animation-delay: calc(6 * var(--stagger-ring)); }
 
 /* Into a detail, and back out of it: shared-axis-X. Both halves travel
    --motion-distance-md so the pair reads as one axis rather than as two
@@ -778,13 +876,13 @@ html[data-nav='shared-axis']::view-transition-old(screen) {
   animation-name: screen-axis-out;
 }
 html[data-nav='shared-axis']::view-transition-new(screen) {
-  animation-name: screen-axis-in;
+  animation-name: screen-axis-in, screen-blind-follow;
 }
 html[data-nav='shared-axis-back']::view-transition-old(screen) {
   animation-name: screen-axis-back-out;
 }
 html[data-nav='shared-axis-back']::view-transition-new(screen) {
-  animation-name: screen-axis-back-in;
+  animation-name: screen-axis-back-in, screen-blind-follow;
 }
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
 @keyframes screen-axis-in { from { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
@@ -811,12 +909,12 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
    `fill` against a box that is changing size: a 60px row stretched into a
    full screen is a smear, and the same two frames cropped are a card
    opening. */
-html[data-nav='container']::view-transition-old(screen),
-html[data-nav='container']::view-transition-new(screen) {
-  animation-name: screen-crossfade;
-}
 html[data-nav='container']::view-transition-old(screen) {
+  animation-name: screen-crossfade;
   animation-direction: reverse;
+}
+html[data-nav='container']::view-transition-new(screen) {
+  animation-name: screen-crossfade, screen-blind-follow;
 }
 
 /* The container transform is the one pattern that also cared about this: a
@@ -853,13 +951,13 @@ html[data-nav='container']::view-transition-old(screen) {
    The new image is held at its first frame through the delay
    (fill-mode both), or it would sit at full opacity under the old one. */
 html[data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-a11y-motion='reduce']::view-transition-old(field) {
+html[data-a11y-motion='reduce']::view-transition-old(*.field-part) {
   animation-name: screen-fade-away;
   animation-duration: var(--dur-crossfade) !important;
   animation-timing-function: linear;
 }
 html[data-a11y-motion='reduce']::view-transition-new(screen),
-html[data-a11y-motion='reduce']::view-transition-new(field) {
+html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   animation-name: screen-crossfade;
   animation-duration: var(--dur-crossfade) !important;
   animation-delay: var(--dur-crossfade);
@@ -868,13 +966,13 @@ html[data-a11y-motion='reduce']::view-transition-new(field) {
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(screen),
-  ::view-transition-old(field) {
+  ::view-transition-old(*.field-part) {
     animation-name: screen-fade-away;
     animation-duration: var(--dur-crossfade) !important;
     animation-timing-function: linear;
   }
   ::view-transition-new(screen),
-  ::view-transition-new(field) {
+  ::view-transition-new(*.field-part) {
     animation-name: screen-crossfade;
     animation-duration: var(--dur-crossfade) !important;
     animation-delay: var(--dur-crossfade);
