@@ -181,6 +181,19 @@ if (!before) {
   await page.waitForTimeout(700);
   await crop('search-records', '[data-screen-header]', '[data-hub-results]');
 
+  /* Both halves answering at once, which is the only state where the two
+     lists meet: the areas in role 0, the heading that names what is not an
+     area, and the records in role 1 under it. */
+  await page.locator('[data-hub-search]').fill('log');
+  await page.waitForSelector('[data-search-hit]');
+  await page.waitForTimeout(700);
+  await crop('search-both', '[data-screen-header]', '[data-hub-results]');
+
+  /* Not shot: a page of records with more behind it. No query the demo
+     journal answers reaches twenty records, so the control that asks for the
+     next twenty has no state to be photographed in - the search screen's own
+     `list_more` is the same control, on the same copy. */
+
   await page.locator('[data-hub-search]').fill('qqzzxx');
   await page.waitForSelector('[data-notice="hub-search-none"]');
   await page.waitForTimeout(600);

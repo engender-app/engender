@@ -361,6 +361,11 @@
 /* Empty, it is out of the flow entirely rather than a block with the
    screen's 20 under it: at rest the field meets the first group heading. */
 .hub-count:empty { display: none; }
+/* While a query is being answered it is empty and still holds its line: the
+   count waits for both halves of the search, and a line that came and went
+   during the wait would move the list under a reading finger. After the
+   `:empty` rule, which it has to beat at equal specificity. */
+.hub-count.is-searching { display: block; min-height: 1.5em; }
 
 /* ---------- Search ---------- */
 .search-box {

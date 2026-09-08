@@ -114,13 +114,39 @@
 .screen-field .search-box {
   background: var(--bg);
   color: var(--text-2);
+  /* The box's own boundary, in the field's ink. --outline is a mix of
+     --text and it measured 1.07:1 to 1.58:1 against the lighter fields
+     (pansexual's yellow, agender's green, and --surface-2 under disguise),
+     so on those the box had no edge a person could see and its fill is
+     1.21:1 to 1.75:1 against the field - a control whose boundary is what
+     says it is a control owes 3:1 against what is beside it. --field-ink is
+     the one ink measured against every field: 4.41:1 at worst
+     (DIRECTION.md's own table), 12.72:1 under disguise. */
+  border-color: var(--field-ink);
 }
-/* Focus answers in --text rather than --accent up here. The accent is a
-   member of the flag and the field is another one, so on trans the focused
-   edge was pink on pink: a focus indicator owes 3:1 against what is next to
-   it, and the only ink that clears that against both the box's --bg inside
-   and every field colour outside is the page's own. */
-.screen-field .search-box:focus-within { border-color: var(--text); }
+/* Focus is a ring inside the box, not a colour on its edge. The edge is
+   already the field's ink, so darkening it says nothing; and --focus-ring is
+   a mix of --accent, which is a member of the flag, so the standard ring
+   drawn 2px outside a control lands on the field and measures 1.02:1 there
+   on agender dark. Two pixels *inside*, it sits on the box's own --bg, where
+   it measures 6.26:1 at worst.
+
+   The ring goes on the box rather than on the input, which is the shape a
+   person sees as the control: on the input alone it drew a rectangle around
+   the middle third and read as three cells rather than one box. The clear
+   control keeps a ring of its own so a keyboard can tell the two apart, and
+   `.search-box:focus-within`'s accent border (screens.css) is overridden
+   here at a specificity that beats it. */
+.screen-field .search-box:focus-within {
+  border-color: var(--field-ink);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.screen-field .search-input:focus-visible { outline: none; }
+.screen-field .field-search-clear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
 /* The browser's own clear cross is 16px, is drawn by Chromium and by
    nothing else, and would be the one control on the screen under the touch
    floor. The field draws its own instead (the button beside the input). */
