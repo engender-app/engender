@@ -614,6 +614,8 @@
   "ob_lock_body": "The app can lock itself the moment it goes to the background, so a glance at your phone in a pocket or on a desk shows nothing. Getting back in asks for whatever opens your journal. You chose that a moment ago and can change it in Settings.",
   "ob_checkin_title": "A nudge each day?",
   "ob_checkin_body": "One notification asking how today was, skipped on days you have already written. Off is fine too, and the same switch is in Settings.",
+  "ob_disguise_title": "Look like something else?",
+  "ob_disguise_body": "Outside the app, it can wear a different name and icon, so nothing at a glance says what this is. The same switch is in Settings.",
   "ob_done_title": "You’re all set",
   "ob_done_title_named": "You’re all set, {name}",
   "ob_done_body": "One short entry a day is plenty. Everything you write stays here, with you.",
