@@ -160,6 +160,35 @@
   padding: var(--space-3) 0 0;
   margin: var(--space-8) 0 var(--space-3);
   border-top: 3px solid var(--text);
+  /* The rule draws in, left to right, ahead of its heading (phase 10 rule
+     10, redesign ticket 25): the heading's box clips open from its left
+     edge over --dur-slow, which uncovers the rule and everything under it,
+     and the words below wait a beat (the child rule under this one) so
+     the rule is always ahead of them - a heading never appears over a rule
+     that is already there. clip-path rather than a scale on the border,
+     because a border cannot be transformed on its own and a scaleX of the
+     whole heading would stretch the words on the way.
+
+     Filled both ways, so under the 1ms clamp the heading ends where it
+     rests. The end state is the box outset by 6px rather than the box
+     itself: a clip that stayed at the border edge would cut the 2px focus
+     ring, drawn 2px outside, off the heading's action for good. */
+  animation: kit-rule-in var(--dur-slow) var(--ease-out) both;
+}
+
+.kit-heading > * {
+  animation: kit-words-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: var(--dur-fast);
+}
+
+@keyframes kit-rule-in {
+  from { clip-path: inset(-6px 100% -6px -6px); }
+  to { clip-path: inset(-6px); }
+}
+
+@keyframes kit-words-in {
+  from { clip-path: inset(-6px 100% -6px -6px); }
+  to { clip-path: inset(-6px); }
 }
 
 /* The first heading on a screen sits under the header rather than under a
@@ -981,7 +1010,33 @@ a.kit-entry:active {
   overflow: hidden;
   color: var(--role-fill-ink);
   text-decoration: none;
+  /* A block arrives by clipping open from its own left edge (phase 10 rule
+     10, redesign ticket 25): the kit's inline bar already arrives this way
+     (kit-bar-reveal, below) and a tile is the same object at a larger size -
+     a solid thing that slides into view rather than fading up from nothing.
+     The value inside counts up on the same clock where it is a count
+     (Tile.svelte, $lib/motion/countUp), so the number lands as the block
+     does. Each tile of a grid waits its turn by --stagger-step, which the
+     grid hands it as --tile-index; a grid arriving as one slab is a screen
+     assembling, and one arriving block by block is blocks.
+
+     Filled both ways so the 1ms clamp ends it where it rests, and outset by
+     6px at the end for the focus ring's sake, as the heading's is. `round`
+     on the inset, or the moving edge is square until the last frame. */
+  animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--tile-index, 0) * var(--stagger-step));
 }
+
+@keyframes kit-block-in {
+  from { clip-path: inset(-6px 100% -6px -6px round var(--r-block)); }
+  to { clip-path: inset(-6px round var(--r-block)); }
+}
+
+.kit-tiles > :nth-child(2) { --tile-index: 1; }
+.kit-tiles > :nth-child(3) { --tile-index: 2; }
+.kit-tiles > :nth-child(4) { --tile-index: 3; }
+.kit-tiles > :nth-child(5) { --tile-index: 4; }
+.kit-tiles > :nth-child(6) { --tile-index: 5; }
 
 
 .kit-tile.has-dismiss {

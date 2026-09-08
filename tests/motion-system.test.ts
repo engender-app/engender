@@ -714,6 +714,108 @@ describe('the token layer behind the five tiers', () => {
 });
 
 
+/* Phase 10 redesign ticket 25: every change of state moves (DIRECTION.md
+   rule 10, ADR-0078). The movements this ticket adds to surfaces that
+   already existed, held at the level a stylesheet can be held to: that each
+   exists, that each spends only transform, opacity or clip-path (nothing
+   that repaints a whole region per frame), and that each clamps. */
+describe('ticket 25: every state change moves', () => {
+  const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
+  const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
+  const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
+  const keyframesOf = (css: string, name: string) =>
+    rules(css).find((rule) => rule.prelude === `@keyframes ${name}`);
+  const ruleOf = (css: string, prelude: string) =>
+    rules(css).find((rule) => rule.prelude === prelude && !isReduceContext(rule));
+
+  /* The three keyframes this ticket writes. clip-path is the one property
+     beside transform and opacity the performance contract admits, because a
+     block that clips open moves like an object and a block that fades in
+     arrives from nothing. */
+  const NEW_KEYFRAMES = ['kit-block-in', 'kit-rule-in', 'kit-words-in'];
+  const ALLOWED = new Set(['clip-path', 'transform', 'opacity']);
+
+  it('animates only clip-path, transform or opacity in every keyframe it adds', () => {
+    for (const name of NEW_KEYFRAMES) {
+      const block = keyframesOf(kit, name);
+      expect(block, `@keyframes ${name} exists`).toBeDefined();
+      for (const frame of frames(block!.body)) {
+        for (const prop of Object.keys(frame.decls)) {
+          expect(ALLOWED.has(prop), `${name} ${frame.stops} animates ${prop}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('clips a tile block open from its left edge on --dur-slow, filling both ways so the clamp cannot strand it', () => {
+    const tile = declarations(ruleOf(kit, '.kit-tile')?.body ?? '');
+    expect(tile.animation).toMatch(/^kit-block-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    const block = frames(keyframesOf(kit, 'kit-block-in')!.body);
+    expect(block[0].decls['clip-path']).toMatch(/inset\(-\d+px 100% -\d+px -\d+px/);
+    expect(block.at(-1)!.decls['clip-path']).toMatch(/^inset\(-\d+px/);
+  });
+
+  it('staggers the tiles of one grid by --stagger-step, in order', () => {
+    expect(ruleOf(kit, '.kit-tile')?.body).toMatch(/animation-delay:\s*calc\(var\(--tile-index, 0\) \* var\(--stagger-step\)\)/);
+    for (let n = 2; n <= 6; n++) {
+      expect(ruleOf(kit, `.kit-tiles > :nth-child(${n})`)?.body, `tile ${n}`).toMatch(
+        new RegExp(`--tile-index:\\s*${n - 1}`)
+      );
+    }
+  });
+
+  it("draws a section's rule in ahead of its words: the heading clips, its children clip later", () => {
+    const heading = declarations(ruleOf(kit, '.kit-heading')?.body ?? '');
+    expect(heading.animation).toMatch(/^kit-rule-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    const words = declarations(ruleOf(kit, '.kit-heading > *')?.body ?? '');
+    expect(words.animation).toMatch(/^kit-words-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    expect(words['animation-delay'], 'the words wait for the rule').toMatch(/var\(--dur-fast\)/);
+  });
+
+  /* The chosen label's colour lands on the frame the pill does. It used to
+     run on --dur-fast against a pill on --dur-med, so a label turned page-
+     coloured 90ms before the ink arrived under it and sat unreadable on the
+     track. */
+  it("lands the segment label's colour on the same frame as the pill", () => {
+    const segment = declarations(ruleOf(components, '.segment')?.body ?? '');
+    const pill = declarations(ruleOf(components, '.segment-pill')?.body ?? '');
+    const pillDuration = /translate (var\(--dur-[a-z]+\))/.exec(pill.transition ?? '')?.[1];
+    expect(pillDuration).toBeDefined();
+    for (const duration of splitTopLevel(segment['transition-duration'] ?? '')) {
+      expect(duration).toBe(pillDuration);
+    }
+  });
+
+  /* The field is the shared element between doors: on a tab change it is
+     pulled out of the screen's snapshot under its own name, so it stays
+     while the screens cross behind it and its contents crossfade. Only on
+     the fade-through, which is the tab crossing; a step into a detail keeps
+     the field with the screen it belongs to. */
+  it('names the field as a shared element on the fade-through, and nowhere else', () => {
+    const named = rules(app).filter((rule) => /view-transition-name:\s*field/.test(rule.body));
+    expect(named.map((rule) => rule.prelude)).toEqual([
+      "html[data-nav='fade-through'] :is(.screen-field, .home-field)"
+    ]);
+    const group = ruleOf(app, '::view-transition-group(field)');
+    expect(declarations(group?.body ?? '')).toMatchObject({
+      'animation-duration': 'var(--dur-med)',
+      'animation-timing-function': 'var(--ease-out)'
+    });
+    const halves = ruleOf(app, '::view-transition-old(field),\n::view-transition-new(field)');
+    expect(declarations(halves?.body ?? '')['animation-duration']).toBe('var(--dur-med)');
+  });
+
+  it('crossfades the field over --dur-crossfade under both reduced-motion paths', () => {
+    const reduced = rules(app)
+      .filter(isReduceContext)
+      .filter((rule) => rule.prelude.includes('view-transition-group(field)'));
+    expect(reduced.length, 'both reduced-motion paths clamp the field group').toBe(2);
+    for (const rule of reduced) {
+      expect(declarations(rule.body)['animation-duration']).toMatch(/var\(--dur-crossfade\) !important/);
+    }
+  });
+});
+
 describe('the curves the tiers reach for', () => {
   /* Phase 5 ticket 29 retired --ease-spring, a cubic-bezier whose control
      points bulged past 1 so a press would overshoot. It never could: a

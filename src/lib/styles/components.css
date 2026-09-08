@@ -484,7 +484,11 @@ a.segment {
      it - a shorthand naming that token stranded the other properties on an
      old WebView, and there is no longer a reason to name it here at all. */
   transition-property: background, color;
-  transition-duration: var(--dur-fast), var(--dur-fast);
+  /* The pill's own duration (phase 10 rule 10, redesign ticket 25), so the
+     chosen label turns page-coloured on the frame the ink arrives under it.
+     On --dur-fast it turned 90ms early and sat unreadable on the track
+     while the pill was still on its way. */
+  transition-duration: var(--dur-med), var(--dur-med);
   transition-timing-function: var(--ease-out), var(--ease-out);
 }
 .segment:hover { color: var(--text); }
