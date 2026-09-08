@@ -79,9 +79,14 @@ const strip = async () => {
     view first - `today-gallery.mjs`'s own crop, since a band is measured
     against the app frame rather than the viewport (the frame is what a
     phone shows). */
-const cropBand = async (name, from, to, note = '', settleMs = 700) => {
-  await strip();
-  await page.locator(from).first().scrollIntoViewIfNeeded();
+const cropBand = async (name, from, to, note = '', settleMs = 700, scroll = true) => {
+  /* A scene shot mid-gesture may neither strip nor scroll: `strip` parks
+     the pointer at the top left corner, which for a drag in flight is a
+     drag to the top left corner, and scrolling would move the rows out
+     from under the pointer holding one of them. Such a scene strips before
+     it takes hold instead. */
+  if (scroll) await strip();
+  if (scroll) await page.locator(from).first().scrollIntoViewIfNeeded();
   await page.waitForTimeout(settleMs);
   const box = await page.evaluate(
     ([a, b]) => {
@@ -182,7 +187,14 @@ try {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2, box.y - 62, { steps: 14 });
   await page.waitForTimeout(200);
-  await cropBand('lifted', '[data-today-editor] [data-section-heading]', '[data-edit-pinned-row]:last-of-type', 'A row held: its edge goes hard, the rows it has passed stand aside by its own height, and the slot it came from is still open', 0);
+  await cropBand(
+    'lifted',
+    '[data-edit-pinned-row]:first-of-type',
+    '[data-edit-pinned-row]:last-of-type',
+    'A row held: its edge goes hard, the rows it has passed stand aside by its own height, and the slot it came from is still open',
+    120,
+    false
+  );
   await page.mouse.up();
   await page.waitForTimeout(500);
 
