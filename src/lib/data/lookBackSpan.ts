@@ -66,17 +66,19 @@ export function defaultSpan(railStart: number, todayEpochDay: number): Span {
   return { start: Math.max(railStart, todayEpochDay - DEFAULT_SPAN_DAYS + 1), end: todayEpochDay };
 }
 
-/** How many days one step of a handle covers, by how long the rail is.
+/** How many days one step of a handle covers, from how many pixels a day
+    is worth where the handle is.
 
     A rail of years drawn across a phone leaves a day at a fraction of a
     pixel, so a handle that moved by the day would move by whatever the
-    finger's jitter rounded to. Days up to four months, weeks up to two
-    years, months beyond: each is the coarsest step a person can still
-    place on the rail by eye at that length, and the week and month quick
-    picks cover the recent cases the coarse steps cannot reach. */
-export function spanGrain(railDays: number): 1 | 7 | 30 {
-  if (railDays <= 120) return 1;
-  if (railDays <= 730) return 7;
+    finger's jitter rounded to. Days where a day is three pixels or more,
+    weeks where a week is, months elsewhere: each is the finest step a
+    person can still place by eye at that density. The scale below is not
+    linear, so the answer is asked per place on the rail rather than once
+    for its length. */
+export function grainAt(pxPerDay: number): 1 | 7 | 30 {
+  if (pxPerDay >= 3) return 1;
+  if (pxPerDay * 7 >= 3) return 7;
   return 30;
 }
 
@@ -103,19 +105,30 @@ export function snapDay(
   return clamp(rail.today - back);
 }
 
-/** A day's place along the rail, 0 at the start and 1 today. A rail one day
-    long has nowhere to place anything but its end. */
+/** A day's place along the rail, 0 at the start and 1 today.
+
+    A square-root scale, not a linear one: position is 1 minus the square
+    root of how far back the day is as a share of the whole rail. On a
+    six-year history that gives the last month about an eighth of the
+    width and the last year about two fifths, where a linear rail would
+    give the month a sliver five pixels wide and put both handles on top
+    of each other at the door's default span. The compression is honest
+    in the way a ruler is honest: the year ticks are drawn where the years
+    fall, so the rail says how it is stretched. A rail one day long has
+    nowhere to place anything but its end. */
 export function railPosition(day: number, railStart: number, todayEpochDay: number): number {
   const length = todayEpochDay - railStart;
   if (length <= 0) return 1;
-  return Math.min(1, Math.max(0, (day - railStart) / length));
+  const back = Math.min(length, Math.max(0, todayEpochDay - day));
+  return 1 - Math.sqrt(back / length);
 }
 
 /** The inverse: the day under a position, rounded to a whole day and held
     to the rail. */
 export function dayAtPosition(position: number, railStart: number, todayEpochDay: number): number {
   const clamped = Math.min(1, Math.max(0, position));
-  return Math.round(railStart + clamped * (todayEpochDay - railStart));
+  const length = todayEpochDay - railStart;
+  return Math.round(todayEpochDay - (1 - clamped) ** 2 * length);
 }
 
 /** A handle moved to a day, without ever crossing the other one: a span is

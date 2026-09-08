@@ -252,7 +252,9 @@ describe('what spec 08 took off Home', () => {
        first-run Home used to show. `hasEntries` is null until the count
        answers, so not-yet-known never paints as none. */
     expect(home).toMatch(/hasEntries = \$derived\(entryCount == null \? null : entryCount > 0\)/);
-    expect(markup).toMatch(/\{#if hasEntries\}\s*<TileGrid[\s\S]*?HOME_AREA_ROLE\.lookBack/);
+    /* The look-back grid itself left for the Look back door with redesign
+       ticket 11 (tests/stats-surfaces.test.ts holds its two gates there). */
+    expect(markup).not.toContain('HOME_AREA_ROLE.lookBack');
     expect(markup).toMatch(/\{#if hasEntries \|\| upcoming\.length\}/);
     expect(markup).toMatch(/\{#if hasEntries\}\s*<SectionHeading text=\{m\.recent_days\(\)\}/);
     // The one thing day one keeps besides the header and the chips.
@@ -264,13 +266,11 @@ describe('what spec 08 took off Home', () => {
     expect(markup).toContain('HOME_AREA_ROLE.liveTiles');
   });
 
-  it('gates the two look-back halves separately', () => {
-    /* The acceptance box: turning wrapped off silences its own half and only
-       its own. Two conditions on two preferences, each unmounting its own
-       component - and therefore its own query - rather than one condition
-       over a merged card. */
-    expect(markup).toMatch(/\{#if prefs\.wrappedEnabled\}\s*<WrappedHomeCard \/>/);
-    expect(markup).toMatch(/\{#if prefs\.onThisDayEnabled\}\s*<OnThisDayHomeCard \/>/);
+  it('carries neither look-back teaser any more (redesign ticket 11)', () => {
+    /* Both offers draw on the Look back door now, each still behind its own
+       preference gate; tests/stats-surfaces.test.ts holds the two gates. */
+    expect(markup).not.toContain('<WrappedHomeCard');
+    expect(markup).not.toContain('<OnThisDayHomeCard');
   });
 
   it('draws every entry of a shown day, with no render-time cap of its own (ux-carpet ticket 13)', () => {

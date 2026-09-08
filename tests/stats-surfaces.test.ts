@@ -144,3 +144,56 @@ describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
     }
   });
 });
+
+/* Redesign ticket 11: the door leads with the person's history, and one
+   span drives every read on it. */
+describe('the Look back door leads with the rail, and the span is the range', () => {
+  it('opens on the title, the span as the subtitle, the quick picks, then the rail', () => {
+    const header = stats.indexOf('<ScreenHeader title={m.nav_lookback()} subtitle={spanLabel}');
+    const picks = stats.indexOf('key="lookback-quick"');
+    const rail = stats.indexOf('<SpanTimeline');
+    const cross = stats.indexOf('<SectionHeading text={m.stats_group_cross()} />');
+    expect(header).toBeGreaterThan(-1);
+    expect(picks).toBeGreaterThan(header);
+    expect(rail).toBeGreaterThan(picks);
+    expect(cross).toBeGreaterThan(rail);
+  });
+
+  it('reaches the three cadence routes one tap each, as links', () => {
+    for (const cadence of ['week', 'month', 'year']) expect(stats).toContain(`href: '/wrapped/${cadence}'`);
+    expect(stats).not.toContain('key="stats-range"');
+  });
+
+  /* The acceptance box: the retrospective reads the span through the same
+     query the range picker writes. `spanRangeQuery` is `wrappedRangeQuery`
+     over the two days, and lookBackSpan.test.ts parses it back. */
+  it('hands the span to /wrapped/range at the query the picker writes', () => {
+    expect(stats).toContain("href={`/wrapped/range${spanRangeQuery(span)}`}");
+    expect(stats).not.toContain('href="/wrapped/range"');
+  });
+
+  it('says why a span cannot draw, in the words the range view uses', () => {
+    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin" data-lookback-thin>\s*\{m\.wrapped_thin_body\(/);
+  });
+
+  it('reads every ranged chart over the span, not over today', () => {
+    for (const read of ['j.stats.recap(from, to)', 'j.stats.tagShare(from, to)', 'j.stats.daySpread(shown.key, from, to)', 'j.correlationCards.getCards(from, to)']) {
+      expect(stats).toContain(read);
+    }
+    expect(stats).not.toMatch(/\(from, today\)/);
+  });
+
+  it('gates the two look-back teasers separately, the way Home did', () => {
+    expect(stats).toMatch(/\{#if prefs\.wrappedEnabled\}\s*<WrappedHomeCard \/>/);
+    expect(stats).toMatch(/\{#if prefs\.onThisDayEnabled\}\s*<OnThisDayHomeCard \/>/);
+  });
+
+  it('waits for the rail and has a day-one shape', () => {
+    expect(stats).toMatch(/\{#if railLoading\}\s*<Skeleton/);
+    expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
+  });
+
+  it('reaches the milestone timeline from the ways-out list', () => {
+    expect(stats).toContain('<ListRow key="timeline" icon="timeline"');
+  });
+});
