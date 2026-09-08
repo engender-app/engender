@@ -20,7 +20,18 @@
   import { appWordmark, hubTabLabel } from '$lib/disguise/identity';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { boxesMatch, squash, stretch, type Axis, type Box } from '$lib/motion/indicator';
+  import {
+    boxesMatch,
+    insets,
+    leadingEdge,
+    LEAD,
+    schedules,
+    travel,
+    type Axis,
+    type Box,
+    type Insets,
+    type Schedule
+  } from '$lib/motion/indicator';
   import Icon from './Icon.svelte';
 
   const NAV = [
@@ -97,7 +108,8 @@
 
   /* The lit tab, as one shape that travels rather than four backgrounds that
      switch (phase 5 ticket 31). The arithmetic - when two measurements are
-     the same place, and how far the shape deforms on the way - is in
+     the same place, which way the shape is going, and which of its edges
+     leads on the way - is in
      $lib/motion/indicator.ts with its own tests; what has to live here is the
      measuring, because only the DOM knows where a tab actually is.
 
@@ -121,12 +133,36 @@
     { key: 'rail', axis: 'y' }
   ];
 
-  type Pill = { box: Box; sx: number; sy: number; shown: boolean };
+  /* Where an arriving icon pivots: the bottom corner on the far side of the
+     travel, so a highlight coming from the right swings the icon on its
+     bottom left (Alicja, 2026-09-08). Keyed by the axis and by which edge
+     led, which is the pair of names indicator.ts already hands back - the
+     leading edge is on the side the motion is heading for, and that is the
+     side to pin. The rail tips about X, so its pivot is the far edge along Y
+     and centred across the row. */
+  const ANCHOR = {
+    x: { near: 'left bottom', far: 'right bottom' },
+    y: { near: 'center top', far: 'center bottom' }
+  } as const;
 
-  const HIDDEN: Pill = { box: { x: 0, y: 0, w: 0, h: 0 }, sx: 1, sy: 1, shown: false };
+  type Pill = { box: Box; at: Insets; shown: boolean; near: Schedule; far: Schedule };
+
+  const HIDDEN: Pill = {
+    box: { x: 0, y: 0, w: 0, h: 0 },
+    at: { left: 0, right: 0, top: 0, bottom: 0 },
+    shown: false,
+    near: LEAD,
+    far: LEAD
+  };
+
+  /* The tab the highlight has just landed on, which way it came from - the
+     icon's swing leans with the sign - and the corner it swings on. Per
+     shape, because both navs are in the DOM at once and each has its own
+     idea of where the pill is. */
+  type Arrival = { key: string; dir: -1 | 1; anchor: string };
 
   let pill = $state<Record<string, Pill>>({ bar: HIDDEN, rail: HIDDEN });
-  let sliding = $state<Record<string, boolean>>({ bar: false, rail: false });
+  let arriving = $state<Record<string, Arrival | null>>({ bar: null, rail: null });
   let navs = $state<Record<string, HTMLElement | undefined>>({});
   let tabs = $state<Record<string, Record<string, HTMLElement | undefined>>>({ bar: {}, rail: {} });
 
@@ -139,38 +175,57 @@
   }
 
   /* offsetLeft/offsetTop rather than getBoundingClientRect: both navs are the
-     offsetParent of their own tabs, so these already are the numbers the
-     pill's own `translate` wants, with no scroll position or ancestor
-     transform mixed in. A rect would have to be subtracted from the nav's own
-     rect to get back here, and the rail scrolls. */
-  function place(prev: Pill, el: HTMLElement | undefined, axis: Axis, animate: boolean) {
-    if (!laidOut(el)) return { next: prev.shown ? { ...prev, shown: false } : prev, moved: false };
+     offsetParent of their own tabs, so these are already measured from the
+     same padding box the pill's own `left`/`right` resolve against, with no
+     scroll position or ancestor transform mixed in. A rect would have to be
+     subtracted from the nav's own rect to get back here, and the rail
+     scrolls. clientWidth/clientHeight is that padding box, which is why the
+     nav itself has to be in hand to place the pill at all. */
+  function place(
+    prev: Pill,
+    el: HTMLElement | undefined,
+    nav: HTMLElement | undefined,
+    axis: Axis,
+    animate: boolean
+  ): { next: Pill; dir: -1 | 0 | 1; anchor?: string } {
+    if (!laidOut(el) || !nav) return { next: prev.shown ? { ...prev, shown: false } : prev, dir: 0 };
     const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
-    if (prev.shown && boxesMatch(prev.box, box)) return { next: prev, moved: false };
+    if (prev.shown && boxesMatch(prev.box, box)) return { next: prev, dir: 0 };
+    const at = insets(box, { w: nav.clientWidth, h: nav.clientHeight });
     /* Two placements that are not slides. The first one, because the app does
        not slide the pill into the tab you opened it on - it starts there. And
        a re-measure after a nav changed size, because a rotation is not a
        navigation: the tab under the pill never changed, so replaying the
        travel would be the app claiming something happened. That second case
-       is also how a nav that was display: none arrives at a real position. */
-    if (!prev.shown || !animate) return { next: { box, sx: 1, sy: 1, shown: true }, moved: false };
-    const peak = stretch(prev.box, box, axis);
-    const thin = squash(peak);
-    const across = axis === 'x';
+       is also how a nav that was display: none arrives at a real position.
+       Both edges on the leading schedule there, so the shape moves as one
+       piece and never opens. */
+    if (!prev.shown || !animate) {
+      return { next: { box, at, shown: true, near: LEAD, far: LEAD }, dir: 0 };
+    }
+    const dir = travel(prev.box, box, axis);
+    const lead = leadingEdge(dir);
     return {
-      next: { box, sx: across ? peak : thin, sy: across ? thin : peak, shown: true },
-      moved: true
+      next: { box, at, shown: true, ...schedules(dir) },
+      dir,
+      anchor: lead ? ANCHOR[axis][lead] : ANCHOR[axis].far
     };
   }
 
   function measure(shape: Shape, animate: boolean) {
-    const { next, moved } = place(pill[shape.key], tabs[shape.key][activeKey], shape.axis, animate);
+    const { next, dir, anchor } = place(
+      pill[shape.key],
+      tabs[shape.key][activeKey],
+      navs[shape.key],
+      shape.axis,
+      animate
+    );
     if (next !== pill[shape.key]) pill[shape.key] = next;
-    /* Cleared as well as set. A pill that goes unshown mid-slide never gets
-       its animationend, because a display: none element fires none, and the
-       class would otherwise still be on it when the nav came back. */
-    if (moved) sliding[shape.key] = true;
-    else if (!next.shown && sliding[shape.key]) sliding[shape.key] = false;
+    /* Cleared as well as set. An icon that goes unrendered mid-swing never
+       gets its animationend, because a display: none element fires none, and
+       the class would otherwise still be on it when the nav came back. */
+    if (dir && anchor) arriving[shape.key] = { key: activeKey, dir, anchor };
+    else if (!next.shown && arriving[shape.key]) arriving[shape.key] = null;
   }
 
   $effect(() => {
@@ -200,16 +255,18 @@
   <span
     class="nav-pill"
     class:is-shown={pill[shape].shown}
-    class:is-sliding={sliding[shape]}
     aria-hidden="true"
     data-nav-pill={shape}
-    style:--pill-x="{pill[shape].box.x}px"
-    style:--pill-y="{pill[shape].box.y}px"
-    style:--pill-w="{pill[shape].box.w}px"
-    style:--pill-h="{pill[shape].box.h}px"
-    style:--pill-sx={pill[shape].sx}
-    style:--pill-sy={pill[shape].sy}
-    onanimationend={() => (sliding[shape] = false)}
+    style:--pill-left="{pill[shape].at.left}px"
+    style:--pill-right="{pill[shape].at.right}px"
+    style:--pill-top="{pill[shape].at.top}px"
+    style:--pill-bottom="{pill[shape].at.bottom}px"
+    style:--pill-near-dur={pill[shape].near.dur}
+    style:--pill-near-ease={pill[shape].near.ease}
+    style:--pill-near-delay={pill[shape].near.delay}
+    style:--pill-far-dur={pill[shape].far.dur}
+    style:--pill-far-ease={pill[shape].far.ease}
+    style:--pill-far-delay={pill[shape].far.delay}
   ></span>
 {/snippet}
 
@@ -254,7 +311,13 @@
       href={item.href}
       aria-current={activeKey === item.key ? 'page' : undefined}
     >
-      <Icon name={item.icon} size={22} /><span>{item.label()}</span>
+      <span
+        class="rail-icon"
+        class:is-arriving={arriving.rail?.key === item.key}
+        style:--nav-swing={arriving.rail?.dir ?? 0}
+        style:--nav-anchor={arriving.rail?.anchor}
+        onanimationend={() => (arriving.rail = null)}><Icon name={item.icon} size={22} /></span
+      ><span>{item.label()}</span>
     </a>
   {/each}
   <!-- Preferences are chrome, not content (ticket 09; ADR-0076): a fifth
@@ -284,7 +347,17 @@
     href={item.href}
     aria-current={activeKey === item.key ? 'page' : undefined}
   >
-    <span class="nav-icon"><Icon name={item.icon} size={24} /></span>
+    <!-- The arrival swing (redesign ticket 26) rides the icon box rather than
+         the tab, so it does not fight the tab's own press scale, and it is
+         cleared on its own animationend so a tab visited twice swings
+         twice. -->
+    <span
+      class="nav-icon"
+      class:is-arriving={arriving.bar?.key === item.key}
+      style:--nav-swing={arriving.bar?.dir ?? 0}
+      style:--nav-anchor={arriving.bar?.anchor}
+      onanimationend={() => (arriving.bar = null)}><Icon name={item.icon} size={24} /></span
+    >
     <span class="nav-label" data-nav-label>{item.label()}</span>
   </a>
 {/snippet}
