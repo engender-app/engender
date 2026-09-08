@@ -58,14 +58,18 @@ function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | n
   return isPastInUseWindow(window, asOfEpochDay) ? m.stock_window_past({ date }) : m.stock_window_until({ date });
 }
 
-/** The low-stock notice's own sentence (Home) - the one place that decides
-    between three states, so /care's spine mark stays the only other reader
-    of `actionableEpochDay` and neither can drift from what this says
-    (redesign phase 10 ticket 16). Always a date, never a countdown: the
-    reorder-by day when a lead time is set, the projected run-out day when
-    none is, and the plain "already out" statement where the count itself
-    has gone to zero or below - a fact that holds regardless of any lead
-    time, so it is checked first rather than folded into the date branch.
+/** Home's low-stock notice, title and body together - the one place that
+    decides between three states, so /care's spine mark stays the only other
+    reader of `actionableEpochDay` and neither can drift from what this says
+    (redesign phase 10 ticket 16). Title and body come from the same branch
+    for the same reason the ticket bans a countdown: a title that still read
+    "running low" over a body naming a reorder day weeks out would be the
+    false urgency the ticket rules out, for a row whose count may not be low
+    at all yet. Body is always a date, never a countdown: the reorder-by day
+    when a lead time is set, the projected run-out day when none is, and the
+    plain "already out" statement where the count itself has gone to zero or
+    below - a fact that holds regardless of any lead time, so it is checked
+    first rather than folded into the date branch.
 
     `date` arrives pre-formatted rather than as an epoch day: this module's
     other date-shaped labels call `fmtDay` themselves, but that reaches
@@ -73,13 +77,14 @@ function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | n
     header says has no Node-tier test (ADR-0016) - so the caller formats the
     day and this function stays a plain string decision, testable without a
     locale in scope. */
-export function stockNoticeBody(
+export function stockNotice(
   row: { projection: { remaining: number }; entry: { drug: string; leadTimeDays: number | null } },
   date: string
-): string {
+): { title: string; body: string } {
   const { drug, leadTimeDays } = row.entry;
-  if (row.projection.remaining <= 0) return m.notice_stock_out_body({ drug });
-  return leadTimeDays !== null ? m.notice_stock_reorder_body({ drug, date }) : m.notice_stock_projected_body({ drug, date });
+  if (row.projection.remaining <= 0) return { title: m.notice_stock_low_title(), body: m.notice_stock_out_body({ drug }) };
+  if (leadTimeDays !== null) return { title: m.notice_stock_reorder_title(), body: m.notice_stock_reorder_body({ drug, date }) };
+  return { title: m.notice_stock_low_title(), body: m.notice_stock_projected_body({ drug, date }) };
 }
 
 /** Opened and its window folded into one row line rather than two - the
