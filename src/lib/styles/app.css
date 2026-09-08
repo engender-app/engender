@@ -590,14 +590,12 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    tonal-looking transition is allowed, because nothing is arriving from
    nowhere - the block was there and is still there.
 
-   Only on the fade-through, which is the tab crossing. A step into a detail
-   is a sequence, and its field travels with the screen it belongs to on the
-   shared axis; naming it there would hold the block still while the rest of
-   the screen slid past it. The pattern is on <html> before the old side is
-   captured (+layout.svelte), so both sides see the same rule. */
-html[data-nav='fade-through'] :is(.screen-field, .home-field) {
-  view-transition-name: field;
-}
+   The name itself is not written here. $lib/motion/sharedField hands it
+   from the outgoing field to the incoming one from the shell's onNavigate,
+   because a rule naming both sides at once names two elements at the new
+   capture - the outgoing screen is still in the DOM finishing its outros -
+   and the browser aborts the whole transition. What is here is the
+   group's timing, and the clamp. */
 ::view-transition-group(field) {
   animation-duration: var(--dur-med);
   animation-timing-function: var(--ease-out);

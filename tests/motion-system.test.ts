@@ -790,12 +790,24 @@ describe('ticket 25: every state change moves', () => {
      pulled out of the screen's snapshot under its own name, so it stays
      while the screens cross behind it and its contents crossfade. Only on
      the fade-through, which is the tab crossing; a step into a detail keeps
-     the field with the screen it belongs to. */
-  it('names the field as a shared element on the fade-through, and nowhere else', () => {
-    const named = rules(app).filter((rule) => /view-transition-name:\s*field/.test(rule.body));
-    expect(named.map((rule) => rule.prelude)).toEqual([
-      "html[data-nav='fade-through'] :is(.screen-field, .home-field)"
-    ]);
+     the field with the screen it belongs to.
+
+     The name is handed over by script ($lib/motion/sharedField), never
+     written as a rule: a rule names the outgoing and the incoming field at
+     once at the new capture, and the browser aborts the transition. So
+     what the stylesheet is held to is that it does not name it, and the
+     shell is held to carrying it on the fade-through alone. */
+  it('names the field as a shared element on the fade-through, by hand-over and never by rule', () => {
+    for (const { path, css } of styleSources()) {
+      for (const rule of rules(css)) {
+        expect(rule.body, `${path}: ${rule.prelude} names the field`).not.toMatch(/view-transition-name:\s*field/);
+      }
+    }
+    const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
+    expect(layout).toContain("import { shareField } from '$lib/motion/sharedField'");
+    expect(layout).toMatch(/pattern === 'fade-through' \? shareField\(\) : null/);
+    expect(layout).toContain('field?.swap()');
+    expect(layout).toContain('field?.release()');
     const group = ruleOf(app, '::view-transition-group(field)');
     expect(declarations(group?.body ?? '')).toMatchObject({
       'animation-duration': 'var(--dur-med)',
