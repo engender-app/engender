@@ -1116,10 +1116,19 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
   const slid = pillAfter.x - pillBefore.x;
   if (slid > 20) ok(`the segmented pill crosses to the chosen segment (${Math.round(slid)}px)`);
   else fail('the segmented pill crosses to the chosen segment', `moved ${Math.round(slid)}px`);
-  const settled = await pill.evaluate((el) => getComputedStyle(el).scale);
-  if (settled === 'none' || settled === '1' || settled === '1 1')
-    ok(`and it settles back to its own width rather than staying stretched (${settled})`);
-  else fail('the pill settles back to its own width', settled);
+  /* Against the segment's own box rather than against `scale`. The pill used
+     to stretch by scaling and the check read the scale back, which stopped
+     being able to fail the moment the mechanic became two scheduled insets
+     (2026-09-08) - a pill with no `scale` at all computes to `none` and
+     passed whatever its width was. Its width is the claim, so measure it. */
+  const seat = await page.locator('[data-case="segmented"] [data-segment="year"]').boundingBox();
+  const slack = Math.max(Math.abs(pillAfter.width - seat.width), Math.abs(pillAfter.x - seat.x));
+  /* 2px of sub-pixel layout, not a threshold with an opinion: a pill that
+     stayed stretched is most of the track out, so anything under about ten
+     would catch it, and the measured slack here is 0.8. */
+  if (slack < 2)
+    ok(`and it settles on that segment's own box rather than staying stretched (${slack.toFixed(1)}px off)`);
+  else fail("the pill settles on the segment's own box", `${slack.toFixed(1)}px off`);
 
   /* One ruler mark per stop, which is the claim the coarser step rests on. */
   const marks = await page.evaluate(() => ({

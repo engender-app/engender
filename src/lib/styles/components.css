@@ -518,11 +518,24 @@ a.segment {
    transition can go to 1.1 or come back from it, not both. Ending at the
    resting value keeps the reduced-motion clamp from stranding it stretched,
    which is why `scale: 1 1` is declared on the sliding state too. */
+/* Pinned by its two horizontal insets rather than placed by `translate` and
+   sized by `width` (2026-09-08). The two edges are no longer on the same
+   clock: the one nearer the destination sets off first and decelerates, the
+   one left behind waits --stagger-step and then gathers after it, so the
+   width in between is the live difference of two curves rather than a value
+   with a curve of its own - which no single transform can say, since a
+   translate moves both edges together. The navigation's own pill is the same
+   mechanic and app.css carries the long version of why, including what it
+   costs to animate a layout property and the cap that holds it.
+
+   Only the travelling axis is transitioned. A segment's height is the
+   track's, so top and bottom change when the control relaid out, and a
+   relayout is not a choice being made. */
 .segment-pill {
   position: absolute;
-  top: 3px; bottom: 3px; left: 0;
-  width: var(--seg-w, 0);
-  translate: var(--seg-x, 0) 0;
+  top: 3px; bottom: 3px;
+  left: var(--seg-left, 0);
+  right: var(--seg-right, 0);
   border-radius: var(--r-block);
   /* Lifted off the track rather than being the app's other surface. On the
      dark theme --surface and --surface-2 are two steps of near-black and the
@@ -535,9 +548,23 @@ a.segment {
      both themes and never blends into the track the way an 11% mix did
      on dark. */
   background: var(--text);
+  /* Hidden until it has been measured, the same gate .nav-pill has and for
+     the same reason: pinned by insets, an unplaced pill is `left: 0;
+     right: 0`, which is the whole track rather than nothing. The old
+     `width: 0` was invisible by arithmetic and needed no gate. This matters
+     beyond the first frame - a switcher whose value matches no segment
+     never places the pill at all, which is /stats at rest, where the
+     timeline owns the span and none of week/month/year is chosen. */
+  opacity: 0;
   pointer-events: none;
-  transition: translate var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
+  transition:
+    left var(--seg-near-dur, var(--dur-med)) var(--seg-near-ease, var(--ease-out-soft))
+      var(--seg-near-delay, 0ms),
+    right var(--seg-far-dur, var(--dur-med)) var(--seg-far-ease, var(--ease-out-soft))
+      var(--seg-far-delay, 0ms),
+    opacity var(--dur-fast) var(--ease-out);
 }
+.segment-pill.is-shown { opacity: 1; }
 /* A set of short labels - a range in days, a count of steps. The buttons
    keep the 48dp press height Android asks for and the pill is drawn shorter
    inside it, so the thing that slides is a pill crossing the set rather than
@@ -576,19 +603,6 @@ a.segment {
   }
 }
 
-.segment-pill.is-sliding {
-  scale: 1 1;
-  animation: segment-slide var(--dur-med) var(--ease-out);
-}
-/* Wider along the way and a little shorter with it, so the pill reads as
-   something being carried rather than as a rectangle being repositioned. The
-   peak sits before halfway: a thing stretches as it accelerates away and has
-   recovered by the time it lands. */
-@keyframes segment-slide {
-  0% { scale: 1 1; }
-  40% { scale: 1.12 0.92; }
-  100% { scale: 1 1; }
-}
 /* The one control that answered a press with colour alone. A segment is a
    choice among peers, and the colour change is the answer to the choice
    rather than to the touch - the pressed segment and the already-active one
