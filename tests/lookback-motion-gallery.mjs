@@ -24,7 +24,8 @@ import { preview } from 'vite';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { launchChromium } from './browser-harness.mjs';
+import { farMark, seedEras } from './lookback-shared.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -34,7 +35,6 @@ const outDir = resolve(process.argv[2] ?? resolve(root, '.claude/lookback-motion
     land and hold still. */
 const SCENE_MS = 720;
 const VIEWPORT = { width: 390, height: 900 };
-const DAY_MS = 86400000;
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
@@ -98,62 +98,12 @@ const dress = async (page, palette, theme) => {
 };
 
 
-/** The milestone mark farthest from either handle, as a locator: a mark
-    under a handle's target is the handle's to drag, not a tap. */
-const farMark = async (p) => {
-  const index = await p.evaluate(() => {
-    const at = (el) => { const r = el.getBoundingClientRect(); return r.x + r.width / 2; };
-    const handles = [...document.querySelectorAll('[data-span-handle]')].map(at);
-    const marks = [...document.querySelectorAll('[data-span-milestone]')].map(at);
-    let best = 0;
-    let bestGap = -1;
-    marks.forEach((x, i) => {
-      const gap = Math.min(...handles.map((h) => Math.abs(h - x)));
-      if (gap > bestGap) { bestGap = gap; best = i; }
-    });
-    return best;
-  });
-  return p.locator('[data-span-milestone]').nth(index);
-};
-
-const iso = (epochDay) => new Date(epochDay * DAY_MS).toISOString().slice(0, 10);
-
 const seed = async (page) => {
   await settle(page, '/');
   await page.locator('[data-fill-every-feature]').click();
   await page.waitForURL('**/more', { timeout: 180000 });
   await page.waitForTimeout(1500);
-  await settle(page, '/stats');
-  await page.waitForSelector('[data-span-timeline]');
-  const rail = await page.evaluate(() => {
-    const el = document.querySelector('[data-span-timeline]');
-    return { start: Number(el.dataset.railStart), today: Number(el.dataset.spanEnd) };
-  });
-  const cut1 = Math.max(rail.start + 30, rail.today - 700);
-  const cut2 = Math.max(cut1 + 30, rail.today - 260);
-  for (const era of [
-    { name: 'Before I knew', start: null, end: cut1 },
-    { name: 'First year', start: cut1 + 1, end: cut2 },
-    { name: 'Since moving', start: cut2 + 1, end: null }
-  ]) {
-    await settle(page, '/transition/eras');
-    await page.locator('[data-add]').click();
-    await page.waitForSelector('input[name="era-name"]');
-    await page.fill('input[name="era-name"]', era.name);
-    await page.locator(`[data-segmented="era-start"] [data-segment="${era.start === null ? 'open' : 'day'}"]`).click();
-    if (era.start !== null) {
-      await page.waitForSelector('input[name="era-start"]', { state: 'attached' });
-      await fillDate(page, 'input[name="era-start"]', iso(era.start));
-    }
-    await page.locator(`[data-segmented="era-end"] [data-segment="${era.end === null ? 'open' : 'day'}"]`).click();
-    if (era.end !== null) {
-      await page.waitForSelector('input[name="era-end"]', { state: 'attached' });
-      await fillDate(page, 'input[name="era-end"]', iso(era.end));
-    }
-    await page.waitForTimeout(200);
-    await page.locator('[data-save-era]').click();
-    await page.waitForSelector('[data-save-era]', { state: 'detached', timeout: 10000 });
-  }
+  await seedEras(page, settle);
 };
 
 async function record(page, cdp, name, note, act) {
@@ -217,6 +167,12 @@ try {
     ]) {
       await dress(page, palette, theme);
       await arrive(page);
+      await record(page, cdp, `raise-${palette}-${theme}`, 'A touch on the end grip, no drag: the rail rises from rest - the span stands up, the frame and the era names appear, the grips grow.', async () => {
+        const grip = await page.locator('[data-span-handle="end"]').boundingBox();
+        await page.mouse.click(grip.x + grip.width / 2, grip.y + grip.height - 8);
+      });
+      await page.mouse.move(4, 4);
+      await page.waitForTimeout(300);
       await record(page, cdp, `milestone-${palette}-${theme}`, 'From the default span, a milestone tapped: the nearer handle goes to it, the other stays.', async () =>
         (await farMark(page)).click()
       );

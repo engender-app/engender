@@ -31,7 +31,8 @@ import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { launchChromium } from './browser-harness.mjs';
+import { farMark, seedEras as seedErasInto } from './lookback-shared.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -43,7 +44,6 @@ const tag = flag('tag', 'after');
 const outDir = resolve(flag('out', resolve(here, '../.claude/lookback-shots')), tag);
 const PALETTES = flag('palettes', 'trans,nonbinary,rainbow,agender').split(',');
 const THEMES = ['light', 'dark'];
-const DAY_MS = 86400000;
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
@@ -159,66 +159,9 @@ const seed = async () => {
 };
 
 
-/** The milestone mark farthest from either handle, as a locator: a mark
-    under a handle's target is the handle's to drag, not a tap. */
-const farMark = async (p) => {
-  const index = await p.evaluate(() => {
-    const at = (el) => { const r = el.getBoundingClientRect(); return r.x + r.width / 2; };
-    const handles = [...document.querySelectorAll('[data-span-handle]')].map(at);
-    const marks = [...document.querySelectorAll('[data-span-milestone]')].map(at);
-    let best = 0;
-    let bestGap = -1;
-    marks.forEach((x, i) => {
-      const gap = Math.min(...handles.map((h) => Math.abs(h - x)));
-      if (gap > bestGap) { bestGap = gap; best = i; }
-    });
-    return best;
-  });
-  return p.locator('[data-span-milestone]').nth(index);
-};
-
-const iso = (epochDay) => new Date(epochDay * DAY_MS).toISOString().slice(0, 10);
-
-/** Three eras through the screen's own editor, placed off the rail's
-    actual span so they land wherever the persona's history is. */
-const seedEras = async () => {
-  await settle('/stats');
-  await page.waitForSelector('[data-span-timeline]');
-  const rail = await page.evaluate(() => {
-    const el = document.querySelector('[data-span-timeline]');
-    return { start: Number(el.dataset.railStart), today: Number(el.dataset.spanEnd) };
-  });
-  const cut1 = Math.max(rail.start + 30, rail.today - 700);
-  const cut2 = Math.max(cut1 + 30, rail.today - 260);
-  const eras = [
-    { name: 'Before I knew', start: null, end: cut1 },
-    { name: 'First year', start: cut1 + 1, end: cut2 },
-    { name: 'Since moving', start: cut2 + 1, end: null }
-  ];
-  for (const era of eras) {
-    await settle('/transition/eras');
-    await page.locator('[data-add]').click();
-    await page.waitForSelector('input[name="era-name"]');
-    await page.fill('input[name="era-name"]', era.name);
-    if (era.start === null) {
-      await page.locator('[data-segmented="era-start"] [data-segment="open"]').click();
-    } else {
-      await page.locator('[data-segmented="era-start"] [data-segment="day"]').click();
-      await page.waitForSelector('input[name="era-start"]', { state: 'attached' });
-      await fillDate(page, 'input[name="era-start"]', iso(era.start));
-    }
-    if (era.end === null) {
-      await page.locator('[data-segmented="era-end"] [data-segment="open"]').click();
-    } else {
-      await page.locator('[data-segmented="era-end"] [data-segment="day"]').click();
-      await page.waitForSelector('input[name="era-end"]', { state: 'attached' });
-      await fillDate(page, 'input[name="era-end"]', iso(era.end));
-    }
-    await page.waitForTimeout(200);
-    await page.locator('[data-save-era]').click();
-    await page.waitForSelector('[data-save-era]', { state: 'detached', timeout: 10000 });
-  }
-};
+/** Three eras through the eras screen's editor (lookback-shared.mjs); the
+    gallery's own `settle` closes over its page, so it is handed in. */
+const seedEras = () => seedErasInto(page, (_p, path) => settle(path));
 
 /** The top of the door: field, subtitle, quick picks, rail, line, tiles. */
 const railTop = (name, note) => cropTop(name, ['[data-tile-grid]', '[data-lookback-rail]', '[data-stats-caption]', '[data-segmented]'], 20, note);
@@ -228,13 +171,30 @@ try {
   const isAfter = (await (await settle('/stats'), page.locator('[data-span-timeline]').count())) > 0;
   if (isAfter) await seedEras();
 
-  /* 1. The top of the door, per palette and theme, at the default span. */
+  /* 1. The top of the door, per palette and theme, at the default span and
+        at rest: the rail low, the grips short. Then the same rail raised by
+        a touch, on two palettes. */
   for (const palette of PALETTES) {
     for (const theme of THEMES) {
       await dress(palette, theme);
       await settle('/stats');
-      await railTop(`top-${palette}-${theme}`, 'The door as it opens: the last thirty days.');
+      await railTop(`top-${palette}-${theme}`, 'The door as it opens: the last thirty days, the rail at rest.');
     }
+  }
+  const raise = async () => {
+    const grip = await page.locator('[data-span-handle="end"]').boundingBox();
+    await page.mouse.click(grip.x + grip.width / 2, grip.y + grip.height - 8);
+    await page.waitForTimeout(600);
+  };
+  for (const [palette, theme] of [
+    ['trans', 'light'],
+    ['nonbinary', 'dark']
+  ]) {
+    await dress(palette, theme);
+    await settle('/stats');
+    if (!(await page.locator('[data-span-handle]').count())) continue;
+    await raise();
+    await railTop(`raised-${palette}-${theme}`, 'The same rail after a touch: the span stands up out of the history and the grips grow.');
   }
 
   /* 2. Home's band where the two tiles used to sit. */
@@ -298,7 +258,8 @@ try {
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
   await settle('/stats');
-  await railTop('disguise', 'Under disguise: a grey field, every band the one accent.');
+  await raise();
+  await railTop('disguise', 'Under disguise, raised: a grey field, every band the one accent.');
   await settle('/settings');
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();

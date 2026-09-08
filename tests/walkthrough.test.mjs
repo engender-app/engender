@@ -709,21 +709,20 @@ try {
    what it used to open is a hidden list now. Redesign ticket 11 replaced
    the segmented range with the span on the rail: the range is whatever the
    two handles bound, so the flow widens the span from the keyboard - ten
-   steps back on the start handle - and reads the subtitle and the day count
-   change with it. */
+   steps back on the start handle - and reads the subtitle change with it. */
 try {
   await fresh('/stats');
   await page.waitForSelector('[data-span-handle="start"]');
   const spanBefore = await page.locator('[data-screen-subtitle]').textContent();
-  const daysBefore = await page.locator('[data-span-days]').textContent();
   await page.locator('[data-span-handle="start"]').focus();
   await page.keyboard.press('Shift+ArrowLeft');
   await page.waitForFunction(
-    (was) => document.querySelector('[data-span-days]')?.textContent !== was,
-    daysBefore
+    (was) => document.querySelector('[data-screen-subtitle]')?.textContent !== was,
+    spanBefore
   );
   const period = await page.locator('[data-screen-subtitle]').textContent();
-  if (period === spanBefore) throw new Error('the subtitle did not follow the span: ' + period);
+  /* The subtitle carries the span's two dates and its length in days. */
+  if (!/\d/.test(period ?? '')) throw new Error('the subtitle carries no span: ' + period);
   const spanStart = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-start'));
   const spanEnd = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-end'));
   if (!(spanEnd > spanStart)) throw new Error(`the span is not a span: ${spanStart}..${spanEnd}`);
