@@ -33,6 +33,14 @@ const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> 
   doseSlot: () => ({ icon: 'clock', title: m.dose_amount_label() })
 };
 
+/** The icon and the words one kind of mark is drawn with, wherever it is
+    drawn: a row on `/day/[day]` below, and a row of Today's agenda (phase
+    10 redesign ticket 13), so the two surfaces cannot come to call the same
+    fact two different things. */
+export function dayAheadMarkLabel(kind: DayAheadMarkKind): Pick<DayRow, 'icon' | 'title'> {
+  return MARK_ROWS[kind]();
+}
+
 /** Every mark as a row, in the order `dayAhead` returned them - already
     earliest-day-first and, within a day, insertion order (dayAhead.ts's own
     `assembleDayAhead`). One row per mark: a single-day read never returns
@@ -41,7 +49,7 @@ const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> 
 export function dayAheadRows(marks: readonly DayAheadMark[]): DayRow[] {
   return marks.map((mark) => ({
     key: `coming-${mark.kind}`,
-    ...MARK_ROWS[mark.kind](),
+    ...dayAheadMarkLabel(mark.kind),
     href: DAY_AHEAD_ROUTES[mark.kind]
   }));
 }

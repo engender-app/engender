@@ -9,7 +9,6 @@
   "nav_lookback": "Przegląd",
   "nav_transition": "Tranzycja",
   "hello": "Cześć",
-  "how_feeling": "Jak się dziś czujesz?",
   "new_entry": "Nowy wpis",
   "new_entry_when": "Z jakiego dnia jest ten wpis? Jeden dzień może mieć kilka wpisów.",
   "quick_add_title": "Szybki zapis",
@@ -134,8 +133,6 @@
   "dismiss": "Zamknij",
   "empty_home_title": "Twoja historia zaczyna się od jednego wpisu",
   "empty_home_body": "Zapisz, jaki był dzisiejszy dzień. Sam nastrój wystarczy, resztę możesz dodać później.",
-  "home_milestones_empty_title": "Brak kamieni milowych",
-  "home_milestones_empty_body": "Dodaj datę coming outu, początku terapii albo coś innego, co warto zapamiętać.",
   "colour_days_by": "Koloruj dni według",
   "metric_note": "Ten sam wybór koloruje mapę w kalendarzu.",
   "prev_month": "Poprzedni miesiąc",
@@ -3513,5 +3510,9 @@
   "calendar_handoff_title_label": "Tytuł",
   "calendar_handoff_time_label": "Godzina (opcjonalnie)",
   "calendar_handoff_share": "Udostępnij",
-  "agenda_passed_dose": "Zaplanowana dawka na {date}"
+  "agenda_passed_dose": "Zaplanowana dawka na {date}",
+  "home_agenda_heading": "Nadchodzi",
+  "home_log_heading": "Zapisz coś",
+  "home_pinned_heading": "Przypięte",
+  "tomorrow": "Jutro"
 }
