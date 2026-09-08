@@ -811,7 +811,7 @@
         {#if recapQuery.loading}
           <span class="lookback-thin" aria-hidden="true"></span>
         {:else if enoughEntries}
-          <a class="lookback-read" data-lookback-read href={`/wrapped/range${spanRangeQuery(span)}`}>
+          <a class="lookback-read" data-lookback-read data-span-keep href={`/wrapped/range${spanRangeQuery(span)}`}>
             {m.lookback_read_span()}
           </a>
         {:else}
