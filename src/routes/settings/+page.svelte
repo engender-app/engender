@@ -15,7 +15,6 @@
      be a press-state change on tap - out of this ticket's reach). */
   import { m } from '$lib/paraglide/messages';
   import { setLocale, getLocale } from '$lib/paraglide/runtime';
-  import { DECOY_NAME } from '$lib/disguise/identity';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
@@ -23,6 +22,7 @@
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import HostedRows from '$lib/components/HostedRows.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -547,24 +547,8 @@
           }}
         />
       </div>
-      <div class="disguise-preview" class:is-on={prefs.disguise}>
-        <span class="disguise-icon"><Icon name="book" size={22} /></span>
-        <span>
-          <!-- The disguise's own name, from the module every surface that
-               names the app reads (disguise/identity.ts). An expression
-               rather than a text node for the reason DecoyNotes gives:
-               check-copy counts bare text as untranslated, and this word
-               is the same in every language. -->
-          <strong>{DECOY_NAME}</strong><br />
-          <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
-        </span>
-      </div>
-      <!-- On Android the launcher alias switches at once, so there is nothing
-           to warn about there - but Settings, the app-info screen and the
-           widget picker never get a disguised variant, so that gap is named
-           instead. On web the manifest is the browser's to refresh, and a
-           promise the app cannot keep is worse than none. -->
-      <p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : m.disguise_installed_note()}</p>
+      <!-- The same block setup's last question draws (ticket 32). -->
+      <DisguisePreview on={prefs.disguise} />
       <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.lock_on_leave_title()}</span>
