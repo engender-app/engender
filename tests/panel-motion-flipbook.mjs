@@ -34,7 +34,27 @@ const CROP_HEIGHT = 800;
     every third one after it. */
 const MOTION_MS = 620;
 
-const [outFile, ...pairs] = process.argv.slice(2);
+/* Another ticket's scenes are another band and another duration - the
+   Journal door's month is the top of the screen and runs at --dur-slow
+   (redesign ticket 10) - so both are overridable, with Home's own numbers
+   as the defaults:
+     --crop <top>,<height>   --motion <ms> */
+const argv = process.argv.slice(2);
+const opt = (name) => {
+  const at = argv.indexOf(`--${name}`);
+  if (at < 0) return null;
+  const value = argv[at + 1];
+  argv.splice(at, 2);
+  return value;
+};
+const cropArg = opt('crop');
+const motionArg = opt('motion');
+const [cropTopArg, cropHeightArg] = (cropArg ?? '').split(',').map(Number);
+const cropTop = Number.isFinite(cropTopArg) ? cropTopArg : CROP_TOP;
+const cropHeight = Number.isFinite(cropHeightArg) ? cropHeightArg : CROP_HEIGHT;
+const motionMs = Number(motionArg) || MOTION_MS;
+
+const [outFile, ...pairs] = argv;
 if (!outFile || pairs.length === 0) {
   console.error('usage: node tests/panel-motion-flipbook.mjs <out.json> <label>=<dir> ...');
   process.exit(2);
@@ -44,7 +64,7 @@ const browser = await launchChromium();
 const page = await browser.newPage();
 
 /** Crops and re-encodes one JPEG, in the page, and hands back a data URI. */
-async function shrink(bytes, cropTop, quality) {
+async function shrink(bytes, top, quality) {
   return page.evaluate(
     async ({ b64, cropTop, cropHeight, quality }) => {
       const img = new Image();
@@ -57,11 +77,11 @@ async function shrink(bytes, cropTop, quality) {
       ctx.drawImage(img, 0, -cropTop);
       return { uri: canvas.toDataURL('image/jpeg', quality), w: canvas.width, h: canvas.height };
     },
-    { b64: bytes.toString('base64'), cropTop, cropHeight: CROP_HEIGHT, quality }
+    { b64: bytes.toString('base64'), cropTop: top, cropHeight, quality }
   );
 }
 
-const bundle = { crop: CROP_TOP, sets: {} };
+const bundle = { crop: cropTop, sets: {} };
 let total = 0;
 
 for (const pair of pairs) {
@@ -73,12 +93,12 @@ for (const pair of pairs) {
   for (const scene of manifest.scenes) {
     if (pattern && !scene.name.includes(pattern)) continue;
     const kept = scene.frames.filter(
-      (frame, i) => frame.at <= MOTION_MS || i % 3 === 0 || i === scene.frames.length - 1
+      (frame, i) => frame.at <= motionMs || i % 3 === 0 || i === scene.frames.length - 1
     );
     const frames = [];
     let size = { w: 0, h: 0 };
     for (const frame of kept) {
-      const shrunk = await shrink(await readFile(resolve(root, frame.file)), CROP_TOP, 0.4);
+      const shrunk = await shrink(await readFile(resolve(root, frame.file)), cropTop, 0.4);
       total += shrunk.uri.length;
       size = { w: shrunk.w, h: shrunk.h };
       frames.push({ at: frame.at, uri: shrunk.uri });

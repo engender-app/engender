@@ -142,6 +142,8 @@
   "prev_month": "Poprzedni miesiąc",
   "prev_year": "Poprzedni rok",
   "cal_jump_month": "Przejdź do miesiąca",
+  "cal_open_month": "Otwórz cały miesiąc",
+  "cal_close_month": "Zamknij miesiąc",
   "next_month": "Następny miesiąc",
   "next_year": "Następny rok",
   "heat_hint": "Dni z wpisami są wypełnione: głębszy kolor to wyższa wartość ({metric}). Dzień z dwoma dostatecznie różnymi odczytami jest przedzielony na pół, a dzień z kilkoma odczytami leży na stosiku. Dotknij wypełnionego dnia, żeby zobaczyć wpisy. Dzień z niewielkim oznaczeniem ma coś nadchodzącego; dotknij go, żeby zobaczyć co.",
