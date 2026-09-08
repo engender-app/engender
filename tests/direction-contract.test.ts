@@ -700,7 +700,12 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
   it("paints the screen's field in --field with --field-ink, bleeding to the screen's edges", () => {
     const css = sheet('components');
     const field = ruleFor(css, '.screen-field');
-    expect(field?.body).toMatch(/background:\s*var\(--field\)/);
+    /* The colour is on the blind rather than on the field itself since
+       redesign ticket 28: the box that measures the field and the block
+       that paints it move on different clocks during a navigation, so they
+       are two elements. What rule 7 asks is that the field is --field with
+       --field-ink on it, which is still where both come from. */
+    expect(ruleFor(css, '.field-blind')?.body).toMatch(/background:\s*var\(--field\)/);
     expect(field?.body).toMatch(/color:\s*var\(--field-ink\)/);
     const bleed = ruleFor(css, '.screen > .screen-header > .screen-field');
     expect(bleed?.body).toMatch(/margin:\s*calc\(-1 \* var\(--inset-top\)\) calc\(-1 \* var\(--space-5\)\) 0/);
@@ -735,7 +740,9 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
     expect(foot).toContain('data-home-gear');
     const css = styleBlocks('src/routes/+page.svelte');
     const rule = ruleFor(css, '.home-field');
-    expect(rule?.body).toMatch(/background:\s*var\(--field\)/);
+    /* Today's field paints through the same blind every other door's does
+       (redesign ticket 28, components.css); what stays here is the box. */
+    expect(field).toContain('data-field-blind');
     expect(rule?.body).toMatch(/color:\s*var\(--field-ink\)/);
     expect(ruleFor(css, '.home-hero')?.body).toMatch(/font-size:\s*clamp\(1\.7rem, 13cqw, 3rem\)/);
   });

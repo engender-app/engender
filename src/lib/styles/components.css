@@ -23,11 +23,48 @@
    title that wraps grows it rather than clipping. The bottom corners are
    the one radius; the top corners meet the window's edge and have none. */
 .screen-field {
-  background: var(--field);
   color: var(--field-ink);
   padding: var(--space-8) 0 var(--space-4);
   border-radius: 0 0 var(--r-block) var(--r-block);
+  /* The paint is a child now, not this element's background (redesign
+     ticket 28): the field's box is the measurement and the blind is what
+     stands in for its colour, so the two can move on different clocks
+     during a navigation. `isolation` keeps the blind's negative z-index
+     inside this box without reordering the field against its own siblings
+     the way a z-index of its own would; `overflow` plus the radius above
+     are what hold the blind to the field's exact shape while nothing is
+     moving. */
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
+/* The blind (redesign ticket 28). A window tall, hanging from the field's
+   top edge, so its bottom edge can be pulled down past the field's box or
+   up to the window's own top without the block ever being resized: at rest
+   the field's overflow clips it to exactly the field, and during a
+   navigation - where a named element escapes its ancestors' clipping - the
+   stylesheet's own clip-path is the edge, and it carries the same bottom
+   radius so no frame of the slide can squash a corner.
+
+   Painted even where the field is collapsed to nothing. A screen with no
+   field is the blind's limit case rather than a case to skip, and the side
+   that closes to it still needs a block of colour to close. */
+.field-blind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--field);
+}
+/* Every element painted on the field leaves and arrives under its own
+   animation, which needs one selector to reach them all: the name is per
+   side and per element (fieldBlind.ts), the class is what the stylesheet
+   can say something about. Setting a class alone makes nothing a stacking
+   context - only a name does - so this is safe to leave on permanently. */
+[data-field-part] { view-transition-class: field-part; }
 /* On a screen, the field runs from the window's top edge to both side
    edges: back up through the inset the scroll region pads every screen by
    (the same bleed Home's sun makes, app.css) and out through .screen's own
@@ -62,7 +99,6 @@
    walkthrough's hub characterisation reads that heading. */
 .screen-header.is-collapsed .screen-field,
 .screen > .screen-header.is-collapsed > .screen-field {
-  background: none;
   color: inherit;
   padding: 0;
   margin: 0;
@@ -2006,6 +2042,10 @@ html[data-a11y-motion='reduce'] .bloom-core {
 }
 .sun i {
   position: absolute; top: 0; left: 0; display: block; border-radius: 50%;
+  /* Each ring closes and opens on its own inside a door change (redesign
+     ticket 28). The name is per side and per ring (fieldBlind.ts); this is
+     what one rule can say to all of them. */
+  view-transition-class: sun-ring;
   width: var(--d); height: var(--d); background: var(--c);
   box-sizing: border-box;
   border: 3px solid #000;
@@ -2021,6 +2061,20 @@ html[data-a11y-motion='reduce'] .bloom-core {
 @keyframes breathe {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   50% { transform: translate(-50%, -50%) scale(var(--sun-breathe-scale)); }
+}
+/* Arrived at through a door rather than opened cold (redesign ticket 28):
+   the rings' own entrance is dropped and the breathing kept, because the
+   navigation is drawing the arrival - each ring is its own view transition
+   group and opens from nothing on the door's clock, outermost first. The
+   ring rests at its base rule, fully drawn, which is where that animation
+   leaves it. */
+.sun.is-carried i {
+  /* The resting transform is declared again rather than left to the rule
+     above: what the breathing ends on has to be where the ring rests, or
+     the 1ms clamp strands it there (the reduced-motion invariant), and
+     what breathe ends on is the identity scale written out. */
+  transform: translate(-50%, -50%) scale(1);
+  animation: breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
 }
 /* MO-001: the global reduce rule clamps every animation's duration to 1ms,
    which turns breathe's infinite loop into a restart-every-millisecond
