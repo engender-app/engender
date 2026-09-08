@@ -533,6 +533,28 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).toContain('height: 100px');
   });
 
+  /* Alicja, round three: a notice's top hairline "simply disappears" on the
+     first frame of its close. The edges stay for the travel and the box
+     fades over its last third instead, so the line goes with the box. */
+  it('keeps a closing panel\'s hairlines and fades the box over its last third', () => {
+    const node = panel(
+      { beside: [[120, 220]] },
+      { paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '1px', borderBottomWidth: '1px' }
+    );
+    const { css } = collapse(node, undefined, { direction: 'out' });
+    expect(frame(css!, 0.5)).toContain('border-top-width: 1px');
+    expect(frame(css!, 0.5)).toContain('opacity: 1');
+    expect(frame(css!, 0.175)).toContain('opacity: 0.5');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+    expect(frame(css!, 1)).toContain('opacity: 1');
+  });
+
+  it('never fades a panel in: an arriving block does not come from nothing', () => {
+    const node = panel({ height: 1500, beside: [[1600, 1700]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    markScreenArrival(performance.now() - 1000);
+    expect(frame(collapse(node, undefined, { direction: 'in' }).css!, 0.1)).not.toContain('opacity');
+  });
+
   /* Redesign ticket 25: the grid's stagger (kit.css, --tile-index by
      nth-child) is for a grid arriving together. A tile arriving alone on a
      settled screen - the third out of the fold - sat as a blank block for
