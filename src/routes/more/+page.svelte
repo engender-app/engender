@@ -235,7 +235,15 @@
   </p>
 
   {#if searching}
-    <div class="screen-part" data-hub-results transition:disclose={{ skip: leaving }}>
+    <!-- The whole block, not each list in it: what swaps is the door's index
+         for the door's answer, and both give their height back through
+         `collapse`, which is the kit's own case for a block handing back the
+         space it held - --dur-slow rather than --dur-med, because the index
+         is the tallest thing on the screen and the faster curve reads as a
+         yank (reveal.ts records that finding). Measured: the two heights
+         interpolate against each other with no frame where the page is
+         missing both. -->
+    <div class="screen-part" data-hub-results transition:collapse={{ skip: leaving }}>
       {#if matches.length}
         <ListCard role={matchesRole}>
           {#each matches as row (row.spec.key)}
@@ -310,7 +318,7 @@
       {/if}
     </div>
   {:else}
-    <div class="screen-part" data-hub-index transition:disclose={{ skip: leaving }}>
+    <div class="screen-part" data-hub-index transition:collapse={{ skip: leaving }}>
       {#each sections as section (section.key)}
         <SectionHeading text={hubGroupHeading(section.key)} />
         <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
