@@ -489,7 +489,7 @@
     }
 
     .today-editor-list :global(.kit-row-trail) {
-      margin-inline-start: auto;
+      margin-left: auto;
     }
   }
 
@@ -500,8 +500,8 @@
     /* The touch floor, from the one token that holds it - 48, Android's
        floor rather than iOS's 44 (accessibility-audit.test.ts) - on a
        control whose whole job is to be grabbed. */
-    inline-size: var(--touch-target);
-    block-size: var(--touch-target);
+    width: var(--touch-target);
+    height: var(--touch-target);
     color: var(--text-2);
     background: none;
     border: 0;
@@ -529,6 +529,6 @@
   .today-editor-exits {
     display: grid;
     gap: var(--space-2);
-    margin-block-start: var(--space-5);
+    margin-top: var(--space-5);
   }
 </style>
