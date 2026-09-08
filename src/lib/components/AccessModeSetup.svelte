@@ -7,8 +7,9 @@
   import { isAndroid as onAndroid } from '$lib/platform';
   import { PIN_LENGTH as PIN_DIGITS } from '$lib/crypto/params';
   import type { AccessModeSetupResult } from '$lib/stores/boot.svelte';
+  import type { AccessSetupMode } from './accessModeSetup.ts';
 
-  export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase' | 'biometric';
+  export type { AccessSetupMode };
 
   export function accessModeTitle(mode: AccessSetupMode): string {
     if (mode === 'passphrase') return messages.am_mode_passphrase();
@@ -73,6 +74,14 @@
   import { PIN_LENGTH } from '$lib/crypto/params';
   import { prfAvailable } from '$lib/data/webauthn-prf';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import {
+    backToDetail,
+    backToList,
+    chooseMode,
+    continueToSecret,
+    needsSecret,
+    type AccessModeScreen
+  } from './accessModeSetup.ts';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
   import PinPad from './PinPad.svelte';
@@ -121,6 +130,10 @@
   let chosenPin = $state('');
   let localError = $state('');
   let refusals = $state(0);
+
+  /* The two screens (ticket 30), as one state machine: accessModeSetup.ts
+     decides what the next screen is, this only ever holds what it returns. */
+  let screen = $state<AccessModeScreen>({ screen: 'list' });
 
   let confirmingPin = $derived(chosenPin !== '');
 
@@ -194,13 +207,43 @@
     return mode !== 'passphrase';
   }
 
-  function back() {
-    chosen = null;
+  /** A row picked off the bare list: its detail screen, whatever it costs
+      and whether or not it has a secret to type next. */
+  function select(mode: Mode) {
+    screen = chooseMode(mode);
+    chosen = mode;
+  }
+
+  /** Screen one to screen two, for the two modes that have something to
+      type. Nothing to reset here: the secret fields are already empty,
+      whatever put this mode's detail screen up. */
+  function proceed() {
+    screen = continueToSecret(screen);
+  }
+
+  /** Whatever has been typed so far, on either secret field - shared by both
+      ways back off the secret screen, which throw the attempt away rather
+      than carry any of it to wherever they land. */
+  function resetSecretFields() {
     passphrase = '';
     confirmation = '';
     pin = '';
     chosenPin = '';
     localError = '';
+  }
+
+  /** Screen two back to screen one, the mode still chosen (ticket 30) - only
+      the typed-so-far secret is thrown away, not the choice that led here. */
+  function backFromSecret() {
+    screen = backToDetail(screen);
+    resetSecretFields();
+  }
+
+  /** "Pick another way": the detail screen back to the bare list. */
+  function pickAnother() {
+    screen = backToList();
+    chosen = null;
+    resetSecretFields();
   }
 
   function submitPassphrase(event: SubmitEvent) {
@@ -238,7 +281,7 @@
   let shownError = $derived(error || localError);
 </script>
 
-{#if chosen === null}
+{#if screen.screen === 'list'}
   {#if purpose !== 'recovered'}
     <div class="am-intro">
       <p class="gate-body is-long" data-access-intro>
@@ -255,7 +298,7 @@
           icon={icon(mode)}
           title={title(mode)}
           subtitle={subtitle(mode)}
-          onclick={() => (chosen = mode)}
+          onclick={() => select(mode)}
         />
       {/each}
     </ListCard>
@@ -264,8 +307,10 @@
   {#if current !== null && purpose !== 'recovered'}
     <p class="gate-note" data-access-current>{m.am_current({ mode: title(current) })}</p>
   {/if}
-{:else}
-  <div class="am-chosen" data-access-chosen={chosen}>
+{:else if screen.screen === 'detail'}
+  <!-- Screen one's second half (ticket 30): every consequence lives here,
+       never on the screen that follows it. -->
+  <div class="am-chosen" data-access-chosen={screen.mode}>
     <!-- The consequence, on the screen where the choice is actually made and
          above the control that makes it. Left-aligned, for the reason
          .gate-body.is-long exists: this is four or five lines of prose whose
@@ -280,18 +325,58 @@
          is that the sentence is as final as the behaviour, not that the box
          is red. -->
     <div class="am-notice">
-      <span class="am-notice-ico"><Icon name={tiedToDevice(chosen) ? 'alert' : 'shield'} size={20} /></span>
-      <p>{consequence(chosen)}</p>
+      <span class="am-notice-ico"><Icon name={tiedToDevice(screen.mode) ? 'alert' : 'shield'} size={20} /></span>
+      <p>{consequence(screen.mode)}</p>
     </div>
 
-    {#if tiedToDevice(chosen)}
+    {#if tiedToDevice(screen.mode)}
       <!-- Said once, next to both modes it is true of, because it is the
            one sentence that turns "tied to this device" into something a
            person can act on. -->
       <p class="am-export-note gate-body is-long is-small" data-access-export-note>{m.am_export_note()}</p>
     {/if}
 
-    {#if chosen === 'passphrase'}
+    {#if needsSecret(screen.mode)}
+      <!-- Nothing typed yet: this button only moves to screen two, which is
+           where actually confirming a PIN or a passphrase happens. -->
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-access-continue disabled={busy} onclick={proceed}>
+          <span>{m.continue()}</span>
+        </button>
+      </div>
+    {:else if screen.mode === 'biometric'}
+      <!-- No field, because there is nothing to choose: the secret is
+           whatever the authenticator releases, and the button is the whole
+           of the interaction. The prompt the platform draws next is the
+           part a person recognises. Confirmed here rather than on a second
+           screen, because a mode with nothing to type has nothing a second
+           screen could show. -->
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('biometric', '')}>
+          <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
+        </button>
+      </div>
+      <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
+    {:else}
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('device-bound', '')}>
+          <span>{busy ? m.pp_encrypting() : m.am_confirm_device()}</span>
+        </button>
+      </div>
+      <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
+    {/if}
+
+    <div class="gate-foot">
+      <button class="btn btn-ghost" data-access-back disabled={busy} onclick={pickAnother}>
+        <span>{m.am_pick_another()}</span>
+      </button>
+    </div>
+  </div>
+{:else}
+  <!-- Screen two: one instruction and one control, nothing this ticket's
+       no-scroll rule has to fight (screen.screen === 'secret' here). -->
+  <div class="am-secret" data-access-secret={screen.mode}>
+    {#if screen.mode === 'passphrase'}
       <form class="gate-form" onsubmit={submitPassphrase}>
         <div>
           <label class="field-label" for="am-passphrase">{m.pp_label_setup()}</label>
@@ -322,38 +407,19 @@
           <span>{busy ? m.pp_encrypting() : m.am_confirm_passphrase()}</span>
         </button>
       </form>
-    {:else if chosen === 'pin'}
-      <!-- Only which of the two entries this is. What a PIN costs and buys is
-           above, said once; repeating pin_setup_body here put the same three
-           facts on the screen twice and pushed the pad below the fold. -->
+    {:else if screen.mode === 'pin'}
+      <!-- Only which of the two entries this is. What a PIN costs and buys
+           is on the screen before this one, said once. -->
       <p class="gate-body" data-access-pin-step>
         {confirmingPin ? m.pin_confirm_body() : m.am_pin_choose()}
       </p>
       <PinPad bind:value={pin} disabled={busy} {refusals} onComplete={completePin} />
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
-    {:else if chosen === 'biometric'}
-      <!-- No field, because there is nothing to choose: the secret is
-           whatever the authenticator releases, and the button is the whole
-           of the interaction. The prompt the platform draws next is the
-           part a person recognises. -->
-      <div class="gate-actions">
-        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('biometric', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
-        </button>
-      </div>
-      <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
-    {:else}
-      <div class="gate-actions">
-        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('device-bound', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_device()}</span>
-        </button>
-      </div>
-      <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {/if}
 
     <div class="gate-foot">
-      <button class="btn btn-ghost" data-access-back disabled={busy} onclick={back}>
-        <span>{m.am_pick_another()}</span>
+      <button class="btn btn-ghost" data-access-secret-back disabled={busy} onclick={backFromSecret}>
+        <span>{m.back()}</span>
       </button>
     </div>
   </div>

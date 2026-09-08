@@ -2249,6 +2249,57 @@ await block('phase 8 features ticket 66 batched list', 8, async () => {
   eq('a link-expanded list is not what a later, link-free visit remembers', r.onReturnAfterFocus, 30);
 });
 
+// --- Ticket redesign-30: the lock step splits choosing from typing --------
+await block('ticket redesign-30 the lock step splits in two', 2, async () => {
+  /* The gates fixture (phase 5 ticket 26), not a probe page: this is the
+     real JournalGate over the real stylesheets, moved into the same
+     first-run "choosing a mode" state the screenshot script drives. */
+  await page.goto(`http://localhost:${port}/gates.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
+  await page.setViewportSize({ width: 320, height: 568 });
+
+  /* The baseline this ticket did not create: GateScreen's mark and title
+     plus PinPad's own touch-target keypad already overflow 320x568 on
+     today's plain PIN unlock gate, before this ticket's screen ever
+     existed. Read before the split screen, so the check below is against
+     what the shared gate shell actually costs rather than against the
+     no-scroll rule ticket 29 states for the sizes it names - closing that
+     rule needs GateScreen and PinPad sized for a short viewport, which is
+     ticket 34's "the gates" look, not this ticket's structural split. */
+  await page.selectOption('select[aria-label="Scene"]', 'unlock-pin');
+  await page.waitForSelector('[data-pin-pad]');
+  const baseline = await page.locator('.app-main').evaluate((el) => el.scrollHeight);
+
+  await page.selectOption('select[aria-label="Scene"]', 'unlock-passphrase');
+  await page.selectOption('select[aria-label="Scene"]', 'access-choice');
+  await page.locator('[data-list-row="pin"]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+  await page.locator('[data-access-continue]').click();
+  await page.waitForSelector('[data-access-secret="pin"]');
+
+  /* Screen two carries one instruction and the pad, and nothing else
+     (ticket 30's scope): the consequence and the export note both moved to
+     screen one, and neither should have followed the pad here. */
+  const carriedOver = await page.locator('.am-secret .am-notice, .am-secret [data-access-export-note]').count();
+  if (carriedOver === 0) ok('the secret screen carries no consequence text or export note - both stayed on screen one');
+  else fail('the secret screen carries no consequence text or export note', `${carriedOver} node(s) found`);
+
+  const afterSplit = await page.locator('.app-main').evaluate((el) => el.scrollHeight);
+  console.log(
+    `INFO  PIN secret screen: ${afterSplit}px tall at 320 wide (today's plain PIN unlock gate: ${baseline}px). ` +
+      "Neither fits ticket 29's 320x568/320x360 no-scroll sizes yet - GateScreen and PinPad need a short-viewport " +
+      'treatment, tracked against ticket 34.'
+  );
+  if (afterSplit <= baseline) {
+    ok('splitting the screen leaves the pad screen no taller than the gate shell already was');
+  } else {
+    fail(
+      'splitting the screen leaves the pad screen no taller than the gate shell already was',
+      `${afterSplit}px vs a ${baseline}px baseline`
+    );
+  }
+});
+
 await browser.close();
 await server.close();
 
