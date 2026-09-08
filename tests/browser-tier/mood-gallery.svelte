@@ -79,81 +79,87 @@
 </div>
 
 <div class="page">
-  <section data-crop="ramp">
+  <section>
     <h2>The ramp</h2>
     <p class="note">
       Step 1 to step 5, one preset, one theme. Two hues end to end and more saturated with every
       step, and the same five literal hexes whatever flag is on.
     </p>
-    <div class="sweep">
-      {#each STEPS as step (step)}
-        <span class="sweep-step" style={`background: var(--mood-${step})`}></span>
-      {/each}
-    </div>
-    <div class="row">
-      {#each STEPS as step, i (step)}
-        <span class="swatch" style={`background: var(--mood-${step})`}>
-          <b>{step}</b>
-          <small>{hexes[i] ?? ''}</small>
-        </span>
-      {/each}
+    <div data-crop="ramp">
+      <div class="sweep">
+        {#each STEPS as step (step)}
+          <span class="sweep-step" style={`background: var(--mood-${step})`}></span>
+        {/each}
+      </div>
+      <div class="row">
+        {#each STEPS as step, i (step)}
+          <span class="swatch" style={`background: var(--mood-${step})`}>
+            <b>{step}</b>
+            <small>{hexes[i] ?? ''}</small>
+          </span>
+        {/each}
+      </div>
     </div>
   </section>
 
-  <section data-crop="faces">
+  <section>
     <h2>The five faces</h2>
     <p class="note">
       Every size a face ships at, and the 22 the drawing is settled against. Filled marks: a lens
       for the mouth, dots or lids for the eyes, a blush on the top step.
     </p>
-    {#each SIZES as size (size)}
-      <div class="row">
-        <span class="row-label">{size}px</span>
-        {#each STEPS as step (step)}
-          <span class="cell"><MoodFace {step} {size} /></span>
-        {/each}
-      </div>
-    {/each}
+    <div data-crop="faces">
+      {#each SIZES as size (size)}
+        <div class="row">
+          <span class="row-label">{size}px</span>
+          {#each STEPS as step (step)}
+            <span class="cell"><MoodFace {step} {size} /></span>
+          {/each}
+        </div>
+      {/each}
+    </div>
   </section>
 
-  <section data-crop="picker">
+  <section>
     <h2>The picker, with one picked</h2>
     <p class="note">
       The entry editor's row. The four unpicked faces sit back at 55% of their fill and 41% of
       their ink; the picked one takes the accent ring and keeps both.
     </p>
-    <MoodPicker value={picked} onPick={(v) => (picked = v)} />
+    <div data-crop="picker"><MoodPicker value={picked} onPick={(v) => (picked = v)} /></div>
   </section>
 
-  <section data-crop="picker-none">
+  <section>
     <h2>The picker, with none picked</h2>
     <p class="note">All five at full, which is what an entry with no mood on it shows.</p>
-    <MoodPicker value={null} onPick={() => {}} />
+    <div data-crop="picker-none"><MoodPicker value={null} onPick={() => {}} /></div>
   </section>
 
-  <section data-crop="chips">
+  <section>
     <h2>Home's chips</h2>
     <p class="note">Forty pixels, flush between two hairlines, with the labels under them.</p>
-    <MoodChips value={chipped} onPick={(v) => (chipped = v)} />
+    <div data-crop="chips"><MoodChips value={chipped} onPick={(v) => (chipped = v)} /></div>
   </section>
 
-  <section data-crop="read">
+  <section>
     <h2>Read, not chosen</h2>
     <p class="note">
       An entry's mark on a day card at 28, and the calendar's split cell, where the day already
       carries the colour and the face draws without its disc.
     </p>
-    <div class="row">
-      {#each STEPS as step (step)}
-        <span class="entry"><MoodFace {step} size={28} /> <small>{moodName(step)}</small></span>
-      {/each}
-    </div>
-    <div class="row">
-      {#each STEPS as step (step)}
-        <span class="split" style={`background: var(--mood-${step})`}>
-          <MoodFace {step} size="100%" disc={false} />
-        </span>
-      {/each}
+    <div data-crop="read">
+      <div class="row">
+        {#each STEPS as step (step)}
+          <span class="entry"><MoodFace {step} size={28} /> <small>{moodName(step)}</small></span>
+        {/each}
+      </div>
+      <div class="row">
+        {#each STEPS as step (step)}
+          <span class="split" style={`background: var(--mood-${step})`}>
+            <MoodFace {step} size="100%" disc={false} />
+          </span>
+        {/each}
+      </div>
     </div>
   </section>
 </div>
@@ -178,10 +184,13 @@
     background: var(--bg);
     color: var(--text);
   }
-  section {
-    /* A crop hook per block (tests/mood-gallery.mjs, .claude/mood-crops.mjs):
-       the review page shows one block at a time, with its own heading. */
-    display: block;
+  /* [data-crop] wraps a block's drawings and not its heading, because the
+     review page prints its own headings and sixteen copies of this one's
+     would be all a reader saw (.claude/mood-crops.mjs). */
+  [data-crop] {
+    display: grid;
+    gap: 10px;
+    padding: 2px 0;
   }
   h2 {
     font-family: var(--font-display);
@@ -232,11 +241,14 @@
     display: grid;
     place-items: center;
     gap: 2px;
-    width: 76px;
+    /* Five across a phone's width, because the crop of this row is what the
+       review page shows and an overflowing fifth swatch is a clipped one. */
+    flex: 1;
+    min-width: 0;
     height: 62px;
     border-radius: var(--r-block);
     color: var(--text);
-    font-size: 10px;
+    font-size: 9.5px;
     font-variant-numeric: tabular-nums;
   }
   .swatch b {
