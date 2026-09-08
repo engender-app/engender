@@ -156,6 +156,12 @@
      finger holds a handle. */
   let live = $state<Span>({ start: 0, end: 0 });
   let dragging = $state<SpanHandle | null>(null);
+  /* Set on the first move after a handle is taken, not on the take: a tap
+     on a grip is a take and a release with no move between, and it has to
+     raise the rail with the transition on - the first recording showed the
+     span cut to full height while the grips grew, because the take alone
+     had switched the transition off. */
+  let moving = $state(false);
 
   /* At rest the rail is low: the span is a band a little taller than the
      history under it and the handles are two short grips on the axis,
@@ -219,11 +225,13 @@
   }
   function onHandleMove(event: PointerEvent, handle: SpanHandle) {
     if (dragging !== handle) return;
+    moving = true;
     settle(moveHandle(live, handle, dayAtClientX(event.clientX)));
   }
   function onHandleUp(handle: SpanHandle) {
     if (dragging !== handle) return;
     dragging = null;
+    moving = false;
     commit(live);
   }
 
@@ -264,7 +272,7 @@
 <div
   bind:this={root}
   class="span-tl"
-  class:is-dragging={dragging !== null}
+  class:is-dragging={moving}
   class:is-active={active}
   data-span-timeline
   data-span-state={active ? 'raised' : 'rest'}
