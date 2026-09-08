@@ -20,6 +20,7 @@ export type OnboardingStep =
   | 'areas'
   | 'lock'
   | 'checkin'
+  | 'disguise'
   | 'done';
 
 /* What a first run settles, and why each one is here rather than left to
@@ -37,10 +38,16 @@ export type OnboardingStep =
      lock     whether leaving the app locks it
      checkin  the daily prompt, which is the difference between a journal
               kept and a journal installed
+     disguise whether the app wears a different name and icon outside
+              itself (phase 10 redesign ticket 32, ADR-0079) - the one
+              privacy control nobody can discover before they need it,
+              because everything it changes is in the launcher, the tab
+              strip and the home screen rather than on any screen the app
+              draws
 
-   Six settings, six steps, plus a welcome and a finish. Everything else
-   the app has a preference for is either already right by default or is
-   something a person goes looking for once they know the app.
+   Seven settings, seven steps, plus a welcome and a finish. Everything
+   else the app has a preference for is either already right by default or
+   is something a person goes looking for once they know the app.
 
    The settled shape (phase 10 redesign ticket 29, DIRECTION.md rule 12) is
    ten steps, and this list becomes it as the tickets that build each step
@@ -51,8 +58,12 @@ export type OnboardingStep =
 
    `lock` splits into the mode list and the pad (ticket 30); `checkin`
    leaves the flow, its nudge offered by the permissions step's
-   notification row and kept in Settings (ticket 31); `disguise` is the
-   last question, applied last (ticket 32). */
+   notification row and kept in Settings (ticket 31). `disguise` is here
+   (ticket 32), and it sits where it does for a mechanical reason rather
+   than a rhetorical one: turning it on swaps the Android launcher alias,
+   which closes the app, and the flow holds every answer in memory until
+   `complete()` writes them. A disguise switch anywhere earlier would take
+   the rest of setup down with it. Last question, applied last. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -61,6 +72,7 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'areas',
   'lock',
   'checkin',
+  'disguise',
   'done'
 ];
 

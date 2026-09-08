@@ -22,7 +22,7 @@ describe('the step list', () => {
     expect(new Set(ONBOARDING_STEPS).size).toBe(ONBOARDING_STEPS.length);
   });
 
-  it('sets the five things a first run has to settle, in that order', () => {
+  it('sets the things a first run has to settle, in that order', () => {
     expect(ONBOARDING_STEPS).toEqual([
       'welcome',
       'name',
@@ -31,8 +31,20 @@ describe('the step list', () => {
       'areas',
       'lock',
       'checkin',
+      'disguise',
       'done'
     ]);
+  });
+
+  /* ADR-0079 and ticket 32. Disguise is asked last because turning it on
+     closes the app on Android, and setup holds every answer in memory
+     until complete() writes them - so anywhere earlier in the flow the
+     alias flip would take the rest of setup down with it. The finish still
+     follows it: the question is last, the screen that says setup is over
+     is not. */
+  it('asks about disguise last, with only the finish after it', () => {
+    expect(stepAfter(ONBOARDING_STEPS, 'disguise')).toBe('done');
+    expect(stepBefore(ONBOARDING_STEPS, 'done')).toBe('disguise');
   });
 
   it('walks forward and back, and stops at both ends', () => {
@@ -75,7 +87,8 @@ describe('skipping', () => {
       'scales',
       'areas',
       'lock',
-      'checkin'
+      'checkin',
+      'disguise'
     ]);
   });
 });
