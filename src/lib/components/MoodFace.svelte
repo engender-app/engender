@@ -43,7 +43,13 @@
      own `scale` and `translate`. */
   import { GAZE_REACH } from '$lib/motion/magnifier';
   import { MOOD_GLANCE, blinkCycle } from '$lib/motion/moodGlance';
-  import { MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from './moodFace';
+  import {
+    MOOD_CHEEKS,
+    MOOD_CHEEK_RADIUS,
+    MOOD_EYES,
+    MOOD_EYE_RADIUS,
+    MOOD_FACES
+  } from './moodFace';
 
   let {
     step,
@@ -118,4 +124,12 @@
     </g>
   </g>
   <path d={face.mouth} class="mood-face-mouth" />
+  <!-- The top step's blush. Outside both eye groups on purpose: a cheek does
+       not follow a finger, and the still drawing is the only thing the disc
+       has to contain it against. -->
+  {#if face.cheeks}
+    {#each MOOD_CHEEKS as cheek (cheek.cx)}
+      <circle cx={cheek.cx} cy={cheek.cy} r={MOOD_CHEEK_RADIUS} class="mood-face-cheek" />
+    {/each}
+  {/if}
 </svg>
