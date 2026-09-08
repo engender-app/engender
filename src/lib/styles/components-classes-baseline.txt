@@ -65,7 +65,6 @@ line-chart
 mood-btn
 mood-dot
 mood-face
-mood-face-cheek
 mood-face-disc
 mood-face-eye
 mood-face-mouth
