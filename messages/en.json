@@ -3468,5 +3468,7 @@
   "home_edit_agenda_heading": "What the agenda shows",
   "home_edit_done": "Done",
   "home_edit_reset": "Back to the default set",
+  "home_edit_reset_question": "Go back to the default set?",
+  "home_edit_reset_hint": "The order you arranged goes, and every agenda kind comes back on. What you pinned is not deleted anywhere else - the rows are still on their own screens.",
   "tomorrow": "Tomorrow"
 }

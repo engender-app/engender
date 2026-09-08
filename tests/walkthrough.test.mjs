@@ -665,6 +665,10 @@ try {
   await page.locator('[data-edit-unpin="doubt"]').click();
   await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
   await page.locator('[data-edit-reset]').click();
+  /* The one write on this surface that is behind a question, because it is
+     the one that throws away work somebody did. */
+  await page.waitForSelector('[data-confirm-edit-reset]');
+  await page.locator('[data-confirm-edit-reset]').click();
   await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="true"]');
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row]');
