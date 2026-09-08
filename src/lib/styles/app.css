@@ -336,7 +336,11 @@ body {
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
-.nav-icon { display: grid; place-items: center; }
+/* A box around the glyph on both shapes, and on the rail that is all it is
+   for: the arrival swing (redesign ticket 26) needs something to transform
+   that is not the row itself, since the row carries the press. */
+.nav-icon,
+.rail-icon { display: grid; place-items: center; }
 /* One line, ellipsed rather than wrapped: a two-line label would grow the
    bar's height on one tab and not the others.
 
@@ -371,67 +375,125 @@ body {
 
 /* One lit shape for the set, travelling to whichever tab is current, on both
    shapes of the navigation - across the bar, down the rail (phase 5 ticket
-   31). AppNav.svelte measures the tab and writes the five custom properties;
-   the axis is the only thing that differs between the two, and it arrives
-   already folded into --pill-sx and --pill-sy.
+   31). AppNav.svelte measures the tab and writes the four insets it is
+   pinned by, plus a schedule for each edge of the axis it travels on.
 
    Tier 2. The bar is how you move between the four areas of the app, and
    this is that move made visible in the one piece of chrome that is on every
    screen. It answers the same navigation the fade-through between the
    screens does, and it spends the same --dur-med.
 
-   Only `translate` transitions. The four tabs are equal cells of a five
-   column grid and the rail's rows are all the width of the rail, so the size
-   is the same wherever the pill lands and there is nothing else to animate -
-   which keeps this inside DIRECTION.md's contract of transform and opacity
-   rather than beside it. Should a translation ever make one tab a different
-   size, the pill resizes at the start of the move instead of over it, which
-   is invisible under a travelling shape.
+   Pinned by four insets rather than placed by `translate` (redesign ticket
+   26), because the two edges of the travelling axis are no longer on the
+   same clock. The leading edge - the one nearer the destination - leaves at
+   once and decelerates; the trailing edge waits --stagger-step, then
+   accelerates after it and closes the shape up again. Two independently
+   scheduled lengths is what that is, and there is no way to say it in one
+   transform: a translate moves both edges together, and the width in between
+   is the live difference of two curves rather than a value with a curve of
+   its own.
 
-   The stretch is a keyframe rather than a third transition, for the reason
-   .segment-pill already gives: a stretch is a there-and-back, and a
-   transition can go to a peak or come back from one, not both. It ends on
-   `scale: 1 1`, which the resting rule below also declares, so the
-   reduced-motion clamp to 1ms strands it at its true size rather than
-   stretched. */
+   The old version said it with `scale` and a keyframe, and paid for it
+   twice. The stretch was a tuned percentage of the pill's own length (18% at
+   the cap) rather than the gap it was actually crossing, so the shape never
+   touched both tabs at once; and scaling a rounded rectangle scales its
+   corners with it, which flattened --r-block along the way. Insets keep the
+   one corner the app has at both ends of the stretch, which is what every
+   tab bar in the reference sweep does with its highlight (Apple Store,
+   Flighty, Truecaller).
+
+   Two transitions rather than one for the same reason: a transition on a
+   layout inset retargets from wherever it currently is, so a second tab
+   tapped mid-travel picks the shape up in flight instead of restarting from
+   a position it has already left - which a keyframe on a class cannot do
+   without being cancelled and replayed.
+
+   Both edges end on the tab's own insets, which is the whole of the
+   reduced-motion contract here: the 1ms clamp lands the pill on its
+   destination at its own size, with nothing left mid-stretch. Both delays
+   are tokens the clamp zeroes too (--stagger-step), so the trailing edge
+   cannot outlive it. */
 .nav-pill {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: var(--pill-w, 0);
-  height: var(--pill-h, 0);
-  translate: var(--pill-x, 0) var(--pill-y, 0);
-  scale: 1 1;
+  left: var(--pill-left, 0);
+  right: var(--pill-right, 0);
+  top: var(--pill-top, 0);
+  bottom: var(--pill-bottom, 0);
   border-radius: var(--r-block);
   background: var(--accent-soft);
   opacity: 0;
   pointer-events: none;
-  transition: translate var(--dur-med) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+/* The axis each shape travels on, and it is the only thing that differs
+   between them: the bar's two edges are left and right, the rail's are top
+   and bottom. Which of the pair is leading and which is trailing flips with
+   the direction of travel, so the schedules arrive as --pill-near-* (left or
+   top) and --pill-far-* (right or bottom) and the component decides which is
+   which - indicator.ts's `leadingEdge`.
+
+   The cross-axis pair is deliberately not transitioned. Every cell of the
+   bar is the same height and every rail row the same width, so those insets
+   only change when the nav itself relaid out, and a relayout is not a
+   navigation to animate. */
+[data-nav-pill='bar'] {
+  transition:
+    left var(--dur-med) var(--pill-near-ease, var(--ease-out)) var(--pill-near-delay, 0ms),
+    right var(--dur-med) var(--pill-far-ease, var(--ease-out)) var(--pill-far-delay, 0ms),
+    opacity var(--dur-fast) var(--ease-out);
+}
+[data-nav-pill='rail'] {
+  transition:
+    top var(--dur-med) var(--pill-near-ease, var(--ease-out)) var(--pill-near-delay, 0ms),
+    bottom var(--dur-med) var(--pill-far-ease, var(--ease-out)) var(--pill-far-delay, 0ms),
+    opacity var(--dur-fast) var(--ease-out);
 }
 /* Hidden until a tab is lit rather than absent from the DOM: seven routes
    light no tab at all (active-tab.ts), and a pill that is removed and
    remounted has no previous position to travel from when one of them leads
    back into the four. */
 .nav-pill.is-shown { opacity: 1; }
-/* `scale: 1 1` restated on the sliding state and not only on the resting
-   rule, because the reduced-motion invariant is checked against the selector
-   the animation is declared on - and because it is true: this is where the
-   keyframe both starts and ends, so the 1ms clamp leaves the pill its own
-   size rather than stranding it mid-stretch. */
-.nav-pill.is-sliding {
-  scale: 1 1;
-  animation: nav-pill-slide var(--dur-med) var(--ease-out);
+
+/* The destination icon answers the arrival (redesign ticket 26). Every tab
+   bar in the reference sweep marks its active icon as the heavier of the set
+   - filled against outline - and this app does not, because a permanent
+   delta between the lit icon and its peers is a second active state to keep
+   honest in eight palettes and two themes. So the weight is spent in time
+   instead of in ink: the icon gains presence at the moment the highlight
+   lands and gives it straight back, and at rest it is the same drawing as
+   the other three.
+
+   A loop, not a settle. Both frames at either end are `transform: none`, so
+   there is no resting declaration to keep in step and nothing for the 1ms
+   clamp to strand - and no tab can accumulate a scale by being visited
+   twice.
+
+   Delayed by --dur-fast so the peak falls just after the leading edge
+   arrives rather than while it is still travelling: the highlight brushes
+   past the icon, and a brush is felt after the thing has got there. */
+.nav-icon.is-arriving {
+  animation: nav-icon-arrive-x var(--dur-med) var(--ease-out) var(--dur-fast);
 }
-/* Longer along the way and a little thinner with it, the peak before halfway
-   because a thing stretches as it accelerates away and has recovered by the
-   time it lands. How much is a function of how far it went, which
-   indicator.ts computes: a hop between neighbouring tabs and the jump across
-   the add button from Calendar to Stats should not deform alike, or the
-   deformation is illustrating travel rather than answering to any. */
-@keyframes nav-pill-slide {
-  0% { scale: 1 1; }
-  40% { scale: var(--pill-sx, 1) var(--pill-sy, 1); }
-  100% { scale: 1 1; }
+.rail-icon.is-arriving {
+  animation: nav-icon-arrive-y var(--dur-med) var(--ease-out) var(--dur-fast);
+}
+/* The lean follows the axis its own shape travels on, which is the same
+   mapping the insets above make: the bar runs across the screen, so its
+   icons lean across it, about Z. --nav-swing is the sign of the travel, so
+   a tab reached from the left and the same tab reached from the right lean
+   opposite ways. */
+@keyframes nav-icon-arrive-x {
+  0% { transform: none; }
+  50% { transform: scale(1.15) rotate(calc(var(--nav-swing, 0) * 8deg)); }
+  100% { transform: none; }
+}
+/* The rail runs down the screen, so its icons lean down it - which is a tip
+   about X rather than a turn about Z, and needs the perspective to be a tip
+   at all. Negative, so a highlight travelling downward drags the icon's top
+   face down toward the reader the way a finger drawn down a card would. */
+@keyframes nav-icon-arrive-y {
+  0% { transform: none; }
+  50% { transform: perspective(160px) scale(1.15) rotateX(calc(var(--nav-swing, 0) * -20deg)); }
+  100% { transform: none; }
 }
 
 .nav-add,

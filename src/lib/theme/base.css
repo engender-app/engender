@@ -93,6 +93,14 @@
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
+  /* Deceleration is the app's default because almost everything here is an
+     object arriving. The one thing that is not is an edge left behind and
+     catching up (redesign ticket 26): it starts from a stop after the edge
+     ahead of it has already gone, so it has to gather speed before it sheds
+     it again. --ease-out from a standing start would have it snap away and
+     coast, which reads as the trailing edge leading. */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
   /* Phase 5 ticket 29 removed an --ease-spring from beside this. Its
      numbers are deliberately not repeated here: the detector scans
      comments too, and quoting them keeps it flagging a curve nothing uses.
