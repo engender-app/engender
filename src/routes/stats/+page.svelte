@@ -776,6 +776,7 @@
     name={m.wrapped_cadence_group()}
     options={QUICK_PICKS.map((pick) => ({ value: pick.value, label: pick.label(), href: pick.href }))}
     value=""
+    compact
     key="lookback-quick"
   />
 

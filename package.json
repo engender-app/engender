@@ -45,6 +45,8 @@
     "gallery:journal-door": "VITE_DEMO=1 npm run build && node tests/journal-door-gallery.mjs --tag after",
     "gallery:journal-motion": "VITE_DEMO=1 npm run build && node tests/journal-motion-gallery.mjs",
     "gallery:photo-day": "VITE_DEMO=1 npm run build && node tests/photo-day-sheet-gallery.mjs",
+    "gallery:lookback": "VITE_DEMO=1 npm run build && node tests/lookback-gallery.mjs --tag after",
+    "gallery:lookback-motion": "VITE_DEMO=1 npm run build && node tests/lookback-motion-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",
