@@ -254,11 +254,14 @@
   );
 
   /* The write shapes a tap can start, beside the mood pick (spec stories
-     11 and 12): the same four the centre fan offers, with the same words,
-     going the same places and making the same writes (QuickAdd.svelte).
-     The fan is untouched - it is the fastest way to log from anywhere - and
-     this is the same set at rest on the screen, so the mood pick is one
-     shape among them rather than the screen's opening question. A dose goes
+     11 and 12): the four resolvable targets the centre fan offers, with the
+     same words, going the same places and making the same writes
+     (QuickAdd.svelte). The fan is untouched - it is the fastest way to log
+     from anywhere - and this is the same set at rest on the screen, so the
+     mood pick is one shape among them rather than the screen's opening
+     question. Two of the fan's rows are not here on purpose: "another day"
+     needs a date before it can go anywhere and stays the fan's sheet, and
+     the effects row is a nudge to a screen, not a write. A dose goes
      to its own screen with the add sheet open, because a dose has a drug
      and an amount to choose; a tally and a wear session resolve in place,
      because neither has anything left to choose, and each says so with the
@@ -632,21 +635,25 @@
             </ListRow>
           </div>
         {/each}
-        {#if agenda.passed}
-          <div class="rows-divide">
-            <ListRow
-              key={agenda.passed.key}
-              href={agenda.passed.route}
-              title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
-              data-agenda-passed={agenda.passed.epochDay}
-            >
-              {#snippet leading()}
-                {@render dayBlock(agenda.passed!.epochDay, true)}
-              {/snippet}
-            </ListRow>
-          </div>
-        {/if}
       </ListCard>
+      <!-- Its own list, not the last row of the one above: ADR-0074 gives
+           the passed slot its own shape so it can never be sorted among
+           the things coming, and a row under the same hairlines would read
+           as the next of them however its block was drawn. -->
+      {#if agenda.passed}
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+          <ListRow
+            key={agenda.passed.key}
+            href={agenda.passed.route}
+            title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
+            data-agenda-passed={agenda.passed.epochDay}
+          >
+            {#snippet leading()}
+              {@render dayBlock(agenda.passed!.epochDay, true)}
+            {/snippet}
+          </ListRow>
+        </ListCard>
+      {/if}
       {#if agenda.folded.length > 0}
         <button
           type="button"
