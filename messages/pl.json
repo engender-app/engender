@@ -646,6 +646,8 @@
   "ob_lock_body": "Aplikacja może zablokować się w chwili, gdy schodzi w tło, więc rzut oka na telefon w kieszeni albo na biurku nic nie pokaże. Powrót wymaga tego, co otwiera dziennik, czyli wyboru z poprzedniego kroku. Można go zmienić w Ustawieniach.",
   "ob_checkin_title": "Przypomnienie co dzień?",
   "ob_checkin_body": "Jedno powiadomienie z pytaniem, jak minął dzień, pomijane w dni, w których jest już wpis. Bez niego też jest dobrze, a ten sam przełącznik jest w Ustawieniach.",
+  "ob_disguise_title": "Wyglądać jak coś innego?",
+  "ob_disguise_body": "Poza samą aplikacją może nosić inną nazwę i inną ikonę, więc nic na pierwszy rzut oka nie zdradza, co to jest. Ten sam przełącznik jest w Ustawieniach.",
   "ob_done_title": "Wszystko gotowe",
   "ob_done_title_named": "Wszystko gotowe, {name}",
   "ob_done_body": "Jeden krótki wpis dziennie w zupełności wystarczy. Wszystko, co zapiszesz, zostaje tutaj, przy tobie.",

@@ -31,7 +31,8 @@
 
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { isAndroid } from '$lib/platform';
+  import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import { motionDuration } from '$lib/motion/tokens';
   import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
@@ -41,6 +42,7 @@
     accessModeTitle,
     type AccessSetupMode
   } from '$lib/components/AccessModeSetup.svelte';
+  import { completeSetup } from '$lib/onboarding/complete';
   import {
     isSkippable,
     onboardingDestination,
@@ -61,6 +63,7 @@
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -153,6 +156,16 @@
   let checkIn = $state(false);
   let checkInTime = $state(prefs.checkInTime);
 
+  /* Setup's last answer (ADR-0079, phase 10 redesign ticket 32). Held like
+     every other one and never read back off `prefs`, which matters more
+     here than anywhere else in the flow: assigning `prefs.disguise` is what
+     flips the Android launcher alias, and that closes the app. So this
+     starts at false rather than at the stored value - a first run has
+     nothing stored to disagree with, and the demo's own first-run control
+     is the only way to reach setup with it already on, where the answer
+     someone gives here is still the answer. complete() applies it, last. */
+  let disguise = $state(false);
+
   /* The access-mode module's own working state (ticket 53's four modes,
      wired in at this one step by ticket 54). Local to this step rather than
      read off the gate: on a brand new install this page is what renders
@@ -231,6 +244,7 @@
     else if (step === 'areas') areas = null;
     else if (step === 'lock') lockOnLeave = false;
     else if (step === 'checkin') checkIn = false;
+    else if (step === 'disguise') disguise = false;
     go(stepAfter(steps, step));
   }
 
@@ -247,23 +261,37 @@
      to route an early leave through its own PIN screen before that was one
      choice made in the security module rather than two. */
   function complete() {
-    /* Guarded like the other four, and for the same reason: skipping a step
-       leaves the stored value alone rather than overwriting it with
-       nothing. An empty field wrote an empty name, so skipping the name
-       step erased one that was already there - which a first run never has,
-       and a first run reached a second time does. Clearing a name is
-       Settings' job, where the field is the stored value rather than a
-       draft of it. */
-    if (name.trim()) prefs.name = name.trim();
-    if (scales) prefs.activeScales = scales;
-    if (areas) prefs.onboardingAreas = areas;
-    if (lockOnLeave) prefs.lockOnLeave = true;
-    if (checkIn) {
-      prefs.checkInEnabled = true;
-      prefs.checkInTime = checkInTime;
-    }
-    prefs.onboarded = true;
-    goto(onboardingDestination());
+    /* The order is onboarding/complete.ts's, and it is there rather than
+       here because the disguise makes it load-bearing: applying it closes
+       the app on Android, so every other answer has to be in SQLite first
+       or a first run that ends in a disguise ends in nothing. */
+    void completeSetup({
+      writeAnswers() {
+        /* Guarded like the other four, and for the same reason: skipping a
+           step leaves the stored value alone rather than overwriting it
+           with nothing. An empty field wrote an empty name, so skipping the
+           name step erased one that was already there - which a first run
+           never has, and a first run reached a second time does. Clearing a
+           name is Settings' job, where the field is the stored value rather
+           than a draft of it. */
+        if (name.trim()) prefs.name = name.trim();
+        if (scales) prefs.activeScales = scales;
+        if (areas) prefs.onboardingAreas = areas;
+        if (lockOnLeave) prefs.lockOnLeave = true;
+        if (checkIn) {
+          prefs.checkInEnabled = true;
+          prefs.checkInTime = checkInTime;
+        }
+        prefs.onboarded = true;
+      },
+      flushWrites: flushPreferences,
+      disguise,
+      /* Durably, and only here: everywhere else in the app a preference is
+         assigned and the screen carries on, but this assignment is what
+         makes the launcher alias flip and the process die. */
+      turnOnDisguise: () => setPreferenceDurably('disguise', true),
+      leaveSetup: () => void goto(onboardingDestination())
+    });
   }
 
   /* "Leave setup", from any step before the finish. Detours through the
@@ -485,6 +513,43 @@
                 </div>
               </div>
             </ListCard>
+          {:else if step === 'disguise'}
+            <h1 class="setup-title">{m.ob_disguise_title()}</h1>
+            <p class="setup-body">{m.ob_disguise_body()}</p>
+            <!-- A row with a switch, drawn as every other answer in the
+                 flow is (DIRECTION.md rule 13), and carrying the platform's
+                 own consequence as its reason rather than as a paragraph
+                 above it. On Android that reason is the one this step owes
+                 most: the app closes for a moment, because it does.
+
+                 The row is the last thing setup asks and the switch is
+                 held, not applied - `prefs.disguise` is untouched until
+                 complete(). Setup's own look does not answer it either
+                 (rule 12): the sun keeps growing and the field keeps its
+                 colour right through the finish. What does answer is the
+                 preview below, which is the one place a person can see
+                 what they are turning on before it is outside the app and
+                 too late to be surprised by. -->
+            <ListCard>
+              <ListRow
+                key="disguise"
+                title={m.disguise_app_title()}
+                subtitle={isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
+                chevron={false}
+              >
+                {#snippet trailing()}
+                  <Switch
+                    checked={disguise}
+                    label={m.disguise_app_title()}
+                    onChange={(v) => (disguise = v)}
+                  />
+                {/snippet}
+              </ListRow>
+            </ListCard>
+            <!-- Settings' block, not a second one (ticket 32): a preview of
+                 the launcher that disagreed with the launcher would be
+                 worse than none, and two copies is how that happens. -->
+            <DisguisePreview on={disguise} />
           {:else}
             <h1 class="setup-title">{name.trim() ? m.ob_done_title_named({ name: name.trim() }) : m.ob_done_title()}</h1>
             <p class="setup-body">{m.ob_done_body()}</p>
