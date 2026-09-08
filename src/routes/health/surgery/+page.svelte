@@ -660,8 +660,7 @@
               data-procedure-kind
               icon="tag"
               title={procedureKindName(editor.kind)}
-              chevron={false}
-              onclick={() => (pickingKind = true)}
+              static
               action={{
                 icon: 'pencil',
                 label: m.surgery_kind_change(),
