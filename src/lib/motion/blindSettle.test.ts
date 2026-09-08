@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
-import { blindSettle, EASE_OUT_VAR } from './blindSettle';
+import { blindSettle, easeOut, EASE_OUT_POINTS, EASE_OUT_VAR } from './blindSettle';
 
 /** The stops of a `linear()`, in order. */
 function stops(easing: string): number[] {
@@ -80,10 +82,39 @@ describe('the curve the settle is sampled from', () => {
     for (const value of curve.slice(peak)) {
       expect(Math.abs(value - 1)).toBeLessThanOrEqual(overshootFraction + 0.001);
     }
-    expect(Math.abs(curve.at(-2)! - 1)).toBeLessThan(0.01);
+    /* One stop from the end it is inside a quarter of the overshoot, which
+       on a 77px pull is under a pixel: the swell has died rather than the
+       curve being cut off at the mark. */
+    expect(Math.abs(curve.at(-2)! - 1)).toBeLessThan(overshootFraction / 4);
   });
 
   it('samples densely enough for the browser to read one curve rather than a staircase', () => {
     expect(stops(settle.easing).length).toBeGreaterThanOrEqual(16);
+  });
+
+  /* The load-bearing one. The blind is painted over the page and covers the
+     difference between its own curve and the content's, which it can only
+     do while it is the further along of the two: a curve that started
+     slowly - a spring's step response, which this was until the flipbooks
+     were measured - let the content's top run 14px ahead of the edge and
+     showed that band of page for 120ms. */
+  it('never falls behind the plain ease-out the content under it travels on', () => {
+    const curve = stops(settle.easing);
+    for (const [i, value] of curve.entries()) {
+      const t = i / (curve.length - 1);
+      expect(value, `at ${Math.round(t * 100)}%`).toBeGreaterThanOrEqual(easeOut(t) - 0.001);
+    }
+  });
+
+  /* The curve it is held above is the app's own token, so a change to one
+     that left the other behind would be a silent regression. */
+  it('is built on the same --ease-out the stylesheet publishes', () => {
+    const token = readFileSync(
+      new URL('../theme/base.css', import.meta.url),
+      'utf8'
+    );
+    expect(token).toContain(`--ease-out: cubic-bezier(${EASE_OUT_POINTS.join(', ')})`);
+    expect(easeOut(0)).toBeCloseTo(0, 5);
+    expect(easeOut(1)).toBeCloseTo(1, 5);
   });
 });
