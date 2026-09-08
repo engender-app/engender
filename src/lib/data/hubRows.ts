@@ -67,6 +67,7 @@ import {
   type AreaGroupKey
 } from './areaGroups';
 import { areasHidden, type AreaStates } from './areaState';
+import { foldText } from './fold';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
 
@@ -779,6 +780,39 @@ export function hubSections(reading: HubReading): HubSection[] {
   }
 
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
+}
+
+/** The rows whose name contains what somebody typed, flat and in the order
+    the groups draw them (phase 10 redesign ticket 15).
+
+    Over `hubSections`' output rather than over `HUB_ROWS`, which is what
+    makes the three rules about a row's existence hold here for free: a
+    hidden area is not in the sections and so cannot be searched up, a
+    finished one is, and every row arrives carrying the second line its
+    section gave it. A hosted row is absent for the same reason it is absent
+    from the hub - the screen that owns it is where it is reached.
+
+    The titles are handed in, not resolved: they are paraglide's and nothing
+    the Node tier touches may import that (ADR-0016). `tagIdsMatching` takes
+    the labels a screen showed for exactly the same reason, and this matches
+    the way that one does - a folded substring, over twenty-odd short strings
+    already in memory. Not the entry index's whole-token prefix rule: an area
+    is found by any part of its name, so "log" reaches the size log and the
+    wear log both.
+
+    An empty query matches nothing rather than everything, because the screen
+    shows the grouped list for an empty box; a flat copy of every row would
+    be the same list twice. */
+export function hubRowsMatching(
+  sections: HubSection[],
+  query: string,
+  titleOf: (key: HubRowKey) => string
+): DrawnRow[] {
+  const folded = foldText(query).trim();
+  if (!folded) return [];
+  return sections.flatMap((section) =>
+    section.rows.filter((row) => foldText(titleOf(row.spec.key)).includes(folded))
+  );
 }
 
 /** A section's own place in the flag's stripes, for whichever screen is
