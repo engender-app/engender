@@ -401,17 +401,67 @@ try {
   ok('entry to entry remounts the editor rather than reusing stale params');
 } catch (e) { fail('entry to entry', e); }
 
-/* 4. calendar → day → add another */
+/* 4. calendar → open the month → day → add another. The Journal door opens
+      on the month folded to a strip (redesign ticket 10), whose cells are
+      not links: 7px is not a tap target. So the flow starts by opening it,
+      which is also the check that the control does. */
 try {
   await fresh('/calendar');
+  await page.locator('[data-cal-open]').click();
+  await page.waitForSelector('[data-hm-cell-filled]');
   await page.locator('[data-hm-cell-filled]').first().click();
   await page.waitForSelector('[data-entry-card]');
   await page.locator('[data-add]').click();
   await page.waitForSelector('#ed-note');
-  ok('calendar → day detail → add another');
+  ok('calendar → open the month → day detail → add another');
 } catch (e) { fail('calendar flow', e); }
 
-/* 4b. day detail keeps entries separate and shows no day average */
+/* 4a. And the month closes again, with the metric picker working in both
+       states. The strip and the grid are one set of cells in two layouts, so
+       what says which state the screen is in is the grid's own class and the
+       control's aria-expanded - and what says the picker still works is the
+       month recolouring under a different metric while folded. */
+try {
+  await fresh('/calendar');
+  const compact = () => page.evaluate(() => !!document.querySelector('[data-cal-month-state="strip"]'));
+  if (!(await compact())) throw new Error('the month did not open folded to a strip');
+  const options = await page.locator('#calendar-metric option').evaluateAll((els) => els.map((e) => e.value));
+  const other = options.find((v) => v !== 'mood');
+  if (!other) throw new Error('the metric picker offered nothing but mood');
+  await page.selectOption('#calendar-metric', other);
+  await page.waitForFunction(
+    (want) => document.getElementById('calendar-metric')?.value === want,
+    other
+  );
+  if (!(await compact())) throw new Error('picking a metric opened the month');
+
+  await page.locator('[data-cal-open]').click();
+  await page.waitForSelector('[data-cal-month-state="grid"]');
+  if ((await page.locator('[data-cal-open]').getAttribute('aria-expanded')) !== 'true') {
+    throw new Error('the control did not say the month was open');
+  }
+  await page.selectOption('#calendar-metric', 'mood');
+  await page.waitForFunction(() => document.getElementById('calendar-metric')?.value === 'mood');
+  if (await compact()) throw new Error('picking a metric closed the month');
+
+  await page.locator('[data-cal-open]').click();
+  await page.waitForSelector('[data-cal-month-state="strip"]');
+  ok('the month opens and closes, and the metric picker works in both states');
+} catch (e) { fail('the month expansion', e); }
+
+/* 4b. What the Journal door leads with: the entries, uncapped, and the week
+       strip under them. Both moved here off Home (redesign ticket 10). */
+try {
+  await fresh('/calendar');
+  await page.waitForSelector('[data-day-card]');
+  const days = await page.locator('[data-day-card]').count();
+  if (days < 2) throw new Error(`the door drew ${days} day(s) of entries`);
+  await page.waitForSelector('[data-week-strip]');
+  await page.waitForSelector('[data-entry-card]');
+  ok('the Journal door leads with the entries and carries the week strip');
+} catch (e) { fail('the Journal door blocks', e); }
+
+/* 4c. day detail keeps entries separate and shows no day average */
 try {
   await fresh('/entry/new/today');
   await page.locator('[data-mood="2"]').click();

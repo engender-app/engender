@@ -111,15 +111,15 @@
         shaded, ringed as today, bordered for its era and marked for its
         mode all at once without any of the four reusing another's channel. */
     highlight?: { presentationId: string; role: Role };
-    /** The month as one strip of bars instead of a grid of days (phase 10
+    /** The month as one row of bars instead of a grid of days (phase 10
         redesign ticket 10). The Journal door opens on it: somebody arriving
         is looking for something they wrote, so the month is the shape of the
-        month until they ask for the days. Same read, same ramp, same order -
-        a bar carries the day's step and nothing else, so the dates, the
-        splits, the faces, the decks, the marks and both legends are the
-        grid's alone. Whether it is compact is the screen's state, not this
-        component's, so the strip and the grid can be told apart by
-        `data-cal-cell` and animated between (motion/regroup.ts). */
+        month until they ask for the days. Same read, same ramp, same order,
+        and the same elements - a bar is a cell laid out in a row with
+        everything it has no room for at opacity 0, which is what lets each
+        day be animated across the change rather than swapped. Whether it is
+        compact is the screen's state and not this component's; the cells
+        carry `data-cal-cell` for the screen to measure (motion/regroup.ts). */
     compact?: boolean;
   } = $props();
 
@@ -308,38 +308,47 @@
   });
 </script>
 
-<!-- The month as a strip: a bar per day, in the order they run, on the same
-     five steps the grid shades with. It says how the month went and does not
-     pretend to be readable - no dates, no era borders, nothing to tap. The
-     control that opens the grid is the screen's and it carries the name, so
-     the strip itself is hidden from a screen reader rather than reading out
-     thirty bars nobody asked for; every day's own words are in the grid one
-     tap away.
+<!-- The days are one set of elements in two layouts, and never two sets
+     (phase 10 ticket 10). Compact, the grid is one row: a bar per day in the
+     order they run, on the same five steps, and everything a bar has no room
+     for - the date, the split, the face, the deck, the mark - fades out
+     where it stands rather than being swapped away. That is the whole reason
+     this is a class on the grid and not a second block of markup: an element
+     that survives the change can be animated across it, and one that is
+     replaced can only cut. The travel itself is the screen's
+     (motion/regroup.ts).
 
-     A day of two readings is one bar at its average. The grid splits it
-     because the grid has room to; four pixels of a seven-pixel bar is not a
-     reading, it is a texture. -->
-{#if compact}
-  <div class="cal-ribbon" data-cal-ribbon aria-hidden="true" style:--days={cells.days.length}>
-    {#each cells.days as c (c.epochDay)}
-      <span
-        class="cal-bar"
-        class:is-today={c.isToday}
-        data-cal-cell={c.epochDay}
-        style="background:{fillAt(c.step)}"
-      ></span>
-    {/each}
-  </div>
-{:else}
-  <div class="cal-grid" role="grid" data-cal-grid aria-busy={loading}>
-    {#each DOWS as d, i (i)}<span class="cal-dow" aria-hidden="true">{d}</span>{/each}
+     Compact, none of it is reachable either: 7px of width is not a tap
+     target and thirty of them are not a reading. The strip is hidden from a
+     screen reader, its cells are out of the tab order, and the control that
+     opens the grid carries the name; every day's own words are in the grid
+     one tap away.
+
+     The day-of-week header is the one thing that cannot be laid out both
+     ways - seven letters cannot align to thirty-one columns - so it is a
+     block of its own - and compact it goes out of flow and fades where it
+     stands rather than being switched off, so the cells' own travel is
+     measured against a layout that has already given the row back. -->
+<div class="cal-dows" class:is-compact={compact} aria-hidden="true">
+  {#each DOWS as d, i (i)}<span class="cal-dow">{d}</span>{/each}
+</div>
+<div
+  class="cal-grid"
+  class:is-compact={compact}
+  role="grid"
+  data-cal-grid
+  data-cal-month-state={compact ? 'strip' : 'grid'}
+  aria-busy={loading}
+  aria-hidden={compact ? 'true' : undefined}
+  style:--days={cells.days.length}
+>
     {#each Array.from({ length: cells.startDow }) as _, i (i)}<span class="cal-day is-blank"></span>{/each}
     {#each cells.days as c (c.epochDay)}
       {#if c.count}
-        <a class="cal-day has-entries press" class:is-today={c.isToday}
-          data-cal-cell={c.epochDay} data-hm-cell-filled href="/day/{c.epochDay}" aria-label={c.label}>
+        <a class="cal-day has-entries press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
+          data-hm-cell-filled href="/day/{c.epochDay}" aria-label={c.label}>
           {@render swatch(c)}
-          <span class="cal-num">{c.day}</span>
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
         </a>
       {:else if c.hasMark}
         <!-- A future day with something coming up (ADR-0067): it was not a
@@ -347,30 +356,31 @@
              open. It is one now, the same as a logged day, to the same route -
              `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
              this cell only says that there is something. -->
-        <a class="cal-day has-mark press"
-          data-cal-cell={c.epochDay} data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+        <a class="cal-day has-mark press" tabindex={compact ? -1 : undefined}
+          data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
           {@render swatch(c)}
-          <span class="cal-num">{c.day}</span>
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
         </a>
       {:else if c.isPastOrToday}
         <!-- A past or today cell with nothing on it opens a new entry for
              that day (ticket 99 item 13) - the same route the "+" affordances
              elsewhere in the app seed a day for, rather than leaving an empty
              cell with nothing to tap. -->
-        <a class="cal-day press" class:is-today={c.isToday}
-          data-cal-cell={c.epochDay} data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
+        <a class="cal-day press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
+          data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
           {@render swatch(c)}
-          <span class="cal-num">{c.day}</span>
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
         </a>
       {:else}
-        <span class="cal-day" class:is-today={c.isToday} data-cal-cell={c.epochDay} aria-label={c.label}>
+        <span class="cal-day" class:is-today={c.isToday} aria-label={c.label}>
           {@render swatch(c)}
-          <span class="cal-num">{c.day}</span>
+          <span class="cal-num" data-cal-date={c.epochDay}>{c.day}</span>
         </span>
       {/if}
     {/each}
-  </div>
+</div>
 
+{#if !compact}
   <!-- The ends are the metric's own words, never "worst" and "best": neither
        end of binary <-> nonbinary is the better one, and colour that judges is
        the one thing this app cannot do (ADR-0012, F15).
@@ -419,7 +429,7 @@
      they were. That question is answered by the split, and by the words the
      cell reads out. -->
 {#snippet swatch(c: (typeof cells.days)[number])}
-  <span class="cal-stack" class:is-round={isMood}>
+  <span class="cal-stack" class:is-round={isMood} data-cal-cell={c.epochDay}>
     {#if c.shape?.kind === 'stack'}
       {#each Array.from({ length: c.shape.cards - 1 }) as _, i (i)}
         <span
@@ -473,40 +483,26 @@
 {/snippet}
 
 <style>
-  /* The strip: one bar per day of the month, edge to edge, in the order the
-     days run. A bar rather than a small square because the row has to hold
-     31 of them inside 280px at the narrowest - 7px of width is all a day
-     gets, and 7px tall as well would be a speck. Tall and thin, it reads as
-     a month the way a barcode reads as a barcode.
-
-     Blocks, so 2px corners and the same 1px edge the grid's cells carry
-     (DIRECTION.md rules 4 and 5): an unlogged day is a day, and without an
-     edge a quiet month is a blank line. */
-  .cal-ribbon {
+  .cal-dows {
     display: grid;
-    grid-template-columns: repeat(var(--days), minmax(0, 1fr));
-    gap: 2px;
-    /* Room under the bars for today's mark, which is drawn below rather than
-       around: a ring on a 7px bar would cross its neighbours, and the bars
-       are 2px apart. */
-    padding-bottom: 6px;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0 8px;
+    transition: opacity var(--dur-med) var(--ease-out);
   }
-  .cal-bar {
-    position: relative;
-    height: 24px;
-    border: 1px solid var(--outline);
-    border-radius: 2px;
-    /* The strip recolours rather than cutting when the metric changes, the
-       same as the grid's cells do and for the same reason - see .cal-swatch
-       below. */
-    transition: background-color var(--dur-med) var(--ease-out);
+  .cal-dow {
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    font-weight: var(--weight-bold);
   }
-  .cal-bar.is-today::after {
-    content: '';
+  /* Out of flow before it fades, so the row it held is given back in the
+     frame of the tap - which is the layout the cells' travel is measured
+     against. Left where it was: an absolutely positioned box with every
+     offset auto keeps its static position. */
+  .cal-dows.is-compact {
     position: absolute;
-    inset: auto 0 -5px;
-    height: 2px;
-    background: var(--accent);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .cal-grid {
@@ -517,13 +513,53 @@
        cards and the day's padding cannot drift apart. */
     --deck: 9px;
   }
-  .cal-dow {
-    text-align: center;
-    font-size: var(--text-xs);
-    color: var(--text-2);
-    font-weight: var(--weight-bold);
+
+  /* The same days as one row (phase 10 ticket 10). A bar rather than a small
+     square because the row holds 31 of them inside 280px at the narrowest -
+     7px of width is all a day gets, and 7px tall as well would be a speck.
+     Tall and thin it reads as a month the way a barcode reads as a barcode,
+     and it is still a block: 2px corners and the swatch's own 1px edge, so
+     an unlogged day is a day and a quiet month is not a blank line.
+
+     Everything a bar has no room for goes to opacity 0 rather than out of
+     the markup - the date, the split's two halves, the face, the deck, the
+     mark, the highlight dot. They are the same elements in both layouts, so
+     each of them fades as its cell travels instead of being gone in the
+     frame the tap landed. */
+  .cal-grid.is-compact {
+    grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+    gap: 2px;
+    --deck: 0px;
+    /* Room under the bars for today's mark, which is drawn below rather than
+       around. */
+    padding-bottom: 6px;
   }
+  /* A blank leads the grid up to the first of the month, and a row has no
+     lead-in - out of the markup rather than at opacity 0, since a spacer
+     fading is nothing fading. */
+  .cal-grid.is-compact .cal-day.is-blank { display: none; }
+  .cal-grid.is-compact .cal-day {
+    gap: 0;
+    /* 7px is not a tap target and thirty of them are not a reading: the
+       strip is the screen's control to open, and only that. */
+    pointer-events: none;
+  }
+  .cal-grid.is-compact .cal-stack {
+    aspect-ratio: auto;
+    height: 24px;
+    --r: 2px;
+    --half-low: 2px;
+    --half-high: 2px;
+  }
+  .cal-grid.is-compact .cal-num { position: absolute; opacity: 0; }
+  .cal-grid.is-compact .cal-card,
+  .cal-grid.is-compact .cal-half,
+  .cal-grid.is-compact .cal-face,
+  .cal-grid.is-compact .cal-mark,
+  .cal-grid.is-compact .cal-highlight { opacity: 0; }
+
   .cal-day {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -588,11 +624,22 @@
   .cal-card { left: calc(var(--card) * -3px); }
   .cal-swatch { background: var(--heat-0); }
   /* Every piece of a cell that carries a fill, in one rule: the swatch, the
-     stacked cards of a deck behind it, and a split day's two halves. */
+     stacked cards of a deck behind it, and a split day's two halves. Opacity
+     rides along because these are also the pieces the compact layout has no
+     room for, and one shorthand has to name both or the last rule wins. */
   .cal-card,
   .cal-swatch,
   .cal-half {
-    transition: background-color var(--dur-med) var(--ease-out);
+    transition:
+      background-color var(--dur-med) var(--ease-out),
+      outline-color var(--dur-med) var(--ease-out),
+      opacity var(--dur-med) var(--ease-out);
+  }
+  .cal-num,
+  .cal-face,
+  .cal-mark,
+  .cal-highlight {
+    transition: opacity var(--dur-med) var(--ease-out);
   }
 
   /* A split is two pieces laid over each other rather than two halves butted
@@ -639,8 +686,31 @@
   .cal-face.is-later { clip-path: inset(0 0 0 calc(50% - 1px)); }
   /* Today, marked by an outline rather than by a fill, because the fill is
      already saying something else. Above the deck, so a stacked today is
-     still ringed once. */
+     still ringed once.
+
+     Compact it is marked under the bar instead: a 2px ring around a 7px bar
+     2px from its neighbours crosses both of them. The two marks cross-fade,
+     so today is never unmarked mid-travel and never marked twice. */
   .cal-day.is-today .cal-swatch { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cal-day.is-today::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -5px;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    /* Off at once, on over a beat. A transition is read off the state being
+       moved to, so this is the pair: closing the month, the mark arrives
+       under the bar as the bar settles; opening it, the mark is gone in the
+       frame of the tap rather than hanging 2px of accent under a cell the
+       days have not reached yet. */
+    transition: opacity 0s;
+  }
+  .cal-grid.is-compact .cal-day.is-today .cal-swatch { outline-color: transparent; }
+  .cal-grid.is-compact .cal-day.is-today::after {
+    opacity: 1;
+    transition: opacity var(--dur-med) var(--ease-out);
+  }
 
   /* The presentation chip's mark (ticket 17, ADR-0048). A corner dot,
      never a border or an outline: this cell may already be wearing an
