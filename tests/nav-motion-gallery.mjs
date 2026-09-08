@@ -28,10 +28,10 @@ const root = resolve(here, '..');
 const outDir = resolve(process.argv[2] ?? resolve(root, '.claude/nav-motion'));
 
 /** Long enough to cover the whole sequence twice over: the leading edge
-    spends --dur-med, the trailing edge waits --stagger-step on top of that,
-    and the icon's swing is delayed by --dur-fast and spends --dur-med, so
-    the last thing to finish lands at 390ms. What is left of the scene is the
-    stillness that says it landed rather than stopped. */
+    spends --dur-med, the trailing edge waits --stagger-step and then spends
+    --dur-slow, and the icon's swing waits the same beat and spends the same
+    --dur-slow, so the last thing to finish lands at 430ms. What is left of
+    the scene is the stillness that says it landed rather than stopped. */
 const SCENE_MS = 800;
 const TRACE_MS = 700;
 
