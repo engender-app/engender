@@ -5,7 +5,8 @@
    /usr/bin/chromium-browser path. Starting the actual server each script
    drives Chromium against stays with that script - a probe-page server, a
    built-app preview server and a real dev server are different enough not
-   to share. */
+   to share. `fillDate` joined the same way (redesign ticket 17), once the
+   walkthrough and a gallery script both needed it. */
 import { chromium } from 'playwright-core';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
@@ -32,6 +33,20 @@ export function launchPersistentChromium(userDataDir, options = {}) {
     headless: true,
     ...options,
   });
+}
+
+/** The date fields are DatePickers on flatpickr: the visible field is
+    flatpickr's altInput and the ISO value lives on the hidden original, so
+    typing into the field is not how a date gets set. The picker instance
+    hangs off the element; setDate with fireChange runs the same onChange a
+    real pick runs. */
+export async function fillDate(page, selector, iso) {
+  await page.evaluate(([sel, v]) => {
+    const el = document.querySelector(sel);
+    const fp = el?._flatpickr ?? el?.flatpickr;
+    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
+    fp.setDate(v, true);
+  }, [selector, iso]);
 }
 
 /** Collects PASS/FAIL lines in the format all three scripts already
