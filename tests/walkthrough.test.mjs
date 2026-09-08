@@ -12,27 +12,14 @@
    #demo-jump control), then serves that build. */
 import { readFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
+import { tinyPhoto } from './photo-fixture.mjs';
 
 const { ok, fail, finish } = createReporter();
 
 const server = await preview({ preview: { port: 0 } });
 const address = server.httpServer.address();
-
-/* The date fields are DatePickers on flatpickr now: the visible field is
-   flatpickr's altInput and the ISO value lives on the hidden original, so
-   typing into the field is not how a date gets set. The picker instance
-   hangs off the element; setDate with fireChange runs the same onChange a
-   real pick runs. */
-async function fillDate(page, selector, iso) {
-  await page.evaluate(([sel, v]) => {
-    const el = document.querySelector(sel);
-    const fp = el?._flatpickr ?? el?.flatpickr;
-    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
-    fp.setDate(v, true);
-  }, [selector, iso]);
-}
 
 const BASE = `http://localhost:${address.port}`;
 
@@ -5129,22 +5116,9 @@ try {
    Chromium page never resolves - a fresh() after it hangs boot rather than
    reaching Home, which showed up here first only because this ticket's
    tests were the first ever appended after it. */
-async function tinyPhoto(fill) {
-  const dataUrl = await page.evaluate((fill) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 40;
-    canvas.height = 30;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = fill;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/png');
-  }, fill);
-  return Buffer.from(dataUrl.split(',')[1], 'base64');
-}
-
 try {
-  const skipPhoto = await tinyPhoto('#c94f7c');
-  const datedPhoto = await tinyPhoto('#2b6cb0');
+  const skipPhoto = await tinyPhoto(page, '#c94f7c');
+  const datedPhoto = await tinyPhoto(page, '#2b6cb0');
 
   await fresh('/');
   await page.locator('[data-nav-fab]').click();
@@ -5211,7 +5185,7 @@ try {
   await page.locator('[data-nav-fab]').click();
   await page.locator('[data-fan-target="mood-3"]').click();
   await page.waitForSelector('#ed-note');
-  const zoomPhoto = await tinyPhoto('#c94f7c');
+  const zoomPhoto = await tinyPhoto(page, '#c94f7c');
   page.once('filechooser', (chooser) => chooser.setFiles({ name: 'zoom.png', mimeType: 'image/png', buffer: zoomPhoto }));
   await page.locator('[data-add-photo]').click();
   await page.waitForSelector('[data-photo-day-save]');

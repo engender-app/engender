@@ -15,7 +15,8 @@ import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, fillDate } from './browser-harness.mjs';
+import { tinyPhoto } from './photo-fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/photo-day-shots'));
@@ -58,33 +59,11 @@ async function setLanguage(page, lang) {
   await page.waitForTimeout(SETTLED);
 }
 
-async function tinyPhoto(page, fill) {
-  const dataUrl = await page.evaluate((fill) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 40;
-    canvas.height = 30;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = fill;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/png');
-  }, fill);
-  return Buffer.from(dataUrl.split(',')[1], 'base64');
-}
-
-async function fillDate(page, selector, iso) {
-  await page.evaluate(([sel, v]) => {
-    const el = document.querySelector(sel);
-    const fp = el?._flatpickr ?? el?.flatpickr;
-    if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
-    fp.setDate(v, true);
-  }, [selector, iso]);
-}
-
 async function shoot(page, name) {
   await page.evaluate(() => {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
   });
-  await page.locator('[data-sheet]').screenshot({ path: `${outDir}/${name}.png` });
+  await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
   shots.push(name);
   process.stdout.write(`  ${name}\n`);
 }
