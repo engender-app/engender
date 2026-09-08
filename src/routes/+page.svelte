@@ -1323,7 +1323,6 @@
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     letter-spacing: 0.02em;
-    text-transform: lowercase;
   }
   .home-agenda-dn {
     font-family: var(--font-display);
@@ -1364,9 +1363,12 @@
   /* A shape is a column - the square, then its words - and the whole
      column is the target, which clears the floor by the square alone. The
      words sit on the page at the caption size in the secondary ink, the
-     way the faces' names do beside them. */
+     way the faces' names do beside them. Two lines are reserved for them
+     whether a label needs one or two, so "Correctly gendered" wrapping does
+     not leave the other three squares standing on a shorter column. */
   .home-log-shape {
     display: grid;
+    grid-template-rows: auto 2.4em;
     justify-items: center;
     align-content: start;
     gap: var(--space-2);
@@ -1396,8 +1398,11 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
   }
+  /* Hyphenated at 320px rather than cut mid-word: "Misgendered" is wider
+     than a 64px column, and a break with no hyphen read as two words. */
   .home-log-label {
     max-width: 100%;
+    hyphens: auto;
     overflow-wrap: anywhere;
   }
 </style>

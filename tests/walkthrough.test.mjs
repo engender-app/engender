@@ -476,6 +476,119 @@ try {
   ok('the Journal door leads with the entries and carries the week strip');
 } catch (e) { fail('the Journal door blocks', e); }
 
+/* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
+   ADR-0074). The dated things lead, the mood pick is one write shape of
+   the log strip, the pinned rows draw with their readings, and each
+   section that left this screen is reachable on the door that hosts it.
+   An appointment three days out is written first, since the demo persona's
+   own dated things all fall past the agenda's week. Early in the walk, while
+   the journal is still the persona's: later flows finish areas and change
+   modes, and this one is about the screen, not about their leftovers. */
+try {
+  const AGENDA_KIND = 'agenda-13';
+  await fresh('/health/appointments');
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  const inThreeDays = new Date();
+  inThreeDays.setDate(inThreeDays.getDate() + 3);
+  await page.$eval('#appointment-date', (input, value) => input._flatpickr.setDate(value, true), inThreeDays.toISOString().slice(0, 10));
+  await page.fill('#appointment-kind', AGENDA_KIND);
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { timeout: 8000 }); // text-under-test
+
+  /* The agenda leads. The appointment is a row of it, its own screen is
+     one tap away, and the whole band sits above the log strip - which is
+     the ticket's one sentence: what is coming before how you feel. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-agenda]');
+  await page.waitForSelector('[data-agenda-item="appointment"]');
+  const order = await page.evaluate(() => ({
+    agenda: document.querySelector('[data-home-agenda]').getBoundingClientRect().top,
+    log: document.querySelector('[data-home-log]').getBoundingClientRect().top,
+    moods: document.querySelector('[data-mood-chips]').getBoundingClientRect().top
+  }));
+  if (!(order.agenda < order.log && order.log <= order.moods)) {
+    throw new Error('the agenda does not lead the log strip: ' + JSON.stringify(order));
+  }
+  if ((await page.locator('[data-home-log-shape]').count()) !== 4) {
+    throw new Error('the log strip does not carry the four write shapes beside the mood pick');
+  }
+  await page.locator('[data-agenda-item="appointment"]').first().click();
+  await page.waitForURL('**/health/appointments');
+
+  /* A mood from the strip is still one tap from landing, and lands in the
+     editor the way it always did. */
+  await fresh('/');
+  await page.locator('[data-home-log] [data-mood="4"]').click();
+  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForSelector('[data-home-log]');
+
+  /* A tally from the strip resolves in place: the save toast is what says
+     the write came back, and Home is still Home. */
+  await page.locator('[data-home-log-shape="tally-misgendered"]').click();
+  await page.waitForSelector('[data-toast]');
+  if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the strip left Home: ' + page.url());
+
+  /* The pinned rows: the default set resolves for a journal that never
+     answered onboarding's question, each row opens its own screen, and the
+     row reads the same line the Transition door gives it. */
+  await page.waitForSelector('[data-pinned-row]');
+  const pinnedRows = await page.locator('[data-pinned-row]').evaluateAll((nodes) =>
+    nodes.map((n) => ({ key: n.getAttribute('data-pinned-row'), line: n.getAttribute('data-hub-line'), href: n.getAttribute('href') }))
+  );
+  if (pinnedRows.length < 1 || pinnedRows.some((row) => !row.href || !row.line)) {
+    throw new Error('a pinned row has no screen or no line: ' + JSON.stringify(pinnedRows));
+  }
+  await page.locator('[data-pinned-row]').first().click();
+  await page.waitForURL('**' + pinnedRows[0].href);
+
+  /* Nothing that left is unreachable, route by route: the week strip and
+     the entries on the Journal door, the timeline from the Look back door,
+     the milestones list from the Transition door. */
+  await fresh('/calendar');
+  await page.waitForSelector('[data-week-strip]');
+  await page.waitForSelector('[data-entry-card]');
+  await fresh('/stats');
+  await page.locator('[data-list-row="timeline"]').click();
+  await page.waitForURL('**/timeline');
+  await fresh('/more');
+  await page.locator('[data-list-row="milestones"]').click();
+  await page.waitForURL('**/transition/milestones');
+
+  /* Under disguise: no agenda and no sun, and every control left on the
+     screen still works - asserted on the log strip that replaces the band
+     rather than on a handle that is gone. */
+  await fresh('/settings');
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-log]');
+  await page.waitForSelector('[data-pinned-row]');
+  if (await page.locator('[data-home-agenda]').count()) throw new Error('the agenda drew under disguise');
+  if (await page.locator('[data-flag-sun]').count()) throw new Error('the sun drew under disguise');
+  await page.locator('[data-home-log-shape="dose"]').click();
+  await page.waitForURL('**/doses**');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
+  await page.keyboard.press('Escape');
+
+  /* The appointment this flow wrote goes with it. */
+  await fresh('/health/appointments');
+  await page.locator('[data-appointment]', { hasText: AGENDA_KIND }).click(); // text-under-test
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { state: 'detached', timeout: 8000 }); // text-under-test
+  ok('today faces forward: the agenda leads, a row opens its screen, the strip logs a mood and a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
+} catch (e) { fail('today faces forward', e); }
+
 /* 4c. day detail keeps entries separate and shows no day average */
 try {
   await fresh('/entry/new/today');
@@ -5896,116 +6009,6 @@ try {
   ok('a written key opens a journal whose PIN is gone, is refused when mistyped, and owes a new access mode before the app comes back');
 } catch (e) { fail('the recovery key at the gate', e); }
 
-/* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
-   ADR-0074). The dated things lead, the mood pick is one write shape of
-   the log strip, the pinned rows draw with their readings, and each
-   section that left this screen is reachable on the door that hosts it.
-   An appointment three days out is written first, since the demo persona's
-   own dated things all fall past the agenda's week. */
-try {
-  const AGENDA_KIND = 'agenda-13';
-  await fresh('/health/appointments');
-  await page.click('[data-add]');
-  await page.waitForSelector('#appointment-kind');
-  const inThreeDays = new Date();
-  inThreeDays.setDate(inThreeDays.getDate() + 3);
-  await page.$eval('#appointment-date', (input, value) => input._flatpickr.setDate(value, true), inThreeDays.toISOString().slice(0, 10));
-  await page.fill('#appointment-kind', AGENDA_KIND);
-  await page.click('[data-save-appointment]');
-  await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { timeout: 8000 }); // text-under-test
-
-  /* The agenda leads. The appointment is a row of it, its own screen is
-     one tap away, and the whole band sits above the log strip - which is
-     the ticket's one sentence: what is coming before how you feel. */
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('[data-home-agenda]');
-  await page.waitForSelector('[data-agenda-item="appointment"]');
-  const order = await page.evaluate(() => ({
-    agenda: document.querySelector('[data-home-agenda]').getBoundingClientRect().top,
-    log: document.querySelector('[data-home-log]').getBoundingClientRect().top,
-    moods: document.querySelector('[data-mood-chips]').getBoundingClientRect().top
-  }));
-  if (!(order.agenda < order.log && order.log <= order.moods)) {
-    throw new Error('the agenda does not lead the log strip: ' + JSON.stringify(order));
-  }
-  if ((await page.locator('[data-home-log-shape]').count()) !== 4) {
-    throw new Error('the log strip does not carry the four write shapes beside the mood pick');
-  }
-  await page.locator('[data-agenda-item="appointment"]').first().click();
-  await page.waitForURL('**/health/appointments');
-
-  /* A mood from the strip is still one tap from landing, and lands in the
-     editor the way it always did. */
-  await fresh('/');
-  await page.locator('[data-home-log] [data-mood="4"]').click();
-  await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
-  await page.locator('[data-screen-back]').click();
-  await page.waitForSelector('[data-home-log]');
-
-  /* A tally from the strip resolves in place: the save toast is what says
-     the write came back, and Home is still Home. */
-  await page.locator('[data-home-log-shape="tally-misgendered"]').click();
-  await page.waitForSelector('[data-toast]');
-  if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the strip left Home: ' + page.url());
-
-  /* The pinned rows: the default set resolves for a journal that never
-     answered onboarding's question, each row opens its own screen, and the
-     row reads the same line the Transition door gives it. */
-  await page.waitForSelector('[data-pinned-row]');
-  const pinnedRows = await page.locator('[data-pinned-row]').evaluateAll((nodes) =>
-    nodes.map((n) => ({ key: n.getAttribute('data-pinned-row'), line: n.getAttribute('data-hub-line'), href: n.getAttribute('href') }))
-  );
-  if (pinnedRows.length < 1 || pinnedRows.some((row) => !row.href || !row.line)) {
-    throw new Error('a pinned row has no screen or no line: ' + JSON.stringify(pinnedRows));
-  }
-  await page.locator('[data-pinned-row]').first().click();
-  await page.waitForURL('**' + pinnedRows[0].href);
-
-  /* Nothing that left is unreachable, route by route: the week strip and
-     the entries on the Journal door, the timeline from the Look back door,
-     the milestones list from the Transition door. */
-  await fresh('/calendar');
-  await page.waitForSelector('[data-week-strip]');
-  await page.waitForSelector('[data-entry-card]');
-  await fresh('/stats');
-  await page.locator('[data-list-row="timeline"]').click();
-  await page.waitForURL('**/timeline');
-  await fresh('/more');
-  await page.locator('[data-list-row="milestones"]').click();
-  await page.waitForURL('**/transition/milestones');
-
-  /* Under disguise: no agenda and no sun, and every control left on the
-     screen still works - asserted on the log strip that replaces the band
-     rather than on a handle that is gone. */
-  await fresh('/settings');
-  await page.getByRole('button', { name: /Disguise/i }).click();
-  await page.getByRole('switch', { name: 'Disguise app' }).click();
-  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await booted();
-  await page.waitForSelector('[data-home-log]');
-  await page.waitForSelector('[data-pinned-row]');
-  if (await page.locator('[data-home-agenda]').count()) throw new Error('the agenda drew under disguise');
-  if (await page.locator('[data-flag-sun]').count()) throw new Error('the sun drew under disguise');
-  await page.locator('[data-home-log-shape="dose"]').click();
-  await page.waitForURL('**/doses**');
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await booted();
-  await page.getByRole('button', { name: /Disguise/i }).click();
-  await page.getByRole('switch', { name: 'Disguise app' }).click();
-  await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
-  await page.keyboard.press('Escape');
-
-  /* The appointment this flow wrote goes with it. */
-  await fresh('/health/appointments');
-  await page.locator('[data-appointment]', { hasText: AGENDA_KIND }).click(); // text-under-test
-  await page.waitForSelector('[data-delete-appointment]');
-  await page.click('[data-delete-appointment]');
-  await page.click('[data-confirm-delete-appointment]');
-  await page.waitForSelector('[data-appointment]:has-text("agenda-13")', { state: 'detached', timeout: 8000 }); // text-under-test
-  ok('today faces forward: the agenda leads, a row opens its screen, the strip logs a mood and a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
-} catch (e) { fail('today faces forward', e); }
 
 if (errors.length) fail('no uncaught page errors', errors.slice(0, 6).join('; '));
 
