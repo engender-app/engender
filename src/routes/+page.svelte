@@ -14,8 +14,9 @@
      The doubt-journal card, which was an unconditional daily prompt about
      doubt and is now a row of the More hub, one tap from the tab bar and
      silent until asked. The wrapped and on-this-day teasers, which are the
-     two look-back tiles; each keeps its own preference gate, so silencing
-     one leaves the other alone. And the streak, which was a pill under the
+     two look-back tiles: they went to the Look back door with redesign
+     ticket 11, since that is the door they are offers for, and each keeps
+     its own preference gate there. And the streak, which was a pill under the
      greeting, then the caption on the week, and is gone entirely since
      phase 8 UX ticket 01 - four surfaces were writing copy to defuse it,
      which is a mechanic fighting the product.
@@ -64,8 +65,6 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
-  import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import DayCard from '$lib/components/kit/DayCard.svelte';
   import DayEntry from '$lib/components/kit/DayEntry.svelte';
@@ -680,38 +679,6 @@
         </button>
       {/if}
     </div>
-  {/if}
-
-  <!-- The two look-back tiles. Each gates itself on its own preference and
-       its own floor, which is what keeps the two halves independent:
-       turning wrapped off unmounts its tile and the recap read behind it,
-       and leaves this one's sibling exactly where it was. With neither
-       qualifying the grid has no children and so no height, and the air
-       around it belongs to its neighbours rather than to itself.
-
-       The whole grid waits for the first entry (phase 8 UX ticket 01):
-       there is nothing to look back on, and a zero-height grid was one of
-       the four unfinished things day one used to show.
-
-       `data-tight` keeps the pair on one line at the 390px floor rather
-       than stacking (Alicja, 2026-09-04). The two of them are the same
-       offer looked at over two spans, so they read as a pair or as one
-       thing; stacked, they were two cards saying a number each. A lone
-       survivor still takes the whole row, which the grid already
-       handles. -->
-  {#if hasEntries}
-    <TileGrid
-      role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
-      bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack))}
-      data-tight
-    >
-      {#if prefs.wrappedEnabled}
-        <WrappedHomeCard />
-      {/if}
-      {#if prefs.onThisDayEnabled}
-        <OnThisDayHomeCard />
-      {/if}
-    </TileGrid>
   {/if}
 
   <!-- NAV-003: this section used to disappear entirely with no milestones,

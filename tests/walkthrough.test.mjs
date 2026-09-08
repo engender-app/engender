@@ -702,17 +702,32 @@ try {
 
 /* 6. stats range + value list.
 
-   The handles moved with ticket 23's rebuild: the range is the shared
-   Segmented control's, the period is the header's subtitle rather than half
-   of its title, the values open from their own control instead of by
-   pressing a chart, and a tag insight is a bar rather than a list row. The
-   values control itself went in ticket 99 item 26; what it used to open is
-   a hidden list now. */
+   The handles moved with ticket 23's rebuild: the period is the header's
+   subtitle rather than half of its title, the values open from their own
+   control instead of by pressing a chart, and a tag insight is a bar rather
+   than a list row. The values control itself went in ticket 99 item 26;
+   what it used to open is a hidden list now. Redesign ticket 11 replaced
+   the segmented range with the span on the rail: the range is whatever the
+   two handles bound, so the flow widens the span from the keyboard - ten
+   steps back on the start handle - and reads the subtitle change with it. */
 try {
   await fresh('/stats');
-  await page.locator('[data-segment="90"]').click();
+  await page.waitForSelector('[data-span-handle="start"]');
+  const spanBefore = await page.locator('[data-screen-subtitle]').textContent();
+  await page.locator('[data-span-handle="start"]').focus();
+  await page.keyboard.press('Shift+ArrowLeft');
+  await page.waitForFunction(
+    (was) => document.querySelector('[data-screen-subtitle]')?.textContent !== was,
+    spanBefore
+  );
   const period = await page.locator('[data-screen-subtitle]').textContent();
-  if (!period.includes('90')) throw new Error('period: ' + period);
+  /* The subtitle carries the span's two dates and its length in days. */
+  if (!/\d/.test(period ?? '')) throw new Error('the subtitle carries no span: ' + period);
+  const spanStart = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-start'));
+  const spanEnd = Number(await page.locator('[data-span-timeline]').getAttribute('data-span-end'));
+  if (!(spanEnd > spanStart)) throw new Error(`the span is not a span: ${spanStart}..${spanEnd}`);
+  /* The charts re-read on the settled span a beat after the last key. */
+  await page.waitForTimeout(600);
   /* The values are a visually hidden list on the screen itself since ticket
      99 item 26 removed the "All values" link and its sheet - no control to
      press, and the numbers still there in text for anything that reads the
@@ -920,7 +935,26 @@ try {
   if (await page.getByRole('button', { name: /share|export/i }).count()) {
     throw new Error('a picked range is not shareable, since the share card is built from a cadence');
   }
-  ok('timeline, progress-photo compare and the wrapped range that replaced recap');
+
+  /* Redesign ticket 11: a span pointed at on the Look back door's rail is
+     read at the same URL the picker writes for those two days - proven by
+     opening it from the rail, then typing the same query, and comparing what
+     the two renders say. The door opens on the last thirty days, which the
+     persona clears. */
+  await fresh('/stats');
+  await page.waitForSelector('[data-lookback-read]');
+  const spanHref = await page.locator('[data-lookback-read]').getAttribute('href');
+  if (!/^\/wrapped\/range\?named=custom&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/.test(spanHref ?? '')) {
+    throw new Error('the span opens at ' + spanHref);
+  }
+  await page.locator('[data-lookback-read]').click();
+  await page.waitForSelector('[data-wrapped-stats]');
+  const fromRail = await page.locator('[data-wrapped-stats]').textContent();
+  await fresh(spanHref);
+  await page.waitForSelector('[data-wrapped-stats]');
+  const fromPicker = await page.locator('[data-wrapped-stats]').textContent();
+  if (fromRail !== fromPicker) throw new Error('the rail and the picker read two different wrappeds for one span');
+  ok('timeline, progress-photo compare, the wrapped range that replaced recap, and the span read from the rail');
 } catch (e) { fail('ticket 18 view-only screens', e); }
 
 /* 6c. lab result CRUD and per-analyte chart */
@@ -2322,11 +2356,12 @@ try {
     throw new Error('an unknown cadence still drew a switcher');
   }
 
-  /* Home offers exactly one card, for whichever cadence is freshest today,
-     and it links to that cadence's screen. */
-  await fresh('/');
+  /* The Look back door offers exactly one card, for whichever cadence is
+     freshest today, and it links to that cadence's screen (the card moved
+     off Home with redesign ticket 11). */
+  await fresh('/stats');
   const card = page.locator('[data-wrapped-card]');
-  if ((await card.count()) !== 1) throw new Error('Home should offer one wrapped card, found ' + (await card.count()));
+  if ((await card.count()) !== 1) throw new Error('Look back should offer one wrapped card, found ' + (await card.count()));
   const href = await card.getAttribute('href');
   if (!/^\/wrapped\/(week|month|year)$/.test(href ?? '')) throw new Error('the card links to ' + href);
   await card.click();
@@ -2344,7 +2379,7 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
   await fresh('/wrapped/week');
   if (await page.locator('[data-wrapped-stats], [data-wrapped-cover]').count()) {
@@ -2356,9 +2391,9 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="wrapped"]');
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (!(await page.locator('[data-wrapped-card]').count())) throw new Error('the card did not come back');
-  ok('wrapped: Home card, both presentations, the entry floor and the toggle');
+  ok('wrapped: the Look back card, both presentations, the entry floor and the toggle');
 } catch (e) { fail('wrapped', e); }
 
 /* 21. typed dysphoria and euphoria logging (phase 4 features ticket 02): all
@@ -2495,10 +2530,11 @@ try {
     throw new Error('the chart that cannot draw over one day is back');
   }
 
-  await fresh('/');
+  /* The card draws on the Look back door since redesign ticket 11. */
+  await fresh('/stats');
   const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
   const card = page.locator('[data-on-this-day-card]');
-  if ((await card.count()) !== 1) throw new Error('Home should offer the on-this-day card now, found ' + (await card.count()));
+  if ((await card.count()) !== 1) throw new Error('Look back should offer the on-this-day card now, found ' + (await card.count()));
   await card.click();
   await page.waitForSelector('[data-lookback]');
 
@@ -2510,7 +2546,7 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="on-this-day"]');
   await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (await page.locator('[data-on-this-day-card]').count()) throw new Error('the card survived the toggle');
   if ((await page.locator('[data-wrapped-card]').count()) !== hadWrappedCard) {
     throw new Error("turning on-this-day off changed wrapped's own card");
@@ -2525,7 +2561,7 @@ try {
   await page.locator('[data-list-row="notifications"]').click();
   await page.waitForSelector('[data-live-tile="on-this-day"]');
   await page.locator('[data-live-tile="on-this-day"]').getByRole('switch').click();
-  await fresh('/');
+  await fresh('/stats');
   if (!(await page.locator('[data-on-this-day-card]').count())) throw new Error('the card did not come back');
 
   ok('on-this-day: the good-day rule, the Home card, and its own Settings toggle');

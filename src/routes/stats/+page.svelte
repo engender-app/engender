@@ -44,19 +44,28 @@
      the chart.
 
      `/recap` is gone (spec 07). Its two links here reach the wrapped for
-     the same periods, and its arbitrary range is a wrapped of its own. */
+     the same periods, and its arbitrary range is a wrapped of its own.
+
+     Phase 10 redesign ticket 11: the door leads with the person's own
+     history. A rail from the earliest day they authored anything dated to
+     today (SpanTimeline, lookBackSpan.ts), with two handles bounding a span,
+     and that one span is what every reading on this screen is read over -
+     the charts below it and the retrospective the "wrapped for this span"
+     link opens, which is /wrapped/range at the same query the range
+     picker's own two date fields write. The segmented 7-to-365-day range
+     control this screen used to open with is gone: the span is the range,
+     and it opens on wrapped's own default of the last thirty days. Week,
+     month and year are one tap each as links to the three cadence routes.
+     The two look-back offers Home used to carry (the wrapped tile and on
+     this day) draw here now, under the rail, since this is the door they
+     are offers for. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtDuration, fmtMonthName } from '$lib/data/dates';
-  import {
-    calendarDuration,
-    localDateFromEpochDay,
-    previousCalendarMonthRange,
-    previousCalendarYearRange,
-    todayEpochDay
-  } from '$lib/data/epochDay';
+  import { fmtDay, fmtDuration } from '$lib/data/dates';
+  import { calendarDuration, localDateFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { defaultSpan, historyStart, spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import { alignSeries, atGrain, type Grain } from '$lib/charts/grain';
   import { metricStandings, moodDistribution } from '$lib/data/statsCharts';
   import {
@@ -68,13 +77,18 @@
   } from '$lib/data/wrappedDisplay';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import SpanTimeline from '$lib/components/SpanTimeline.svelte';
+  import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
+  import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import TileGrid from '$lib/components/kit/TileGrid.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import GenderConstellationChart from '$lib/components/GenderConstellationChart.svelte';
   import BarRows from '$lib/components/kit/BarRows.svelte';
@@ -98,7 +112,6 @@
   import { highestMetricKey, rankHighestDays } from '$lib/data/highestDays';
   import type { Part } from '$lib/charts/parts';
 
-  const RANGES = [7, 14, 30, 90, 180, 365];
   /** How many entries the sheet behind a tag insight lists. */
   const INSIGHT_ENTRIES = 20;
   /** How many tags the insight chart draws. Bars, not rows: past a handful
@@ -125,14 +138,76 @@
      a stripe on that card would put two scales on one surface. */
   const AREA_ROLE = { charts: 0, patterns: 1, lookBack: 2 };
 
-  let range = $state(30);
-
-  /* A range is a length on screen and two epoch days to the journal, which
-     never reads the clock for a domain answer (ticket 10). Inclusive of both
-     ends, so "7 days" is today and the six before it - and read on recompute
-     rather than captured, so a session open across midnight moves on. */
+  /* Read on recompute rather than captured, so a session open across
+     midnight moves on (ticket 10). */
   let today = $derived(todayEpochDay());
-  let from = $derived(today - range + 1);
+
+  /* The rail (redesign ticket 11): where the person's history starts, from
+     the three things the journal already dates - its own entry bounds, the
+     milestones (mirrored, ADR-0004, so no query), and the eras. Both reads
+     are the ones /wrapped/range already makes to resolve an era. */
+  let erasQuery = liveList((j) => j.eras.getEras());
+  let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
+  let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
+  let railStart = $derived(
+    railLoading
+      ? null
+      : historyStart(
+          { bounds: boundsQuery.value ?? null, milestones: vocabulary.milestones, eras: erasQuery.rows },
+          today
+        )
+  );
+
+  /* The span, settled. Null until the rail is known, then wrapped's own
+     default window; from there it is the person's, and a later write that
+     moves the rail's start does not move a span they have placed. `live`
+     is the same span as the finger has it, for the line under the title. */
+  let span = $state<Span | null>(null);
+  let live = $state<Span | null>(null);
+  $effect(() => {
+    const start = railStart;
+    if (start === null || span !== null) return;
+    span = defaultSpan(start, today);
+    live = span;
+  });
+  const pickSpan = (next: Span) => {
+    span = next;
+    live = next;
+  };
+
+  /* Two epoch days to the journal, which never reads the clock for a
+     domain answer: the span's own, and wrapped's default until the rail
+     has answered, so the charts have something honest to read while it
+     does. Inclusive of both ends. `range` is the span's length, which is
+     what the chart's grain is chosen by. */
+  let from = $derived(span?.start ?? defaultSpan(today, today).start);
+  let to = $derived(span?.end ?? today);
+  let range = $derived(to - from + 1);
+
+  /* The span, written once under the title with its length (DIRECTION.md
+     rule 7). Years only where they carry information: the start's when it
+     is not this year, the end's when it is not this year either. The
+     length used to sit on its own line under the rail and the top of the
+     door read as crowded (Alicja, on the first renders). */
+  const dayWithYear = (day: number, year: number) =>
+    fmtDay(day, localDateFromEpochDay(day).getFullYear() === year
+      ? { day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'short', year: 'numeric' });
+  let spanLabel = $derived.by(() => {
+    if (!live) return '';
+    const year = localDateFromEpochDay(today).getFullYear();
+    const days = live.end - live.start + 1;
+    return `${m.wrapped_week_range({ from: dayWithYear(live.start, year), to: dayWithYear(live.end, year) })}, ${m.n_days({ n: days })}`;
+  });
+
+  /* Week, month and year, one tap each, to the cadence routes they have
+     always reached (spec: "week, month and year sit beside it as quick
+     picks"). Links, so the group is a nav and each is its own screen. */
+  const QUICK_PICKS = [
+    { value: 'week', href: '/wrapped/week', label: () => m.wrapped_cadence_week() },
+    { value: 'month', href: '/wrapped/month', label: () => m.wrapped_cadence_month() },
+    { value: 'year', href: '/wrapped/year', label: () => m.wrapped_cadence_year() }
+  ];
 
   /* The journey anchor (phase 5 ticket 25, ADR-0010): recomputed on every
      render from the anchor's own date, nothing cached - so switching or
@@ -152,7 +227,7 @@
      screen, and only the values chart draws it: the interval-mood chart
      below plots a position in the dosing interval rather than a date, so a
      day has nowhere to sit on it. */
-  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, to, today));
 
   /* One query for every metric on screen rather than one per chart: the
      day-by-day chart plots one at a time but the bars card needs all of
@@ -160,7 +235,7 @@
      every time the range changes. */
   let seriesQuery = liveQuery(async (j) => {
     const keys = metrics.map((mt) => mt.key);
-    const [rangeFrom, rangeTo] = [from, today];
+    const [rangeFrom, rangeTo] = [from, to];
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
   });
@@ -170,11 +245,8 @@
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
-  let insightsQuery = liveList((j) => j.stats.tagInsights(vocabulary.activeMetric, from, today));
+  let insightsQuery = liveList((j) => j.stats.tagInsights(vocabulary.activeMetric, from, to));
   let insights = $derived(insightsQuery.rows);
-
-  let lastMonth = $derived(previousCalendarMonthRange(today));
-  let lastYear = $derived(previousCalendarYearRange(today).year);
 
   let insightSheet = $state<{ label: string; id: string } | null>(null);
 
@@ -262,7 +334,7 @@
      per metric the way the averages are read: the sheet is the only place on
      this screen that prints a single day, and the bars, the distribution and
      the insights all speak for a period. */
-  let spreadsQuery = liveList((j) => j.stats.daySpread(shown.key, from, today));
+  let spreadsQuery = liveList((j) => j.stats.daySpread(shown.key, from, to));
   /* Empty while the read is in flight, and that is the point rather than an
      accident: an unloaded range and a range of single-entry days come back
      identically empty, so a row saying nothing extra would claim the day
@@ -334,7 +406,7 @@
   let insightEntriesQuery = liveList((j) => {
     const sheet = insightSheet;
     if (!sheet) return Promise.resolve([]);
-    return j.entries.entriesWithTag(sheet.id, from, today, INSIGHT_ENTRIES + 1);
+    return j.entries.entriesWithTag(sheet.id, from, to, INSIGHT_ENTRIES + 1);
   });
   let insightEntriesCapped = $derived(insightEntriesQuery.rows.length > INSIGHT_ENTRIES);
   let insightEntries = $derived(insightEntriesQuery.rows.slice(0, INSIGHT_ENTRIES));
@@ -344,7 +416,7 @@
      drift the phase 3 decision missed. Ranked and capped by the journal
      area itself; this screen only renders what it returns. */
   let correlationCardsQuery = liveList((j) =>
-    j.correlationCards.getCards(from, today)
+    j.correlationCards.getCards(from, to)
   );
   let correlationCards = $derived(correlationCardsQuery.rows);
 
@@ -407,7 +479,7 @@
      read answers both, which is why the screen pays for a recap rather than
      counting entries itself: nothing here folds a figure the module that
      owns it does not already produce (ADR-0010). */
-  let recapQuery = liveQuery((j) => j.stats.recap(from, today));
+  let recapQuery = liveQuery((j) => j.stats.recap(from, to));
   let entryCount = $derived(recapQuery.value?.entryCount ?? 0);
   /* Under the floor and while the read is in flight both read as "not
      enough", and the difference is carried by the skeleton the ReadGate
@@ -426,7 +498,7 @@
      came out drawn as a full circle with every share inflated and the
      remainder slice unreachable. Capping is the ring's job and it can only
      do it over the whole. */
-  let tagShareQuery = liveList((j) => j.stats.tagShare(from, today));
+  let tagShareQuery = liveList((j) => j.stats.tagShare(from, to));
   let tagParts = $derived<Part[]>(
     tagShareQuery.rows.map((tag) => ({
       key: tag.id,
@@ -651,7 +723,7 @@
   let constellationQuery = liveList((j) => {
     const [x, y] = [xKey, yKey];
     if (!canPlot) return Promise.resolve([]);
-    return j.stats.constellationReadings(x, y, from, today);
+    return j.stats.constellationReadings(x, y, from, to);
   });
   /* Kept beside the plotted points rather than folded into them: a position
      is 0 to 1 and a readout is native units (ADR-0012), and the chart is
@@ -695,16 +767,78 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.nav_stats()} subtitle={m.stats_range_sub({ days: String(range) })} screen="stats" />
+  <!-- The door's title at 48 on the field; the span, which is small type,
+       on the page under it as the first line (DIRECTION.md rule 7). -->
+  <ScreenHeader title={m.nav_lookback()} subtitle={spanLabel} screen="stats" />
 
+  <!-- Week, month and year, one tap each: the three completed cadences at
+       their own routes, in the square track. None is current here. -->
   <Segmented
-    name={m.stats_range_group()}
-    options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-    value={String(range)}
-    onChange={(v) => (range = Number(v))}
+    name={m.wrapped_cadence_group()}
+    options={QUICK_PICKS.map((pick) => ({ value: pick.value, label: pick.label(), href: pick.href }))}
+    value=""
     compact
-    key="stats-range"
+    key="lookback-quick"
   />
+
+  <!-- The history, and the span pointed at on it (redesign ticket 11).
+       Entry data behind the rail's start, so it waits; a journal with
+       nothing dated yet says so instead of drawing a rail from today to
+       today. -->
+  {#if railLoading}
+    <Skeleton variant="block" count={1} />
+  {:else if railStart === null}
+    <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()} />
+  {:else if span}
+    <div class="lookback-rail" data-lookback-rail>
+      <SpanTimeline
+        {railStart}
+        {today}
+        {span}
+        eras={erasQuery.rows}
+        milestones={vocabulary.milestones}
+        firstEntryDay={boundsQuery.value?.firstEpochDay ?? null}
+        roles={activeFlag.roles}
+        onChange={pickSpan}
+        onLive={(next) => (live = next)}
+      />
+      <!-- The way into the span's retrospective: the same range read wrapped
+           already makes, at the URL the range picker itself would write for
+           these two days. Under the floor the line says why there is
+           nothing to open, in the words the range view uses for the same
+           case. -->
+      <div class="lookback-line">
+        {#if recapQuery.loading}
+          <span class="lookback-thin" aria-hidden="true"></span>
+        {:else if enoughEntries}
+          <a class="lookback-read" data-lookback-read href={`/wrapped/range${spanRangeQuery(span)}`}>
+            {m.lookback_read_span()}
+          </a>
+        {:else}
+          <span class="lookback-thin" data-lookback-thin>
+            {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
+          </span>
+        {/if}
+      </div>
+    </div>
+
+    <!-- The two look-back offers, moved here from Home (spec: "the wrapped
+         and on-this-day teasers live here"). Each gates itself on its own
+         preference and its own floor, so the grid can be empty and then it
+         has no height. -->
+    <TileGrid
+      role={tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack)}
+      bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack))}
+      data-tight
+    >
+      {#if prefs.wrappedEnabled}
+        <WrappedHomeCard />
+      {/if}
+      {#if prefs.onThisDayEnabled}
+        <OnThisDayHomeCard />
+      {/if}
+    </TileGrid>
+  {/if}
 
   <!-- The journey anchor, which used to be a card: how long since the day
        the journey is anchored on, as a plain line rather than an accent
@@ -761,7 +895,7 @@
             }
           : undefined}
         from={fmtDay(from, { day: 'numeric', month: 'short' })}
-        to={fmtDay(today, { day: 'numeric', month: 'short' })}
+        to={fmtDay(to, { day: 'numeric', month: 'short' })}
         formatValue={(v) => fmtNativeValue(shown.key, v)}
         scrubLabel={grainLabel(plotted.grain)}
         annotations={annotationsQuery.rows}
@@ -1146,22 +1280,17 @@
        copy of that hub. Discovery is the hub's job; this tab is the
        numbers. What is left below is the look-back list, which goes
        somewhere no hub row does. -->
-  <!-- The six deeper screens as one list rather than six cards. Four
-       same-size icon-plus-heading-plus-text tiles were what the slop audit
-       took off this screen; a destination with nothing to show on it is a
-       row. The two former recap links are the wrapped for the same two
-       periods (spec 07), and the third row is the arbitrary range recap
-       used to own. -->
+  <!-- The deeper screens as one list rather than cards. Four same-size
+       icon-plus-heading-plus-text tiles were what the slop audit took off
+       this screen; a destination with nothing to show on it is a row. The
+       three wrapped rows that used to open the list went with redesign
+       ticket 11: last month and last year are the quick picks under the
+       title, and any range is the span on the rail. The milestone timeline
+       joins instead - it was reachable from one row on Home, which ticket
+       13 takes away, and the past half of the arc belongs to this door. -->
   <SectionHeading text={m.stats_look_back()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.lookBack)}>
-    <ListRow
-      key="wrapped-month"
-      icon="sparkle"
-      title={m.wrapped_month_title({ month: fmtMonthName(lastMonth.year, lastMonth.month) })}
-      href="/wrapped/month"
-    />
-    <ListRow key="wrapped-year" icon="sparkle" title={m.wrapped_year_title({ year: String(lastYear) })} href="/wrapped/year" />
-    <ListRow key="wrapped-range" icon="curve" title={m.wrapped_range_title()} href="/wrapped/range" />
+    <ListRow key="timeline" icon="timeline" title={m.timeline()} subtitle={m.tl_intro()} href="/timeline" />
     <ListRow
       key="body-map"
       icon="grid"
@@ -1187,7 +1316,7 @@
   <Sheet open={insightSheet !== null} title={insightSheet?.label ?? ''} onClose={() => (insightSheet = null)}>
     {#if insightSheet}
       <h3>{insightSheet.label}</h3>
-      <p class="stats-inline-note" data-insight-sheet-range>{m.stats_range_sub({ days: String(range) })}</p>
+      <p class="stats-inline-note" data-insight-sheet-range>{spanLabel}</p>
       {#if insightEntriesCapped}
         <p class="stats-inline-note" data-insight-sheet-capped>
           {m.insight_sheet_capped({ shown: String(INSIGHT_ENTRIES) })}
@@ -1206,6 +1335,41 @@
 </div>
 
 <style>
+  /* The rail and the line under it (redesign ticket 11) are one block of
+     the screen: the rail's own inner rhythm is 12. */
+  .lookback-rail {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  /* The way into the span's wrapped, at the secondary size. The link is
+     the underlined ink a heading's action takes (kit.css,
+     `.kit-heading-action`): on a page whose colour is spent as blocks, an
+     accent-coloured word is a fourth voice. */
+  .lookback-line {
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-2);
+  }
+
+  .lookback-read {
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    color: var(--text);
+    font-weight: var(--weight-bold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 2px;
+  }
+
+  .lookback-thin {
+    min-width: 0;
+  }
+
   /* The constellation's two axis pickers (phase 5 deepening ticket 19). Under
      the plot rather than on the heading's line, because there are two of them
      and a chart card holds one control there. A row each, the word on the left
