@@ -34,6 +34,7 @@
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -137,6 +138,11 @@
     },
     findById: (id) => procedures.find((p) => p.id === id)
   });
+
+  // Ticket 18: only once there is a date to hand off - a procedure still
+  // in planning has none yet (Scope: three surfaces, not a fourth for an
+  // empty date).
+  let calendarSheet = $state(false);
 
   let consultSheet = $state(false);
   let consultDate = $state('');
@@ -639,7 +645,23 @@
         {/snippet}
       </Field>
     {/snippet}
+    {#snippet extraActions(editor)}
+      {#if editor.date}
+        <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarSheet = true)}>
+          <span>{m.calendar_handoff_button()}</span>
+        </button>
+      {/if}
+    {/snippet}
   </RecordSheet>
+
+  {#if record.editor?.date}
+    <CalendarHandoffSheet
+      open={calendarSheet}
+      kind="surgery"
+      epochDay={epochDayFromDateInputValue(record.editor.date) ?? today}
+      onClose={() => (calendarSheet = false)}
+    />
+  {/if}
 
   <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
