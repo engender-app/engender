@@ -16,6 +16,7 @@
     "verify:build": "node scripts/prepare-vendor-assets.mjs && npm run build && node tests/browser-tier/verify-build.mjs",
     "verify:hosting": "node tests/hosting/run.mjs",
     "gallery:icons": "node tests/icon-gallery.mjs",
+    "gallery:mood": "node tests/mood-gallery.mjs",
     "gallery:controls": "node tests/controls-gallery.mjs",
     "gallery:kit": "node tests/kit-gallery.mjs",
     "gallery:tile-block": "node tests/tile-block-gallery.mjs",

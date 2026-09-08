@@ -251,44 +251,51 @@
 }
 
 /* ============================================================
-   Mood presets (ADR-0025, COL-001) — mood's own fixed 5-step scale,
-   selected via [data-mood-preset] and completely independent of
-   [data-palette]. Each preset is a single-hue intensity ramp (never
-   red→green, per this file's header rule), so mood keeps reading as "how
-   much" rather than "good or bad" - it simply no longer borrows the two
-   hues the active flag uses for gender data, so a mood dot and a heat cell
-   never collide into one system by sharing a scale.
+   Mood presets (ADR-0077, superseding ADR-0025's single-hue clause;
+   COL-001) — mood's own fixed 5-step scale, selected via
+   [data-mood-preset] and completely independent of [data-palette]. Each
+   preset runs between two deliberately chosen hues, step 1 to step 5,
+   getting more saturated the whole way: amber from orchid to gold, teal
+   from periwinkle to cyan, plum from sky to magenta, moss from sand to
+   green. Never red→green, per this file's header rule and ADR-0012, so
+   mood keeps reading as "how much" rather than "good or bad" - and it
+   still borrows nothing from the active flag, so a mood dot and a heat
+   cell never collide into one system by sharing a scale.
 
    Every step is a literal colour, not a color-mix() formula: the ramp has
    to hold its own contrast promise (--text on top, at 4.5:1) regardless of
    which of the 8 gender palettes is active, so it cannot be derived from
-   the palette the way the heat-map ramp is. Light-theme steps stay light
-   (luminance >= 0.33, comfortably above the 0.2752 floor the darkest
-   palette text needs); dark-theme steps stay dark (luminance <= 0.12,
-   comfortably under the 0.1474 ceiling the lightest palette text needs).
-   See docs/adr/0025-mood-gets-its-own-colour-scale.md for the full contrast
-   derivation and the hue-clash review against all 8 palettes. */
+   the palette the way the heat-map ramp is. The band each theme has to stay
+   inside is set by the palest light ink and the deepest dark one:
+   light-theme steps stay light (luminance >= 0.2752, which trans light's
+   #1B2B36 needs) and dark-theme steps stay dark (luminance <= 0.1474,
+   which nonbinary dark's #EFEAF6 needs). That is a floor in one theme and a
+   ceiling in the other, which is why the light ramp descends as it
+   saturates and the dark ramp holds one lightness and spends chroma
+   instead. See docs/adr/0077-moods-ramp-runs-between-two-hues.md for the
+   derivation, the hue-clash review against all 8 palettes, and the
+   residual-risk pairs. */
 [data-mood-preset="amber"][data-theme="light"] {
-  --mood-1: #EAE7E1; --mood-2: #E0D6C4; --mood-3: #DAC39A; --mood-4: #D5AB61; --mood-5: #CD9027;
+  --mood-1: #F4E0F9; --mood-2: #FFC4DE; --mood-3: #FFAFAE; --mood-4: #FF9A5F; --mood-5: #D99B01;
 }
 [data-mood-preset="amber"][data-theme="dark"] {
-  --mood-1: #705F41; --mood-2: #69532F; --mood-3: #5F4720; --mood-4: #4E3812; --mood-5: #3A290A;
+  --mood-1: #6F5B73; --mood-2: #825269; --mood-3: #934A4C; --mood-4: #994A11; --mood-5: #825B00;
 }
 [data-mood-preset="teal"][data-theme="light"] {
-  --mood-1: #E0E9EA; --mood-2: #C2DCE0; --mood-3: #94CFD7; --mood-4: #4DC0D0; --mood-5: #24ABBC;
+  --mood-1: #E9E4FF; --mood-2: #C8D6FF; --mood-3: #95CEFF; --mood-4: #45C9ED; --mood-5: #05BFC0;
 }
 [data-mood-preset="teal"][data-theme="dark"] {
-  --mood-1: #40686D; --mood-2: #2D5E65; --mood-3: #1D5258; --mood-4: #114249; --mood-5: #093136;
+  --mood-1: #655E7D; --mood-2: #54618A; --mood-3: #356890; --mood-4: #026F87; --mood-5: #017272;
 }
 [data-mood-preset="plum"][data-theme="light"] {
-  --mood-1: #ECE5ED; --mood-2: #E5D1E7; --mood-3: #E0B9E5; --mood-4: #DD9AE4; --mood-5: #D975E5;
+  --mood-1: #D0EDFF; --mood-2: #C2D9FF; --mood-3: #C1C0FF; --mood-4: #D59BFF; --mood-5: #F06FD9;
 }
 [data-mood-preset="plum"][data-theme="dark"] {
-  --mood-1: #814F86; --mood-2: #7F3D87; --mood-3: #752A7E; --mood-4: #64196D; --mood-5: #4D0E53;
+  --mood-1: #47687C; --mood-2: #486491; --mood-3: #5E589F; --mood-4: #7B489E; --mood-5: #9A3289;
 }
 [data-mood-preset="moss"][data-theme="light"] {
-  --mood-1: #E3E9E0; --mood-2: #C8DEBE; --mood-3: #A1D389; --mood-4: #66C835; --mood-5: #51B022;
+  --mood-1: #FDE2CE; --mood-2: #EFD49F; --mood-3: #CFCD75; --mood-4: #96CA63; --mood-5: #03C773;
 }
 [data-mood-preset="moss"][data-theme="dark"] {
-  --mood-1: #4C6A3E; --mood-2: #3C602B; --mood-3: #2E531C; --mood-4: #224410; --mood-5: #163308;
+  --mood-1: #795D46; --mood-2: #77602F; --mood-3: #69671B; --mood-4: #4A701F; --mood-5: #007742;
 }

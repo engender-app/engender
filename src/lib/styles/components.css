@@ -804,17 +804,15 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   stroke-width: 1;
   transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
-/* The eyes, in both their forms. Steps 2 to 4 draw two dots and fill them;
-   steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
-   the whole face is one drawing at one weight (moodFace.ts says why the ends
-   of the ramp are the two that differ). */
+/* The eyes, in both their forms, and one rule for the two: steps 2 to 4 draw
+   two dots, steps 1 and 5 draw two lids as one path, and every one of them is
+   a filled shape at the same ink and the same 0.75 (moodFace.ts says why the
+   ends of the ramp are the two that differ, and why ticket 27 took the last
+   stroke out of the drawing). `is-lids` needs no rule of its own any more -
+   it only tells the component which shape to draw. */
 .mood-face-eye {
   fill: var(--text); opacity: 0.75;
   transform-box: fill-box; transform-origin: center;
-}
-.mood-face-eye.is-lids {
-  fill: none;
-  stroke: var(--text); stroke-width: 1.6; stroke-linecap: round;
 }
 /* ---------- the eyes ----------
 
@@ -894,7 +892,13 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   .mood-face.is-alive .mood-face-eye { animation: none; }
   .mood-face.is-alive .mood-face-look { animation: none; }
 }
-.mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
+/* A filled lens rather than a stroked arc (ticket 27): the mouth is the mark
+   that carries the mood, and it now grows as well as turning - moodFace.ts
+   has the spans and the thicknesses. */
+.mood-face-mouth { fill: var(--text); opacity: 0.75; }
+/* The top step's blush, and the only mark in the face drawn under 0.75: a
+   cheek that reads as strongly as the mouth is a bruise. */
+.mood-face-cheek { fill: var(--text); opacity: 0.3; }
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
    already failed: 1px of the app's darkest line disappears against a
    coloured fill on the dark theme, at full strength, and the dimming rules
@@ -923,9 +927,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
 .mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
 .mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
+.mood-btn:not(.is-selected) .mood-face-cheek { opacity: 0.16; }
 .mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
 .mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 0.75; }
 .mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 0.75; }
+.mood-picker:not(:has(.is-selected)) .mood-face-cheek { opacity: 0.3; }
 /* Hover joins the magnifier's answer rather than replacing it - tier 4's
    "no hover-dependent motion" is about inventing motion for hover, not
    about a hover pointer being denied the response a finger gets. */

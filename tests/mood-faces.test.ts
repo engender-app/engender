@@ -1,5 +1,5 @@
 /* The five mood faces have to be telling apart at the smallest size any
-   surface draws them (phase 5 ticket 31).
+   surface draws them (phase 5 ticket 31, redrawn in phase 10 ticket 27).
 
    28px is that size now - an entry inside a day card - but the drawing was
    settled against the 22 an entry drew at until Alicja called the marks on
@@ -11,7 +11,7 @@
    4 and 5. Side by side you could nearly pick them out; alone on an entry,
    which is how they actually appear, you could not.
 
-   The rule the drawing now answers to, and what each half is for:
+   The rule the drawing answers to, and what each half is for:
 
    - Neighbouring steps differ by at least 2 units of mouth depth, OR by the
      direction the mouth curves. A change of direction is categorical and
@@ -21,17 +21,30 @@
      independent channel on exactly the pairs that have only depth to go on,
      and a change of shape rather than of dimension - the only kind that
      survives being scaled down this far.
+   - Every mark is a filled shape. Ticket 27's redrawing took the last
+     strokes out of the face: a 1.6-unit stroke is 1.5px at 22 and it went
+     grey and thin next to the disc's own hairline, where a filled lens keeps
+     its silhouette at any size. Depth is therefore measured on the shape's
+     midline rather than on its outline, which is what `depth` below is for -
+     the outline of a lens runs down one edge and back up the other, so the
+     naive apex of a flat mouth is its own bottom edge.
    - Nothing leaves the disc, so no face is ever clipped by the circle it
-     sits in. */
+     sits in. The margin is 0.8 units of air inside the disc's edge, which is
+     what the old stroke's outer edge used to spend; the fill keeps it as
+     air, and the last test below holds the stylesheet to it: put a stroke
+     back on any mark and the margin is no longer the whole story. */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from '../src/lib/components/moodFace';
+import { MOOD_CHEEK_RADIUS, MOOD_CHEEKS, MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from '../src/lib/components/moodFace';
 import { GAZE_REACH } from '../src/lib/motion/magnifier';
 import { inkPolylines } from './icon-ink';
 
 const STEPS = [1, 2, 3, 4, 5];
+
+/** 0.8 units of air between the ink and the disc's own edge. */
+const REACH = 10 - 0.8;
 
 const componentsCss = readFileSync(join(import.meta.dirname, '../src/lib/styles/components.css'), 'utf8');
 
@@ -60,13 +73,65 @@ function eyeTravel(): { x: number; y: number } {
   return { x: GAZE_REACH + glanceX, y: glanceY };
 }
 
+/** Every point of a drawing's outline, flattened. */
+function points(d: string): { x: number; y: number }[] {
+  return inkPolylines(`<path d="${d}"/>`).flat();
+}
+
+/** The midline of a lens: its two edges folded back onto each other, so the
+    outline collapses into the one curve the mouth is read as.
+
+    The fold is by position along the outline rather than by x. A lens is one
+    closed path - out along the upper edge, back along the lower - and both
+    edges are flattened into the same number of steps from the same pair of
+    corners, so the point i steps out from the start and the point i steps
+    back from the end are the two edges at one x. Bucketing by x instead
+    lands an odd number of samples in the end columns and reads a flat mouth
+    as a curved one. */
+function midline(d: string): { x: number; y: number }[] {
+  const outline = points(d);
+  /* Z brings the pen back to the corner it started at. */
+  const edges = outline.filter(
+    (p, i) => i === 0 || Math.hypot(p.x - outline[0].x, p.y - outline[0].y) > 1e-9
+  );
+  return edges.slice(0, Math.ceil(edges.length / 2)).map((p, i) => {
+    const mirror = edges[edges.length - 1 - i];
+    return { x: (p.x + mirror.x) / 2, y: (p.y + mirror.y) / 2 };
+  });
+}
+
 /** How far the middle of the mouth sits from its corners, signed: positive
     curves down into a smile, negative up into a frown, zero is the flat one. */
 function depth(step: number): number {
-  const [line] = inkPolylines(`<path d="${MOOD_FACES[step].mouth}"/>`);
-  const ends = (line[0].y + line[line.length - 1].y) / 2;
-  const apex = line.reduce((far, p) => (Math.abs(p.y - ends) > Math.abs(far - ends) ? p.y : far), ends);
-  return apex - ends;
+  const outline = points(MOOD_FACES[step].mouth);
+  /* The corners are drawn points, so they are read off the outline itself
+     rather than off the fold, which averages its own end pair half a
+     flattening step short of them. */
+  const left = outline.reduce((a, b) => (a.x < b.x ? a : b));
+  const right = outline.reduce((a, b) => (a.x > b.x ? a : b));
+  const line = midline(MOOD_FACES[step].mouth);
+  const apex = line.reduce((a, b) => (Math.abs(a.x - 12) < Math.abs(b.x - 12) ? a : b));
+  return apex.y - (left.y + right.y) / 2;
+}
+
+/** Anything under a twentieth of a unit is the flat mouth: 0.05px at 22px,
+    and the flattening's own residual at the apex is a tenth of that. */
+const FLAT = 0.05;
+
+/** Which way a mouth curves: -1 frown, 0 flat, 1 smile. */
+function direction(step: number): number {
+  const d = depth(step);
+  return Math.abs(d) < FLAT ? 0 : Math.sign(d);
+}
+
+/** Every filled mark a step draws, as one markup string. */
+function ink(step: number): string {
+  const face = MOOD_FACES[step];
+  return [
+    `<path d="${face.mouth}"/>`,
+    face.lids ? `<path d="${face.lids}"/>` : '',
+    ...(face.cheeks ? MOOD_CHEEKS.map((c) => `<circle cx="${c.cx}" cy="${c.cy}" r="${MOOD_CHEEK_RADIUS}"/>`) : [])
+  ].join('');
 }
 
 describe('the five mood faces', () => {
@@ -74,12 +139,8 @@ describe('the five mood faces', () => {
     expect(Object.keys(MOOD_FACES).map(Number).sort()).toEqual(STEPS);
   });
 
-  it('runs from frown to smile through flat', () => {
-    expect(depth(1)).toBeLessThan(0);
-    expect(depth(2)).toBeLessThan(0);
-    expect(depth(3)).toBeCloseTo(0, 5);
-    expect(depth(4)).toBeGreaterThan(0);
-    expect(depth(5)).toBeGreaterThan(0);
+  it('runs frown to smile through flat', () => {
+    expect(STEPS.map(direction)).toEqual([-1, -1, 0, 1, 1]);
   });
 
   it.each([
@@ -90,7 +151,7 @@ describe('the five mood faces', () => {
   ])('tells step %i from step %i by depth or by direction', (a, b) => {
     const from = depth(a);
     const to = depth(b);
-    const turned = Math.sign(from) !== Math.sign(to);
+    const turned = direction(a) !== direction(b);
     expect(
       turned || Math.abs(to - from) >= 2,
       `steps ${a} and ${b} curve the same way and are only ${Math.abs(to - from).toFixed(
@@ -107,49 +168,86 @@ describe('the five mood faces', () => {
     for (const step of [2, 3, 4]) expect(MOOD_FACES[step].lids).toBeUndefined();
   });
 
+  /* The mouth grows as well as turning: the top of the ramp is a wider,
+     thicker mark than the bottom, so the five differ in weight and not only
+     in curvature. Measured on the outline's own extent rather than restated
+     from the table. */
+  it('draws a wider, thicker mouth at the top of the ramp than at the bottom', () => {
+    const span = (step: number) => {
+      const xs = points(MOOD_FACES[step].mouth).map((p) => p.x);
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    const thickness = (step: number) => {
+      const column = points(MOOD_FACES[step].mouth).filter((p) => Math.abs(p.x - 12) < 0.05);
+      const ys = column.map((p) => p.y);
+      return Math.max(...ys) - Math.min(...ys);
+    };
+    expect(span(5)).toBeGreaterThan(span(1));
+    expect(thickness(5)).toBeGreaterThan(thickness(1));
+  });
+
+  /* Only the top of the ramp gets them, which is the third channel on the
+     4-5 pair - the one pair the mouth's direction cannot separate. */
+  it('blushes on the top step only', () => {
+    expect(MOOD_FACES[5].cheeks).toBe(true);
+    for (const step of [1, 2, 3, 4]) expect(MOOD_FACES[step].cheeks).toBeUndefined();
+  });
+
   it('keeps every face inside its disc', () => {
     for (const step of STEPS) {
-      const face = MOOD_FACES[step];
-      const markup = `<path d="${face.mouth}"/>${face.lids ? `<path d="${face.lids}"/>` : ''}`;
-      for (const line of inkPolylines(markup)) {
-        for (const point of line) {
-          /* The disc is r10, and the stroke is 1.6 wide, so its outer edge
-             reaches 0.8 past the path. */
-          expect(Math.hypot(point.x - 12, point.y - 12)).toBeLessThanOrEqual(10 - 0.8);
-        }
+      for (const point of points(ink(step))) {
+        expect(
+          Math.hypot(point.x - 12, point.y - 12),
+          `step ${step} draws ink outside the disc`
+        ).toBeLessThanOrEqual(REACH);
       }
     }
     for (const eye of MOOD_EYES) {
-      expect(Math.hypot(eye.cx - 12, eye.cy - 12) + MOOD_EYE_RADIUS).toBeLessThanOrEqual(10);
+      expect(Math.hypot(eye.cx - 12, eye.cy - 12) + MOOD_EYE_RADIUS).toBeLessThanOrEqual(REACH);
+    }
+    for (const cheek of MOOD_CHEEKS) {
+      expect(Math.hypot(cheek.cx - 12, cheek.cy - 12) + MOOD_CHEEK_RADIUS).toBeLessThanOrEqual(REACH);
     }
   });
 
-  /* The eyes move now (phase 9 carpet ticket 01): the row turns them toward
-     the finger and the face turns them again on its own idle glance, and the
-     two groups are nested so the offsets add. The drawing has to survive both
-     at once in both directions - an eye clipped by its own disc for the half
+  /* The eyes move (phase 9 carpet ticket 01): the row turns them toward the
+     finger and the face turns them again on its own idle glance, and the two
+     groups are nested so the offsets add. The drawing has to survive both at
+     once in both directions - an eye clipped by its own disc for the half
      second a finger passes is a worse bug than a still face, because it only
-     ever happens while somebody is looking straight at it. */
-  it('keeps every face inside its disc while its eyes are fully turned', () => {
+     ever happens while somebody is looking straight at it.
+
+     Only the eyes travel. The mouth and the cheeks sit outside both groups
+     and are covered by the still check above. */
+  it('keeps every eye inside its disc while it is fully turned', () => {
     const travel = eyeTravel();
     for (const dx of [-travel.x, travel.x]) {
       for (const dy of [-travel.y, travel.y]) {
         for (const step of STEPS) {
-          const face = MOOD_FACES[step];
-          if (!face.lids) continue;
-          for (const line of inkPolylines(`<path d="${face.lids}"/>`)) {
-            for (const point of line) {
-              expect(
-                Math.hypot(point.x + dx - 12, point.y + dy - 12),
-                `step ${step}'s lids leave the disc at a gaze of ${dx.toFixed(2)}, ${dy.toFixed(2)}`
-              ).toBeLessThanOrEqual(10 - 0.8);
-            }
+          const lids = MOOD_FACES[step].lids;
+          if (!lids) continue;
+          for (const point of points(lids)) {
+            expect(
+              Math.hypot(point.x + dx - 12, point.y + dy - 12),
+              `step ${step}'s lids leave the disc at a gaze of ${dx.toFixed(2)}, ${dy.toFixed(2)}`
+            ).toBeLessThanOrEqual(REACH);
           }
         }
         for (const eye of MOOD_EYES) {
-          expect(Math.hypot(eye.cx + dx - 12, eye.cy + dy - 12) + MOOD_EYE_RADIUS).toBeLessThanOrEqual(10);
+          expect(Math.hypot(eye.cx + dx - 12, eye.cy + dy - 12) + MOOD_EYE_RADIUS).toBeLessThanOrEqual(REACH);
         }
       }
+    }
+  });
+
+  /* The margin above is 0.8 units of air, not 0.8 units of stroke. The
+     drawing is filled now, and a stroke put back on any of these three would
+     reach half its width past every point measured here. */
+  it('draws the face in fills, with no stroke on any mark', () => {
+    for (const selector of ['.mood-face-mouth', '.mood-face-eye', '.mood-face-cheek']) {
+      const body = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(componentsCss)?.[1];
+      expect(body, `${selector} is gone or renamed`).toBeTruthy();
+      expect(body, `${selector} still carries a stroke`).not.toMatch(/stroke-width|stroke:\s*(?!none)/);
     }
   });
 
