@@ -370,10 +370,13 @@ body {
    label paint over the pill: the pill is a positioned element and would
    otherwise sit on top of static siblings whatever the source order says. */
 .nav-item { position: relative; }
-/* The same ink the rail's lit row always took, now that both forms light on
-   the same stronger fill: --accent measures 3.60:1 on it at worst and
-   --on-accent-soft 4.66:1, and the label is 11px (palettes.css carries the
-   measurements). One ink for one fill across both shapes. */
+/* The same ink the rail's lit row always took, which the bar should have
+   taken all along: --accent on --accent-soft measures 4.07:1 at worst
+   (trans, light) and the label is 11px, so the bar's active label has been
+   under the 4.5 floor since the pill first travelled. --on-accent-soft is
+   5.27:1 on the same fill. It also reads heavier, which is half of what
+   makes the lit tab more pronounced (redesign ticket 26). One ink for one
+   fill across both shapes of the navigation. */
 .nav-item.is-active { color: var(--on-accent-soft); }
 .nav-item:hover { color: var(--text); }
 
@@ -430,14 +433,20 @@ body {
   top: var(--pill-top, 0);
   bottom: var(--pill-bottom, 0);
   border-radius: var(--r-block);
-  /* Its own tint rather than --accent-soft, and a line around it: at 11%
-     the shape was a wash you had to look for (Alicja, 2026-09-08). Both
-     halves of that are in palettes.css with the contrast they were chosen
-     against - the fill is --nav-lit, and the line is --accent-border, the
-     same edge every other accent-tinted block in the app takes. A line
-     rather than a shadow, which the kit does not have. */
-  background: var(--nav-lit);
-  border: 1px solid var(--accent-border);
+  /* The fill it always had, and a line at full --accent around it: at 11%
+     of the accent the shape is a wash you have to look for (Alicja,
+     2026-09-08), and a stronger fill is not available. Mid-travel the
+     stretched shape passes under the tabs between the two it spans, so
+     their --text-2 label sits on this fill for as long as it is open, and
+     that pair is already at the floor: 4.56:1 at 11% (trans, light), 4.42
+     at 13%, 3.95 at the 20% this was first tried at. So the weight goes on
+     the edge instead, where no label sits. A 1px line rather than a
+     shadow, which the kit does not have, and at --accent rather than
+     --accent-border because a 30% line on an 11% fill is the same wash
+     again. --accent on this fill is 4.07:1 at worst, well over the 3:1
+     floor a non-text boundary answers to. */
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
   opacity: 0;
   pointer-events: none;
 }
