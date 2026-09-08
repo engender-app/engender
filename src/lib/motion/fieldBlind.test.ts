@@ -23,7 +23,7 @@ function field({
 
 /** A document whose field list can be swapped out under the carry, which is
     what a navigation does to it. */
-function fakeDocument(fields: ReturnType<typeof field>[]) {
+function fakeDocument(fields: ReturnType<typeof field>[], scrollTop = 0) {
   const root = {
     style: {
       props: new Map<string, string>(),
@@ -35,11 +35,14 @@ function fakeDocument(fields: ReturnType<typeof field>[]) {
       }
     }
   };
-  const doc = { fields, root };
+  const doc = { fields, root, region: { scrollTop } };
   return {
     doc,
     as: {
       querySelectorAll: () => doc.fields,
+      /* The one thing the carry asks the document for beside its fields:
+         how far the screen under them is scrolled. */
+      querySelector: () => doc.region,
       documentElement: root
     } as unknown as Document
   };
@@ -76,7 +79,36 @@ describe('the blind, carried across a navigation', () => {
     expect(doc.root.style.props.get('--blind-from')).toBe('215px');
     expect(doc.root.style.props.get('--blind-to')).toBe('102px');
     expect(doc.root.style.props.get('--blind-delta')).toBe('113px');
-    expect(doc.root.style.props.get('--blind-ease')).toBe('var(--ease-out)');
+    expect(doc.root.style.props.get('--blind-ease')).toBe('var(--ease-out-soft)');
+    /* Closing, so what is painted on the field leaves upwards and the next
+       screen's arrives from below. */
+    expect(doc.root.style.props.get('--part-travel')).toBe('-12px');
+  });
+
+  /* A collapsed field's blind is never named: it is the one field without
+     the bleed that takes every other one to the window's edges, so its box
+     is narrower and inset, and a group holding one box for both sides drew
+     the whole blind 20px to the right for the length of the navigation. */
+  it('leaves a collapsed field\'s blind unnamed, so the blind only ever moves up and down', () => {
+    const blind = el();
+    const { as } = fakeDocument([field({ height: 0, blind })]);
+    carryBlind(as);
+    expect(blind.style.viewTransitionName).toBeUndefined();
+  });
+
+  /* A scrolled screen's field is that far above the window, and the group
+     holds one box for both sides - so naming it took the whole blind
+     off-screen and the field vanished for the length of the navigation
+     (Alicja, round one, on deep-back). */
+  it('leaves a scrolled screen out, so the blind closes to what that screen shows', () => {
+    const blind = el();
+    const { doc, as } = fakeDocument([field({ height: 215, blind })]);
+    const carry = carryBlind(as)!;
+    doc.fields = [field({ height: 199 })];
+    doc.region.scrollTop = 1200;
+    carry.swap();
+    expect(doc.root.style.props.get('--blind-to')).toBe('0px');
+    expect(doc.root.style.props.get('--blind-from')).toBe('215px');
   });
 
   it('reads a screen with no field as the blind closed to nothing', () => {
@@ -159,5 +191,6 @@ describe('the blind, carried across a navigation', () => {
     expect(doc.root.style.props.get('--blind-from')).toBe('0px');
     expect(doc.root.style.props.get('--blind-to')).toBe('215px');
     expect(doc.root.style.props.get('--blind-delta')).toBe('-215px');
+    expect(doc.root.style.props.get('--part-travel')).toBe('12px');
   });
 });

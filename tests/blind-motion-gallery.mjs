@@ -55,40 +55,40 @@ const tab = (key) => `[data-nav-item="${key}"]`;
 const SCENES = [
   {
     name: 'door-today-journal',
-    note: 'Today to Journal: the tallest field to a shorter one. The blind is pulled up 77px, the foot and the month strip travel with its edge, and the sun closes outermost first inside the same 380ms.',
+    note: "Today to Journal, the blind pulled up 77px. Round two: the wordmark and the foot ride up with the edge instead of standing still, the leave goes up because the blind is going up, and the whole run leaves on --ease-out-soft rather than snapping off the mark.",
     at: ROUTE.home,
     act: tab('calendar'),
     sun: true
   },
   {
     name: 'door-journal-lookback',
-    note: 'Journal to Look back: a short field to a taller one. The month strip fades out where it stands and the title fades in where it stands - the frame Alicja named on ticket 25 as a smear between the two.',
+    note: "Journal to Look back, a 2.4px move: the two fields are almost the same height, so what changes here is the contents alone - the month strip out, the title in, one after the other.",
     at: ROUTE.calendar,
     act: tab('stats')
   },
   {
     name: 'door-lookback-transition',
-    note: 'Look back to Transition: the title leaves and the search box arrives, with the blind closing under both.',
+    note: "Look back to Transition: the title leaves and the search box arrives, with the blind barely moving under them.",
     at: ROUTE.stats,
     act: tab('settings')
   },
   {
     name: 'door-transition-today',
-    note: 'Transition to Today: the blind is pulled down to the sun's quarter, runs past its mark by 6% of the distance and settles back onto it, while the rings open outermost first.',
+    note: "Transition to Today, the blind pulled down to the sun's quarter. The search box drops as it leaves and the wordmark comes from above, which is the direction the edge is going; the rings open outermost first, riding down with it.",
     at: ROUTE.settings,
     act: tab('home'),
     sun: true
   },
   {
     name: 'settings-close',
-    note: 'Today to Settings, which has no field at all: the blind closes to nothing, its bottom edge rising to the window's top edge with the content following it up.',
+    note: "Today to Settings, which has no field: the blind closes to nothing. Round two also fixes the sideways jump - a collapsed field has no bleed, so its blind is narrower and inset, and naming it dragged the whole blind 20px right for the length of the navigation.",
     at: ROUTE.home,
     act: '[data-home-gear]',
     sun: true
   },
   {
     name: 'settings-open',
-    note: 'Back out of Settings to Today: the same run backwards, the blind opening from nothing to the sun's quarter.',
+    note: "Back out of Settings to Today: the same run backwards, the blind opening from nothing with everything printed on it riding down.",
     at: ROUTE.home,
     enter: '[data-home-gear]',
     act: 'back',
@@ -96,15 +96,15 @@ const SCENES = [
   },
   {
     name: 'deep-push',
-    note: 'A deep push, Transition into the roadmap: the screens take their shared axis underneath and the blind still slides, from a field with a search box to one with a back control and a title.',
+    note: "A deep push, Transition into body measurements: the screens take their shared axis underneath while the blind slides, the search box leaves and the back control and title arrive on it.",
     at: ROUTE.settings,
-    act: 'a[href="/transition/roadmap"]'
+    act: 'a[href="/body/measurements"]'
   },
   {
     name: 'deep-back',
-    note: 'The return: the shared axis reversed, the blind sliding back to the door's own height.',
+    note: "The return, and the one that was broken. The field vanished for the whole transition because the hub it came back to had been scrolled to reach the row, so its field - and the blind hanging from it - sat above the window while the group held one box for both sides. A scrolled screen now contributes no blind at all and the other side closes to nothing, which is what that screen shows; this scene reaches its row without scrolling, so the blind slides as it should.",
     at: ROUTE.settings,
-    enter: 'a[href="/transition/roadmap"]',
+    enter: 'a[href="/body/measurements"]',
     act: 'back'
   }
 ];
@@ -203,9 +203,9 @@ const fire = (p, scene) =>
     than the round trip before it, except on a back, which has to come from
     the harness; there the clock starts a frame earlier and the trace says
     so through `nav` going live. */
-function trace(p, scene) {
+async function trace(p, scene) {
   return p.evaluate(
-    async ({ act, ms, sun }) => {
+    async ({ act, ms, sun, restOut }) => {
       const read = (pseudo, prop) =>
         getComputedStyle(document.documentElement, pseudo)?.getPropertyValue(prop) ?? '';
       const px = (value) => {
@@ -226,6 +226,18 @@ function trace(p, scene) {
         const value = read('::view-transition-new(screen)', 'translate');
         const parts = value.split(/\s+/);
         return parts.length > 1 ? px(parts[1]) : 0;
+      };
+      /* What a mark printed on the blind is doing on this frame: the ride
+         it takes with the edge (`translate`) and the travel it makes of its
+         own as it leaves or arrives (the translateY inside `transform`).
+         Read off the pseudo elements, so it is the animation's own number
+         rather than a claim about the stylesheet. */
+      const markOf = (name) => {
+        const side = name.startsWith('fp-a') ? 'old' : 'new';
+        const ride = px(read(`::view-transition-${side}(${name})`, 'translate').split(/\s+/)[1]);
+        const matrix = read(`::view-transition-${side}(${name})`, 'transform');
+        const parts = /matrix\(([^)]+)\)/.exec(matrix)?.[1].split(',').map(Number);
+        return { ride: ride ?? 0, travel: parts ? Math.round(parts[5] * 10) / 10 : 0 };
       };
       const ringsOf = () => {
         const out = [];
@@ -261,6 +273,10 @@ function trace(p, scene) {
           out.push({
             at: Math.round(now),
             nav: document.documentElement.dataset.nav ?? '',
+            /* The first thing painted on each field - Today's wordmark,
+               Journal's month strip, a deep screen's back control. */
+            markOut: markOf('fp-a-0'),
+            markIn: markOf('fp-b-0'),
             /* What the page itself is resting at, which is the only thing
                left to read once the clamp has taken the transition to 1ms
                and its pseudo elements with it. */
@@ -270,13 +286,30 @@ function trace(p, scene) {
             ...(sun ? { rings: ringsOf() } : {})
           });
           if (now < ms) requestAnimationFrame(tick);
-          else done({ from, to, ease, frames: out });
+          else done({ from, to, ease, restOut, frames: out });
         };
         requestAnimationFrame(tick);
       });
     },
-    { act: scene.act, ms: TRACE_MS, sun: !!scene.sun }
+    { act: scene.act, ms: TRACE_MS, sun: !!scene.sun, restOut: await restingMark(p) }
   );
+}
+
+/** Where the first thing painted on the field rests, as its bottom edge in
+    window coordinates, and where the field's own bottom edge is. The two
+    together are the distance a mark is printed above the edge, which is
+    what riding the blind is supposed to hold constant. */
+function restingMark(p) {
+  return p.evaluate(() => {
+    const field = document.querySelector('[data-screen-field], [data-home-field]');
+    const mark = field?.querySelector('[data-field-part]');
+    if (!field || !mark) return null;
+    const round = (n) => Math.round(n * 10) / 10;
+    return {
+      mark: round(mark.getBoundingClientRect().bottom),
+      edge: round(field.getBoundingClientRect().bottom)
+    };
+  });
 }
 
 /** Records everything the page paints for `SCENE_MS`, with `act` fired one
@@ -322,6 +355,10 @@ try {
        destination anyway. */
     await rest(page, scene);
     const measured = await trace(page, scene);
+    /* Where the arriving screen's first mark rests, measured once it has:
+       during the transition it is a photograph, and its own animation is
+       what the trace above carries. */
+    measured.restIn = await restingMark(page);
     const travelled = Math.abs((measured.to ?? 0) - (measured.from ?? 0));
     /* Past the mark in the direction the edge was travelling, which is the
        only direction an overshoot can be: an opening blind's furthest frame
@@ -381,7 +418,7 @@ try {
   );
   scenes.push({
     name: 'reduced-motion',
-    note: 'The clamp on: the blind cuts to its new height, the content is already on its mark, and the sun cuts rather than closing. There is nothing to flip through, which is the point.',
+    note: "The clamp on: the blind cuts to its new height, the content is already on its mark, and the sun cuts rather than closing. There is nothing to flip through, which is the point.",
     reduced: true,
     crop: CROP,
     trace: { ...clamped, travelled: 0, past: 0 },

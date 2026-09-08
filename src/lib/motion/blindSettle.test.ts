@@ -2,7 +2,17 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { blindSettle, easeOut, EASE_OUT_POINTS, EASE_OUT_VAR } from './blindSettle';
+import {
+  bezier,
+  blindSettle,
+  EASE_OUT_POINTS,
+  EASE_OUT_SOFT_POINTS,
+  EASE_OUT_SOFT_VAR,
+  EASE_OUT_VAR
+} from './blindSettle';
+
+const easeOut = bezier(EASE_OUT_POINTS);
+const easeOutSoft = bezier(EASE_OUT_SOFT_POINTS);
 
 /** The stops of a `linear()`, in order. */
 function stops(easing: string): number[] {
@@ -23,7 +33,7 @@ describe('the blind settling on its mark', () => {
   });
 
   it('suppresses the overshoot below 24px of travel', () => {
-    const settle = blindSettle({ from: 175, to: 160 });
+    const settle = blindSettle({ from: 160, to: 175 });
     expect(settle.travel).toBe(15);
     expect(settle.overshoot).toBe(0);
     expect(settle.easing).toBe(EASE_OUT_VAR);
@@ -35,7 +45,16 @@ describe('the blind settling on its mark', () => {
      such band - the overshoot is above the window's top edge. */
   it('does not overshoot a close that stops on a shorter field', () => {
     expect(blindSettle({ from: 215, to: 120 }).overshoot).toBe(0);
-    expect(blindSettle({ from: 215, to: 120 }).easing).toBe(EASE_OUT_VAR);
+  });
+
+  /* An edge travelling the height of a field leaves at four times its
+     average speed on --ease-out, which reads as a jump; --ease-out-soft is
+     the same deceleration with the instant off the front. Only on the way
+     up, where a blind that lags the content covers more of it rather than
+     less. */
+  it('leaves more gently on the way up than on the way down', () => {
+    expect(blindSettle({ from: 215, to: 120 }).easing).toBe(EASE_OUT_SOFT_VAR);
+    expect(blindSettle({ from: 200, to: 215 }).easing).toBe(EASE_OUT_VAR);
   });
 
   it('overshoots a close to nothing, which the window swallows', () => {
@@ -108,13 +127,25 @@ describe('the curve the settle is sampled from', () => {
 
   /* The curve it is held above is the app's own token, so a change to one
      that left the other behind would be a silent regression. */
-  it('is built on the same --ease-out the stylesheet publishes', () => {
-    const token = readFileSync(
-      new URL('../theme/base.css', import.meta.url),
-      'utf8'
-    );
+  it('is built on the same two curves the stylesheet publishes', () => {
+    const token = readFileSync(new URL('../theme/base.css', import.meta.url), 'utf8');
     expect(token).toContain(`--ease-out: cubic-bezier(${EASE_OUT_POINTS.join(', ')})`);
-    expect(easeOut(0)).toBeCloseTo(0, 5);
-    expect(easeOut(1)).toBeCloseTo(1, 5);
+    expect(token).toContain(`--ease-out-soft: cubic-bezier(${EASE_OUT_SOFT_POINTS.join(', ')})`);
+    for (const curve of [easeOut, easeOutSoft]) {
+      expect(curve(0)).toBeCloseTo(0, 5);
+      expect(curve(1)).toBeCloseTo(1, 5);
+    }
+  });
+
+  /* The close that lands at nothing is the one close that overshoots, and
+     it is built on the softer curve, so it lags the content the whole way
+     up: what it uncovers is above the window's top edge. */
+  it('keeps a close behind the content it is covering, overshoot and all', () => {
+    const closing = blindSettle({ from: 215, to: 0 });
+    const curve = stops(closing.easing);
+    for (const [i, value] of curve.entries()) {
+      const t = i / (curve.length - 1);
+      expect(value, `at ${Math.round(t * 100)}%`).toBeLessThanOrEqual(easeOut(t) + 0.06);
+    }
   });
 });

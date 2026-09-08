@@ -980,21 +980,47 @@ describe('ticket 28: the field is a blind over the content', () => {
   it('fades one of the field\'s contents out before the next fades in, each with its own travel', () => {
     const out = declarations(ruleOf(app, '::view-transition-old(*.field-part)')?.body ?? '');
     const fresh = declarations(ruleOf(app, '::view-transition-new(*.field-part)')?.body ?? '');
-    expect(out.animation).toBe('field-part-out var(--dur-fast) var(--ease-in-out) both');
-    expect(fresh.animation, 'the incoming one waits for the outgoing one').toBe(
+    expect(out.animation).toContain('field-part-out var(--dur-fast) var(--ease-in-out) both');
+    expect(fresh.animation, 'the incoming one waits for the outgoing one').toContain(
       'field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both'
     );
-    for (const [name, sign] of [
-      ['field-part-out', 1],
-      ['field-part-in', -1]
-    ] as const) {
+    for (const name of ['field-part-out', 'field-part-in']) {
       const [frame] = frames(keyframesOf(app, name)!.body);
-      expect(Object.keys(frame.decls).sort()).toEqual(['opacity', 'translate']);
-      const travel = Number(/(-?\d+)px/.exec(frame.decls.translate)?.[1]);
-      expect(Math.abs(travel), `${name} travels 12-16px`).toBeGreaterThanOrEqual(12);
-      expect(Math.abs(travel)).toBeLessThanOrEqual(16);
-      expect(Math.sign(travel), `${name} goes the right way`).toBe(sign);
+      expect(Object.keys(frame.decls).sort()).toEqual(['opacity', 'transform']);
+      /* The direction is the blind's, published per navigation, so the two
+         travel the way the edge is going rather than always downwards. */
+      expect(frame.decls.transform).toContain('var(--part-travel');
+      expect(frame.decls.transform, `${name} goes the right way`).toMatch(
+        name.endsWith('-in') ? /calc\(-1 \* var/ : /translateY\(var/
+      );
     }
+  });
+
+  /* What is painted on the field is printed on it: both sides ride the
+     blind's own curve, so a mark keeps its distance from the edge and
+     cannot be left hanging outside the field (Alicja, round one). The ride
+     is `translate` and the leave is `transform`, which is what lets the two
+     animations sit on one element without overwriting each other. */
+  it('rides everything painted on the field with the blind, on the blind\'s own curve', () => {
+    const ride = 'var(--dur-slow) var(--blind-ease, var(--ease-out)) both';
+    for (const [selector, keyframe] of [
+      ['::view-transition-old(*.field-part)', 'blind-lead'],
+      ['::view-transition-new(*.field-part)', 'blind-follow'],
+      ['::view-transition-old(*.sun-ring)', 'blind-lead'],
+      ['::view-transition-new(*.sun-ring)', 'blind-follow']
+    ]) {
+      expect(declarations(ruleOf(app, selector)?.body ?? '').animation, selector).toContain(
+        `${keyframe} ${ride}`
+      );
+    }
+    for (const name of ['blind-lead', 'blind-follow']) {
+      for (const frame of frames(keyframesOf(app, name)!.body)) {
+        expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(['translate']);
+      }
+    }
+    /* The ride ends where the element rests, both ways round. */
+    expect(frames(keyframesOf(app, 'blind-follow')!.body).at(-1)!.decls.translate).toBe('0 0');
+    expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe('0 0');
   });
 
   /* The content under the blind travels with its bottom edge, on the
@@ -1007,7 +1033,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     const incoming = declarations(ruleOf(app, '::view-transition-new(screen)')?.body ?? '');
     expect(incoming['animation-duration']).toBe('var(--dur-med), var(--dur-slow)');
     expect(incoming['animation-timing-function']).toBe('var(--ease-out)');
-    const follow = frames(keyframesOf(app, 'screen-blind-follow')!.body);
+    const follow = frames(keyframesOf(app, 'blind-follow')!.body);
     for (const frame of follow) {
       expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual(['translate']);
     }
@@ -1017,7 +1043,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     for (const pattern of ['fade-through', 'shared-axis', 'shared-axis-back', 'container']) {
       const rule = ruleOf(app, `html[data-nav='${pattern}']::view-transition-new(screen)`);
       expect(declarations(rule?.body ?? '')['animation-name'], pattern).toMatch(
-        /, screen-blind-follow$/
+        /, blind-follow$/
       );
     }
   });
@@ -1031,8 +1057,8 @@ describe('ticket 28: the field is a blind over the content', () => {
   it('closes the sun outermost first, and every ring inside --dur-slow', () => {
     const closes = declarations(ruleOf(app, '::view-transition-old(*.sun-ring)')?.body ?? '');
     const opens = declarations(ruleOf(app, '::view-transition-new(*.sun-ring)')?.body ?? '');
-    expect(closes.animation).toBe('sun-ring-close var(--dur-fast) var(--ease-in-out) both');
-    expect(opens.animation).toBe('sun-ring-open var(--dur-fast) var(--ease-out) both');
+    expect(closes.animation).toContain('sun-ring-close var(--dur-fast) var(--ease-in-out) both');
+    expect(opens.animation).toContain('sun-ring-open var(--dur-fast) var(--ease-out) both');
     for (const name of ['sun-ring-close', 'sun-ring-open']) {
       for (const frame of frames(keyframesOf(app, name)!.body)) {
         expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(['scale']);
@@ -1047,8 +1073,10 @@ describe('ticket 28: the field is a blind over the content', () => {
         `::view-transition-new(sun-b-${ring[1]})`
       );
       const delay = declarations(rule.body)['animation-delay'];
+      /* The beat is the ring's own; the ride beside it starts with the
+         blind, so the list has a second value rather than one for both. */
       expect(delay, `ring ${ring[1]}`).toMatch(
-        new RegExp(`^calc\\(${ring[1]} \\* var\\(--stagger-ring\\)\\)$`)
+        new RegExp(`^calc\\(${ring[1]} \\* var\\(--stagger-ring\\)\\), 0s$`)
       );
       steps.push(Number(ring[1]));
     }

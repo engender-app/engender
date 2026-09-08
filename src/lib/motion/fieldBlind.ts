@@ -39,12 +39,28 @@
 import { blindSettle } from './blindSettle';
 
 const FIELD = '[data-screen-field], [data-home-field]';
+const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
 const PART = '[data-field-part]';
 const RING = '[data-flag-sun] > i';
 
 /** The blind itself, which is one object on both sides of a navigation. */
 const BLIND_NAME = 'blind';
+
+/** How far a thing painted on the field travels as it leaves or arrives, on
+    top of the ride it takes with the blind. Under the field's own 16px of
+    bottom padding, so an element travelling towards the edge cannot reach
+    it: nothing painted on the blind ever sticks out of it (Alicja, round
+    one, 2026-09-09). */
+const PART_TRAVEL = 12;
+
+/* Which carry owns the variables on the root. A navigation superseded by
+   another leaves its own `release` to run late, and a late release used to
+   take the newer navigation's numbers off the root with it - which leaves
+   the blind's clip reading its own fallbacks, `inset(0 0 100vh 0)`, and the
+   field simply absent for the length of the transition. Only the carry that
+   published them may remove them. */
+let current: BlindCarry | null = null;
 
 export interface BlindCarry {
   /** After the incoming screen has mounted, before it is captured. */
@@ -72,7 +88,7 @@ export function carryBlind(doc: Document = document): BlindCarry {
   const before = name(doc, 'a');
   let after: Side | null = null;
 
-  return {
+  const carry: BlindCarry = {
     swap() {
       release(before);
       after = name(doc, 'b', before);
@@ -85,16 +101,29 @@ export function carryBlind(doc: Document = document): BlindCarry {
          was and travels up to its own place. */
       root.style.setProperty('--blind-delta', `${before.height - after.height}px`);
       root.style.setProperty('--blind-ease', settle.easing);
+      /* Which way the things painted on the field leave and arrive: with
+         the blind, so on a blind being pulled down the old text drops and
+         the new comes from above, and on one being pulled up they both go
+         the other way (Alicja, round one). */
+      root.style.setProperty(
+        '--part-travel',
+        `${after.height > before.height ? PART_TRAVEL : -PART_TRAVEL}px`
+      );
+      current = carry;
     },
     release() {
       release(before);
       if (after) release(after);
-      for (const property of ['--blind-from', '--blind-to', '--blind-delta', '--blind-ease']) {
-        root.style.removeProperty(property);
-      }
+      if (current !== carry) return;
+      current = null;
+      for (const property of VARIABLES) root.style.removeProperty(property);
     }
   };
+
+  return carry;
 }
+
+const VARIABLES = ['--blind-from', '--blind-to', '--blind-delta', '--blind-ease', '--part-travel'];
 
 /** Names one side's field and measures it. `skip` is the side already
     named, which can still be in the DOM when the incoming one is looked
@@ -105,6 +134,17 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side): Side {
   if (!field) return { height: 0, named: [] };
 
   const named: HTMLElement[] = [field];
+  /* A screen that is scrolled has no field where the blind can be: the
+     field scrolls away with the page, so its blind sits that far above the
+     window, and the group holds one box for both sides. Named, it dragged
+     the whole blind off-screen and the field simply vanished for the length
+     of the navigation - a deep push out of a scrolled hub and back is the
+     everyday way to hit it, and it is what Alicja saw on deep-back (round
+     one). So a scrolled side contributes nothing and the other side's blind
+     closes to nothing, which is what that screen actually shows. Measured
+     after the scroll is restored, which is why swap() runs last. */
+  const scrolled = (doc.querySelector(REGION)?.scrollTop ?? 0) > 1;
+  const height = scrolled ? 0 : field.getBoundingClientRect().height;
   const take = (el: HTMLElement | null, as: string) => {
     if (!el) return;
     el.style.viewTransitionName = as;
@@ -112,12 +152,22 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side): Side {
   };
 
   /* The field itself is not named - only what is painted on it. Its box is
-     the measurement, and the blind is what stands in for its paint. */
-  take(field.querySelector<HTMLElement>(BLIND), BLIND_NAME);
+     the measurement, and the blind is what stands in for its paint.
+
+     A collapsed header's blind is left out, along with a scrolled screen's
+     above, and that is what keeps the
+     blind moving up and down and nowhere else. A collapsed field drops the
+     bleed that takes every other field out to the window's edges, so its
+     blind is 350px wide starting 20px in; the group holds one box for both
+     sides, so naming it made the whole blind jump 20px right for the length
+     of the navigation (Alicja, round one). A screen with no field has
+     nothing to contribute to the blind anyway - the other side's blind is
+     the one that moves, and it closes to nothing. */
+  if (height > 0) take(field.querySelector<HTMLElement>(BLIND), BLIND_NAME);
   field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`));
   field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
 
-  return { height: field.getBoundingClientRect().height, named };
+  return { height, named };
 }
 
 function release(side: Side) {
