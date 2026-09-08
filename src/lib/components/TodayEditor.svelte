@@ -59,7 +59,7 @@
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { regroupSteps, type CellBox } from '$lib/motion/regroup';
   import { maskHeight } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Role } from '$lib/theme/roles';
   import { dayAheadMarkLabel } from './dayAheadRows';
   import Icon from './Icon.svelte';
@@ -247,22 +247,30 @@
     await tick();
     if (isReducedMotion()) return;
     const duration = motionDuration('--dur-med');
-    for (const { el, height } of before.heights) maskHeight(el, height, duration);
-    travelRows(before.rows, duration);
+    /* A list that went away with the write - unpinning the last row takes
+       the whole pinned list with it - has nothing left to clip. */
+    for (const { el, height } of before.heights) if (el.isConnected) maskHeight(el, height, duration);
+    travelRows(before.rows);
   }
 
   /** Start every row at the difference between where it was and where it
       now is, then release it on the next frame. */
-  function travelRows(before: CellBox[], duration: number) {
+  function travelRows(before: CellBox[]) {
     const elements = new Map(rowElements().map((el) => [rowKey(el), el]));
     for (const step of regroupSteps(before, measure())) {
       const el = elements.get(String(step.key));
       if (!el) continue;
+      /* The jump back to where the row was is not a transition, and the
+         travel forwards is the list's own CSS one - so both inline
+         properties come off again on the way out. A left-behind inline
+         `transition` would still be there during the next drag, where the
+         held row has to sit exactly under the pointer with no easing at
+         all. */
       el.style.transition = 'none';
       el.style.translate = `0 ${step.dy}px`;
       requestAnimationFrame(() => {
-        el.style.transition = `translate ${duration}ms ${EASE_OUT_CSS}`;
-        el.style.translate = '0';
+        el.style.transition = '';
+        el.style.translate = '';
       });
     }
   }
@@ -288,7 +296,7 @@
     const handle = listEl?.querySelector<HTMLElement>(`[data-edit-grip="${key}"]`);
     handle?.focus();
     if (isReducedMotion()) return;
-    travelRows(before, motionDuration('--dur-med'));
+    travelRows(before);
   }
 
   function onGripKeydown(event: KeyboardEvent, key: string) {
@@ -460,9 +468,11 @@
   .today-editor-add {
     display: grid;
     place-items: center;
-    /* The touch floor, on a control whose job is to be grabbed. */
-    inline-size: 44px;
-    block-size: 44px;
+    /* The touch floor, from the one token that holds it - 48, Android's
+       floor rather than iOS's 44 (accessibility-audit.test.ts) - on a
+       control whose whole job is to be grabbed. */
+    inline-size: var(--touch-target);
+    block-size: var(--touch-target);
     margin-inline: calc(var(--space-2) * -1);
     color: var(--text-2);
     background: none;
@@ -486,9 +496,11 @@
     border-radius: var(--r-block);
   }
 
+  /* 20 between two blocks of one section (DIRECTION.md 1); the two exits
+     are one block, 8 apart inside it. */
   .today-editor-exits {
     display: grid;
     gap: var(--space-2);
-    margin-block-start: var(--space-4);
+    margin-block-start: var(--space-5);
   }
 </style>
