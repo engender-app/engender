@@ -481,6 +481,28 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.5)).not.toContain('height:');
   });
 
+  /* The margin under the arriving block grows with it: at full margin from
+     the first frame the Transition door's empty results wrapper pushed the
+     index under it 20px on the keystroke. */
+  it('grows its bottom margin with it on the way down', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginBottom: '20px' });
+    markScreenArrival(performance.now() - 1000);
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 0)).toContain('margin-bottom: 0px');
+    expect(frame(css!, 1)).toContain('margin-bottom: 20px');
+  });
+
+  /* A list is not a block: the Transition door's 1500px index coming down
+     from above is the whole door rushing past. Past a phone screen's half
+     the panel opens in place, which is the height travel. */
+  it('opens in place instead when it is taller than a block', () => {
+    const node = panel({ height: 1500, beside: [[1600, 1700]] }, { paddingTop: '0px', paddingBottom: '0px' });
+    markScreenArrival(performance.now() - 1000);
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 0)).not.toContain('clip-path');
+  });
+
   it('still gives its height back from the bottom on the way out', () => {
     const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px' });
     const { css } = collapse(node, undefined, { direction: 'out' });

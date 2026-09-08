@@ -208,17 +208,7 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
      collapsing would have taken away: 20 + 0 + (40 - 20) = 40. Block flow
      only - flex and grid items never collapse margins - and only with a
      neighbour on each side to collapse between. */
-  const parent = node.parentElement;
-  const flow = parent ? !/flex|grid/.test(getComputedStyle(parent).display ?? '') : false;
-  const prev = node.previousElementSibling;
-  const next = node.nextElementSibling;
-  const restMargin =
-    flow && prev && next
-      ? -Math.min(
-          parseFloat(getComputedStyle(prev).marginBottom) || 0,
-          parseFloat(getComputedStyle(next).marginTop) || 0
-        )
-      : 0;
+  const restMargin = restingMarginBelow(node);
 
   return {
     duration: motionDuration('--dur-med'),
@@ -268,11 +258,51 @@ function arrivesFromAbove(node: Element): TransitionConfig {
   const style = getComputedStyle(node);
   const height = parseFloat(style.height) || 0;
   const marginTop = parseFloat(style.marginTop) || 0;
+  const marginBottom = parseFloat(style.marginBottom) || 0;
+  /* The margin under the block grows with it from where the neighbours
+     were meeting, the same arithmetic `disclose` uses on the way out: a
+     block arriving at full margin pushed the list under it 20px in its
+     first frame (the Transition door's search results wrapper, empty and
+     margined, on the keystroke). */
+  const restMargin = restingMarginBelow(node);
   return {
     duration: motionDuration('--dur-slow'),
     easing: EASE_OUT,
-    css: (_t, u) => `clip-path: inset(${u * height}px 0 0 0);` + `margin-top: ${marginTop - u * height}px;`
+    css: (t, u) =>
+      `clip-path: inset(${u * height}px 0 0 0);` +
+      `margin-top: ${marginTop - u * height}px;` +
+      `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;`
   };
+}
+
+/** How tall a panel may be and still arrive from above. A block does - a
+    tile is 176px, a notice about 120 - and the travel is its own height. A
+    list opens in place instead: the Transition door's index is some
+    1500px, and a block that tall coming down from above is the whole door
+    rushing past in 380ms. The line is a phone screen's half, which is
+    where a block stops being a block a thumb can cover. */
+const FROM_ABOVE_MAX = 400;
+
+/** Where a collapsing or arriving box's bottom margin ends in block flow.
+
+    An open box with `overflow: hidden` or content is a formatting context,
+    so the margins on either side of it are both spent; the frame it is
+    absent they collapse into the larger. The margin therefore has to end at
+    minus the smaller neighbour, which is exactly what collapsing takes away
+    - 20 + 0 + (40 - 20) = 40 - or the page takes that difference in one
+    frame (Alicja, a notice dismissed on Home, frames 32 to 33). Zero inside
+    a flex or grid parent, where margins never collapse, and zero without a
+    neighbour on each side to collapse between. */
+function restingMarginBelow(node: Element): number {
+  const parent = node.parentElement;
+  const flow = parent ? !/flex|grid/.test(getComputedStyle(parent).display ?? '') : false;
+  const prev = node.previousElementSibling;
+  const next = node.nextElementSibling;
+  if (!flow || !prev || !next) return 0;
+  return -Math.min(
+    parseFloat(getComputedStyle(prev).marginBottom) || 0,
+    parseFloat(getComputedStyle(next).marginTop) || 0
+  );
 }
 
 /* When the screen under the panels last changed, as a `performance.now()`
@@ -607,7 +637,9 @@ export function collapse(
     /* Arriving, the panel comes down from above (`arrivesFromAbove`);
        leaving, it gives its height back from the bottom up, which is
        `disclose` run backwards and the closing Alicja signed off. */
-    if (options?.direction === 'in') return arrivesFromAbove(node);
+    if (options?.direction === 'in' && node.getBoundingClientRect().height <= FROM_ABOVE_MAX) {
+      return arrivesFromAbove(node);
+    }
     return { ...disclose(node, params), duration: motionDuration('--dur-slow') };
   }
   /* Something on the line below is about to rewrap into this space, so it is
