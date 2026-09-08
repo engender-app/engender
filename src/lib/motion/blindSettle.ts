@@ -39,8 +39,19 @@
    above the window's top edge, where the only thing to uncover is the page
    the fieldless screen is drawn on anyway. */
 
-/** What the stylesheet falls back to where nothing overshoots. */
+/** What an opening blind takes where nothing overshoots: the content's own
+    curve, so the two move as one and no band of page can open between
+    them. */
 export const EASE_OUT_VAR = 'var(--ease-out)';
+
+/** What a closing blind takes instead. --ease-out leaves at four times its
+    average speed, which reads as a jump on an edge travelling the height of
+    a field ("sliding up must happen with a little bit of ease - it jumps too
+    fast", Alicja, round one, 2026-09-09); --ease-out-soft is the same
+    deceleration with the instant off the front, written for exactly this on
+    ticket 26. Safe on the way up in a way it would not be on the way down:
+    a closing blind that lags the content covers more of it, never less. */
+export const EASE_OUT_SOFT_VAR = 'var(--ease-out-soft)';
 
 /** The share of the travel the edge runs past its mark by. */
 const OVERSHOOT_SHARE = 0.06;
@@ -71,17 +82,25 @@ export function blindSettle({ from, to }: { from: number; to: number }): Settle 
   const closes = to < from;
   const settles = travel >= SETTLE_FLOOR && (!closes || to === 0);
   const overshoot = settles ? Math.min(travel * OVERSHOOT_SHARE, OVERSHOOT_CAP) : 0;
+  const base = closes ? EASE_OUT_SOFT_POINTS : EASE_OUT_POINTS;
   return {
     travel,
     overshoot,
-    easing: overshoot ? settleEasing(overshoot / travel) : EASE_OUT_VAR
+    easing: overshoot
+      ? settleEasing(overshoot / travel, base)
+      : closes
+        ? EASE_OUT_SOFT_VAR
+        : EASE_OUT_VAR
   };
 }
 
 /**
- * A linear() of `--ease-out` with a swell on top of it: the same
- * deceleration the content under the blind travels on, plus a half sine
- * that peaks at `peak` past the mark and is zero at both ends.
+ * A linear() of one of the app's decelerations with a swell on top of it: a
+ * half sine that peaks at `peak` past the mark and is zero at both ends.
+ *
+ * `base` is --ease-out on the way down, where the blind has to stay level
+ * with or ahead of the content it covers, and --ease-out-soft on the way up,
+ * where it has to leave more gently and where lagging is the safe side.
  *
  * The swell's height is solved for rather than derived, because where the
  * sum peaks depends on both curves; a bisection on a monotone quantity gets
@@ -89,8 +108,9 @@ export function blindSettle({ from, to }: { from: number; to: number }): Settle 
  * written as the mark itself so the element cannot be stranded a fraction
  * short of where it rests.
  */
-function settleEasing(peak: number): string {
-  const sum = (height: number, t: number) => easeOut(t) + height * Math.sin(Math.PI * t);
+function settleEasing(peak: number, base: Bezier): string {
+  const curve = bezier(base);
+  const sum = (height: number, t: number) => curve(t) + height * Math.sin(Math.PI * t);
   const highest = (height: number) =>
     Math.max(...Array.from({ length: 201 }, (_, i) => sum(height, i / 200)));
 
@@ -111,26 +131,32 @@ function settleEasing(peak: number): string {
   return `linear(${stops.join(', ')})`;
 }
 
-/** --ease-out, cubic-bezier(0.22, 1, 0.36, 1), as a function of time.
+/** The two decelerations this reaches for, as their control points.
 
-    A cubic-bezier easing is a parametric curve, so the value at a given
-    time needs the parameter that puts x there first; bisection finds it to
-    well inside a thousandth, which is finer than the samples this is taken
-    at. Written here rather than read from the stylesheet because a number
-    the settle has to stay ahead of cannot be a var() - and
-    tests/motion-system.test.ts holds the token to this value. */
+    Written here rather than read from the stylesheet because a curve the
+    settle has to be built on cannot be a var() - and
+    src/lib/motion/blindSettle.test.ts holds both to the tokens. */
 export const EASE_OUT_POINTS = [0.22, 1, 0.36, 1] as const;
+export const EASE_OUT_SOFT_POINTS = [0.38, 0.32, 0.2, 1] as const;
 
-export function easeOut(t: number): number {
-  const [x1, y1, x2, y2] = EASE_OUT_POINTS;
-  const bezier = (a: number, b: number, u: number) =>
+type Bezier = readonly [number, number, number, number];
+
+/** A cubic-bezier easing as a function of time.
+
+    It is a parametric curve, so the value at a given time needs the
+    parameter that puts x there first; bisection finds it to well inside a
+    thousandth, which is finer than the samples this is taken at. */
+export function bezier([x1, y1, x2, y2]: Bezier) {
+  const axis = (a: number, b: number, u: number) =>
     3 * a * u * (1 - u) ** 2 + 3 * b * u ** 2 * (1 - u) + u ** 3;
-  let low = 0;
-  let high = 1;
-  for (let i = 0; i < 32; i++) {
-    const mid = (low + high) / 2;
-    if (bezier(x1, x2, mid) < t) low = mid;
-    else high = mid;
-  }
-  return bezier(y1, y2, (low + high) / 2);
+  return (t: number) => {
+    let low = 0;
+    let high = 1;
+    for (let i = 0; i < 32; i++) {
+      const mid = (low + high) / 2;
+      if (axis(x1, x2, mid) < t) low = mid;
+      else high = mid;
+    }
+    return axis(y1, y2, (low + high) / 2);
+  };
 }

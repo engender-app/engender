@@ -735,9 +735,15 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
    so the content starts where the old edge was and arrives at its own
    place; it is 0 where the two fields are the same height, which makes
    this a no-op rather than a case to switch off. */
-@keyframes screen-blind-follow {
+@keyframes blind-follow {
   from { translate: 0 var(--blind-delta, 0px); }
   to { translate: 0 0; }
+}
+/* The other side of the same ride: what was printed on the blind before the
+   navigation goes where the edge goes, which is the height the field lost. */
+@keyframes blind-lead {
+  from { translate: 0 0; }
+  to { translate: 0 calc(-1 * var(--blind-delta, 0px)); }
 }
 
 /* Between the four tabs: fade-through. The outgoing screen settles to 0.97
@@ -748,7 +754,7 @@ html[data-nav='fade-through']::view-transition-old(screen) {
   animation-name: screen-fade-out;
 }
 html[data-nav='fade-through']::view-transition-new(screen) {
-  animation-name: screen-fade-in, screen-blind-follow;
+  animation-name: screen-fade-in, blind-follow;
 }
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
 @keyframes screen-fade-in { from { opacity: 0; transform: scale(1.03); } }
@@ -812,27 +818,45 @@ html[data-nav='fade-through']::view-transition-new(screen) {
   }
 }
 
-/* What is painted on the field leaves and arrives under its own animation,
-   and no frame carries two of them: the outgoing element fades out where it
-   stands over --dur-fast, the incoming one fades in where it stands over
-   the --dur-fast after that, and the blind slides under both for --dur-slow.
-   Nothing travels between two screens' positions - each element is named per
-   side (fieldBlind.ts), so the browser has an old with no new and a new with
-   no old, and there is nothing for it to morph.
+/* What is painted on the field is printed on it, and rides with it (Alicja,
+   round one, 2026-09-09: "make it so that the content on top of the field -
+   especially texts, bars, buttons - actually move with the blind, as if they
+   were physically printed on it"). This replaces the ticket's own "the texts
+   do not ride the blind", and it settles the note beside it - that nothing
+   painted on the field may ever stick out of it - by construction rather
+   than by a clip: a mark on the fabric keeps its distance from the edge, so
+   if it starts inside the field it cannot leave it. Both sides ride on the
+   blind's own curve, not the content's, because they are the blind.
 
-   The travel is 14px: down for the element leaving, from above for the one
-   arriving, which is the direction the blind is being pulled in the
-   commonest case. No clip tracks the moving edge - a title sliding under
-   the field's own bottom edge was the first reading of the note and the
-   wrong one. */
+   On top of the ride, each element still leaves and arrives on its own, and
+   no frame carries two of them: the outgoing one fades out over --dur-fast,
+   the incoming one fades in over the --dur-fast after that. That travel goes
+   the way the blind is going - the old text drops and the new comes from
+   above on a blind being pulled down, and both the other way on one being
+   pulled up (Alicja, same round) - which is what --part-travel carries. It
+   is 12px against the field's own 16px of bottom padding, so an element
+   travelling towards the edge still cannot reach it.
+
+   Two animations rather than one because they are on two clocks. They
+   compose rather than overwrite because the ride is written as `translate`
+   and the travel as `transform`: the individual property is applied first,
+   and neither touches the other's. */
 ::view-transition-old(*.field-part) {
-  animation: field-part-out var(--dur-fast) var(--ease-in-out) both;
+  animation:
+    field-part-out var(--dur-fast) var(--ease-in-out) both,
+    blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
 }
 ::view-transition-new(*.field-part) {
-  animation: field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both;
+  animation:
+    field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both,
+    blind-follow var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
 }
-@keyframes field-part-out { to { opacity: 0; translate: 0 14px; } }
-@keyframes field-part-in { from { opacity: 0; translate: 0 -14px; } }
+@keyframes field-part-out {
+  to { opacity: 0; transform: translateY(var(--part-travel, 12px)); }
+}
+@keyframes field-part-in {
+  from { opacity: 0; transform: translateY(calc(-1 * var(--part-travel, 12px))); }
+}
 
 /* The sun leaves as a movement rather than as part of a photograph: every
    ring is its own group, and they close outermost first on --stagger-ring,
@@ -847,27 +871,31 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    Both sides in one rule: the outgoing ring closes on the same beat the
    incoming one opens on. */
 ::view-transition-old(*.sun-ring) {
-  animation: sun-ring-close var(--dur-fast) var(--ease-in-out) both;
+  animation:
+    sun-ring-close var(--dur-fast) var(--ease-in-out) both,
+    blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
 }
 ::view-transition-new(*.sun-ring) {
-  animation: sun-ring-open var(--dur-fast) var(--ease-out) both;
+  animation:
+    sun-ring-open var(--dur-fast) var(--ease-out) both,
+    blind-follow var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
 }
 @keyframes sun-ring-close { to { scale: 0; } }
 @keyframes sun-ring-open { from { scale: 0; } }
 ::view-transition-old(sun-a-0),
-::view-transition-new(sun-b-0) { animation-delay: calc(0 * var(--stagger-ring)); }
+::view-transition-new(sun-b-0) { animation-delay: calc(0 * var(--stagger-ring)), 0s; }
 ::view-transition-old(sun-a-1),
-::view-transition-new(sun-b-1) { animation-delay: calc(1 * var(--stagger-ring)); }
+::view-transition-new(sun-b-1) { animation-delay: calc(1 * var(--stagger-ring)), 0s; }
 ::view-transition-old(sun-a-2),
-::view-transition-new(sun-b-2) { animation-delay: calc(2 * var(--stagger-ring)); }
+::view-transition-new(sun-b-2) { animation-delay: calc(2 * var(--stagger-ring)), 0s; }
 ::view-transition-old(sun-a-3),
-::view-transition-new(sun-b-3) { animation-delay: calc(3 * var(--stagger-ring)); }
+::view-transition-new(sun-b-3) { animation-delay: calc(3 * var(--stagger-ring)), 0s; }
 ::view-transition-old(sun-a-4),
-::view-transition-new(sun-b-4) { animation-delay: calc(4 * var(--stagger-ring)); }
+::view-transition-new(sun-b-4) { animation-delay: calc(4 * var(--stagger-ring)), 0s; }
 ::view-transition-old(sun-a-5),
-::view-transition-new(sun-b-5) { animation-delay: calc(5 * var(--stagger-ring)); }
+::view-transition-new(sun-b-5) { animation-delay: calc(5 * var(--stagger-ring)), 0s; }
 ::view-transition-old(sun-a-6),
-::view-transition-new(sun-b-6) { animation-delay: calc(6 * var(--stagger-ring)); }
+::view-transition-new(sun-b-6) { animation-delay: calc(6 * var(--stagger-ring)), 0s; }
 
 /* Into a detail, and back out of it: shared-axis-X. Both halves travel
    --motion-distance-md so the pair reads as one axis rather than as two
@@ -876,13 +904,13 @@ html[data-nav='shared-axis']::view-transition-old(screen) {
   animation-name: screen-axis-out;
 }
 html[data-nav='shared-axis']::view-transition-new(screen) {
-  animation-name: screen-axis-in, screen-blind-follow;
+  animation-name: screen-axis-in, blind-follow;
 }
 html[data-nav='shared-axis-back']::view-transition-old(screen) {
   animation-name: screen-axis-back-out;
 }
 html[data-nav='shared-axis-back']::view-transition-new(screen) {
-  animation-name: screen-axis-back-in, screen-blind-follow;
+  animation-name: screen-axis-back-in, blind-follow;
 }
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
 @keyframes screen-axis-in { from { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
@@ -914,7 +942,7 @@ html[data-nav='container']::view-transition-old(screen) {
   animation-direction: reverse;
 }
 html[data-nav='container']::view-transition-new(screen) {
-  animation-name: screen-crossfade, screen-blind-follow;
+  animation-name: screen-crossfade, blind-follow;
 }
 
 /* The container transform is the one pattern that also cared about this: a
