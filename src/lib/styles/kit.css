@@ -341,6 +341,13 @@
 
 .kit-row-title {
   display: block;
+  /* A title breaks inside a word rather than running out of its own box.
+     `min-width: 0` above lets the text column shrink, but a single word
+     longer than what is left of the row - "measurements" at 200% zoom -
+     has nowhere to wrap and overflows across whatever the row carries at
+     its trailing edge (found on the edit mode's handle, redesign ticket
+     14, where a row has two controls there rather than a chevron). */
+  overflow-wrap: break-word;
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   line-height: 1.25;

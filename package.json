@@ -50,6 +50,7 @@
     "gallery:lookback": "VITE_DEMO=1 npm run build && node tests/lookback-gallery.mjs --tag after",
     "gallery:lookback-motion": "VITE_DEMO=1 npm run build && node tests/lookback-motion-gallery.mjs",
     "gallery:today": "VITE_DEMO=1 npm run build && node tests/today-gallery.mjs --tag after",
+    "gallery:today-editor": "VITE_DEMO=1 npm run build && node tests/today-editor-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",

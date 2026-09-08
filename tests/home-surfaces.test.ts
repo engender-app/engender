@@ -74,7 +74,12 @@ describe('what Home is built from', () => {
     // A day block is a block, so the agenda resolves through the chromatic
     // roles like a tile (ticket 24): on trans its slot is the white band.
     expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)');
-    expect(markup).toContain('roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)');
+    /* And so is a row's icon square, which is why the pinned block resolves
+       the same way since redesign ticket 14: on agender the stripe its index
+       landed on was the near-white band, so four icon blocks on the light
+       theme were white squares on a white page with a hairline round them -
+       the exact defect rule 3's revision named for tiles. */
+    expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)');
     expect(markup).not.toContain('HOME_AREA_ROLE.week');
     expect(markup).not.toContain('HOME_AREA_ROLE.days');
   });
@@ -192,9 +197,9 @@ describe('what spec 08 took off Home', () => {
     expect(home).not.toContain("from 'svelte/transition'");
     expect(home).not.toContain('showSurgeryTile || showSafeSpaceTile');
     const rules = markup.match(/transition:collapse=\{panel\}/g) ?? [];
-    // The today tier, the agenda, the waiting tiles, the pinned rows and
-    // getting started (redesign ticket 13).
-    expect(rules.length, 'the screen animates its own blocks and nothing else').toBe(5);
+    // The today tier, the agenda, the waiting tiles, the pinned rows, the
+    // edit mode that replaces them (redesign ticket 14) and getting started.
+    expect(rules.length, 'the screen animates its own blocks and nothing else').toBe(6);
     expect(home).toContain('let panel = $derived({ skip: navigating.to !== null })');
   });
 
@@ -260,12 +265,18 @@ describe('what spec 08 took off Home', () => {
     /* Redesign ticket 13: a brand-new journal meets the field, the log
        strip, the default pinned set and getting started. Everything else on
        the screen is gated on data it does not have - the agenda on the
-       projection being non-null (absent, never empty: ADR-0074), the tiles
-       on a kind qualifying, the pinned block on a row resolving - so nothing
-       here needs an entry count to decide what to hide, and nothing draws a
-       skeleton while it waits. */
+       projection being non-null (absent, never empty: ADR-0074) and the
+       tiles on a kind qualifying - so nothing here needs an entry count to
+       decide what to hide, and nothing draws a skeleton while it waits.
+
+       The pinned block is the one thing that is always drawn, since redesign
+       ticket 14: its last row is the way into the edit mode, and a block
+       that disappeared once somebody unpinned everything would take the way
+       back with it. What it says changes instead - the edit row asks for the
+       first pin where there is nothing to arrange. */
     expect(markup).toMatch(/\{#if agenda\}/);
-    expect(markup).toMatch(/\{#if pinned\.length > 0\}/);
+    expect(markup).toMatch(/data-edit-today/);
+    expect(markup).toMatch(/pinned\.length > 0 \? m\.home_pinned_edit\(\) : m\.home_pinned_edit_empty\(\)/);
     expect(home).not.toContain('hasEntries');
     expect(markup).not.toContain('<ReadGate');
     expect(markup).not.toContain('key="no-entries"');
