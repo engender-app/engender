@@ -49,6 +49,7 @@
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { shareField } from '$lib/motion/sharedField';
+  import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
   import { markScreenArrival } from '$lib/motion/reveal';
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
@@ -312,6 +313,13 @@
            is noise that buries a real one, and the walkthrough fails the
            whole run on it. */
         await navigation.complete.catch(() => {});
+        /* The outgoing page can still be in the DOM here, held by a
+           zero-length outro that cannot finish while rendering is paused,
+           and a new-side capture with two screens stacked in the scroll
+           region is a picture of the wrong layout - every door with tiles
+           snapped at the end of its transition (redesign ticket 25). See
+           $lib/motion/outgoingScreen for why waiting is not an option. */
+        dropOutgoingScreens();
         /* Before the "new" side is captured, not after: a view transition
            photographs the incoming screen the instant this callback's own
            promise resolves, and `afterNavigate` below - the only other
