@@ -94,6 +94,15 @@ export const PATHS: Record<string, string> = {
   sparkle: '<path d="M10.2 2l1.9 5.1L17.2 9l-5.1 1.9L10.2 16l-1.9-5.1L3.2 9l5.1-1.9z"/><path d="M17.2 16l0.8 2.2L20.2 19l-2.2 0.8L17.2 22l-0.8-2.2L14.2 19l2.2-0.8z"/>',
   heart: '<path d="M19.5 6a5 5 0 0 0-7.5 0.7A5 5 0 0 0 4.5 6c-2 2-2 5.1 0 7.1L12 21l7.5-7.9c2-2 2-5.1 0-7.1z"/>',
   dots: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  /* The handle a row is dragged by (phase 10 redesign ticket 14). Six dots
+     in two columns, which is what a handle looks like everywhere a list can
+     be reordered. Drawn as dots rather than as the two rules that were here
+     first: at 22px two rules read as an equals sign, and an equals sign
+     beside a row's title says nothing about grabbing it. `dots` next door is
+     the same mark in one row and means "more", so the two are told apart by
+     their shape rather than by their size. Centred by construction, both
+     halves of the measure. */
+  grip: '<circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/>',
   /* The brand mark beside the rail's wordmark, which used to be a CSS
      gradient of --motif-stripes and is now part of the set (phase 5 ticket
      31). It quotes the app's own signature: Home's flag sun is one

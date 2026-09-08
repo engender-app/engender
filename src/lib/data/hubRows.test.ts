@@ -55,14 +55,18 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
     silently dropped from it read identically to a glob.
 
     What this proves and what it does not: every file that imports `hubRows`
-    is one of these five, so a sixth reader appearing anywhere fails here
-    rather than passing silently. It cannot see a second registry built
+    is one of these six, so a seventh reader appearing anywhere fails here
+    rather than passing silently. `TodayEditor.svelte` is the sixth, added
+    by ticket 14 - it reads `HubReading` and `HubRowKey` to arrange the
+    front page, and everything it draws about a row comes off the registry
+    the way `pinnedRows.ts` next door does. It cannot see a second registry built
     without importing this module at all - no scan can - which is why the
     stronger claim is the deletion itself: `statsAreas.ts` was the one file
     doing that, confirmed by grep before it was removed, and nothing has
     replaced it. */
 const REGISTRY_SURFACES = [
   'src/lib/components/HostedRows.svelte',
+  'src/lib/components/TodayEditor.svelte',
   'src/lib/data/pinnedRows.ts',
   'src/lib/data/vocabulary/hubLabels.ts',
   'src/routes/more/+page.svelte',

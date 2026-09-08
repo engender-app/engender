@@ -3,10 +3,16 @@ import assert from 'node:assert/strict';
 import { HUB_ROWS, type HubReading } from './hubRows.ts';
 import { DAY_AHEAD_MARK_KINDS } from './journal/dayAhead.ts';
 import {
+  addablePins,
   DEFAULT_ONBOARDING_AREAS,
   defaultPins,
+  movedPin,
+  pinArrangement,
   pinnedRows,
   shownAgendaKinds,
+  withAgendaKind,
+  withoutPin,
+  withPin,
   type PinPreferences
 } from './pinnedRows.ts';
 
@@ -203,5 +209,157 @@ test('a stored kind that is not one of the five cannot switch anything on', () =
      what earns a mark. A switch list is a person's answer about the five
      that do, and cannot be the back door that adds a sixth. */
   assert.deepEqual(shownAgendaKinds({ agendaKinds: ['appointment', 'runOut', 'reminder'] }), ['appointment']);
+});
+
+// --- the editing surface's own rules (ticket 14) ----------------------------
+
+test('a person who has never arranged anything starts editing from the default set', () => {
+  /* The default is resolved and never stored (ADR-0073), so the first edit
+     has to write the whole set down: an arrangement that stored only the
+     row somebody just added would silently unpin the other three. */
+  assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: null }), [...DEFAULT_ONBOARDING_AREAS]);
+});
+
+test('an arrangement keeps a pin whose area is hidden and drops one the registry lost', () => {
+  /* Hiding an area is reversible, so its pin is still the person's
+     statement and survives an edit - it just draws nothing while the area
+     is hidden. A key no row answers to is not a pin at all, and an edit is
+     where the arrangement stops carrying it. */
+  const kept = pinArrangement(arranged(['measurements', 'sizes', 'no-such-row']));
+
+  assert.deepEqual(kept, ['measurements', 'sizes']);
+});
+
+test('a row added lands at the end rather than in registry order', () => {
+  /* Where a new pin goes is the only answer that is not a ranking: last,
+     because the app may not decide that a row somebody just asked for
+     belongs above one they arranged earlier. */
+  assert.deepEqual(withPin(['tryouts', 'measurements'], 'sizes'), ['tryouts', 'measurements', 'sizes']);
+});
+
+test('adding a row that is already pinned changes nothing', () => {
+  assert.deepEqual(withPin(['sizes', 'measurements'], 'sizes'), ['sizes', 'measurements']);
+});
+
+test('removing a row takes it out and leaves the rest in place', () => {
+  assert.deepEqual(withoutPin(['sizes', 'measurements', 'tryouts'], 'measurements'), ['sizes', 'tryouts']);
+});
+
+test('removing the last row leaves an empty arrangement, which is not the default', () => {
+  /* Null and empty are different answers (catalogue: `pinnedRows`). An
+     edit that emptied the list has to store the empty list, or unpinning
+     the last row reads as a fresh install and the default comes back. */
+  assert.deepEqual(withoutPin(['sizes'], 'sizes'), []);
+});
+
+test('a row moved up takes the place of the one above it', () => {
+  assert.deepEqual(movedPin(['a', 'b', 'c'], 'c', 'b'), ['a', 'c', 'b']);
+});
+
+test('a row moved down takes the place of the one below it', () => {
+  assert.deepEqual(movedPin(['a', 'b', 'c'], 'a', 'b'), ['b', 'a', 'c']);
+});
+
+test('a row dropped several places away lands where it was dropped', () => {
+  assert.deepEqual(movedPin(['a', 'b', 'c', 'd'], 'd', 'a'), ['d', 'a', 'b', 'c']);
+  assert.deepEqual(movedPin(['a', 'b', 'c', 'd'], 'a', 'd'), ['b', 'c', 'd', 'a']);
+});
+
+test('a move over a pin nobody can see steps past it rather than swapping with it', () => {
+  /* A hidden area's pin stays in the arrangement and draws nothing, so the
+     row above `c` on screen is `a`, not `b`. The move is stated as the two
+     rows the person can see and the invisible one keeps its place. */
+  assert.deepEqual(movedPin(['a', 'b', 'c'], 'c', 'a'), ['c', 'a', 'b']);
+});
+
+test('a move naming a row that is not in the arrangement changes nothing', () => {
+  assert.deepEqual(movedPin(['a', 'b'], 'a', 'z'), ['a', 'b']);
+  assert.deepEqual(movedPin(['a', 'b'], 'z', 'a'), ['a', 'b']);
+});
+
+// --- what the add list may offer --------------------------------------------
+
+const addable = (
+  prefs: PinPreferences,
+  over: Partial<HubReading> = {},
+  cycleVisible = false
+) => addablePins(prefs, reading(over), { cycleVisible }).map((row) => row.spec.key as string);
+
+test('the add list offers every row the person has not pinned, in the hub order', () => {
+  const offered = addable(arranged(['measurements']));
+  const expected = HUB_ROWS.map((row) => row.key).filter(
+    (key) => key !== 'measurements' && key !== 'cycle-events'
+  );
+
+  /* The hub's order rather than a ranking of its own: it is an order the
+     person has already met, and any other one would be the app saying
+     which area matters. */
+  assert.deepEqual(offered, expected);
+});
+
+test('a row already pinned is not offered a second time', () => {
+  assert.ok(!addable(arranged(['sizes'])).includes('sizes'));
+});
+
+test('a hidden area cannot be added', () => {
+  const states = Object.fromEntries(
+    (HUB_ROWS.find((row) => row.key === 'sizes')?.areas ?? []).map((area) => [area, hidden])
+  );
+
+  assert.ok(!addable(arranged([]), { states }).includes('sizes'));
+});
+
+test('the cycle log is offered only where its own gate is already open', () => {
+  /* ADR-0043 one-directionally: pinning it is the person asking for it, so
+     the pin resolves either way, but a list that offered it cold would be
+     the app putting a cycle prompt in front of somebody who will never
+     have one. */
+  assert.ok(!addable(arranged([])).includes('cycle-events'));
+  assert.ok(addable(arranged([]), {}, true).includes('cycle-events'));
+});
+
+test('the three bad-hour rows are all in the add list', () => {
+  const offered = addable(arranged([]));
+
+  for (const key of ['doubt', 'letters', 'resources']) {
+    assert.ok(offered.includes(key), `${key} cannot be pinned`);
+  }
+});
+
+test('a finished area can still be added, and says the day it ended', () => {
+  /* Finishing is a statement about a practice rather than a delete
+     (hubRows.ts), so the row keeps its place in the list to pick from and
+     carries its own line into it. */
+  const spec = HUB_ROWS.find((row) => row.key === 'wear');
+  const states = Object.fromEntries((spec?.areas ?? []).map((area) => [area, finished(TODAY - 20)]));
+  const offered = addablePins(arranged([]), reading({ states }), { cycleVisible: false });
+  const wear = offered.find((row) => row.spec.key === 'wear');
+
+  assert.deepEqual(wear?.line, { kind: 'finished', epochDay: TODAY - 20 });
+});
+
+// --- the switches, written back ---------------------------------------------
+
+test('switching one kind off writes the other four down', () => {
+  /* Null is "nobody has switched anything off", so the first switch has to
+     materialise the five the way the first pin materialises the default
+     set. */
+  assert.deepEqual(withAgendaKind({ agendaKinds: null }, 'doseSlot', false), [
+    'appointment',
+    'surgery',
+    'milestone',
+    'letterUnlock'
+  ]);
+});
+
+test('switching a kind back on keeps the ADR order rather than the order it was switched in', () => {
+  assert.deepEqual(withAgendaKind({ agendaKinds: ['letterUnlock'] }, 'surgery', true), [
+    'surgery',
+    'letterUnlock'
+  ]);
+});
+
+test('switching the last kind off leaves an empty list, not a null', () => {
+  assert.deepEqual(withAgendaKind({ agendaKinds: ['surgery'] }, 'surgery', false), []);
 });
 
