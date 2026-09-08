@@ -77,11 +77,11 @@ export const MOOD_EYE_RADIUS = 1.5;
     not travel with the gaze, because a cheek is not something a face looks
     with. */
 export const MOOD_CHEEKS = [
-  { cx: 6.3, cy: 12.2 },
-  { cx: 17.7, cy: 12.2 }
+  { cx: 6.6, cy: 12.4 },
+  { cx: 17.4, cy: 12.4 }
 ] as const;
 
-export const MOOD_CHEEK_RADIUS = 1.2;
+export const MOOD_CHEEK_RADIUS = 1.5;
 
 export const MOOD_FACES: Record<number, MoodDrawing> = {
   1: {

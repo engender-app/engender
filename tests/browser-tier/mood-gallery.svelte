@@ -79,71 +79,83 @@
 </div>
 
 <div class="page">
-  <h2>The ramp</h2>
-  <p class="note">
-    Step 1 to step 5, one preset, one theme. Two hues end to end and more saturated with every
-    step, and the same five literal hexes whatever flag is on.
-  </p>
-  <div class="sweep">
-    {#each STEPS as step (step)}
-      <span class="sweep-step" style={`background: var(--mood-${step})`}></span>
-    {/each}
-  </div>
-  <div class="row">
-    {#each STEPS as step, i (step)}
-      <span class="swatch" style={`background: var(--mood-${step})`}>
-        <b>{step}</b>
-        <small>{hexes[i] ?? ''}</small>
-      </span>
-    {/each}
-  </div>
-
-  <h2>The five faces</h2>
-  <p class="note">
-    Every size a face ships at, and the 22 the drawing is settled against. Filled marks: a lens
-    for the mouth, dots or lids for the eyes, a blush on the top step.
-  </p>
-  {#each SIZES as size (size)}
-    <div class="row">
-      <span class="row-label">{size}px</span>
+  <section data-crop="ramp">
+    <h2>The ramp</h2>
+    <p class="note">
+      Step 1 to step 5, one preset, one theme. Two hues end to end and more saturated with every
+      step, and the same five literal hexes whatever flag is on.
+    </p>
+    <div class="sweep">
       {#each STEPS as step (step)}
-        <span class="cell"><MoodFace {step} {size} /></span>
+        <span class="sweep-step" style={`background: var(--mood-${step})`}></span>
       {/each}
     </div>
-  {/each}
+    <div class="row">
+      {#each STEPS as step, i (step)}
+        <span class="swatch" style={`background: var(--mood-${step})`}>
+          <b>{step}</b>
+          <small>{hexes[i] ?? ''}</small>
+        </span>
+      {/each}
+    </div>
+  </section>
 
-  <h2>The picker, with one picked</h2>
-  <p class="note">
-    The entry editor's row. The four unpicked faces sit back at 55% of their fill and 41% of their
-    ink; the picked one takes the accent ring and keeps both.
-  </p>
-  <MoodPicker value={picked} onPick={(v) => (picked = v)} />
-
-  <h2>The picker, with none picked</h2>
-  <p class="note">All five at full, which is what an entry with no mood on it shows.</p>
-  <MoodPicker value={null} onPick={() => {}} />
-
-  <h2>Home's chips</h2>
-  <p class="note">Forty pixels, flush between two hairlines, with the labels under them.</p>
-  <MoodChips value={chipped} onPick={(v) => (chipped = v)} />
-
-  <h2>Read, not chosen</h2>
-  <p class="note">
-    An entry's mark on a day card at 28, and the calendar's split cell, where the day already
-    carries the colour and the face draws without its disc.
-  </p>
-  <div class="row">
-    {#each STEPS as step (step)}
-      <span class="entry"><MoodFace {step} size={28} /> <small>{moodName(step)}</small></span>
+  <section data-crop="faces">
+    <h2>The five faces</h2>
+    <p class="note">
+      Every size a face ships at, and the 22 the drawing is settled against. Filled marks: a lens
+      for the mouth, dots or lids for the eyes, a blush on the top step.
+    </p>
+    {#each SIZES as size (size)}
+      <div class="row">
+        <span class="row-label">{size}px</span>
+        {#each STEPS as step (step)}
+          <span class="cell"><MoodFace {step} {size} /></span>
+        {/each}
+      </div>
     {/each}
-  </div>
-  <div class="row">
-    {#each STEPS as step (step)}
-      <span class="split" style={`background: var(--mood-${step})`}>
-        <MoodFace {step} size="100%" disc={false} />
-      </span>
-    {/each}
-  </div>
+  </section>
+
+  <section data-crop="picker">
+    <h2>The picker, with one picked</h2>
+    <p class="note">
+      The entry editor's row. The four unpicked faces sit back at 55% of their fill and 41% of
+      their ink; the picked one takes the accent ring and keeps both.
+    </p>
+    <MoodPicker value={picked} onPick={(v) => (picked = v)} />
+  </section>
+
+  <section data-crop="picker-none">
+    <h2>The picker, with none picked</h2>
+    <p class="note">All five at full, which is what an entry with no mood on it shows.</p>
+    <MoodPicker value={null} onPick={() => {}} />
+  </section>
+
+  <section data-crop="chips">
+    <h2>Home's chips</h2>
+    <p class="note">Forty pixels, flush between two hairlines, with the labels under them.</p>
+    <MoodChips value={chipped} onPick={(v) => (chipped = v)} />
+  </section>
+
+  <section data-crop="read">
+    <h2>Read, not chosen</h2>
+    <p class="note">
+      An entry's mark on a day card at 28, and the calendar's split cell, where the day already
+      carries the colour and the face draws without its disc.
+    </p>
+    <div class="row">
+      {#each STEPS as step (step)}
+        <span class="entry"><MoodFace {step} size={28} /> <small>{moodName(step)}</small></span>
+      {/each}
+    </div>
+    <div class="row">
+      {#each STEPS as step (step)}
+        <span class="split" style={`background: var(--mood-${step})`}>
+          <MoodFace {step} size="100%" disc={false} />
+        </span>
+      {/each}
+    </div>
+  </section>
 </div>
 
 <style>
@@ -165,6 +177,11 @@
     padding: 16px;
     background: var(--bg);
     color: var(--text);
+  }
+  section {
+    /* A crop hook per block (tests/mood-gallery.mjs, .claude/mood-crops.mjs):
+       the review page shows one block at a time, with its own heading. */
+    display: block;
   }
   h2 {
     font-family: var(--font-display);

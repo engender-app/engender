@@ -898,7 +898,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .mood-face-mouth { fill: var(--text); opacity: 0.75; }
 /* The top step's blush, and the only mark in the face drawn under 0.75: a
    cheek that reads as strongly as the mouth is a bruise. */
-.mood-face-cheek { fill: var(--text); opacity: 0.3; }
+.mood-face-cheek { fill: var(--text); opacity: 0.42; }
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
    already failed: 1px of the app's darkest line disappears against a
    coloured fill on the dark theme, at full strength, and the dimming rules
@@ -927,11 +927,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .mood-btn:not(.is-selected) .mood-face-disc { fill-opacity: 0.55; }
 .mood-btn:not(.is-selected) .mood-face-eye { opacity: 0.41; }
 .mood-btn:not(.is-selected) .mood-face-mouth { opacity: 0.41; }
-.mood-btn:not(.is-selected) .mood-face-cheek { opacity: 0.16; }
+.mood-btn:not(.is-selected) .mood-face-cheek { opacity: 0.23; }
 .mood-picker:not(:has(.is-selected)) .mood-face-disc { fill-opacity: 1; }
 .mood-picker:not(:has(.is-selected)) .mood-face-eye { opacity: 0.75; }
 .mood-picker:not(:has(.is-selected)) .mood-face-mouth { opacity: 0.75; }
-.mood-picker:not(:has(.is-selected)) .mood-face-cheek { opacity: 0.3; }
+.mood-picker:not(:has(.is-selected)) .mood-face-cheek { opacity: 0.42; }
 /* Hover joins the magnifier's answer rather than replacing it - tier 4's
    "no hover-dependent motion" is about inventing motion for hover, not
    about a hover pointer being denied the response a finger gets. */
