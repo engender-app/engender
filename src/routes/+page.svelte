@@ -133,14 +133,26 @@
      knows a promotion happened, so it says so before the DOM is updated -
      `$effect.pre`, which is what puts it ahead of the `{#each}` below.
 
-     Same length and a different membership is the whole test. Expanding the
-     fold changes the length, a tile's own reading changing leaves the keys
-     alone, and a dismissal with nothing left to promote shortens the list -
-     none of those are a swap. */
+     Same length, a different membership, and a list that did not grow is
+     the whole test. Expanding the fold changes the length, a tile's own
+     reading changing leaves the keys alone, and a dismissal with nothing
+     left to promote shortens the list - none of those are a swap. Nor is a
+     tile entering the list: a wear session started from the strip puts the
+     timer at the top and pushes the last shown tile into the fold, which is
+     the same length with a different membership, and reading it as a swap
+     made the new tile rise and fade out of the fold's box while its slot
+     landed whole - a 130px yank with a blank slot for two frames (Alicja,
+     redesign ticket 19's flipbooks, wear-start frames 9 and 10). A list
+     that grew has a tile arriving, and an arrival comes down from above
+     (`collapse`); the tile it displaced leaves as any tile does. */
   let shownKeys: HomeTile['key'][] = [];
+  let tileCount = 0;
   $effect.pre(() => {
     const keys = shownTiles.map((tile) => tile.key);
-    if (keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
+    const total = liveTiles.tiles.length;
+    const grew = total > tileCount;
+    tileCount = total;
+    if (!grew && keys.length === shownKeys.length && keys.some((key) => !shownKeys.includes(key))) {
       /* And the box the leaving tile still occupies, which is the one thing
          only this moment knows: a frame later the promoted tile is standing
          in it. */
