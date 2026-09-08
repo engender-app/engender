@@ -126,7 +126,7 @@ const stepToDisguise = async (page) => {
 
 const turnOn = async (page) => {
   await page.getByRole('switch', { name: /Disguise app|Przebranie/ }).click();
-  await page.waitForSelector('.disguise-preview.is-on');
+  await page.waitForSelector('[data-disguise-preview][data-on="true"]');
   await page.waitForTimeout(400);
 };
 
@@ -158,7 +158,7 @@ await web.setViewportSize(SIZES.phone);
 await wear(web, 'trans', 'light');
 await settle(web, '/settings');
 await web.getByRole('button', { name: /Disguise/i }).click();
-await web.waitForSelector('.disguise-preview');
+await web.waitForSelector('[data-disguise-preview]');
 await shoot(web, 'settings-sheet');
 await web.close();
 

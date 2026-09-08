@@ -19,7 +19,11 @@
   let { on }: { on: boolean } = $props();
 </script>
 
-<div class="disguise-preview" class:is-on={on}>
+<!-- `data-on` is written rather than left to the class, because the
+     walkthrough grips handles and never structure: a bare attribute would
+     also read as "true" while off (a valueless attribute renders as the
+     string "true"), so it carries the boolean. -->
+<div class="disguise-preview" class:is-on={on} data-disguise-preview data-on={on}>
   <span class="disguise-icon"><Icon name="book" size={22} /></span>
   <span>
     <!-- The disguise's own name, from the module every surface that names
@@ -27,7 +31,7 @@
          text node for the reason DecoyNotes gives: check-copy counts bare
          text as untranslated, and this word is the same in every
          language. -->
-    <strong>{DECOY_NAME}</strong><br />
+    <strong data-disguise-name>{DECOY_NAME}</strong><br />
     <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
   </span>
 </div>
