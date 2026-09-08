@@ -181,9 +181,14 @@ try {
   await page.locator('[data-tag="g-soc-eu"]').click();
   await page.locator('#ed-note').fill('Playwright wrote this entry.');
   await page.locator('[data-save]').click();
+  /* The save lands on Today, which draws no entries since redesign ticket
+     13; the day view is where today's are read back. */
+  await page.waitForSelector('[data-home-log]');
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('[data-entry-note]');
-  const note = await page.locator('[data-entry-note]').first().textContent();
-  if (!note.includes('Playwright')) throw new Error('new entry not first');
+  const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!notes.some((note) => note.includes('Playwright'))) throw new Error('new entry not on today');
   ok('new entry chooser → editor → save → Home');
 } catch (e) { fail('entry flow', e); }
 
@@ -477,14 +482,14 @@ try {
   await page.locator('[data-mood="2"]').click();
   await page.locator('#ed-note').fill('Day detail proof A');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-mood="5"]').click();
   await page.locator('#ed-note').fill('Day detail proof B');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
@@ -508,7 +513,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Margin note proof entry');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
@@ -577,7 +582,7 @@ try {
   await page.locator('[data-mood="5"]').click();
   await page.locator('#ed-note').fill(NOTE_HIGH);
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-card]');
+  await page.waitForSelector('[data-home-log]');
 
   await fresh('/search');
   /* The filters are a sheet since ticket 22, so setting one and reading the
@@ -1768,12 +1773,14 @@ try {
   await page.locator('[data-mood="4"]').click();
   await page.locator('[data-save]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-chart-picker="home-metric"]');
-  await page.locator('[data-chart-picker="home-metric"]').selectOption('femininity');
+  /* The metric picker left Home with the week strip (redesign tickets 10
+     and 13); the Journal door's is the one that shades the days now. */
+  await page.waitForSelector('[data-chart-picker="calendar-metric"]');
+  await page.locator('[data-chart-picker="calendar-metric"]').selectOption('femininity');
   await page.waitForFunction(
-    () => document.querySelector('[data-chart-picker="home-metric"]')?.value === 'femininity'
+    () => document.querySelector('[data-chart-picker="calendar-metric"]')?.value === 'femininity'
   );
 
   /* Untick everything, and the editor says what it is rather than leaving
@@ -1797,10 +1804,10 @@ try {
   /* And Home is back on mood rather than still coloured by a scale its own
      picker no longer offers. Read off the picker, which is where the two
      would visibly disagree. */
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-chart-picker="home-metric"]');
-  const metric = await page.locator('[data-chart-picker="home-metric"]').inputValue();
+  await page.waitForSelector('[data-chart-picker="calendar-metric"]');
+  const metric = await page.locator('[data-chart-picker="calendar-metric"]').inputValue();
   if (metric !== 'mood') throw new Error('Home is still coloured by ' + metric + ' with nothing ticked');
   ok('settings scales sheet ticks through to the editor, empty included');
 } catch (e) { fail('settings scales sheet', e); }
@@ -2477,7 +2484,7 @@ try {
   await page.locator('[data-mood="3"]').click();
   await page.locator('#ed-note').fill('Playwright: physical and euphoria together.');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-entry-note]');
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
   await page.locator('[data-tag-hide="dt-existential"]').click();
@@ -2629,9 +2636,12 @@ try {
   await page.waitForSelector('[data-mood="4"][aria-checked="true"]');
 
   await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
   await page.waitForSelector('[data-entry-note]');
-  const saved = await page.locator('[data-entry-note]').first().textContent();
-  if (!saved.includes('Killed mid-edit')) throw new Error('the resumed draft did not save');
+  const saved = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!saved.some((note) => note.includes('Killed mid-edit'))) throw new Error('the resumed draft did not save');
 
   /* Saving unmounts the editor, which clears the mirror (onDestroy), so a
      later, unrelated new entry must not inherit anything from this one. */

@@ -161,8 +161,9 @@
      place and a shape in another.
 
      Read from two places rather than one `{#each}` since phase 8 features
-     ticket 63 (ADR-0067): the today block draws above the mood pick and the
-     rest of the grid stays below it, but both still take their weight and
+     ticket 63 (ADR-0067): the today block leads the screen, above the
+     agenda, and the rest of the grid sits under the log strip (redesign
+     ticket 13), but both still take their weight and
      `data-rows` off this one table, so a tier still cannot be given a shape
      in one place and a different one where it is drawn.
 
@@ -179,8 +180,8 @@
   ] as const;
   /* Filtered off `shownTiles` rather than recomputed per block below: each
      table row above maps to exactly one of these, and the reorder is that
-     the today one is read here and drawn before the mood pick while moment
-     stays where the whole grid used to sit. */
+     the today one is read here and drawn first while moment waits under
+     the log strip. */
   let todayTiles = $derived(shownTiles.filter((tile) => tile.tier === 'today'));
   let momentTiles = $derived(shownTiles.filter((tile) => tile.tier === 'moment'));
   let quietTiles = $derived(shownTiles.filter((tile) => tile.tier === 'dormant'));
@@ -580,13 +581,13 @@
     {/if}
   {/snippet}
 
-  <!-- The today tier leads Home, above the mood pick (phase 8 features
-       ticket 63, ADR-0067): what is happening today - a wear session
-       running, a dose the day expects, an appointment on the date - answers
-       before "how are you feeling" does. A reorder rather than a second
-       grid: this is the same today-tier row the block below used to draw in
-       its own turn, only moved. Empty, and nothing here renders at all -
-       Home looks exactly as it did before this ticket. -->
+  <!-- The today tier leads Home, above the agenda (phase 8 features
+       ticket 63, ADR-0067; redesign ticket 13): what is happening now - a
+       wear session running, a dose the day expects, an appointment on the
+       date - answers before what is coming does, and both before "how are
+       you feeling". A reorder rather than a second grid: this is the same
+       today-tier row the block below used to draw in its own turn, only
+       moved. Empty, and nothing here renders at all. -->
   {#if todayTiles.length > 0}
     <div transition:collapse={panel}>
       {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
@@ -766,8 +767,8 @@
 
   <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
        UX ticket 01) - the moment weight as a card, the dormant weight as a
-       quiet list row. The today tier's own row moved above the mood pick;
-       this block never draws it (phase 8 features ticket 63).
+       quiet list row. The today tier's own row leads the screen; this
+       block never draws it (phase 8 features ticket 63).
 
        Two shapes rather than the three the grid as a whole has: a moment is
        a card in the two-up grid, and a dormant nudge is a line in a list
