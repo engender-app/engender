@@ -80,6 +80,7 @@
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
   import { collapse, disclose, markSlotReplacement } from '$lib/motion/reveal';
+  import { drumIn, drumOut } from '$lib/motion/drum';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   /* A fold's label changes under a standing button - "Ready letter, Active
@@ -295,9 +296,35 @@
      one is up. Starting repeats the kind logged last, as the fan does, and
      asks for it at the tap rather than subscribing. */
   let runningWear = $derived(liveTiles.tiles.find((tile) => tile.key === 'wear-timer') ?? null);
+
+  /* The strip answers a tap (redesign ticket 19; DIRECTION.md rule 10). A
+     tally resolves in place, so the state change it makes - today's count
+     of that kind going up by one - is shown where the tap landed: the
+     glyph rises out of the square and the new count rises in under it
+     ($lib/motion/drum), holds long enough to be read, and the glyph comes
+     back the same way. The count is read back after the write rather than
+     kept here, since the journal is the one that knows it (Mobbin: Life
+     Reset shows the logged amount on the card that took the tap, Garmin
+     Connect writes "Coffee: 2" under the row). The wear shape's glyph
+     changes the same way when a session starts or stops, and its label
+     crosses over --dur-fast, which is the one exception ADR-0078 makes for
+     a label changing under a standing control. `TALLY_SHOWN_MS` is how
+     long a number stays legible, not a motion token: under reduced motion
+     the faces cut and the count is still shown for the same time. */
+  const TALLY_SHOWN_MS = 1100;
+  let tallyShown = $state<Partial<Record<TallyKind, number>>>({});
+  const tallyTimers: Partial<Record<TallyKind, ReturnType<typeof setTimeout>>> = {};
   async function logTally(kind: TallyKind) {
-    await journal.tally.log({ epochDay: todayEpochDay(), kind });
+    const day = todayEpochDay();
+    await journal.tally.log({ epochDay: day, kind });
     toast(m.quick_saved());
+    const events = await journal.tally.getEventsOnDay(day);
+    tallyShown = { ...tallyShown, [kind]: events.filter((event) => event.kind === kind).length };
+    clearTimeout(tallyTimers[kind]);
+    tallyTimers[kind] = setTimeout(() => {
+      const { [kind]: _, ...rest } = tallyShown;
+      tallyShown = rest;
+    }, TALLY_SHOWN_MS);
   }
   async function toggleWear(e: MouseEvent) {
     if (runningWear?.action?.onclick) {
@@ -481,6 +508,22 @@
   </span>
 {/snippet}
 
+<!-- A tally square's face: the glyph, or for a moment after a tap the count
+     the tap made, each rising through the block (redesign ticket 19). The
+     count is a number on a block at the display size, so it is large text
+     and legal on every stripe (DIRECTION.md rule 11); the label under the
+     square keeps saying what the square is. -->
+{#snippet tallyFace(kind: TallyKind, icon: string)}
+  {@const shown = tallyShown[kind]}
+  <span class="home-log-ico" data-tally-shown={shown}>
+    {#key shown ?? 'glyph'}
+      <span class="home-log-face" in:drumIn out:drumOut>
+        {#if shown === undefined}<Icon name={icon} size={22} />{:else}<span class="home-log-count">{shown}</span>{/if}
+      </span>
+    {/key}
+  </span>
+{/snippet}
+
 <div class="screen home">
   <header class="home-header" data-home-header>
     <!-- The field (phase 10, DIRECTION.md rule 7; ADR-0075): a solid block
@@ -642,12 +685,19 @@
     <div class="home-agenda" transition:collapse={panel} data-home-agenda>
       <SectionHeading text={m.home_agenda_heading()} />
       <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
-        {#each agendaRows as item (item.key)}
+        {#each agendaRows as item, i (item.key)}
           {@const label = dayAheadMarkLabel(item.kind)}
           <!-- Each row owns its height and gives it back (rule 10): a row
                the fold discloses opens rather than appears, and one whose
-               day passes closes, the rows under it following. -->
-          <div class="rows-divide" transition:disclose={panel}>
+               day passes closes, the rows under it following. The day
+               block on it arrives the way every block does, clipping open
+               from its left edge, the rows of one arrival one stagger step
+               apart (redesign ticket 19): counted from the first row the
+               screen shows, or from the first row the fold lets out, so a
+               row arriving out of the fold never waits its turn behind
+               rows that were already there (ticket 25's lesson on the
+               tiles). Capped where the tiles' stagger is. -->
+          <div class="rows-divide" transition:disclose={panel} style:--row-index={Math.min(6, i < agenda.shown.length ? i : i - agenda.shown.length)}>
             <ListRow
               key={item.key}
               href={item.route}
@@ -668,18 +718,23 @@
            the things coming, and a row under the same hairlines would read
            as the next of them however its block was drawn. -->
       {#if agenda.passed}
-        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
-          <ListRow
-            key={agenda.passed.key}
-            href={agenda.passed.route}
-            title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
-            data-agenda-passed={agenda.passed.epochDay}
-          >
-            {#snippet leading()}
-              {@render dayBlock(agenda.passed!.epochDay, true)}
-            {/snippet}
-          </ListRow>
-        </ListCard>
+        <!-- The one row that arrives and leaves on its own, when a slot's
+             day passes or the dose is logged: it opens and closes its own
+             height like every other row (redesign ticket 19). -->
+        <div transition:disclose={panel}>
+          <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
+            <ListRow
+              key={agenda.passed.key}
+              href={agenda.passed.route}
+              title={passedSlotSentence(agenda.passed.epochDay, fullDay)}
+              data-agenda-passed={agenda.passed.epochDay}
+            >
+              {#snippet leading()}
+                {@render dayBlock(agenda.passed!.epochDay, true)}
+              {/snippet}
+            </ListRow>
+          </ListCard>
+        </div>
       {/if}
       {#if agenda.folded.length > 0}
         <button
@@ -775,11 +830,11 @@
         <span class="home-log-label">{m.doses_empty_action()}</span>
       </a>
       <button type="button" class="home-log-shape press" data-home-log-shape="tally-misgendered" onclick={() => void logTally('misgendered')}>
-        <span class="home-log-ico"><Icon name="x" size={22} /></span>
+        {@render tallyFace('misgendered', 'x')}
         <span class="home-log-label">{m.tally_misgendered()}</span>
       </button>
       <button type="button" class="home-log-shape press" data-home-log-shape="tally-correctly_gendered" onclick={() => void logTally('correctly_gendered')}>
-        <span class="home-log-ico"><Icon name="check" size={22} /></span>
+        {@render tallyFace('correctly_gendered', 'check')}
         <span class="home-log-label">{m.tally_correctly_gendered()}</span>
       </button>
       <!-- One shape, two things, and the label says which - the fan's own
@@ -793,8 +848,14 @@
         data-wear-running={runningWear ? '' : undefined}
         onclick={(e) => void toggleWear(e)}
       >
-        <span class="home-log-ico"><Icon name={runningWear ? 'stop' : 'timeline'} size={22} /></span>
-        <span class="home-log-label">{runningWear ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>
+        <span class="home-log-ico">
+          {#key runningWear ? 'stop' : 'timeline'}
+            <span class="home-log-face" in:drumIn out:drumOut><Icon name={runningWear ? 'stop' : 'timeline'} size={22} /></span>
+          {/key}
+        </span>
+        <span class="home-log-label home-log-label-cross">
+          {#key runningWear ? 'stop' : 'start'}<span transition:labelFade>{runningWear ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>{/key}
+        </span>
       </button>
     </div>
   </div>
@@ -1396,6 +1457,13 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
     line-height: 1;
+    /* A block arrives by clipping open from its left edge (rule 10): the
+       kit's own keyframes, at this block's size, one --stagger-step per
+       row of the arrival (--row-index, set by the list). The words beside
+       it cut, as words do. Filled both ways so the 1ms clamp ends it where
+       it rests; the -6px outset is the focus ring's, as on every block. */
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
   }
   .home-agenda-wd {
     font-size: var(--text-xs);
@@ -1465,16 +1533,45 @@
     cursor: pointer;
   }
   /* The square: a block of the strip's stripe with the glyph in the ink
-     proven on it, the row icon's own recipe at the touch floor's size. */
+     proven on it, the row icon's own recipe at the touch floor's size. It
+     clips: the faces that pass through it ($lib/motion/drum) are covered
+     by its own edges, which is what makes the drum a drum. */
   .home-log-ico {
+    position: relative;
     width: var(--touch-target);
     height: var(--touch-target);
-    display: grid;
-    place-items: center;
+    overflow: hidden;
     background: var(--role-draw);
     color: var(--role-fill-ink);
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
+  }
+  /* A face fills the square, so the outgoing and the incoming stand on the
+     same spot while one leaves and the other arrives. */
+  .home-log-face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+  /* The count, at the size a number on a block is written (rule 2): large
+     text, so every stripe carries it at 3:1. */
+  .home-log-count {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: var(--weight-display);
+    letter-spacing: var(--display-track);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  /* The wear label's two words stand on one cell while they cross, the
+     fold label's own trick, so the column keeps its width. */
+  .home-log-label-cross {
+    display: grid;
+    justify-items: center;
+  }
+  .home-log-label-cross > span {
+    grid-area: 1 / 1;
   }
   /* Hyphenated at 320px rather than cut mid-word: "Misgendered" is wider
      than a 64px column, and a break with no hyphen read as two words. */
