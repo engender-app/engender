@@ -1118,7 +1118,7 @@
             </button>
           </div>
         {/each}
-        <button class="photo-add press" aria-label={m.add_photo()} onclick={addPhoto}>
+        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={addPhoto}>
           <Icon name="image" size={22} /><span>{m.add_photo()}</span>
         </button>
         <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={entryPhotoReview.capture}>
