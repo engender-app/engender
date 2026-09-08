@@ -9,7 +9,6 @@
   "nav_lookback": "Look back",
   "nav_transition": "Transition",
   "hello": "Hi",
-  "how_feeling": "How are you feeling?",
   "new_entry": "New entry",
   "new_entry_when": "When is this entry for? A day can hold more than one entry.",
   "quick_add_title": "Quick add",
@@ -132,8 +131,6 @@
   "dismiss": "Dismiss",
   "empty_home_title": "Your story starts with one entry",
   "empty_home_body": "Log how today felt. A mood is enough, and you can add more later.",
-  "home_milestones_empty_title": "No milestones yet",
-  "home_milestones_empty_body": "Add a coming-out date, a start date, or anything else worth marking.",
   "colour_days_by": "Colour days by",
   "metric_note": "The same colour choice drives the calendar heat-map.",
   "prev_month": "Previous month",
@@ -3455,5 +3452,9 @@
   "calendar_handoff_title_label": "Title",
   "calendar_handoff_time_label": "Time (optional)",
   "calendar_handoff_share": "Share",
-  "agenda_passed_dose": "A scheduled dose on {date}"
+  "agenda_passed_dose": "A scheduled dose on {date}",
+  "home_agenda_heading": "Coming up",
+  "home_log_heading": "Write it down",
+  "home_pinned_heading": "Pinned",
+  "tomorrow": "Tomorrow"
 }

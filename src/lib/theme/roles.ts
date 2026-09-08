@@ -334,8 +334,24 @@ export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefin
     `tileRoleAt` rather than `roleAt`, so their index counts the flag's
     colours only. Everything the area holds goes through the same call, tiles
     and the list and the notice beside them, or one area of the screen would
-    be drawn in two stripes. */
-export const HOME_AREA_ROLE = { week: 0, liveTiles: 1, lookBack: 1, milestones: 2, days: 3 } as const;
+    be drawn in two stripes.
+
+    Phase 10 redesign ticket 13 turned Today around. The week strip and the
+    day cards left for the Journal door and keep their indices there; the
+    log strip takes the strip's slot on Today, for the strip's own reason -
+    its write shapes are icon squares, a block of the stripe with a glyph on
+    it, and a square of the flag's white band on a white page is not a
+    control. The agenda takes the milestones' old slot (a milestone still
+    ahead is one of its rows) and the pinned rows take the days'. */
+export const HOME_AREA_ROLE = {
+  week: 0,
+  log: 0,
+  liveTiles: 1,
+  lookBack: 1,
+  agenda: 2,
+  days: 3,
+  pinned: 3
+} as const;
 
 /** The whole flag as one CSS fill: hard-edged bands, left to right, in
     stripe order and in the flag's own proportions.

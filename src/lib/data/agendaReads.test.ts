@@ -49,6 +49,26 @@ test('the forward read is dayAhead, asked for the seven days from today', async 
   ]);
 });
 
+test('a kind switched off never reaches the projection, and the cap counts only what is on', async () => {
+  /* Four marks; with appointments switched off three are left, which is
+     exactly the cap, so nothing folds - a switched-off kind must not be
+     what pushes a shown row into the fold (ticket 13 over ADR-0073). */
+  const { areas } = recordingAreas([
+    { kind: 'appointment', epochDay: TODAY + 1 },
+    { kind: 'milestone', epochDay: TODAY + 2 },
+    { kind: 'letterUnlock', epochDay: TODAY + 3 },
+    { kind: 'surgery', epochDay: TODAY + 4 }
+  ]);
+  const projection = await readAgenda(areas, TODAY, false, ['surgery', 'milestone', 'letterUnlock', 'doseSlot']);
+  assert.deepEqual(
+    projection?.shown.map((item) => item.kind),
+    ['milestone', 'letterUnlock', 'surgery']
+  );
+  assert.deepEqual(projection?.folded, []);
+  const none = await readAgenda(areas, TODAY, false, []);
+  assert.equal(none, null);
+});
+
 test('the schedule is asked about the week behind, ending yesterday', async () => {
   const { areas, doseWindows } = recordingAreas();
 

@@ -24,7 +24,7 @@
    `await`) is not this one's. */
 
 import { agenda, agendaPassedWindow, agendaWindow, type Agenda } from './agenda';
-import type { DayAheadArea } from './journal/dayAhead';
+import { DAY_AHEAD_MARK_KINDS, type DayAheadArea, type DayAheadMarkKind } from './journal/dayAhead';
 import type { DosesArea } from './journal/doses';
 
 /** The areas the agenda reads: the ones `openJournal` already built, so
@@ -41,11 +41,19 @@ export interface AgendaAreas {
 
     `todayEpochDay` is an argument, as it is everywhere in this feature:
     nothing reads a clock, so a caller passes the same day it drew the rest
-    of its screen with. */
+    of its screen with.
+
+    `kinds` is the person's switch list (`shownAgendaKinds`, ticket 05),
+    applied to the marks before they reach the projection rather than to its
+    output: a kind switched off is not a fold's business, so the cap counts
+    only the kinds that are on. Defaulted to every kind for the caller that
+    has no switches to hand. The switches sit above the projection, as
+    ADR-0074 puts it, and this is the one place they touch it. */
 export async function readAgenda(
   areas: AgendaAreas,
   todayEpochDay: number,
-  disguised: boolean
+  disguised: boolean,
+  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS
 ): Promise<Agenda | null> {
   if (disguised) return null;
 
@@ -59,5 +67,6 @@ export async function readAgenda(
     areas.doses.getComparison(behind)
   ]);
 
-  return agenda({ todayEpochDay, marks, doses, disguised });
+  const on = new Set<DayAheadMarkKind>(kinds);
+  return agenda({ todayEpochDay, marks: marks.filter((mark) => on.has(mark.kind)), doses, disguised });
 }
