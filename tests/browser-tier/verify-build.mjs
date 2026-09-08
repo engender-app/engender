@@ -202,7 +202,13 @@ try {
   await page.waitForSelector('[data-access-modes]', { timeout: 10000 });
   ok('the access-mode module appears at the one onboarding step that needs it, and only there');
 
+  /* Ticket 30 split choosing a mode from typing its secret into two
+     screens: the consequence screen names the mode first, and only its own
+     Continue reaches the fields. */
   await page.locator('[data-list-row="passphrase"]').click();
+  await page.waitForSelector('[data-access-chosen="passphrase"]');
+  await page.click('[data-access-continue]');
+  await page.waitForSelector('[data-access-secret="passphrase"]');
   await page.fill('#am-passphrase', PASSPHRASE);
   await page.fill('#am-passphrase-confirm', PASSPHRASE);
   await page.click('[data-access-submit]');
@@ -346,6 +352,9 @@ try {
 
   await cold.waitForSelector('[data-access-modes]', { timeout: 10000 });
   await cold.locator('[data-list-row="passphrase"]').click();
+  await cold.waitForSelector('[data-access-chosen="passphrase"]');
+  await cold.click('[data-access-continue]');
+  await cold.waitForSelector('[data-access-secret="passphrase"]');
   await cold.fill('#am-passphrase', 'verify-build passphrase');
   await cold.fill('#am-passphrase-confirm', 'verify-build passphrase');
   await cold.click('[data-access-submit]');
