@@ -184,10 +184,9 @@
      visit would otherwise "restore" the pick made on the first. */
   const paletteOnEntry = prefs.palette;
 
-  /* One step shorter under disguise: the flag step is a wall of pride flags
-     with their names under them, which is the most identifying thing in the
-     app. steps.ts carries the whole reasoning. */
-  let steps = $derived(onboardingSteps(prefs.disguise));
+  /* One flow for everybody (ADR-0079): setup does not vary by disguise,
+     and steps.ts says why the shorter flow it used to offer went. */
+  const steps = onboardingSteps();
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(sunGrowth(index, steps.length));
 
@@ -289,7 +288,16 @@
          up by exactly that inset so the sun's centre lands on the window's
          true top right corner. Decoration crosses the inset; nothing
          readable does, which is why the step's own text starts below it. -->
-    <div class="setup-sky" aria-hidden="true">
+    <!-- The sun is the only progress meter (phase 10 redesign ticket 29,
+         DIRECTION.md rule 12): it grows one step's worth per step, and the
+         step count that used to be a rail's visible label is its accessible
+         name, so a growing circle still tells a screen reader which step
+         this is. -->
+    <div
+      class="setup-sky"
+      role="img"
+      aria-label={m.ob_step_of({ step: String(index + 1), total: String(steps.length) })}
+    >
       <div class="setup-sun" style={`--grow:${growth}`}>
         <!-- Keyed on the palette so picking a flag redraws the sun rather
              than recolouring the rings in place. FlagSun keeps its own rule
@@ -486,17 +494,6 @@
     </div>
 
     <div class="setup-foot">
-      <div
-        class="rail setup-rail"
-        role="progressbar"
-        aria-valuemin={1}
-        aria-valuemax={steps.length}
-        aria-valuenow={index + 1}
-        aria-label={m.ob_step_of({ step: String(index + 1), total: String(steps.length) })}
-      >
-        <i style={`transform: scaleX(${(index + 1) / steps.length})`}></i>
-      </div>
-
       {#if awaitingAccessMode}
         <!-- The module above carries its own submit action, and there is no
              other way past it (ticket 54, matching AccessModeSetup's own
@@ -535,19 +532,17 @@
 
 <style>
   /* A chromeless column with a fixed frame and one moving part. The back
-     arrow, the progress rail and the buttons hold still at the top and the
-     bottom of the screen; only the step between them crosses, on tier 2's
-     shared axis, because the steps are a sequence and a sequence has a
-     direction. The foot is pushed to the bottom of the viewport rather than
+     arrow and the buttons hold still at the top and the bottom of the
+     screen; only the step between them crosses, on tier 2's shared axis,
+     because the steps are a sequence and a sequence has a direction. The foot is pushed to the bottom of the viewport rather than
      sitting right under the content, so on the five steps that fit it is in
      the same place and a thumb can stay where it is. On the two that do not -
      the eight scales, the eight flags at 200% text - it sits at the end of
      the content and is scrolled to, which is what a form does.
 
-     The rail sits with the buttons and not under the sun. It is the one piece
-     of furniture that had to move: the sun owns the top right corner of this
-     screen the way it owns Home's, and text laid over a flag's white band on
-     a light theme is text nobody can read. */
+     No progress rail. The sun is the meter (ticket 29): it grows one step's
+     worth per step and carries the step count as its accessible name, so a
+     second meter under the buttons was saying the same thing twice. */
   /* How much bigger the sun is than the 350px it is drawn at. One number,
      because the head's reserve is the sun's own radius and the two must not
      be able to disagree: a sun grown without the room under it grown too is
@@ -743,10 +738,6 @@
     padding: var(--space-7) 0 var(--space-4);
     display: flex; flex-direction: column; gap: var(--space-3);
   }
-  /* Progress as a length rather than as seven dots. Seven dots at 8px is a
-     row of punctuation; a rail says how far along the flow is at a glance and
-     grows on the same easing the sun above it does. Also .rail. */
-  .setup-rail { margin-bottom: var(--space-2); }
   /* The two ways past a step, stacked and full width. Side by side is what
      they were, and it gave each of them half a phone: "Straight to the app"
      wrapped to two lines and overflowed its own button, and Polish's "Od razu
