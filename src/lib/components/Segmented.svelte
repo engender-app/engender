@@ -2,6 +2,16 @@
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
   import { nextRadioIndex } from './rovingRadioIndex';
+  import {
+    boxesMatch,
+    insets,
+    schedules,
+    travel,
+    LEAD,
+    type Box,
+    type Insets,
+    type Schedule
+  } from '$lib/motion/indicator';
 
   /* A choice among a few peers. The pill behind the chosen one is a single
      element that slides between them rather than a background that appears on
@@ -11,7 +21,24 @@
 
      It stretches along the way. Nothing physical changes position without
      deforming a little, and a pill that arrives the same width it left reads
-     as a diagram of a slide rather than as a thing sliding. */
+     as a diagram of a slide rather than as a thing sliding.
+
+     How it stretches is the navigation's mechanic, shared rather than
+     transcribed (2026-09-08, Alicja: "apply the same motion to the switcher
+     animations... the leading/trailing animation and pace only"). It used to
+     deform symmetrically - both edges leaving together, out from the centre,
+     by a fixed 12% - which reads as one object pulled from both ends. Now the
+     edge nearer the destination leaves first and decelerates, and the edge
+     left behind holds, gathers and catches up, so the width in between is the
+     real gap between the two segments rather than a tuned percentage of
+     anything. $lib/motion/indicator.ts owns both the arithmetic and the two
+     edges' clocks; what stays here is the measuring, because only the DOM
+     knows where a segment is.
+
+     Not taken from the navigation: its pill's outline, and the swing its
+     destination icon does on arrival. A segment has no icon, and this pill is
+     a block of ink rather than a tinted field, so it needs no help being
+     seen. */
   let {
     name,
     options,
@@ -44,7 +71,24 @@
 
   let links = $derived(options.some((o) => o.href !== undefined));
   let buttons = $state<(HTMLElement | undefined)[]>([]);
-  let pill = $state({ x: 0, w: 0 });
+
+  /* The pill's own box, the two insets it is pinned by, and a clock per edge
+     of the axis it travels on. `placed` is what the old code kept as a bare
+     boolean: the control does not slide into its own initial state, it starts
+     there. Until it is placed, --seg-right is unset and the pill is
+     zero-width (components.css).
+
+     `at` carries all four insets even though only two of them travel: they
+     come from one measurement and splitting them would mean two. */
+  type Pill = { box: Box; at: Insets; shown: boolean; near: Schedule; far: Schedule };
+
+  let pill = $state<Pill>({
+    box: { x: 0, y: 0, w: 0, h: 0 },
+    at: { left: 0, right: 0, top: 0, bottom: 0 },
+    shown: false,
+    near: LEAD,
+    far: LEAD
+  });
 
   /* The one radio the roving tabindex leaves in the tab order: the selected
      one, or the first while nothing is (a fresh group with no value yet). */
@@ -174,11 +218,6 @@
       window.removeEventListener('resize', updateScrollFade);
     };
   });
-  /** Set while the pill is crossing, which is what plays the stretch. Not set
-      on the first measurement: the control does not slide into its own initial
-      state, it starts there. */
-  let sliding = $state(false);
-  let placed = false;
 
   $effect(() => {
     const target = buttons[options.findIndex((o) => o.value === value)];
@@ -201,21 +240,33 @@
        scrollLeft is what this always meant, and it cannot move an ancestor
        at all. */
     if (track) track.scrollLeft = nearestScrollLeft(track, target);
-    const next = { x: target.offsetLeft, w: target.offsetWidth };
-    if (next.x === pill.x && next.w === pill.w) return;
-    if (placed) sliding = true;
-    placed = true;
-    pill = next;
+    if (!track) return;
+    const box = {
+      x: target.offsetLeft,
+      y: target.offsetTop,
+      w: target.offsetWidth,
+      h: target.offsetHeight
+    };
+    /* boxesMatch rather than exact equality, which is what this measurement
+       used to use: a track that reflows by a third of a pixel is the same
+       place, and replaying the travel on every resize tick would turn a
+       moment into a loop. indicator.ts's own note on that floor. */
+    if (pill.shown && boxesMatch(pill.box, box)) return;
+    /* The insets are measured against the track's padding box, which is what
+       both `offsetLeft` and `left`/`right` resolve against - so a scrolled
+       track needs no correction, and a segment past its fold gives a
+       negative `right`, correctly. */
+    const at = insets(box, { w: track.clientWidth, h: track.clientHeight });
+    /* The control does not slide into its own initial state, it starts
+       there: both edges on the leading clock, so the shape arrives as one
+       piece. */
+    const dir = pill.shown ? travel(pill.box, box, 'x') : 0;
+    pill = { box, at, shown: true, ...schedules(dir) };
   });
 </script>
 
 {#snippet pillMark()}
-  <span
-    class="segment-pill"
-    class:is-sliding={sliding}
-    aria-hidden="true"
-    onanimationend={() => (sliding = false)}
-  ></span>
+  <span class="segment-pill" class:is-shown={pill.shown} aria-hidden="true"></span>
 {/snippet}
 
 <!-- A nav of links or a radiogroup of buttons, written out rather than
@@ -243,8 +294,14 @@
       onpointermove={onTrackPointerMove}
       onclickcapture={onTrackClickCapture}
       ondragstart={(e) => e.preventDefault()}
-      style:--seg-x="{pill.x}px"
-      style:--seg-w="{pill.w}px"
+      style:--seg-left="{pill.at.left}px"
+      style:--seg-right="{pill.at.right}px"
+      style:--seg-near-dur={pill.near.dur}
+      style:--seg-near-ease={pill.near.ease}
+      style:--seg-near-delay={pill.near.delay}
+      style:--seg-far-dur={pill.far.dur}
+      style:--seg-far-ease={pill.far.ease}
+      style:--seg-far-delay={pill.far.delay}
     >
       {@render pillMark()}
       {#each options as o, i (o.value)}
@@ -284,8 +341,14 @@
       onpointermove={onTrackPointerMove}
       onclickcapture={onTrackClickCapture}
       ondragstart={(e) => e.preventDefault()}
-      style:--seg-x="{pill.x}px"
-      style:--seg-w="{pill.w}px"
+      style:--seg-left="{pill.at.left}px"
+      style:--seg-right="{pill.at.right}px"
+      style:--seg-near-dur={pill.near.dur}
+      style:--seg-near-ease={pill.near.ease}
+      style:--seg-near-delay={pill.near.delay}
+      style:--seg-far-dur={pill.far.dur}
+      style:--seg-far-ease={pill.far.ease}
+      style:--seg-far-delay={pill.far.delay}
     >
       {@render pillMark()}
       {#each options as o, i (o.value)}

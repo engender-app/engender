@@ -20,21 +20,21 @@
    the actual gap between the two tabs, because the two edges really are on
    the two tabs while it runs.
 
-   This module is the arithmetic only. The measuring and the state live in
-   AppNav.svelte, because they need `$state` and a DOM, and neither survives
-   the node test tier. What is here is the part worth holding still: when two
-   measurements count as the same place, the four numbers CSS positions the
-   shape with, and which of an axis's two edges is the one that leads.
+   This module is the mechanic: the arithmetic, plus the two schedules the
+   edges run on. The measuring and the state live in the components, because
+   they need `$state` and a DOM, and neither survives the node test tier.
+   What is here is the part worth holding still: when two measurements count
+   as the same place, the four numbers CSS positions the shape with, which of
+   an axis's two edges leads, and what each edge's clock is.
 
-   Segmented.svelte has its own copy of the older idea, shipped in ticket 30
-   with a fixed stretch. Left alone on purpose - it is a working control and
-   this ticket is not its ticket (redesign ticket 30 is) - but if a third
-   travelling indicator ever turns up, that is the moment the two should
-   become one. The two now differ in technique as well as in code: this one
-   is pinned by four insets and that one by `translate` plus an animated
-   `width`. Worth knowing that the difference is not one of expense - a
-   transitioned `width` is a layout property too, and motion-system.test.ts
-   lists `.segment-pill` beside this pill for exactly that reason. */
+   Both travelling indicators in the app now use it. Segmented.svelte had its
+   own copy of the older symmetric idea, shipped in ticket 30 with a fixed
+   stretch; the note that used to sit here said that if a third one ever
+   turned up, that would be the moment the two became one. What actually
+   happened is that the two converged instead - Alicja asked for the
+   switcher to move the way the navigation does (2026-09-08) - so the moment
+   arrived from the other direction and the schedules below are shared rather
+   than transcribed. A third one would now have nothing left to duplicate. */
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -106,4 +106,36 @@ export function travel(from: Box, to: Box, axis: Axis): -1 | 0 | 1 {
 export function leadingEdge(direction: -1 | 0 | 1): 'near' | 'far' | null {
   if (direction === 0) return null;
   return direction > 0 ? 'far' : 'near';
+}
+
+/** One edge's clock, written as the token names rather than their values so
+    the reduced-motion clamp reaches every part of it. */
+export type Schedule = { dur: string; ease: string; delay: string };
+
+/** The edge nearer the destination. It sets off first and decelerates into
+    place over tier 2's own duration, on a curve that is --ease-out with the
+    instant taken off the front: --ease-out leaves at four times its average
+    speed, which is right for something appearing and wrong for a long edge
+    setting off. */
+export const LEAD: Schedule = { dur: 'var(--dur-med)', ease: 'var(--ease-out-soft)', delay: '0ms' };
+
+/** The edge left behind. It waits --stagger-step - the token every staggered
+    set in the app waits on, and one the clamp zeroes - then gathers and
+    catches up over the longer --dur-slow, so the shape closes after the tab
+    has already lit rather than at the same moment. */
+export const TRAIL: Schedule = {
+  dur: 'var(--dur-slow)',
+  ease: 'var(--ease-in-out)',
+  delay: 'var(--stagger-step)'
+};
+
+/** Which clock each of an axis's two insets runs on, for a move in this
+    direction. A placement that is not a slide gets both on LEAD, so the
+    shape moves as one piece and never opens. */
+export function schedules(direction: -1 | 0 | 1): { near: Schedule; far: Schedule } {
+  const lead = leadingEdge(direction);
+  return {
+    near: lead === 'far' ? TRAIL : LEAD,
+    far: lead === 'near' ? TRAIL : LEAD
+  };
 }
