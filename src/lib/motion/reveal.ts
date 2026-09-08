@@ -786,3 +786,58 @@ export const resize: Action<HTMLElement> = (node) => {
     }
   };
 };
+
+/**
+ * Tier 3, change within a screen: a box that has already been relaid out,
+ * uncovering itself from the height it used to have (phase 10 redesign
+ * ticket 10).
+ *
+ * The Journal door's month is one set of cells in two layouts - a row of
+ * bars, or the seven-column grid with its legend and chips under it - and
+ * the cells' own travel between the two is the screen's (motion/regroup.ts).
+ * What is here is the panel around them, which has to give or take a few
+ * hundred pixels while that runs, or everything under the month would arrive
+ * at its new place in the frame of the tap and the travel would be happening
+ * inside a box that had already finished.
+ *
+ * Height is a layout property, and the performance contract's rule is
+ * transform and opacity only. `disclose` spends the contract's one named
+ * exception on exactly this and `resize` is the second spend rather than a
+ * new one; this is the third, and it is the same scalar as both - one box,
+ * one number, no per-point interpolation. What it is not is a mode on either
+ * of them: `disclose` animates a node that is arriving or leaving, and
+ * `resize` watches a node whose content changes under it, while this one is
+ * called at a known moment with a height the caller measured before the
+ * layout changed. Only the caller knows that number, because by the time
+ * anything here could look, the box is already the size it is going to be.
+ *
+ * The tracks are pinned for the animation's length, which is `disclose`'s own
+ * finding: a definite height smaller than the content compresses a grid's
+ * auto tracks, so the box squashes its contents on the way instead of
+ * uncovering them. Measured on the month it is 6px of drift rather than the
+ * notice's whole icon, and a mask that is 6px of scale is still not a mask.
+ * The clip and the tracks both go back the moment the travel is over, so the
+ * box's resting rules say whatever they say the rest of the time - a
+ * permanent clip on this panel would cut the focus ring off the chips inside
+ * it and the outline off today's cell.
+ *
+ * Reduced motion is the caller's to check, since the caller is also deciding
+ * whether to animate the marks inside the box; there is nothing here to
+ * substitute a fade for.
+ */
+export function maskHeight(node: HTMLElement, from: number, duration: number): void {
+  const restoreOverflow = node.style.overflow;
+  const restoreRows = node.style.gridTemplateRows;
+  node.style.overflow = 'clip';
+  node.style.gridTemplateRows = getComputedStyle(node).gridTemplateRows;
+  const settle = () => {
+    node.style.overflow = restoreOverflow;
+    node.style.gridTemplateRows = restoreRows;
+  };
+  node
+    .animate([{ height: `${from}px` }, { height: `${node.getBoundingClientRect().height}px` }], {
+      duration,
+      easing: EASE_OUT_CSS
+    })
+    .finished.then(settle, settle);
+}

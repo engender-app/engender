@@ -112,7 +112,8 @@ const cropTop = async (name, until, extra = 20, note = '') => {
     ([selectors, pad]) => {
       const frame = document.querySelector('[data-app-root]').getBoundingClientRect();
       const el = [].concat(selectors).map((s) => document.querySelector(s)).find(Boolean);
-      const bottom = el ? el.getBoundingClientRect().bottom : frame.top + 320;
+      if (!el) return null;
+      const bottom = el.getBoundingClientRect().bottom;
       return {
         x: frame.x,
         y: frame.y,
@@ -122,6 +123,12 @@ const cropTop = async (name, until, extra = 20, note = '') => {
     },
     [until, extra]
   );
+  /* Loudly, rather than shooting whatever happens to be 320px down: a crop
+     whose handle has been renamed is a sign-off shot of the wrong thing. */
+  if (!box) {
+    errors.push(`${name}: nothing matched ${[].concat(until).join(' / ')}`);
+    return;
+  }
   await page.screenshot({ path: `${outDir}/${name}.png`, clip: box });
   shots.push({ name, note });
 };
@@ -241,9 +248,9 @@ try {
     await dress(palette, theme);
     await settle('/calendar');
     await shadeBy('mood');
-    await cropTop(`mood-strip-${palette}-${theme}`, '[data-cal-ribbon]', 20, 'Shaded by mood.');
+    await cropTop(`mood-strip-${palette}-${theme}`, ['[data-cal-grid]'], 20, 'Shaded by mood.');
     if (await openMonth()) {
-      await cropTop(`mood-open-${palette}-${theme}`, '[data-cal-grid]', 20, 'Mood, opened: the faces.');
+      await cropTop(`mood-open-${palette}-${theme}`, ['[data-cal-grid]'], 20, 'Mood, opened: the faces.');
     }
   }
 
@@ -281,7 +288,7 @@ try {
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
   await settle('/calendar');
-  await cropTop('day-one-trans-light', '[data-notice]', 20, 'A journal with nothing in it.');
+  await cropTop('day-one-trans-light', ['[data-notice]'], 20, 'A journal with nothing in it.');
 
   /* 4. Disguise: a grey field, and everything still working. */
   await seed();
@@ -293,7 +300,7 @@ try {
   await settle('/calendar');
   await cropTop('disguise-strip', ['[data-cal-grid]'], 20, 'Under disguise.');
   if (await openMonth()) {
-    await cropTop('disguise-open', '[data-cal-legend], [data-cal-grid]', 20, 'Under disguise, opened.');
+    await cropTop('disguise-open', ['[data-cal-month-body]'], 20, 'Under disguise, opened.');
   }
   await settle('/settings');
   await page.getByRole('button', { name: /Disguise/i }).click();
