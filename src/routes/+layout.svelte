@@ -48,6 +48,7 @@
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
+  import { shareField } from '$lib/motion/sharedField';
   import { markScreenArrival } from '$lib/motion/reveal';
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
@@ -292,6 +293,13 @@
     if (pattern !== 'container') closeEntryContainer();
     if (!document.startViewTransition || pattern === 'none') return;
 
+    /* The field carries across a tab change (redesign ticket 25, rule 10):
+       named before the old side is captured, handed to the incoming door
+       after the swap, and given back when the transition is over. Only the
+       fade-through, which is the tab crossing; see $lib/motion/sharedField
+       for why this is not a stylesheet rule. */
+    const field = pattern === 'fade-through' ? shareField() : null;
+
     return new Promise((resolve) => {
       document.documentElement.dataset.nav = pattern;
       const transition = document.startViewTransition(async () => {
@@ -319,10 +327,17 @@
            this one is provably before the capture, and afterNavigate's own
            call becomes a harmless no-op restoring the same value again. */
         if (navigation.to) restoreScroll(navigation.to.url.pathname);
+        /* The incoming screen has mounted; the outgoing one may still be
+           in the DOM finishing its outros. Before the new capture, so the
+           name is on exactly one element when the browser looks. */
+        field?.swap();
       });
       void transition.finished
         .catch(() => {})
-        .finally(() => delete document.documentElement.dataset.nav);
+        .finally(() => {
+          delete document.documentElement.dataset.nav;
+          field?.release();
+        });
     });
   });
 
