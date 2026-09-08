@@ -42,6 +42,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -118,6 +119,10 @@
     remove: (id) => journal.appointments.deleteAppointment(id),
     findById: (id) => appointments.find((appointment) => appointment.id === id)
   });
+
+  // Ticket 18: the date already sits in the editor's own draft, so the
+  // handoff sheet reads it fresh rather than re-deriving it from the record.
+  let calendarSheet = $state(false);
 </script>
 
 {#snippet list(rows: Appointment[])}
@@ -302,7 +307,19 @@
         {/snippet}
       </Field>
     {/snippet}
+    {#snippet extraActions()}
+      <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarSheet = true)}>
+        <span>{m.calendar_handoff_button()}</span>
+      </button>
+    {/snippet}
   </RecordSheet>
+
+  <CalendarHandoffSheet
+    open={calendarSheet}
+    kind="appointment"
+    epochDay={epochDayFromDateInputValueOrToday(record.editor?.date ?? '')}
+    onClose={() => (calendarSheet = false)}
+  />
 </div>
 
 <style>

@@ -35,6 +35,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import CalendarHandoffSheet from '$lib/components/CalendarHandoffSheet.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -87,6 +88,10 @@
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
+
+  // Ticket 18: only a sealed letter's unlock day is worth a mark elsewhere -
+  // once it has opened the day has already passed.
+  let calendarSheet = $state(false);
 </script>
 
 <div class="screen">
@@ -184,12 +189,24 @@
       {#if isLetterSealed(reading, today)}
         <SectionHeading text={m.letters_sealed_title()} />
         <p class="muted">{m.letters_sealed_until({ date: dayLabel(reading.unlockEpochDay) })}</p>
+        <button class="btn btn-soft" data-add-to-calendar onclick={() => (calendarSheet = true)}>
+          <span>{m.calendar_handoff_button()}</span>
+        </button>
       {:else}
         <SectionHeading text={dayLabel(reading.epochDay)} />
         <p class="letter-text" data-letter-text>{reading.text}</p>
       {/if}
     {/if}
   </Sheet>
+
+  {#if reading}
+    <CalendarHandoffSheet
+      open={calendarSheet}
+      kind="letterUnlock"
+      epochDay={reading.unlockEpochDay}
+      onClose={() => (calendarSheet = false)}
+    />
+  {/if}
 
   <RecordSheet
     {record}
