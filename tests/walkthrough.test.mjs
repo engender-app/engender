@@ -5969,6 +5969,31 @@ try {
   }
   await page.waitForSelector('[data-access-export-note]');
 
+  /* Ticket 30 split choosing a mode from typing its secret into two
+     screens. "Pick another way" first, to prove the consequence screen
+     really returns to the bare list rather than only ever moving forward. */
+  await page.locator('[data-access-back]').click();
+  await page.waitForSelector('[data-access-modes]');
+  await page.locator('[data-list-row="pin"]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+
+  await page.locator('[data-access-continue]').click();
+  await page.waitForSelector('[data-access-secret="pin"]');
+
+  /* A mismatch on the second entry, which has to land back on "choose four
+     digits" rather than some third state - and back from the secret screen
+     has to return to the consequence screen with PIN still the chosen mode,
+     not to the bare list (ticket 30). */
+  await typePin('1234');
+  await typePin('4321');
+  const mismatch = await page.locator('[data-access-status]').innerText();
+  if (mismatch.trim() === '') throw new Error('a mismatched PIN confirmation said nothing');
+
+  await page.locator('[data-access-secret-back]').click();
+  await page.waitForSelector('[data-access-chosen="pin"]');
+  await page.locator('[data-access-continue]').click();
+  await page.waitForSelector('[data-access-secret="pin"]');
+
   await typePin('1234');
   await typePin('1234');
   await page.waitForSelector('[data-security-list]');
