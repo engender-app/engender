@@ -44,6 +44,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { startSampling, stopSampling } from './motion-sampling.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -144,32 +145,6 @@ const unsnoozeTiles = (page) =>
     }
   });
 
-/** Starts sampling `read()` on every animation frame in the page, into
-    window.__samples, from now until `stopSampling`. `read` is a function
-    body as a string, evaluated in the page, returning a plain object. */
-const startSampling = (page, read) =>
-  page.evaluate((body) => {
-    const fn = new Function(body);
-    const t0 = performance.now();
-    window.__samples = [];
-    window.__sampling = true;
-    const step = (now) => {
-      if (!window.__sampling) return;
-      try {
-        window.__samples.push({ t: Math.round(now - t0), ...fn() });
-      } catch (e) {
-        window.__samples.push({ t: Math.round(now - t0), error: String(e) });
-      }
-      requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, read);
-
-const stopSampling = (page) =>
-  page.evaluate(() => {
-    window.__sampling = false;
-    return window.__samples ?? [];
-  });
 
 /** Records everything the page paints for SCENE_MS, with `act` fired one
     frame in, so the first frame is the resting state the motion starts

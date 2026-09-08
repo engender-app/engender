@@ -30,6 +30,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { startSampling, stopSampling } from './motion-sampling.mjs';
 import { farMark, seedEras } from './lookback-shared.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -110,33 +111,6 @@ const seed = async (page) => {
   await page.waitForTimeout(1500);
   await seedEras(page, settle);
 };
-
-/** Samples `read()` - a function body, evaluated in the page - on every
-    animation frame into window.__samples until `stopSampling`, the way
-    tests/state-motion-gallery.mjs measures beside its frames: a recording
-    shows the settle, the samples say by how many days and over how long. */
-const startSampling = (page, read) =>
-  page.evaluate((body) => {
-    const fn = new Function(body);
-    const t0 = performance.now();
-    window.__samples = [];
-    window.__sampling = true;
-    const step = (now) => {
-      if (!window.__sampling) return;
-      try {
-        window.__samples.push({ t: Math.round(now - t0), ...fn() });
-      } catch (e) {
-        window.__samples.push({ t: Math.round(now - t0), error: String(e) });
-      }
-      requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, read);
-const stopSampling = (page) =>
-  page.evaluate(() => {
-    window.__sampling = false;
-    return window.__samples ?? [];
-  });
 
 /* The span as the finger and then the settle have it: the start day the
    rail reports, where the start grip stands, and the lifted layer's clip. */
