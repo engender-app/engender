@@ -416,7 +416,6 @@ export const PROCEDURE_KINDS: ProcedureKind[] = [
   'custom'
 ];
 
-
 const TAG_GROUP_NAME: Record<BuiltInTagGroupKey, Message> = {
   gender: m.taggroup_gender,
   emotions: m.taggroup_emotions,
