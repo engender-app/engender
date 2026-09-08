@@ -370,7 +370,11 @@ body {
    label paint over the pill: the pill is a positioned element and would
    otherwise sit on top of static siblings whatever the source order says. */
 .nav-item { position: relative; }
-.nav-item.is-active { color: var(--accent); }
+/* The same ink the rail's lit row always took, now that both forms light on
+   the same stronger fill: --accent measures 3.60:1 on it at worst and
+   --on-accent-soft 4.66:1, and the label is 11px (palettes.css carries the
+   measurements). One ink for one fill across both shapes. */
+.nav-item.is-active { color: var(--on-accent-soft); }
 .nav-item:hover { color: var(--text); }
 
 /* One lit shape for the set, travelling to whichever tab is current, on both
@@ -385,13 +389,19 @@ body {
 
    Pinned by four insets rather than placed by `translate` (redesign ticket
    26), because the two edges of the travelling axis are no longer on the
-   same clock. The leading edge - the one nearer the destination - leaves at
-   once and decelerates; the trailing edge waits --stagger-step, then
-   accelerates after it and closes the shape up again. Two independently
-   scheduled lengths is what that is, and there is no way to say it in one
-   transform: a translate moves both edges together, and the width in between
-   is the live difference of two curves rather than a value with a curve of
-   its own.
+   same clock. The leading edge - the one nearer the destination - sets off
+   first on --ease-out-soft over --dur-med; the trailing edge waits
+   --stagger-step, then follows on --ease-in-out over --dur-slow, catching up
+   and closing the shape. Two independently scheduled lengths is what that
+   is, and there is no way to say it in one transform: a translate moves both
+   edges together, and the width in between is the live difference of two
+   curves rather than a value with a curve of its own.
+
+   Each edge carries its own duration as well as its own curve, because the
+   catch-up is the slower half by design (Alicja, on the first flipbook: "the
+   whole thing needs to be a little longer"). The leading edge still lands on
+   --dur-med, so the tab that was tapped lights on tier 2's own duration;
+   what got longer is the closing, which now finishes at 430ms.
 
    The old version said it with `scale` and a keyframe, and paid for it
    twice. The stretch was a tuned percentage of the pill's own length (18% at
@@ -420,7 +430,14 @@ body {
   top: var(--pill-top, 0);
   bottom: var(--pill-bottom, 0);
   border-radius: var(--r-block);
-  background: var(--accent-soft);
+  /* Its own tint rather than --accent-soft, and a line around it: at 11%
+     the shape was a wash you had to look for (Alicja, 2026-09-08). Both
+     halves of that are in palettes.css with the contrast they were chosen
+     against - the fill is --nav-lit, and the line is --accent-border, the
+     same edge every other accent-tinted block in the app takes. A line
+     rather than a shadow, which the kit does not have. */
+  background: var(--nav-lit);
+  border: 1px solid var(--accent-border);
   opacity: 0;
   pointer-events: none;
 }
@@ -437,14 +454,18 @@ body {
    navigation to animate. */
 [data-nav-pill='bar'] {
   transition:
-    left var(--dur-med) var(--pill-near-ease, var(--ease-out)) var(--pill-near-delay, 0ms),
-    right var(--dur-med) var(--pill-far-ease, var(--ease-out)) var(--pill-far-delay, 0ms),
+    left var(--pill-near-dur, var(--dur-med)) var(--pill-near-ease, var(--ease-out-soft))
+      var(--pill-near-delay, 0ms),
+    right var(--pill-far-dur, var(--dur-med)) var(--pill-far-ease, var(--ease-out-soft))
+      var(--pill-far-delay, 0ms),
     opacity var(--dur-fast) var(--ease-out);
 }
 [data-nav-pill='rail'] {
   transition:
-    top var(--dur-med) var(--pill-near-ease, var(--ease-out)) var(--pill-near-delay, 0ms),
-    bottom var(--dur-med) var(--pill-far-ease, var(--ease-out)) var(--pill-far-delay, 0ms),
+    top var(--pill-near-dur, var(--dur-med)) var(--pill-near-ease, var(--ease-out-soft))
+      var(--pill-near-delay, 0ms),
+    bottom var(--pill-far-dur, var(--dur-med)) var(--pill-far-ease, var(--ease-out-soft))
+      var(--pill-far-delay, 0ms),
     opacity var(--dur-fast) var(--ease-out);
 }
 /* Hidden until a tab is lit rather than absent from the DOM: seven routes
@@ -467,23 +488,48 @@ body {
    clamp to strand - and no tab can accumulate a scale by being visited
    twice.
 
-   Delayed by --dur-fast so the peak falls just after the leading edge
-   arrives rather than while it is still travelling: the highlight brushes
-   past the icon, and a brush is felt after the thing has got there. */
+   It pivots on a corner rather than on its middle, and which corner is the
+   one fact about it worth stating plainly (Alicja, 2026-09-08): the bottom
+   corner on the far side of the travel, so a highlight arriving from the
+   right pivots the house on its bottom left. A centred pivot is a thing
+   inflating in place; a corner pivot on the side the motion is heading for
+   is a thing the motion caught and swung past, which is what this is meant
+   to be. The component writes --nav-anchor, since only it knows which way
+   the pill came - indicator.ts's `leadingEdge`, mapped onto each axis's own
+   pair of keywords.
+
+   --dur-slow over --dur-med, on the swing rather than on the pill's leading
+   edge, because a 240ms there-and-back on a 24px glyph is two direction
+   changes inside a quarter of a second and reads as a yank rather than a
+   swing (Alicja, on the first flipbook). Delayed --stagger-step, the same
+   beat the trailing edge waits, so the peak lands as the leading edge does
+   and the swing settles exactly when the shape closes. */
+.nav-icon,
+.rail-icon { transform-origin: var(--nav-anchor, center); }
 .nav-icon.is-arriving {
-  animation: nav-icon-arrive-x var(--dur-med) var(--ease-out) var(--dur-fast);
+  animation: nav-icon-arrive-x var(--dur-slow) var(--ease-out-soft) var(--stagger-step);
 }
 .rail-icon.is-arriving {
-  animation: nav-icon-arrive-y var(--dur-med) var(--ease-out) var(--dur-fast);
+  animation: nav-icon-arrive-y var(--dur-slow) var(--ease-out-soft) var(--stagger-step);
 }
 /* The lean follows the axis its own shape travels on, which is the same
    mapping the insets above make: the bar runs across the screen, so its
    icons lean across it, about Z. --nav-swing is the sign of the travel, so
    a tab reached from the left and the same tab reached from the right lean
-   opposite ways. */
+   opposite ways.
+
+   A curve per half, not one for the whole. The swing out answers the
+   highlight and wants the same softened deceleration the leading edge has;
+   the return is the icon settling back under nothing, and wants the gather
+   the trailing edge has. One curve over a there-and-back applies the same
+   acceleration to a departure and to a homecoming, which is most of what
+   made the first version read as a yank. */
 @keyframes nav-icon-arrive-x {
-  0% { transform: none; }
-  50% { transform: scale(1.15) rotate(calc(var(--nav-swing, 0) * 8deg)); }
+  0% { transform: none; animation-timing-function: var(--ease-out-soft); }
+  50% {
+    transform: scale(1.15) rotate(calc(var(--nav-swing, 0) * 8deg));
+    animation-timing-function: var(--ease-in-out);
+  }
   100% { transform: none; }
 }
 /* The rail runs down the screen, so its icons lean down it - which is a tip
@@ -491,8 +537,11 @@ body {
    at all. Negative, so a highlight travelling downward drags the icon's top
    face down toward the reader the way a finger drawn down a card would. */
 @keyframes nav-icon-arrive-y {
-  0% { transform: none; }
-  50% { transform: perspective(160px) scale(1.15) rotateX(calc(var(--nav-swing, 0) * -20deg)); }
+  0% { transform: none; animation-timing-function: var(--ease-out-soft); }
+  50% {
+    transform: perspective(160px) scale(1.15) rotateX(calc(var(--nav-swing, 0) * -20deg));
+    animation-timing-function: var(--ease-in-out);
+  }
   100% { transform: none; }
 }
 

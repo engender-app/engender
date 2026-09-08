@@ -131,13 +131,30 @@
   ];
 
   /* The two schedules an edge of the travelling axis can be on (redesign
-     ticket 26). The leading edge goes at once and decelerates into place;
-     the trailing edge waits its turn - --stagger-step, the token every
-     staggered set in the app waits on, and one the reduced-motion clamp
-     zeroes - then accelerates after it and closes the shape up. Written as
-     the token names rather than their values so the clamp reaches both. */
-  const LEAD = { ease: 'var(--ease-out)', delay: '0ms' };
-  const TRAIL = { ease: 'var(--ease-in-out)', delay: 'var(--stagger-step)' };
+     ticket 26). The leading edge sets off first and decelerates into place
+     over --dur-med; the trailing edge waits its turn - --stagger-step, the
+     token every staggered set in the app waits on, and one the reduced-
+     motion clamp zeroes - then gathers and catches up over the longer
+     --dur-slow. Written as the token names rather than their values, so the
+     clamp reaches every one of them. */
+  const LEAD = { dur: 'var(--dur-med)', ease: 'var(--ease-out-soft)', delay: '0ms' };
+  const TRAIL = {
+    dur: 'var(--dur-slow)',
+    ease: 'var(--ease-in-out)',
+    delay: 'var(--stagger-step)'
+  };
+
+  /* Where an arriving icon pivots: the bottom corner on the far side of the
+     travel, so a highlight coming from the right swings the icon on its
+     bottom left (Alicja, 2026-09-08). Keyed by the axis and by which edge
+     led, which is the pair of names indicator.ts already hands back - the
+     leading edge is on the side the motion is heading for, and that is the
+     side to pin. The rail tips about X, so its pivot is the far edge along Y
+     and centred across the row. */
+  const ANCHOR = {
+    x: { near: 'left bottom', far: 'right bottom' },
+    y: { near: 'center top', far: 'center bottom' }
+  } as const;
 
   type Pill = { box: Box; at: Insets; shown: boolean; near: typeof LEAD; far: typeof LEAD };
 
@@ -149,10 +166,11 @@
     far: LEAD
   };
 
-  /* The tab the highlight has just landed on, and which way it came from -
-     the icon's swing leans with the sign. Per shape, because both navs are
-     in the DOM at once and each has its own idea of where the pill is. */
-  type Arrival = { key: string; dir: -1 | 1 };
+  /* The tab the highlight has just landed on, which way it came from - the
+     icon's swing leans with the sign - and the corner it swings on. Per
+     shape, because both navs are in the DOM at once and each has its own
+     idea of where the pill is. */
+  type Arrival = { key: string; dir: -1 | 1; anchor: string };
 
   let pill = $state<Record<string, Pill>>({ bar: HIDDEN, rail: HIDDEN });
   let arriving = $state<Record<string, Arrival | null>>({ bar: null, rail: null });
@@ -180,7 +198,7 @@
     nav: HTMLElement | undefined,
     axis: Axis,
     animate: boolean
-  ): { next: Pill; dir: -1 | 0 | 1 } {
+  ): { next: Pill; dir: -1 | 0 | 1; anchor?: string } {
     if (!laidOut(el) || !nav) return { next: prev.shown ? { ...prev, shown: false } : prev, dir: 0 };
     const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
     if (prev.shown && boxesMatch(prev.box, box)) return { next: prev, dir: 0 };
@@ -206,12 +224,13 @@
         near: lead === 'far' ? TRAIL : LEAD,
         far: lead === 'near' ? TRAIL : LEAD
       },
-      dir
+      dir,
+      anchor: lead ? ANCHOR[axis][lead] : ANCHOR[axis].far
     };
   }
 
   function measure(shape: Shape, animate: boolean) {
-    const { next, dir } = place(
+    const { next, dir, anchor } = place(
       pill[shape.key],
       tabs[shape.key][activeKey],
       navs[shape.key],
@@ -222,7 +241,7 @@
     /* Cleared as well as set. An icon that goes unrendered mid-swing never
        gets its animationend, because a display: none element fires none, and
        the class would otherwise still be on it when the nav came back. */
-    if (dir) arriving[shape.key] = { key: activeKey, dir };
+    if (dir && anchor) arriving[shape.key] = { key: activeKey, dir, anchor };
     else if (!next.shown && arriving[shape.key]) arriving[shape.key] = null;
   }
 
@@ -259,8 +278,10 @@
     style:--pill-right="{pill[shape].at.right}px"
     style:--pill-top="{pill[shape].at.top}px"
     style:--pill-bottom="{pill[shape].at.bottom}px"
+    style:--pill-near-dur={pill[shape].near.dur}
     style:--pill-near-ease={pill[shape].near.ease}
     style:--pill-near-delay={pill[shape].near.delay}
+    style:--pill-far-dur={pill[shape].far.dur}
     style:--pill-far-ease={pill[shape].far.ease}
     style:--pill-far-delay={pill[shape].far.delay}
   ></span>
@@ -311,6 +332,7 @@
         class="rail-icon"
         class:is-arriving={arriving.rail?.key === item.key}
         style:--nav-swing={arriving.rail?.dir ?? 0}
+        style:--nav-anchor={arriving.rail?.anchor}
         onanimationend={() => (arriving.rail = null)}><Icon name={item.icon} size={22} /></span
       ><span>{item.label()}</span>
     </a>
@@ -350,6 +372,7 @@
       class="nav-icon"
       class:is-arriving={arriving.bar?.key === item.key}
       style:--nav-swing={arriving.bar?.dir ?? 0}
+      style:--nav-anchor={arriving.bar?.anchor}
       onanimationend={() => (arriving.bar = null)}><Icon name={item.icon} size={24} /></span
     >
     <span class="nav-label" data-nav-label>{item.label()}</span>
