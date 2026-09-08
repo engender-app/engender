@@ -186,7 +186,31 @@ if (!before) {
   await page.waitForTimeout(600);
   await crop('search-nothing', '[data-screen-header]', '[data-hub-results]');
 
-  /* ---------- 5. the floor: 320px, and 200% zoom in Polish ----------
+  /* ---------- 5. the field under disguise ----------
+
+     Rule 3's disguise clause: the field falls to --surface-2 and its ink to
+     --text, so the search box is a --bg block on a grey band rather than on
+     a stripe. The one state where the box's own 1.5px edge is what makes it
+     a box at all, which is why it is shot. */
+  await wear('trans', 'light');
+  await open('/settings');
+  await page.locator('[data-list-row="disguise"]').click();
+  await page.locator("[data-sheet] .switch").first().click();
+  await page.waitForTimeout(500);
+  await open('/more');
+  await page.waitForSelector('[data-list-row="measurements"]');
+  await crop('field-disguised', '[data-screen-header]', '[data-section-heading]');
+  await page.locator('[data-hub-search]').fill('wear');
+  await page.waitForSelector('[data-hub-results] [data-list-row="wear"]');
+  await page.waitForTimeout(500);
+  await crop('search-disguised', '[data-screen-header]', '[data-hub-results]');
+  // Back off, so nothing after this shoots a disguised app.
+  await open('/settings');
+  await page.locator('[data-list-row="disguise"]').click();
+  await page.locator("[data-sheet] .switch").first().click();
+  await page.waitForTimeout(500);
+
+  /* ---------- 6. the floor: 320px, and 200% zoom in Polish ----------
 
      The accessibility floor DIRECTION.md names, on the one surface this
      ticket adds: the box has to hold its target and its placeholder at
