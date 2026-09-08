@@ -209,6 +209,15 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
      only - flex and grid items never collapse margins - and only with a
      neighbour on each side to collapse between. */
   const restMargin = restingMarginBelow(node);
+  /* The other side of `overflow: hidden` making the box a formatting
+     context: a first child's top margin that collapsed through the box's
+     top edge at rest stops collapsing and lands inside it, so the content
+     drops by that margin in the first frame and the box, measured without
+     it, clips that much off its bottom (the Transition door's index: the
+     first heading's 16px, "Body" moving down on the keystroke). The box is
+     pulled up by the same margin and made taller by it, so the content
+     stays where it was and the edge below it does too. */
+  const swallowed = collapsedTopMargin(node, style);
 
   return {
     duration: motionDuration('--dur-med'),
@@ -223,14 +232,27 @@ export function disclose(node: Element, params?: { skip?: boolean }): Transition
       `overflow: hidden;` +
       `min-height: 0;` +
       (rows ? `grid-template-rows: ${rows};` : '') +
-      `height: ${t * height}px;` +
+      `height: ${t * (height + swallowed)}px;` +
       `padding-top: ${t * paddingTop}px;` +
       `padding-bottom: ${t * paddingBottom}px;` +
       `border-top-width: ${t >= 1 ? borderTop : 0}px;` +
       `border-bottom-width: ${t >= 1 ? borderBottom : 0}px;` +
-      `margin-top: ${t * marginTop}px;` +
+      `margin-top: ${t * (marginTop - swallowed)}px;` +
       `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;`
   };
+}
+
+/** The top margin of a box's first child that collapses through the box's
+    own top edge at rest: block flow, nothing between the two edges
+    (no padding or border on top), and a box that is not already a
+    formatting context. Zero anywhere else. */
+function collapsedTopMargin(node: Element, style: CSSStyleDeclaration): number {
+  const parent = node.parentElement;
+  if (!parent || /flex|grid/.test(getComputedStyle(parent).display ?? '')) return 0;
+  if ((style.overflow ?? 'visible') !== 'visible') return 0;
+  if ((parseFloat(style.paddingTop) || 0) > 0 || (parseFloat(style.borderTopWidth) || 0) > 0) return 0;
+  const first = node.firstElementChild;
+  return first ? parseFloat(getComputedStyle(first).marginTop) || 0 : 0;
 }
 
 /**

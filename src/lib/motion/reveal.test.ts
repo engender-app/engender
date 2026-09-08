@@ -183,6 +183,29 @@ describe('tier 3, a group opening its own height', () => {
     const inRow = { parentElement: {}, previousElementSibling: {}, nextElementSibling: {} } as unknown as Element;
     expect(frame(disclose(inRow).css!, 0)).toContain('margin-bottom: 0px');
   });
+
+  /* The first child's top margin that collapsed through the box at rest
+     lands inside it the frame `overflow: hidden` applies (the Transition
+     door's index: "Body" moved down 16px on the keystroke). The box is
+     pulled up by that margin and made taller by it, so nothing moves. */
+  it('takes a first child\'s collapsed top margin into the box, so the content does not drop when the box clips', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
+    const child = {};
+    const wrapper = { parentElement: {}, firstElementChild: child } as unknown as Element;
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === child ? { ...shared(), marginTop: '16px' } : shared());
+    const { css } = disclose(wrapper);
+    expect(frame(css!, 1)).toContain('height: 116px');
+    expect(frame(css!, 1)).toContain('margin-top: -16px');
+    expect(frame(css!, 0)).toContain('height: 0px');
+  });
+
+  it('leaves a box that already clips or pads its top alone', () => {
+    stubDocument(false, true, { height: '100px', paddingTop: '16px', paddingBottom: '0px', marginTop: '0px', overflow: 'hidden', display: 'block' });
+    const wrapper = { parentElement: {}, firstElementChild: {} } as unknown as Element;
+    expect(frame(disclose(wrapper).css!, 1)).toContain('height: 100px');
+  });
 });
 
 describe('tier 3, a panel giving its space back', () => {
