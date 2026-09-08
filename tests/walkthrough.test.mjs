@@ -1759,6 +1759,33 @@ try {
   ok('desktop rail via container query');
 } catch (e) { fail('desktop', e); }
 
+/* 14a. Today's gear reaches Settings, and no other screen's header carries
+   one (ticket 09). Mobile width, then back to desktop for 14b and for step
+   15, which follows expecting the wide viewport. */
+try {
+  await page.setViewportSize({ width: 440, height: 940 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok("Today's gear reaches Settings");
+} catch (e) { fail('home gear settings', e); }
+
+/* 14b. the rail's fifth row reaches Settings too, set apart from the four
+   doors (ticket 09). */
+try {
+  await page.setViewportSize({ width: 1400, height: 980 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  const doorCount = await page.locator('[data-rail-item]').count();
+  if (doorCount !== 4) throw new Error(`rail has ${doorCount} doors, not 4`);
+  await page.locator('[data-rail-settings]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('rail settings row reaches Settings, four doors stay four');
+} catch (e) { fail('rail settings row', e); }
+
 /* 15. reminders web note at desktop */
 try {
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
@@ -5316,8 +5343,10 @@ try {
      current now, so the module must have stopped offering it and must say so.
      This is the last thing the suite does, so the journal is left in PIN mode
      deliberately - see the note at the top of this flow. */
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   if (!/PIN/i.test(await page.locator('[data-list-row="access-mode"]').innerText())) {
     throw new Error('the security row does not name PIN as the mode');
@@ -5368,8 +5397,10 @@ try {
   await booted();
   await page.waitForSelector('[data-home-hello]');
 
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
   await page.locator('a[href="/settings/recovery-key"]').click();
