@@ -1770,7 +1770,34 @@ try {
   await page.waitForURL(/\/settings$/);
   await page.waitForSelector('[data-settings-list]');
   ok("Today's gear reaches Settings");
+
+  /* The rail's chrome is expected everywhere (ADR-0076); what "no other
+     screen header does" actually means is ScreenHeader's own root, which
+     every deep screen and every door but Today renders. `attached`, not
+     the default `visible`: More's header has a hidden title and nothing
+     else to hold, so it collapses to nothing on screen (ADR-0075) - true
+     of its content, not of whether a link exists in the DOM. */
+  for (const path of ['/calendar', '/stats', '/more']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-screen-header]', { state: 'attached' });
+    const inHeader = await page.locator('[data-screen-header] a[href="/settings"]').count();
+    if (inHeader) throw new Error(`${path}'s header links to /settings`);
+  }
+  ok('no other screen header links to Settings');
 } catch (e) { fail('home gear settings', e); }
+
+/* 14a-zoom. The gear is reachable, not just visible, at 200% zoom on a
+   320px-class phone - the pre-existing 195px check (ticket 23) only holds
+   the hello line and the sun's layout, never clicks the gear itself. */
+try {
+  await page.setViewportSize({ width: 195, height: 700 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('the gear opens Settings at 195px (200% zoom on a 390px phone)');
+} catch (e) { fail('home gear settings at 200% zoom', e); }
 
 /* 14b. the rail's fifth row reaches Settings too, set apart from the four
    doors (ticket 09). */
