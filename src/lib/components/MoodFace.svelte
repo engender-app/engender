@@ -43,7 +43,7 @@
      own `scale` and `translate`. */
   import { GAZE_REACH } from '$lib/motion/magnifier';
   import { MOOD_GLANCE, blinkCycle } from '$lib/motion/moodGlance';
-  import { MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from './moodFace';
+  import { MOOD_BLOCK, MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from './moodFace';
 
   let {
     step,
@@ -102,7 +102,20 @@
   style={vars}
   aria-hidden="true"
 >
-  {#if disc}<circle cx="12" cy="12" r="10" class="mood-face-disc" />{/if}
+  <!-- A rounded block rather than a disc (ticket 27): the circle was the one
+       shape phase 10's language does not use, and a block holds a bigger
+       drawing at the same size. `disc` keeps its name - what it means is
+       "draw your own background", and a split calendar cell still says no. -->
+  {#if disc}
+    <rect
+      x={MOOD_BLOCK.x}
+      y={MOOD_BLOCK.y}
+      width={MOOD_BLOCK.size}
+      height={MOOD_BLOCK.size}
+      rx={MOOD_BLOCK.radius}
+      class="mood-face-disc"
+    />
+  {/if}
   <!-- Outer: the row's gaze. Inner: the face's own glance. GAZE_REACH is the
        travel both are measured in, and mood-faces.test.ts holds the stylesheet
        to the same number so the drawing cannot be turned out of its disc. -->
