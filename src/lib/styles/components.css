@@ -814,7 +814,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 }
 .mood-face-eye.is-lids {
   fill: none;
-  stroke: var(--text); stroke-width: 1.6; stroke-linecap: round;
+  stroke: var(--text); stroke-width: 1.9; stroke-linecap: round;
 }
 /* ---------- the eyes ----------
 
@@ -894,7 +894,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   .mood-face.is-alive .mood-face-eye { animation: none; }
   .mood-face.is-alive .mood-face-look { animation: none; }
 }
-.mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
+.mood-face-mouth { stroke: var(--text); stroke-width: 1.9; stroke-linecap: round; fill: none; opacity: 0.75; }
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
    already failed: 1px of the app's darkest line disappears against a
    coloured fill on the dark theme, at full strength, and the dimming rules
@@ -912,7 +912,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    Home's chips reached this answer first (kit.css, .kit-mood): the picker is
    the surface that had drifted. */
 .mood-btn .mood-face {
-  border-radius: 50%;
+  /* The block's own corner, as a share of the box the svg is: 6.4 of 24
+     (moodFace.ts's MOOD_BLOCK), so the ring keeps the face's shape at every
+     size the face ships at. It was 50% while the face was a disc. */
+  border-radius: 26.7%;
   outline: 2px solid transparent;
   outline-offset: 3px;
   transition: outline-color var(--dur-fast) var(--ease-out);

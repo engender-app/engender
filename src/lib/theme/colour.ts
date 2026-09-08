@@ -19,8 +19,8 @@ interface Rgb {
   b: number;
 }
 
-/* toRgb stays exported only for kit-roles.test.ts, palette-contrast.test.ts,
-   which cross-check against it (AU-09 test-only review). */
+/* toRgb stays exported only for kit-roles.test.ts, which cross-checks
+   against it (AU-09 test-only review). */
 export function toRgb(hex: string): Rgb {
   const raw = hex.trim().replace('#', '');
   return {
@@ -40,9 +40,10 @@ function linearToSrgb(c: number): number {
   return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
 }
 
-/* luminance stays exported only for palette-contrast.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
-export function luminance(hex: string): number {
+/* Not exported: palette-contrast.test.ts read it directly until ticket 27
+   put mood's band behind `contrast` and the polar readings below, and
+   nothing else ever wanted a raw luminance. */
+function luminance(hex: string): number {
   const { r, g, b } = toRgb(hex);
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
 }
@@ -113,4 +114,14 @@ export function lightnessOf(hex: string): number {
 export function chromaOf(hex: string): number {
   const [, a, b] = rgbToOklab(toRgb(hex));
   return Math.hypot(a, b);
+}
+
+/** Which hue a colour is, 0 to 360 in OKLab. Exported for
+    tests/palette-contrast.test.ts, which holds mood's two-hue ramp to a
+    minimum travel and to one direction round the wheel (ADR-0077): "two
+    colours, not one tinted" is a claim about hue, so it is measured as one
+    rather than eyeballed off a render. */
+export function hueOf(hex: string): number {
+  const [, a, b] = rgbToOklab(toRgb(hex));
+  return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
 }
