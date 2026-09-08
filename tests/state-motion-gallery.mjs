@@ -34,7 +34,6 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
-import { farMark } from './lookback-shared.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -318,7 +317,10 @@ try {
     await strip(page);
     await page.mouse.move(4, 4);
     await page.waitForTimeout(500);
-    await record(page, cdp, 'count-change', 'A milestone tapped on the Look back rail: the span moves and the wrapped count on the block counts from its old value to its new one.', async () => (await farMark(page)).click(), READ_TILES);
+    await record(page, cdp, 'count-change', 'The Look back rail tapped between the handles: the nearer handle comes to the finger, the span grows, and the wrapped count on the block counts from its old value to its new one.', async () => {
+      const rail = await page.locator('[data-span-timeline] .span-tl-rail').boundingBox();
+      await page.mouse.click(rail.x + rail.width * 0.55, rail.y + rail.height * 0.4);
+    }, READ_TILES);
 
     /* A notice arriving on a settled screen, and leaving it: the Transition
        door's search shows one when nothing matches. It opens its own

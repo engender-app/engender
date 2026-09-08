@@ -607,16 +607,13 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 }
 /* Substitute, never delete, as the screens below it: the box stops
    travelling and the two labels still crossfade, over the one duration the
-   clamp leaves alone. */
-html[data-a11y-motion='reduce']::view-transition-group(field),
-html[data-a11y-motion='reduce']::view-transition-old(field),
-html[data-a11y-motion='reduce']::view-transition-new(field) {
+   clamp leaves alone. The two halves' curves and names are set with the
+   screen's, below. */
+html[data-a11y-motion='reduce']::view-transition-group(field) {
   animation-duration: var(--dur-crossfade) !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(field),
-  ::view-transition-old(field),
-  ::view-transition-new(field) {
+  ::view-transition-group(field) {
     animation-duration: var(--dur-crossfade) !important;
   }
 }
@@ -691,21 +688,42 @@ html[data-nav='container']::view-transition-old(screen) {
    change that cuts with no acknowledgement at all is a worse answer to
    "reduce motion" than a change of opacity that moves nothing. */
 html[data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-a11y-motion='reduce']::view-transition-new(screen) {
+html[data-a11y-motion='reduce']::view-transition-new(screen),
+html[data-a11y-motion='reduce']::view-transition-old(field),
+html[data-a11y-motion='reduce']::view-transition-new(field) {
   animation-name: screen-crossfade;
   animation-duration: var(--dur-crossfade) !important;
+  /* Linear, both halves (redesign ticket 25). The old side used to run
+     the same ease-out reversed, which is an ease-in for a fade-out: the
+     outgoing screen held nearly full opacity while the incoming one had
+     already arrived on its ease-out, so under reduced motion Today stood
+     over a still-solid Transition door for most of the 120ms (Alicja, on
+     the round-one flipbooks, frame 9). The two images blend plus-lighter,
+     so two linear ramps sum to one solid picture on every frame; that is
+     what a crossfade is. */
+  animation-timing-function: linear;
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(screen),
-  ::view-transition-new(screen) {
+  ::view-transition-new(screen),
+  ::view-transition-old(field),
+  ::view-transition-new(field) {
     animation-name: screen-crossfade;
     animation-duration: var(--dur-crossfade) !important;
+    animation-timing-function: linear;
   }
 }
 @keyframes screen-crossfade { from { opacity: 0; } }
-html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-direction: reverse; }
+@keyframes screen-fade-away { to { opacity: 0; } }
+html[data-a11y-motion='reduce']::view-transition-old(screen),
+html[data-a11y-motion='reduce']::view-transition-old(field) {
+  animation-name: screen-fade-away;
+}
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(screen) { animation-direction: reverse; }
+  ::view-transition-old(screen),
+  ::view-transition-old(field) {
+    animation-name: screen-fade-away;
+  }
 }
 
 /* ---------- desktop: left rail + centred column ---------- */
