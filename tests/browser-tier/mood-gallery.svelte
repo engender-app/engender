@@ -42,6 +42,10 @@
   let theme = $state('dark');
   let preset = $state('amber');
   let still = $state(true);
+  /* One face, big, for the round where the drawing itself is what is being
+     signed off rather than the set (Alicja, 2026-09-08: "give me a screen
+     with just one face for sign off"). */
+  let one = $state(4);
   let picked = $state<number | null>(4);
   let chipped = $state<number | null>(null);
 
@@ -76,9 +80,29 @@
     {#each PRESETS as p (p)}<option value={p}>{p}</option>{/each}
   </select>
   <label><input type="checkbox" bind:checked={still} /> still</label>
+  <select bind:value={one} aria-label="One face">
+    {#each STEPS as step (step)}<option value={step}>step {step}</option>{/each}
+  </select>
 </div>
 
 <div class="page">
+  <section>
+    <h2>One face, big</h2>
+    <p class="note">
+      The drawing on its own, at 200px and at the two sizes that matter: the picker's 44 and an
+      entry's 28, which is the smallest the app draws.
+    </p>
+    <div data-crop="one">
+      <div class="row">
+        <span class="one"><MoodFace step={one} size={200} /></span>
+        <span class="one-small">
+          <MoodFace step={one} size={44} />
+          <MoodFace step={one} size={28} />
+        </span>
+      </div>
+    </div>
+  </section>
+
   <section>
     <h2>The ramp</h2>
     <p class="note">
@@ -253,6 +277,15 @@
   }
   .swatch b {
     font-size: var(--text-sm);
+  }
+  .one {
+    display: grid;
+    place-items: center;
+  }
+  .one-small {
+    display: grid;
+    gap: 14px;
+    place-items: center;
   }
   .entry,
   .split {
