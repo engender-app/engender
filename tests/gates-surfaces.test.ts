@@ -10,9 +10,9 @@
 
    All of those are greps because all of them are negatives: a screen may
    not draw this, may not import that. There is nothing to call. The one
-   rule these screens do state - which steps onboarding offers under
-   disguise - is asserted by calling onboardingSteps, which is the shape
-   ticket 08 asks every rule to take. */
+   rule these screens do state - which steps onboarding offers - is
+   asserted by calling onboardingSteps, which is the shape ticket 08 asks
+   every rule to take. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -171,18 +171,25 @@ describe('the first run', () => {
     );
   });
 
-  it('takes the flag step out of the flow under disguise, rather than hiding it', () => {
-    /* The step draws eight pride flags and names them, which is a stronger
-       tell than the sun the rule above covers. Read off the model rather
-       than off the markup: the route asks steps.ts what the flow is, so a
-       guard added to the swatches and forgotten on the progress rail, the
-       back arrow or the step count cannot pass this. */
-    expect(onboardingSteps(true)).not.toContain('flag');
-    expect(onboardingSteps(false)).toContain('flag');
-    expect(onboarding).toContain('onboardingSteps(prefs.disguise)');
-    /* And nothing in the route counts steps for itself, which is what makes
-       the shorter flow correct everywhere at once. */
+  it('offers one flow whatever disguise says, and reads it off the model', () => {
+    /* ADR-0079: the flag step used to leave the flow under disguise, which
+       guarded a state no real install can reach. One list now, and the
+       route still asks steps.ts for it rather than counting for itself,
+       which is what keeps a change to the list correct everywhere at
+       once. */
+    expect(onboardingSteps.length).toBe(0);
+    expect(onboardingSteps()).toContain('flag');
+    expect(onboarding).toContain('onboardingSteps()');
+    expect(onboarding).not.toContain('onboardingSteps(prefs.disguise)');
     expect(stripStyle(stripComments(onboarding))).not.toMatch(/ONBOARDING_STEPS|\b7\b/);
+  });
+
+  it('counts its steps for a screen reader on the sun, not on a rail', () => {
+    /* Ticket 29: the sun is the only progress meter. The step count is its
+       accessible name rather than visible text, so the growing circle still
+       says which step this is. */
+    expect(onboardingMarkup).not.toContain('role="progressbar"');
+    expect(onboardingMarkup).toMatch(/class="setup-sky"[\s\S]*?role="img"[\s\S]*?aria-label=\{m\.ob_step_of/);
   });
 
   it('crosses its steps on the tier-2 axis rather than inventing a transition', () => {

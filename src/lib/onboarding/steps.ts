@@ -40,7 +40,19 @@ export type OnboardingStep =
 
    Six settings, six steps, plus a welcome and a finish. Everything else
    the app has a preference for is either already right by default or is
-   something a person goes looking for once they know the app. */
+   something a person goes looking for once they know the app.
+
+   The settled shape (phase 10 redesign ticket 29, DIRECTION.md rule 12) is
+   ten steps, and this list becomes it as the tickets that build each step
+   land:
+
+     welcome, name, flag, scales, areas, access mode, PIN pad,
+     permissions, disguise, done
+
+   `lock` splits into the mode list and the pad (ticket 30); `checkin`
+   leaves the flow, its nudge offered by the permissions step's
+   notification row and kept in Settings (ticket 31); `disguise` is the
+   last question, applied last (ticket 32). */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -52,32 +64,17 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'done'
 ];
 
-/** The flow, which is one step shorter under disguise.
-
-    The flag step draws eight pride flags and names them, which is the most
-    identifying thing on any screen in the app - more so than the sun, which
-    is one flag rather than a wall of them. ADR-0035 gates the motif on
-    `prefs.disguise`, and ticket 26 states the rule for these screens without
-    qualification: nothing that identifies the app, on any of them, while
-    disguise is on. Hiding the previews and keeping the names would not help;
-    the names are the giveaway.
-
-    So the step is not hidden, it is not in the flow: no gap in the progress
-    rail, no back arrow landing on a blank screen, nothing to explain. The
-    choice is still in Settings, which is a screen somebody opens on purpose
-    rather than one the app puts in front of them.
-
-    `areas` (ticket 22) stays in the flow under disguise, unlike `flag`. Its
-    rows are `hubRows.ts`'s own titles and icons - "measurements", "care", a
-    ruler, a flag glyph - the same words and glyphs Settings and the More hub
-    already show under disguise, in the same list a disguised install can
-    already reach from either of those screens. Nothing on this step says
-    anything a disguised install does not already carry once onboarding
-    finishes; the flag step is different because it is the one screen in the
-    app whose whole content is eight named pride flags, which nothing else
-    ever shows regardless of disguise. */
-export function onboardingSteps(disguised: boolean): readonly OnboardingStep[] {
-  return disguised ? ALL_STEPS.filter((step) => step !== 'flag') : ALL_STEPS;
+/** The flow. One list for everybody: setup does not vary by disguise
+    (ADR-0079). This used to take a `disguised` flag and drop the flag step
+    under it, guarding a state no person can be in - `prefs.disguise` lives
+    inside the encrypted journal and is only settable from Settings, which
+    sits behind `prefs.onboarded`, so the only way to reach setup disguised
+    is the demo's own first-run control. Disguise is now the last question
+    setup asks (ticket 32) rather than a state it has to survive, and
+    ADR-0035 is untouched: nothing identifying draws while disguise is on,
+    and by the time it can be on, setup is over. */
+export function onboardingSteps(): readonly OnboardingStep[] {
+  return ALL_STEPS;
 }
 
 export function stepIndex(steps: readonly OnboardingStep[], step: OnboardingStep): number {
