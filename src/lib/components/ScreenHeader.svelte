@@ -128,7 +128,7 @@
          during a navigation. Decoration and nothing else - what it paints
          at rest is exactly the field, since the field clips it. -->
     <div class="field-blind" data-field-blind aria-hidden="true"></div>
-    <div class="screen-header-row">
+    <div class="screen-header-row" class:has-back-actions={!!back && !!actions}>
       {#if typeof back === 'string'}
         <a
           class="icon-btn press screen-back"

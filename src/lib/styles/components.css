@@ -122,6 +122,25 @@
   align-items: center;
   gap: var(--space-1) var(--space-3);
 }
+/* A deep screen's actions go on the back control's line rather than the
+   title's. A title at 48 that wraps overflows its own column - "Body
+   measurements" sets 330px wide in a 254px cell - and ran straight under the
+   two controls on the measurements screen (Alicja, 2026-09-09). The back
+   row is empty to the right of a 48px control, which is where an app bar
+   puts its actions anyway. Only where there is a back control to share the
+   line with: a door that carries actions and no back keeps them beside its
+   title, where its own title is the one thing that never wraps into them. */
+.screen-header-row.has-back-actions .screen-back { grid-column: 1; }
+.screen-header-row.has-back-actions .header-action {
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+  /* The mirror of the back control's own pull: a glyph sits 13px inside a
+     48px target, so the box has to hang past the content edge for the glyph
+     to look aligned with the title under it. */
+  margin-right: calc(-1 * var(--space-3));
+}
+.screen-header-row.has-back-actions .screen-title { grid-column: 1 / -1; }
 .screen-title {
   flex: 1;
   min-width: 0;
