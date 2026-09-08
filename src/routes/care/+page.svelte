@@ -97,11 +97,14 @@
   let otherActiveEpisodes = $derived(railChoice.others);
   let latestLab = $derived(latestLabQuery.value ?? null);
 
-  /* The soonest run-out inside the rail's forward reach, through the helper
-     Home's stock notice uses - passed the rail's own horizon instead of the
-     notice threshold, so this asks "is there a run-out on this line" rather
-     than "is one close". A run-out further out than the rail simply has no
-     mark: the stock row below still states what is left. */
+  /* The soonest actionable stock day inside the rail's forward reach,
+     through the helper Home's stock notice uses - passed the rail's own
+     horizon instead of the notice threshold, so this asks "is there a day
+     on this line" rather than "is one close". A day further out than the
+     rail simply has no mark: the stock row below still states what is
+     left. `actionableEpochDay` is the reorder-by day where a lead time is
+     set and the run-out day itself where none is (redesign phase 10 ticket
+     16), so the rail and Home's notice always name the same day. */
   let runOut = $derived(depletingStocks(stockQuery.rows, today, SPINE_FORWARD_DAYS)[0] ?? null);
 
   const scheduleForEpisode = (episode: RegimenEpisode) =>
@@ -129,7 +132,7 @@
         lastDoseEpochDay: railDoseFacts.lastDoseEpochDay,
         nextDoseEpochDay: railDoseFacts.nextDoseEpochDay,
         labDrawEpochDay: latestLab?.epochDay ?? null,
-        runOutEpochDay: runOut?.projection.runOutEpochDay ?? null
+        runOutEpochDay: runOut?.actionableEpochDay ?? null
       },
       today
     )
@@ -140,7 +143,11 @@
     lastDose: () => m.care_mark_last_dose(),
     today: () => m.care_mark_today(),
     nextDose: () => m.care_mark_next_dose(),
-    runOut: () => m.care_mark_run_out()
+    // The mark's own day is the reorder-by day once a lead time is set
+    // (above), and the label has to say which day it is naming rather
+    // than always reading "Runs out" over a day that is really the order
+    // deadline (redesign phase 10 ticket 16).
+    runOut: () => (runOut !== null && runOut.entry.leadTimeDays !== null ? m.care_mark_reorder_by() : m.care_mark_run_out())
   };
 
   /* Where a mark goes when it is tapped: the surface the reading came from,

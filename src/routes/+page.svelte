@@ -81,6 +81,7 @@
     isStockNoticeSnoozed,
     snoozeStockNotice
   } from '$lib/data/stockProjection';
+  import { stockNoticeBody } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
   import { collapse, markSlotReplacement } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -497,12 +498,10 @@
       icon="alert"
       key="stock-low"
       title={m.notice_stock_low_title()}
-      text={urgentDepletingStock.daysRemaining <= 0
-        ? m.notice_stock_out_body({ drug: urgentDepletingStock.entry.drug })
-        : m.notice_stock_low_body({
-            drug: urgentDepletingStock.entry.drug,
-            days: String(urgentDepletingStock.daysRemaining)
-          })}
+      text={stockNoticeBody(
+        urgentDepletingStock,
+        fmtDay(urgentDepletingStock.actionableEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+      )}
       action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
       dismiss={{
         label: m.notice_stock_dismiss_action(),
