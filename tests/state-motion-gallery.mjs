@@ -34,6 +34,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { farMark } from './lookback-shared.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -307,6 +308,30 @@ try {
     } else {
       console.warn('no dismissible notice on Home - notice scene skipped');
     }
+
+    /* A count changing on a block that stays mounted: the Look back door's
+       wrapped tile counts the entries in the span, and tapping a milestone
+       on the rail moves the span, so the number travels from its old value
+       to its new one rather than from nothing. */
+    await settle(page, '/stats');
+    await page.waitForSelector('[data-span-milestone]');
+    await strip(page);
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(500);
+    await record(page, cdp, 'count-change', 'A milestone tapped on the Look back rail: the span moves and the wrapped count on the block counts from its old value to its new one.', async () => (await farMark(page)).click(), READ_TILES);
+
+    /* A notice arriving on a settled screen, and leaving it: the Transition
+       door's search shows one when nothing matches. It opens its own
+       height, ink square inside it, and closes it again when the query is
+       cleared. */
+    await settle(page, '/more');
+    await page.waitForSelector('[data-hub-search]');
+    await strip(page);
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(500);
+    await record(page, cdp, 'notice-arrive', 'Nothing matches the search on the Transition door: the notice opens its own height, with its ink square inside it from the first frame.', () => page.locator('[data-hub-search]').fill('zzqx'));
+    await page.waitForTimeout(300);
+    await record(page, cdp, 'notice-leave', 'The search cleared: the notice closes its own height and the rows return under it.', () => page.locator('[data-hub-search-clear]').click());
 
     /* The segmented control beside a chart it re-ranges, on one screen and
        with no navigation: the pill slides, the chosen label's colour lands

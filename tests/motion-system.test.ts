@@ -762,6 +762,27 @@ describe('ticket 25: every state change moves', () => {
         new RegExp(`--tile-index:\\s*${n - 1}`)
       );
     }
+    /* A seventh tile takes the last slot, not the first: uncapped, it fell
+       back to --tile-index 0 and arrived in lockstep with the first tile. */
+    expect(ruleOf(kit, '.kit-tiles > :nth-child(n + 7)')?.body).toMatch(/--tile-index:\s*6/);
+  });
+
+  /* The chosen label whitens on an ease-in while the pill arrives on an
+     ease-out, so the label is still ink-dark while most of the pill is
+     still travelling and turns page-coloured only as the ink covers it. On
+     one curve the two crossed mid-way: "365d" lost its "d" for two frames,
+     a light letter on a light track where the pill had not yet reached
+     (impeccable critique, segment-rerange frames 6 and 7). The leaving
+     label keeps the ease-out, so it darkens as fast as the pill uncovers
+     it. The destination rule owns a transition's curve, which is why the
+     active state can carry a different one from the base. */
+  it('whitens the chosen label late, on an ease-in, while the leaving label darkens early', () => {
+    const active = declarations(ruleOf(components, '.segment.is-active')?.body ?? '');
+    const curves = splitTopLevel(active['transition-timing-function'] ?? '');
+    expect(curves[0]).toBe('var(--ease-out)');
+    expect(curves[1]).toMatch(/^cubic-bezier\(0\.\d+, 0, 0\.\d+, 0\)$/);
+    const base = declarations(ruleOf(components, '.segment')?.body ?? '');
+    expect(base['transition-timing-function']).toBe('var(--ease-out), var(--ease-out)');
   });
 
   it("draws a section's rule in ahead of its words: the heading clips, its children clip later", () => {

@@ -519,6 +519,13 @@ export function collapse(
   }
   if (isReducedMotion() || params?.skip) return { duration: 0 };
   if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
+  /* A panel arriving on a settled screen does not wait its turn in the
+     grid's stagger (kit.css, --tile-index): the stagger is for a grid
+     arriving together, and the third tile out of the fold sat as a blank
+     block for its two steps before it clipped open (redesign ticket 25,
+     tiles-unfold frames 1 to 9). Inline, so the grid's own nth-child rule
+     is overridden for this one element and nothing else. */
+  if (options?.direction === 'in') (node as HTMLElement).style?.setProperty?.('--tile-index', '0');
   if (replacingSlot()) {
     if (options?.direction === 'in') return risesIntoSlot(node, replacedSwap?.from);
     /* The screen measures the slot before the DOM changes; without one there

@@ -423,6 +423,23 @@ describe('tier 3, a panel giving its space back', () => {
     expect(collapse(node, undefined, { direction: 'in' }).duration).toBe(380);
   });
 
+  /* Redesign ticket 25: the grid's stagger (kit.css, --tile-index by
+     nth-child) is for a grid arriving together. A tile arriving alone on a
+     settled screen - the third out of the fold - sat as a blank block for
+     its two stagger steps before its clip began, so its turn is zeroed
+     inline on the way in, and left alone on the way out. */
+  it('skips the stagger for a panel arriving alone on a settled screen', () => {
+    const node = panel({ beside: [[0, 100]] });
+    const set: string[][] = [];
+    (node as unknown as { style: { setProperty: (k: string, v: string) => void } }).style.setProperty = (k, v) =>
+      set.push([k, v]);
+    markScreenArrival(performance.now() - 1000);
+    collapse(node, undefined, { direction: 'in' });
+    expect(set).toEqual([['--tile-index', '0']]);
+    collapse(node, undefined, { direction: 'out' });
+    expect(set).toHaveLength(1);
+  });
+
   /* Leaving is never suppressed: a panel dismissed during the arrival window
      was dismissed by somebody, which is a change however early it lands. */
   it('still collapses on the way out during the arrival window', () => {
