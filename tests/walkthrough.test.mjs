@@ -1092,7 +1092,7 @@ try {
 try {
   await fresh('/settings');
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
@@ -1856,7 +1856,7 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
 
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */
@@ -1890,6 +1890,10 @@ try {
      serve leaves the flag in the tab and no attribute check would notice. */
   const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
   if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
+  /* Ticket 08: the fourth tab is the one thing in the bar disguise still
+     touches - it reverts to More rather than staying Transition. */
+  const fourthTabLabel = () => page.locator('[data-nav-item="settings"] [data-nav-label]').textContent();
+  if ((await fourthTabLabel()) !== 'More') throw new Error('fourth tab while disguised: ' + (await fourthTabLabel()));
 
   /* The field under disguise (redesign ticket 23, ADR-0075): the shell
      publishes --surface-2 and --text in place of the flag's colour and its
@@ -1927,6 +1931,7 @@ try {
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
+  if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
   await page.getByRole('switch', { name: 'Quick exit' }).click();
