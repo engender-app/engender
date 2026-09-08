@@ -9,7 +9,7 @@ import {
   railPosition,
   dayAtPosition,
   snapDay,
-  spanGrain,
+  grainAt,
   spanRangeQuery,
   yearTicks
 } from './lookBackSpan';
@@ -35,7 +35,7 @@ describe('historyStart: the earliest day the person authored anything dated', ()
       {
         bounds: { firstEpochDay: 20000, lastEpochDay: TODAY },
         milestones: [{ epochDay: 19000 }],
-        eras: [{ id: 'a', startEpochDay: 17000, endEpochDay: 19000 }]
+        eras: [{ id: 'a', name: 'A', startEpochDay: 17000, endEpochDay: 19000 }]
       },
       TODAY
     );
@@ -47,7 +47,7 @@ describe('historyStart: the earliest day the person authored anything dated', ()
       {
         bounds: { firstEpochDay: 20000, lastEpochDay: TODAY },
         milestones: [{ epochDay: TODAY + 40 }],
-        eras: [{ id: 'a', startEpochDay: null, endEpochDay: 20100 }]
+        eras: [{ id: 'a', name: 'A', startEpochDay: null, endEpochDay: 20100 }]
       },
       TODAY
     );
@@ -78,13 +78,13 @@ describe('defaultSpan: the door opens on the last thirty days, clamped to the ra
   });
 });
 
-describe('spanGrain: a handle moves in days, weeks or months by how long the rail is', () => {
-  it('steps by day on a short rail, by week on a longer one, by month past two years', () => {
-    expect(spanGrain(30)).toBe(1);
-    expect(spanGrain(120)).toBe(1);
-    expect(spanGrain(121)).toBe(7);
-    expect(spanGrain(730)).toBe(7);
-    expect(spanGrain(731)).toBe(30);
+describe('grainAt: a handle moves in days, weeks or months by how dense the rail is where it stands', () => {
+  it('steps by day at three pixels a day, by week at three a week, by month below', () => {
+    expect(grainAt(6)).toBe(1);
+    expect(grainAt(3)).toBe(1);
+    expect(grainAt(2.9)).toBe(7);
+    expect(grainAt(3 / 7)).toBe(7);
+    expect(grainAt(0.4)).toBe(30);
   });
 });
 
@@ -110,13 +110,30 @@ describe('snapDay: a pointed-at day lands on the grain, or on a magnet close to 
   });
 });
 
-describe('the rail is a linear scale between its start and today', () => {
+describe('the rail is a square-root scale between its start and today', () => {
   it('places the ends at 0 and 1 and reads a position back to its day', () => {
     expect(railPosition(18000, 18000, TODAY)).toBe(0);
     expect(railPosition(TODAY, 18000, TODAY)).toBe(1);
-    expect(dayAtPosition(0.5, 18000, 18010)).toBe(18005);
+    /* Halfway back in days is not halfway along: a quarter of the length
+       back sits at the midpoint. */
+    expect(railPosition(18000 + 7500, 18000, 18000 + 10000)).toBeCloseTo(0.5, 6);
+    expect(dayAtPosition(0.5, 18000, 18010)).toBe(18008);
     expect(dayAtPosition(-2, 18000, 18010)).toBe(18000);
     expect(dayAtPosition(3, 18000, 18010)).toBe(18010);
+  });
+
+  it('gives the last month more room than a linear rail would, on a long history', () => {
+    const sixYears = TODAY - 6 * 365;
+    const month = 1 - railPosition(TODAY - 30, sixYears, TODAY);
+    expect(month).toBeGreaterThan(0.1);
+    expect(month).toBeLessThan(0.15);
+    expect(1 - railPosition(TODAY - 365, sixYears, TODAY)).toBeCloseTo(Math.sqrt(1 / 6), 6);
+  });
+
+  it('reads a position back to the day it came from', () => {
+    for (const day of [18000, 18500, 19999, TODAY - 1, TODAY]) {
+      expect(dayAtPosition(railPosition(day, 18000, TODAY), 18000, TODAY)).toBe(day);
+    }
   });
 
   it('is whole when the rail is one day long', () => {
