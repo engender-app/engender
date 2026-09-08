@@ -656,6 +656,9 @@ try {
      set and the switches back - one edit mode, one reset. */
   await page.locator('[data-edit-today]').click();
   await page.waitForSelector('[data-today-editor]');
+  /* The switch is still off after the reload, which is the difference
+     between a switch and a dismissal. */
+  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
   await page.locator('[data-edit-unpin="doubt"]').click();
   await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
   await page.locator('[data-edit-reset]').click();
