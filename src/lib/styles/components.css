@@ -58,6 +58,15 @@
   z-index: -1;
   pointer-events: none;
   background: var(--field);
+  /* The field's own corners, which matters only on the side the clip does
+     not draw. The clip carries the bottom two (app.css) and cannot carry
+     the top two, since a view transition's pseudo element cannot read a
+     property off the element it was taken from - but the captured image
+     can, so on the web, where the field is a banner with the radius on all
+     four corners, the blind's own top corners are in the photograph. A
+     window's worth of block below the field puts its bottom corners far
+     off-screen, where they draw nothing either way. */
+  border-radius: inherit;
 }
 /* Every element painted on the field leaves and arrives under its own
    animation, which needs one selector to reach them all: the name is per
