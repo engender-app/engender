@@ -208,7 +208,6 @@
   gap: var(--space-2);
 }
 .app-main .screen-setup .setup-outs .btn { padding: 0 var(--space-3); }
-.app-main .screen-setup .setup-rail { display: none; }
 
 /* ---------- the pad ---------- */
 
