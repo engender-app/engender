@@ -230,6 +230,7 @@
   class="span-tl"
   class:is-dragging={dragging !== null}
   data-span-timeline
+  data-rail-start={railStart}
   data-span-start={live.start}
   data-span-end={live.end}
   style:--tl-start="{startX}px"
@@ -269,46 +270,51 @@
       {/each}
     </div>
 
-    <!-- The same history at full height, clipped to the span. Each band is
-         the button that selects its era; the frame is this layer's own two
-         edges. -->
-    <div class="span-tl-full">
+    <!-- The same history at full height, clipped to the span, with the
+         frame as this layer's own two edges. Drawing only: the clip would
+         hide a control that stood outside the span, so the controls are
+         the layer under this one. -->
+    <div class="span-tl-full" aria-hidden="true">
       {#if firstEntryDay !== null}
-        <span class="span-tl-band span-tl-journal" aria-hidden="true" style:left="{railPosition(firstEntryDay, railStart, today) * 100}%" style:width="{(1 - railPosition(firstEntryDay, railStart, today)) * 100}%"></span>
+        <span class="span-tl-band span-tl-journal" style:left="{railPosition(firstEntryDay, railStart, today) * 100}%" style:width="{(1 - railPosition(firstEntryDay, railStart, today)) * 100}%"></span>
       {/if}
       {#each bands as band, i (band.id)}
-        {@const width = railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)}
-        <button
-          type="button"
+        {@const left = railPosition(band.start, railStart, today) * railWidth}
+        {@const right = railPosition(band.end, railStart, today) * railWidth}
+        {@const shownFrom = Math.max(left, startX)}
+        {@const shownTo = Math.min(right, railWidth - clipRight)}
+        <!-- The name sits at the left edge of the part of the band the clip
+             shows, not of the band: a band that runs on under the start
+             handle would otherwise show only the tail of its name. It
+             rides the clip's edge as the span moves. -->
+        <span
           class="span-tl-band span-tl-era"
           class:is-open-start={band.openStart}
           class:is-open-end={band.openEnd}
-          style:left="{railPosition(band.start, railStart, today) * 100}%"
-          style:width="{width * 100}%"
-          data-span-era={band.id}
-          data-no-press
-          aria-label={m.lookback_era_aria({ name: band.name })}
-          onclick={() => pickEra(band)}
+          style:left="{left}px"
+          style:width="{right - left}px"
           {...roleAttrs(bandRole(i))}
         >
-          {#if width * railWidth >= NAME_MIN_PX}<span class="span-tl-era-name">{band.name}</span>{/if}
-        </button>
+          {#if shownTo - shownFrom >= NAME_MIN_PX}
+            <span class="span-tl-era-name" style:left="{shownFrom - left + 8}px" style:max-width="{shownTo - shownFrom - 16}px">{band.name}</span>
+          {/if}
+        </span>
       {/each}
     </div>
 
-    <!-- The eras again, low, as the tap targets for the stretch outside the
-         span: the full layer is clipped, so a finger on a low band would
-         otherwise reach the rail. -->
-    <div class="span-tl-low span-tl-low-targets">
+    <!-- The eras as controls: one transparent button per era, the rail's
+         full height across the era's stretch, inside the span or out of it.
+         Pointing anywhere in an era's column selects the era whole. -->
+    <div class="span-tl-targets">
       {#each bands as band (band.id)}
         <button
           type="button"
-          class="span-tl-band-target"
+          class="span-tl-era-target"
           style:left="{railPosition(band.start, railStart, today) * 100}%"
           style:width="{(railPosition(band.end, railStart, today) - railPosition(band.start, railStart, today)) * 100}%"
+          data-span-era={band.id}
           data-no-press
-          tabindex="-1"
-          aria-hidden="true"
+          aria-label={m.lookback_era_aria({ name: band.name })}
           onclick={() => pickEra(band)}
         ></button>
       {/each}
@@ -446,12 +452,7 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    pointer-events: auto;
-    cursor: pointer;
     overflow: hidden;
-    display: flex;
-    align-items: flex-start;
-    padding: 6px 8px;
     text-align: left;
   }
 
@@ -475,6 +476,8 @@
   .span-tl-era.is-open-end { border-right: 0; }
 
   .span-tl-era-name {
+    position: absolute;
+    top: 6px;
     font-size: 0.8125rem;
     font-weight: var(--weight-bold);
     letter-spacing: 0.02em;
@@ -482,23 +485,36 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
   }
 
-  .span-tl-low-targets { pointer-events: none; }
-  .span-tl-band-target {
+  .span-tl-targets {
     position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .span-tl-era-target {
+    position: absolute;
+    top: 0;
     bottom: 0;
-    height: calc(var(--low-h) + 12px);
     padding: 0;
     margin: 0;
     border: 0;
     background: transparent;
     pointer-events: auto;
     cursor: pointer;
+    z-index: 1;
+  }
+  .span-tl-era-target:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
   }
 
-  /* A milestone: a 12px block of the flag's first colour on the axis. */
+  /* A milestone: a 12px block of ink on the axis, edged in the page so it
+     reads on any band. Ink rather than a stripe, because it sits on the
+     eras' colours and a stripe would vanish into the band of its own hue;
+     the marks and today's line are the rail's time marks, and the colours
+     are the person's eras (DIRECTION.md rule 4: ink for the smallest
+     things). */
   .span-tl-mark {
     position: absolute;
     bottom: -7px;
@@ -507,8 +523,8 @@
     padding: 0;
     margin: 0;
     transform: translateX(-50%);
-    background: var(--role-draw);
-    border: 1px solid var(--outline);
+    background: var(--text);
+    border: 1px solid var(--bg);
     border-radius: 2px;
     cursor: pointer;
     z-index: 2;
@@ -532,14 +548,18 @@
     z-index: 2;
   }
 
-  /* The handles: a 48px target with a grip of ink drawn in it, placed by
-     transform alone so a move is a transform and nothing else. */
+  /* The handles: the grip of ink is the element, centred on its day and
+     placed by transform alone so a move is a transform and nothing else;
+     the 48px target is a pseudo-element reaching away from the span - left
+     of the start's grip, right of the end's - so at a short span the two
+     targets meet at the grips rather than lying on top of each other, and
+     a finger on either grip gets the handle it can see. */
   .span-tl-handle {
     position: absolute;
     top: -6px;
     bottom: -6px;
-    left: calc(var(--handle) / -2);
-    width: var(--handle);
+    left: calc(var(--grip) / -2);
+    width: var(--grip);
     padding: 0;
     margin: 0;
     border: 0;
@@ -549,19 +569,20 @@
     touch-action: none;
     transition: transform var(--dur-med) var(--ease-out);
   }
-  /* The target reaches away from the span - left of the start's grip,
-     right of the end's - so at a short span the two targets meet at the
-     grips rather than lying on top of each other, and a finger on either
-     grip gets the handle it can see. */
-  .span-tl-handle.is-start { transform: translateX(calc(var(--tl-start) - var(--handle) / 2 + var(--grip) / 2)); }
-  .span-tl-handle.is-end { transform: translateX(calc(var(--tl-end) + var(--handle) / 2 - var(--grip) / 2)); }
-
-  .span-tl-grip {
+  .span-tl-handle::before {
+    content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(50% - var(--grip) / 2);
-    width: var(--grip);
+  }
+  .span-tl-handle.is-start { transform: translateX(var(--tl-start)); }
+  .span-tl-handle.is-start::before { left: calc(var(--grip) - var(--handle)); right: -6px; }
+  .span-tl-handle.is-end { transform: translateX(var(--tl-end)); }
+  .span-tl-handle.is-end::before { left: -6px; right: calc(var(--grip) - var(--handle)); }
+
+  .span-tl-grip {
+    position: absolute;
+    inset: 0;
     background: var(--text);
     border-radius: var(--r-block);
   }
