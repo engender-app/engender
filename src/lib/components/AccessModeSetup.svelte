@@ -221,10 +221,10 @@
     screen = continueToSecret(screen);
   }
 
-  /** Screen two back to screen one, the mode still chosen (ticket 30) - only
-      the typed-so-far secret is thrown away, not the choice that led here. */
-  function backFromSecret() {
-    screen = backToDetail(screen);
+  /** Whatever has been typed so far, on either secret field - shared by both
+      ways back off the secret screen, which throw the attempt away rather
+      than carry any of it to wherever they land. */
+  function resetSecretFields() {
     passphrase = '';
     confirmation = '';
     pin = '';
@@ -232,15 +232,18 @@
     localError = '';
   }
 
+  /** Screen two back to screen one, the mode still chosen (ticket 30) - only
+      the typed-so-far secret is thrown away, not the choice that led here. */
+  function backFromSecret() {
+    screen = backToDetail(screen);
+    resetSecretFields();
+  }
+
   /** "Pick another way": the detail screen back to the bare list. */
   function pickAnother() {
     screen = backToList();
     chosen = null;
-    passphrase = '';
-    confirmation = '';
-    pin = '';
-    chosenPin = '';
-    localError = '';
+    resetSecretFields();
   }
 
   function submitPassphrase(event: SubmitEvent) {
