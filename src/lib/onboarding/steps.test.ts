@@ -10,7 +10,7 @@ import {
   sunGrowth
 } from './steps';
 
-const ONBOARDING_STEPS = onboardingSteps(false);
+const ONBOARDING_STEPS = onboardingSteps();
 
 describe('the step list', () => {
   it('opens on the welcome and ends on the finish', () => {
@@ -49,29 +49,14 @@ describe('the step list', () => {
 });
 
 describe('under disguise', () => {
-  /* Ticket 26: nothing identifies the app on any of these screens while
-     disguise is on. The flag step draws eight pride flags and names them,
-     which is a stronger tell than the sun ADR-0035 already gates - so it
-     leaves the flow rather than being hidden inside it, and the walk either
-     side of it closes up with no gap to explain. */
-  const disguised = onboardingSteps(true);
-
-  it('drops the flag step entirely', () => {
-    expect(disguised).not.toContain('flag');
-    expect(disguised).toEqual(['welcome', 'name', 'scales', 'areas', 'lock', 'checkin', 'done']);
-  });
-
-  it('keeps every other step, in the same order', () => {
-    expect(disguised).toEqual(ONBOARDING_STEPS.filter((step) => step !== 'flag'));
-  });
-
-  it('walks straight from the name to the scales, with nothing in between', () => {
-    expect(stepAfter(disguised, 'name')).toBe('scales');
-    expect(stepBefore(disguised, 'scales')).toBe('name');
-  });
-
-  it('still ends on a full sun, one step earlier', () => {
-    expect(sunGrowth(disguised.length - 1, disguised.length)).toBe(1);
+  /* ADR-0079: setup does not vary by disguise. The flag step used to leave
+     the flow under it, which guarded a state no real install can reach and
+     kept a second flow alive that nothing rendered or tested. One list,
+     whatever the preference says, and the flag step is in it. */
+  it('is the same flow, and takes nothing that could make it differ', () => {
+    expect(onboardingSteps.length).toBe(0);
+    expect(onboardingSteps()).toEqual(ONBOARDING_STEPS);
+    expect(onboardingSteps()).toContain('flag');
   });
 });
 

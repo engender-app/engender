@@ -910,62 +910,230 @@ describe('ticket 25: every state change moves', () => {
     }
   });
 
-  /* The field is the shared element between doors: on a tab change it is
-     pulled out of the screen's snapshot under its own name, so it stays
-     while the screens cross behind it and its contents crossfade. Only on
-     the fade-through, which is the tab crossing; a step into a detail keeps
-     the field with the screen it belongs to.
+});
 
-     The name is handed over by script ($lib/motion/sharedField), never
-     written as a rule: a rule names the outgoing and the incoming field at
-     once at the new capture, and the browser aborts the transition. So
-     what the stylesheet is held to is that it does not name it, and the
-     shell is held to carrying it on the fade-through alone. */
-  it('names the field as a shared element on the fade-through, by hand-over and never by rule', () => {
+describe('ticket 28: the field is a blind over the content', () => {
+  const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
+  const tokens = stripComments(readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8'));
+  const keyframesOf = (css: string, name: string) =>
+    rules(css).find((rule) => rule.prelude === `@keyframes ${name}`);
+  const ruleOf = (css: string, prelude: string) =>
+    rules(css).find((rule) => rule.prelude === prelude && !isReduceContext(rule));
+
+  /* The field is a blind over the content (ticket 28). Ticket 25's shared
+     name is gone: the card is split into a flat block that carries one name
+     across every screen and the elements painted on it, each named per side
+     so nothing can pair with anything and nothing morphs.
+
+     The names are handed over by script ($lib/motion/fieldBlind), never
+     written as a rule: a rule names the outgoing and the incoming blind at
+     once at the new capture, and the browser aborts the transition. So what
+     the stylesheet is held to is that it names nothing, and the shell to
+     carrying the blind on every navigation rather than on the tab crossing
+     alone. */
+  it('names the blind and everything painted on the field by hand-over, never by rule', () => {
     for (const { path, css } of styleSources()) {
       for (const rule of rules(css)) {
-        expect(rule.body, `${path}: ${rule.prelude} names the field`).not.toMatch(/view-transition-name:\s*field/);
+        expect(rule.body, `${path}: ${rule.prelude} names a shared element`).not.toMatch(
+          /view-transition-name:\s*(blind|field|fp-|sun-)/
+        );
       }
     }
     const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
-    expect(layout).toContain("import { shareField } from '$lib/motion/sharedField'");
-    expect(layout).toMatch(/pattern === 'fade-through' \? shareField\(\) : null/);
-    expect(layout).toContain('field?.swap()');
-    expect(layout).toContain('field?.release()');
-    const group = ruleOf(app, '::view-transition-group(field)');
-    expect(declarations(group?.body ?? '')).toMatchObject({
-      'animation-duration': 'var(--dur-med)',
-      'animation-timing-function': 'var(--ease-out)'
-    });
-    const halves = ruleOf(app, '::view-transition-old(field),\n::view-transition-new(field)');
-    expect(declarations(halves?.body ?? '')['animation-duration']).toBe('var(--dur-med)');
+    expect(layout).toContain("import { carryBlind } from '$lib/motion/fieldBlind'");
+    expect(layout, 'every navigation, not the tab crossing alone').toContain(
+      'const blind = carryBlind();'
+    );
+    expect(layout).toContain('blind.swap()');
+    expect(layout).toContain('blind.release()');
   });
 
-  /* Under reduced motion the field's box cuts (a box tweening between two
-     heights is movement) and its two halves fade out, then in, with the
-     screen's: the outgoing image to the page over --dur-crossfade, the
-     incoming one up from it over the next, so no frame holds two doors at
-     once. Both paths, both halves. */
-  it('cuts the field box and fades its halves out then in under both reduced-motion paths', () => {
-    const reduced = rules(app).filter(isReduceContext);
-    const group = reduced.filter((rule) => rule.prelude.includes('view-transition-group(field)'));
-    expect(group.length, 'both reduced-motion paths clamp the field group').toBe(2);
-    for (const rule of group) expect(declarations(rule.body)['animation-duration']).toBe('1ms !important');
+  /* The bottom corners stay exact on every frame of the slide, which is
+     what the clip buys: the block itself is never resized, so there is no
+     frame in which a 175px snapshot is being squashed into 102. The group
+     is pinned for the same reason - a tween of the box is a scale of the
+     picture inside it. */
+  it('slides the blind on one clip, at one size, with its corners in the clip', () => {
+    expect(declarations(ruleOf(app, '::view-transition-group(blind)')?.body ?? '').animation).toBe(
+      'none'
+    );
+    const halves = declarations(
+      ruleOf(app, '::view-transition-old(blind),\n::view-transition-new(blind)')?.body ?? ''
+    );
+    expect(halves.animation).toBe(
+      'blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both'
+    );
+    const slide = frames(keyframesOf(app, 'blind-slide')!.body);
+    expect(slide.length, 'one curve from one height to another, not a phase list').toBe(2);
+    for (const frame of slide) {
+      expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual(['clip-path']);
+      expect(frame.decls['clip-path']).toMatch(/round 0 0 var\(--r-block\) var\(--r-block\)\)$/);
+    }
+    expect(slide[0].decls['clip-path']).toContain('var(--blind-from');
+    expect(slide[1].decls['clip-path']).toContain('var(--blind-to');
+  });
 
-    const old = reduced.filter((rule) => rule.prelude.includes('view-transition-old(field)'));
-    const fresh = reduced.filter((rule) => rule.prelude.includes('view-transition-new(field)'));
-    expect(old.length, 'the outgoing half, both paths').toBe(2);
-    expect(fresh.length, 'the incoming half, both paths').toBe(2);
+  /* No frame carries two of the field's contents: the outgoing element
+     spends --dur-fast, the incoming one waits exactly that long before it
+     starts, and both travel 12-16px rather than sliding between two
+     screens' positions. */
+  it('fades one of the field\'s contents out before the next fades in, each with its own travel', () => {
+    const out = declarations(ruleOf(app, '::view-transition-old(*.field-part)')?.body ?? '');
+    const fresh = declarations(ruleOf(app, '::view-transition-new(*.field-part)')?.body ?? '');
+    expect(out.animation).toContain('field-part-out var(--dur-fast) var(--ease-in-out) both');
+    expect(fresh.animation, 'the incoming one waits for the outgoing one').toContain(
+      'field-part-in var(--dur-fast) var(--ease-out) var(--dur-fast) both'
+    );
+    for (const name of ['field-part-out', 'field-part-in']) {
+      const [frame] = frames(keyframesOf(app, name)!.body);
+      expect(Object.keys(frame.decls).sort()).toEqual(['opacity', 'transform']);
+      /* The direction is the blind's, published per navigation, so the two
+         travel the way the edge is going rather than always downwards. */
+      expect(frame.decls.transform).toContain('var(--part-travel');
+      expect(frame.decls.transform, `${name} goes the right way`).toMatch(
+        name.endsWith('-in') ? /calc\(-1 \* var/ : /translateY\(var/
+      );
+    }
+  });
+
+  /* What is painted on the field is printed on it: both sides ride the
+     blind's own curve, so a mark keeps its distance from the edge and
+     cannot be left hanging outside the field (Alicja, round one). The ride
+     is `translate` and the leave is `transform`, which is what lets the two
+     animations sit on one element without overwriting each other. */
+  it('rides everything painted on the field with the blind, on the blind\'s own curve', () => {
+    const ride = 'var(--dur-slow) var(--blind-ease, var(--ease-out)) both';
+    for (const [selector, keyframe] of [
+      ['::view-transition-old(*.field-part)', 'blind-lead'],
+      ['::view-transition-new(*.field-part)', 'blind-follow'],
+      ['::view-transition-old(*.sun-ring)', 'blind-lead'],
+      ['::view-transition-new(*.sun-ring)', 'blind-follow']
+    ]) {
+      expect(declarations(ruleOf(app, selector)?.body ?? '').animation, selector).toContain(
+        `${keyframe} ${ride}`
+      );
+    }
+    for (const name of ['blind-lead', 'blind-follow']) {
+      for (const frame of frames(keyframesOf(app, name)!.body)) {
+        expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(['translate']);
+      }
+    }
+    /* The ride ends where the element rests, both ways round. */
+    expect(frames(keyframesOf(app, 'blind-follow')!.body).at(-1)!.decls.translate).toBe('0 0');
+    expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe('0 0');
+  });
+
+  /* The content under the blind travels with its bottom edge, on the
+     blind's clock and on a plain ease-out of its own - the blind is painted
+     over the page and covers the difference between the two curves, and a
+     page that bounced with the edge would rock the whole screen at the end
+     of every navigation. Transform only, and the delta is measured at
+     navigation time rather than written per screen. */
+  it("follows the blind's edge with the incoming screen, on the blind's clock", () => {
+    const incoming = declarations(ruleOf(app, '::view-transition-new(screen)')?.body ?? '');
+    expect(incoming['animation-duration']).toBe('var(--dur-med), var(--dur-slow)');
+    expect(incoming['animation-timing-function']).toBe('var(--ease-out)');
+    const follow = frames(keyframesOf(app, 'blind-follow')!.body);
+    for (const frame of follow) {
+      expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual(['translate']);
+    }
+    expect(follow[0].decls.translate).toBe('0 var(--blind-delta, 0px)');
+    expect(follow.at(-1)!.decls.translate, 'ends where the screen rests').toBe('0 0');
+    /* Every pattern the app navigates with, not the tab crossing alone. */
+    for (const pattern of ['fade-through', 'shared-axis', 'shared-axis-back', 'container']) {
+      const rule = ruleOf(app, `html[data-nav='${pattern}']::view-transition-new(screen)`);
+      expect(declarations(rule?.body ?? '')['animation-name'], pattern).toMatch(
+        /, blind-follow$/
+      );
+    }
+  });
+
+  /* The sun leaves as a movement: one group per ring, closing outermost
+     first on a beat of its own, and the whole run inside the door's clock.
+     A delay per ring is a rule per ring, so the arithmetic is checked
+     against the longest flag rather than assumed - a ninth stripe added to
+     a palette with no eighth rule here would silently close on the beat of
+     the first. */
+  it('closes the sun outermost first, and every ring inside --dur-slow', () => {
+    const closes = declarations(ruleOf(app, '::view-transition-old(*.sun-ring)')?.body ?? '');
+    const opens = declarations(ruleOf(app, '::view-transition-new(*.sun-ring)')?.body ?? '');
+    expect(closes.animation).toContain('sun-ring-close var(--dur-fast) var(--ease-in-out) both');
+    expect(opens.animation).toContain('sun-ring-open var(--dur-fast) var(--ease-out) both');
+    for (const name of ['sun-ring-close', 'sun-ring-open']) {
+      for (const frame of frames(keyframesOf(app, name)!.body)) {
+        expect(Object.keys(frame.decls), `${name} ${frame.stops}`).toEqual(['scale']);
+      }
+    }
+
+    const steps: number[] = [];
+    for (const rule of rules(app)) {
+      const ring = /view-transition-old\(sun-a-(\d+)\)/.exec(rule.prelude);
+      if (!ring) continue;
+      expect(rule.prelude, 'both sides on one beat').toContain(
+        `::view-transition-new(sun-b-${ring[1]})`
+      );
+      const delay = declarations(rule.body)['animation-delay'];
+      /* The beat is the ring's own; the ride beside it starts with the
+         blind, so the list has a second value rather than one for both. */
+      expect(delay, `ring ${ring[1]}`).toMatch(
+        new RegExp(`^calc\\(${ring[1]} \\* var\\(--stagger-ring\\)\\), 0s$`)
+      );
+      steps.push(Number(ring[1]));
+    }
+    expect(steps, 'one rule per ring, in order').toEqual([...steps].sort((a, b) => a - b));
+
+    const palettes = readFileSync(join(root, 'src/lib/theme/palettes.css'), 'utf8');
+    const longest = Math.max(
+      ...[...palettes.matchAll(/--motif-stripes:\s*([^;]+);/g)].map(
+        (match) => match[1].split(',').length
+      )
+    );
+    expect(steps.length, 'a flag with more stripes than there are beats').toBe(longest);
+
+    /* --stagger-ring 30ms, --dur-fast 150ms, --dur-slow 380ms: the last
+       ring starts at 180 and lands at 330. */
+    const ms = (token: string) =>
+      Number(/(\d+)ms/.exec(new RegExp(`${token}:\\s*([^;]+);`).exec(tokens)?.[1] ?? '')?.[1]);
+    const lands = (longest - 1) * ms('--stagger-ring') + ms('--dur-fast');
+    expect(lands, 'the innermost ring lands inside the door change').toBeLessThanOrEqual(
+      ms('--dur-slow')
+    );
+  });
+
+  /* Substitute, never delete. The blind cuts, because --dur-slow is clamped
+     at the token and a box arriving at its new height instantly is the
+     substitute for one sliding to it; the contents keep the screens' own
+     out-then-in crossfade over --dur-crossfade, which the clamp deliberately
+     does not reach; and the sun cuts with its stagger taken to zero. */
+  it('cuts the blind and the sun and crossfades the field\'s contents under both reduced-motion paths', () => {
+    const halves = declarations(
+      ruleOf(app, '::view-transition-old(blind),\n::view-transition-new(blind)')?.body ?? ''
+    );
+    expect(halves.animation, 'the blind runs on a clamped token').toContain('var(--dur-slow)');
+    for (const context of [/html\[data-a11y-motion='reduce'\]/, /prefers-reduced-motion/]) {
+      expect(tokens, `--stagger-ring under ${context}`).toMatch(
+        new RegExp(`${context.source}[\\s\\S]*?--stagger-ring:\\s*0ms`)
+      );
+    }
+
+    const reduced = rules(app).filter(isReduceContext);
+    const old = reduced.filter((rule) => rule.prelude.includes('view-transition-old(*.field-part)'));
+    const fresh = reduced.filter((rule) =>
+      rule.prelude.includes('view-transition-new(*.field-part)')
+    );
+    expect(old.length, 'the outgoing contents, both paths').toBe(2);
+    expect(fresh.length, 'the incoming contents, both paths').toBe(2);
     for (const rule of old) {
       const d = declarations(rule.body);
       expect(d['animation-name']).toBe('screen-fade-away');
       expect(d['animation-duration']).toBe('var(--dur-crossfade) !important');
-      expect(d['animation-delay']).toBeUndefined();
     }
     for (const rule of fresh) {
       const d = declarations(rule.body);
       expect(d['animation-name']).toBe('screen-crossfade');
-      expect(d['animation-delay'], 'the incoming half waits for the outgoing one').toBe('var(--dur-crossfade)');
+      expect(d['animation-delay'], 'the incoming half waits for the outgoing one').toBe(
+        'var(--dur-crossfade)'
+      );
       expect(d['animation-fill-mode'], 'held at its first frame through the wait').toBe('both');
     }
   });
