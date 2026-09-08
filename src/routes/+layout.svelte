@@ -48,7 +48,7 @@
   import { chromelessPath } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
-  import { shareField } from '$lib/motion/sharedField';
+  import { carryBlind } from '$lib/motion/fieldBlind';
   import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
   import { markScreenArrival } from '$lib/motion/reveal';
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
@@ -294,12 +294,14 @@
     if (pattern !== 'container') closeEntryContainer();
     if (!document.startViewTransition || pattern === 'none') return;
 
-    /* The field carries across a tab change (redesign ticket 25, rule 10):
-       named before the old side is captured, handed to the incoming door
-       after the swap, and given back when the transition is over. Only the
-       fade-through, which is the tab crossing; see $lib/motion/sharedField
-       for why this is not a stylesheet rule. */
-    const field = pattern === 'fade-through' ? shareField() : null;
+    /* The field is a blind over the content (redesign ticket 28): named
+       before the old side is captured, handed to the incoming screen after
+       the swap, and given back when the transition is over, along with the
+       two heights and the settle it measured. On every navigation rather
+       than on the tab crossing alone - a screen with no field is the blind
+       closed to nothing rather than a case to skip - and see
+       $lib/motion/fieldBlind for why this is not a stylesheet rule. */
+    const blind = carryBlind();
 
     return new Promise((resolve) => {
       document.documentElement.dataset.nav = pattern;
@@ -312,39 +314,47 @@
            left to the window: an unhandled rejection per aborted navigation
            is noise that buries a real one, and the walkthrough fails the
            whole run on it. */
-        await navigation.complete.catch(() => {});
-        /* The outgoing page can still be in the DOM here, held by a
-           zero-length outro that cannot finish while rendering is paused,
-           and a new-side capture with two screens stacked in the scroll
-           region is a picture of the wrong layout - every door with tiles
-           snapped at the end of its transition (redesign ticket 25). See
-           $lib/motion/outgoingScreen for why waiting is not an option. */
-        dropOutgoingScreens();
-        /* Before the "new" side is captured, not after: a view transition
-           photographs the incoming screen the instant this callback's own
-           promise resolves, and `afterNavigate` below - the only other
-           caller of restoreScroll - fires as its own separate SvelteKit
-           lifecycle callback with no ordering promised against that
-           capture. Losing the race meant the photograph was always taken
-           at scroll 0, and the real scroll position only snapped in once
-           afterNavigate ran a moment later - on a screen with anything to
-           scroll, the fade-in's last frame and that snap landed close
-           enough together to read as one motion (Alicja, 2026-08-27, on
-           the transition roadmap: "the fade-in jumps a lot of pixels").
-           Restoring here as well as there is not a race fixed by luck -
-           this one is provably before the capture, and afterNavigate's own
-           call becomes a harmless no-op restoring the same value again. */
-        if (navigation.to) restoreScroll(navigation.to.url.pathname);
-        /* The incoming screen has mounted; the outgoing one may still be
-           in the DOM finishing its outros. Before the new capture, so the
-           name is on exactly one element when the browser looks. */
-        field?.swap();
+        /* Whatever happens below, the swap has to run: it is what publishes
+           the heights and the settle, and a transition that runs without
+           them reads the blind's own fallbacks - a clip of the whole window
+           - so the field is simply absent for its length. */
+        try {
+          await navigation.complete.catch(() => {});
+          /* The outgoing page can still be in the DOM here, held by a
+             zero-length outro that cannot finish while rendering is paused,
+             and a new-side capture with two screens stacked in the scroll
+             region is a picture of the wrong layout - every door with tiles
+             snapped at the end of its transition (redesign ticket 25). See
+             $lib/motion/outgoingScreen for why waiting is not an option. */
+          dropOutgoingScreens();
+          /* Before the "new" side is captured, not after: a view transition
+             photographs the incoming screen the instant this callback's own
+             promise resolves, and `afterNavigate` below - the only other
+             caller of restoreScroll - fires as its own separate SvelteKit
+             lifecycle callback with no ordering promised against that
+             capture. Losing the race meant the photograph was always taken
+             at scroll 0, and the real scroll position only snapped in once
+             afterNavigate ran a moment later - on a screen with anything to
+             scroll, the fade-in's last frame and that snap landed close
+             enough together to read as one motion (Alicja, 2026-08-27, on
+             the transition roadmap: "the fade-in jumps a lot of pixels").
+             Restoring here as well as there is not a race fixed by luck -
+             this one is provably before the capture, and afterNavigate's own
+             call becomes a harmless no-op restoring the same value again. */
+          if (navigation.to) restoreScroll(navigation.to.url.pathname);
+        } finally {
+          /* The incoming screen has mounted and the outgoing one is gone.
+             Before the new capture, so each name is on exactly one element
+             when the browser looks, and after the scroll above, so the
+             incoming field is measured where it will be drawn. */
+          blind.swap();
+        }
       });
       void transition.finished
         .catch(() => {})
         .finally(() => {
           delete document.documentElement.dataset.nav;
-          field?.release();
+          blind.release();
         });
     });
   });

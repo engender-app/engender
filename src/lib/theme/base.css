@@ -183,6 +183,14 @@
   --motion-distance-sm: 10px;  /* toast */
   --motion-distance-md: 24px;  /* sheet */
   --stagger-step: 50ms;
+  /* The sun's rings, closing and opening one after another inside a door
+     change (redesign ticket 28). Its own step rather than --stagger-step,
+     which is the beat a grid of tiles arrives on: the sun has seven rings
+     at its widest and the whole movement has to fit inside --dur-slow, so
+     the last ring starts at 180ms and lands at 330. The entrance on a cold
+     start keeps its own 110ms, which is authored rather than staggered
+     (components.css). */
+  --stagger-ring: 30ms;
 
   /* --- Materials beyond transform and opacity (phase 5 ticket 28) ---
 
@@ -292,6 +300,7 @@ html[data-a11y-motion='reduce'] {
   --dur-press: 1ms;
   --dur-authored: 1ms;
   --stagger-step: 0ms;
+  --stagger-ring: 0ms;
 }
 
 html[data-a11y-motion='reduce'] *,
@@ -309,6 +318,7 @@ html[data-a11y-motion='reduce'] *::after {
     --dur-press: 1ms;
     --dur-authored: 1ms;
     --stagger-step: 0ms;
+    --stagger-ring: 0ms;
   }
   *, *::before, *::after {
     animation-duration: 1ms !important;
