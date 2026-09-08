@@ -89,24 +89,4 @@
       {/each}
     </ListCard>
   {/each}
-
-  <!-- No role: this row is the app talking about itself, not one of the
-       journal's own areas (the same call Home's backup notice makes).
-
-       No SectionHeading either - it is one row, not a group - but sitting
-       flush under the last card with nothing between them read as if it
-       belonged to that group (Alicja, on the live build). A plain margin
-       gives it the same clearance a heading would, without a heading that
-       has nothing to say. -->
-  <div>
-    <ListCard>
-      <ListRow
-        key="settings"
-        icon="settings"
-        title={m.nav_settings()}
-        subtitle={m.hub_settings_row_sub()}
-        href="/settings"
-      />
-    </ListCard>
-  </div>
 </div>
