@@ -259,84 +259,10 @@
   padding-bottom: var(--space-8);
 }
 
-/* ---------- Calendar & day detail ---------- */
-/* ---------- Calendar (phase 5 ticket 22) ----------
-
-   The month is not in a card. It is the one thing on the screen, and a box
-   drawn around the only thing on a screen is the card habit DIRECTION.md 2b
-   names; the grid sits on the page with its legend under it.
-
-   The shading is the active flag's stripe on the heat ramp's five steps, so
-   a cell here and a cell of Home's week strip shade one reading the same way
-   (HeatMap.svelte). A cell's fills arrive as inline values, because the ramp
-   is computed per step rather than written down - see roles.ts. A day of two
-   readings carries two of them. */
-.cal-monthbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.cal-month {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-display);
-  /* Centred between its two steps, and given the room to stay centred when
-     the month's name is long: without this the flex box sizes to the text
-     and September pushes the chevrons apart. */
-  flex: 1;
-  text-align: center;
-  min-width: 0;
-}
-
-/* The slot the month name changes inside (ticket 31). One grid cell holding
-   both labels, so the outgoing and the incoming month occupy the same place
-   rather than pushing each other, and `overflow: hidden` is the pair of walls
-   the effect is built on: one whose top is level with the text's bottom, one
-   whose bottom is level with the text's top. The clip is what hides a label,
-   which is why neither half of the transition touches opacity - a piece of
-   text that dissolves while it travels reads as two effects rather than as
-   one object going behind something.
-
-   It sits inside the <h2> rather than around it, which is this ticket's one
-   change to ticket 31's markup. Keying the heading itself meant two <h2>s in
-   the document outline for the length of the swap, and it put the live region
-   on the element being replaced - see the calendar's own note on why that
-   announces twice. */
-.cal-month-slot {
-  display: grid;
-  overflow: hidden;
-  min-width: 0;
-  text-align: center;
-}
-.cal-month-slot > * { grid-area: 1 / 1; }
-
-/* The picker on its own line rather than in the month bar. The bar already
-   carries two controls, and DIRECTION.md puts a section's switch on the
-   heading's line - which here is the line under it, because the heading is
-   the month and the month is not what the picker changes.
-
-   And up against its own label rather than at the end of the line, which is
-   ticket 31's finding and worth keeping: the end of the line is where a
-   section's switch goes on Home, and here the next-month chevron sits
-   directly above it. Both are 48px targets, so a thumb reaching for the
-   chevron lands on the picker instead - found by doing it (Alicja,
-   2026-08-25: "it's easy to click the right arrow on accident"). Nothing sits
-   above the label, so that is where the control goes. */
-.cal-metric {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) 0 var(--space-4);
-}
-.cal-metric-label { font-size: var(--text-sm); color: var(--text-2); }
-
-.cal-hint {
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  margin: var(--space-4) 0 0;
-  }
+/* ---------- The day detail ----------
+   The calendar's own classes moved into the calendar screen's <style> block
+   in phase 10 ticket 10, where its one consumer is; what is left here is the
+   day. */
 
 /* ---------- One day ----------
    The entries are the kit's day card now, so the hand-built time gutter that

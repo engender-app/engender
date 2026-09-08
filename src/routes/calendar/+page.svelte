@@ -1,36 +1,58 @@
 <script lang="ts">
-  /* The Calendar tab (phase 5 ticket 22), rebuilt on the kits, with ticket
-     31's month transition.
+  /* The Journal door: your days (phase 10 redesign ticket 10).
 
-     What it was: a month bar, a sentence of prose carrying an inline button
-     that opened a sheet to change the metric, and the whole month inside a
-     `.card` with the legend under it.
+     What this screen was: a month bar, a metric picker and the heat map,
+     and nothing else. The heat map is the better picture of a journal and
+     the worse landing - somebody arriving at this door is usually looking
+     for something they wrote - so the picture is folded away to a strip
+     until it is asked for, and what they wrote leads.
 
-     Three things changed.
+     Three things moved here. Recent entries and the week strip come off
+     Home in the shape Home draws them, uncapped, reading the same five
+     logged days (ticket 13 takes them off Home; until it lands both screens
+     draw them, which is the price of one ticket per door). Search and
+     starred stay in the header where they already were, joined by starred's
+     own entry point, which was only reachable from inside search.
 
-     The metric switch is the heading's own control now, the same ChartPicker
-     Home's week strip carries. Both read and write one preference
-     (`prefs.metricDimension`), and offering it as a sheet here and a picker
-     there meant one setting with two controls - which is the shape of the
-     NAV-007 complaint the sheet was itself the fix for. Ticket 31 reached the
-     same conclusion from the other direction on the same day; this is the
-     merge of the two, keeping the visible label tied to the select by `for`
-     and the two step buttons' walkthrough handles.
+     The header is ticket 23's field, and DIRECTION.md rule 7 says what this
+     door puts on it: the month at the section-heading size and those two
+     controls on the same line, no title. The month label is still the way
+     into the jump sheet and still slides the way the month went (ticket
+     31); it is in the field now rather than between two chevrons, so the
+     two chevrons moved down to the strip's own control line.
 
-     The month is not in a card. A calendar is one grid: the card around it
-     was a box drawn around the only thing on the screen, which DIRECTION.md
-     2b names as what makes a screen read as generic. The grid sits on the
-     page and the legend sits under it.
+     **The one new interaction: the month opens.** Collapsed, the month is a
+     strip of bars - HeatMap's own drawing of the same read, see its
+     `compact` prop. Expanded, it is the grid, the legend, the highlight
+     chips and the hint. It is screen state and not a route: a month you
+     opened is not somewhere you navigated to, and back should leave the
+     door rather than close a panel. Both states carry the metric picker,
+     which is the one control for a choice this screen makes twice (the
+     strip and the week strip shade on it, and so does the grid) - two
+     controls writing one preference is the NAV-007 complaint the picker was
+     itself the fix for.
 
-     And the shading is the flag's, which is HeatMap.svelte's own note.
+     Mobbin, on how a compact month behaves: Finch collapses a whole month
+     into one line with a chevron on its label and Bevel leads its Journal
+     with a strip over the entries, which is the arrangement here; timespent
+     draws the same month twice, once as a grid and once as a micro-strip,
+     which is what makes a strip and a grid legible as one thing. The travel
+     between them is ours (motion/regroup.ts): every day flies from its bar
+     to its cell and grows, because a month does not stop existing and a
+     different month appear - it opens.
 
-     Colour: one area, and it is the one where the stripe is the value rather
-     than the decoration, so it takes role 0 - the only index guaranteed to be
-     a colour on all 8 palettes (DIRECTION.md, "colour that carries a value
-     takes role 0"). Home's week strip takes it for the same reason and they
-     are the same reading. */
+     Colour: the strip, the grid and the week strip are one reading of one
+     day, so all three take role 0 - the only index guaranteed to be a colour
+     on all 8 palettes, and the index HOME_AREA_ROLE.week names for the same
+     reason on Home (roles.ts; DIRECTION.md, "colour that carries a value
+     takes role 0"). Written out rather than through that table because here
+     it is the rule about value-carrying colour and not this screen's turn in
+     a reading order. The day cards do take their turn from the table, and
+     take the one they took on Home, so an entry looks the same wherever it
+     is drawn. */
+  import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { fmtMonthYear } from '$lib/data/dates';
+  import { fmtDay, fmtMonthYear, fmtTime } from '$lib/data/dates';
     import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.min.css';
   import { pickerLocale } from '$lib/components/flatpickrLocale';
@@ -39,15 +61,32 @@
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import WeekStrip from '$lib/components/WeekStrip.svelte';
   import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
-  import { liveList } from '$lib/data/live/journal.svelte';
+  import DayCard from '$lib/components/kit/DayCard.svelte';
+  import DayEntry from '$lib/components/kit/DayEntry.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { entryDayGroups, entryMarks } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { selectMetric } from '$lib/data/prefs/store.svelte';
+  import {
+    EASE_OUT,
+    EASE_OUT_CSS,
+    crossfadeDuration,
+    fadeOnly,
+    isReducedMotion,
+    motionDuration
+  } from '$lib/motion/tokens';
+  import { regroupSteps, type CellBox } from '$lib/motion/regroup';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt, type Role } from '$lib/theme/roles';
+  import { HOME_AREA_ROLE, roleAt, type Role } from '$lib/theme/roles';
+  import { ui } from '$lib/stores/ui.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
+  import { entryTags } from '$lib/data/vocabulary/entryTags';
+  import { entryPresentation, presentationRole } from '$lib/data/vocabulary/entryPresentation';
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -55,6 +94,21 @@
 
   let metricName = $derived(vocabulary.metricName);
   let monthLabel = $derived(fmtMonthYear(year, month));
+
+  /* Whether this journal has anything in it at all, which decides whether
+     the month and the week draw (phase 8 UX ticket 01, and Home's own rule):
+     a strip of empty bars over an empty grid is day one's placeholder, and
+     the one thing that screen owes is somewhere to start. Null until the
+     count lands rather than treating not-yet-known as none. */
+  let entryCountQuery = liveQuery((j) => j.entries.countAll());
+  let hasEntries = $derived(entryCountQuery.value == null ? null : entryCountQuery.value > 0);
+
+  /* Five days, not five entries: every entry of each shown day draws, so a
+     day with more than one holds its own timeline rather than a bare count
+     over a truncated one (ux-carpet ticket 13, recentEntries.ts). */
+  const RECENT_DAYS = 5;
+  let recent = liveList((j) => j.entries.recentDays(RECENT_DAYS));
+  let dayGroups = $derived(entryDayGroups(recent.rows));
 
   /* Which era each month belongs to (phase 6 ticket 03): each era paired
      with the role it draws in, the same way role 0 is picked for the
@@ -157,6 +211,75 @@
     month = mo;
   }
 
+  /* The month, open or folded to a strip. Folded is where the door opens,
+     because the entries are what it is for.
+
+     The travel is FLIP, the same arithmetic settleGrid uses on Home's tiles
+     (motion/reveal.ts) and split the same way: the deltas are
+     motion/regroup.ts's and node-tested, the measuring is here because it
+     needs a DOM. Two forced layouts per tap, one before the state changes
+     and one after `flushSync` has applied it.
+
+     The panel's own height animates with the cells, so nothing under the
+     month jumps to its new place while the days are still travelling, and it
+     is clipped for exactly as long as that runs - a permanent clip would cut
+     the focus ring off the chips and the grid's own today outline. */
+  let monthOpen = $state(false);
+  let monthBody = $state<HTMLElement | undefined>();
+
+  function cellBoxes(): CellBox[] {
+    if (!monthBody) return [];
+    return [...monthBody.querySelectorAll('[data-cal-cell]')].map((cell) => {
+      const box = cell.getBoundingClientRect();
+      return {
+        key: cell.getAttribute('data-cal-cell') ?? '',
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height
+      };
+    });
+  }
+
+  function toggleMonth() {
+    const body = monthBody;
+    if (!body || isReducedMotion()) {
+      monthOpen = !monthOpen;
+      return;
+    }
+    const before = cellBoxes();
+    const from = body.getBoundingClientRect().height;
+    monthOpen = !monthOpen;
+    flushSync();
+    const duration = motionDuration('--dur-slow');
+    const easing = EASE_OUT_CSS;
+    body.style.overflow = 'clip';
+    const opening = body.animate(
+      [{ height: `${from}px` }, { height: `${body.getBoundingClientRect().height}px` }],
+      { duration, easing }
+    );
+    opening.finished.then(
+      () => (body.style.overflow = ''),
+      () => (body.style.overflow = '')
+    );
+    for (const cell of regroupSteps(before, cellBoxes())) {
+      /* Origin in the keyframes rather than on the element: the cells are
+         pressable and a press scales from their middle, which is not where a
+         corner-anchored travel starts from. A keyframe property lasts as long
+         as the animation and leaves nothing behind. */
+      body.querySelector(`[data-cal-cell="${cell.key}"]`)?.animate(
+        [
+          {
+            transform: `translate(${cell.dx}px, ${cell.dy}px) scale(${cell.sx}, ${cell.sy})`,
+            transformOrigin: '0 0'
+          },
+          { transform: 'none', transformOrigin: '0 0' }
+        ],
+        { duration, easing }
+      );
+    }
+  }
+
   /* Item 11: a year is twelve taps of the chevron away, which is the whole
      of the reason nobody lands on last August on purpose. The month label
      itself is the way in - it already says where you are, so it is the thing
@@ -220,66 +343,141 @@
 
 <div class="screen">
   <ScreenHeader title={m.nav_calendar()} titleHidden screen="calendar">
+    <!-- The month on the field, at the section-heading size and in the
+         field's ink (rule 7). The live region is the <h2>, which stays put,
+         and the slot inside it is what the labels are keyed in and out of.
+         Ticket 31 keyed the heading itself; the key moved inward for two
+         reasons. A keyed <h2> puts two headings in the document outline for
+         the length of the swap. And it puts the live region on the element
+         being replaced, so a screen reader meets a brand-new region rather
+         than a change inside a standing one, which several of them announce
+         twice. Here the region stands still and only its contents change,
+         and aria-relevant defaults to additions, so the outgoing month's
+         removal says nothing and the incoming month is announced once. -->
+    {#snippet lead()}
+      <h2 class="cal-month" data-cal-month aria-live="polite">
+        <span class="cal-month-slot">
+          {#key monthLabel}
+            <span in:labelIn out:labelOut>
+              <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
+                {monthLabel}
+              </button>
+            </span>
+          {/key}
+        </span>
+      </h2>
+    {/snippet}
     {#snippet actions()}
-      <a class="icon-btn is-outlined" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
+      <a class="icon-btn press" href="/search" aria-label={m.search()}><Icon name="search" size={22} /></a>
+      <!-- Starred was reachable only from inside search, which is a shelf
+           nobody finds by looking for it. Both entry points are the field's
+           now, since this is the door they belong to. -->
+      <a class="icon-btn press" href="/search/starred" aria-label={m.starred_shelf_open()}>
+        <Icon name="star" size={22} />
+      </a>
     {/snippet}
   </ScreenHeader>
 
-  <!-- The month at the section-heading size, between its two steps. Not a
-       SectionHeading, which puts its one control on the same line: this
-       heading has two controls of its own and they belong either side of the
-       thing they move.
+  {#if hasEntries}
+    <!-- One line of controls, in both states and in the same place in both:
+         the two month steps, the metric this month is coloured by, and the
+         control that opens it. The picker is named by the words it used to
+         print beside itself - the line has room for one label or four
+         controls, and Home's own picker has been named this way since it
+         went on a heading's line. -->
+    <div class="cal-controls">
+      <button class="icon-btn press" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => step(-1)}>
+        <Icon name="chevronLeft" size={22} />
+      </button>
+      <button class="icon-btn press" aria-label={m.next_month()} data-cal-step="next" onclick={() => step(1)}>
+        <Icon name="chevronRight" size={22} />
+      </button>
+      <ChartPicker
+        key="calendar-metric"
+        id="calendar-metric"
+        label={m.colour_days_by()}
+        value={vocabulary.activeMetric}
+        options={metricOptions}
+        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
+      />
+      <button
+        class="icon-btn press cal-open"
+        class:is-open={monthOpen}
+        aria-expanded={monthOpen}
+        aria-controls="calendar-month"
+        aria-label={monthOpen ? m.cal_close_month() : m.cal_open_month()}
+        data-cal-open
+        onclick={toggleMonth}
+      >
+        <Icon name="chevronDown" size={22} />
+      </button>
+    </div>
 
-       The live region is the <h2>, which stays put, and the slot inside it is
-       what the labels are keyed in and out of. Ticket 31 keyed the heading
-       itself; moving the key inward is this ticket's one change to it, for two
-       reasons. A keyed <h2> puts two headings in the document outline for the
-       length of the swap. And it puts the live region on the element being
-       replaced, so a screen reader meets a brand-new region rather than a
-       change inside a standing one, which several of them announce twice.
-       Here the region stands still and only its contents change, and
-       aria-relevant defaults to additions, so the outgoing month's removal
-       says nothing and the incoming month is announced once. -->
-  <div class="cal-monthbar">
-    <button class="icon-btn" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => step(-1)}>
-      <Icon name="chevronLeft" size={22} />
-    </button>
-    <h2 class="cal-month" data-cal-month aria-live="polite">
-      <span class="cal-month-slot">
-        {#key monthLabel}
-          <span in:labelIn out:labelOut>
-            <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
-              {monthLabel}
-            </button>
-          </span>
-        {/key}
-      </span>
-    </h2>
-    <button class="icon-btn" aria-label={m.next_month()} data-cal-step="next" onclick={() => step(1)}>
-      <Icon name="chevronRight" size={22} />
-    </button>
+    <div class="cal-month-body" id="calendar-month" bind:this={monthBody}>
+      <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} {highlight} compact={!monthOpen} />
+      {#if monthOpen}
+        <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+        <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- What somebody came here for. Uncapped, in the shape Home draws it:
+       a day is its date bar and every entry logged on it. -->
+  <SectionHeading text={m.recent_entries()} />
+  <div class="cal-swap">
+    <ReadGate read={recent} variant="card" count={3}>
+      {#snippet rows()}
+        <div class="cal-days">
+          {#each dayGroups as group (group.epochDay)}
+            <DayCard
+              key={String(group.epochDay)}
+              role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
+              date={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+            >
+              {#each group.entries as entry (entry.id)}
+                {@const presentation = entryPresentation(entry)}
+                <DayEntry
+                  key={String(entry.id)}
+                  href={`/entry/${entry.id}`}
+                  time={fmtTime(entry.timestamp)}
+                  mood={entry.mood}
+                  note={entry.note ?? undefined}
+                  tags={entryTags(entry)}
+                  marks={entryMarks(entry)}
+                  {presentation}
+                />
+              {/each}
+            </DayCard>
+          {/each}
+        </div>
+      {/snippet}
+      {#snippet empty()}
+        <!-- Wrapped because a transition goes on an element, not a component,
+             and the empty state is the branch a first-run journal lands on -
+             it owes the same crossfade the day cards get. -->
+        <div>
+          <Notice
+            icon="book"
+            key="no-entries"
+            role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
+            title={m.empty_home_title()}
+            text={m.empty_home_body()}
+            action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }}
+          />
+        </div>
+      {/snippet}
+    </ReadGate>
   </div>
 
-  <!-- The visible words and the control's accessible name are one string,
-       tied by `for`, rather than the same wording written twice with nothing
-       associating them. ChartPicker's select carries the id. -->
-  <div class="cal-metric">
-    <label class="cal-metric-label" for="calendar-metric">{m.colour_days_by()}</label>
-    <ChartPicker
-      key="calendar-metric"
-      id="calendar-metric"
-      labelledBy="calendar-metric"
-      value={vocabulary.activeMetric}
-      options={metricOptions}
-      onPick={(value) => selectMetric(value === 'mood' ? null : value)}
-    />
-  </div>
-
-  <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-
-  <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} {highlight} />
-
-  <p class="cal-hint">{m.heat_hint({ metric: metricName })}</p>
+  <!-- The last seven days, which is a different question from the month
+       above: it always ends today and it never pages. It shades on the same
+       ramp and the same choice, so the control for it is the one on the
+       month's line. -->
+  {#if hasEntries}
+    <SectionHeading text={m.recent_days()} />
+    <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, 0)} />
+  {/if}
 </div>
 
 <Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
@@ -300,10 +498,51 @@
 </Sheet>
 
 <style>
+  /* The calendar's own classes, in the calendar's own file: every one of
+     them has exactly this screen for a consumer, which is the rule
+     scripts/check-screens-classes.mjs holds screens.css to. They were in
+     that sheet from before it had a ratchet and rode its baseline; this
+     ticket rewrites all of them, so it takes them with it.
+
+     ---------- The month, on the field ---------- */
+
+  /* The section-heading size (rule 2), which is what rule 7 gives this door
+     in place of a title: it names the month the strip under it is drawing,
+     and a door shows a title at 48 or shows none. Left-aligned, because the
+     chevrons that used to sit either side of it are on the control line
+     now, and in the field's own ink. */
+  .cal-month {
+    margin: 0;
+    min-width: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--display-track);
+    line-height: var(--leading-display);
+  }
+
+  /* The slot the month name changes inside (ticket 31). One grid cell
+     holding both labels, so the outgoing and the incoming month occupy the
+     same place rather than pushing each other, and `overflow: hidden` is the
+     pair of walls the effect is built on: one whose top is level with the
+     text's bottom, one whose bottom is level with the text's top. The clip is
+     what hides a label, which is why neither half of the transition touches
+     opacity - a piece of text that dissolves while it travels reads as two
+     effects rather than as one object going behind something.
+
+     It sits inside the <h2> rather than around it, which is ticket 22's one
+     change to ticket 31's markup - see the note in the markup. */
+  .cal-month-slot {
+    display: grid;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .cal-month-slot > * { grid-area: 1 / 1; }
+
   /* The label is the affordance, so it reads as one: underlined the way the
-     app's text actions are not, but only by a hair - the chevrons either
-     side already say this bar moves months, and the button only has to say
-     the words are where the bigger jump lives. */
+     app's text actions are not, but only by a hair - the chevron on the
+     control line already says this screen moves months, and the button only
+     has to say the words are where the bigger jump lives. */
   .cal-month-btn {
     font: inherit;
     color: inherit;
@@ -311,11 +550,64 @@
     border: none;
     padding: 0;
     cursor: pointer;
+    text-align: left;
     text-decoration: underline;
-    text-decoration-color: var(--outline);
+    text-decoration-color: currentcolor;
     text-underline-offset: 4px;
     text-decoration-thickness: 1px;
   }
+
+  /* The chevron turns over rather than being swapped for a second glyph:
+     one mark that changes state, which is what the state actually did. */
+  .cal-open :global(.icon) {
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+  .cal-open.is-open :global(.icon) {
+    transform: rotate(180deg);
+  }
+
+  /* ---------- The month's controls, and the month ---------- */
+
+  /* One line, and the same line in both states: the two month steps, the
+     metric, and the control that opens the month. 12 under the field rather
+     than 20, because it is the field's own line of controls and not the next
+     block down (rule 1). */
+  .cal-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+  }
+  /* The picker takes the room the two labels it stands in for used to, so
+     the control that opens the month lands on the screen's right edge where
+     a disclosure belongs. */
+  .cal-controls :global(.kit-chart-pick) { margin-right: auto; }
+
+  /* The strip or the grid, and everything the grid brings with it. Its
+     height is animated on the way between the two (see toggleMonth) and
+     clipped only while that runs; at rest it holds nothing back, so a focus
+     ring on a chip and the grid's own outline on today are not cut. */
+  .cal-month-body {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  .cal-hint {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    margin: 0;
+  }
+
+  /* ---------- The days ---------- */
+
+  /* The gate's two branches in one cell, so the skeleton fading out does not
+     push the days it was standing in for down the screen - Home's own
+     treatment of the same gate. */
+  .cal-swap { display: grid; }
+  .cal-swap > * { grid-area: 1 / 1; }
+  .cal-days { display: grid; gap: var(--space-3); align-content: start; }
 
   .cal-jump-year {
     display: flex;

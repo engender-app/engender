@@ -86,7 +86,8 @@
     month,
     role,
     eras = [],
-    highlight
+    highlight,
+    compact = false
   }: {
     year: number;
     month: number /* 0-based */;
@@ -110,6 +111,16 @@
         shaded, ringed as today, bordered for its era and marked for its
         mode all at once without any of the four reusing another's channel. */
     highlight?: { presentationId: string; role: Role };
+    /** The month as one strip of bars instead of a grid of days (phase 10
+        redesign ticket 10). The Journal door opens on it: somebody arriving
+        is looking for something they wrote, so the month is the shape of the
+        month until they ask for the days. Same read, same ramp, same order -
+        a bar carries the day's step and nothing else, so the dates, the
+        splits, the faces, the decks, the marks and both legends are the
+        grid's alone. Whether it is compact is the screen's state, not this
+        component's, so the strip and the grid can be told apart by
+        `data-cal-cell` and animated between (motion/regroup.ts). */
+    compact?: boolean;
   } = $props();
 
   const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -297,49 +308,112 @@
   });
 </script>
 
-<div class="cal-grid" role="grid" data-cal-grid aria-busy={loading}>
-  {#each DOWS as d, i (i)}<span class="cal-dow" aria-hidden="true">{d}</span>{/each}
-  {#each Array.from({ length: cells.startDow }) as _, i (i)}<span class="cal-day is-blank"></span>{/each}
-  {#each cells.days as c (c.epochDay)}
-    {#if c.count}
-      <a
-        class="cal-day has-entries press"
-        class:is-today={c.isToday}
-        data-hm-cell-filled
-        href="/day/{c.epochDay}"
-        aria-label={c.label}
-      >
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </a>
-    {:else if c.hasMark}
-      <!-- A future day with something coming up (ADR-0067): it was not a
-           link before this ticket, because a future day carried nothing to
-           open. It is one now, the same as a logged day, to the same route -
-           `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
-           this cell only says that there is something. -->
-      <a class="cal-day has-mark press" data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </a>
-    {:else if c.isPastOrToday}
-      <!-- A past or today cell with nothing on it opens a new entry for
-           that day (ticket 99 item 13) - the same route the "+" affordances
-           elsewhere in the app seed a day for, rather than leaving an empty
-           cell with nothing to tap. -->
-      <a class="cal-day press" data-hm-cell-empty class:is-today={c.isToday} href="/entry/new/{c.epochDay}" aria-label={c.label}>
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </a>
-    {:else}
-      <span class="cal-day" class:is-today={c.isToday} aria-label={c.label}>
-        {@render swatch(c)}
-        <span class="cal-num">{c.day}</span>
-      </span>
-    {/if}
-  {/each}
-</div>
+<!-- The month as a strip: a bar per day, in the order they run, on the same
+     five steps the grid shades with. It says how the month went and does not
+     pretend to be readable - no dates, no era borders, nothing to tap. The
+     control that opens the grid is the screen's and it carries the name, so
+     the strip itself is hidden from a screen reader rather than reading out
+     thirty bars nobody asked for; every day's own words are in the grid one
+     tap away.
 
+     A day of two readings is one bar at its average. The grid splits it
+     because the grid has room to; four pixels of a seven-pixel bar is not a
+     reading, it is a texture. -->
+{#if compact}
+  <div class="cal-ribbon" data-cal-ribbon aria-hidden="true" style:--days={cells.days.length}>
+    {#each cells.days as c (c.epochDay)}
+      <span
+        class="cal-bar"
+        class:is-today={c.isToday}
+        data-cal-cell={c.epochDay}
+        style="background:{fillAt(c.step)}"
+      ></span>
+    {/each}
+  </div>
+{:else}
+  <div class="cal-grid" role="grid" data-cal-grid aria-busy={loading}>
+    {#each DOWS as d, i (i)}<span class="cal-dow" aria-hidden="true">{d}</span>{/each}
+    {#each Array.from({ length: cells.startDow }) as _, i (i)}<span class="cal-day is-blank"></span>{/each}
+    {#each cells.days as c (c.epochDay)}
+      {#if c.count}
+        <a class="cal-day has-entries press" class:is-today={c.isToday}
+          data-cal-cell={c.epochDay} data-hm-cell-filled href="/day/{c.epochDay}" aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num">{c.day}</span>
+        </a>
+      {:else if c.hasMark}
+        <!-- A future day with something coming up (ADR-0067): it was not a
+             link before this ticket, because a future day carried nothing to
+             open. It is one now, the same as a logged day, to the same route -
+             `/day/[day]` reads `dayAhead` for what to show there (ticket 62);
+             this cell only says that there is something. -->
+        <a class="cal-day has-mark press"
+          data-cal-cell={c.epochDay} data-hm-cell-mark href="/day/{c.epochDay}" aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num">{c.day}</span>
+        </a>
+      {:else if c.isPastOrToday}
+        <!-- A past or today cell with nothing on it opens a new entry for
+             that day (ticket 99 item 13) - the same route the "+" affordances
+             elsewhere in the app seed a day for, rather than leaving an empty
+             cell with nothing to tap. -->
+        <a class="cal-day press" class:is-today={c.isToday}
+          data-cal-cell={c.epochDay} data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num">{c.day}</span>
+        </a>
+      {:else}
+        <span class="cal-day" class:is-today={c.isToday} data-cal-cell={c.epochDay} aria-label={c.label}>
+          {@render swatch(c)}
+          <span class="cal-num">{c.day}</span>
+        </span>
+      {/if}
+    {/each}
+  </div>
+
+  <!-- The ends are the metric's own words, never "worst" and "best": neither
+       end of binary <-> nonbinary is the better one, and colour that judges is
+       the one thing this app cannot do (ADR-0012, F15).
+
+       Mood has none. Its five faces are the same five a person picks a mood
+       from every day, so a legend under them is the app explaining itself to
+       its reader - which is the call kit/MoodYear.svelte already made, and
+       Alicja's on 2026-08-25. -->
+  {#if !isMood}
+    <div
+      class="cal-legend"
+      data-cal-legend
+      aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
+    >
+      <span class="cal-legend-scale">
+        <span class="cal-legend-end">{legend.low}</span>
+        {#each SHADED as level (level)}
+          <span class="cal-legend-swatch" style="background:{fillAt(level)}"></span>
+        {/each}
+        <span class="cal-legend-end">{legend.high}</span>
+      </span>
+      <span class="cal-legend-none">
+        <span class="cal-legend-swatch" style="background:{fillAt(0)}"></span>
+        {m.legend_none()}
+      </span>
+    </div>
+  {/if}
+
+  {#if eraLegend.length}
+    <!-- Which era's border a day is drawing (phase 6 ticket 03), named next
+         to its colour the same way the metric legend already is. A month in
+         no era draws no strip at all, rather than an empty state or
+         "Uncategorized" (ADR-0049). -->
+    <div class="cal-era-legend" data-cal-era-legend>
+      {#each eraLegend as e (e.name)}
+        <span class="cal-era-legend-item">
+          <span class="cal-legend-swatch" style="border-color:{e.mark}"></span>
+          {e.name}
+        </span>
+      {/each}
+    </div>
+  {/if}
+{/if}
 <!-- The deck is drawn behind the swatch and peeks out to its left, which is
      the whole of what a stack says: how many readings, never how far apart
      they were. That question is answered by the split, and by the words the
@@ -398,50 +472,43 @@
   </span>
 {/snippet}
 
-<!-- The ends are the metric's own words, never "worst" and "best": neither
-     end of binary <-> nonbinary is the better one, and colour that judges is
-     the one thing this app cannot do (ADR-0012, F15).
-
-     Mood has none. Its five faces are the same five a person picks a mood
-     from every day, so a legend under them is the app explaining itself to
-     its reader - which is the call kit/MoodYear.svelte already made, and
-     Alicja's on 2026-08-25. -->
-{#if !isMood}
-  <div
-    class="cal-legend"
-    data-cal-legend
-    aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
-  >
-    <span class="cal-legend-scale">
-      <span class="cal-legend-end">{legend.low}</span>
-      {#each SHADED as level (level)}
-        <span class="cal-legend-swatch" style="background:{fillAt(level)}"></span>
-      {/each}
-      <span class="cal-legend-end">{legend.high}</span>
-    </span>
-    <span class="cal-legend-none">
-      <span class="cal-legend-swatch" style="background:{fillAt(0)}"></span>
-      {m.legend_none()}
-    </span>
-  </div>
-{/if}
-
-{#if eraLegend.length}
-  <!-- Which era's border a day is drawing (phase 6 ticket 03), named next
-       to its colour the same way the metric legend already is. A month in
-       no era draws no strip at all, rather than an empty state or
-       "Uncategorized" (ADR-0049). -->
-  <div class="cal-era-legend" data-cal-era-legend>
-    {#each eraLegend as e (e.name)}
-      <span class="cal-era-legend-item">
-        <span class="cal-legend-swatch" style="border-color:{e.mark}"></span>
-        {e.name}
-      </span>
-    {/each}
-  </div>
-{/if}
-
 <style>
+  /* The strip: one bar per day of the month, edge to edge, in the order the
+     days run. A bar rather than a small square because the row has to hold
+     31 of them inside 280px at the narrowest - 7px of width is all a day
+     gets, and 7px tall as well would be a speck. Tall and thin, it reads as
+     a month the way a barcode reads as a barcode.
+
+     Blocks, so 2px corners and the same 1px edge the grid's cells carry
+     (DIRECTION.md rules 4 and 5): an unlogged day is a day, and without an
+     edge a quiet month is a blank line. */
+  .cal-ribbon {
+    display: grid;
+    grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+    gap: 2px;
+    /* Room under the bars for today's mark, which is drawn below rather than
+       around: a ring on a 7px bar would cross its neighbours, and the bars
+       are 2px apart. */
+    padding-bottom: 6px;
+  }
+  .cal-bar {
+    position: relative;
+    height: 24px;
+    border: 1px solid var(--outline);
+    border-radius: 2px;
+    /* The strip recolours rather than cutting when the metric changes, the
+       same as the grid's cells do and for the same reason - see .cal-swatch
+       below. */
+    transition: background-color var(--dur-med) var(--ease-out);
+  }
+  .cal-bar.is-today::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -5px;
+    height: 2px;
+    background: var(--accent);
+  }
+
   .cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
