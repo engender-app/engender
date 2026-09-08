@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { DocumentTargetKind, EpisodeEndReason, WearKind } from '../types';
+import type { DocumentTargetKind, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 import { ARCHIVE_FORMAT_VERSION } from './container';
 
@@ -457,7 +457,13 @@ interface ArchiveProcedureConsult {
     Nor are its consults, since ticket 57: those are appointments, and they
     travel in the `appointments` section naming this procedure. `consults`
     survives as an optional field only so an older archive parses - see
-    `ArchiveProcedureConsult` above. */
+    `ArchiveProcedureConsult` above.
+
+    `kind` and `dilationOptIn` are phase 9 carpet ticket 17. Both are
+    optional only so an archive written before this ticket parses -
+    applying one reads an absent `kind` as `custom` and an absent
+    `dilationOptIn` as false, the same defaults `upsertProcedure` gives a
+    write that names neither. */
 export interface ArchiveProcedure {
   id: string;
   name: string;
@@ -466,6 +472,8 @@ export interface ArchiveProcedure {
   consults?: ArchiveProcedureConsult[];
   notes: string;
   photos: ArchiveProcedurePhoto[];
+  kind?: ProcedureKind;
+  dilationOptIn?: boolean;
 }
 
 /** One appointment (phase 8 features ticket 57, ADR-0066). Its own section

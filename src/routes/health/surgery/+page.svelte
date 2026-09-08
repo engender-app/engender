@@ -13,16 +13,20 @@
   import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
-  import type { ChecklistItem, Procedure, ProcedureConsult } from '$lib/data/types';
+  import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
+  import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
+  import { disclose } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
+  import ProcedureKindPicker from '$lib/components/ProcedureKindPicker.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import Switch from '$lib/components/Switch.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -112,12 +116,17 @@
     return m.surgery_day_since({ days: m.n_days({ n: day.days }) });
   }
 
-  const record = recordEditor<Procedure, { id?: string; name: string; date: string }>({
-    blank: () => ({ name: '', date: '' }),
+  const record = recordEditor<
+    Procedure,
+    { id?: string; name: string; date: string; kind: ProcedureKind; dilationOptIn: boolean }
+  >({
+    blank: () => ({ name: '', date: '', kind: 'custom', dilationOptIn: false }),
     fromRecord: (procedure) => ({
       id: procedure.id,
       name: procedure.name,
-      date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay)
+      date: procedure.surgeryEpochDay === null ? '' : dateInputValueFromEpochDay(procedure.surgeryEpochDay),
+      kind: procedure.kind,
+      dilationOptIn: procedure.dilationOptIn
     }),
     async upsert(draft) {
       const name = draft.name.trim();
@@ -127,7 +136,9 @@
         name,
         // An empty date field clears the date rather than defaulting to today:
         // a procedure without one yet is an ordinary state here.
-        surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null
+        surgeryEpochDay: epochDayFromDateInputValue(draft.date) ?? null,
+        kind: draft.kind,
+        dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn
       });
       selectedId = id;
       notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
@@ -148,6 +159,7 @@
   let consultDate = $state('');
   let notesDraft = $state('');
   let photoSheet = $state(false);
+  let pickingKind = $state(false);
   let photoDate = $state('');
 
   async function storePhoto(photo: NormalizedPhoto): Promise<void> {
@@ -599,16 +611,12 @@
        Health row, which put a dilation log in front of everyone who opened
        More whatever their surgery was or was not.
 
-       The gate is wrong and is meant to be. Ticket 16 asked for the row
-       "only for vaginal reconstruction surgery" and nothing in the record can
-       answer that: a Procedure is a free-text name, a date, its consults and
-       its notes (CONTEXT.md, Surgery - "the app ships no list of procedures
-       and never matches two spellings of one"). So this is the loosest honest
-       gate available, which is that the person has a surgery journey at all,
-       and phase 9 carpet ticket 17 replaces it with a kind on the procedure.
-       Matching the typed name against a word list would be a worse answer
-       wearing the right one's clothes, in two languages. -->
-  {#if procedures.length > 0}
+       Ticket 16 shipped the loosest honest gate available at the time - any
+       procedure at all - and recorded that it was wrong on purpose. Ticket
+       17 replaces it with the real one: a vaginoplasty, or a custom
+       procedure whose own dilation toggle is on. Vulvoplasty is deliberately
+       not in this OR - there is no canal to keep (ticket 17's own list). -->
+  {#if procedures.some((p) => p.kind === 'vaginoplasty' || (p.kind === 'custom' && p.dilationOptIn))}
     <HostedRows host="surgery" card />
   {/if}
 
@@ -644,6 +652,44 @@
           <DatePicker name="surgery-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
+      <Field label={m.surgery_kind_label()} legend>
+        {#snippet children()}
+          <ListCard>
+            <ListRow
+              key="procedure-kind"
+              data-procedure-kind
+              icon="tag"
+              title={procedureKindName(editor.kind)}
+              static
+              action={{
+                icon: 'pencil',
+                label: m.surgery_kind_change(),
+                onclick: () => (pickingKind = true),
+                attrs: { 'data-pick-procedure-kind': 'true' }
+              }}
+            />
+          </ListCard>
+        {/snippet}
+      </Field>
+      {#if editor.kind === 'custom'}
+        <div class="disclosed" transition:disclose>
+          <Field label={m.surgery_kind_dilation_toggle_label()} legend spread>
+            {#snippet children()}
+              <Switch
+                checked={editor.dilationOptIn}
+                label={m.surgery_kind_dilation_toggle_label()}
+                onChange={(v) => (editor.dilationOptIn = v)}
+              />
+            {/snippet}
+          </Field>
+        </div>
+      {/if}
+      <ProcedureKindPicker
+        open={pickingKind}
+        current={editor.kind}
+        onPick={(kind) => (editor.kind = kind)}
+        onClose={() => (pickingKind = false)}
+      />
     {/snippet}
     {#snippet extraActions(editor)}
       {#if editor.date}

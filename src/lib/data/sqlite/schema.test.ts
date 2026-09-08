@@ -93,7 +93,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 79);
+  assert.equal(db.getUserVersion(), 80);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -910,6 +910,23 @@ test('the hand-written latest version and the migration list agree', async () =>
     ),
     'the list is contiguous from the baseline, in order, with no version applied twice'
   );
+});
+
+test('every procedure has a kind, and a row from before the column existed gets custom', async () => {
+  const db = await migratedDb();
+
+  /* No CHECK on this column (SCHEMA_V80's own comment) - the write layer
+     validates, and the DEFAULT is what a row written before this migration
+     becomes. */
+  db.raw.exec(`INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, updated_at)
+    VALUES ('p-old', 'top surgery', NULL, '', 1000)`);
+
+  const row = db.raw.prepare("SELECT kind, dilation_opt_in FROM procedure WHERE uuid = 'p-old'").get() as {
+    kind: string;
+    dilation_opt_in: number;
+  };
+  assert.equal(row.kind, 'custom');
+  assert.equal(row.dilation_opt_in, 0);
 });
 
 test('every wear session has a kind, and a write that names none gets the default', async () => {
