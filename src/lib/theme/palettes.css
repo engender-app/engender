@@ -271,30 +271,30 @@
    #1B2B36 needs) and dark-theme steps stay dark (luminance <= 0.1474,
    which nonbinary dark's #EFEAF6 needs). That is a floor in one theme and a
    ceiling in the other, which is why the light ramp descends as it
-   saturates and the dark ramp holds one lightness and spends chroma
+   saturates (OKLab lightness 0.90 to 0.73) and the dark ramp holds one lightness and spends chroma
    instead. See docs/adr/0077-moods-ramp-runs-between-two-hues.md for the
    derivation, the hue-clash review against all 8 palettes, and the
    residual-risk pairs. */
 [data-mood-preset="amber"][data-theme="light"] {
-  --mood-1: #F4E0F9; --mood-2: #FFC4DE; --mood-3: #FFAFAE; --mood-4: #FF9A5F; --mood-5: #D99B01;
+  --mood-1: #EFD3F5; --mood-2: #FBB9D7; --mood-3: #FFA7A7; --mood-4: #FF985A; --mood-5: #D99B01;
 }
 [data-mood-preset="amber"][data-theme="dark"] {
   --mood-1: #6F5B73; --mood-2: #825269; --mood-3: #934A4C; --mood-4: #994A11; --mood-5: #825B00;
 }
 [data-mood-preset="teal"][data-theme="light"] {
-  --mood-1: #E9E4FF; --mood-2: #C8D6FF; --mood-3: #95CEFF; --mood-4: #45C9ED; --mood-5: #05BFC0;
+  --mood-1: #E0D8FF; --mood-2: #BDCEFF; --mood-3: #8BCAFF; --mood-4: #01CAF4; --mood-5: #01BFC0;
 }
 [data-mood-preset="teal"][data-theme="dark"] {
   --mood-1: #655E7D; --mood-2: #54618A; --mood-3: #356890; --mood-4: #026F87; --mood-5: #017272;
 }
 [data-mood-preset="plum"][data-theme="light"] {
-  --mood-1: #D0EDFF; --mood-2: #C2D9FF; --mood-3: #C1C0FF; --mood-4: #D59BFF; --mood-5: #F06FD9;
+  --mood-1: #BCE5FE; --mood-2: #B4D1FF; --mood-3: #BCBAFF; --mood-4: #D399FD; --mood-5: #ED73D6;
 }
 [data-mood-preset="plum"][data-theme="dark"] {
   --mood-1: #47687C; --mood-2: #486491; --mood-3: #5E589F; --mood-4: #7B489E; --mood-5: #9A3289;
 }
 [data-mood-preset="moss"][data-theme="light"] {
-  --mood-1: #FDE2CE; --mood-2: #EFD49F; --mood-3: #CFCD75; --mood-4: #96CA63; --mood-5: #03C773;
+  --mood-1: #FAD6BA; --mood-2: #EACB8F; --mood-3: #CAC86C; --mood-4: #93C95D; --mood-5: #00C773;
 }
 [data-mood-preset="moss"][data-theme="dark"] {
   --mood-1: #795D46; --mood-2: #77602F; --mood-3: #69671B; --mood-4: #4A701F; --mood-5: #007742;
