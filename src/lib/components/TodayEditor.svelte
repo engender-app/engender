@@ -464,6 +464,35 @@
     outline: 1px solid var(--outline);
   }
 
+  /* At 200% zoom on a 390px phone the row is 155px wide inside the
+     screen's inset. An icon block, a title and two 48px controls in one
+     line leave the title 35px, which breaks "measurements" into five
+     pieces - so at that width the row becomes two lines: the title across
+     the whole of it, the handle and the unpin under it at the trailing
+     edge. The icon block goes with the single line; it names the area a
+     second time, and the title already does that.
+
+     A row is 48 one line and 60 with a subtitle (DIRECTION.md 6). This is
+     neither: it is one row wearing two controls at the accessibility
+     floor, and 200% zoom is where the floor and the row disagree. */
+  @media (max-width: 260px) {
+    .today-editor-list :global(.kit-row) {
+      flex-wrap: wrap;
+    }
+
+    .today-editor-list :global(.kit-row-ico) {
+      display: none;
+    }
+
+    .today-editor-list :global(.kit-row-text) {
+      flex-basis: 100%;
+    }
+
+    .today-editor-list :global(.kit-row-trail) {
+      margin-inline-start: auto;
+    }
+  }
+
   .today-editor-grip,
   .today-editor-add {
     display: grid;
@@ -473,7 +502,6 @@
        control whose whole job is to be grabbed. */
     inline-size: var(--touch-target);
     block-size: var(--touch-target);
-    margin-inline: calc(var(--space-2) * -1);
     color: var(--text-2);
     background: none;
     border: 0;
