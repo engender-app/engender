@@ -316,8 +316,45 @@ test('depletingStocks filters and sorts by urgency', () => {
   assert.equal(depleting.length, 2);
   assert.equal(depleting[0].entry.drug, 'estradiol valerate');
   assert.equal(depleting[0].daysRemaining, 2);
+  assert.equal(depleting[0].actionableEpochDay, asOf + 2);
   assert.equal(depleting[1].entry.drug, 'progesterone');
   assert.equal(depleting[1].daysRemaining, 5);
+});
+
+test('depletingStocks gates and sorts on reorderByEpochDay when a row carries one, not the run-out day', () => {
+  const asOf = DAY_0 + 10;
+  const items = [
+    {
+      // Run-out is 50 days out, ample by itself - but a 45-day lead time
+      // pulls the reorder day inside the window, which is the whole point
+      // of ticket 16.
+      entry: { id: 's-lead', drug: 'estradiol valerate', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
+      reorderByEpochDay: asOf + 5
+    },
+    {
+      // Run-out is 5 days out, which would ordinarily be the more urgent
+      // one - but it carries no lead time, so its own run-out day stands.
+      entry: { id: 's-plain', drug: 'progesterone', quantity: 20, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 5, dailyRate: 1, runOutEpochDay: asOf + 5, excludedDoses: 0 },
+      reorderByEpochDay: null
+    },
+    {
+      // Well outside the threshold either way.
+      entry: { id: 's-ample', drug: 'spironolactone', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
+      projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
+      reorderByEpochDay: asOf + 50
+    }
+  ];
+
+  const depleting = depletingStocks(items, asOf);
+  assert.equal(depleting.length, 2);
+  assert.equal(depleting[0].entry.drug, 'estradiol valerate');
+  assert.equal(depleting[0].daysRemaining, 5);
+  assert.equal(depleting[0].actionableEpochDay, asOf + 5);
+  assert.equal(depleting[1].entry.drug, 'progesterone');
+  assert.equal(depleting[1].daysRemaining, 5);
+  assert.equal(depleting[1].actionableEpochDay, asOf + 5);
 });
 
 test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', () => {

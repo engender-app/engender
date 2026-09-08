@@ -26,6 +26,7 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const home = read('src/routes/+page.svelte');
 const homeMarkup = home.replace(/<script[\s\S]*?<\/script>/g, '');
+const care = read('src/routes/care/+page.svelte');
 const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
@@ -225,7 +226,8 @@ describe('Localization keys for stock notice', () => {
     'tile_stock_title',
     'tile_stock_sub',
     'notice_stock_low_title',
-    'notice_stock_low_body',
+    'notice_stock_reorder_body',
+    'notice_stock_projected_body',
     'notice_stock_out_body',
     'notice_stock_manage',
     'notice_stock_dismiss_action',
@@ -233,7 +235,11 @@ describe('Localization keys for stock notice', () => {
     'notice_stock_dismiss_hint',
     'notice_stock_snooze_btn',
     'notice_stock_dont_show_btn',
-    'notice_stock_snoozed_toast'
+    'notice_stock_snoozed_toast',
+    'care_mark_reorder_by',
+    'stock_lead_time_label',
+    'stock_lead_time_placeholder',
+    'stock_lead_time_hint'
   ];
 
   for (const key of requiredKeys) {
@@ -242,4 +248,26 @@ describe('Localization keys for stock notice', () => {
       expect(plMessages[key]).toBeTruthy();
     });
   }
+});
+
+describe('The reorder-by day, on screen (ticket 16)', () => {
+  it('names the same day everywhere: Home reads actionableEpochDay through the shared sentence', () => {
+    expect(home).toContain("import { stockNoticeBody } from '$lib/data/vocabulary/stockLabel';");
+    expect(home).toContain('stockNoticeBody(');
+    expect(home).toContain('urgentDepletingStock.actionableEpochDay');
+    // The countdown this ticket retires must not come back.
+    expect(home).not.toContain('notice_stock_low_body');
+  });
+
+  it('the care spine reads the same actionableEpochDay and relabels its mark', () => {
+    expect(care).toContain('runOut?.actionableEpochDay ?? null');
+    expect(care).toContain('runOut.entry.leadTimeDays !== null ? m.care_mark_reorder_by() : m.care_mark_run_out()');
+  });
+
+  it('the stock surface carries a lead-time field, typed as an optional day count', () => {
+    const stockScreen = read('src/routes/settings/stock/+page.svelte');
+    expect(stockScreen).toContain('m.stock_lead_time_label()');
+    expect(stockScreen).toContain('m.stock_lead_time_hint()');
+    expect(stockScreen).toContain('leadTimeDays');
+  });
 });

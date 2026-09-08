@@ -383,19 +383,26 @@ export function isStockDepletingSoon(
 interface DepletingStockInfo<T = StockEntry> {
   entry: T;
   projection: StockProjection;
+  /** The day this reading is gated and sorted on: `reorderByEpochDay` where
+      a row carries one, the projection's own run-out day otherwise
+      (redesign phase 10 ticket 16). Named so a caller can print the exact
+      date it was judged against rather than recomputing a third answer. */
+  actionableEpochDay: number;
   daysRemaining: number;
 }
 
 export function depletingStocks<T extends { drug: string }>(
-  rows: readonly { entry: T; projection: StockProjection }[],
+  rows: readonly { entry: T; projection: StockProjection; reorderByEpochDay?: number | null }[],
   asOfEpochDay: number,
   thresholdDays: number = STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS
 ): DepletingStockInfo<T>[] {
   const result: DepletingStockInfo<T>[] = [];
-  for (const { entry, projection } of rows) {
-    if (isStockDepletingSoon(projection, asOfEpochDay, thresholdDays)) {
-      const daysRemaining = Math.max(0, projection.runOutEpochDay! - asOfEpochDay);
-      result.push({ entry, projection, daysRemaining });
+  for (const { entry, projection, reorderByEpochDay } of rows) {
+    const actionableEpochDay = reorderByEpochDay ?? projection.runOutEpochDay;
+    if (actionableEpochDay === null) continue;
+    if (actionableEpochDay - asOfEpochDay <= thresholdDays) {
+      const daysRemaining = Math.max(0, actionableEpochDay - asOfEpochDay);
+      result.push({ entry, projection, actionableEpochDay, daysRemaining });
     }
   }
   return result.sort((a, b) => a.daysRemaining - b.daysRemaining || a.entry.drug.localeCompare(b.entry.drug));
