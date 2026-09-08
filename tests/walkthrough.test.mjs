@@ -589,6 +589,85 @@ try {
   ok('today faces forward: the agenda leads, a row opens its screen, the strip logs a mood and a tally, the pins resolve, nothing that left is unreachable, and disguise keeps the strip');
 } catch (e) { fail('today faces forward', e); }
 
+/* Editing Today (phase 10 redesign ticket 14; ADR-0073, ADR-0067,
+   ADR-0043). The last row of the pinned block opens the edit mode, a row
+   is added from the registry, moved with the keyboard, kept across a
+   reload, and the reset puts the default set and the five switches back.
+   Right after the flow that reads the pinned rows, and for the same
+   reason: this is about the screen while the journal is still the
+   persona's. */
+try {
+  await fresh('/');
+  await page.waitForSelector('[data-edit-today]');
+  await page.locator('[data-edit-today]').click();
+  await page.waitForSelector('[data-today-editor]');
+
+  /* A bad-hour row is pinnable and off until asked for: the counterevidence
+     check is in the add list, not on the front page. */
+  if (await page.locator('[data-pinned-row="doubt"]').count()) {
+    throw new Error('the counterevidence check is pinned before anybody asked for it');
+  }
+  /* And the cycle log is not offered cold - ADR-0043's gate is closed for a
+     persona with no testosterone regimen and no opt-in. */
+  if (await page.locator('[data-edit-add="cycle-events"]').count()) {
+    throw new Error('the add list offered the cycle log with its own gate shut');
+  }
+
+  await page.locator('[data-edit-add="doubt"]').click();
+  await page.waitForSelector('[data-edit-pinned-row="doubt"]');
+  const addedLast = await page.locator('[data-edit-pinned-row]').evaluateAll((nodes) =>
+    nodes.map((n) => n.getAttribute('data-edit-pinned-row'))
+  );
+  if (addedLast[addedLast.length - 1] !== 'doubt') {
+    throw new Error('a row added did not land at the end: ' + JSON.stringify(addedLast));
+  }
+
+  /* The drag's keyboard equivalent: one place up per press, and the handle
+     keeps the focus so a second press moves the same row again. */
+  await page.locator('[data-edit-grip="doubt"]').focus();
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => {
+    const keys = [...document.querySelectorAll('[data-edit-pinned-row]')].map((n) => n.getAttribute('data-edit-pinned-row'));
+    return keys[keys.length - 2] === 'doubt';
+  }, null, { timeout: 8000 });
+
+  /* A kind switched off stays off, which is the whole reason it is a switch
+     rather than a dismissal. */
+  await page.locator('[data-edit-kind="doseSlot"] [role="switch"]').click();
+  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
+
+  await page.locator('[data-edit-done]').click();
+  await page.waitForSelector('[data-pinned-row="doubt"]');
+
+  /* It survives a reload, which is the same read the app makes after a
+     lock: the arrangement is a preference in the journal, not screen
+     state. */
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-pinned-row="doubt"]');
+  const afterReload = await page.locator('[data-pinned-row]').evaluateAll((nodes) =>
+    nodes.map((n) => n.getAttribute('data-pinned-row'))
+  );
+  if (afterReload[afterReload.length - 2] !== 'doubt') {
+    throw new Error('the arrangement did not survive a reload: ' + JSON.stringify(afterReload));
+  }
+
+  /* Removing takes it off the front page, and the reset puts the default
+     set and the switches back - one edit mode, one reset. */
+  await page.locator('[data-edit-today]').click();
+  await page.waitForSelector('[data-today-editor]');
+  await page.locator('[data-edit-unpin="doubt"]').click();
+  await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
+  await page.locator('[data-edit-reset]').click();
+  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="true"]');
+  await page.locator('[data-edit-done]').click();
+  await page.waitForSelector('[data-pinned-row]');
+  if (await page.locator('[data-pinned-row="doubt"]').count()) {
+    throw new Error('the reset left a row the default set does not hold');
+  }
+  ok('editing Today: the last row opens the edit mode, a row is added, moved with the keyboard and kept across a reload, and the reset restores the default set and the switches');
+} catch (e) { fail('editing Today', e); }
+
 /* 4c. day detail keeps entries separate and shows no day average */
 try {
   await fresh('/entry/new/today');

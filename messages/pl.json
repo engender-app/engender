@@ -3514,5 +3514,17 @@
   "home_agenda_heading": "Nadchodzi",
   "home_log_heading": "Zapisz coś",
   "home_pinned_heading": "Przypięte",
+  "home_pinned_edit": "Ułóż tę listę",
+  "home_pinned_edit_empty": "Przypnij tu coś",
+  "home_edit_heading": "Układasz Start",
+  "home_edit_hint": "Przeciągnij pozycję za uchwyt albo przenieś ją strzałkami.",
+  "home_edit_unpin": "Odepnij: {row}",
+  "home_edit_move": "Przenieś: {row}",
+  "home_edit_none": "Nic nie jest przypięte. To, co dodasz poniżej, pojawi się tutaj.",
+  "home_edit_add_heading": "Dodaj pozycję",
+  "home_edit_add": "Przypnij: {row}",
+  "home_edit_agenda_heading": "Co widać w Nadchodzi",
+  "home_edit_done": "Gotowe",
+  "home_edit_reset": "Wróć do domyślnego zestawu",
   "tomorrow": "Jutro"
 }
