@@ -141,6 +141,26 @@ function splitTopLevel(value: string): string[] {
   return out;
 }
 
+/** The whitespace-separated words of one shorthand part, ignoring the
+    whitespace inside a function - so `var(--a, var(--b))` stays one word
+    however many spaces it carries. */
+function words(part: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i <= part.length; i++) {
+    const at = part[i];
+    if (at === '(') depth++;
+    else if (at === ')') depth--;
+    else if ((at === undefined || /\s/.test(at)) && depth === 0) {
+      const word = part.slice(start, i).trim();
+      if (word) out.push(word);
+      start = i + 1;
+    }
+  }
+  return out;
+}
+
 /** The shared sheets plus every component's own <style> block. A curve can
     be written in either, so the checks about which curves exist read both. */
 function styleSources() {
@@ -710,6 +730,65 @@ describe('the token layer behind the five tiers', () => {
     for (const rule of clamped) {
       expect(rule.body, 'a stagger member still waits its own turn otherwise').toContain('--stagger-step: 0ms');
     }
+  });
+
+  /* The other half of that, and the one the clamp cannot cover on its own.
+     `animation-duration: 1ms !important` and its transition twin reach every
+     duration in the app whatever it was written as, but neither touches a
+     delay - so a delay written as a literal survives reduced motion at full
+     length. On its own that is a pause before an instant animation, which is
+     merely wrong; on a staged pair of edges it is worse, because the two
+     halves of one shape come apart. Redesign ticket 26's highlight is that
+     staged pair: its trailing edge waits --stagger-step, which the block
+     above zeroes, and a literal 50ms in its place would hold the shape open
+     for 50ms under a setting whose whole promise is that nothing moves.
+
+     So every delay in the app is either zero or built out of a token the
+     clamp reaches. Longhands and the fourth slot of a shorthand both, since
+     that slot is where a delay is most easily written by hand and least
+     easily noticed. */
+  it('writes no delay the reduced-motion clamp cannot reach', () => {
+    const TIME = /^-?[\d.]+m?s$/;
+    const ZERO = /^-?0m?s$/;
+    const stopped = stoppedUnderReduce();
+    /* A delay on an animation that is cancelled outright under both paths
+       has nothing to delay, which is the escape the decorative loops take
+       (MO-001) - and their delays are literal because their durations are
+       too. `.bloom i` is the rule that gets cancelled and
+       `.bloom i:nth-child(2)` the one that carries the delay, so a stopped
+       selector counts for the same element further qualified. */
+    const isStopped = (selector: string) =>
+      stopped.has(selector) ||
+      [...stopped].some((base) => selector.startsWith(base) && /^[:[]/.test(selector.slice(base.length)));
+    const offenders: string[] = [];
+
+    for (const { path, css } of styleSources()) {
+      for (const rule of rules(css)) {
+        if (rule.prelude.startsWith('@')) continue;
+        if (rule.prelude.split(',').every((selector) => isStopped(selector.trim()))) continue;
+        for (const [prop, value] of Object.entries(declarations(rule.body))) {
+          const delays: string[] = [];
+          if (prop === 'animation-delay' || prop === 'transition-delay') {
+            delays.push(...splitTopLevel(value));
+          } else if (prop === 'animation' || prop === 'transition') {
+            /* name/property, duration, easing, delay. Only the fourth slot
+               is a delay; the second is a duration and already clamped.
+               Split at paren depth zero, or a `var(--x, var(--y))` fallback
+               would be read as two slots and the real fourth one missed. */
+            for (const part of splitTopLevel(value)) delays.push(words(part)[3] ?? '');
+          }
+          for (const delay of delays) {
+            if (!TIME.test(delay) || ZERO.test(delay)) continue;
+            offenders.push(`${path}: ${prop}: ${value}`);
+          }
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      'a literal delay outlives the 1ms clamp - reach for --stagger-step or a --dur-* token'
+    ).toEqual([]);
   });
 });
 
