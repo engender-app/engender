@@ -49,6 +49,7 @@
     drug: string;
     quantity: string;
     unit: string;
+    leadTimeDays: string;
     recordedDate: string;
     openedDate: string;
     windowMode: 'days' | 'end';
@@ -63,6 +64,7 @@
           drug: row.entry.drug,
           quantity: String(row.entry.quantity),
           unit: row.entry.unit,
+          leadTimeDays: row.entry.leadTimeDays === null ? '' : String(row.entry.leadTimeDays),
           recordedDate: dateInputValueFromEpochDay(row.entry.recordedEpochDay),
           openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
           windowMode: row.entry.inUseEndEpochDay !== null ? 'end' : 'days',
@@ -73,6 +75,7 @@
           drug: '',
           quantity: '',
           unit: '',
+          leadTimeDays: '',
           recordedDate: dateInputValueFromEpochDay(todayEpochDay()),
           openedDate: '',
           windowMode: 'days',
@@ -87,6 +90,14 @@
     const drug = editor.drug.trim();
     const unit = editor.unit.trim();
     if (isNaN(quantity) || !drug || !unit) return;
+
+    // Empty says the app assumes nothing rather than showing a zero
+    // (redesign phase 10 ticket 16) - the same shape the window fields
+    // below already take: a number input's bound value is not always a
+    // string (Svelte clears it to a non-string when the field is empty),
+    // so emptiness is read off `isNaN` rather than off `.trim()`.
+    const leadTime = parseInt(editor.leadTimeDays, 10);
+    const leadTimeDays = isNaN(leadTime) ? null : leadTime;
 
     // No opened date, nothing to project a window from - both columns stay
     // null regardless of what the (hidden) window fields hold.
@@ -103,6 +114,7 @@
       quantity,
       unit,
       recordedEpochDay: epochDayFromDateInputValueOrToday(editor.recordedDate),
+      leadTimeDays,
       openedEpochDay,
       inUseWindowDays,
       inUseEndEpochDay
@@ -208,6 +220,20 @@
           {/snippet}
         </Field>
       </div>
+      <Field label={m.stock_lead_time_label()} id="stock-lead-time">
+        {#snippet children(id)}
+          <input
+            class="input"
+            type="number"
+            {id}
+            name="stock-lead-time"
+            placeholder={m.stock_lead_time_placeholder()}
+            inputmode="numeric"
+            bind:value={editor!.leadTimeDays}
+          />
+        {/snippet}
+      </Field>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_lead_time_hint()}</p>
       <Field label={m.stock_date_label()} id="stock-date">
         {#snippet children(id)}
           <DatePicker name="stock-date" bind:value={editor!.recordedDate} {id} />
