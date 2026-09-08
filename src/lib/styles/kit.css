@@ -1035,6 +1035,11 @@ a.kit-entry:active {
 .kit-tiles > :nth-child(4) { --tile-index: 3; }
 .kit-tiles > :nth-child(5) { --tile-index: 4; }
 .kit-tiles > :nth-child(6) { --tile-index: 5; }
+/* Capped, as the bars' stagger is: a seventh tile and every one after it
+   take the last slot rather than falling back to the first and arriving in
+   lockstep with it. Home caps at three per tier today; this is for the grid
+   that does not. */
+.kit-tiles > :nth-child(n + 7) { --tile-index: 6; }
 
 
 .kit-tile.has-dismiss {

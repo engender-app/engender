@@ -497,7 +497,19 @@ a.segment {
    the pill is a positioned element and would otherwise sit on top of static
    siblings whatever the order. */
 .segment { position: relative; }
-.segment.is-active { color: var(--bg); }
+/* The label turns page-coloured on an ease-in while the pill arrives on an
+   ease-out (redesign ticket 25): the pill has covered most of its distance
+   by a third of the time, and a label that whitened on the same curve was
+   light on the light track for the two frames before the ink reached its
+   last letter ("365d" read "365"). Starting slow, the label is still dark
+   while the pill travels and finishes whitening as the ink finishes
+   covering it; both land on the same frame. The rule that owns a
+   transition's curve is the state being entered, so the label leaving the
+   pill keeps `.segment`'s ease-out and darkens as fast as it is uncovered. */
+.segment.is-active {
+  color: var(--bg);
+  transition-timing-function: var(--ease-out), cubic-bezier(0.7, 0, 0.84, 0);
+}
 /* The keyboard ring draws inside the segment, not 2px outside it. A segment
    sits flush against its neighbours inside a pill track, so the default
    offset ring drew around the chosen label and out past the track's own
