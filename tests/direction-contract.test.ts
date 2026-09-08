@@ -700,6 +700,21 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
     );
   });
 
+  /* Rule 7's Transition door (redesign ticket 15): "The field holds the
+     search input, set as a block of --bg on the field with --text type, and
+     nothing else." That block is also the whole of why 16px type is legal
+     up there, so it is asserted rather than left to the small-type rule
+     below to happen not to see. */
+  it('holds the search box on the Transition door as a block of --bg with page ink', () => {
+    const more = read('src/routes/more/+page.svelte');
+    const field = /\{#snippet field\(\)\}([\s\S]*?)\{\/snippet\}/.exec(more)?.[1] ?? '';
+    expect(field).toContain('class="search-box"');
+
+    const box = ruleFor(sheet('components'), '.screen-field .search-box');
+    expect(box?.body).toMatch(/background:\s*var\(--bg\)/);
+    expect(ruleFor(sheet('screens'), '.search-input')?.body).toMatch(/color:\s*var\(--text\)/);
+  });
+
   it("puts Today's sun and wordmark in the field, and the hello line, the count and the gear in a foot on the page", () => {
     const field = element(home, 'data-home-field');
     expect(field).toContain('<FlagSun />');

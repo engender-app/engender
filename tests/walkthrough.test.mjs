@@ -1491,8 +1491,11 @@ try {
      the hub - the same headings the More screen draws, in the same order. */
   /* Support and Media are left off this step (Alicja, sign-off): neither is
      something a person tracks. */
+  /* Steps, not Transition, since redesign ticket 15 renamed the group in the
+     one place both surfaces read it from (`hubLabels.ts`): a group called
+     Transition inside a door called Transition said nothing. */
   const areaHeadings = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
-  if (areaHeadings.join() !== ['Body', 'Health', 'Transition'].join()) {
+  if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
@@ -3488,6 +3491,91 @@ try {
   ok('the reorganised hub: every row that left it is reachable from the screen that hosts it, and Support replaced Practice');
 } catch (e) {
   fail('the reorganised hub tree', e);
+}
+
+/* Cutting through the door with the search box in its field (phase 10
+   redesign ticket 15). Twenty-seven rows is only a list somebody can get
+   through if a word narrows it, and what a word reaches is both halves of
+   what is behind the door: the areas by name, and the records inside them.
+
+   The queries are chosen for what the demo persona actually holds rather
+   than for what reads well - "wear" names an area, "endo" is inside a
+   consult and a reminder - and both halves are asserted by their handles,
+   never by the copy (ADR-0029). */
+try {
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-hub-index] [data-list-row="measurements"]', { timeout: 8000 });
+
+  // The row that used to point at preferences, and the pointer with it, are
+  // gone from this door for good (ADR-0036; tickets 09 and 15).
+  if (await page.locator('[data-list-row="settings"]').count()) {
+    throw new Error('the fourth door still holds a Settings row');
+  }
+
+  // An area, by part of its name. The grouped index gives way to the matches.
+  await page.locator('[data-hub-search]').fill('wear');
+  await page.waitForSelector('[data-hub-results] [data-list-row="wear"]', { timeout: 8000 });
+  /* Detached rather than absent on the next frame: the index gives its
+     height back on the way out (DIRECTION.md rule 10), so it is still in the
+     document while it does, and waiting for it to go is also what proves the
+     collapse finishes rather than stalling. */
+  await page.waitForSelector('[data-hub-index]', { state: 'detached', timeout: 8000 });
+  if (await page.locator('[data-hub-results] [data-list-row="measurements"]').count()) {
+    throw new Error('a row nothing matched is in the results');
+  }
+
+  // ... and it is still the row it was: one tap to its own screen.
+  await page.locator('[data-hub-results] [data-list-row="wear"]').click();
+  await page.waitForURL('**/practice/wear');
+
+  /* A row this door does not draw. Seven areas are drawn on a screen of
+     their own (phase 9 carpet ticket 16) and this is the only index with a
+     box in it, so a name reaches all twenty-seven; the row says which screen
+     hosts it, and following it lands on the area, not on the host. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('dilation');
+  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="surgery"]', {
+    timeout: 8000
+  });
+  await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
+  await page.waitForURL('**/health/dilation');
+
+  /* ADR-0043 through the box: the one row whose existence is a screen's call
+     and not the registry's cannot be typed into being. The demo persona has
+     no testosterone regimen and has not opted in, so nothing here may
+     answer "cycle events" - and the query is one that does match, since
+     `cycleEvents` records exist in the seed and the record half finds them
+     under their own area's name. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('cycle');
+  await page.waitForTimeout(1200);
+  if (await page.locator('[data-list-row="cycle-events"]').count()) {
+    throw new Error('the cycle row can be searched into existence (ADR-0043)');
+  }
+
+  // A record inside an area, which is the registry's read rather than this
+  // screen's (textSearch.ts). The hit goes where the record is.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('endo');
+  await page.waitForSelector('[data-search-hit]', { timeout: 8000 });
+  const hit = page.locator('[data-search-hit]').first();
+  const hitArea = await hit.getAttribute('data-search-hit');
+  await hit.click();
+  await page.waitForURL((url) => !url.pathname.endsWith('/more'), { timeout: 8000 });
+
+  // Nothing matched says so, once, rather than drawing an empty list.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('qqzzxx');
+  await page.waitForSelector('[data-notice="hub-search-none"]', { timeout: 8000 });
+
+  // And an empty box is the door at rest again.
+  await page.locator('[data-hub-search]').fill('');
+  await page.waitForSelector('[data-hub-index] [data-hub-section="media"]', { timeout: 8000 });
+  await page.waitForSelector('[data-hub-results]', { state: 'detached', timeout: 8000 });
+
+  ok(`the Transition door's search: an area by name reaches its screen, a record hit in ${hitArea} reaches where it lives, nothing found says so, and an empty box is the grouped list again`);
+} catch (e) {
+  fail("the Transition door's search", e);
 }
 
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
