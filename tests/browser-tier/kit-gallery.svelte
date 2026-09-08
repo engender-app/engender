@@ -349,6 +349,37 @@
     />
   </ChartCard>
 
+  <!-- Carpet ticket 20: the leader floor. Same rows a thin, early journal
+       draws on a 0-to-100 dimension - one tag with almost every entry,
+       the rest with one or two - so the smallest three bars stay a
+       readable length instead of the sliver `leader` used to draw. -->
+  <ChartCard heading="Tag insights, thin journal" kind="bars" role={roleAt(roles, 1)}>
+    <BarRows
+      rows={[
+        { key: 'a', name: 'Coming out', value: '90', amount: 90 },
+        { key: 'b', name: 'Voice practice', value: '12', amount: 12 },
+        { key: 'c', name: 'Makeup', value: '8', amount: 8 },
+        { key: 'd', name: 'Binding', value: '4', amount: 4 },
+        { key: 'e', name: 'Therapy', value: '2', amount: 2 },
+        { key: 'f', name: 'Shopping', value: '1', amount: 1 }
+      ]}
+    />
+  </ChartCard>
+
+  <!-- Same card, mood's own 1-to-5 scale: deltas this close together were
+       never near the floor, so this is the "unchanged" half of the same
+       ticket's acceptance criteria. -->
+  <ChartCard heading="Tag insights, mood scale" kind="bars" role={roleAt(roles, 1)}>
+    <BarRows
+      rows={[
+        { key: 'a', name: 'Coming out', value: '1.0', amount: 1.0 },
+        { key: 'b', name: 'Voice practice', value: '0.7', amount: 0.7 },
+        { key: 'c', name: 'Makeup', value: '0.5', amount: 0.5 },
+        { key: 'd', name: 'Binding', value: '0.3', amount: 0.3 }
+      ]}
+    />
+  </ChartCard>
+
   <ChartCard heading="Days at each mood" kind="distribution" role={roleAt(roles, 2)}>
     <Distribution
       steps={[
