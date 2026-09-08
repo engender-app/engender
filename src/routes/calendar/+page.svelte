@@ -80,7 +80,7 @@
     isReducedMotion,
     motionDuration
   } from '$lib/motion/tokens';
-  import { regroupSteps, type CellBox } from '$lib/motion/regroup';
+  import { regroupSteps, type CellBox, type CellStep } from '$lib/motion/regroup';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, roleAt, type Role } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
@@ -227,12 +227,12 @@
   let monthOpen = $state(false);
   let monthBody = $state<HTMLElement | undefined>();
 
-  function cellBoxes(): CellBox[] {
+  function boxesOf(attr: string): CellBox[] {
     if (!monthBody) return [];
-    return [...monthBody.querySelectorAll('[data-cal-cell]')].map((cell) => {
+    return [...monthBody.querySelectorAll(`[${attr}]`)].map((cell) => {
       const box = cell.getBoundingClientRect();
       return {
-        key: cell.getAttribute('data-cal-cell') ?? '',
+        key: cell.getAttribute(attr) ?? '',
         left: box.left,
         top: box.top,
         width: box.width,
@@ -241,42 +241,54 @@
     });
   }
 
+  /** One element back where it was, and released. `scaled` is what tells the
+      day's colour from the day's date: the swatch is a block of colour and a
+      squash on the way is invisible, while a date scaled 0.17 across and 0.43
+      down for a third of a second is mush. So the number travels and fades
+      and never deforms - which is also why the two are measured apart. */
+  function travel(box: CellStep, attr: string, duration: number, scaled: boolean) {
+    const from = scaled
+      ? `translate(${box.dx}px, ${box.dy}px) scale(${box.sx}, ${box.sy})`
+      : `translate(${box.dx}px, ${box.dy}px)`;
+    /* Origin in the keyframes rather than on the element: the cells are
+       pressable and a press scales from their middle, which is not where a
+       corner-anchored travel starts from. A keyframe property lasts as long
+       as the animation and leaves nothing behind. */
+    monthBody?.querySelector(`[${attr}="${box.key}"]`)?.animate(
+      [
+        { transform: from, transformOrigin: '0 0' },
+        { transform: 'none', transformOrigin: '0 0' }
+      ],
+      { duration, easing: EASE_OUT_CSS }
+    );
+  }
+
   function toggleMonth() {
     const body = monthBody;
     if (!body || isReducedMotion()) {
       monthOpen = !monthOpen;
       return;
     }
-    const before = cellBoxes();
+    const swatches = boxesOf('data-cal-cell');
+    const dates = boxesOf('data-cal-date');
     const from = body.getBoundingClientRect().height;
     monthOpen = !monthOpen;
     flushSync();
     const duration = motionDuration('--dur-slow');
-    const easing = EASE_OUT_CSS;
     body.style.overflow = 'clip';
     const opening = body.animate(
       [{ height: `${from}px` }, { height: `${body.getBoundingClientRect().height}px` }],
-      { duration, easing }
+      { duration, easing: EASE_OUT_CSS }
     );
     opening.finished.then(
       () => (body.style.overflow = ''),
       () => (body.style.overflow = '')
     );
-    for (const cell of regroupSteps(before, cellBoxes())) {
-      /* Origin in the keyframes rather than on the element: the cells are
-         pressable and a press scales from their middle, which is not where a
-         corner-anchored travel starts from. A keyframe property lasts as long
-         as the animation and leaves nothing behind. */
-      body.querySelector(`[data-cal-cell="${cell.key}"]`)?.animate(
-        [
-          {
-            transform: `translate(${cell.dx}px, ${cell.dy}px) scale(${cell.sx}, ${cell.sy})`,
-            transformOrigin: '0 0'
-          },
-          { transform: 'none', transformOrigin: '0 0' }
-        ],
-        { duration, easing }
-      );
+    for (const box of regroupSteps(swatches, boxesOf('data-cal-cell'))) {
+      travel(box, 'data-cal-cell', duration, true);
+    }
+    for (const box of regroupSteps(dates, boxesOf('data-cal-date'))) {
+      travel(box, 'data-cal-date', duration, false);
     }
   }
 
@@ -413,7 +425,7 @@
       </button>
     </div>
 
-    <div class="cal-month-body" id="calendar-month" bind:this={monthBody}>
+    <div class="cal-month-body" id="calendar-month" data-cal-month-body bind:this={monthBody}>
       <HeatMap {year} {month} role={roleAt(activeFlag.roles, 0)} eras={eraRoles} {highlight} compact={!monthOpen} />
       {#if monthOpen}
         <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
@@ -552,9 +564,13 @@
     cursor: pointer;
     text-align: left;
     text-decoration: underline;
-    text-decoration-color: currentcolor;
-    text-underline-offset: 4px;
-    text-decoration-thickness: 1px;
+    /* A hair of the ink rather than the ink: at 28px in the display face,
+       a full-strength rule under the words reads as a second line of the
+       design rather than as an affordance, and on two lines at 320px it
+       reads as three. */
+    text-decoration-color: color-mix(in srgb, var(--field-ink) 50%, transparent);
+    text-underline-offset: 5px;
+    text-decoration-thickness: 2px;
   }
 
   /* The chevron turns over rather than being swapped for a second glyph:
@@ -580,8 +596,12 @@
   }
   /* The picker takes the room the two labels it stands in for used to, so
      the control that opens the month lands on the screen's right edge where
-     a disclosure belongs. */
-  .cal-controls :global(.kit-chart-pick) { margin-right: auto; }
+     a disclosure belongs - and it is the one thing on the line that gives
+     room back. The three controls are 48px targets and a flex row would
+     shrink them under the floor to fit "Dysphoria <-> euphoria" at 320px;
+     the picker truncates its own label instead, which it already does. */
+  .cal-controls > .icon-btn { flex: none; }
+  .cal-controls :global(.kit-chart-pick) { margin-right: auto; min-width: 0; }
 
   /* The strip or the grid, and everything the grid brings with it. Its
      height is animated on the way between the two (see toggleMonth) and
