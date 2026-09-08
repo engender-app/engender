@@ -39,8 +39,16 @@ describe("Home's area colours", () => {
   it('shares role 1 across tile areas and preserves section roles', () => {
     expect(HOME_AREA_ROLE.liveTiles).toBe(1);
     expect(HOME_AREA_ROLE.lookBack).toBe(1);
-    expect(HOME_AREA_ROLE.milestones).toBe(2);
+    expect(HOME_AREA_ROLE.agenda).toBe(2);
     expect(HOME_AREA_ROLE.days).toBe(3);
+    expect(HOME_AREA_ROLE.pinned).toBe(3);
+  });
+
+  it('gives the log strip the same guaranteed colour as the week strip', () => {
+    /* Its write shapes are icon squares, a block of the stripe; on trans
+       the white band would make a white square on a white page (redesign
+       ticket 13). */
+    expect(HOME_AREA_ROLE.log).toBe(0);
   });
 
   it('numbers the four distinct section roles contiguously from the strip', () => {
