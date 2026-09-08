@@ -124,6 +124,7 @@ describe('what the More hub is built from', () => {
 
     expect(paraglide.sort()).toEqual([
       'm.hub_screen_title(',
+      'm.hub_search_clear(',
       'm.hub_search_placeholder(',
       'm.list_more(',
       'm.no_results(',
