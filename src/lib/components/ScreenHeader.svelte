@@ -123,36 +123,50 @@
        shell publishes --surface-2 and --text instead, so the same markup
        draws a grey header and nothing here has to know. -->
   <div class="screen-field" data-screen-field>
-    <div class="screen-header-row">
+    <!-- The blind (redesign ticket 28): the field's colour, split off from
+         the box that measures it so the two can move on different clocks
+         during a navigation. Decoration and nothing else - what it paints
+         at rest is exactly the field, since the field clips it. -->
+    <div class="field-blind" data-field-blind aria-hidden="true"></div>
+    <div class="screen-header-row" class:has-back-actions={!!back && !!actions}>
       {#if typeof back === 'string'}
         <a
           class="icon-btn press screen-back"
           href={back}
           data-screen-back
+          data-field-part
           aria-label={backLabel ?? m.back()}
           onclick={goBack}
         >
           <Icon name="arrowLeft" />
         </a>
       {:else if back}
-        <button class="icon-btn press screen-back" data-screen-back aria-label={backLabel ?? m.back()} onclick={back}>
+        <button class="icon-btn press screen-back" data-screen-back data-field-part aria-label={backLabel ?? m.back()} onclick={back}>
           <Icon name="arrowLeft" />
         </button>
       {/if}
 
-      <h1 class="screen-title" class:visually-hidden={titleHidden} data-screen-title={screen ?? ''}>
+      <!-- Named for the navigation only while it is painted: a hidden title
+           is still the screen's heading, and a heading nobody can see has
+           nothing to leave or arrive with. -->
+      <h1
+        class="screen-title"
+        class:visually-hidden={titleHidden}
+        data-screen-title={screen ?? ''}
+        data-field-part={titleHidden ? undefined : ''}
+      >
         {title}
       </h1>
 
       {#if actions}
-        <div class="header-action">{@render actions()}</div>
+        <div class="header-action" data-field-part>{@render actions()}</div>
       {/if}
     </div>
 
     <!-- Under the title's line, still on the block: the field's own
          contents, which are the door's (rule 7). -->
     {#if field}
-      <div class="screen-field-slot">{@render field()}</div>
+      <div class="screen-field-slot" data-field-part>{@render field()}</div>
     {/if}
   </div>
 

@@ -489,6 +489,11 @@
          reach. Nothing small sits on it; the hello line, the count and the
          gear are in the foot below, on the page. -->
     <div class="home-field" data-home-field>
+      <!-- The blind (redesign ticket 28), first so it paints under both the
+           sun and the wordmark: the field's colour, split off from the box
+           that measures it so the edge can be pulled to the next screen's
+           height while what is drawn on it leaves under its own animation. -->
+      <div class="field-blind" data-field-blind aria-hidden="true"></div>
       <!-- Home-only, and never under disguise (ADR-0035) - checked on
            prefs.disguise here rather than inside FlagSun, so the one place
            that decides whether the sun renders at all matches every other
@@ -503,7 +508,7 @@
            Diary" while the tab, the launcher and the rail all say "Notes"
            undoes the rest of the disguise in one line. Two sites in Settings
            still name the app under disguise; those are ticket 24's screen. -->
-      <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
+      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
     </div>
     <!-- The foot: one line of who and when, one of how much, and the gear at
          the line's end. On the page rather than the field because all three
@@ -1117,11 +1122,19 @@
   .home-field {
     position: relative; z-index: 1;
     display: flex; align-items: flex-end;
-    background: var(--field);
+    /* The colour is the blind's, not this element's (redesign ticket 28,
+       components.css); what stays here is the box that measures it. */
     color: var(--field-ink);
     padding: calc(var(--space-4) + var(--inset-top)) var(--space-5) var(--space-4);
     margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
     overflow: hidden;
+    /* The same bottom corners every other field has (rule 7: "the bottom
+       corners are the one radius; the top corners meet the window's edge
+       and have none"). Home was the one door drawing them square, which
+       nothing decided - and the blind's clip carries one radius for the
+       whole app, so a square corner here would round for the length of a
+       navigation and snap back at the end of it. */
+    border-radius: 0 0 var(--r-block) var(--r-block);
     min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top));
   }
   /* The wordmark, in the field's bottom left corner and in the field's ink,
