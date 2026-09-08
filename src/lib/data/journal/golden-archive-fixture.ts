@@ -348,7 +348,10 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
   const procedure = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: 20050,
-    notes: 'drains out on day five'
+    notes: 'drains out on day five',
+    // A compiled-in kind rather than 'custom' (the default), so the fixture
+    // proves `kind` round-trips through the archive (ticket 17).
+    kind: 'chest_reconstruction'
   });
   await journal.procedures.addConsult(procedure, 19950);
   /* One appointment on its own beside the consult above, so the section

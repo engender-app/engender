@@ -863,7 +863,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   // Owns a child (procedure_photo) below. Its consults are appointments now
   // and travel in their own section (ticket 57).
-  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes'],
+  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
   appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],

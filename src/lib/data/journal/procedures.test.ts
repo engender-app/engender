@@ -24,6 +24,24 @@ test('a procedure round-trips with a free-text name and optional surgery date', 
   assert.equal(list[1].notes, 'dr smith');
 });
 
+test('a procedure defaults to a custom kind, and a compiled-in kind round-trips (phase 9 carpet ticket 17)', async () => {
+  const db = await migratedDb();
+  const files = fakeFileStore();
+  const journal = openJournal(db, files);
+
+  const unspecified = await journal.procedures.upsertProcedure({ name: 'top surgery' });
+  const named = await journal.procedures.upsertProcedure({ name: 'consult only', kind: 'vaginoplasty' });
+
+  const list = await journal.procedures.getProcedures();
+  assert.equal(list.find((p) => p.id === unspecified)?.kind, 'custom');
+  assert.equal(list.find((p) => p.id === unspecified)?.dilationOptIn, false);
+  assert.equal(list.find((p) => p.id === named)?.kind, 'vaginoplasty');
+
+  await journal.procedures.upsertProcedure({ id: unspecified, name: 'top surgery', kind: 'custom', dilationOptIn: true });
+  const [updated] = (await journal.procedures.getProcedures()).filter((p) => p.id === unspecified);
+  assert.equal(updated.dilationOptIn, true);
+});
+
 test('consult dates can be added and removed individually', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
