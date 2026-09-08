@@ -60,7 +60,14 @@
 
         Named `measure` and not `scale`: a scale is this app's own word for a
         gender dimension (docs/ui-copy.md), and `scale="track"` on a card of
-        scale bars read as though it took one. */
+        scale bars read as though it took one.
+
+        `leader` carries its own floor (barRow.ts, `LEADER_FLOOR_SHARE`): a
+        nonzero amount always draws a visible bar, even beside a leader ten
+        times its size, on a thin early journal where one tag has almost
+        every entry and the rest have one or two. Below that share the
+        drawn length is no longer proportional - it is a legibility
+        guarantee, not a second measure. */
     measure?: 'leader' | 'track';
     /** Where the row's label sits, which decides how much room a row takes.
 
