@@ -226,6 +226,7 @@ describe('Localization keys for stock notice', () => {
     'tile_stock_title',
     'tile_stock_sub',
     'notice_stock_low_title',
+    'notice_stock_reorder_title',
     'notice_stock_reorder_body',
     'notice_stock_projected_body',
     'notice_stock_out_body',
@@ -252,8 +253,8 @@ describe('Localization keys for stock notice', () => {
 
 describe('The reorder-by day, on screen (ticket 16)', () => {
   it('names the same day everywhere: Home reads actionableEpochDay through the shared sentence', () => {
-    expect(home).toContain("import { stockNoticeBody } from '$lib/data/vocabulary/stockLabel';");
-    expect(home).toContain('stockNoticeBody(');
+    expect(home).toContain("import { stockNotice } from '$lib/data/vocabulary/stockLabel';");
+    expect(home).toContain('stockNotice(');
     expect(home).toContain('urgentDepletingStock.actionableEpochDay');
     // The countdown this ticket retires must not come back.
     expect(home).not.toContain('notice_stock_low_body');

@@ -81,7 +81,7 @@
     isStockNoticeSnoozed,
     snoozeStockNotice
   } from '$lib/data/stockProjection';
-  import { stockNoticeBody } from '$lib/data/vocabulary/stockLabel';
+  import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
   import { collapse, markSlotReplacement } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -282,6 +282,14 @@
   });
   let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
   let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
+  let stockNoticeCopy = $derived(
+    urgentDepletingStock
+      ? stockNotice(
+          urgentDepletingStock,
+          fmtDay(urgentDepletingStock.actionableEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+        )
+      : null
+  );
   let stockDismissSheetOpen = $state(false);
 
   /* Five days, not five entries: every entry of each shown day draws, so a
@@ -493,15 +501,12 @@
     />
   {/if}
 
-  {#if showStockNotice && urgentDepletingStock}
+  {#if showStockNotice && urgentDepletingStock && stockNoticeCopy}
     <Notice
       icon="alert"
       key="stock-low"
-      title={m.notice_stock_low_title()}
-      text={stockNoticeBody(
-        urgentDepletingStock,
-        fmtDay(urgentDepletingStock.actionableEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-      )}
+      title={stockNoticeCopy.title}
+      text={stockNoticeCopy.body}
       action={{ label: m.notice_stock_manage(), href: '/settings/stock' }}
       dismiss={{
         label: m.notice_stock_dismiss_action(),

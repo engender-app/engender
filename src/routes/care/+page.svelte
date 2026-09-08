@@ -452,6 +452,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    /* A deep lane's tick reaches back past every row between it and the
+       line (below), so a shallow neighbour close in x - a day or two apart
+       is well inside a caption's width - sits behind that tick unless
+       shallower always wins. Depth counts up with distance from the line,
+       so this counts down: lane 0 stays on top of everything reaching past
+       it. */
+    z-index: calc(10 - var(--care-depth));
     /* The caption is around 48px wide and the tick is 2px, so the target is
        the caption's own box: it stays at the floor whatever the tick looks
        like. */
@@ -483,6 +490,10 @@
     min-width: 100%;
     text-decoration: none;
     color: inherit;
+    /* Backed by the card itself, so a deeper mark's tick reaching past this
+       one (z-index on .care-at above) ends at this box rather than showing
+       through the gaps between letters. */
+    background: var(--surface);
   }
   /* Lane 0 hangs below the line, lane 1 stands above it: two labels that
      would print over each other take opposite sides of the rail rather than
