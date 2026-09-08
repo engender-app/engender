@@ -183,21 +183,22 @@
   let from = $derived(span?.start ?? defaultSpan(today, today).start);
   let to = $derived(span?.end ?? today);
   let range = $derived(to - from + 1);
-  let shownSpan = $derived(live ?? span);
 
-  /* The span, written once under the title (DIRECTION.md rule 7). Years
-     only where they carry information: the start's when it is not this
-     year, the end's when it is not this year either. */
+  /* The span, written once under the title with its length (DIRECTION.md
+     rule 7). Years only where they carry information: the start's when it
+     is not this year, the end's when it is not this year either. The
+     length used to sit on its own line under the rail and the top of the
+     door read as crowded (Alicja, on the first renders). */
   const dayWithYear = (day: number, year: number) =>
     fmtDay(day, localDateFromEpochDay(day).getFullYear() === year
       ? { day: 'numeric', month: 'short' }
       : { day: 'numeric', month: 'short', year: 'numeric' });
   let spanLabel = $derived.by(() => {
-    if (!shownSpan) return '';
+    if (!live) return '';
     const year = localDateFromEpochDay(today).getFullYear();
-    return m.wrapped_week_range({ from: dayWithYear(shownSpan.start, year), to: dayWithYear(shownSpan.end, year) });
+    const days = live.end - live.start + 1;
+    return `${m.wrapped_week_range({ from: dayWithYear(live.start, year), to: dayWithYear(live.end, year) })}, ${m.n_days({ n: days })}`;
   });
-  let spanDays = $derived(shownSpan ? shownSpan.end - shownSpan.start + 1 : 0);
 
   /* Week, month and year, one tap each, to the cadence routes they have
      always reached (spec: "week, month and year sit beside it as quick
@@ -801,13 +802,12 @@
         onChange={pickSpan}
         onLive={(next) => (live = next)}
       />
-      <!-- The span's length, and the way into its retrospective: the same
-           range read wrapped already makes, at the URL the range picker
-           itself would write for these two days. Under the floor the line
-           says why there is nothing to open, in the words the range view
-           uses for the same case. -->
+      <!-- The way into the span's retrospective: the same range read wrapped
+           already makes, at the URL the range picker itself would write for
+           these two days. Under the floor the line says why there is
+           nothing to open, in the words the range view uses for the same
+           case. -->
       <div class="lookback-line">
-        <span class="lookback-days" data-span-days>{m.n_days({ n: spanDays })}</span>
         {#if recapQuery.loading}
           <span class="lookback-thin" aria-hidden="true"></span>
         {:else if enoughEntries}
@@ -1342,24 +1342,17 @@
     gap: var(--space-3);
   }
 
-  /* The span's length on the left, the way into its wrapped on the right,
-     both at the secondary size. The link is the underlined ink a heading's
-     action takes (kit.css, `.kit-heading-action`): on a page whose colour
-     is spent as blocks, an accent-coloured word is a fourth voice. */
+  /* The way into the span's wrapped, at the secondary size. The link is
+     the underlined ink a heading's action takes (kit.css,
+     `.kit-heading-action`): on a page whose colour is spent as blocks, an
+     accent-coloured word is a fourth voice. */
   .lookback-line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
     min-height: var(--touch-target);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
-  }
-
-  .lookback-days {
-    flex: 0 0 auto;
-    font-variant-numeric: tabular-nums;
   }
 
   .lookback-read {
@@ -1368,14 +1361,12 @@
     min-height: var(--touch-target);
     color: var(--text);
     font-weight: var(--weight-bold);
-    text-align: right;
     text-decoration: underline;
     text-underline-offset: 3px;
     text-decoration-thickness: 2px;
   }
 
   .lookback-thin {
-    text-align: right;
     min-width: 0;
   }
 

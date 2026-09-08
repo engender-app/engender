@@ -135,18 +135,53 @@
     today
   ]);
 
-  /* The bands take the flag's colours after the first, which the marks
-     take; a shade would vanish into the page on one theme (roles.ts,
-     `chromaticRoles`). One role per era in order, wrapping. */
+  /* One band of the flag per era, in order, wrapping over the flag's
+     colours - and, on a flag with a single colour (agender), over its
+     shades too, so its second and third era are black and grey rather than
+     green three times (Alicja, on the first renders: "we can't have all
+     eras in the same colour"). A black or white block is a block here
+     because every band wears the 1px edge rule 4 gives it; a flag with two
+     or more colours never needs one. Nothing is skipped, since the marks
+     are ink and take no band. */
   let markRole = $derived(roleAt(roles, 0));
-  let bandRoles = $derived(chromaticRoles(roles));
+  let bandRoles = $derived.by(() => {
+    const colours = chromaticRoles(roles);
+    if (colours.length >= 2) return colours;
+    return [...colours, ...roles.filter((role) => !colours.includes(role))];
+  });
   const bandRole = (index: number): Role | undefined =>
-    bandRoles.length ? bandRoles[(index + 1) % bandRoles.length] : undefined;
+    bandRoles.length ? bandRoles[index % bandRoles.length] : undefined;
 
   /* The span as the finger has it, which is the settled span whenever no
      finger holds a handle. */
   let live = $state<Span>({ start: 0, end: 0 });
   let dragging = $state<SpanHandle | null>(null);
+
+  /* At rest the rail is low: the span is a band a little taller than the
+     history under it and the handles are two short grips on the axis,
+     suggested rather than offered (Alicja, on the first renders: "the
+     handles are suggested but are not as high/big. they only get bigger
+     when the user taps"). The first touch or focus anywhere on the rail
+     raises it - the lifted bands, the frame, the era names and the full
+     grips clip open upwards on --dur-med - and a touch or focus that leaves
+     the rail lowers it again. The rail's box never changes height, so
+     nothing under it moves either way. */
+  let root = $state<HTMLElement | undefined>();
+  let active = $state(false);
+  const raise = () => (active = true);
+  function onFocusOut(event: FocusEvent) {
+    if (root && event.relatedTarget instanceof Node && root.contains(event.relatedTarget)) return;
+    active = false;
+  }
+  $effect(() => {
+    if (!active) return;
+    const lower = (event: PointerEvent) => {
+      if (root && event.target instanceof Node && root.contains(event.target)) return;
+      active = false;
+    };
+    document.addEventListener('pointerdown', lower);
+    return () => document.removeEventListener('pointerdown', lower);
+  });
   $effect(() => {
     const settled = span;
     if (dragging === null) live = { ...settled };
@@ -227,9 +262,12 @@
 </script>
 
 <div
+  bind:this={root}
   class="span-tl"
   class:is-dragging={dragging !== null}
+  class:is-active={active}
   data-span-timeline
+  data-span-state={active ? 'raised' : 'rest'}
   data-rail-start={railStart}
   data-span-start={live.start}
   data-span-end={live.end}
@@ -248,7 +286,15 @@
   </div>
 
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="span-tl-rail" bind:this={rail} onclick={onRailClick} {...roleAttrs(markRole)}>
+  <div
+    class="span-tl-rail"
+    bind:this={rail}
+    onclick={onRailClick}
+    onpointerdowncapture={raise}
+    onfocusin={raise}
+    onfocusout={onFocusOut}
+    {...roleAttrs(markRole)}
+  >
     {#each ticks as tick (tick.year)}
       <span class="span-tl-tick" style:left="{railPosition(tick.epochDay, railStart, today) * 100}%" aria-hidden="true"></span>
     {/each}
@@ -372,13 +418,16 @@
     padding-inline: calc(var(--handle) / 2);
     --handle: 48px;
     --grip: 14px;
-    --rail-h: 72px;
-    --low-h: 10px;
+    --rail-h: 52px;
+    --low-h: 8px;
+    /* How much of the lifted layer and of a grip shows at rest. */
+    --rest-h: 18px;
+    --rest-grip: 26px;
   }
 
   .span-tl-years {
     position: relative;
-    height: 20px;
+    height: 18px;
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     color: var(--text-2);
@@ -444,8 +493,11 @@
   .span-tl-full {
     border-top: 3px solid var(--text);
     border-bottom: 3px solid var(--text);
-    clip-path: inset(0 var(--tl-clip-right) 0 var(--tl-start));
+    clip-path: inset(calc(100% - var(--rest-h)) var(--tl-clip-right) 0 var(--tl-start));
     transition: clip-path var(--dur-med) var(--ease-out);
+  }
+  .is-active .span-tl-full {
+    clip-path: inset(0 var(--tl-clip-right) 0 var(--tl-start));
   }
 
   .span-tl-full .span-tl-band {
@@ -525,6 +577,9 @@
     transform: translateX(-50%);
     background: var(--text);
     border: 1px solid var(--bg);
+    /* A bar end's radius (rule 9), since the mark is a 12px block standing
+       on the axis like a bar's foot; 6px would make it a disc, and discs
+       are faces. */
     border-radius: 2px;
     cursor: pointer;
     z-index: 2;
@@ -537,12 +592,15 @@
     inset: -18px -12px;
   }
 
+  /* Short, standing on the axis: a line the rail's whole height read as a
+     mark of its own when the span stopped short of today (the critique's
+     "detached tick"). */
   .span-tl-today {
     position: absolute;
-    top: -4px;
     bottom: -4px;
     right: 0;
     width: 3px;
+    height: calc(var(--low-h) + 12px);
     background: var(--text);
     pointer-events: none;
     z-index: 2;
@@ -585,6 +643,13 @@
     inset: 0;
     background: var(--text);
     border-radius: var(--r-block);
+    clip-path: inset(calc(100% - var(--rest-grip)) 0 0 0 round var(--r-block));
+    transition:
+      clip-path var(--dur-med) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+  .is-active .span-tl-grip {
+    clip-path: inset(0 round var(--r-block));
   }
   .span-tl-grip::after {
     content: '';
@@ -605,9 +670,6 @@
   }
   .span-tl-handle.is-held .span-tl-grip {
     transform: scaleX(1.25);
-  }
-  .span-tl-grip {
-    transition: transform var(--dur-fast) var(--ease-out);
   }
 
   .span-tl-handle:focus-visible {
