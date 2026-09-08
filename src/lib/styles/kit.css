@@ -1016,7 +1016,10 @@ a.kit-entry:active {
      (Tile.svelte, $lib/motion/countUp), so the number lands as the block
      does. Each tile of a grid waits its turn by --stagger-step, which the
      grid hands it as --tile-index; a grid arriving as one slab is a screen
-     assembling, and one arriving block by block is blocks.
+     assembling, and one arriving block by block is blocks. A tile arriving
+     alone on a settled screen - out of Home's fold - comes down from above
+     instead (reveal.ts, `arrivesFromAbove`), whose clip is a script
+     animation and so outranks this one for the length of its travel.
 
      Filled both ways so the 1ms clamp ends it where it rests, and outset by
      6px at the end for the focus ring's sake, as the heading's is. `round`
