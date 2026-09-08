@@ -63,4 +63,14 @@ describe('Tile component contract', () => {
   it('tells the transition globally, since what removes a tile is its caller', () => {
     expect(tileFile).not.toMatch(/transition:collapse=\{/);
   });
+
+  /* Phase 10 rule 10, redesign ticket 25: a value that is a count counts up
+     on arrival and on change; every other value cuts. The number drawn is
+     the runner's, on every branch that draws one - a branch still writing
+     the prop straight would be the one tile whose number snapped. */
+  it('draws the value through the count-up on every branch', () => {
+    expect(tileFile).toContain("from '$lib/motion/countUp'");
+    expect((tileFile.match(/<span class="kit-tile-value">\{shown\}<\/span>/g) ?? []).length).toBe(3);
+    expect(tileFile).not.toMatch(/<span class="kit-tile-value">\{value\}/);
+  });
 });

@@ -813,6 +813,164 @@ describe('the token layer behind the five tiers', () => {
 });
 
 
+/* Phase 10 redesign ticket 25: every change of state moves (DIRECTION.md
+   rule 10, ADR-0078). The movements this ticket adds to surfaces that
+   already existed, held at the level a stylesheet can be held to: that each
+   exists, that each spends only transform, opacity or clip-path (nothing
+   that repaints a whole region per frame), and that each clamps. */
+describe('ticket 25: every state change moves', () => {
+  const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
+  const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
+  const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
+  const keyframesOf = (css: string, name: string) =>
+    rules(css).find((rule) => rule.prelude === `@keyframes ${name}`);
+  const ruleOf = (css: string, prelude: string) =>
+    rules(css).find((rule) => rule.prelude === prelude && !isReduceContext(rule));
+
+  /* The two keyframes this ticket writes. clip-path is the one property
+     beside transform and opacity the performance contract admits, because a
+     block that clips open moves like an object and a block that fades in
+     arrives from nothing. */
+  const NEW_KEYFRAMES = ['kit-block-in', 'kit-rule-in'];
+  const ALLOWED = new Set(['clip-path', 'transform', 'opacity']);
+
+  it('animates only clip-path, transform or opacity in every keyframe it adds', () => {
+    for (const name of NEW_KEYFRAMES) {
+      const block = keyframesOf(kit, name);
+      expect(block, `@keyframes ${name} exists`).toBeDefined();
+      for (const frame of frames(block!.body)) {
+        for (const prop of Object.keys(frame.decls)) {
+          expect(ALLOWED.has(prop), `${name} ${frame.stops} animates ${prop}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('clips a tile block open from its left edge on --dur-slow, filling both ways so the clamp cannot strand it', () => {
+    const tile = declarations(ruleOf(kit, '.kit-tile')?.body ?? '');
+    expect(tile.animation).toMatch(/^kit-block-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    const block = frames(keyframesOf(kit, 'kit-block-in')!.body);
+    expect(block[0].decls['clip-path']).toMatch(/inset\(-\d+px 100% -\d+px -\d+px/);
+    expect(block.at(-1)!.decls['clip-path']).toMatch(/^inset\(-\d+px/);
+  });
+
+  it('staggers the tiles of one grid by --stagger-step, in order', () => {
+    expect(ruleOf(kit, '.kit-tile')?.body).toMatch(/animation-delay:\s*calc\(var\(--tile-index, 0\) \* var\(--stagger-step\)\)/);
+    for (let n = 2; n <= 6; n++) {
+      expect(ruleOf(kit, `.kit-tiles > :nth-child(${n})`)?.body, `tile ${n}`).toMatch(
+        new RegExp(`--tile-index:\\s*${n - 1}`)
+      );
+    }
+    /* A seventh tile takes the last slot, not the first: uncapped, it fell
+       back to --tile-index 0 and arrived in lockstep with the first tile. */
+    expect(ruleOf(kit, '.kit-tiles > :nth-child(n + 7)')?.body).toMatch(/--tile-index:\s*6/);
+  });
+
+  /* The chosen label whitens on an ease-in while the pill arrives on an
+     ease-out, so the label is still ink-dark while most of the pill is
+     still travelling and turns page-coloured only as the ink covers it. On
+     one curve the two crossed mid-way: "365d" lost its "d" for two frames,
+     a light letter on a light track where the pill had not yet reached
+     (impeccable critique, segment-rerange frames 6 and 7). The leaving
+     label keeps the ease-out, so it darkens as fast as the pill uncovers
+     it. The destination rule owns a transition's curve, which is why the
+     active state can carry a different one from the base. */
+  it('whitens the chosen label late, on an ease-in, while the leaving label darkens early', () => {
+    const active = declarations(ruleOf(components, '.segment.is-active')?.body ?? '');
+    const curves = splitTopLevel(active['transition-timing-function'] ?? '');
+    expect(curves[0]).toBe('var(--ease-out)');
+    expect(curves[1]).toMatch(/^cubic-bezier\(0\.\d+, 0, 0\.\d+, 0\)$/);
+    const base = declarations(ruleOf(components, '.segment')?.body ?? '');
+    expect(base['transition-timing-function']).toBe('var(--ease-out), var(--ease-out)');
+  });
+
+  it("draws a section's rule in ahead of its words: the heading clips, its children clip later", () => {
+    const heading = declarations(ruleOf(kit, '.kit-heading')?.body ?? '');
+    expect(heading.animation).toMatch(/^kit-rule-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    const words = declarations(ruleOf(kit, '.kit-heading > *')?.body ?? '');
+    expect(words.animation).toMatch(/^kit-rule-in var\(--dur-slow\) var\(--ease-out\) both$/);
+    expect(words['animation-delay'], 'the words wait for the rule').toMatch(/var\(--dur-fast\)/);
+  });
+
+  /* The chosen label's colour lands on the frame the pill does. It used to
+     run on --dur-fast against a pill on --dur-med, so a label turned page-
+     coloured 90ms before the ink arrived under it and sat unreadable on the
+     track. */
+  it("lands the segment label's colour on the same frame as the pill", () => {
+    const segment = declarations(ruleOf(components, '.segment')?.body ?? '');
+    const pill = declarations(ruleOf(components, '.segment-pill')?.body ?? '');
+    /* The pill's leading edge (redesign ticket 26: `left` on the near
+       schedule, whose fallback is --dur-med) is what lands the choice; the
+       label's colour lands with that edge. */
+    const leading = splitTopLevel(pill.transition ?? '').find((part) => words(part)[0] === 'left') ?? '';
+    const pillDuration = /var\(--seg-near-dur, (var\(--dur-[a-z]+\))\)/.exec(leading)?.[1];
+    expect(pillDuration).toBeDefined();
+    for (const duration of splitTopLevel(segment['transition-duration'] ?? '')) {
+      expect(duration).toBe(pillDuration);
+    }
+  });
+
+  /* The field is the shared element between doors: on a tab change it is
+     pulled out of the screen's snapshot under its own name, so it stays
+     while the screens cross behind it and its contents crossfade. Only on
+     the fade-through, which is the tab crossing; a step into a detail keeps
+     the field with the screen it belongs to.
+
+     The name is handed over by script ($lib/motion/sharedField), never
+     written as a rule: a rule names the outgoing and the incoming field at
+     once at the new capture, and the browser aborts the transition. So
+     what the stylesheet is held to is that it does not name it, and the
+     shell is held to carrying it on the fade-through alone. */
+  it('names the field as a shared element on the fade-through, by hand-over and never by rule', () => {
+    for (const { path, css } of styleSources()) {
+      for (const rule of rules(css)) {
+        expect(rule.body, `${path}: ${rule.prelude} names the field`).not.toMatch(/view-transition-name:\s*field/);
+      }
+    }
+    const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
+    expect(layout).toContain("import { shareField } from '$lib/motion/sharedField'");
+    expect(layout).toMatch(/pattern === 'fade-through' \? shareField\(\) : null/);
+    expect(layout).toContain('field?.swap()');
+    expect(layout).toContain('field?.release()');
+    const group = ruleOf(app, '::view-transition-group(field)');
+    expect(declarations(group?.body ?? '')).toMatchObject({
+      'animation-duration': 'var(--dur-med)',
+      'animation-timing-function': 'var(--ease-out)'
+    });
+    const halves = ruleOf(app, '::view-transition-old(field),\n::view-transition-new(field)');
+    expect(declarations(halves?.body ?? '')['animation-duration']).toBe('var(--dur-med)');
+  });
+
+  /* Under reduced motion the field's box cuts (a box tweening between two
+     heights is movement) and its two halves fade out, then in, with the
+     screen's: the outgoing image to the page over --dur-crossfade, the
+     incoming one up from it over the next, so no frame holds two doors at
+     once. Both paths, both halves. */
+  it('cuts the field box and fades its halves out then in under both reduced-motion paths', () => {
+    const reduced = rules(app).filter(isReduceContext);
+    const group = reduced.filter((rule) => rule.prelude.includes('view-transition-group(field)'));
+    expect(group.length, 'both reduced-motion paths clamp the field group').toBe(2);
+    for (const rule of group) expect(declarations(rule.body)['animation-duration']).toBe('1ms !important');
+
+    const old = reduced.filter((rule) => rule.prelude.includes('view-transition-old(field)'));
+    const fresh = reduced.filter((rule) => rule.prelude.includes('view-transition-new(field)'));
+    expect(old.length, 'the outgoing half, both paths').toBe(2);
+    expect(fresh.length, 'the incoming half, both paths').toBe(2);
+    for (const rule of old) {
+      const d = declarations(rule.body);
+      expect(d['animation-name']).toBe('screen-fade-away');
+      expect(d['animation-duration']).toBe('var(--dur-crossfade) !important');
+      expect(d['animation-delay']).toBeUndefined();
+    }
+    for (const rule of fresh) {
+      const d = declarations(rule.body);
+      expect(d['animation-name']).toBe('screen-crossfade');
+      expect(d['animation-delay'], 'the incoming half waits for the outgoing one').toBe('var(--dur-crossfade)');
+      expect(d['animation-fill-mode'], 'held at its first frame through the wait').toBe('both');
+    }
+  });
+});
+
 describe('the cap on animating layout', () => {
   /* materials.css's contract says only transform and opacity animate,
      because the target is a Capacitor WebView on a mid-range Android phone.

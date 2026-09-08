@@ -282,16 +282,18 @@
 .hub-count {
   font-size: var(--text-sm);
   color: var(--text-2);
-  margin-top: 0;
+  margin: 0;
 }
-/* Empty, it is out of the flow entirely rather than a block with the
-   screen's 20 under it: at rest the field meets the first group heading. */
-.hub-count:empty { display: none; }
-/* While a query is being answered it is empty and still holds its line: the
-   count waits for both halves of the search, and a line that came and went
-   during the wait would move the list under a reading finger. After the
-   `:empty` rule, which it has to beat at equal specificity. */
-.hub-count.is-searching { display: block; min-height: 1.5em; }
+/* The region itself takes no room and no margin: the line inside it does,
+   and opens and closes it (redesign ticket 25). An empty region used to
+   leave the flow and a searching one used to reserve its line at once,
+   and each of those was a frame in which the list under it jumped. The
+   screen's 20 sits on the line so it travels with it. */
+.screen > .hub-count { margin-bottom: 0; }
+.hub-count-line {
+  display: block;
+  margin-bottom: var(--space-5);
+}
 
 /* ---------- Search ---------- */
 .search-box {

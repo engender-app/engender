@@ -733,6 +733,44 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
 @keyframes screen-fade-in { from { opacity: 0; transform: scale(1.03); } }
 
+/* The field is the shared element between the doors (phase 10 rule 10,
+   redesign ticket 25). Every door wears one - Today's with the sun, the
+   other three from ScreenHeader - and a tab change is one object changing
+   its label, so the field is pulled out of the screen's snapshot under its
+   own name: the browser tweens its box between the two doors (the heights
+   differ, Today's is the sun's quarter) and crossfades what is on it, while
+   the screens fade through behind it at 0.97 and 1.03. The one place a
+   tonal-looking transition is allowed, because nothing is arriving from
+   nowhere - the block was there and is still there.
+
+   The name itself is not written here. $lib/motion/sharedField hands it
+   from the outgoing field to the incoming one from the shell's onNavigate,
+   because a rule naming both sides at once names two elements at the new
+   capture - the outgoing screen is still in the DOM finishing its outros -
+   and the browser aborts the whole transition. What is here is the
+   group's timing, and the clamp. */
+::view-transition-group(field) {
+  animation-duration: var(--dur-med);
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-old(field),
+::view-transition-new(field) {
+  animation-duration: var(--dur-med);
+  animation-timing-function: var(--ease-out);
+}
+/* Substitute, never delete, as the screens below it: the box cuts to its
+   new height - a box tweening between two heights is movement, which the
+   clamp is for - and the two labels fade out and in over the one duration
+   the clamp leaves alone, timed with the screen's halves below. */
+html[data-a11y-motion='reduce']::view-transition-group(field) {
+  animation-duration: 1ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(field) {
+    animation-duration: 1ms !important;
+  }
+}
+
 /* Into a detail, and back out of it: shared-axis-X. Both halves travel
    --motion-distance-md so the pair reads as one axis rather than as two
    independent moves. */
@@ -802,23 +840,50 @@ html[data-nav='container']::view-transition-old(screen) {
    --dur-crossfade, which the 1ms clamp deliberately does not reach. A screen
    change that cuts with no acknowledgement at all is a worse answer to
    "reduce motion" than a change of opacity that moves nothing. */
+/* Out, then in, rather than both at once (redesign ticket 25). A
+   simultaneous crossfade of two text-dense doors is a double exposure for
+   its whole length - "the 'today' appears well before the old screen fades
+   out", then, once both halves ran the same curve, still two screens
+   legible at once through the middle frames (Alicja, round one and two).
+   So the outgoing screen fades to the page over --dur-crossfade and the
+   incoming one fades up from it over the next --dur-crossfade, each on its
+   own and linear; no frame holds two screens. The delay is a token, so the
+   1ms clamp is not what times it - --dur-crossfade sits outside the clamp
+   on purpose, and the whole change is 240ms of opacity and nothing else.
+   The new image is held at its first frame through the delay
+   (fill-mode both), or it would sit at full opacity under the old one. */
 html[data-a11y-motion='reduce']::view-transition-old(screen),
-html[data-a11y-motion='reduce']::view-transition-new(screen) {
+html[data-a11y-motion='reduce']::view-transition-old(field) {
+  animation-name: screen-fade-away;
+  animation-duration: var(--dur-crossfade) !important;
+  animation-timing-function: linear;
+}
+html[data-a11y-motion='reduce']::view-transition-new(screen),
+html[data-a11y-motion='reduce']::view-transition-new(field) {
   animation-name: screen-crossfade;
   animation-duration: var(--dur-crossfade) !important;
+  animation-delay: var(--dur-crossfade);
+  animation-fill-mode: both;
+  animation-timing-function: linear;
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(screen),
-  ::view-transition-new(screen) {
+  ::view-transition-old(field) {
+    animation-name: screen-fade-away;
+    animation-duration: var(--dur-crossfade) !important;
+    animation-timing-function: linear;
+  }
+  ::view-transition-new(screen),
+  ::view-transition-new(field) {
     animation-name: screen-crossfade;
     animation-duration: var(--dur-crossfade) !important;
+    animation-delay: var(--dur-crossfade);
+    animation-fill-mode: both;
+    animation-timing-function: linear;
   }
 }
 @keyframes screen-crossfade { from { opacity: 0; } }
-html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-direction: reverse; }
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(screen) { animation-direction: reverse; }
-}
+@keyframes screen-fade-away { to { opacity: 0; } }
 
 /* ---------- desktop: left rail + centred column ---------- */
 .app-rail { display: none; }
