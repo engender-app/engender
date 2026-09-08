@@ -569,7 +569,11 @@
        design rather than as an affordance, and on two lines at 320px it
        reads as three. */
     text-decoration-color: color-mix(in srgb, var(--field-ink) 50%, transparent);
-    text-underline-offset: 5px;
+    /* Inside the line box, because the slot around it is clipped to that box
+       - those two walls are what the month's slide is built on (see the
+       markup), and at a line-height of 1.05 an underline 5px under the
+       baseline is drawn outside them and never seen. */
+    text-underline-offset: 2px;
     text-decoration-thickness: 2px;
   }
 
