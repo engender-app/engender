@@ -406,6 +406,31 @@ body {
    --dur-med, so the tab that was tapped lights on tier 2's own duration;
    what got longer is the closing, which now finishes at 430ms.
 
+   An inset is a layout property, and motion/materials.css's contract says
+   only transform and opacity animate, because the target is a Capacitor
+   WebView on a mid-range Android phone. So this is the contract's second
+   amendment, and it arrives the way the first one did: with a cap a test can
+   check, a reduced-motion substitute, and a number from a benchmark.
+
+   The cap is structural rather than a threshold. The pill is one absolutely
+   positioned, empty box per navigation - no children, no text, and no
+   sibling whose position depends on it - so changing its insets invalidates
+   the layout of exactly that box and there is nothing for a reflow to
+   cascade into. `all` is never named, only the four insets and opacity are,
+   and motion-system.test.ts enumerates every layout property the app is
+   allowed to animate, so the next one has to be argued rather than added.
+
+   The substitute is the same one every --dur-* animation in the app gets:
+   the 1ms clamp lands both edges on the tab at its own size, so what goes
+   is the travel and not the change of state.
+
+   The number is tests/nav-motion-cost.mjs. Desktop Chromium at the 390px
+   floor, unthrottled and at 4x CPU throttling: every frame across the whole
+   456ms sequence is 16.7ms in both runs, and the single long frame in each
+   (34ms, 63ms) lands at +59ms and +78ms, which is the route change drawing
+   the new screen rather than anything the pill does. Not the device tier -
+   see that script's own note on which machine may be quoted for what. */
+
    The old version said it with `scale` and a keyframe, and paid for it
    twice. The stretch was a tuned percentage of the pill's own length (18% at
    the cap) rather than the gap it was actually crossing, so the shape never
@@ -444,7 +469,15 @@ body {
      shadow, which the kit does not have, and at --accent rather than
      --accent-border because a 30% line on an 11% fill is the same wash
      again. --accent on this fill is 4.07:1 at worst, well over the 3:1
-     floor a non-text boundary answers to. */
+     floor a non-text boundary answers to.
+
+     Naming what that costs: DIRECTION.md rule 4 budgets two line strengths,
+     --hairline at 14% of the ink and --outline at 19%, and --accent-border
+     is already the accent's own third. A full-strength accent line is a
+     fourth, and it exists on this one element because this is the one block
+     in the app whose whole job is to be seen rather than to sit quietly
+     behind something. Deliberate, argued here, and put to Alicja as a
+     deviation rather than slipped in as a detail. */
   background: var(--accent-soft);
   border: 1px solid var(--accent);
   opacity: 0;
@@ -878,6 +911,17 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
   transition-timing-function: var(--ease-out);
 }
 .rail-item:hover { background: var(--surface-2); color: var(--text); }
+/* Not over the lit row. The hover wash predates the travelling pill and used
+   to sit beside it; once the pill became the lit fill, a pointer parked on
+   the row it just landed on painted --surface-2 straight over the pink - so
+   the rail's highlight settled cool grey-blue where the bar's settles in the
+   accent, and the two shapes of the same navigation disagreed on what a lit
+   tab looks like (Alicja, 2026-09-08: "the web nav bg highlight color turns
+   blue... we want it to look just like the android nav"). The bar never had
+   this because .nav-item:hover only ever changed the ink. The lit row's own
+   ink already survives hover, since .rail-item.is-active is declared after
+   it; the fill is the whole of what was wrong. */
+.rail-item.is-active:hover { background: none; }
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
    instead of across. What stays here is the colour and the weight. */
 .rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }

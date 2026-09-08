@@ -137,8 +137,10 @@
      motion clamp zeroes - then gathers and catches up over the longer
      --dur-slow. Written as the token names rather than their values, so the
      clamp reaches every one of them. */
-  const LEAD = { dur: 'var(--dur-med)', ease: 'var(--ease-out-soft)', delay: '0ms' };
-  const TRAIL = {
+  type Schedule = { dur: string; ease: string; delay: string };
+
+  const LEAD: Schedule = { dur: 'var(--dur-med)', ease: 'var(--ease-out-soft)', delay: '0ms' };
+  const TRAIL: Schedule = {
     dur: 'var(--dur-slow)',
     ease: 'var(--ease-in-out)',
     delay: 'var(--stagger-step)'
@@ -156,7 +158,7 @@
     y: { near: 'center top', far: 'center bottom' }
   } as const;
 
-  type Pill = { box: Box; at: Insets; shown: boolean; near: typeof LEAD; far: typeof LEAD };
+  type Pill = { box: Box; at: Insets; shown: boolean; near: Schedule; far: Schedule };
 
   const HIDDEN: Pill = {
     box: { x: 0, y: 0, w: 0, h: 0 },
