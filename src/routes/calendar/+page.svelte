@@ -312,7 +312,7 @@
     padding: 0;
     cursor: pointer;
     text-decoration: underline;
-    text-decoration-color: var(--outline-strong);
+    text-decoration-color: var(--outline);
     text-underline-offset: 4px;
     text-decoration-thickness: 1px;
   }
@@ -326,6 +326,7 @@
 
   .cal-jump-year strong {
     font-family: var(--font-display);
+    font-weight: var(--weight-display);
     font-size: var(--text-lg);
   }
 

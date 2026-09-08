@@ -204,7 +204,7 @@
   .tl-body {
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     padding: var(--space-4);
   }
 
@@ -244,7 +244,7 @@
     background: var(--role-tint);
     border: var(--role-hairline);
     padding: 3px 10px;
-    border-radius: var(--radius-pill);
+    border-radius: var(--r-block);
   }
 
   .tl-date {

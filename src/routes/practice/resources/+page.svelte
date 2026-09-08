@@ -152,7 +152,7 @@
     gap: var(--space-2);
     min-height: var(--touch-target);
     padding: 0 var(--space-4);
-    border-radius: var(--radius-pill);
+    border-radius: var(--r-block);
     border: 1px solid var(--outline);
     background: var(--surface-2);
     color: var(--role-ink);
@@ -161,7 +161,7 @@
     font-weight: var(--weight-medium);
   }
 
-  .resource-link:hover { border-color: var(--outline-strong); }
+  .resource-link:hover { border-color: var(--outline); }
 
   /* The number and its opening hours are one way in, so they wrap as one.
      Loose in the row, the hours landed between the phone and the site and

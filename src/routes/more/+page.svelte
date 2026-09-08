@@ -30,7 +30,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { HUB_GROUP_KEYS, hubSections, type HubSection } from '$lib/data/hubRows';
+  import { hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
 
   const today = todayEpochDay();
@@ -53,17 +53,6 @@
   );
 
   let sections = $derived(hubSections({ todayEpochDay: today, ...landed }));
-
-  /* The group's own place in the list rather than its place among whatever
-     rendered, so Body keeps one stripe whether or not a finished group sits
-     below it and whether or not hiding an area emptied a group above it.
-     The finished set takes the index after the last group: it is set apart
-     by its heading
-     and by every row in it stating the day it ended, not by losing its
-     colour - the one uncoloured card on this screen is the Settings row
-     below, which is the app talking about itself. */
-  const roleIndex = (key: HubSection['key']) =>
-    key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
 </script>
 
 <div class="screen">
@@ -78,7 +67,7 @@
 
   {#each sections as section (section.key)}
     <SectionHeading text={hubGroupHeading(section.key)} />
-    <ListCard role={roleAt(activeFlag.roles, roleIndex(section.key))}>
+    <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
       {#each section.rows as row (row.spec.key)}
         <!-- Which section the row was drawn in and which kind of line it
              carries, both on the row rather than on wrappers of their own: a

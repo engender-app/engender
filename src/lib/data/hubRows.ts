@@ -781,6 +781,22 @@ export function hubSections(reading: HubReading): HubSection[] {
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
 }
 
+/** A section's own place in the flag's stripes, for whichever screen is
+    colouring `hubSections`' output by role (`roleAt(activeFlag.roles, ...)`) -
+    the More hub and, since phase 10 redesign ticket 22, onboarding's areas
+    step, which draws the same sections while the person is still choosing
+    what to pin.
+
+    A section's place in the list rather than its place among whatever
+    rendered, so Body keeps one stripe whether or not a finished group sits
+    below it and whether or not hiding an area emptied a group above it. The
+    finished set takes the index after the last group: it is set apart by its
+    heading and by every row in it stating the day it ended, not by losing
+    its colour. */
+export function hubSectionRoleIndex(key: HubSection['key']): number {
+  return key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
+}
+
 /** The rows one screen hosts, in declaration order.
 
     `hubSections`' counterpart for the other side of `home`, and the reason

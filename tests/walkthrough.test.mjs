@@ -1054,6 +1054,16 @@ try {
   await fresh('/settings');
   await page.locator('[data-palette-pick="pansexual"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'pansexual');
+  /* The door's field follows the palette (redesign ticket 07): activeFlag
+     publishes the flag's second colour and its ink on <html> beside the
+     roles. Pansexual's is its yellow, which carries the near-black ink. */
+  const field = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return [style.getPropertyValue('--field').trim(), style.getPropertyValue('--field-ink').trim()];
+  });
+  if (field[0].toUpperCase() !== '#FFD800' || field[1] !== '#101820') {
+    throw new Error(`field tokens after the switch: ${field.join(' / ')}`);
+  }
   ok('palette switch recolours app');
 } catch (e) { fail('palette', e); }
 
@@ -1395,8 +1405,9 @@ try {
 } catch (e) { fail('plain export', e); }
 
 
-/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26: seven steps -
-   welcome, name, flag, scales, lock, check-in, finish) */
+/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
+   redesign ticket 22: eight steps - welcome, name, flag, scales, areas,
+   lock, check-in, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1474,7 +1485,35 @@ try {
   // set this screen chose rather than the one it started with.
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
-  await page.locator('[data-next]').click(); // scales -> lock
+  await page.locator('[data-next]').click(); // scales -> areas
+
+  /* Ticket 22: the hub's own groups and rows, met once here and once more on
+     the hub - the same headings the More screen draws, in the same order. */
+  /* Support and Media are left off this step (Alicja, sign-off): neither is
+     something a person tracks. */
+  const areaHeadings = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
+  if (areaHeadings.join() !== ['Body', 'Health', 'Transition'].join()) {
+    throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
+  }
+
+  // The default four arrive ticked and nothing else does (measurements,
+  // care, milestones, tryouts - pinnedRows.ts's own default set).
+  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
+  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  for (const key of ['measurements', 'care', 'milestones', 'tryouts']) {
+    if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
+      throw new Error(`${key} is not part of the default set on arrival`);
+    }
+  }
+
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+
+  // Untick a default and tick something outside it, so what is stored is a
+  // set this screen chose rather than the one it started with (the same
+  // proof the scales step makes above).
+  await page.locator('[data-list-row="area-care"]').click();
+  await page.locator('[data-list-row="area-eras"]').click();
+  await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
 
   /* Ticket 46: the persona premise this step answers is that it defaults
@@ -1508,7 +1547,7 @@ try {
   await page.waitForSelector('[data-next]');
   await page.locator('[data-next]').click(); // welcome -> name
   await page.locator('#ob-name').fill('Sam');
-  /* Out from the second step, four steps short of the finish. The name that
+  /* Out from the second step, five steps short of the finish. The name that
      had been typed is kept, because leaving is not the same as cancelling. */
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
@@ -1685,7 +1724,14 @@ try {
     throw new Error('the scales step made Continue wait for something');
   }
   // Untouched, then skipped: the stored default has to survive both.
-  await page.locator('[data-skip-step]').click(); // scales -> lock
+  await page.locator('[data-skip-step]').click(); // scales -> areas
+
+  /* Ticket 22's own version of the same proof: the default four arrive
+     ticked, and skipping leaves `onboardingAreas` null rather than storing
+     the default. */
+  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
+  if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
+  await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> check-in
   await page.locator('[data-next]').click(); // check-in -> finish
   await page.locator('[data-finish]').click();
@@ -1848,6 +1894,40 @@ try {
      touches - it reverts to More rather than staying Transition. */
   const fourthTabLabel = () => page.locator('[data-nav-item="settings"] [data-nav-label]').textContent();
   if ((await fourthTabLabel()) !== 'More') throw new Error('fourth tab while disguised: ' + (await fourthTabLabel()));
+
+  /* The field under disguise (redesign ticket 23, ADR-0075): the shell
+     publishes --surface-2 and --text in place of the flag's colour and its
+     ink, and the sun is absent. Read off Home, where the field is painted,
+     rather than off the tokens: a token nothing paints proves nothing. The
+     expected colours come from a probe element wearing the two tokens, so
+     the check follows the palette rather than naming a hex. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-field]');
+  const disguisedField = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--surface-2)';
+    probe.style.color = 'var(--text)';
+    document.body.append(probe);
+    const want = getComputedStyle(probe);
+    const got = getComputedStyle(document.querySelector('[data-home-field]'));
+    const out = {
+      background: got.backgroundColor,
+      surface2: want.backgroundColor,
+      ink: got.color,
+      text: want.color,
+      suns: document.querySelectorAll('[data-flag-sun]').length
+    };
+    probe.remove();
+    return out;
+  });
+  if (disguisedField.background !== disguisedField.surface2 || disguisedField.ink !== disguisedField.text) {
+    throw new Error('the field under disguise is not the neutral pair: ' + JSON.stringify(disguisedField));
+  }
+  if (disguisedField.suns !== 0) throw new Error('the sun drew under disguise');
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
@@ -3812,6 +3892,51 @@ try {
   ok('every dot on the injection map is separately tappable at 320px, and the sites the demo never used are drawn apart from the ones it did');
 } catch (e) {
   fail('injection map recency', e);
+} finally {
+  await page.setViewportSize({ width: 440, height: 940 });
+}
+
+/* Today's header at what 200% zoom leaves of a 390px phone (redesign
+   ticket 23, DIRECTION.md rule 7). The old header reserved the sun's full
+   350px beside the hello line, which at 195px is more than the screen, and
+   Playwright read the line as hidden: zero width. The foot under the field
+   has no sun beside it, so the line has its width back, and the sun draws
+   at 0.6 so the wordmark in the field's corner is clear of it. */
+try {
+  await page.setViewportSize({ width: 195, height: 844 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  const zoomed = await page.evaluate(() => {
+    const box = (sel) => document.querySelector(sel).getBoundingClientRect();
+    const hello = box('[data-home-hello]');
+    const hero = box('[data-home-hero]');
+    const field = box('[data-home-field]');
+    const sun = document.querySelector('[data-flag-sun]');
+    /* The outermost ring's box, as drawn: the ring is a disc translated by
+       half its size to centre on the corner and scaled by --sun-scale on
+       the point, so its left edge is the corner minus the drawn radius. */
+    const ring = sun?.firstElementChild?.getBoundingClientRect();
+    return {
+      helloWidth: hello.width,
+      helloBelowField: hello.top >= field.bottom,
+      heroInField: hero.bottom <= field.bottom && hero.left >= field.left,
+      sunScale: getComputedStyle(sun).transform,
+      ringWidth: ring ? ring.width : null
+    };
+  });
+  /* The line's column at 195px is the screen minus the inset, the gear and
+     the gap, about 95px; what the old header gave it was 0. */
+  if (!(zoomed.helloWidth > 40)) throw new Error('the hello line has no width at 195px: ' + JSON.stringify(zoomed));
+  if (!zoomed.helloBelowField) throw new Error('the hello line sits on the field: ' + JSON.stringify(zoomed));
+  if (!zoomed.heroInField) throw new Error('the wordmark left the field: ' + JSON.stringify(zoomed));
+  /* scale(0.6) on a 0x0 point is the matrix (0.6, 0, 0, 0.6, 0, 0). */
+  if (!/^matrix\(0\.6, 0, 0, 0\.6, 0, 0\)$/.test(zoomed.sunScale)) {
+    throw new Error('the sun is not drawn at 0.6 below 240px: ' + JSON.stringify(zoomed));
+  }
+  ok('at 195px the hello line has width, the wordmark stays in the field and the sun draws at 0.6');
+} catch (e) {
+  fail('the field at 200% zoom', e);
 } finally {
   await page.setViewportSize({ width: 440, height: 940 });
 }

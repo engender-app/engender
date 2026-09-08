@@ -7,14 +7,39 @@
 /* ScreenHeader.svelte's own styles (phase 5 ticket 18); nothing else
    should wear these class names.
 
-   The horizontal padding is gone. It used to be var(--space-5) on top of
-   the same value on .screen, so every screen title sat 40px in while the
-   content under it sat 20px in, and the two never lined up. Aligned to the
-   left, the title now starts a screen where its first card does. */
+   The header is two things now (phase 10, DIRECTION.md rule 7; redesign
+   ticket 23): the field, a solid block of one of the flag's colours that
+   holds the back control, the title and the actions, and under it, on the
+   page, the subtitle. The header itself paints nothing and pads nothing;
+   the field does both. */
 .screen-header {
-  padding: var(--space-5) 0 var(--space-3);
   position: relative;
 }
+/* The field. `--field` and `--field-ink` are published on <html> by
+   activeFlag (the flag's second colour and black or white, whichever
+   measures higher; `--surface-2` and `--text` under disguise), so this rule
+   never reads a stripe and never decides anything per screen. Its height
+   is its content plus 40 above and 16 below, never fixed, so a Polish
+   title that wraps grows it rather than clipping. The bottom corners are
+   the one radius; the top corners meet the window's edge and have none. */
+.screen-field {
+  background: var(--field);
+  color: var(--field-ink);
+  padding: var(--space-8) 0 var(--space-4);
+  border-radius: 0 0 var(--r-block) var(--r-block);
+}
+/* On a screen, the field runs from the window's top edge to both side
+   edges: back up through the inset the scroll region pads every screen by
+   (the same bleed Home's sun makes, app.css) and out through .screen's own
+   20px, then padded back in by the same amounts so the title starts where
+   the content under it does and sits as clear of the status bar as any
+   other first line. Decoration crosses the inset; nothing readable does. */
+.screen > .screen-header > .screen-field {
+  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
+  padding: calc(var(--space-8) + var(--inset-top)) var(--space-5) var(--space-4);
+}
+/* The controls on the field take its ink, not the page's text colour. */
+.screen-field .icon-btn { color: inherit; }
 .screen-back {
   grid-column: 1 / -1;
   justify-self: start;
@@ -23,15 +48,25 @@
      title under it. The target keeps its full width; only the box moves. */
   margin-left: calc(-1 * var(--space-3));
 }
-/* A hidden title is taken out of the flow, so the header's own padding
-   would otherwise be 32px of nothing above the screen's first group
-   heading - which is most of the gap the redundant title was leaving
-   behind in the first place. The heading below brings its own space.
+/* A hidden title with no back control and no actions leaves the field
+   nothing to hold, so the header collapses to nothing visible rather than
+   painting an empty band: the in-the-room screen is chromeless on purpose,
+   and the two hubs that hide their title gain their field's contents from
+   tickets 09 and 15. A screen can hide its title and still show a back
+   control or an action, and those keep the field.
 
-   Only when the title was the whole row, though: a screen can hide its
-   title and still have a back control or an action, and those still need
-   somewhere to sit. */
-.screen-header.is-collapsed { padding: 0; }
+   Unpainted, not display: none. The visually hidden title inside is still
+   the screen's heading for a screen reader and the document outline (the
+   component's own reason for hiding rather than dropping it), and a
+   display: none ancestor would take it out of the accessibility tree; the
+   walkthrough's hub characterisation reads that heading. */
+.screen-header.is-collapsed .screen-field,
+.screen > .screen-header.is-collapsed > .screen-field {
+  background: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+}
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
    starts at the screen's own content edge instead of 48px inside it, and the
@@ -45,28 +80,39 @@
 .screen-title {
   flex: 1;
   min-width: 0;
+  /* A door's title and a deep screen's, at 48 (phase 10, rule 2): Outfit
+     at 800, tracked to -0.045em, set solid. A door that shows a title shows
+     it at this size and no other. Polish titles wrap rather than shrink. */
   font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--display-track);
-  line-height: var(--leading-display);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-display);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
   margin: 0;
 }
+/* Small type, so it sits on the page under the field rather than on it
+   (rule 3), 12 below the field's edge. */
 .screen-subtitle {
   color: var(--text-2);
   font-size: var(--text-sm);
-  margin: var(--space-2) 0 0;
+  font-weight: var(--weight-medium);
+  margin: var(--space-3) 0 0;
 }
 .header-action { display: flex; gap: var(--space-2); }
+/* On the web the field is a banner across the column rather than a block
+   meeting the window's edges, so it takes the radius on all four corners. */
+@container app (min-width: 1024px) {
+  .screen > .screen-header > .screen-field { border-radius: var(--r-block); }
+}
 
 .section-title {
   display: flex; align-items: baseline; justify-content: space-between;
-  margin: var(--space-6) 0 var(--space-3);
+  margin: var(--space-8) 0 var(--space-3);
 }
 .section-title h2 {
   font-family: var(--font-display);
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--weight-display);
   color: var(--text);
   margin: 0;
   display: flex; align-items: center; gap: var(--space-2);
@@ -83,7 +129,7 @@
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: var(--touch-target); height: var(--touch-target);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   color: var(--text); background: none; border: none; cursor: pointer;
   /* Longhands: only the press is on --ease-press, and a shorthand naming
      that token strands the background with it on an old WebView. The
@@ -104,7 +150,7 @@
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   min-height: var(--touch-target);
   padding: 0 var(--space-6);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   /* A button that is a link is still a button. Nothing reset this, so every
      `<a class="btn">` in the app - the journey export's own link, a day's
      "add another", an empty state whose one action is a destination - drew a
@@ -168,7 +214,7 @@
 .btn-block { width: 100%; }
 
 /* The ring, and nothing else. This used to also set
-   `border-radius: var(--radius-xs)`, which at (0,2,0) outranks every control's
+   `border-radius: var(--r-block)`, which at (0,2,0) outranks every control's
    own radius at (0,1,0): a focused .icon-btn stopped being a circle, a focused
    .btn stopped being a pill, and the slider's round thumb - which carries
    tabindex for melt to focus - became a 6px squircle with a ring round it.
@@ -182,7 +228,7 @@
 /* ---------- cards & rows ---------- */
 .card {
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   box-shadow: var(--shadow-1);
   padding: var(--space-4);
 }
@@ -212,8 +258,8 @@
   transition: transform var(--dur-press) var(--ease-press);
 }
 .switch-track {
-  width: 44px; height: 28px; border-radius: var(--radius-pill);
-  background: var(--surface-2); border: 1px solid var(--border);
+  width: 44px; height: 28px; border-radius: var(--r-block);
+  background: var(--surface-2); border: 1px solid var(--outline);
   display: flex; align-items: center; padding: 2px;
   transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
@@ -222,13 +268,13 @@
    to a tap, and 240ms of thumb sliding after the finger is gone reads as the
    control catching up. */
 .switch-thumb {
-  width: 22px; height: 22px; border-radius: 50%;
+  width: 22px; height: 22px; border-radius: 4px;
   /* Off, the thumb is drawn in --text-2 rather than in --surface. --surface on
      --surface-2 is two greys about 1.2:1 apart, so on the dark theme the
      control read as an empty pill with nothing in it and the off state was
      indistinguishable from a disabled one. On it goes to --on-accent, which
      is the colour the palette guards against --accent. */
-  background: var(--text-2); box-shadow: var(--shadow-1);
+  background: var(--text-2);
   transition: translate var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
 .switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
@@ -257,7 +303,9 @@
   display: inline-flex; gap: var(--space-2);
   min-width: 0;
   background: var(--surface-2);
-  border-radius: var(--radius-pill);
+  /* A square track (phase 10, rule 5): 8px around 6px segments, so the
+     corners stay concentric at a 3px inset. */
+  border-radius: 8px;
   padding: 3px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -359,7 +407,7 @@ a.segment {
      to scroll. The compact form sets `flex: 1` after this, deliberately:
      that one divides a width it knows it fits in. */
   flex: 0 0 auto;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--text-2);
   white-space: nowrap;
@@ -378,7 +426,7 @@ a.segment {
    the pill is a positioned element and would otherwise sit on top of static
    siblings whatever the order. */
 .segment { position: relative; }
-.segment.is-active { color: var(--text); }
+.segment.is-active { color: var(--bg); }
 /* The keyboard ring draws inside the segment, not 2px outside it. A segment
    sits flush against its neighbours inside a pill track, so the default
    offset ring drew around the chosen label and out past the track's own
@@ -408,15 +456,18 @@ a.segment {
   top: 3px; bottom: 3px; left: 0;
   width: var(--seg-w, 0);
   translate: var(--seg-x, 0) 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   /* Lifted off the track rather than being the app's other surface. On the
      dark theme --surface and --surface-2 are two steps of near-black and the
      pill disappeared into the control it sits in (Alicja, 2026-08-25: "the
      colour of the switcher highlight in dark mode shouldn't be that close to
      the bg colour - it blends"). Mixed toward the text so it lightens on
      dark and darkens on light, which is the same direction on both. */
-  background: color-mix(in oklab, var(--text) 11%, var(--surface));
-  border: 1px solid var(--outline);
+  /* Inverted (phase 10, rule 4): the active segment is a block of ink
+     with the page's colour for its label, which is the same object on
+     both themes and never blends into the track the way an 11% mix did
+     on dark. */
+  background: var(--text);
   pointer-events: none;
   transition: translate var(--dur-med) var(--ease-out), width var(--dur-med) var(--ease-out);
 }
@@ -438,6 +489,25 @@ a.segment {
    "switcher highlight too short"). At 5px it is 38px in a 48px track, which
    reads as a pill. */
 .segmented.is-compact .segment-pill { top: 5px; bottom: 5px; }
+
+/* At 200% zoom (about 195px of CSS viewport) the compact form's six labels
+   overlap: each segment is told to share a width that no longer holds a
+   word. Below 240px it stops being compact and scrolls, which is the shape
+   the control already has for a long set (ticket 07). */
+@media (max-width: 240px) {
+  .segmented-wrap.is-compact {
+    width: auto;
+    max-width: 100%;
+  }
+  .segmented.is-compact {
+    display: inline-flex;
+    width: auto;
+  }
+  .segmented.is-compact .segment {
+    flex: 0 0 auto;
+    padding-inline: var(--space-3);
+  }
+}
 
 .segment-pill.is-sliding {
   scale: 1 1;
@@ -478,8 +548,8 @@ a.segment {
 .input, textarea.input, select.input {
   font: inherit; color: var(--text);
   background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--outline);
+  border-radius: var(--r-block);
   padding: 12px var(--space-4);
   min-height: var(--touch-target);
   width: 100%;
@@ -559,7 +629,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      leaves the row looking like a row again. */
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
   background: none; border: none; cursor: pointer;
-  padding: var(--space-2) 2px; border-radius: var(--radius-md);
+  padding: var(--space-2) 2px; border-radius: var(--r-block);
   transition: transform var(--dur-med) var(--ease-out);
   /* The row answers a held finger sliding across it, which the browser
      would otherwise claim as a scroll and end with pointercancel - the
@@ -657,12 +727,13 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 /* --outline (19% of --text) is a card's edge - a subtle line between two
    already-similar surface tones. A mood face sits straight on the bare app
    background instead, which is what ticket 99 item 2's regression report
-   caught: the intended border read as no border at all. --outline-strong
-   (30%) is the token this app already names for a control holding its own
-   edge, which is what a face is. */
+   caught: the intended border read as no border at all. It took the 30%
+   line for a while; phase 10 (rule 4) left the app two line strengths and
+   the disc takes --outline, since ticket 31's faces separate the five
+   steps by their drawing rather than by a ring. */
 .mood-face-disc {
   fill: var(--face-mood);
-  stroke: var(--outline-strong);
+  stroke: var(--outline);
   stroke-width: 1;
   transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
@@ -758,9 +829,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 }
 .mood-face-mouth { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; fill: none; opacity: 0.75; }
 /* The ring sits OUTSIDE the circle, because every border inside the disc had
-   already failed: 1px of --outline-strong disappears against a coloured fill
-   on the dark theme, at full strength, and the dimming rules made it worse
-   besides. Outside the circle nothing can sit on top of it.
+   already failed: 1px of the app's darkest line disappears against a
+   coloured fill on the dark theme, at full strength, and the dimming rules
+   made it worse besides. Outside the circle nothing can sit on top of it.
 
    It is drawn only on the face that was chosen (Alicja, phase 9 carpet
    ticket 01: "remove the second stroke around them, that stroke should only
@@ -852,8 +923,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .dim-value {
   position: absolute; left: 0; bottom: 0;
   padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600;
+  border-radius: var(--r-block);
+  font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-display);
   color: var(--accent);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -901,7 +972,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .slider:focus-visible { outline: none; }
 .slider-track {
   position: absolute; left: 0; right: 0; top: 15px; height: 10px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   background: var(--surface-2);
 }
 .slider-lane { position: absolute; left: var(--slider-inset); right: var(--slider-inset); top: 0; bottom: 0; }
@@ -911,7 +982,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   position: absolute; top: 15px; height: 10px;
   left: calc(-1 * var(--slider-inset));
   width: calc(var(--percentage) + var(--slider-inset));
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-block);
   background: var(--accent);
 }
 
@@ -928,9 +999,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .slider-tick {
   width: 1.5px; height: 5px;
   border-radius: 1px;
-  /* Not --border: at #2B3C49 on the dark card's #151F27 that is 1.6:1, and a
-     1.5px mark at 1.6:1 is not a quiet mark, it is an absent one. Mixed from
-     --text so it lands the same distance from the surface on both themes. */
+  /* Not --outline: a 19% mix of --text on the dark card is about 1.6:1, and
+     a 1.5px mark at 1.6:1 is not a quiet mark, it is an absent one. Mixed
+     from --text at 45% so it lands the same distance from the surface on
+     both themes. */
   background: color-mix(in oklab, var(--text) 45%, transparent);
   transform-origin: top center;
   transition: background-color var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out);
@@ -1036,8 +1108,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   position: relative;
   display: inline-flex; align-items: center; gap: 5px;
   padding: 8px 14px; min-height: 36px;
+  /* A tag is the one capsule left (phase 10, rule 5). */
   border-radius: var(--radius-pill);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--outline);
   background: var(--surface);
   color: var(--text);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
@@ -1090,7 +1163,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   min-height: 96px;
   position: relative;
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   box-shadow: var(--shadow-1);
   color: var(--text); text-decoration: none;
   transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
@@ -1115,11 +1188,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   display: inline-block; width: var(--dot, 26px); height: var(--dot, 26px);
   border-radius: 50%;
 }
-.mood-dot.is-empty { background: var(--surface-2); border: 1.5px dashed var(--border); }
+.mood-dot.is-empty { background: var(--surface-2); border: 1.5px dashed var(--outline); }
 .entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .entry-meta { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--text-2); flex-wrap: wrap; }
 .entry-day { font-weight: var(--weight-bold); color: var(--text); }
-.entry-multi { display: inline-flex; align-items: center; gap: 3px; background: var(--accent-soft); color: var(--on-accent-soft); border-radius: var(--radius-pill); padding: 1px 8px; }
+.entry-multi { display: inline-flex; align-items: center; gap: 3px; background: var(--accent-soft); color: var(--on-accent-soft); border-radius: var(--r-block); padding: 1px 8px; }
 .entry-has-photo, .entry-has-recording, .entry-has-video { display: inline-flex; }
 .entry-note {
   margin: 0; font-size: var(--text-sm); line-height: var(--leading-body);
@@ -1137,13 +1210,13 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* The heat map's own squares moved to screens.css with the calendar
    (phase 5 ticket 22), which is where the month grid now lives; .legend-swatch
    stayed here because three charts still draw one. */
-.legend-swatch { width: 16px; height: 16px; border-radius: 5px; display: inline-block; }
+.legend-swatch { width: 16px; height: 16px; border-radius: var(--r-block); display: inline-block; }
 
 /* ---------- charts ---------- */
 /* overflow visible so a focus ring on the first or last point is not clipped
    by the viewBox it sits against - the card's padding absorbs the few px. */
 .line-chart { width: 100%; height: auto; display: block; overflow: visible; }
-.chart-line { fill: none; stroke: var(--chart-line); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.chart-line { fill: none; stroke: var(--chart-line); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .chart-area { fill: var(--chart-fill); }
 /* The second series (ticket 31), told apart the way WearTrendChart tells its
    two apart: accent-2 and a dash, not a second weight of the same colour.
@@ -1151,7 +1224,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    relying on hue alone. Same stroke width as the first, and the first gives
    up its area fill whenever this one is present: two readings of one spot,
    neither of them the other's footnote. */
-.chart-line-overlay { fill: none; stroke: var(--accent-2); stroke-width: 2.5; stroke-dasharray: 5 4; stroke-linecap: round; stroke-linejoin: round; }
+.chart-line-overlay { fill: none; stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; stroke-linejoin: round; }
 .chart-gridline { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
 .chart-dot { fill: var(--surface); stroke: var(--chart-line); stroke-width: 2; }
 .chart-dot.is-selected { fill: var(--chart-line); stroke-width: 4; }
@@ -1162,7 +1235,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    hit circle itself, which scales with everything else. */
 .chart-hit { fill: transparent; cursor: pointer; outline: none; }
 .chart-hit:focus-visible { stroke: var(--focus-ring); stroke-width: 2; }
-.chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-6); text-align: center; }
+.chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-5); text-align: center; }
 
 /* ---------- sheets, toasts ---------- */
 /* Fixed rather than absolute, and against the app frame rather than the
@@ -1288,7 +1361,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
 
 .sheet {
   background: var(--surface);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border-radius: var(--r-block) var(--r-block) 0 0;
   /* The bottom padding clears the floating bar, not just the system inset.
      Found on ticket 35's renders: a sheet's last row sat under the bar at
      every scroll position, so the end of a long sheet was a row nobody
@@ -1352,9 +1425,9 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
      dot sitting on the line at scrollTop 400). A spread of 1px with no
      offset draws the ring just outside the border box instead, where it
      follows the same corners and nothing inside the sheet can reach it. */
-  box-shadow: var(--shadow-float), 0 0 0 1px var(--border);
+  box-shadow: var(--shadow-float), 0 0 0 1px var(--outline);
 }
-.sheet-handle { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border); margin: 0 auto var(--space-4); }
+.sheet-handle { width: 40px; height: 4px; border-radius: var(--r-block); background: var(--outline); margin: 0 auto var(--space-4); }
 
 /* Quick add's fan (phase 5 ticket 18, spec 04).
 
@@ -1406,15 +1479,15 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    casts rather than picking a second elevation. */
 .fan-card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-add);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-block);
   box-shadow: var(--shadow-float);
   overflow: hidden;
 }
 /* One question asked twice: two halves of a row, split by the same hairline
    that separates rows elsewhere. */
 .fan-card.is-pair { display: grid; grid-template-columns: 1fr 1fr; }
-.fan-card.is-pair .fan-item + .fan-item { border-left: 1px solid var(--border); }
+.fan-card.is-pair .fan-item + .fan-item { border-left: 1px solid var(--hairline); }
 
 .fan-item {
   display: flex; align-items: center; gap: var(--space-3);
@@ -1431,7 +1504,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
-.fan-item + .fan-item { border-top: 1px solid var(--border); }
+.fan-item + .fan-item { border-top: 1px solid var(--hairline); }
 .fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
 .fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1472,7 +1545,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
 .fan-moods {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--outline);
 }
 .fan-mood {
   display: grid; justify-items: center; align-content: center; gap: 2px;
@@ -1487,7 +1560,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
-.fan-mood + .fan-mood { border-left: 1px solid var(--border); }
+.fan-mood + .fan-mood { border-left: 1px solid var(--outline); }
 .fan-mood-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fan-mood.is-armed,
 .fan-mood:hover,
@@ -1641,13 +1714,13 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
     flex-direction: column;
   }
 }
-.sheet h3 { font-family: var(--font-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
+.sheet h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 
 .toast {
   position: absolute; left: 50%; bottom: var(--nav-clearance);
   transform: translate(-50%, 10px);
   background: var(--text); color: var(--bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
   padding: var(--space-3) var(--space-4);
   display: flex; align-items: center; gap: var(--space-4);
   font-size: var(--text-sm); font-weight: var(--weight-medium);
@@ -1684,7 +1757,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    empty state and in onboarding). */
 .rive-stage {
   position: relative;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   background: radial-gradient(ellipse 72% 62% at 50% 48%, var(--accent-soft), transparent 68%);
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
@@ -1727,7 +1800,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
   .bloom i, .bloom-core { animation: none; }
 }
 .photo-thumb {
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
   display: flex; align-items: center; justify-content: center;
   color: rgb(255 255 255 / 0.85);
   position: relative; overflow: hidden; flex-shrink: 0;
@@ -1747,7 +1820,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
 .onion-frame {
   position: relative;
   width: 100%; aspect-ratio: 3 / 4;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
   overflow: hidden;
   background: var(--surface-2);
   margin-bottom: var(--space-4);
@@ -1764,7 +1837,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
   text-align: center; padding: var(--space-6) var(--space-5);
   display: flex; flex-direction: column; gap: var(--space-3); align-items: center;
 }
-.empty-state h3 { font-family: var(--font-display); font-size: var(--text-xl); margin: var(--space-2) 0 0; }
+.empty-state h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: var(--space-2) 0 0; }
 .empty-state p { color: var(--text-2); font-size: var(--text-sm); margin: 0; max-width: 34ch; }
 .empty-state .rive-stage { width: 100%; }
 
@@ -1781,7 +1854,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
 /* ---------- notices ---------- */
 .notice {
   display: flex; gap: var(--space-3); align-items: flex-start;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   padding: var(--space-4);
   font-size: var(--text-sm);
 }
@@ -1802,20 +1875,40 @@ html[data-a11y-motion='reduce'] .bloom-core {
    point via translate(-50%, -50%) and is sized/coloured per-instance
    through --d/--c, set inline by FlagSun.svelte from --motif-stripes.
 
-   Confined to .home-header on purpose: that header is already the app's
+   Confined to Home's field on purpose: that block is already the app's
    one deliberately-stacked surface (position: relative; z-index: 1), so
-   the sun's negative z-index only has to beat its own header siblings, and
-   can never end up in front of a later .card the way the aurora's did
+   the sun's negative z-index only has to beat its own siblings, and can
+   never end up in front of a later .card the way the aurora's did
    (ADR-0035's "Consequences": a positioned element paints over a static
-   sibling regardless of DOM order, however z-index reads). */
+   sibling regardless of DOM order, however z-index reads).
+
+   The rings are seamed (phase 10, DIRECTION.md rule 8 as Alicja settled it
+   on ticket 23's renders, 2026-09-07): the bands touch, with no gap of the
+   ground between them, and each ring carries a 3px black edge - #000,
+   never a theme-mixed line, which on a dark page around a dark band reads
+   as nothing, and that is the second half of the rule. The first render
+   had 5px gaps in the ground's colour between the bands and a 1px seam,
+   and she asked for the opposite: a fatter stroke and no emptiness. The
+   seam is a border inside the ring's own box, so the diameters flagSun.ts
+   computes do not change and flagSun.test.ts still holds every ring to
+   --motif-stripes; a band is its ring minus the next ring in, and the
+   stroke sits on the outer edge of each. Bisexual's doubled stops read as
+   one band with a line through it, which is the flag's own 2:1:2.
+
+   --sun-scale is how the sun shrinks on a narrow screen (0.82 below 360px,
+   0.6 below 240px, set by Home's field); the point it scales about is the
+   corner it is pinned to, since the element has no size of its own. */
 .sun {
   position: absolute; top: 0; right: 0; width: 0; height: 0;
   z-index: -1;
   pointer-events: none;
+  transform: scale(var(--sun-scale, 1));
 }
 .sun i {
   position: absolute; top: 0; left: 0; display: block; border-radius: 50%;
   width: var(--d); height: var(--d); background: var(--c);
+  box-sizing: border-box;
+  border: 3px solid #000;
   transform: translate(-50%, -50%);
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
@@ -1849,7 +1942,7 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
    the first two tween a transform they are handed, and the throttle's runs
    itself down over a duration set when the wait starts. */
 .rail {
-  height: 4px; border-radius: var(--radius-pill);
+  height: 4px; border-radius: var(--r-block);
   background: var(--surface-2); overflow: hidden;
 }
 .rail i {
@@ -1860,7 +1953,7 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
 }
 
 /* ---------- PIN pad ---------- */
-.pin-dots { display: flex; gap: var(--space-4); justify-content: center; margin: var(--space-6) 0 var(--space-4); }
+.pin-dots { display: flex; gap: var(--space-4); justify-content: center; margin: var(--space-5) 0 var(--space-4); }
 /* One rule for both, because it is one gesture: the digit lands on the
    spring while the colour arrives flat, which is the difference between a
    dot appearing and a dot being put there.
@@ -1934,9 +2027,9 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
    twelve elevated keys on a screen with no chrome were the loudest place
    the old language survived. */
 .pin-key {
-  height: 62px; border-radius: var(--radius-pill);
+  height: 62px; border-radius: var(--r-block);
   border: 1px solid var(--outline); background: var(--surface);
-  font-family: var(--font-display); font-size: var(--text-xl); font-variant-numeric: tabular-nums;
+  font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); font-variant-numeric: tabular-nums;
   letter-spacing: var(--display-track); color: var(--text);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -1974,7 +2067,7 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
    poorly placed, centered"). The pair only ever means a row. */
 .field.spread { flex-direction: row; }
 .stack-3 > * + * { margin-top: var(--space-3); }
-.hr { border: none; border-top: 1px solid var(--border); margin: var(--space-4) 0; }
+.hr { border: none; border-top: 1px solid var(--hairline); margin: var(--space-4) 0; }
 
 /* ---------- desktop adaptation (container query on .app-viewport) ---------- */
 @container app (min-width: 1024px) {
@@ -1989,7 +2082,7 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
     align-items: center;
     padding-left: calc(var(--rail-width) + var(--inset-left));
   }
-  .sheet { border-radius: var(--radius-xl); }
+  .sheet { border-radius: var(--r-block); }
   /* As wide as the column it sits over, capped at the column's own max:
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
@@ -2013,7 +2106,7 @@ body > .flatpickr-calendar,
   font-family: inherit;
   background: var(--surface);
   box-shadow: var(--shadow-1);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
 }
 .flatpickr-calendar.inline {
   width: 100%;
@@ -2055,14 +2148,14 @@ body > .flatpickr-calendar,
 }
 .flatpickr-calendar .flatpickr-day {
   color: var(--text);
-  border-radius: var(--radius-md);
+  border-radius: var(--r-block);
 }
 .flatpickr-calendar .flatpickr-day:hover {
   background: var(--surface-2);
   border-color: transparent;
 }
 .flatpickr-calendar .flatpickr-day.today {
-  border-color: var(--outline-strong);
+  border-color: var(--outline);
 }
 .flatpickr-calendar .flatpickr-day.selected {
   background: var(--accent);
@@ -2088,7 +2181,7 @@ body > .flatpickr-calendar,
 .skeleton-stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .skeleton {
   background: var(--surface-2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-block);
   position: relative;
   overflow: hidden;
 }
@@ -2116,24 +2209,24 @@ html[data-a11y-motion='reduce'] .skeleton::after {
 
 .skeleton-card {
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   box-shadow: var(--shadow-1);
   padding: var(--space-4);
   display: flex; align-items: flex-start; gap: var(--space-3);
 }
-.skeleton-dot { width: 26px; height: 26px; border-radius: var(--radius-pill); flex-shrink: 0; }
+.skeleton-dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
 .skeleton-lines { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; }
-.skeleton-line { height: 12px; border-radius: var(--radius-xs); display: block; }
+.skeleton-line { height: 12px; border-radius: var(--r-block); display: block; }
 .skeleton-line.is-short { width: 40%; }
 
 .skeleton-block {
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-block);
   box-shadow: var(--shadow-1);
   padding: var(--space-4);
   display: flex; flex-direction: column; gap: var(--space-3);
 }
-.skeleton-fill { height: 96px; border-radius: var(--radius-md); display: block; }
+.skeleton-fill { height: 96px; border-radius: var(--r-block); display: block; }
 
 .skeleton-line:only-child { margin: var(--space-2) 0; }
 
@@ -2161,7 +2254,7 @@ html[data-a11y-motion='reduce'] .skeleton::after {
     appearance: base-select;
     background: var(--surface);
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     box-shadow: var(--shadow-2);
     /* No padding of its own: the rows are separated by hairlines and each one
        runs the full width of the panel, the way a list card's rows do. Inset

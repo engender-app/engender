@@ -476,7 +476,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1;
-    --r: var(--radius-xs);
+    --r: var(--r-block);
     /* A half's own radii, which are not the cell's. A border-radius
        percentage resolves against the box it is on, so `50%` on a box half
        as wide as the cell draws an ellipse half as wide as the disc, and
@@ -486,8 +486,8 @@
        height on each corner, which is what `100% / 50%` says. A square
        cell's corner is a length and needs no such correction, so the two
        shapes cannot share one declaration. */
-    --half-low: var(--radius-xs) 0 0 var(--radius-xs) / var(--radius-xs) 0 0 var(--radius-xs);
-    --half-high: 0 var(--radius-xs) var(--radius-xs) 0 / 0 var(--radius-xs) var(--radius-xs) 0;
+    --half-low: var(--r-block) 0 0 var(--r-block) / var(--r-block) 0 0 var(--r-block);
+    --half-high: 0 var(--r-block) var(--r-block) 0 / 0 var(--r-block) var(--r-block) 0;
   }
   /* Mood is round, because a mood is a face and a face is a disc
      (MoodFace.svelte). A gender dimension is not and stays square. */
@@ -634,7 +634,7 @@
   .cal-legend-swatch {
     width: 16px;
     height: 16px;
-    border-radius: 5px;
+    border-radius: var(--r-block);
     display: inline-block;
     border: 1px solid var(--outline);
   }

@@ -55,7 +55,7 @@
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
+  import { HOME_AREA_ROLE, flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import { ui } from '$lib/stores/ui.svelte';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
@@ -391,39 +391,62 @@
 
 <div class="screen home">
   <header class="home-header" data-home-header>
-    <!-- Home-only, and never under disguise (ADR-0035) - checked on
-         prefs.disguise here rather than inside FlagSun, so the one place
-         that decides whether the sun renders at all matches every other
-         disguise gate in the app. -->
-    {#if !prefs.disguise}<FlagSun />{/if}
-    <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
-         the same module, and for the reason SCREENS.md gives: disguise
-         changes the app's name and icon app-wide, not per screen. The hero
-         is the largest text on the screen, so leaving it saying "Gender
-         Diary" while the tab, the launcher and the rail all say "Notes"
-         undoes the rest of the disguise in one line. Two sites in Settings
-         still name the app under disguise; those are ticket 24's screen. -->
-    <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
-    <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-    <!-- How much is here, and since when. The streak stood in this slot and
-         was a run that could break; this only grows. Same size and colour as
-         the greeting above it, so the header reads as name, then today, then
-         history, and none of the three is a score. Absent at zero entries,
-         where "0 entries since nothing" is a worse first screen than no
-         line at all.
+    <!-- The field (phase 10, DIRECTION.md rule 7; ADR-0075): a solid block
+         of one of the flag's colours holding two things, the sun in its top
+         right corner and the wordmark in its bottom left, under the sun's
+         reach. Nothing small sits on it; the hello line, the count and the
+         gear are in the foot below, on the page. -->
+    <div class="home-field" data-home-field>
+      <!-- Home-only, and never under disguise (ADR-0035) - checked on
+           prefs.disguise here rather than inside FlagSun, so the one place
+           that decides whether the sun renders at all matches every other
+           disguise gate in the app. Under disguise the field itself falls to
+           --surface-2 (activeFlag), so this block is a grey header with the
+           app's assumed name in it and nothing else. -->
+      {#if !prefs.disguise}<FlagSun />{/if}
+      <!-- The same swap AppNav.svelte makes on the rail's wordmark, out of
+           the same module, and for the reason SCREENS.md gives: disguise
+           changes the app's name and icon app-wide, not per screen. The hero
+           is the largest text on the screen, so leaving it saying "Gender
+           Diary" while the tab, the launcher and the rail all say "Notes"
+           undoes the rest of the disguise in one line. Two sites in Settings
+           still name the app under disguise; those are ticket 24's screen. -->
+      <h1 class="home-hero" data-home-hero translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
+    </div>
+    <!-- The foot: one line of who and when, one of how much, and the gear at
+         the line's end. On the page rather than the field because all three
+         are small type (rule 3), and because a gear in the field's corner
+         competed with the wordmark (Alicja, ticket 06 round one). -->
+    <div class="home-foot" data-home-foot>
+      <div class="home-foot-lines">
+        <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <!-- How much is here, and since when. The streak stood in this slot
+             and was a run that could break; this only grows. Same size as the
+             greeting above it, so the foot reads as today, then history, and
+             neither is a score. Absent at zero entries, where "0 entries since
+             nothing" is a worse first screen than no line at all.
 
-         A month and a year rather than a day: the flag sun reserves the
-         right of these lines, which leaves about 26 characters at 390px,
-         and the day the journal opened on is not the fact this line is
-         about. -->
-    {#if entryCount && journalBoundsQuery.value}
-      <p class="home-count" data-home-count>
-        {m.home_count_since({
-          entries: m.n_entries({ n: entryCount }),
-          date: fmtDay(journalBoundsQuery.value.firstEpochDay, { month: 'short', year: 'numeric' })
-        })}
-      </p>
-    {/if}
+             A month and a year rather than a day: the day the journal opened
+             on is not the fact this line is about. -->
+        {#if entryCount && journalBoundsQuery.value}
+          <p class="home-count" data-home-count>
+            {m.home_count_since({
+              entries: m.n_entries({ n: entryCount }),
+              date: fmtDay(journalBoundsQuery.value.firstEpochDay, { month: 'short', year: 'numeric' })
+            })}
+          </p>
+        {/if}
+      </div>
+      <!-- Preferences are chrome, not content, so they leave the fourth door
+           and live here (ticket 09, which also gives the rail its fifth item
+           and takes the Settings row out of the hub). Placed by ticket 23 as
+           part of the foot; a plain link, because an unwired control is a
+           dead control. Nothing about a gear says what the app is, so it is
+           unremarkable under disguise. -->
+      <a class="icon-btn press home-gear" href="/settings" aria-label={m.nav_settings()} data-home-gear>
+        <Icon name="settings" size={22} />
+      </a>
+    </div>
   </header>
 
   <!-- The anniversary, as one line rather than a card with a confetti loop
@@ -525,8 +548,8 @@
   {#snippet tileRow(tiles: HomeTile[], block: (typeof TILE_BLOCKS)[number])}
     {#if tiles.length > 0}
       <TileGrid
-        role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
-        flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+        role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+        bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles))}
         data-live-tile-grid
         data-rows={block.rows}
       >
@@ -605,7 +628,7 @@
         <Notice
           icon="heart"
           key="active-tryout-tile"
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
+          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}
           title={feltSenseGapTile.title}
           text={feltSenseGapTile.note}
           action={{ label: feltSenseGapTile.action!.label, href: feltSenseGapTile.action!.href! }}
@@ -624,7 +647,7 @@
            thing. Its value goes with them - "40 days" is what the note
            already says. -->
       {#if quietListTiles.length > 0}
-        <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
           {#each quietListTiles as tile (tile.key)}
             <ListRow
               key={tile.tileKey}
@@ -674,8 +697,8 @@
        handles. -->
   {#if hasEntries}
     <TileGrid
-      role={roleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
-      flagFill={activeFlag.fill === 'none' ? undefined : activeFlag.fill}
+      role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack)}
+      bar={flagBarRole(activeFlag.roles, tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.lookBack))}
       data-tight
     >
       {#if prefs.wrappedEnabled}
@@ -803,7 +826,7 @@
     <div transition:collapse={panel} data-getting-started>
       <SectionHeading text={m.home_start_title()} />
       <p class="home-start-intro">{m.home_start_intro()}</p>
-      <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
+      <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.liveTiles)}>
         {#each GETTING_STARTED as offer (offer.key)}
           <ListRow
             key={offer.key}
@@ -929,16 +952,25 @@
 </div>
 
 <style>
-  /* Ticket 19: widened past .screen's own horizontal padding (negative
-     margin) and padded back out to the same inset, so the flag sun's corner
-     point lands exactly on the screen's true top right corner rather than
-     the padded content edge - matching "centred exactly on the screen's top
-     right corner" (DIRECTION.md) - while the greeting text keeps its usual
+  /* The header is the field and its foot (phase 10, DIRECTION.md rule 7;
+     redesign ticket 23). The header itself is a plain block; the field
+     below it is what bleeds, clips and paints. */
+  .home-header {
+    position: relative;
+  }
+  /* The field: a solid block of the flag's second colour, published by
+     activeFlag as --field with its ink beside it (--surface-2 and --text
+     under disguise). Widened past .screen's own horizontal padding
+     (negative margin) and padded back out to the same inset, so the flag
+     sun's corner point lands exactly on the screen's true top right corner
+     rather than the padded content edge - "centred exactly on the screen's
+     top right corner" (DIRECTION.md) - while the wordmark keeps its usual
      alignment with everything below it. overflow: hidden clips the sun's
      bleed to a clean quarter instead of a scrollable overhang; min-height
-     keeps that quarter from clipping again against this header's own bottom
+     keeps that quarter from clipping again against the field's own bottom
      edge before the innermost ring finishes drawing (SUN_OUTER/2 in
-     $lib/motion/flagSun.ts).
+     $lib/motion/flagSun.ts), and is the field's height: the sun's quarter
+     plus the window inset, with the wordmark sitting at its foot.
 
      175px rather than a var(), because CSS has no way to read a TS export -
      flagSun.test.ts holds this number to SUN_OUTER/2 so the two cannot drift
@@ -946,94 +978,108 @@
      every ring to --sun-breathe-scale (theme/base.css) at its cycle's
      midpoint, and the resting radius alone was the reserve until phase 5
      ticket 32.12 - so for part of every cycle the outermost ring grew past
-     its own room and overflow: hidden shaved it flat along this header's own
+     its own room and overflow: hidden shaved it flat along the header's own
      bottom edge. Multiplying by the same token the breathing keyframe reads
-     means the two can only ever agree. */
-  .home-header {
+     means the two can only ever agree.
+
+     The one deliberate bleed past the safe area (phase 5 ticket 18). The
+     scroll region pads every screen clear of the display cutout; the field
+     pulls itself back up by exactly that inset, so the sun's centre lands
+     on the window's true top right corner, and pads its own content back
+     down by the same amount. Decoration crosses the inset; nothing readable
+     does. */
+  .home-field {
     position: relative; z-index: 1;
-    padding: calc(var(--space-7) + var(--inset-top)) var(--space-5) var(--space-4);
-    /* The one deliberate bleed past the safe area (phase 5 ticket 18). The
-       scroll region pads every screen clear of the display cutout; this
-       header pulls itself back up by exactly that inset, so the sun's centre
-       lands on the window's true top right corner - which is what
-       DIRECTION.md asks for - and then pads its own text back down by the
-       same amount, so the greeting is as clear of the status bar as any
-       other screen's first line. Decoration crosses the inset; nothing
-       readable does. */
+    display: flex; align-items: flex-end;
+    background: var(--field);
+    color: var(--field-ink);
+    padding: calc(var(--space-4) + var(--inset-top)) var(--space-5) var(--space-4);
     margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
     overflow: hidden;
     min-height: calc(175px * var(--sun-breathe-scale) + var(--inset-top));
   }
-  /* Flat, and clear of the sun.
+  /* The wordmark, in the field's bottom left corner and in the field's ink,
+     at the door-title voice (rule 2): Outfit 800, set solid, fluid between
+     1.7rem and the 48px a door's title takes. Flat: colour arrives as fill
+     and as text, never as a gradient (DIRECTION.md decision 2), and the
+     gradient this once was ran "Diary" through olive on nonbinary.
 
-     It was a gradient clipped to the letterforms, which DIRECTION.md's
-     decision 2 rules out outright - colour arrives as flat fill and as
-     coloured text, never as a gradient - and which on the nonbinary palette
-     ran the word "Diary" through olive on its way from purple to yellow.
-     The accent at 38px answers to the 3:1 large-text floor, which is what
-     --accent is already held to.
-
-     The width cap is the other half of it. The sun is 350px across and
-     centred on the top right corner, so anything running past about two
-     thirds of the screen disappears under it - which is what was happening to
-     the last two letters of the app's own name. DIRECTION.md says the
-     greeting sits clear beneath the sun; the title has to sit clear of it
-     too, and the way to do that is to stop the text rather than to move the
-     flag.
-
-     Item 20 is that promise made arithmetic. A percentage cap still let the
-     word reach into the outermost ring below about 390px: the ring's left
-     edge at the title's own height is a chord of the circle, not a
-     vertical line, and 62% of a 320px screen is past that chord by ~57px
-     (measured against the glyph edge, not the box). So the cap reserves the
-     ring's full breathing radius outright - 175px is SUN_OUTER/2, the same
-     number flagSun.test.ts pins - and the title scales under it, because a
-     word cannot wrap and a capped box it overflows is a touch again. The
-     fluid size solves the same inequality the measurements state: the word
-     is 5.05px per font-size px, the corner chord at the title's midline
-     costs the screen its radius minus ~53px of drop, and the thin
-     scrollbar takes ~12px the container query cannot see. Clamp bounds
-     keep the extremes honest: the desktop override in screens.css still
-     owns large screens, and 1.3rem is where a 320px viewport stops having
-     room for a hero at all.
-
-     :global(), because the desktop-adaptation @container block
-     (screens.css) still overrides .home-hero's font-size at 1024px+ and
-     that rule stayed put with the other screens' shared breakpoint - a
-     scoped selector here would out-specificity it with the added scope
-     class, and the desktop size would stop winning. */
-  :global(.home-hero) {
+     Under the sun's reach, by arithmetic rather than a width cap. The sun is
+     a 350px disc centred on the field's top right corner, breathing to 1.035,
+     and the field is exactly its radius tall - so at the field's bottom edge
+     the disc has no width at all, and a line of type sitting on that edge
+     meets the disc only as high as its own cap height. At 48px the wordmark
+     is 46px tall and its top is 64px from the bottom edge (16 of padding),
+     which is 117px below the corner; the disc's chord there is
+     sqrt(181^2 - 117^2) = 138px, so the word may run to 138px short of the
+     right edge. "enGender" at 48px is 242px wide (5.05px per font px), and
+     at 390px there are 252. Below 360px the sun draws at 0.82 (a 148px
+     radius, a 92px chord at that height, 228px of room for a 210px word at
+     320), and below 240px at 0.6, where the word at its 1.7rem floor sits
+     wholly under the disc. Polish takes the same word. */
+  .home-hero {
     font-family: var(--font-display);
-    font-size: clamp(1.3rem, calc(19.8cqw - 42.2px), 2.4rem); font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-    color: var(--accent);
-    max-width: min(62%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
+    font-size: clamp(1.7rem, 13cqw, 3rem);
+    font-weight: var(--weight-display);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    color: inherit;
+    margin: 0;
+    min-width: 0;
   }
-  /* The same reservation for the two quiet lines under it, which sit lower
-     where the circle is narrower but still reach into the outer ring's band
-     on a 320px screen (the date's glyph edge measured 1.4px inside it). */
+  /* Below 360px the sun draws at 0.82, below 240px (what 200% zoom leaves of
+     a 390px phone) at 0.6 (rule 7). The field keeps its height in both, so
+     the wordmark's place does not move; only the disc shrinks toward its
+     corner. The old header reserved room for the full-size sun beside the
+     hello line and collapsed that line to zero width at 195px; the foot
+     below has no sun beside it and needs no reservation. */
+  @container app (max-width: 359px) {
+    .home-field { --sun-scale: 0.82; }
+  }
+  @container app (max-width: 239px) {
+    .home-field { --sun-scale: 0.6; }
+  }
+  /* The foot: two lines of secondary text at 15/600 (rule 2) and the gear at
+     the end of the first, on the page. 12 under the field, and the gear's
+     48px box is pulled up and out by the 13px its 22px glyph sits inside,
+     so the glyph aligns with the content edge and the hello line's own
+     first line rather than floating in the middle of the foot. */
+  .home-foot {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+  }
+  .home-foot-lines { flex: 1; min-width: 0; }
   .home-hello,
   .home-count {
-    max-width: min(78%, calc(100% - 175px * var(--sun-breathe-scale) - var(--space-5)));
-  }
-  .home-hello { font-size: var(--text-sm); color: var(--text-2); margin-top: var(--space-1); font-weight: var(--weight-medium); }
-  /* The count line takes the greeting's own size, colour and weight rather
-     than a step of its own: the header is three quiet lines under a
-     wordmark, and a fourth type size in it would be the thing you notice
-     about it. Tabular numerals so the figure does not shift width as it
-     grows. */
-  .home-count {
     font-size: var(--text-sm);
-    color: var(--text-2);
-    margin: var(--space-1) 0 0;
     font-weight: var(--weight-medium);
+    margin: 0;
+  }
+  .home-hello { color: var(--text); }
+  /* The count line takes the greeting's own size and weight rather than a
+     step of its own, one shade quieter: the foot reads as today, then
+     history, and neither is a score. Tabular numerals so the figure does not
+     shift width as it grows. */
+  .home-count {
+    color: var(--text-2);
     font-variant-numeric: tabular-nums;
-    /* The sun's clearance leaves about 26 characters at 390px, so this line
-       wraps for most journals. Balanced, so it breaks after "since" rather
-       than stranding the year on a line of its own. Ignored where it is not
+    /* Balanced, so a wrapping line breaks after "since" rather than
+       stranding the year on a line of its own. Ignored where it is not
        supported, which leaves the ordinary wrap. */
     text-wrap: balance;
+  }
+  .home-gear {
+    flex: none;
+    color: var(--text-2);
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0 0;
+  }
+  /* On the web the field is a banner across the column with the one radius
+     on all four corners (rule 7); the outline frame Home drew around itself
+     on the web retires with it (screens.css), since the field is the
+     column's top edge now. */
+  @container app (min-width: 1024px) {
+    .home-field { border-radius: var(--r-block); }
   }
   /* Round 4, item 20: the gap before a Home heading was two spacings
      stacked - the block rhythm's 12px AND the heading's own 20px
@@ -1164,7 +1210,7 @@
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: 1px solid var(--outline);
-    border-radius: var(--r-card);
+    border-radius: var(--r-block);
     color: var(--text-2);
     font: inherit;
     font-size: var(--text-sm);
@@ -1175,7 +1221,7 @@
   .home-fold:hover,
   .home-fold:active {
     color: var(--text);
-    border-color: var(--outline-strong);
+    border-color: var(--outline);
   }
 
   /* Tier 3, change within a screen: the mark turns to point at what it has
