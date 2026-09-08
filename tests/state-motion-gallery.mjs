@@ -235,7 +235,7 @@ const READ_SEGMENT = `
   };`;
 
 const READ_TILES = `
-  const tiles = [...document.querySelectorAll('[data-live-tile-grid] .kit-tile')].slice(0, 3);
+  const tiles = [...document.querySelectorAll('.kit-tiles .kit-tile')].slice(0, 3);
   return Object.fromEntries(tiles.map((tile, i) => {
     const value = tile.querySelector('.kit-tile-value');
     return ['tile' + i, { clip: getComputedStyle(tile).clipPath, value: value ? value.textContent : null }];
@@ -261,7 +261,7 @@ try {
     await arriveHome(page);
     await record(page, cdp, 'door-today-journal', 'Today to Journal: the field stays put and changes its contents; the screens fade through behind it.', () => nav(page, 'calendar'), READ_FIELD);
     await page.waitForTimeout(300);
-    await record(page, cdp, 'door-journal-lookback', 'Journal to Look back: the month strip on the field crossfades into the title, and the headings under it draw in, rule first.', () => nav(page, 'stats'), READ_FIELD);
+    await record(page, cdp, 'door-journal-lookback', 'Journal to Look back: the month strip on the field crossfades into the title, the two tiles clip open with the wrapped count rising, and the headings under them draw in, rule first.', () => nav(page, 'stats'), READ_TILES);
     await page.waitForTimeout(300);
     await record(page, cdp, 'door-lookback-transition', 'Look back to Transition: the title crossfades into the search box; the field is the one thing that does not fade through.', () => nav(page, 'settings'), READ_FIELD);
     await page.waitForTimeout(300);
