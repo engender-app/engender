@@ -34,7 +34,16 @@
      A screen whose own tab already names it passes `titleHidden`: the title
      stays in the document for a screen reader and for the document outline,
      and stops being a second visible label directly above the first group
-     heading (DIRECTION.md 3d). The More hub is the case that motivates it. */
+     heading (DIRECTION.md 3d). The More hub is the case that motivates it.
+
+     `lead` is what a door puts on the field's own line in place of a visible
+     title (DIRECTION.md rule 7, phase 10 redesign ticket 10). The Journal
+     door's line is the month it is showing, at the section-heading size, and
+     the Transition door's is a search input; neither is the screen's title
+     and neither is an action, so neither fits the two slots that were here.
+     It renders before the title, which is where the eye starts, and the
+     hidden `<h1>` stays exactly where it was - the document outline and the
+     walkthrough's handle are not the field's business. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
@@ -48,6 +57,7 @@
     screen,
     titleHidden = false,
     class: klass = '',
+    lead,
     actions
   }: {
     title: string;
@@ -60,6 +70,8 @@
     screen?: string;
     titleHidden?: boolean;
     class?: string;
+    /** What this door shows on the field's line instead of a title. */
+    lead?: Snippet;
     actions?: Snippet;
   } = $props();
 
@@ -78,7 +90,7 @@
   }
 </script>
 
-<header class="screen-header {klass}" class:is-collapsed={titleHidden && !back && !actions} data-screen-header>
+<header class="screen-header {klass}" class:is-collapsed={titleHidden && !back && !lead && !actions} data-screen-header>
   <!-- The subtitle is a row of its own rather than a second line inside the
        title's box. Beside the back control it would centre the arrow
        against the whole block, which drops it to the middle of a header
@@ -122,6 +134,10 @@
         </button>
       {/if}
 
+      {#if lead}
+        <div class="screen-lead" data-screen-lead>{@render lead()}</div>
+      {/if}
+
       <h1 class="screen-title" class:visually-hidden={titleHidden} data-screen-title={screen ?? ''}>
         {title}
       </h1>
@@ -136,3 +152,17 @@
     <p class="screen-subtitle" data-screen-subtitle>{subtitle}</p>
   {/if}
 </header>
+
+<style>
+  /* Here rather than in components.css because this component is the only
+     consumer, which is the rule scripts/check-screens-classes.mjs holds that
+     sheet to. It takes the title's own column of `.screen-header-row`: a
+     door that fills this hides its title, and a hidden title is out of flow,
+     so the two never contend for the track. What goes inside is the caller's
+     to draw and to size - the field's floor of 24px, or 18.66px bold, applies
+     to it as it does to the title. */
+  .screen-lead {
+    grid-column: 1;
+    min-width: 0;
+  }
+</style>
