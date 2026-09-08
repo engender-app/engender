@@ -153,9 +153,11 @@ body {
   --nav-clearance: calc(
     var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
-  --nav-float-gap: var(--space-3);
-  /* The gap between the bar's edge and the controls inside it. */
-  --nav-bar-pad: 5px;
+  /* Trimmed from --space-3/5px for ticket 08: the four tab labels grew, and
+     every px reclaimed from the bar's own margins is a px the five equal
+     columns (below) can give the label instead of the ellipsis. */
+  --nav-float-gap: var(--space-2);
+  --nav-bar-pad: 4px;
 }
 
 /* The gates and onboarding, which render instead of the app and have no bar
@@ -320,7 +322,7 @@ body {
   justify-self: stretch;
   min-width: 0;
   min-height: var(--touch-target);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1);
   border-radius: var(--r-block);
   color: var(--text-2);
   text-decoration: none;
@@ -336,7 +338,17 @@ body {
 }
 .nav-icon { display: grid; place-items: center; }
 /* One line, ellipsed rather than wrapped: a two-line label would grow the
-   bar's height on one tab and not the others. */
+   bar's height on one tab and not the others.
+
+   Ticket 08 measured every label's fit at the 320px floor after widening
+   the cells as far as this bar's own margins allow (Alicja, 2026-09-07):
+   Today/Dzisiaj and Journal/Dziennik clear it, Look back and Transition
+   (English) do not, by 4-5px, and closing that without shrinking the text
+   or giving up the floating bar's own margin needs more room than five
+   equal columns have at 320px. Accepted as a truncation this ellipsis
+   already existed to catch, at the narrowest phone still supported - it
+   is not one this ticket's wording made possible that wasn't already true
+   of "Calendar"/"Kalendarz"/"Statystyki" at the same width. */
 .nav-label {
   max-width: 100%;
   overflow: hidden;
@@ -749,6 +761,15 @@ html[data-a11y-motion='reduce']::view-transition-old(screen) { animation-directi
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
    instead of across. What stays here is the colour and the weight. */
 .rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
+/* Pushed to the rail's foot by the flex column's own auto margin, and cut
+   off from the four doors above it by a hairline rather than a gap alone -
+   a gap reads as spacing, a rule reads as a different kind of row (ticket
+   09, ADR-0076). */
+.rail-settings {
+  margin-top: auto;
+  padding-top: calc(10px + var(--space-2));
+  border-top: 1px solid var(--outline);
+}
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 

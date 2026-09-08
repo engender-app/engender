@@ -1142,7 +1142,7 @@ try {
 try {
   await fresh('/settings');
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
   ok('language swap EN→PL via paraglide');
 } catch (e) { fail('language', e); }
 
@@ -1541,8 +1541,11 @@ try {
      the hub - the same headings the More screen draws, in the same order. */
   /* Support and Media are left off this step (Alicja, sign-off): neither is
      something a person tracks. */
+  /* Steps, not Transition, since redesign ticket 15 renamed the group in the
+     one place both surfaces read it from (`hubLabels.ts`): a group called
+     Transition inside a door called Transition said nothing. */
   const areaHeadings = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
-  if (areaHeadings.join() !== ['Body', 'Health', 'Transition'].join()) {
+  if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
@@ -1809,6 +1812,60 @@ try {
   ok('desktop rail via container query');
 } catch (e) { fail('desktop', e); }
 
+/* 14a. Today's gear reaches Settings, and no other screen's header carries
+   one (ticket 09). Mobile width, then back to desktop for 14b and for step
+   15, which follows expecting the wide viewport. */
+try {
+  await page.setViewportSize({ width: 440, height: 940 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok("Today's gear reaches Settings");
+
+  /* The rail's chrome is expected everywhere (ADR-0076); what "no other
+     screen header does" actually means is ScreenHeader's own root, which
+     every deep screen and every door but Today renders. `attached`, not
+     the default `visible`: More's header has a hidden title and nothing
+     else to hold, so it collapses to nothing on screen (ADR-0075) - true
+     of its content, not of whether a link exists in the DOM. */
+  for (const path of ['/calendar', '/stats', '/more']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-screen-header]', { state: 'attached' });
+    const inHeader = await page.locator('[data-screen-header] a[href="/settings"]').count();
+    if (inHeader) throw new Error(`${path}'s header links to /settings`);
+  }
+  ok('no other screen header links to Settings');
+} catch (e) { fail('home gear settings', e); }
+
+/* 14a-zoom. The gear is reachable, not just visible, at 200% zoom on a
+   320px-class phone - the pre-existing 195px check (ticket 23) only holds
+   the hello line and the sun's layout, never clicks the gear itself. */
+try {
+  await page.setViewportSize({ width: 195, height: 700 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-home-gear]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('the gear opens Settings at 195px (200% zoom on a 390px phone)');
+} catch (e) { fail('home gear settings at 200% zoom', e); }
+
+/* 14b. the rail's fifth row reaches Settings too, set apart from the four
+   doors (ticket 09). */
+try {
+  await page.setViewportSize({ width: 1400, height: 980 });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  const doorCount = await page.locator('[data-rail-item]').count();
+  if (doorCount !== 4) throw new Error(`rail has ${doorCount} doors, not 4`);
+  await page.locator('[data-rail-settings]').click();
+  await page.waitForURL(/\/settings$/);
+  await page.waitForSelector('[data-settings-list]');
+  ok('rail settings row reaches Settings, four doors stay four');
+} catch (e) { fail('rail settings row', e); }
+
 /* 15. reminders web note at desktop */
 try {
   await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
@@ -1906,7 +1963,7 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await page.locator('[data-segment="pl"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Start', null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
 
   /* Same seeded tag, same row, different language - which only works if
      what was stored was the key and not the word. */
@@ -1940,6 +1997,10 @@ try {
      serve leaves the flag in the tab and no attribute check would notice. */
   const served = await page.evaluate((href) => fetch(href).then((r) => r.status), await favicon());
   if (served !== 200) throw new Error('the disguised icon is not served: HTTP ' + served);
+  /* Ticket 08: the fourth tab is the one thing in the bar disguise still
+     touches - it reverts to More rather than staying Transition. */
+  const fourthTabLabel = () => page.locator('[data-nav-item="settings"] [data-nav-label]').textContent();
+  if ((await fourthTabLabel()) !== 'More') throw new Error('fourth tab while disguised: ' + (await fourthTabLabel()));
 
   /* The field under disguise (redesign ticket 23, ADR-0075): the shell
      publishes --surface-2 and --text in place of the flag's colour and its
@@ -1977,6 +2038,7 @@ try {
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.waitForFunction(() => document.title === 'enGender', null, { timeout: 8000 });
   if (!/\/favicon\.svg$/.test(await favicon())) throw new Error('tab icon after undisguising: ' + (await favicon()));
+  if ((await fourthTabLabel()) !== 'Transition') throw new Error('fourth tab after undisguising: ' + (await fourthTabLabel()));
 
   await page.getByRole('switch', { name: 'Lock on leave' }).click();
   await page.getByRole('switch', { name: 'Quick exit' }).click();
@@ -3481,6 +3543,91 @@ try {
   fail('the reorganised hub tree', e);
 }
 
+/* Cutting through the door with the search box in its field (phase 10
+   redesign ticket 15). Twenty-seven rows is only a list somebody can get
+   through if a word narrows it, and what a word reaches is both halves of
+   what is behind the door: the areas by name, and the records inside them.
+
+   The queries are chosen for what the demo persona actually holds rather
+   than for what reads well - "wear" names an area, "endo" is inside a
+   consult and a reminder - and both halves are asserted by their handles,
+   never by the copy (ADR-0029). */
+try {
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-hub-index] [data-list-row="measurements"]', { timeout: 8000 });
+
+  // The row that used to point at preferences, and the pointer with it, are
+  // gone from this door for good (ADR-0036; tickets 09 and 15).
+  if (await page.locator('[data-list-row="settings"]').count()) {
+    throw new Error('the fourth door still holds a Settings row');
+  }
+
+  // An area, by part of its name. The grouped index gives way to the matches.
+  await page.locator('[data-hub-search]').fill('wear');
+  await page.waitForSelector('[data-hub-results] [data-list-row="wear"]', { timeout: 8000 });
+  /* Detached rather than absent on the next frame: the index gives its
+     height back on the way out (DIRECTION.md rule 10), so it is still in the
+     document while it does, and waiting for it to go is also what proves the
+     collapse finishes rather than stalling. */
+  await page.waitForSelector('[data-hub-index]', { state: 'detached', timeout: 8000 });
+  if (await page.locator('[data-hub-results] [data-list-row="measurements"]').count()) {
+    throw new Error('a row nothing matched is in the results');
+  }
+
+  // ... and it is still the row it was: one tap to its own screen.
+  await page.locator('[data-hub-results] [data-list-row="wear"]').click();
+  await page.waitForURL('**/practice/wear');
+
+  /* A row this door does not draw. Seven areas are drawn on a screen of
+     their own (phase 9 carpet ticket 16) and this is the only index with a
+     box in it, so a name reaches all twenty-seven; the row says which screen
+     hosts it, and following it lands on the area, not on the host. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('dilation');
+  await page.waitForSelector('[data-hub-results] [data-list-row="dilation"][data-hub-section="surgery"]', {
+    timeout: 8000
+  });
+  await page.locator('[data-hub-results] [data-list-row="dilation"]').click();
+  await page.waitForURL('**/health/dilation');
+
+  /* ADR-0043 through the box: the one row whose existence is a screen's call
+     and not the registry's cannot be typed into being. The demo persona has
+     no testosterone regimen and has not opted in, so nothing here may
+     answer "cycle events" - and the query is one that does match, since
+     `cycleEvents` records exist in the seed and the record half finds them
+     under their own area's name. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('cycle');
+  await page.waitForTimeout(1200);
+  if (await page.locator('[data-list-row="cycle-events"]').count()) {
+    throw new Error('the cycle row can be searched into existence (ADR-0043)');
+  }
+
+  // A record inside an area, which is the registry's read rather than this
+  // screen's (textSearch.ts). The hit goes where the record is.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('endo');
+  await page.waitForSelector('[data-search-hit]', { timeout: 8000 });
+  const hit = page.locator('[data-search-hit]').first();
+  const hitArea = await hit.getAttribute('data-search-hit');
+  await hit.click();
+  await page.waitForURL((url) => !url.pathname.endsWith('/more'), { timeout: 8000 });
+
+  // Nothing matched says so, once, rather than drawing an empty list.
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await page.locator('[data-hub-search]').fill('qqzzxx');
+  await page.waitForSelector('[data-notice="hub-search-none"]', { timeout: 8000 });
+
+  // And an empty box is the door at rest again.
+  await page.locator('[data-hub-search]').fill('');
+  await page.waitForSelector('[data-hub-index] [data-hub-section="media"]', { timeout: 8000 });
+  await page.waitForSelector('[data-hub-results]', { state: 'detached', timeout: 8000 });
+
+  ok(`the Transition door's search: an area by name reaches its screen, a record hit in ${hitArea} reaches where it lives, nothing found says so, and an empty box is the grouped list again`);
+} catch (e) {
+  fail("the Transition door's search", e);
+}
+
 /* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
 
    Directly after the fill-every-feature step, and it puts that journal back
@@ -4272,6 +4419,55 @@ try {
   );
   ok('appointments: written, suggested from your own previous kinds, edited and deleted');
 } catch (e) { fail('the appointment record', e); }
+
+try {
+  /* The calendar handoff (phase 10 redesign ticket 18, ADR-0067): the
+     sheet's default title stays neutral until the person changes it, and
+     an edited title and a typed time both reach the file that gets
+     shared. Runs against the appointment surface; the surgery date and a
+     letter's unlock day share this same component rather than a second
+     implementation. */
+  await fresh('/health/appointments');
+  await page.click('[data-add]');
+  await page.waitForSelector('#appointment-kind');
+  await page.fill('#appointment-kind', 'ginekolog');
+  await fillDate(page, '#appointment-date', '2026-11-03');
+  await page.click('[data-save-appointment]');
+  await page.waitForSelector('[data-appointment]:has-text("ginekolog")', { timeout: 8000 }); // text-under-test
+  await page.locator('[data-appointment]', { hasText: 'ginekolog' }).click(); // text-under-test
+
+  await page.waitForSelector('[data-add-to-calendar]');
+  await page.click('[data-add-to-calendar]');
+  await page.waitForSelector('#calendar-handoff-title');
+  const defaultTitle = await page.inputValue('#calendar-handoff-title');
+  if (!defaultTitle || /ginekolog/i.test(defaultTitle)) {
+    throw new Error(`the default title names the appointment rather than staying neutral: ${JSON.stringify(defaultTitle)}`);
+  }
+  await page.fill('#calendar-handoff-title', 'Wizyta u lekarza');
+  await page.fill('#calendar-handoff-time', '09:15');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.locator('[data-share-to-calendar]').click()
+  ]);
+  if (!download.suggestedFilename().endsWith('.ics')) {
+    throw new Error(`the calendar handoff is not named as an .ics file: ${download.suggestedFilename()}`);
+  }
+  const ics = await readFile(await download.path(), 'utf8');
+  if (!ics.includes('SUMMARY:Wizyta u lekarza')) {
+    throw new Error('the shared file does not carry the edited title');
+  }
+  if (!ics.includes('DTSTART:20261103T091500')) {
+    throw new Error('the shared file does not carry the day and time that were set');
+  }
+
+  // The editor sheet stayed open behind the handoff sheet the whole time -
+  // this is cleanup, not a fresh open.
+  await page.waitForSelector('[data-delete-appointment]');
+  await page.click('[data-delete-appointment]');
+  await page.click('[data-confirm-delete-appointment]');
+  ok('calendar handoff: the default title stays neutral, an edited title and time reach the shared file');
+} catch (e) { fail('the calendar handoff', e); }
 
 try {
   /* In the room (phase 8 features ticket 60): the standing prep list read
@@ -5361,8 +5557,10 @@ try {
      current now, so the module must have stopped offering it and must say so.
      This is the last thing the suite does, so the journal is left in PIN mode
      deliberately - see the note at the top of this flow. */
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   if (!/PIN/i.test(await page.locator('[data-list-row="access-mode"]').innerText())) {
     throw new Error('the security row does not name PIN as the mode');
@@ -5413,8 +5611,10 @@ try {
   await booted();
   await page.waitForSelector('[data-home-hello]');
 
-  await page.locator('[data-nav-item="settings"]').click();
-  await page.locator('a[href="/settings"]').click();
+  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+     the end of Today's foot is the way in now, and this flow is already on
+     Today, having just cleared the gate above. */
+  await page.locator('[data-home-gear]').click();
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
   await page.locator('a[href="/settings/recovery-key"]').click();

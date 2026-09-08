@@ -17,21 +17,34 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { activeTabKey } from '$lib/navigation/active-tab';
-  import { appWordmark } from '$lib/disguise/identity';
+  import { appWordmark, hubTabLabel } from '$lib/disguise/identity';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { boxesMatch, squash, stretch, type Axis, type Box } from '$lib/motion/indicator';
   import Icon from './Icon.svelte';
 
   const NAV = [
-    { href: '/', key: 'home', icon: 'home', label: () => m.nav_home() },
-    { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_calendar() },
-    { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_stats() },
+    /* Today, Journal, Look back, Transition (ticket 08) - none of the four
+       reuses `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys
+       still say Home/Calendar/Stats/More everywhere else that already reads
+       them (the calendar and stats screens' own headers, a couple of CTA
+       buttons), and this ticket's whole point is that the bar's word for a
+       door and a door's own word for itself are now free to differ. */
+    { href: '/', key: 'home', icon: 'home', label: () => m.today() },
+    { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_journal() },
+    { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_lookback() },
     /* ADR-0036: the tab opens the More hub, not Settings directly, but
        `key` stays 'settings' - it is what the walkthrough's data-nav-item
        selector and active-tab.ts's own table already key off, and Settings
-       is still what this tab leads to, one hop further in. */
-    { href: '/more', key: 'settings', icon: 'grid', label: () => m.nav_more() }
+       is still what this tab leads to, one hop further in. Disguised, the
+       label reverts to the existing `nav_more` string rather than staying
+       `nav_transition` - see hubTabLabel. */
+    {
+      href: '/more',
+      key: 'settings',
+      icon: 'grid',
+      label: () => hubTabLabel(prefs.disguise, m.nav_more(), m.nav_transition())
+    }
   ];
 
   /* The bar splits its four tabs around the add button, so the button sits
@@ -244,6 +257,18 @@
       <Icon name={item.icon} size={22} /><span>{item.label()}</span>
     </a>
   {/each}
+  <!-- Preferences are chrome, not content (ticket 09; ADR-0076): a fifth
+       row, sunk to the rail's foot by its own margin and set apart from the
+       four doors by a rule, since the rail has room to say "Settings" where
+       the bar does not. Not one of `NAV`'s four - it carries no
+       `data-rail-item` and takes no pill, because activeTabKey already
+       resolves `/settings` to the fourth door's own key (ADR-0036's href/key
+       split) and a second lit row for the same key would be a lie about
+       there being two. Plain text, since "Settings" says nothing about what
+       the app is under disguise either. -->
+  <a class="rail-item rail-settings press" data-rail-settings href="/settings">
+    <Icon name="settings" size={22} /><span>{m.nav_settings()}</span>
+  </a>
 </nav>
 
 <!-- The indicator is on the anchor, not on a wrapper inside it, so it covers

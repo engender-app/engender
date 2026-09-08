@@ -10,6 +10,7 @@ import {
   HUB_ROWS,
   HUB_ROW_HOSTS,
   LAST_WRITE_WITHOUT_A_ROW,
+  hubRowsMatching,
   hubSections,
   isHubGroup,
   rowHidden,
@@ -465,4 +466,122 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
   ]);
   assert.deepEqual(group('support'), ['doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
+});
+
+/* Ticket 15's search half. The words are paraglide's, so the matcher is
+   handed the titles to match against rather than resolving them - the shape
+   `tagIdsMatching` already uses for the same reason (searchQuery.ts). A
+   made-up title per key here, so these tests hold the matching rule and not
+   the catalogue. */
+const TITLES: Record<string, string> = {
+  measurements: 'Body measurements',
+  sizes: 'Size log',
+  'hair-removal': 'Usuwanie włosów',
+  wear: 'Wear log',
+  photos: 'Progress photos',
+  dilation: 'Dilation',
+  'entry-templates': 'Entry templates'
+};
+const titleOf = (key: string): string => TITLES[key] ?? key;
+
+test('an empty query matches nothing, since the grouped list is what an empty box shows', () => {
+  assert.deepEqual(hubRowsMatching(reading(), '', titleOf), []);
+  assert.deepEqual(hubRowsMatching(reading(), '   ', titleOf), []);
+});
+
+test('a query matches an area by part of its name, whatever the case', () => {
+  const rows = hubRowsMatching(reading(), 'MEASURE', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.spec.key),
+    ['measurements']
+  );
+});
+
+test('a query matches a Polish name typed without its diacritics, both sides folded', () => {
+  const rows = hubRowsMatching(reading(), 'wlosow', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.spec.key),
+    ['hair-removal']
+  );
+});
+
+test('matches come back in the order the groups draw them, flat', () => {
+  const rows = hubRowsMatching(reading(), 'log', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.spec.key),
+    ['sizes', 'wear']
+  );
+});
+
+test('a row keeps the second line and the place the sections gave it, so a match reads as the row does', () => {
+  const rows = hubRowsMatching(reading({ states: { wearSessions: finished(TODAY - 90) } }), 'wear', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => [row.where, row.line.kind]),
+    [['finished', 'finished']]
+  );
+});
+
+test('a match that has not ended names the group it belongs to', () => {
+  const rows = hubRowsMatching(reading(), 'wear', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.where),
+    ['transition']
+  );
+});
+
+test('a hidden area cannot be searched up, hub row or hosted', () => {
+  assert.deepEqual(hubRowsMatching(reading({ states: { measurements: hidden } }), 'measure', titleOf), []);
+  assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
+});
+
+/* The seven rows drawn on a screen of their own are still areas of the app,
+   and this is the only index with a box to type in: a person looking for
+   dilation looks for it here. Each says which screen hosts it rather than a
+   group, since no group draws it. */
+test('a row drawn on another screen is searchable, and names its host', () => {
+  const rows = hubRowsMatching(reading(), 'dilation', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => [row.spec.key, row.where, row.spec.href]),
+    [['dilation', 'surgery', '/health/dilation']]
+  );
+});
+
+test('a hosted row states the day its area ended, like any other match', () => {
+  const rows = hubRowsMatching(reading({ states: { taperSessions: finished(TODAY - 10) } }), 'dilation', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => [row.where, row.line.kind]),
+    [['surgery', 'finished']]
+  );
+});
+
+test('the hub rows come first and the hosted ones after, so a match list reads as the hub then what came off it', () => {
+  const rows = hubRowsMatching(reading(), 'e', titleOf);
+  const keys = rows.map((row) => row.spec.key);
+
+  assert.ok(keys.includes('measurements'), 'a hub row is missing');
+  assert.ok(keys.includes('entry-templates'), 'a hosted row is missing');
+  assert.ok(
+    keys.indexOf('measurements') < keys.indexOf('entry-templates'),
+    'the hosted rows are not last'
+  );
+});
+
+/* ADR-0043 through the box: the one row whose existence is a screen's call
+   rather than the registry's cannot be typed into being. */
+test('the cycle row is not searchable, whatever it is called', () => {
+  const titles = (key: string): string => (key === 'cycle-events' ? 'Cycle events' : titleOf(key));
+
+  assert.deepEqual(hubRowsMatching(reading(), 'cycle', titles), []);
+  assert.deepEqual(hubRowsMatching(reading(), 'Cycle events', titles), []);
+});
+
+test('a query nothing is called matches nothing', () => {
+  assert.deepEqual(hubRowsMatching(reading(), 'zzzz', titleOf), []);
 });
