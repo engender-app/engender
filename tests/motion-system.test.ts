@@ -849,6 +849,12 @@ describe('the cap on animating layout', () => {
       reason: "the same box on the rail's axis, for the same reason (redesign ticket 26)"
     },
     {
+      selector: '.segment-pill',
+      props: ['left', 'right'],
+      reason:
+        "the switcher's pill on the navigation's own mechanic (2026-09-08), one absolutely positioned empty box out of the track's flow, so its insets cannot move a segment; it animated `width` before, which was the same class of expense with none of the argument"
+    },
+    {
       selector: '.skip-link',
       props: ['top'],
       reason:
@@ -862,11 +868,6 @@ describe('the cap on animating layout', () => {
       arguing the bound and measuring it; deleting one means the rule
       stopped animating layout. */
   const LAYOUT_INHERITED: { selector: string; props: string[]; note: string }[] = [
-    {
-      selector: '.segment-pill',
-      props: ['width'],
-      note: "the segmented control's travelling pill (ticket 30 owns it), the nav's own sibling problem solved the same way"
-    },
     { selector: '.kit-bar-mark', props: ['width'], note: 'the inline bar in a tile' },
     { selector: '.kit-dist-mark', props: ['height'], note: 'a distribution column' },
     { selector: '.kit-ordered-seg', props: ['width'], note: "OrderedStrip's segments" },

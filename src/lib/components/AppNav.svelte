@@ -24,10 +24,13 @@
     boxesMatch,
     insets,
     leadingEdge,
+    LEAD,
+    schedules,
     travel,
     type Axis,
     type Box,
-    type Insets
+    type Insets,
+    type Schedule
   } from '$lib/motion/indicator';
   import Icon from './Icon.svelte';
 
@@ -130,22 +133,6 @@
     { key: 'rail', axis: 'y' }
   ];
 
-  /* The two schedules an edge of the travelling axis can be on (redesign
-     ticket 26). The leading edge sets off first and decelerates into place
-     over --dur-med; the trailing edge waits its turn - --stagger-step, the
-     token every staggered set in the app waits on, and one the reduced-
-     motion clamp zeroes - then gathers and catches up over the longer
-     --dur-slow. Written as the token names rather than their values, so the
-     clamp reaches every one of them. */
-  type Schedule = { dur: string; ease: string; delay: string };
-
-  const LEAD: Schedule = { dur: 'var(--dur-med)', ease: 'var(--ease-out-soft)', delay: '0ms' };
-  const TRAIL: Schedule = {
-    dur: 'var(--dur-slow)',
-    ease: 'var(--ease-in-out)',
-    delay: 'var(--stagger-step)'
-  };
-
   /* Where an arriving icon pivots: the bottom corner on the far side of the
      travel, so a highlight coming from the right swings the icon on its
      bottom left (Alicja, 2026-09-08). Keyed by the axis and by which edge
@@ -219,13 +206,7 @@
     const dir = travel(prev.box, box, axis);
     const lead = leadingEdge(dir);
     return {
-      next: {
-        box,
-        at,
-        shown: true,
-        near: lead === 'far' ? TRAIL : LEAD,
-        far: lead === 'near' ? TRAIL : LEAD
-      },
+      next: { box, at, shown: true, ...schedules(dir) },
       dir,
       anchor: lead ? ANCHOR[axis][lead] : ANCHOR[axis].far
     };
