@@ -36,6 +36,7 @@
      walkthrough has been gripping since phase 4 (ADR-0029). A tile whose
      only name were its slot would have cost that suite a rename for a
      capability that never went anywhere. */
+  import { untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { collapse } from '$lib/motion/reveal';
@@ -128,7 +129,11 @@
      never guesses from its own key. The runner reads the token layer and
      substitutes the final number under reduced motion, and the effect's
      cleanup cancels a travel the next change or an unmount interrupts. */
-  let shown = $state<string | undefined>();
+  /* Seeded synchronously so no frame draws an empty value: a count starts
+     at "0" in the frame the tile mounts, everything else at itself. The
+     effect below takes over from there; untrack, because this is the one
+     read of the prop that is meant to capture the initial value only. */
+  let shown = $state<string | undefined>(untrack(() => (asCount(value) === null ? value : '0')));
   let landed: number | null = null;
   $effect(() => {
     const target = asCount(value);
