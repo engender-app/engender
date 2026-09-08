@@ -1125,6 +1125,87 @@ describe('the cap on animating layout', () => {
   });
 });
 
+/* Both travelling indicators - the navigation's pill and the switcher's -
+   run one mechanic out of $lib/motion/indicator.ts, which owns the
+   arithmetic and the two clocks an edge can be on. The component writes a
+   clock per edge into custom properties; the stylesheet carries a fallback
+   for the case where nothing has been written yet, which is a pill that has
+   not travelled.
+
+   Those two say the same thing in two places, and nothing but this makes
+   them agree. Change LEAD's duration in the module and every fallback in
+   the sheets still names the old token: a pill that has never moved would
+   then be on one duration and a pill that has on another, and the check
+   ticket 25 wrote against the switcher's leading edge - the label's colour
+   has to land on the frame the pill does - would keep passing while the
+   label drifted off it by the difference. */
+describe("the travelling indicators' shared mechanic", () => {
+  const source = readFileSync(join(root, 'src/lib/motion/indicator.ts'), 'utf8');
+
+  /** One schedule as indicator.ts declares it, read out of the source rather
+      than imported: the node tier has no `$lib` alias, and this file already
+      reads every other contract it holds off the text. */
+  function scheduleIn(name: string) {
+    const at = source.indexOf(`export const ${name}: Schedule = {`);
+    const block = at < 0 ? '' : source.slice(at, source.indexOf('}', at));
+    /* indexOf and one literal regex rather than a RegExp built from a
+       template: `\s` inside a template literal is not an escape, it is the
+       letter s, so a pattern assembled that way silently matches nothing. */
+    const field = (key: string) => {
+      const from = block.indexOf(`${key}:`);
+      return from < 0 ? undefined : /'([^']*)'/.exec(block.slice(from))?.[1];
+    };
+    return { dur: field('dur'), ease: field('ease'), delay: field('delay') };
+  }
+
+  /** The fallback inside `var(--written-by-the-component, THIS)`. */
+  const fallbackOf = (word: string) => /^var\(\s*--[\w-]+\s*,\s*([\s\S]+)\)$/.exec(word)?.[1]?.trim();
+
+  const PILLS: { sheet: string; prelude: string; props: string[] }[] = [
+    { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='bar']", props: ['left', 'right'] },
+    { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='rail']", props: ['top', 'bottom'] },
+    { sheet: 'src/lib/styles/components.css', prelude: '.segment-pill', props: ['left', 'right'] }
+  ];
+
+  it('declares a LEAD whose three parts are all readable', () => {
+    const lead = scheduleIn('LEAD');
+    expect(lead.dur, 'LEAD.dur - has indicator.ts been reshaped?').toBeDefined();
+    expect(lead.ease).toBeDefined();
+    expect(lead.delay).toBeDefined();
+  });
+
+  it('falls back to exactly the schedule an untravelled pill is written with', () => {
+    const lead = scheduleIn('LEAD');
+    const mismatches: string[] = [];
+
+    for (const pill of PILLS) {
+      const css = stripComments(readFileSync(join(root, pill.sheet), 'utf8'));
+      const rule = rules(css).find((r) => r.prelude === pill.prelude && !isReduceContext(r));
+      expect(rule, `${pill.prelude} is gone from ${pill.sheet}`).toBeDefined();
+      const parts = splitTopLevel(declarations(rule!.body).transition ?? '');
+
+      for (const prop of pill.props) {
+        const part = parts.find((candidate) => words(candidate)[0] === prop);
+        expect(part, `${pill.prelude} no longer transitions ${prop}`).toBeDefined();
+        const [, dur, ease, delay] = words(part!);
+        const found = { dur: fallbackOf(dur), ease: fallbackOf(ease), delay: fallbackOf(delay) };
+        for (const key of ['dur', 'ease', 'delay'] as const) {
+          if (found[key] !== lead[key]) {
+            mismatches.push(
+              `${pill.prelude} ${prop}: falls back to ${key} ${found[key]} where indicator.ts's LEAD writes ${lead[key]}`
+            );
+          }
+        }
+      }
+    }
+
+    expect(
+      mismatches,
+      "a pill that has not travelled would move on a different clock from one the component has placed"
+    ).toEqual([]);
+  });
+});
+
 describe('the curves the tiers reach for', () => {
   /* Phase 5 ticket 29 retired --ease-spring, a cubic-bezier whose control
      points bulged past 1 so a press would overshoot. It never could: a
