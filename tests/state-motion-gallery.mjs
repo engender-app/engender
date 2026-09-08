@@ -15,6 +15,16 @@
    - the segmented control's pill and the chosen label landing together, on
      the tally screen where the same tap re-ranges a chart.
 
+   Redesign ticket 19 adds the surfaces phase 10 gave Home, in the same
+   grammar (ADR-0078 says a later ticket adds scenes here rather than a
+   second recorder):
+
+   - the agenda arriving with the door, its day blocks clipping open a
+     stagger step apart, and its fold letting rows out and taking them back;
+   - the log strip answering a tap: a tally's glyph rising out of its square
+     and today's count rising in, then the glyph coming back; the wear
+     shape's glyph and label turning over when a session starts and stops.
+
    The last scenes run with reduced motion on, which is the ticket's own
    acceptance box: every movement clamps, and the flipbook shows the cut.
 
@@ -167,12 +177,27 @@ const stopSampling = (page) =>
     window and stored beside the frames. Sampling starts on the page that
     is there when the scene starts; a scene that navigates keeps the old
     document's loop only until it goes. */
-async function record(page, cdp, name, note, act, read) {
+async function record(page, cdp, name, note, act, read, options = {}) {
+  /* A scene longer than the default: the tally's count holds for 1100ms
+     before the glyph returns, and a scene has to outlast the return. */
+  const sceneMs = options.ms ?? SCENE_MS;
   if (only && !only.has(name)) {
     await act();
-    await page.waitForTimeout(SCENE_MS);
+    await page.waitForTimeout(sceneMs);
     return;
   }
+  /* The band the flipbook keeps, measured off the page before and after
+     the scene and taken as the union: a strip that a tile arriving above it
+     pushes 130px down has to be in shot at both ends of its travel
+     (panel-motion-flipbook.mjs reads `crop` per scene). */
+  const bandOf = (selector) =>
+    page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return undefined;
+      const box = el.getBoundingClientRect();
+      return { top: Math.max(0, Math.floor(box.top) - 24), bottom: Math.ceil(box.bottom) + 24 };
+    }, selector);
+  const bandBefore = options.cropOf ? await bandOf(options.cropOf) : undefined;
   const frames = [];
   const started = Date.now();
   const onFrame = async ({ data, sessionId }) => {
@@ -188,9 +213,18 @@ async function record(page, cdp, name, note, act, read) {
   await page.waitForTimeout(80);
   if (read) await startSampling(page, read);
   await act();
-  await page.waitForTimeout(SCENE_MS);
+  await page.waitForTimeout(sceneMs);
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
+  let crop;
+  if (options.cropOf) {
+    const bandAfter = await bandOf(options.cropOf);
+    const bands = [bandBefore, bandAfter].filter(Boolean);
+    if (bands.length) {
+      const top = Math.min(...bands.map((b) => b.top));
+      crop = { top, height: Math.max(...bands.map((b) => b.bottom)) - top };
+    }
+  }
   let samples;
   if (read) {
     try {
@@ -206,9 +240,44 @@ async function record(page, cdp, name, note, act, read) {
     await writeFile(resolve(outDir, file), Buffer.from(frame.data, 'base64'));
     written.push({ file, at: frame.at });
   }
-  scenes.push({ name, note, frames: written, samples });
+  scenes.push({ name, note, frames: written, samples, ...(crop ? { crop } : {}) });
   console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms`);
 }
+
+const iso = (offsetDays) => {
+  const day = new Date();
+  day.setDate(day.getDate() + offsetDays);
+  return day.toISOString().slice(0, 10);
+};
+
+/** One appointment through the appointments screen's own editor, as
+    tests/today-gallery.mjs writes it: the demo persona's dated things all
+    fall past the agenda's week, and the agenda needs four rows in it to
+    show its fold. */
+const addAppointment = async (page, offsetDays, kind) => {
+  await settle(page, '/health/appointments');
+  await page.locator('[data-add]').click();
+  await page.waitForSelector('#appointment-kind');
+  await page.$eval('#appointment-date', (input, value) => input._flatpickr.setDate(value, true), iso(offsetDays));
+  await page.fill('#appointment-kind', kind);
+  await page.locator('[data-save-appointment]').click();
+  await page.waitForTimeout(500);
+};
+const seedAgenda = async (page) => {
+  for (const [days, kind] of [[1, 'Endocrinologist'], [3, 'Bloods'], [5, 'Voice session'], [6, 'Laser']]) {
+    await addAppointment(page, days, kind);
+  }
+};
+
+/** Puts the strip's wear shape back to "start" if a scene left a session
+    running, so the next scene starts from rest. */
+const stopWear = async (page) => {
+  await arriveHome(page);
+  if (await page.locator('[data-home-log-shape="wear"][data-wear-running]').count()) {
+    await page.locator('[data-home-log-shape="wear"]').click();
+    await page.waitForSelector('[data-live-tile="wear-timer"]', { state: 'detached' });
+  }
+};
 
 const nav = (page, key) => page.locator(`[data-nav-item="${key}"]`).first().click();
 
@@ -245,6 +314,39 @@ const READ_FIELD = `
   const field = document.querySelector('[data-screen-field], [data-home-field]');
   const box = field ? field.getBoundingClientRect() : null;
   return { top: box ? Math.round(box.top) : null, height: box ? Math.round(box.height) : null };`;
+
+/* Redesign ticket 19: the agenda's day blocks, their clip per frame, and
+   where the log strip stands - so a block arriving late cannot shift the
+   strip without the samples saying by how much. */
+const READ_AGENDA = `
+  const days = [...document.querySelectorAll('[data-home-agenda] .home-agenda-day')].slice(0, 6);
+  const log = document.querySelector('[data-home-log]');
+  const fold = document.querySelector('[data-home-agenda-fold]');
+  return {
+    rows: days.length,
+    clips: days.map((d) => getComputedStyle(d).clipPath),
+    logTop: log ? Math.round(log.getBoundingClientRect().top) : null,
+    foldTop: fold ? Math.round(fold.getBoundingClientRect().top) : null
+  };`;
+
+/* The tally square's faces: what each is showing and where it stands in
+   the square, per frame. Two faces exist while one leaves and one arrives. */
+const READ_TALLY = `
+  const square = document.querySelector('[data-home-log-shape="tally-misgendered"] .home-log-ico');
+  const faces = square ? [...square.querySelectorAll('.home-log-face')] : [];
+  return {
+    shown: square ? square.dataset.tallyShown ?? null : null,
+    faces: faces.map((f) => ({ text: f.textContent.trim() || 'glyph', translate: getComputedStyle(f).translate }))
+  };`;
+const READ_WEAR = `
+  const shape = document.querySelector('[data-home-log-shape="wear"]');
+  const faces = shape ? [...shape.querySelectorAll('.home-log-face')] : [];
+  const labels = shape ? [...shape.querySelectorAll('.home-log-label > span')] : [];
+  return {
+    running: shape ? 'wearRunning' in shape.dataset : null,
+    faces: faces.map((f) => getComputedStyle(f).translate),
+    labels: labels.map((l) => ({ text: l.textContent.trim(), opacity: getComputedStyle(l).opacity }))
+  };`;
 
 try {
   {
@@ -332,6 +434,37 @@ try {
     const target = page.locator('[data-segmented="tally-range"] .segment:not(.is-active)').last();
     await record(page, cdp, 'segment-rerange', 'The tally range switched: the pill slides and stretches, the label turns page-coloured on the frame the ink reaches it, and the chart re-tweens from the same tap.', () => target.click(), READ_SEGMENT);
 
+    /* Redesign ticket 19. The agenda arriving with the door: four dated
+       rows in the week, so the fold is there too. */
+    await seedAgenda(page);
+    await settle(page, '/more');
+    await strip(page);
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(500);
+    await record(page, cdp, 'agenda-arrive', 'Transition to Today with an agenda in the week: the heading draws in rule first, and each row\'s day block clips open from its left edge, one stagger step after the row above.', () => nav(page, 'home'), READ_AGENDA, { cropOf: '[data-home-agenda]' });
+    await arriveHome(page);
+    await page.locator('[data-home-agenda-fold]').scrollIntoViewIfNeeded();
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(400);
+    await record(page, cdp, 'agenda-unfold', 'The agenda\'s fold opened: the folded row opens its own height and its day block clips open as it does, the fold\'s label crossing to "fewer" under it.', () => page.locator('[data-home-agenda-fold]').click(), READ_AGENDA, { cropOf: '[data-home-agenda]' });
+    await page.waitForTimeout(300);
+    await record(page, cdp, 'agenda-fold-close', 'The fold closed: the row gives its height back, the rows and the strip under it closing up with it.', () => page.locator('[data-home-agenda-fold]').click(), READ_AGENDA, { cropOf: '[data-home-agenda]' });
+
+    /* The log strip answering a tap. */
+    await stopWear(page);
+    await page.locator('[data-home-log]').scrollIntoViewIfNeeded();
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(400);
+    await record(page, cdp, 'log-tally', 'A tally tapped: the cross rises out through the top of its square and today\'s count rises in from below; the count holds 1100ms, then leaves the way the glyph came back.', () => page.locator('[data-home-log-shape="tally-misgendered"]').click(), READ_TALLY, { ms: 2000, cropOf: '[data-home-log]' });
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(400);
+    await record(page, cdp, 'log-wear-start', 'A wear session started from the strip: the shape\'s glyph turns over to a stop mark and its label crosses to Stop, while the timer tile arrives at the top of the screen.', () => page.locator('[data-home-log-shape="wear"]').click(), READ_WEAR, { cropOf: '[data-home-log]' });
+    await page.waitForSelector('[data-live-tile="wear-timer"]');
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(400);
+    await record(page, cdp, 'log-wear-stop', 'The session stopped from the same shape: glyph and label turn back.', () => page.locator('[data-home-log-shape="wear"]').click(), READ_WEAR, { cropOf: '[data-home-log]' });
+    await page.waitForSelector('[data-live-tile="wear-timer"]', { state: 'detached' });
+
     await context.close();
   }
 
@@ -362,6 +495,26 @@ try {
     await page.waitForTimeout(500);
     const target = page.locator('[data-segmented="tally-range"] .segment:not(.is-active)').last();
     await record(page, cdp, 'reduce-segment', 'The same range switch with reduce-motion set: pill, label and chart cut together.', () => target.click(), READ_SEGMENT);
+
+    /* Redesign ticket 19's clamp: the agenda's blocks are whole in the
+       first frame, the fold cuts, and the tally's count cuts in, holds, and
+       cuts out. */
+    await seedAgenda(page);
+    await settle(page, '/more');
+    await strip(page);
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(500);
+    await record(page, cdp, 'reduce-agenda-arrive', 'Transition to Today with reduce-motion set and an agenda in the week: every day block is whole in the first frame it is drawn.', () => nav(page, 'home'), READ_AGENDA, { cropOf: '[data-home-agenda]' });
+    await arriveHome(page);
+    await page.locator('[data-home-agenda-fold]').scrollIntoViewIfNeeded();
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(400);
+    await record(page, cdp, 'reduce-agenda-unfold', 'The fold opened with reduce-motion set: the row cuts in.', () => page.locator('[data-home-agenda-fold]').click(), READ_AGENDA, { cropOf: '[data-home-agenda]' });
+    await stopWear(page);
+    await page.locator('[data-home-log]').scrollIntoViewIfNeeded();
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(400);
+    await record(page, cdp, 'reduce-log-tally', 'The same tally tap with reduce-motion set: the count cuts in, holds 1100ms, and the glyph cuts back.', () => page.locator('[data-home-log-shape="tally-misgendered"]').click(), READ_TALLY, { ms: 2000, cropOf: '[data-home-log]' });
     await context.close();
   }
 } finally {
