@@ -5115,6 +5115,132 @@ try {
   ok('a custom goal is reworded from its sheet, deleting it unfiles the paper filed against it without destroying it, and a built-in goal has neither control');
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
 
+/* redesign ticket 17: a photo's day, asked for on import and editable
+   afterwards (ADR-0015 - the file's own capture date is never read). Backend
+   and screens shipped earlier as ticket 47; this proves the ask, the skip
+   and the after-the-fact edit through the real screens rather than assuming
+   the wiring still holds after the token/direction passes (tickets 07/22/23)
+   repainted every surface it renders on.
+
+   Placed before the access-mode/recovery-key tests below for the same
+   reason those order themselves the way they do (see the recovery key
+   comment just past this block): the last of them leaves the journal on
+   device-bound access, whose unlock is a WebAuthn PRF ceremony a headless
+   Chromium page never resolves - a fresh() after it hangs boot rather than
+   reaching Home, which showed up here first only because this ticket's
+   tests were the first ever appended after it. */
+async function tinyPhoto(fill) {
+  const dataUrl = await page.evaluate((fill) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 40;
+    canvas.height = 30;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = fill;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  }, fill);
+  return Buffer.from(dataUrl.split(',')[1], 'base64');
+}
+
+try {
+  const skipPhoto = await tinyPhoto('#c94f7c');
+  const datedPhoto = await tinyPhoto('#2b6cb0');
+
+  await fresh('/');
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+
+  /* Skip leaves the override unset, so the photo inherits this entry's own
+     day - exactly the behaviour ticket 02's scope note describes and ticket
+     47 shipped before this ticket's tokens ever touched the sheet. */
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'skip.png', mimeType: 'image/png', buffer: skipPhoto }));
+  await page.locator('[data-add-photo]').click();
+  await page.waitForSelector('[data-photo-day-skip]');
+  await page.locator('[data-photo-day-skip]').click();
+  await page.waitForSelector('[data-photo-day-skip]', { state: 'detached' });
+
+  /* A day given at import, well outside the demo journal's own span so the
+     cell it lands on cannot be mistaken for anything already there. */
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'dated.png', mimeType: 'image/png', buffer: datedPhoto }));
+  await page.locator('[data-add-photo]').click();
+  await page.waitForSelector('[data-photo-day-save]');
+  await fillDate(page, '#entry-photo-day-prompt', '1994-03-15');
+  await page.locator('[data-photo-day-save]').click();
+  await page.waitForSelector('[data-photo-day-save]', { state: 'detached' });
+
+  await page.locator('#ed-note').fill('Playwright dated this photo.');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  /* The gallery orders by the photo's own day (ticket 02's acceptance), not
+     the day it was imported on - 1994 only shows up here if that held. */
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-cell]');
+  const datedCell = page.locator('[data-photo-cell][aria-label*="1994"]');
+  await datedCell.waitFor();
+  if (!(await datedCell.getAttribute('aria-label')).includes('March')) {
+    throw new Error(`the picked day did not land on the photo: ${await datedCell.getAttribute('aria-label')}`);
+  }
+
+  /* Editable afterwards, from the one place a photo's own day is shown: the
+     calendar affordance on its cell, prefilled with what was just set. */
+  await datedCell.locator('xpath=../button[@data-photo-edit-day]').click();
+  await page.waitForSelector('[data-photo-day-edit-save]');
+  const prefilled = await page.evaluate(() => {
+    const el = document.querySelector('#photo-day-edit');
+    const fp = el?._flatpickr ?? el?.flatpickr;
+    return fp?.selectedDates[0] && fp.formatDate(fp.selectedDates[0], 'Y-m-d');
+  });
+  if (prefilled !== '1994-03-15') throw new Error(`the edit sheet did not prefill the photo's day: ${prefilled}`);
+
+  await fillDate(page, '#photo-day-edit', '1994-04-20');
+  await page.locator('[data-photo-day-edit-save]').click();
+  await page.waitForSelector('[data-photo-day-edit-save]', { state: 'detached' });
+  await page.waitForSelector('[data-photo-cell][aria-label*="1994"]');
+  const movedLabel = await page.locator('[data-photo-cell][aria-label*="1994"]').getAttribute('aria-label');
+  if (!movedLabel.includes('April')) throw new Error(`editing the day afterwards did not move the photo: ${movedLabel}`);
+
+  ok("import asks for a photo's day, a skip leaves the entry's own, and the day is editable afterwards from the gallery");
+} catch (e) { fail("a photo's day, on screen", e); }
+
+try {
+  await page.setViewportSize({ width: 195, height: 844 });
+  await fresh('/');
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  const zoomPhoto = await tinyPhoto('#c94f7c');
+  page.once('filechooser', (chooser) => chooser.setFiles({ name: 'zoom.png', mimeType: 'image/png', buffer: zoomPhoto }));
+  await page.locator('[data-add-photo]').click();
+  await page.waitForSelector('[data-photo-day-save]');
+  await expectNoHorizontalOverflow('[data-sheet]');
+  const saveBox = await page.locator('[data-photo-day-save]').boundingBox();
+  const skipBox = await page.locator('[data-photo-day-skip]').boundingBox();
+  if (saveBox.x + saveBox.width > 195) throw new Error(`Save sits outside the 195px viewport: ${JSON.stringify(saveBox)}`);
+  if (skipBox.x + skipBox.width > 195) throw new Error(`Skip sits outside the 195px viewport: ${JSON.stringify(skipBox)}`);
+  await page.locator('[data-photo-day-skip]').click();
+  await page.waitForSelector('[data-photo-day-skip]', { state: 'detached' });
+
+  await page.goto(BASE + '/media/photos', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-photo-cell]');
+  await page.locator('[data-photo-cell]').first().locator('xpath=../button[@data-photo-edit-day]').click();
+  await page.waitForSelector('[data-photo-day-edit-save]');
+  await expectNoHorizontalOverflow('[data-sheet]');
+  const editSaveBox = await page.locator('[data-photo-day-edit-save]').boundingBox();
+  if (editSaveBox.x + editSaveBox.width > 195) {
+    throw new Error(`the edit sheet's Save sits outside the 195px viewport: ${JSON.stringify(editSaveBox)}`);
+  }
+  await page.locator('[data-photo-day-edit-save]').click();
+
+  ok('both photo-day sheets stay inside the viewport and operable at what 200% zoom leaves of a 390px phone');
+} catch (e) { fail("the photo-day sheets at 200% zoom", e); }
+finally {
+  await page.setViewportSize({ width: 440, height: 940 });
+}
+
 /* The recovery key, made and removed from Settings (ADR-0054, ticket
    sec-01).
 

@@ -39,6 +39,7 @@
     "gallery:direction": "VITE_DEMO=1 npm run build && node tests/direction-gallery.mjs && node tests/direction-gallery.mjs --css tests/direction-proposal.css",
     "gallery:direction-swing": "VITE_DEMO=1 npm run build && node tests/direction-swing-gallery.mjs --tag before && node tests/direction-swing-gallery.mjs --tag field --css tests/direction-field.css && node tests/direction-swing-gallery.mjs --tag orbit --css tests/direction-orbit.css && node tests/direction-swing-gallery.mjs --tag blocks --css tests/direction-blocks.css && node tests/direction-swing-gallery.mjs --tag blocks-field --css tests/direction-blocks.css,tests/direction-blocks-field.css",
     "gallery:field": "VITE_DEMO=1 npm run build && node tests/field-gallery.mjs --tag after",
+    "gallery:photo-day": "VITE_DEMO=1 npm run build && node tests/photo-day-sheet-gallery.mjs",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
     "deploy:list": "node scripts/journal-release.mjs list",
