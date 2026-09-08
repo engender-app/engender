@@ -51,9 +51,13 @@
    and seven of the twenty-seven now name a screen. This file stays the
    registry for all of them either way, which is the point of holding the
    field here rather than deleting the rows that left: `finishes` still has to
-   be claimed by exactly one row, the last-write registry still has to be
-   fronted or opted out of, and `statsAreas.ts` still reads a card's icon and
-   route off its row. A row that moved screens moved one field.
+   be claimed by exactly one row and the last-write registry still has to be
+   fronted or opted out of. A row that moved screens moved one field.
+
+   `statsAreas.ts` used to read a card's icon and route off a row the same
+   way, as a second enumeration of areas beside this one. Phase 10 redesign
+   ticket 12 deleted it - nothing had rendered it since ticket 99 item 36 took
+   the area index off the stats tab - so this file is now the only one.
 
    Node-tier safe: no clock, no driver, no paraglide, no runes. Every function
    takes today as an argument. The words are `vocabulary/hubLabels.ts`'s, the
@@ -569,9 +573,8 @@ const ROWS_BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row])
 
 /** One row, by key. Total over `HubRowKey` and returning a `HubRow` rather
     than `HubRow | undefined`, which is what makes a second surface able to
-    read a screen's identity off the row instead of restating it: the stats
-    tab's cards are keyed by this type and a card naming no row does not
-    compile (`statsAreas.ts`). */
+    read a screen's identity off the row instead of restating it: `HostedRows`
+    is keyed by this type, and a hosted row naming no key does not compile. */
 export function hubRow(key: HubRowKey): HubRow {
   return ROWS_BY_KEY.get(key)!;
 }
