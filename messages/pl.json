@@ -3526,5 +3526,7 @@
   "home_edit_agenda_heading": "Co widać w Nadchodzi",
   "home_edit_done": "Gotowe",
   "home_edit_reset": "Wróć do domyślnego zestawu",
+  "home_edit_reset_question": "Wrócić do domyślnego zestawu?",
+  "home_edit_reset_hint": "Ułożona kolejność przepada, a wszystkie rodzaje wpisów w Nadchodzi wracają. Nic nie zostaje usunięte - te ekrany dalej są na swoim miejscu.",
   "tomorrow": "Jutro"
 }

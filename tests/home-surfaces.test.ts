@@ -74,7 +74,12 @@ describe('what Home is built from', () => {
     // A day block is a block, so the agenda resolves through the chromatic
     // roles like a tile (ticket 24): on trans its slot is the white band.
     expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)');
-    expect(markup).toContain('roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)');
+    /* And so is a row's icon square, which is why the pinned block resolves
+       the same way since redesign ticket 14: on agender the stripe its index
+       landed on was the near-white band, so four icon blocks on the light
+       theme were white squares on a white page with a hairline round them -
+       the exact defect rule 3's revision named for tiles. */
+    expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)');
     expect(markup).not.toContain('HOME_AREA_ROLE.week');
     expect(markup).not.toContain('HOME_AREA_ROLE.days');
   });

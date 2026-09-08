@@ -882,14 +882,14 @@
         <TodayEditor
           {pinned}
           reading={{ todayEpochDay: today, lastWrites: lastWritesQuery.value ?? {}, states: areaStatesQuery.value ?? {} }}
-          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
+          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
           onDone={() => (editing = false)}
         />
       </div>
     {:else}
       <div transition:collapse={panel}>
         <SectionHeading text={m.home_pinned_heading()} />
-        <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
+        <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
           {#each pinned as row (row.spec.key)}
             <ListRow
               key={row.spec.key}

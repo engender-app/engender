@@ -134,6 +134,7 @@ const openEditor = async () => {
 const resetAll = async () => {
   await openEditor();
   await page.locator('[data-edit-reset]').click();
+  await page.locator('[data-confirm-edit-reset]').click();
   await page.waitForTimeout(400);
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row]');
@@ -175,7 +176,17 @@ try {
   await page.locator('[data-edit-kind="doseSlot"] [role="switch"]').click();
   await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
   await cropBand('switch-off', '[data-edit-kind="letterUnlock"]', '[data-edit-reset]', 'A kind switched off, and the two exits under it: Done, and the one reset');
+  /* The one question this surface asks, and the only write behind one. */
   await page.locator('[data-edit-reset]').click();
+  await page.waitForSelector('[data-confirm-edit-reset]');
+  await page.waitForTimeout(500);
+  await strip();
+  await page.screenshot({ path: `${outDir}/reset-confirm.png` });
+  shots.push({
+    name: 'reset-confirm',
+    note: 'The reset asks first: it is the one write here that throws away work somebody did, and it says what goes and what does not'
+  });
+  await page.locator('[data-confirm-edit-reset]').click();
   await page.waitForTimeout(400);
 
   /* 3. A row held mid-drag, and the handle with the keyboard on it. */
@@ -198,7 +209,14 @@ try {
   await page.mouse.up();
   await page.waitForTimeout(500);
 
-  await page.locator('[data-edit-grip]').first().focus();
+  /* Tabbed to rather than focused programmatically: `:focus-visible` is the
+     browser's own judgement about whether the focus came from a keyboard,
+     and an element.focus() from a script does not earn the ring - so the
+     shot meant to prove the keyboard path had no ring in it at all (found
+     by the critique's own detector pass). */
+  await page.locator('[data-edit-pinned-row]:first-of-type').scrollIntoViewIfNeeded();
+  await page.locator('[data-edit-unpin]').first().focus();
+  await page.keyboard.press('Shift+Tab');
   await cropBand('grip-focus', '[data-edit-pinned-row]:first-of-type', '[data-edit-pinned-row]:nth-of-type(2)', "The handle with the keyboard's focus on it: the arrow keys move the row one place and the focus stays on the handle", 300);
   await resetAll();
 

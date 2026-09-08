@@ -64,6 +64,7 @@
   import { dayAheadMarkLabel } from './dayAheadRows';
   import Icon from './Icon.svelte';
   import Switch from './Switch.svelte';
+  import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
   import SectionHeading from './kit/SectionHeading.svelte';
@@ -128,8 +129,20 @@
   /** Back to what onboarding was told, which is null rather than a list:
       an arrangement written back as the default set would be a set nobody
       chose, and the next answer to onboarding's question would not reach
-      it. The switches go with it - one edit mode, one reset. */
+      it. The switches go with it - one edit mode, one reset.
+
+      Behind a question, unlike every other write on this surface. The rest
+      are each one row and each undone by one tap; this is the only one that
+      throws away work, and what it throws away is somebody's own curation -
+      the row they took off because an anniversary is painful, the kind they
+      switched off during a taper. A stray tap on the button under Done may
+      not cost that silently. Unpinning stays unconfirmed for the same
+      reason read the other way: a row somebody wants gone should go the
+      moment they say so. */
+  let resetAsked = $state(false);
+
   function reset() {
+    resetAsked = false;
     prefs.pinnedRows = null;
     prefs.agendaKinds = null;
   }
@@ -427,10 +440,22 @@
     <button type="button" class="btn btn-primary" data-edit-done onclick={onDone}>
       <span>{m.home_edit_done()}</span>
     </button>
-    <button type="button" class="btn btn-ghost" data-edit-reset onclick={reset}>
+    <button type="button" class="btn btn-ghost" data-edit-reset onclick={() => (resetAsked = true)}>
       <span>{m.home_edit_reset()}</span>
     </button>
   </div>
+
+  <ConfirmDeleteSheet
+    open={resetAsked}
+    title={m.home_edit_reset()}
+    question={m.home_edit_reset_question()}
+    hint={m.home_edit_reset_hint()}
+    confirmLabel={m.home_edit_reset()}
+    cancelLabel={m.not_now()}
+    onConfirm={reset}
+    onCancel={() => (resetAsked = false)}
+    confirmAttrs={{ 'data-confirm-edit-reset': '' }}
+  />
 </div>
 
 <style>
@@ -464,13 +489,21 @@
     outline: 1px solid var(--outline);
   }
 
-  /* At 200% zoom on a 390px phone the row is 155px wide inside the
-     screen's inset. An icon block, a title and two 48px controls in one
-     line leave the title 35px, which breaks "measurements" into five
-     pieces - so at that width the row becomes two lines: the title across
-     the whole of it, the handle and the unpin under it at the trailing
-     edge. The icon block goes with the single line; it names the area a
-     second time, and the title already does that.
+  /* Under 350px the icon block goes. At 320 the title column left over is
+     about 100px and "measurements" is 118, so the word broke into
+     "measurement" and a stranded "s"; the block names the area a second
+     time and the title already does that, and dropping it hands the title
+     the 48px it needs to stay on one line. */
+  @media (max-width: 350px) {
+    .today-editor-list :global(.kit-row-ico) {
+      display: none;
+    }
+  }
+
+  /* And at 200% zoom on a 390px phone - 195px - even that is not enough:
+     the row is 155px inside the screen's inset and the two controls are 96
+     of it. So the row becomes two lines, the title across the whole of it
+     and the handle and the unpin under it at the trailing edge.
 
      A row is 48 one line and 60 with a subtitle (DIRECTION.md 6). This is
      neither: it is one row wearing two controls at the accessibility
@@ -478,10 +511,6 @@
   @media (max-width: 260px) {
     .today-editor-list :global(.kit-row) {
       flex-wrap: wrap;
-    }
-
-    .today-editor-list :global(.kit-row-ico) {
-      display: none;
     }
 
     .today-editor-list :global(.kit-row-text) {
