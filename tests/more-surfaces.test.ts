@@ -34,9 +34,48 @@ describe('what the More hub is built from', () => {
     expect(markup).toMatch(/<ScreenHeader\s[^>]*titleHidden/);
   });
 
-  it('draws every group row from one templated ListRow, plus the trailing Settings row', () => {
+  it('draws its rows from two templated ListRows, the grouped one and the searched one', () => {
+    /* Two, since redesign ticket 15: the row the grouped index draws and the
+       row a search match draws. The Settings row that used to be the second
+       one is gone (the assertion below), and the record hits' row is not
+       self-closing - it carries a trailing snippet for the hit's date. */
     const rowTags = markup.match(/<ListRow\b[^>]*\/>/gs) ?? [];
-    expect(rowTags.length).toBe(2); // the templated hub row, and the Settings row
+    expect(rowTags.length).toBe(2);
+  });
+
+  it('holds no Settings row and no pointer to preferences (redesign tickets 09 and 15)', () => {
+    /* A door named Transition cannot hold a row about appearance and data:
+       preferences are chrome, not part of anybody's transition (ADR-0036).
+       They are reached from the gear in Today's header, which ticket 23
+       placed. `/settings` as a *host* is untouched - the entry-templates row
+       is drawn there, by that screen. */
+    expect(more).not.toContain('/settings');
+    expect(more).not.toContain('nav_settings');
+  });
+
+  it('puts the search box on the field and nothing else there (DIRECTION.md rule 7)', () => {
+    const field = /\{#snippet field\(\)\}([\s\S]*?)\{\/snippet\}/.exec(markup)?.[1] ?? '';
+
+    expect(field).toContain('class="search-box"');
+    expect(field).toContain('data-hub-search');
+    /* The title stays hidden and the field holds no second thing: no
+       heading, no count, no control. What is small sits on the page under
+       it, which is where the count line is. */
+    expect(field).not.toContain('<h');
+    expect(field).not.toContain('hub-count');
+    expect(markup).toContain('data-hub-count');
+  });
+
+  it('searches the areas in memory and the records through the registry', () => {
+    /* Both halves of what is behind this door, and neither rule is written
+       here: which rows a query matches is `hubRowsMatching` over the
+       assembled sections (so a hidden area cannot be searched up), and the
+       records are the same read and the same presentation the search
+       screen's second half uses. */
+    expect(more).toContain('hubRowsMatching(');
+    expect(more).toContain('j.textSearch.search(');
+    expect(more).toContain("from '$lib/components/searchHitRows'");
+    expect(more).not.toMatch(/foldText|likePattern/);
   });
 
   it('reads its section colours from the shell rather than from the document', () => {
@@ -56,30 +95,69 @@ describe('what the More hub is built from', () => {
     expect(sideEffects).toContain('cycleTrackingVisible');
   });
 
-  it('issues two live reads for twenty rows, not one per row', () => {
+  it('issues three live reads for twenty rows, not one per row', () => {
     /* The whole shape of phase 8 UX ticket 02: the lines come out of one
        assembled last-write call plus the area record. `hub-last-writes` in
        tests/long-journal/budgets.json is what holds the cost of the first
        one; this holds the count.
 
        Three until ticket 16, the third being the regimen episode list that
-       only ADR-0043's gate needed. */
+       only ADR-0043's gate needed. Three again since redesign ticket 15, and
+       the new third one asks nothing until somebody types: the search's
+       record half returns a resolved empty answer for an empty box. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 
-    expect(reads).toHaveLength(2);
+    expect(reads).toHaveLength(3);
     expect(more).toContain('j.lastWrite.getLastWrites(today)');
     expect(more).toContain('j.areaStates.getAreaStates()');
+    expect(more).toMatch(/if \(!asked\) return Promise\.resolve/);
   });
 
   it('leaves every word of every row to the vocabulary module', () => {
     /* A title or a line written inline here is one `hubLabels.ts`'s full
-       `Record` over the row keys cannot see missing. The two `m.` calls left
-       are the hidden screen title and the trailing Settings row, which is
-       not one of the journal's areas. */
-    const paraglide = more.match(/\bm\.[a-z_]+\(/g) ?? [];
+       `Record` over the row keys cannot see missing. So every `m.` call left
+       in the screen is named, and none of them is a row's own words: the
+       hidden screen title, the search box's own label, and the five strings
+       the results share with the search screen, which reads the same
+       registry (redesign ticket 15). */
+    const paraglide = [...new Set(more.match(/\bm\.[a-z_]+\(/g) ?? [])];
 
-    expect(paraglide.sort()).toEqual(['m.hub_screen_title(', 'm.hub_settings_row_sub(', 'm.nav_settings(']);
+    expect(paraglide.sort()).toEqual([
+      'm.hub_screen_title(',
+      'm.hub_search_placeholder(',
+      'm.list_more(',
+      'm.no_results(',
+      'm.no_results_body(',
+      'm.results_count(',
+      'm.search_elsewhere_heading('
+    ]);
     expect(more).toContain("from '$lib/data/vocabulary/hubLabels'");
+  });
+});
+
+describe('what the door and its groups are called', () => {
+  /* Ticket 08 renamed the tab to Transition; redesign ticket 15 renames the
+     group inside it, because "Transition inside Transition" says nothing.
+     Both catalogues, since a rename in one language only is how the two
+     screens stop agreeing. */
+  const catalogue = (locale: string) => JSON.parse(read(`messages/${locale}.json`)) as Record<string, string>;
+
+  it('calls the group Steps in both languages', () => {
+    expect(catalogue('en').hub_group_transition).toBe('Steps');
+    expect(catalogue('pl').hub_group_transition).toBe('Kroki');
+  });
+
+  it("names the same five groups in the hidden screen title, which is what the title is for", () => {
+    /* `hubRows.ts` says this string goes stale the moment a group is added,
+       renamed or reordered. The rename is exactly that moment. */
+    expect(catalogue('en').hub_screen_title).toBe('Body, health, steps, support and media');
+    expect(catalogue('pl').hub_screen_title).toBe('Ciało, zdrowie, kroki, wsparcie i media');
+    expect(HUB_GROUP_KEYS).toHaveLength(5);
+  });
+
+  it('keeps no string for the Settings row that left the door', () => {
+    expect(catalogue('en').hub_settings_row_sub).toBeUndefined();
+    expect(catalogue('pl').hub_settings_row_sub).toBeUndefined();
   });
 });
 

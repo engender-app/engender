@@ -10,6 +10,7 @@ import {
   HUB_ROWS,
   HUB_ROW_HOSTS,
   LAST_WRITE_WITHOUT_A_ROW,
+  hubRowsMatching,
   hubSections,
   isHubGroup,
   rowHidden,
@@ -465,4 +466,70 @@ test('every group is the list phase 9 carpet ticket 16 asked for', () => {
   ]);
   assert.deepEqual(group('support'), ['doubt', 'resources']);
   assert.deepEqual(group('media'), ['photos', 'voice', 'documents']);
+});
+
+/* Ticket 15's search half. The words are paraglide's, so the matcher is
+   handed the titles to match against rather than resolving them - the shape
+   `tagIdsMatching` already uses for the same reason (searchQuery.ts). A
+   made-up title per key here, so these tests hold the matching rule and not
+   the catalogue. */
+const TITLES: Record<string, string> = {
+  measurements: 'Body measurements',
+  sizes: 'Size log',
+  'hair-removal': 'Usuwanie włosów',
+  wear: 'Wear log',
+  photos: 'Progress photos'
+};
+const titleOf = (key: string): string => TITLES[key] ?? key;
+
+test('an empty query matches nothing, since the grouped list is what an empty box shows', () => {
+  assert.deepEqual(hubRowsMatching(hubSections(reading()), '', titleOf), []);
+  assert.deepEqual(hubRowsMatching(hubSections(reading()), '   ', titleOf), []);
+});
+
+test('a query matches an area by part of its name, whatever the case', () => {
+  const rows = hubRowsMatching(hubSections(reading()), 'MEASURE', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.spec.key),
+    ['measurements']
+  );
+});
+
+test('a query matches a Polish name typed without its diacritics, both sides folded', () => {
+  const rows = hubRowsMatching(hubSections(reading()), 'wlosow', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.spec.key),
+    ['hair-removal']
+  );
+});
+
+test('matches come back in the order the groups draw them, flat', () => {
+  const rows = hubRowsMatching(hubSections(reading()), 'log', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.spec.key),
+    ['sizes', 'wear']
+  );
+});
+
+test('a row keeps the second line the section gave it, so a match reads as the row does', () => {
+  const sections = hubSections(reading({ states: { wearSessions: finished(TODAY - 90) } }));
+  const rows = hubRowsMatching(sections, 'wear', titleOf);
+
+  assert.deepEqual(
+    rows.map((row) => row.line.kind),
+    ['finished']
+  );
+});
+
+test('a hidden area cannot be searched up, because the sections it filters never held it', () => {
+  const sections = hubSections(reading({ states: { measurements: hidden } }));
+
+  assert.deepEqual(hubRowsMatching(sections, 'measure', titleOf), []);
+});
+
+test('a query nothing is called matches nothing', () => {
+  assert.deepEqual(hubRowsMatching(hubSections(reading()), 'zzzz', titleOf), []);
 });

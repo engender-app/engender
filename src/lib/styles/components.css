@@ -99,6 +99,22 @@
   margin: var(--space-3) 0 0;
 }
 .header-action { display: flex; gap: var(--space-2); }
+/* What a door puts on the field under its title's line (rule 7, redesign
+   ticket 15): the Transition door's search box, Journal's month label and
+   controls. No margin of its own - both doors that fill the field hide
+   their title, so the slot is what the field's 40 above and 16 below are
+   measured to; a door that shows a title and fills the field too is the
+   case that would need one, and none does yet. */
+.screen-field-slot { min-width: 0; }
+/* The search box on the field is a block of the page's own colour, which is
+   the whole of why the small type in it is legal there (rule 3 keeps small
+   text off a stripe, and this text is not on one: it is --text on --bg, the
+   same pairing as the page under it, at the same ratio). The box itself is
+   screens.css's; what the field changes is the ground it sits on. */
+.screen-field .search-box {
+  background: var(--bg);
+  color: var(--text-2);
+}
 /* On the web the field is a banner across the column rather than a block
    meeting the window's edges, so it takes the radius on all four corners. */
 @container app (min-width: 1024px) {
