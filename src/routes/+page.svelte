@@ -62,6 +62,7 @@
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -252,6 +253,13 @@
       ? pinnedRows(prefs, { todayEpochDay: today, lastWrites: lastWritesQuery.value, states: areaStatesQuery.value })
       : []
   );
+
+  /* Edit mode (ticket 14), which is a state of this block rather than a
+     screen of its own: the rows being arranged are these rows, so the
+     arrangement happens where they are. Off on arrival every time -
+     nothing about a page somebody edited on Tuesday should still be in
+     edit mode on Wednesday. */
+  let editing = $state(false);
 
   /* The write shapes a tap can start, beside the mood pick (spec stories
      11 and 12): the four resolvable targets the centre fan offers, with the
@@ -859,29 +867,56 @@
   <!-- The pinned rows (ticket 05, ADR-0073): what the person put on their
        front page, in their order, each with its reading and the day of it
        or the line about what is behind it, off the same registry and the
-       same line rule as the Transition door. Nothing pinned means nothing
-       shown - an empty arrangement draws no heading - and a pin naming a
-       hidden area resolves to nothing before it gets here. The editing
-       surface, the drag and the reset are ticket 14's, as the last row of
-       this block. -->
-  {#if pinned.length > 0}
-    <div transition:collapse={panel} data-home-pinned>
-      <SectionHeading text={m.home_pinned_heading()} />
-      <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
-        {#each pinned as row (row.spec.key)}
+       same line rule as the Transition door. A pin naming a hidden area
+       resolves to nothing before it gets here.
+
+       The block is here whether or not anything is pinned, which it was not
+       before ticket 14: the last row of it is the way into the edit mode,
+       and an empty arrangement that drew no heading would have left
+       somebody who unpinned everything with no way back. With nothing
+       pinned it is the one row, and that row asks for the first pin rather
+       than repeating the heading. -->
+  <div data-home-pinned>
+    {#if editing}
+      <div transition:collapse={panel} data-home-editing>
+        <TodayEditor
+          {pinned}
+          reading={{ todayEpochDay: today, lastWrites: lastWritesQuery.value ?? {}, states: areaStatesQuery.value ?? {} }}
+          role={roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
+          onDone={() => (editing = false)}
+        />
+      </div>
+    {:else}
+      <div transition:collapse={panel}>
+        <SectionHeading text={m.home_pinned_heading()} />
+        <ListCard role={roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
+          {#each pinned as row (row.spec.key)}
+            <ListRow
+              key={row.spec.key}
+              icon={row.spec.icon}
+              title={hubRowTitle(row.spec.key)}
+              subtitle={hubRowLine(row.spec.key, row.line, today)}
+              href={row.spec.href}
+              data-pinned-row={row.spec.key}
+              data-hub-line={row.line.kind}
+            />
+          {/each}
+          <!-- The way in, as the last row of the block (ticket 14). It is a
+               row rather than a control on the heading because it is the
+               next thing after the rows it edits, and it names the first
+               pin where there are none to arrange yet. -->
           <ListRow
-            key={row.spec.key}
-            icon={row.spec.icon}
-            title={hubRowTitle(row.spec.key)}
-            subtitle={hubRowLine(row.spec.key, row.line, today)}
-            href={row.spec.href}
-            data-pinned-row={row.spec.key}
-            data-hub-line={row.line.kind}
+            key="edit-today"
+            icon="pencil"
+            title={pinned.length > 0 ? m.home_pinned_edit() : m.home_pinned_edit_empty()}
+            chevron={false}
+            onclick={() => (editing = true)}
+            data-edit-today
           />
-        {/each}
-      </ListCard>
-    </div>
-  {/if}
+        </ListCard>
+      </div>
+    {/if}
+  </div>
 
   <!-- Getting started, until the journal has five entries in it. It sits
        at the foot, under the log strip and the pinned rows: the first move

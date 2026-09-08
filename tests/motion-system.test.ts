@@ -286,6 +286,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it (ticket 99 item 10)'
   },
   {
+    file: 'src/lib/components/TodayEditor.svelte',
+    count: 1,
+    reason:
+      'the drag handle is held rather than tapped - a press scale on the grip would fight the translate that follows the pointer (redesign ticket 14)'
+  },
+  {
     file: 'src/lib/components/SpanTimeline.svelte',
     count: 3,
     reason:
