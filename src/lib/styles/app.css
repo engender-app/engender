@@ -343,7 +343,7 @@ body {
    Ticket 08 measured every label's fit at the 320px floor after widening
    the cells as far as this bar's own margins allow (Alicja, 2026-09-07):
    Today/Dzisiaj and Journal/Dziennik clear it, Look back and Transition
-   (English) do not, by 5-6px, and closing that without shrinking the text
+   (English) do not, by 4-5px, and closing that without shrinking the text
    or giving up the floating bar's own margin needs more room than five
    equal columns have at 320px. Accepted as a truncation this ellipsis
    already existed to catch, at the narrowest phone still supported - it
