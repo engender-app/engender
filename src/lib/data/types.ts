@@ -1084,6 +1084,29 @@ export interface CustomRoadmapGoal {
   status: RoadmapGoalStatus;
 }
 
+/** What kind of surgery a procedure is (phase 9 carpet ticket 17): a
+    compiled-in set of the trans surgeries the app can name, or `custom` for
+    anything else, which keeps the record's free-text `name` as its only
+    identity. The set gates which sub-modules a procedure's kind unlocks -
+    dilation reads it - and nothing else; it is not a second name and the
+    app never guesses it from what someone typed (CONTEXT.md, Surgery). */
+export type ProcedureKind =
+  | 'vaginoplasty'
+  | 'vulvoplasty'
+  | 'orchiectomy'
+  | 'breast_augmentation'
+  | 'facial_feminization'
+  | 'tracheal_shave'
+  | 'voice_surgery'
+  | 'chest_reconstruction'
+  | 'hysterectomy'
+  | 'oophorectomy'
+  | 'phalloplasty'
+  | 'metoidioplasty'
+  | 'body_contouring'
+  | 'hair_transplant'
+  | 'custom';
+
 /** One procedure someone is going through (phase 5 ticket 07, CONTEXT:
     "Procedure"): a free-text name, the consults leading up to it, a surgery
     date once there is one, and the recovery log's own notes. Several can
@@ -1093,7 +1116,13 @@ export interface CustomRoadmapGoal {
     Holds nothing derived: how far along recovery is comes from the surgery
     date and today (recoveryDay.ts, ADR-0010), and the recovery checklist is
     an ordinary **Checklist** owned by this procedure rather than a field
-    here. */
+    here.
+
+    `kind` and `dilationOptIn` are phase 9 carpet ticket 17: the name stays
+    free text and titles the record, `kind` is what the app reads. Only a
+    `custom` kind carries its own opt-in - none of the compiled-in kinds can
+    be guessed to include dilation except vaginoplasty, which the Dilation
+    gate checks by kind directly. */
 export interface Procedure {
   id: string;
   name: string;
@@ -1102,6 +1131,8 @@ export interface Procedure {
   surgeryEpochDay: number | null;
   consults: ProcedureConsult[];
   notes: string;
+  kind: ProcedureKind;
+  dilationOptIn: boolean;
 }
 
 /** One consult on the way to a procedure, as the procedure's own screen
