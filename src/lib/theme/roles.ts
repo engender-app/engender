@@ -342,7 +342,9 @@ export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefin
     its write shapes are icon squares, a block of the stripe with a glyph on
     it, and a square of the flag's white band on a white page is not a
     control. The agenda takes the milestones' old slot (a milestone still
-    ahead is one of its rows) and the pinned rows take the days'. */
+    ahead is one of its rows) and resolves it through `tileRoleAt`, since
+    its day blocks are blocks and a block is always a colour; the pinned
+    rows take the days' slot through `roleAt`, as the hub's rows do. */
 export const HOME_AREA_ROLE = {
   week: 0,
   log: 0,

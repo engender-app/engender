@@ -71,8 +71,10 @@ describe('what Home is built from', () => {
     const log = markup.match(/<div class="home-log"[^>]*>/s)?.[0];
     expect(log).toBeDefined();
     expect(log).toContain('AREA_ROLE.log');
-    expect(markup).toContain('HOME_AREA_ROLE.agenda');
-    expect(markup).toContain('HOME_AREA_ROLE.pinned');
+    // A day block is a block, so the agenda resolves through the chromatic
+    // roles like a tile (ticket 24): on trans its slot is the white band.
+    expect(markup).toContain('tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)');
+    expect(markup).toContain('roleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)');
     expect(markup).not.toContain('HOME_AREA_ROLE.week');
     expect(markup).not.toContain('HOME_AREA_ROLE.days');
   });
