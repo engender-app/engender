@@ -23,9 +23,9 @@
      survives being scaled down this far.
    - Nothing leaves the block, so no face is ever clipped by the shape it
      sits on. The block replaced the disc in ticket 27 and the drawing grew
-     into it: one 8.8-unit span for every mouth against the 7.2 to 8.0 the
-     five used to be, eyes at 1.35 rather than 1.25 and 0.4 further apart, and
-     a 1.8-unit stroke rather than 1.6. The margin below is what a corner has
+     into it: one 9.4-unit span for every mouth against the 7.2 to 8.0 the
+     five used to be, eyes at 1.45 rather than 1.25 and 1.4 further apart, and
+     a 1.9-unit stroke rather than 1.6. The margin below is what a corner has
      left after the stroke's outer edge, which is the tightest place a rounded
      square is worse than a circle - and the only place it is. */
 
@@ -39,7 +39,7 @@ import { inkPolylines } from './icon-ink';
 const STEPS = [1, 2, 3, 4, 5];
 
 /** Half the stroke, plus 0.4 of a unit of air. */
-const INK_MARGIN = 1.8 / 2 + 0.4;
+const INK_MARGIN = 1.9 / 2 + 0.4;
 
 /** How far a point sits outside the block, once the block is inset by
     `margin`: 0 or less is inside. A rounded square is the axis-aligned box

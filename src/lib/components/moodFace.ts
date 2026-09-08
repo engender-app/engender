@@ -41,25 +41,29 @@
    - **Every mouth is a true circular arc.** They were cubics with control
      points at fixed offsets, so the curvature ran shallow at the corners and
      tight in the middle, differently in each of the five. One radius per step
-     now (4.55 units at the extremes, 8.1 in the middle, a straight line at
+     now (4.95 units at the extremes, 9.15 in the middle, a straight line at
      3), so the five read as one instrument rather than as five sketches.
    - **One span for all five.** They were 7.2 to 8.0 units wide depending on
-     the step, so the mouth's width jittered as the mood changed. It is 8.8
+     the step, so the mouth's width jittered as the mood changed. It is 9.4
      for every step - wider than any of them was, because the face sits on a
      block now rather than inside a disc, and a block has the room.
    - **The mouth's box is centred on one baseline.** Its corners and its
      middle move around y 15.4 rather than the corners staying put, so a face
      does not bob up the box as the mood rises.
-   - **A little bigger, which is what the block bought.** The eyes are 1.35
-     rather than 1.25 and sit 0.4 further apart, the stroke is 1.8 rather than
-     1.6, and the lids are arcs of the same family as the mouths.
+   - **Bigger, which is what the block bought.** Alicja asked for the face to
+     fill its background better and then for more of it again once she saw the
+     first attempt: the eyes are 1.45 rather than 1.25 and sit 1.4 further
+     apart, the mouth is 9.4 wide against 8.0, the stroke is 1.9 rather than
+     1.6, and the lids are arcs of the same family as the mouths. The mouth
+     spans 42% of the block's width, against the 33% the face spent inside its
+     disc.
 
    The disc became a rounded block (MoodFace.svelte) because a circle was the
    one shape in the app that phase 10's own language does not use, and because
    a block holds a bigger drawing at the same size. */
 
 type MoodDrawing = {
-  /** The mouth: one stroked circular arc spanning x 7.6 to 16.4, or the flat
+  /** The mouth: one stroked circular arc spanning x 7.3 to 16.7, or the flat
       line at step 3. */
   mouth: string;
   /** Present only on the two steps that draw lids instead of dots. Two arcs
@@ -69,23 +73,23 @@ type MoodDrawing = {
 
 /** Where the dot eyes sit, on the three steps that have them. */
 export const MOOD_EYES = [
-  { cx: 8.2, cy: 9.3 },
-  { cx: 15.8, cy: 9.3 }
+  { cx: 7.9, cy: 9.3 },
+  { cx: 16.1, cy: 9.3 }
 ] as const;
 
-export const MOOD_EYE_RADIUS = 1.35;
+export const MOOD_EYE_RADIUS = 1.45;
 
 export const MOOD_FACES: Record<number, MoodDrawing> = {
   1: {
-    mouth: 'M7.6 17.1A4.55 4.55 0 0 1 16.4 17.1',
-    lids: 'M6.6 8.88A1.93 1.93 0 0 0 9.8 8.88M14.2 8.88A1.93 1.93 0 0 0 17.4 8.88'
+    mouth: 'M7.3 17.1A4.95 4.95 0 0 1 16.7 17.1',
+    lids: 'M6.2 8.85A2.06 2.06 0 0 0 9.6 8.85M14.4 8.85A2.06 2.06 0 0 0 17.8 8.85'
   },
-  2: { mouth: 'M7.6 16.05A8.1 8.1 0 0 1 16.4 16.05' },
-  3: { mouth: 'M7.6 15.4H16.4' },
-  4: { mouth: 'M7.6 14.75A8.1 8.1 0 0 0 16.4 14.75' },
+  2: { mouth: 'M7.3 16.05A9.15 9.15 0 0 1 16.7 16.05' },
+  3: { mouth: 'M7.3 15.4H16.7' },
+  4: { mouth: 'M7.3 14.75A9.15 9.15 0 0 0 16.7 14.75' },
   5: {
-    mouth: 'M7.6 13.7A4.55 4.55 0 0 0 16.4 13.7',
-    lids: 'M6.6 9.73A1.93 1.93 0 0 1 9.8 9.73M14.2 9.73A1.93 1.93 0 0 1 17.4 9.73'
+    mouth: 'M7.3 13.7A4.95 4.95 0 0 0 16.7 13.7',
+    lids: 'M6.2 9.75A2.06 2.06 0 0 1 9.6 9.75M14.4 9.75A2.06 2.06 0 0 1 17.8 9.75'
   }
 };
 
