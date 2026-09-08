@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 
 import {
@@ -27,6 +27,11 @@ function stubDocument(reduced = false, clipPath = true, box?: Record<string, str
   });
   g.CSS = { supports: () => clipPath };
 }
+
+/* The screen settled long ago, unless a test says otherwise: the arrival
+   window now gates leaving as well as arriving (redesign ticket 19), and the
+   module marks its own load as an arrival, which this file runs inside. */
+beforeEach(() => markScreenArrival(performance.now() - 1000));
 
 afterEach(() => {
   const g = globalThis as Record<string, unknown>;
@@ -298,10 +303,30 @@ describe('tier 3, a panel giving its space back', () => {
     const both = collapse(node, undefined, { direction: 'both' }) as unknown;
     expect(typeof both).toBe('function');
 
-    markScreenArrival();
+    markScreenArrival(performance.now() - 1000);
     const asked = both as (o: { direction: 'in' | 'out' }) => TransitionConfig;
-    expect(asked({ direction: 'in' }).duration).toBe(0);
     expect(asked({ direction: 'out' }).duration).toBe(380);
+    markScreenArrival();
+    expect(asked({ direction: 'in' }).duration).toBe(0);
+  });
+
+  /* Redesign ticket 19, found on the agenda's arrival flipbook and present
+     on main: Home's live tiles answer their reads one by one, and a heavier
+     tile answering after a lighter one displaces it into the fold. That is
+     the list settling, not a dismissal - nobody can tap inside the first
+     240ms of a screen - and carpet ticket 04's rule that leaving is never
+     suppressed had the wrong premise for a capped grid: the displaced tile
+     dissolved in front of the reader while the screen was still arriving,
+     a "Ready letter" ghost under the log strip for 200ms. A leave inside
+     the arrival window cuts, as an arrival does. */
+  it('cuts a leave inside the arrival window too, since the list is settling and nobody dismissed anything', () => {
+    stubDocument();
+    markScreenArrival();
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(0);
+    markSlotReplacement({ slot: { top: 300, left: 20, width: 160, height: 100 } });
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(0);
+    markScreenArrival(performance.now() - 1000);
+    expect(collapse(panel({ beside: [[0, 100]] }), undefined, { direction: 'out' }).duration).toBe(380);
   });
 
   /* A dismissal the fold fills in the same tick is a swap rather than a
@@ -570,14 +595,6 @@ describe('tier 3, a panel giving its space back', () => {
     expect(set).toEqual([['--tile-index', '0']]);
     collapse(node, undefined, { direction: 'out' });
     expect(set).toHaveLength(1);
-  });
-
-  /* Leaving is never suppressed: a panel dismissed during the arrival window
-     was dismissed by somebody, which is a change however early it lands. */
-  it('still collapses on the way out during the arrival window', () => {
-    const node = panel({ beside: [[0, 100]] });
-    markScreenArrival();
-    expect(collapse(node, undefined, { direction: 'out' }).duration).toBe(380);
   });
 
   it('cuts instantly under reduced motion and when the caller says to skip', () => {
