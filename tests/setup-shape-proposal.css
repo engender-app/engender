@@ -1,0 +1,278 @@
+/* Setup's shape: the proposal sheet (phase 10 redesign ticket 29).
+
+   Laid over the built app by tests/setup-shape-gallery.mjs. It draws what
+   DIRECTION.md rules 12 to 15 decide, with nothing the kit cannot already
+   build: the field (--field, --field-ink, published by activeFlag since
+   ticket 07), the section rule, the flush list, the block, the sun. Ticket
+   33 builds it; this file is the picture, not the code.
+
+   Every selector is prefixed with `.app-main .screen-setup` because the
+   route's own styles are Svelte-scoped (a hash class on each element,
+   specificity 0,2,0) and a bare `.setup-head` would lose to them. The
+   prefix ties or beats every scoped rule and this sheet is appended last.
+
+   What it needs from the script: --step-grow on <html>, the sun's scale for
+   this step, which the route writes on .setup-sun and a sibling's sheet
+   cannot read. */
+
+/* ---------- the frame: the screen never scrolls ---------- */
+
+.app-main .screen-setup {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-main .screen-setup .setup {
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+/* ---------- the field ---------- */
+
+/* The head is the top of the field: the sun's room on the right, the back
+   control on the left in the field's ink. Its height is the sun's reach at
+   this step, so the field grows with the sun and the question under it
+   rides down one step's worth per step (rule 10's blind, on the field's
+   bottom edge). */
+.app-main .screen-setup .setup-head {
+  background: var(--field);
+  color: var(--field-ink);
+  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
+  padding: calc(var(--inset-top) + var(--space-2)) var(--space-5) 0;
+  min-height: calc(var(--inset-top) + var(--space-2) + 175px * var(--step-grow, 1));
+  display: flex;
+  align-items: flex-start;
+}
+.app-main .screen-setup .setup-head .icon-btn {
+  color: inherit;
+  margin-left: calc(-1 * var(--space-3));
+}
+
+/* The sun paints over the field, not behind it. */
+.app-main .screen-setup .setup-sky { z-index: 3; }
+
+/* The stage is the one region allowed to scroll, and only its answers do:
+   the question is sticky at its top with the field behind it, so a long
+   list slides under the question and the frame holds. */
+.app-main .screen-setup .setup-stage {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* Bleeds to the screen's edges and pads back in, so the question's field
+     block can reach the edges too: a region that scrolls clips on both
+     axes, and a negative margin inside it would be cut at the content
+     edge. */
+  margin: 0 calc(-1 * var(--space-5));
+  padding: 0 var(--space-5) var(--space-3);
+  scrollbar-width: none;
+}
+.app-main .screen-setup .setup-stage::-webkit-scrollbar { display: none; }
+.app-main .screen-setup .setup-step {
+  justify-content: flex-start;
+  gap: 0;
+}
+
+/* The question: one, at the door-title size, on the field, under the sun's
+   reach. 48 (rule 2), the field's ink, set solid. */
+.app-main .screen-setup .setup-title {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--field);
+  color: var(--field-ink);
+  margin: 0 calc(-1 * var(--space-5));
+  padding: 0 var(--space-5) var(--space-4);
+  border-radius: 0 0 var(--r-block) var(--r-block);
+  font-size: var(--text-4xl);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+/* One line under the question, on the page: what the answer does, at
+   15/600 in --text-2 (rule 2's secondary). Never a paragraph. The welcome's
+   dictionary line keeps its italic and sits in the same slot. */
+.app-main .screen-setup .setup-body,
+.app-main .screen-setup .setup-def {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+  margin: var(--space-3) 0 0;
+  text-align: left;
+}
+.app-main .screen-setup .setup-def + .setup-body { text-align: left; }
+
+/* ---------- the answers ---------- */
+
+/* A typed answer is set in the display face on the section rule: the
+   person's name is the first thing in the app set in its own voice. */
+.app-main .screen-setup .setup-step .input {
+  margin-top: var(--space-5);
+  padding: var(--space-3) 0;
+  border: 0;
+  border-bottom: 3px solid var(--text);
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--display-track);
+  line-height: var(--leading-display);
+  color: var(--text);
+}
+.app-main .screen-setup .setup-step .input::placeholder { color: var(--text-2); opacity: 0.6; }
+
+/* A flag is a block of its own stripes, the name under it on the page. The
+   chosen one carries the 3px rule as its edge; nothing tints. */
+.app-main .screen-setup .palette-grid.setup-flags {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+  margin-top: var(--space-5);
+}
+.app-main .screen-setup .setup-flags .palette-swatch {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.app-main .screen-setup .setup-flags .palette-swatch.is-active { background: none; border: 0; }
+.app-main .screen-setup .setup-flags .swatch-preview {
+  width: 100%;
+  height: 56px;
+  border-radius: var(--r-block);
+  border: 1px solid var(--outline);
+  box-sizing: border-box;
+  outline: none;
+}
+.app-main .screen-setup .setup-flags .palette-swatch.is-active .swatch-preview {
+  outline: 3px solid var(--text);
+  outline-offset: -3px;
+}
+.app-main .screen-setup .setup-flags .swatch-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  text-align: left;
+}
+.app-main .screen-setup .setup-flags .swatch-bloom { border-radius: var(--r-block); }
+
+/* The flags as bands, the way the sun draws them, rather than a diagonal
+   wash. Static flag colours, the same hexes palettes.css lists. */
+.app-main .screen-setup .setup-flags [data-swatch="trans"] { background: linear-gradient(to bottom, #5BCEFA 0 20%, #F5A9B8 20% 40%, #FFFFFF 40% 60%, #F5A9B8 60% 80%, #5BCEFA 80%); }
+.app-main .screen-setup .setup-flags [data-swatch="nonbinary"] { background: linear-gradient(to bottom, #FCF434 0 25%, #FFFFFF 25% 50%, #9C59D1 50% 75%, #2C2C2C 75%); }
+.app-main .screen-setup .setup-flags [data-swatch="genderfluid"] { background: linear-gradient(to bottom, #FF76A4 0 20%, #FFFFFF 20% 40%, #C011D7 40% 60%, #2F2F2F 60% 80%, #2F3CBE 80%); }
+.app-main .screen-setup .setup-flags [data-swatch="bisexual"] { background: linear-gradient(to bottom, #D60270 0 40%, #9B4F96 40% 60%, #0038A8 60%); }
+.app-main .screen-setup .setup-flags [data-swatch="lesbian"] { background: linear-gradient(to bottom, #D52D00 0 20%, #FF9A56 20% 40%, #FFFFFF 40% 60%, #D362A4 60% 80%, #A30262 80%); }
+.app-main .screen-setup .setup-flags [data-swatch="pansexual"] { background: linear-gradient(to bottom, #FF218C 0 33.4%, #FFD800 33.4% 66.7%, #21B1FF 66.7%); }
+.app-main .screen-setup .setup-flags [data-swatch="rainbow"] { background: linear-gradient(to bottom, #E40303 0 16.7%, #FF8C00 16.7% 33.4%, #FFED00 33.4% 50%, #008026 50% 66.7%, #004CFF 66.7% 83.4%, #732982 83.4%); }
+.app-main .screen-setup .setup-flags [data-swatch="agender"] { background: linear-gradient(to bottom, #1A1A1A 0 14.3%, #B9B9B9 14.3% 28.6%, #FFFFFF 28.6% 42.9%, #B9F484 42.9% 57.2%, #FFFFFF 57.2% 71.5%, #B9B9B9 71.5% 85.8%, #1A1A1A 85.8%); }
+
+/* A list of answers is the kit's flush list, 20 under the question's line.
+   A group inside it is named by a caption, never by a section heading: the
+   step has one heading, and it is the question. */
+.app-main .screen-setup .setup-step > .kit-list,
+.app-main .screen-setup .setup-step > .setup-areas { margin-top: var(--space-5); }
+.app-main .screen-setup .setup-areas .kit-heading {
+  border-top: 0;
+  padding: 0;
+  margin: var(--space-5) 0 var(--space-1);
+  animation: none;
+}
+.app-main .screen-setup .setup-areas .kit-heading:first-child { margin-top: 0; }
+.app-main .screen-setup .setup-areas .kit-heading > * { animation: none; }
+.app-main .screen-setup .setup-areas .kit-heading h2 {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  color: var(--text-2);
+}
+
+/* ---------- the foot ---------- */
+
+/* Three controls, two lines: the one way forward at full width, then the
+   two ways past the step side by side. Pinned to the bottom, never
+   scrolled to. */
+.app-main .screen-setup .setup-foot {
+  margin-top: 0;
+  padding: var(--space-4) 0 var(--space-4);
+  gap: var(--space-2);
+  border-top: 1px solid var(--hairline);
+}
+.app-main .screen-setup .setup-outs {
+  flex-direction: row;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.app-main .screen-setup .setup-outs .btn { padding: 0 var(--space-3); }
+
+/* ---------- the pad ---------- */
+
+/* What ticket 30 leaves on the pad screen: the instruction, the dots, the
+   pad, the status line, the way back. The consequence paragraph and the
+   export note belong to the mode list and are not drawn here. The card the
+   settings screen wraps the module in and the nav bar are hidden for the
+   shot, since neither exists on a step or a gate. */
+.app-main .am-chosen .am-notice,
+.app-main .am-chosen .am-export-note { display: none; }
+.app-main .am-chosen [data-access-pin-step] {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+  text-align: left;
+  margin-top: var(--space-3);
+}
+.app-main .card:has(.am-chosen) {
+  border: 0;
+  box-shadow: none;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+.app-main .card:has(.am-chosen) ~ * { display: none; }
+body:has(.am-chosen) .app-nav { display: none; }
+.app-main .pin-key { height: 56px; }
+.app-main .pin-pad { gap: var(--space-2); }
+.app-main .am-chosen .gate-foot { margin-top: var(--space-5); text-align: left; }
+
+/* ---------- the short form ---------- */
+
+/* Under 640px tall, which is what a raised keyboard leaves and what a 320px
+   phone has: the sun keeps growing at 0.6 of its scale, the head is the
+   back control's row, the question drops to 21 (the sheet-heading size),
+   the foot's second line to 40px. The answers do not change. At 390x360
+   that is head 56, question 30, line 56, name 62, foot 112: 316 of 360,
+   and the name is on screen with the keyboard up. */
+@media (max-height: 639px) {
+  .app-main .screen-setup { --sun-mult: 0.6; }
+  .app-main .screen-setup .setup-head {
+    min-height: calc(var(--inset-top) + var(--space-2) + 48px);
+  }
+  .app-main .screen-setup .setup-title {
+    font-size: var(--text-xl);
+    letter-spacing: var(--display-track);
+    line-height: var(--leading-display);
+    padding-bottom: var(--space-2);
+  }
+  .app-main .screen-setup .setup-step .input { font-size: var(--text-xl); margin-top: var(--space-2); }
+  .app-main .screen-setup .setup-flags .swatch-preview { height: 40px; }
+  .app-main .screen-setup .setup-foot { padding: var(--space-2) 0; }
+  .app-main .screen-setup .setup-outs .btn { min-height: 40px; }
+  /* The pad screen's field takes the same short form: the back row, the
+     title at 21, 8 above and 12 below. */
+  .app-main .screen:has(.am-chosen) .screen-field {
+    padding-top: calc(var(--inset-top) + var(--space-2));
+    padding-bottom: var(--space-3);
+  }
+  .app-main .screen:has(.am-chosen) .screen-title {
+    font-size: var(--text-xl);
+    letter-spacing: var(--display-track);
+    line-height: var(--leading-display);
+  }
+  .app-main .pin-key { height: 48px; }
+  .app-main .pin-dots { margin: var(--space-3) 0 var(--space-2); }
+  .app-main .am-chosen .gate-foot { margin-top: var(--space-3); padding-top: var(--space-3); }
+}
