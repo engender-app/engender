@@ -441,6 +441,16 @@
   <SectionHeading text={m.settings_privacy()} />
   <ListCard>
     <ListRow key="security" icon="shield" title={m.settings_security_row()} subtitle={m.settings_security_sub()} href="/settings/security" />
+    <!-- Beside security rather than under notifications (phase 10 redesign
+         ticket 31): the list is the no-network claim made concrete, which is
+         a privacy question, and setup's step promises this row is here. -->
+    <ListRow
+      key="permissions"
+      icon="key"
+      title={m.settings_permissions_row()}
+      subtitle={m.settings_permissions_sub()}
+      href="/settings/permissions"
+    />
     <ListRow
       key="disguise"
       icon="shield"
