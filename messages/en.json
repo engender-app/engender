@@ -292,6 +292,7 @@
   "hub_group_finished": "Tracking that ended",
   "hub_screen_title": "Body, health, steps, support and media",
   "hub_search_placeholder": "Search what you track",
+  "hub_search_clear": "Clear the search",
   "hub_line_today": "Logged today",
   "hub_line_last": "Last logged {gap} ago",
   "hub_line_quiet": "Nothing logged for {gap}",

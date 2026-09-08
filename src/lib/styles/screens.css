@@ -370,8 +370,16 @@
   color: var(--text-2);
 }
 .search-box:focus-within { border-color: var(--accent); }
+/* The magnifier is a glyph, not something to be squeezed: a flex item's
+   automatic minimum is its content, and an `<input>`'s is roughly twenty
+   characters, so the input claimed the whole row and the icon shrank to
+   nothing. Both halves of the fix are needed - the icon refuses to shrink,
+   and the input is allowed to. Found at 195px, which is what 200% zoom on a
+   390px phone leaves: the icon had vanished and the Polish placeholder ran
+   out of the box and off the screen (redesign ticket 15's renders). */
+.search-box .icon { flex: 0 0 auto; }
 .search-input {
-  flex: 1; border: none; background: none; font: inherit; color: var(--text);
+  flex: 1; min-width: 0; border: none; background: none; font: inherit; color: var(--text);
   min-height: 48px; outline: none;
 }
 /* components.css's global :focus-visible rule outranks the bare outline:

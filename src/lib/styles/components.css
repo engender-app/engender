@@ -115,6 +115,31 @@
   background: var(--bg);
   color: var(--text-2);
 }
+/* Focus answers in --text rather than --accent up here. The accent is a
+   member of the flag and the field is another one, so on trans the focused
+   edge was pink on pink: a focus indicator owes 3:1 against what is next to
+   it, and the only ink that clears that against both the box's --bg inside
+   and every field colour outside is the page's own. */
+.screen-field .search-box:focus-within { border-color: var(--text); }
+/* The browser's own clear cross is 16px, is drawn by Chromium and by
+   nothing else, and would be the one control on the screen under the touch
+   floor. The field draws its own instead (the button beside the input). */
+.screen-field .search-input::-webkit-search-cancel-button { display: none; }
+/* A 48px target for a 20px glyph, and no wider than that: it sits inside
+   the box's own padding, so the row is icon, input, cross. */
+.field-search-clear {
+  flex: 0 0 auto;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  margin-right: calc(-1 * var(--space-3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
 /* On the web the field is a banner across the column rather than a block
    meeting the window's edges, so it takes the radius on all four corners. */
 @container app (min-width: 1024px) {

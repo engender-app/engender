@@ -60,7 +60,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
 
   const today = todayEpochDay();
 
@@ -205,6 +205,23 @@
           data-hub-search
           bind:value={query}
         />
+        <!-- The cross is ours because Chromium's is 16px and Firefox draws
+             none at all, and because clearing the box is how somebody gets
+             the whole door back - a 48px target for that, not a browser
+             detail. It arrives and leaves along the row it is in, which is
+             `collapse`'s own case (reveal.ts): it grows its width from
+             nothing and takes the box's gap with it. -->
+        {#if searching}
+          <button
+            class="field-search-clear press"
+            data-hub-search-clear
+            aria-label={m.hub_search_clear()}
+            transition:collapse={{ skip: leaving }}
+            onclick={() => (query = '')}
+          >
+            <Icon name="x" size={20} />
+          </button>
+        {/if}
       </div>
     {/snippet}
   </ScreenHeader>
