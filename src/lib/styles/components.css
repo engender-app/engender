@@ -239,11 +239,11 @@
 }
 /* A hidden title with no back control and no actions leaves the field
    nothing to hold, so the header collapses to nothing visible rather than
-   painting an empty band: /settings is this today (carpet 25, unresolved),
-   and the two hubs that hide their title otherwise gain their field's
-   contents from tickets 09 and 15. A screen can hide its title and still
-   show a back control or an action, and those keep the field - the room
-   does now (carpet 27).
+   painting an empty band: the two hubs that hide their title otherwise gain
+   their field's contents from tickets 09 and 15, and /settings was here
+   until carpet 25 gave it rule 7's chrome case. A screen can hide its title
+   and still show a back control or an action, and those keep the field - the
+   room does now (carpet 27).
 
    Unpainted, not display: none. The visually hidden title inside is still
    the screen's heading for a screen reader and the document outline (the
@@ -384,9 +384,17 @@
   cursor: pointer;
 }
 /* On the web the field is a banner across the column rather than a block
-   meeting the window's edges, so it takes the radius on all four corners. */
+   meeting the window's edges, so it takes the radius on all four corners.
+   Rule 7's chrome case takes its one platform branch here too (carpet 25):
+   Settings is reached by a gear in Today's foot on the phone, where back
+   means Today, and by a fifth row at the rail's foot on the desktop, where
+   a back control would point at nothing. Dropped rather than hidden, so
+   the control is out of the tab order and out of the accessibility tree in
+   the shell that has no answer for it - the same thing this query already
+   does to the bottom bar the rail replaces (`.app-nav`, app.css). */
 @container app (min-width: 1024px) {
   .screen > .screen-header > .screen-field { border-radius: var(--r-block); }
+  .screen-header.is-chrome .screen-back { display: none; }
 }
 
 .section-title {
