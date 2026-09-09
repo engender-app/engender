@@ -17,6 +17,10 @@
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import { PALETTES } from '../palettes.mjs';
+  // PROTOTYPE demo only, not shipped: publishes --field the same way
+  // +layout.svelte does, so the swipe prototype's var(--field) resolves
+  // to the real flag hex in this fixture instead of the initial value.
+  import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte.ts';
 
   let palette = $state('trans');
   let theme = $state('dark');
@@ -28,6 +32,7 @@
     html.dataset.theme = theme;
     if (motion === 'reduce') html.dataset.a11yMotion = 'reduce';
     else delete html.dataset.a11yMotion;
+    refreshActiveFlag(document, false);
   });
 
   const TEN = { name: 'Femininity', low: 'Not at all', high: 'Completely', min: 0, max: 10 };
