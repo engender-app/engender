@@ -62,9 +62,26 @@
    captured (`$lib/motion/outgoingScreen`), so the screen element itself is
    exempt. And a mark whose whole run is one frame long was never animating.
 
+   A sweep that reports nothing is worth nothing until it has been seen to
+   fail, so `--prove` runs one extra scene whose two marks are built to be
+   wrong: one jumps 200px between two frames after moving smoothly, and one
+   goes from opaque to nothing between two frames after fading part of the
+   way. The run reports them or exits non-zero.
+
+   The proof is synthetic on purpose. Cutting a real surface to order does
+   not work: the first attempt took the CSS transition off the notice, but
+   the notice leaves on Svelte's `transition:collapse`, which writes inline
+   styles per frame and does not read the stylesheet, so the injection was
+   inert and the sweep was right to report nothing. What needs proving is
+   the arithmetic over consecutive frames, and these two marks exercise
+   exactly that, including the part a real surface cannot: a mark whose
+   neighbours are moving, so the teleport is caught as a spike rather than
+   as motion.
+
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/yank-sweep.mjs
+     node tests/yank-sweep.mjs --prove
    `--scenes a,b` narrows the run; `--out <dir>` names where the report and
    the frames of any yank land. */
 import { preview } from 'vite';
@@ -84,6 +101,16 @@ const outDir = resolve(flag('out', resolve(here, '../.claude/yank-sweep')));
 const only = flag('scenes', '')
   .split(',')
   .filter(Boolean);
+/** Injects a cut, so the detector can be seen to find one. */
+const prove = args.includes('--prove');
+
+/* The scene --prove adds, and the two marks it expects back. Kept beside the
+   injection below so the two cannot drift apart. */
+const PROOF = {
+  scene: 'proof-injected-yanks',
+  teleport: '.yank-proof-jump|',
+  vanish: '.yank-proof-cut|'
+};
 
 /** A jump under this many pixels is not a teleport however sharp it is: at
     390px wide, a mark moving 12px in a frame is still inside its own glyph. */
@@ -121,6 +148,16 @@ const VT_NAMES = [
 ];
 
 const SCENES = [
+  ...(prove
+    ? [
+        {
+          name: PROOF.scene,
+          at: '/',
+          act: 'inject',
+          is: 'two marks built to be wrong, so the arithmetic can be seen to catch them'
+        }
+      ]
+    : []),
   { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"]', nav: true, is: 'the blind pulled up to Journal' },
   { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"]', nav: true, is: 'the blind between two doors' },
   { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"]', nav: true, is: 'the blind down to Transition' },
@@ -157,6 +194,40 @@ const settle = async (path) => {
     for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
   });
 };
+
+/* The two deliberately wrong marks. Both move for several frames first, so
+   neither is caught by being the only thing that moved: the jump has real
+   neighbours to be a spike against, and the cut fades part of the way
+   before it is taken off screen. Driven from a rAF loop of their own,
+   started by the gesture the scene names. */
+const injectProof = () =>
+  page.evaluate(() => {
+    const root = document.querySelector('[data-app-root]');
+    const make = (cls) => {
+      const el = document.createElement('div');
+      el.className = cls;
+      el.textContent = cls;
+      el.style.cssText =
+        'position:absolute;left:20px;top:200px;width:120px;height:24px;background:#888;z-index:99';
+      root.append(el);
+      return el;
+    };
+    const jump = make('yank-proof-jump');
+    const cut = make('yank-proof-cut');
+    cut.style.top = '240px';
+    window.__yankProof = () => {
+      let frame = 0;
+      const tick = () => {
+        frame++;
+        /* Eight frames of a smooth 6px slide, then 200px in one. */
+        jump.style.translate = `0 ${frame <= 8 ? frame * 6 : 8 * 6 + 200}px`;
+        /* Four frames fading to 0.6, then straight to nothing. */
+        cut.style.opacity = frame <= 4 ? String(1 - frame * 0.1) : frame === 5 ? '0' : '0';
+        if (frame < 14) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    };
+  });
 
 /* The sampler. One rAF loop, reading both instruments into a keyed row per
    frame; the arithmetic happens afterwards in node, so the page does as
@@ -224,9 +295,20 @@ const sample = (act, ms, names) =>
 
       const frames = [];
       const t0 = performance.now();
-      if (act.startsWith('goto:')) location.assign(act.slice(5));
-      else if (act === 'back') history.back();
-      else document.querySelector(act)?.click();
+      /* The gesture starts on the second frame, not before the first. A
+         resting frame is what "it was there and then it was not" is measured
+         against, and without one the sweep cannot see a cut that finishes
+         inside 16ms: with the notice's transition removed it was already
+         gone by the first sample, no frame held it, and the injected cut in
+         --prove went unreported. It also gives the teleport test real
+         neighbours at the start of a run instead of a missing one. */
+      const go = () => {
+        if (act === 'inject') window.__yankProof();
+        else if (act.startsWith('goto:')) location.assign(act.slice(5));
+        else if (act === 'back') history.back();
+        else document.querySelector(act)?.click();
+      };
+      let started = false;
       return await new Promise((done) => {
         const tick = () => {
           const now = performance.now() - t0;
@@ -268,6 +350,10 @@ const sample = (act, ms, names) =>
               if (row) vt[`${side}(${name})`] = row;
             }
           frames.push({ at: Math.round(now), active, rows, vt });
+          if (!started) {
+            started = true;
+            go();
+          }
           if (now < ms) requestAnimationFrame(tick);
           else {
             restore();
@@ -385,12 +471,14 @@ for (const scene of SCENES) {
   try {
     await settle(scene.at);
     await page.waitForTimeout(1400);
+    if (scene.act === 'inject') await injectProof();
     const all_frames = await sample(scene.act, SCENE_MS, VT_NAMES);
     /* A transition ran, so the pseudos are what the person saw, and only the
        frames it was running on are the gesture. */
     const transitioned = all_frames.some((f) => f.active);
     const instrument = transitioned ? 'vt' : 'rows';
     const frames = transitioned ? all_frames.filter((f) => f.active) : all_frames;
+    if (!frames.length) throw new Error('no frames to read');
     const all = findYanks(frames, instrument, frames.length - 1);
     const yanks = all.filter((y) => !EXEMPT.test(y.mark));
     if (args.includes('--dump'))
@@ -418,13 +506,31 @@ for (const scene of SCENES) {
 
 await writeFile(
   `${outDir}/report.json`,
-  JSON.stringify({ thresholds: { TELEPORT_PX, TELEPORT_RATIO, VISIBLE, GONE }, report, errors }, null, 2)
+  JSON.stringify({ prove, thresholds: { TELEPORT_PX, TELEPORT_RATIO, VISIBLE, GONE }, report, errors }, null, 2)
 );
 await page.close();
 await browser.close();
 await app.close();
 const total = report.reduce((n, r) => n + (r.yanks?.length ?? 0), 0);
 console.log(`\n${report.length} scene(s), ${total} yank(s); report in ${outDir}/report.json`);
+
+if (prove) {
+  const scene = report.find((r) => r.scene === PROOF.scene);
+  const got = (mark, kind) => scene?.yanks?.some((y) => y.mark.startsWith(mark) && y.kind === kind);
+  const missing = [
+    got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
+    got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`
+  ].filter(Boolean);
+  if (missing.length) {
+    console.error(
+      `proof FAILED: the sweep did not report ${missing.join(' or ')}, ` +
+        `so a clean run above is not evidence of anything.`
+    );
+    process.exitCode = 1;
+  } else {
+    console.log('proof: both injected yanks were reported. The sweep can fail.');
+  }
+}
 if (errors.length) {
   console.error(`${errors.length} page error(s):`);
   for (const e of errors) console.error(`  ${e}`);
