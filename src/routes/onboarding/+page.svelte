@@ -548,7 +548,16 @@
               <span class="setup-file-ico"><Icon name="upload" size={20} /></span>
               {#if picked}
                 {#key picked.name}
-                  <span class="setup-file-name" in:wipe data-restore-file>{picked.name}</span>
+                  <!-- `|global`, or it never plays. A transition is local by
+                       default, which means it runs when its own block is
+                       created and not when a parent block's creation brings
+                       it into being - and here the parent is the `{#if
+                       picked}` that flips on the first pick, so the whole
+                       clip was dead on the one tap it exists for. Caught by
+                       reading clip-path per animation frame off the built
+                       app (`npm run gallery:restore`), which sampled
+                       `none` for the length of the scene. -->
+                  <span class="setup-file-name" in:wipe|global data-restore-file>{picked.name}</span>
                 {/key}
               {:else}
                 <span class="setup-file-name is-placeholder">{m.imp_file_placeholder()}</span>
