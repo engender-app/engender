@@ -85,6 +85,14 @@ export async function flushPreferences(): Promise<void> {
     swapped, so the app closes itself once on launch to put it back. Here
     the value is durable before anything can react to it.
 
+    A write that fails is logged and dropped, like every other write here,
+    and the value is *not* projected - which is the whole point rather than
+    a shortcut. The one reader of this projection that matters is the
+    effect that flips the launcher alias, and flipping it on a preference
+    that never landed is the exact state this function exists to prevent:
+    the launcher disguised, the preference false, and the app closing
+    itself once on the next boot to put the two back in step.
+
     Nowhere else has this shape, so nothing else should use this: a screen
     that waits on SQLite to redraw a switch is a screen that feels broken. */
 export async function setPreferenceDurably<K extends PreferenceKey>(
@@ -97,7 +105,12 @@ export async function setPreferenceDurably<K extends PreferenceKey>(
     prefs[key] = value;
     return;
   }
-  await backing.set(key, value as never);
+  try {
+    await backing.set(key, value as never);
+  } catch (error) {
+    console.error(`Could not save the "${key}" preference`, error);
+    return;
+  }
   // Straight onto the projection rather than through the proxy: the write
   // above is the one this would otherwise queue a second time.
   values[key] = value as never;
