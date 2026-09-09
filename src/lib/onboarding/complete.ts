@@ -49,8 +49,19 @@ export async function completeSetup(completion: SetupCompletion): Promise<void> 
      disguise alone should not pay a round trip to SQLite for the sake of a
      branch it never takes. */
   if (completion.disguise) {
-    await completion.flushWrites();
-    await completion.turnOnDisguise();
+    /* Whatever happens in here, the person gets out of setup. They pressed
+       the last button of a first run, and a failure to write one
+       preference is not a reason to leave them on a screen whose only
+       control has stopped answering - which is what an unhandled rejection
+       here would do, since the caller is a click handler that cannot show
+       one. The disguise is the answer that goes missing; setup is still
+       over, and Settings still has the switch. */
+    try {
+      await completion.flushWrites();
+      await completion.turnOnDisguise();
+    } catch (error) {
+      console.error('Could not apply the disguise at the end of setup', error);
+    }
   }
 
   completion.leaveSetup();

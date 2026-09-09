@@ -78,4 +78,26 @@ describe('finishing setup with disguise turned on', () => {
     await completeSetup(completion);
     expect(order.at(-1)).toBe('leave');
   });
+
+  /* The person pressed the last button of a first run. A preference that
+     could not be written is not a reason to leave them on a screen whose
+     only control has stopped answering - and it would, because the caller
+     is a click handler with nowhere to put a rejection. */
+  it('leaves setup even when the disguise cannot be applied', async () => {
+    const { completion, order } = recorder({
+      disguise: true,
+      turnOnDisguise: () => Promise.reject(new Error('the pref table is gone'))
+    });
+    await expect(completeSetup(completion)).resolves.toBeUndefined();
+    expect(order).toEqual(['write', 'flush', 'leave']);
+  });
+
+  it('leaves setup even when the writes never land', async () => {
+    const { completion, order } = recorder({
+      disguise: true,
+      flushWrites: () => Promise.reject(new Error('SQLite said no'))
+    });
+    await expect(completeSetup(completion)).resolves.toBeUndefined();
+    expect(order).toEqual(['write', 'leave']);
+  });
 });
