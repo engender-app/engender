@@ -877,24 +877,28 @@
   <!-- One bar for the two buttons above it: they are disabled by each
        other, so only one of them is ever running. -->
   <Progress run={importProgress} label={importLabel} handle="import" />
-  <div class="hr"></div>
+  <!-- Two entries of one list: the hairlines the list card draws are what
+       separates them and what says where they begin and end, so the tonal
+       ground each row used to carry is gone (Alicja, 2026-09-09: "the list
+       entries have both the bg and the line separators - lose the bg"). The
+       `.hr` that used to sit above them was doing the list card's job. -->
   <div data-import-rows>
-    <ListRow
-      icon="book"
-      title={m.daylio_row_title()}
-      subtitle={m.daylio_row_sub()}
-      onclick={openDaylio}
-      data-daylio
-      style="border-radius:var(--r-block);background:var(--surface-2)"
-    />
-    <ListRow
-      icon="package"
-      title={m.dlb_row_title()}
-      subtitle={m.dlb_row_sub()}
-      onclick={openBackup}
-      data-daylio-backup
-      style="border-radius:var(--r-block);background:var(--surface-2);margin-top:var(--space-2)"
-    />
+    <ListCard>
+      <ListRow
+        icon="book"
+        title={m.daylio_row_title()}
+        subtitle={m.daylio_row_sub()}
+        onclick={openDaylio}
+        data-daylio
+      />
+      <ListRow
+        icon="package"
+        title={m.dlb_row_title()}
+        subtitle={m.dlb_row_sub()}
+        onclick={openBackup}
+        data-daylio-backup
+      />
+    </ListCard>
   </div>
 
   <SectionHeading text={m.plain_section()} />
