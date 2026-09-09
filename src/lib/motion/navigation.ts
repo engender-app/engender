@@ -100,6 +100,41 @@ export function sharedAxisX(
 }
 
 /**
+ * Tier 2, a step machine: one thing printed on the field leaving or
+ * arriving while the field's own edge moves under it (redesign ticket 33).
+ *
+ * The same two movements app.css runs on `::view-transition-*(*.field-part)`
+ * for a navigation, written for real elements rather than for photographs of
+ * them: a step change is not a navigation, so the question and the answers
+ * are still in the DOM and can be transitioned directly. No frame carries
+ * two of them - the outgoing one fades out over `--dur-fast` and the
+ * incoming one waits that long before starting - and the ride with the edge
+ * is not here at all: it belongs to the box both sides sit in, which travels
+ * once for the pair of them.
+ *
+ * `travel` is 0 for a thing on the page and 12 for a thing painted on the
+ * field, where it goes the way the edge is going: reading it as a number
+ * rather than as a side keeps the sign the caller's, since only the caller
+ * knows which way its own edge moved.
+ */
+export function fieldPart(
+  _node: Element,
+  params: { travel?: number } = {},
+  options: { direction?: Direction } = {}
+): TransitionConfig {
+  if (isReducedMotion()) return crossfadeOnly();
+  const travel = params.travel ?? 0;
+  /* Leaving goes with the edge and arriving comes from the far side of it,
+     which is what stops the two reading as one element sliding through. */
+  const sign = options.direction === 'out' ? 1 : -1;
+  return {
+    duration: motionDuration('--dur-fast'),
+    easing: EASE_OUT,
+    css: (t, u) => `opacity: ${t}; transform: translateY(${sign * travel * u}px)`
+  };
+}
+
+/**
  * Tier 2, sheets: rise by `--motion-distance-md`. Dismissal is the
  * component's job rather than this one's - it follows the drag rather than
  * replaying this backwards.

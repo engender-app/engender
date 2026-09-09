@@ -92,23 +92,11 @@ export function carryBlind(doc: Document = document): BlindCarry {
     swap() {
       release(before);
       after = name(doc, 'b', before);
-      const settle = blindSettle({ from: before.height, to: after.height });
-      root.style.setProperty('--blind-from', `${before.height}px`);
-      root.style.setProperty('--blind-to', `${after.height}px`);
-      /* What the incoming content starts offset by, so it arrives with the
-         edge rather than waiting under it: positive where the blind is
-         closing, since the content starts where the taller field's edge
-         was and travels up to its own place. */
-      root.style.setProperty('--blind-delta', `${before.height - after.height}px`);
-      root.style.setProperty('--blind-ease', settle.easing);
-      /* Which way the things painted on the field leave and arrive: with
-         the blind, so on a blind being pulled down the old text drops and
-         the new comes from above, and on one being pulled up they both go
-         the other way (Alicja, round one). */
-      root.style.setProperty(
-        '--part-travel',
-        `${after.height > before.height ? PART_TRAVEL : -PART_TRAVEL}px`
-      );
+      for (const [property, value] of Object.entries(
+        blindVariables({ from: before.height, to: after.height })
+      )) {
+        root.style.setProperty(property, value);
+      }
       current = carry;
     },
     release() {
@@ -124,6 +112,43 @@ export function carryBlind(doc: Document = document): BlindCarry {
 }
 
 const VARIABLES = ['--blind-from', '--blind-to', '--blind-delta', '--blind-ease', '--part-travel'];
+
+/**
+ * What one edge moving from `from` to `to` is worth, as the five custom
+ * properties the stylesheet moves everything with.
+ *
+ * A navigation publishes them on the root, where a view transition's pseudo
+ * elements are the only thing that can read them. Setup's step machine
+ * publishes the same five on its own screen element instead (redesign
+ * ticket 33): a step change is not a navigation, so it moves real elements
+ * rather than photographs of them, and the arithmetic of how far and on
+ * which curve is the same question either way. One owner, so the two can
+ * never disagree about which way a part travels.
+ */
+export function blindVariables({
+  from,
+  to
+}: {
+  from: number;
+  to: number;
+}): Record<string, string> {
+  const settle = blindSettle({ from, to });
+  return {
+    '--blind-from': `${from}px`,
+    '--blind-to': `${to}px`,
+    /* What the incoming content starts offset by, so it arrives with the
+       edge rather than waiting under it: positive where the blind is
+       closing, since the content starts where the taller field's edge was
+       and travels up to its own place. */
+    '--blind-delta': `${from - to}px`,
+    '--blind-ease': settle.easing,
+    /* Which way the things painted on the field leave and arrive: with the
+       blind, so on a blind being pulled down the old text drops and the new
+       comes from above, and on one being pulled up they both go the other
+       way (Alicja, round one). */
+    '--part-travel': `${to > from ? PART_TRAVEL : -PART_TRAVEL}px`
+  };
+}
 
 /** Names one side's field and measures it. `skip` is the side already
     named, which can still be in the DOM when the incoming one is looked
