@@ -15,7 +15,9 @@
      radius     rule 5  - any corner outside 0/1/2/4/6/8/50%/100%/999px
      type       rule 2  - any font-size outside 15/16/17/19/21/28/40/48,
                           except .wrapped-cover-year's named 64px (carpet 23)
-     field      rule 7  - a door with no field, a deep screen with no back
+     field      rule 7  - a screen that shows the wrong one of a field and a
+                          back control for what it is: a door, a deep
+                          screen, or chrome (carpet 25)
      tint       rule 3  - --role-tint or --role-wash as a background
      ink        rule 9  - a stroke-width outside 1/2/12/14 and the bar ends
      target     PRODUCT  - an interactive box rendered under 48x48
@@ -111,7 +113,11 @@ const PALETTES = flag('palettes', 'trans').split(',');
 
 /* Every route in src/routes, with the dynamic ones resolved to a real id by
    `resolve` below. `door` marks the four doors, which rule 7 says never show
-   a back control; everything else is a deep screen, which always does. */
+   a back control; `chrome` marks the rule's third case (carpet 25), which is
+   Settings and nothing else so far; `exception` marks a screen rule 7 does
+   not reach, and holds the decision that put it outside - a route with no
+   reason written here is a route the rule judges. Everything unmarked is a
+   deep screen, which shows both. */
 const ROUTES = [
   { path: '/', door: true, name: 'today' },
   { path: '/calendar', door: true, name: 'journal' },
@@ -123,8 +129,21 @@ const ROUTES = [
   { path: '/body/measurements' },
   { path: '/body/sizes' },
   { path: '/care' },
-  { path: '/coming-back', chromeless: true },
-  { path: '/onboarding', name: 'setup' },
+  { path: '/coming-back', exception: 'chromeless by decision (redesign ticket 35, ADR-0080)' },
+  {
+    path: '/onboarding',
+    name: 'setup',
+    /* Filed as a deep screen by ticket 20's table, which is what a route
+       with nothing said about it is. Setup is a step machine, and its
+       header is rules 12 to 15's rather than rule 7's: the field carries
+       the question and the sun is the meter, and the back control is the
+       step's own `data-back` in the field's ink, which rule 12 drops on
+       the welcome step and wherever a step has no way back. So rule 7 does
+       not reach this screen, and reading it as a deep screen with no back
+       control was the instrument judging it by a rule it does not answer
+       to (carpet 25). */
+    exception: "a step machine: DIRECTION.md rules 12 to 15 own its header, and rule 12 drops the step's own back control on the welcome step"
+  },
   { path: '/doses' },
   { path: '/doubt' },
   { path: '/day/today', name: 'day' },
@@ -152,6 +171,12 @@ const ROUTES = [
   { path: '/search/starred' },
   {
     path: '/settings',
+    /* Rule 7's third case (ADR-0076, carpet 25): chrome, which shows the
+       field and shows a back control on the phone - which is the width this
+       walk runs at - and none in the 1024px shell, where the rail's fifth
+       row is the way in. The desktop half of that answer is the
+       walkthrough's, at step 14b. */
+    chrome: true,
     /* The disguise rows are drawn inside a sheet, so no walk that only
        loads the address had ever seen them - `.card.spread` counted 0 while
        carpet 30 was trying to decide about it, which is what this state was
@@ -826,6 +851,42 @@ const seed = async () => {
 };
 await seed();
 
+/* Rule 7's verdict, per reading (carpet 25). Ticket 20's sweep read the
+   field and the back control and left the judging to whoever read the
+   table, which is how `/settings` came to be filed as a question - "door
+   with a field and no back, or deep screen with both?" - rather than as a
+   pass or a finding. The rule has three cases now and each fixes both
+   answers, so the instrument can say which it is:
+
+     door    the field, and never a back control
+     deep    the field and a back control
+     chrome  the field, and a back control on the phone only (ADR-0076);
+             this walk is 390px wide, so here that is a back control, and
+             the 1024px half is the walkthrough's step 14b
+     exception  a screen the rule does not reach, which has to carry the
+             decision that put it outside: /coming-back, chromeless by
+             ADR-0080, and /onboarding, whose header rules 12 to 15 own.
+             Reported as a recorded exception rather than counted as a pass,
+             so the two are never confused for each other
+
+   A state is judged as its own reading, the same way every other check
+   treats one: a sheet open over a screen does not change what the screen
+   is. */
+const CASES = {
+  door: { field: true, back: false },
+  deep: { field: true, back: true },
+  chrome: { field: true, back: true }
+};
+const rule7 = (route, reading) => {
+  if (route.exception) return { case: 'exception', verdict: 'recorded exception', why: route.exception };
+  const which = route.chrome ? 'chrome' : route.door ? 'door' : 'deep';
+  const want = CASES[which];
+  const wrong = [];
+  if (reading.field !== want.field) wrong.push(want.field ? 'no field' : 'a field it should not have');
+  if (reading.back !== want.back) wrong.push(want.back ? 'no back control' : 'a back control');
+  return { case: which, verdict: wrong.length ? wrong.join(', ') : 'pass' };
+};
+
 /* One reading, filed. Shared by the walk, the gated leg and the proof, so
    all three land in the same table with the same keys. */
 const record = async (route, palette, theme, extra = {}) => {
@@ -851,6 +912,7 @@ const record = async (route, palette, theme, extra = {}) => {
       name,
       ...reading,
       counts,
+      rule7: rule7(route, reading),
       door: !!route.door,
       ...extra,
       state: state?.name
@@ -946,6 +1008,27 @@ if (args.includes('--prove')) {
     got: hit('target', 'prove-inert')
   });
   proof.push({ check: 'type', mark: '32px inside a display:none parent', want: false, got: hit('type', 'prove-hidden') });
+
+  /* Rule 7's verdict, on the screen the proof leg is already standing on
+     (carpet 25). The mark is worth having because this check reports a word
+     rather than a count, and a word that is always "pass" reads the same
+     whether the rule is being applied or ignored. So: the screen as it
+     ships, and then the same screen with its back control taken out of the
+     DOM, which has to come back as the finding it would be. */
+  proof.push({
+    check: 'field',
+    mark: '/settings as chrome, with the field and a back control',
+    want: 'pass',
+    got: rule7({ path: '/settings', chrome: true }, reading).verdict
+  });
+  await page.evaluate(() => document.querySelector('[data-screen-back]')?.remove());
+  const stripped = await read();
+  proof.push({
+    check: 'field',
+    mark: 'the same screen with its back control removed',
+    want: 'no back control',
+    got: rule7({ path: '/settings', chrome: true }, stripped).verdict
+  });
   await page.evaluate(() => document.querySelector('.prove-fixture')?.remove());
 }
 
@@ -1095,6 +1178,37 @@ for (const [bucket, items] of Object.entries(groups)) {
   for (const row of rows) lines.push(`- \`${row.where}\` - ${row.detail} - ${row.routes.length} reading(s): ${row.routes.join(', ')}`);
   lines.push('');
 }
+/* Rule 7, route by route (carpet 25). The other checks report the
+   divergences and say nothing about what passed, which is right for a rule
+   that reads a property off every element on the screen. This one is a
+   verdict per screen against what that screen *is*, so the whole list goes
+   in the report: a route missing from it is a route the walk never read,
+   and that is the reading ticket 20's own summary could not make. */
+const rule7Rows = new Map();
+for (const reading of audit) {
+  if (!reading.rule7) continue;
+  const at = `${reading.route}${reading.state ? ` (${reading.state})` : ''}`;
+  const row = rule7Rows.get(at) ?? { at, case: reading.rule7.case, why: reading.rule7.why, verdicts: new Set() };
+  row.verdicts.add(reading.rule7.verdict);
+  rule7Rows.set(at, row);
+}
+const rule7List = [...rule7Rows.values()].map((row) => ({
+  at: row.at,
+  case: row.case,
+  why: row.why,
+  verdict: [...row.verdicts].join(' / ')
+}));
+const rule7Failing = rule7List.filter((row) => row.verdict !== 'pass' && row.verdict !== 'recorded exception');
+const rule7Exceptions = rule7List.filter((row) => row.verdict === 'recorded exception');
+lines.push(
+  `## rule 7 (${rule7List.length - rule7Failing.length - rule7Exceptions.length} pass, ` +
+    `${rule7Exceptions.length} recorded exception(s), ${rule7Failing.length} finding(s))`,
+  ''
+);
+for (const row of [...rule7Failing, ...rule7Exceptions, ...rule7List.filter((r) => r.verdict === 'pass')])
+  lines.push(`- \`${row.at}\` - ${row.case} - ${row.verdict}${row.why ? ` - ${row.why}` : ''}`);
+lines.push('');
+
 lines.push('## coverage', '');
 for (const row of coverage)
   lines.push(
@@ -1118,6 +1232,7 @@ await writeFile(
       pinnedLeg,
       proof,
       coverage,
+      rule7: rule7List,
       groups,
       audit,
       shots,
@@ -1136,6 +1251,12 @@ console.log(
 );
 for (const [bucket, items] of Object.entries(groups))
   console.log(`  ${bucket}: ${Object.keys(items).length} distinct`);
+console.log(
+  `  rule 7: ${rule7List.length - rule7Failing.length - rule7Exceptions.length} pass, ` +
+    `${rule7Exceptions.length} recorded exception(s)${rule7Exceptions.length ? ` (${rule7Exceptions.map((r) => r.at).join(', ')})` : ''}, ` +
+    `${rule7Failing.length} finding(s)`
+);
+for (const row of rule7Failing) console.log(`    ${row.at} - ${row.case} - ${row.verdict}`);
 const gaps = coverage.filter((c) => c.gap);
 if (gaps.length) console.log(`  coverage gaps: ${gaps.map((g) => g.variant).join(', ')}`);
 console.log(`audit in ${outDir}/audit.json, findings in ${outDir}/findings.md`);
