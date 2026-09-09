@@ -137,7 +137,7 @@
 
   .wear-axis-label {
     fill: var(--text-2);
-    font-size: 10px;
+    font-size: var(--text-sm);
   }
 
   /* The presentation chip's mark (ticket 17, ADR-0048): a dot on the
