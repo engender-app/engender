@@ -46,10 +46,11 @@
    Every finding carries the selector chain that produced it, so triage
    groups by shared component instead of by screen.
 
-   Screens are shot only where a route diverges, plus the sample the review
-   page needs: 156 PNGs nobody opens is not evidence, and the review page
-   for this ticket shows what changed rather than the whole app (Alicja,
-   ticket 07's sign-off).
+   A route is shot only where it names a `shoot` selector, which today is
+   the gated leg's one surface: 156 PNGs nobody opens is not evidence, and
+   a finding carries its selector chain and its measurement, which is what
+   triage reads. The crops a review page needs are cut separately, against
+   the addresses the findings name.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
@@ -60,16 +61,19 @@
    .svelte-kit/output relative to the cwd whatever root it is given, so
    --root on its own silently sweeps this build twice under two tags.
 
-   `--prove` runs one extra route first with five marks - an undersized
+   `--prove` runs one extra route first with six marks - an undersized
    button, a covered button and a tonal ground, which have to be found, and
-   two that have to be left alone: a big heading inside a `display: none`
-   parent, and a round button. It exits non-zero if any of the five
-   misbehaves. A sweep that reports nothing is worth nothing until it has
-   been seen to find something, and the two negative marks are both
-   phantoms this instrument has actually produced - `display` is not
-   inherited, so `getComputedStyle` on a hidden element's child still
-   answers `display: block`; and hit testing respects `border-radius`, so a
-   circle falls through to its ancestor at the four corners of its box.
+   three that have to be left alone: a big heading inside a `display: none`
+   parent, a round button, and a small button inside an `inert` subtree. It
+   exits non-zero if any of the six misbehaves. A sweep that reports nothing
+   is worth nothing until it has been seen to find something, and all three
+   negative marks are phantoms this instrument has actually produced -
+   `display` is not inherited, so `getComputedStyle` on a hidden element's
+   child still answers `display: block`; hit testing respects
+   `border-radius`, so a circle falls through to its ancestor at the four
+   corners of its box; and an inert control is not a control, which is how
+   the floating bar came to report itself as covered by the screen while a
+   sheet held it out.
 
    `--pin-android` adds the states no web build can reach. The reminders
    list is `isAndroid()`-gated with no demo bypass, so `.card.checkin-card`
@@ -406,13 +410,24 @@ const read = () =>
          1. A link inside a sentence. It is `display: inline`, it takes the
             line box's height, and growing it to 48px would open a hole in
             the paragraph. Rule 4's notice draws its action this way.
-         2. Something nothing can hit: `pointer-events: none`, or disabled.
-            Not a target, so not a target failure.
+         2. Something nothing can hit: `pointer-events: none`, or disabled,
+            or inside an `inert` subtree. Not a target, so not a target
+            failure, and not something worth reporting as covered either.
+            `inert` is how a sheet holds the background out - `Sheet.svelte`
+            sets it on the shell's other children - and `components.css`
+            then puts an inert child of the shell at `z-index: -1` on
+            purpose, so the floating bar recedes *behind* the screen while a
+            sheet is up. Read as a divergence that was the withdrawal
+            working: the whole bar reported its active tab as covered by
+            `.app-main` on the one route the walk opens a sheet on. Neither
+            `disabled` nor a computed `pointer-events` reflects inertness,
+            so it is asked for by attribute.
          3. A negative tabindex, which is a scroll region or a focus sink
             asking to be reachable from script, not a control. */
       const exemptTarget = (el, cs) => {
         if (cs.pointerEvents === 'none') return true;
         if (el.disabled) return true;
+        if (el.closest('[inert]')) return true;
         const tabindex = el.getAttribute('tabindex');
         if (tabindex !== null && Number(tabindex) < 0 && !el.matches('button, a, input, select, textarea'))
           return true;
@@ -905,6 +920,7 @@ if (args.includes('--prove')) {
       </span>
       <button class="prove-round" style="display:flex;width:48px;height:48px;border-radius:50%;border:0;font-size:16px">o</button>
       <div class="prove-tonal" style="width:100px;height:40px;background:var(--surface-2)"></div>
+      <span class="prove-inert" inert><button class="prove-inert-btn" style="display:flex;width:24px;height:24px;font-size:16px">i</button></span>
       <div class="prove-hidden" style="display:none"><h1 style="font-size:32px">not on screen</h1></div>`;
     document.querySelector('[data-app-scroll-region]')?.prepend(host);
   });
@@ -918,6 +934,12 @@ if (args.includes('--prove')) {
     mark: 'a 48px round button, whose box corners are not the button',
     want: false,
     got: hit('occlusion', 'prove-round')
+  });
+  proof.push({
+    check: 'target',
+    mark: 'a 24px button inside an inert subtree, which nothing can hit',
+    want: false,
+    got: hit('target', 'prove-inert')
   });
   proof.push({ check: 'type', mark: '32px inside a display:none parent', want: false, got: hit('type', 'prove-hidden') });
   await page.evaluate(() => document.querySelector('.prove-fixture')?.remove());
