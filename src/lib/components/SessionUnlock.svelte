@@ -194,10 +194,11 @@
 
   {#if mode === 'passphrase'}
     <form class="gate-form" onsubmit={submitPassphrase}>
-      <div>
+      <!-- On the rule, like every other typed answer at a gate (rule 13). -->
+      <div class="typed">
         <label class="field-label" for="session-passphrase">{m.pp_label_unlock()}</label>
         <input
-          class="input"
+          class="rule-input"
           type="password"
           id="session-passphrase"
           name="passphrase"
