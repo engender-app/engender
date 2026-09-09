@@ -29,8 +29,11 @@
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/cohesion-sweep-gallery.mjs
-   `--root <dir>` previews another checkout's build, `--out <dir>` names
-   where the shots and the audit land, `--routes a,b` narrows the walk. */
+   `--out <dir>` names where the audit lands. To sweep another checkout -
+   main's tip, for a before column - run it from *that* checkout's directory
+   and hand it the same path as --root: vite's preview server resolves
+   .svelte-kit/output relative to the cwd whatever root it is given, so
+   --root on its own silently sweeps this build twice under two tags. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
