@@ -126,14 +126,8 @@
       onclick={() => (frame.insets = !frame.insets)}>Simulate cutout</button
     >
   </div>
-  <!-- The handle is the walkthrough's (ticket 36): the restore flow ends with
-       the journal holding one entry out of its own archive, and every flow
-       after it reads the persona's 150 days, so it puts the persona back
-       through this control rather than by knowing how the seed works. Named
-       like "Fill every feature" next door, for the same reason. -->
   <button
     class="demo-btn"
-    data-reset-demo
     onclick={async () => {
       await resetDemo();
       goto('/');
