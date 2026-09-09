@@ -97,7 +97,7 @@
       <!-- The one moment the characters exist. No back arrow out of this
            branch beyond the header's, and the primary action is the
            acknowledgement rather than anything that mints again. -->
-      <div class="card">
+      <div class="kit-panel" data-kit-surface>
         <h2 class="rk-shown-title">{m.rk_shown_title()}</h2>
         <p class="rk-key" data-recovery-key>{shown}</p>
         <p class="ob-text">{m.rk_shown_body()}</p>
@@ -125,7 +125,7 @@
         >
       </div>
     {:else if recoveryKeyPresence.exists}
-      <div class="card">
+      <div class="kit-panel" data-kit-surface>
         <p class="ob-text">{m.rk_active_body()}</p>
       </div>
       <ListCard>
@@ -143,7 +143,7 @@
         />
       </ListCard>
     {:else}
-      <div class="card">
+      <div class="kit-panel" data-kit-surface>
         <p class="ob-text">{m.rk_intro()}</p>
         <p class="ob-text">{m.rk_intro_cost()}</p>
       </div>
