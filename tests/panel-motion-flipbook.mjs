@@ -127,7 +127,13 @@ for (const pair of pairs) {
       w: size.w,
       h: size.h,
       frames,
-      ...(scene.trace ? { trace: scene.trace, axis: scene.axis, clickAt: scene.clickAt } : {})
+      ...(scene.trace ? { trace: scene.trace, axis: scene.axis, clickAt: scene.clickAt } : {}),
+      /* `samples` rides along the same way `trace` does, and for the same
+         reason: the per-animation-frame reads the state and return
+         recorders take (tests/motion-sampling.mjs) are what turn "the row
+         collapsed" into a number per frame, and a review page that has the
+         frames without them can only describe what it shows. */
+      ...(scene.samples ? { samples: scene.samples } : {})
     });
     console.log(`${label}/${scene.name}: ${frames.length} of ${scene.frames.length} frames`);
   }

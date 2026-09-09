@@ -1710,8 +1710,8 @@ try {
 
 
 /* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
-   redesign ticket 22: eight steps - welcome, name, flag, scales, areas,
-   lock, permissions, finish) */
+   redesign tickets 22, 31 and 32: nine steps - welcome, name, flag, scales,
+   areas, lock, permissions, disguise, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1866,9 +1866,33 @@ try {
     throw new Error('the permissions step carries no Skip');
   }
 
-  await page.locator('[data-next]').click(); // permissions -> finish
+  await page.locator('[data-next]').click(); // permissions -> disguise
+
+  /* Ticket 32: setup's last question, and the one answer that is not
+     applied where it is given. The switch arrives off, the row carries the
+     platform's own consequence, and the preview under it names what the
+     launcher would show. Nothing about the app has changed by reaching the
+     step - the tab is still the app's own, which is asserted on Home
+     below, after a skip. */
+  const disguiseSwitch = page.getByRole('switch', { name: 'Disguise app' });
+  if ((await disguiseSwitch.getAttribute('aria-checked')) === 'true') {
+    throw new Error('the disguise step arrived already switched on');
+  }
+  const disguiseReason = await page.locator('[data-list-row="disguise"]').textContent();
+  if (!/browser tab|launcher/.test(disguiseReason)) {
+    throw new Error('the disguise row says nothing about what changes: ' + JSON.stringify(disguiseReason));
+  }
+  const previewName = await page.locator('[data-disguise-name]').textContent();
+  if (previewName !== 'Notes') throw new Error('the disguise preview names: ' + previewName);
+
+  /* Skipped rather than answered, which is this flow's half of the AC: a
+     skip leaves the stored value alone. The toggled-on half is 13c. */
+  await page.locator('[data-skip-step]').click(); // disguise skipped -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
+  if ((await page.title()) === 'Notes') {
+    throw new Error('skipping the disguise step disguised the app anyway');
+  }
   const greet = await page.locator('[data-home-hello]').textContent();
   if (!greet.includes('Ola')) throw new Error('greeting: ' + greet);
   if (await page.evaluate(() => document.documentElement.dataset.palette) !== 'nonbinary') {
@@ -2079,11 +2103,12 @@ try {
   await page.locator('#ob-restore-pass').fill('walkthrough');
   await page.locator('[data-restore-check]').click();
 
-  /* Two steps between the restore and the finish, and both are about this
-     device rather than about the journal (steps.ts's restoreSteps): the
-     access mode, whose key an archive password is not, and the permissions
-     list, whose answers live in the OS. Nothing the archive answers is asked
-     again: no name field, no flag picker, no scales, no areas. */
+  /* Three steps between the restore and the finish, and all three are about
+     this device rather than about the journal (steps.ts's restoreSteps): the
+     access mode, whose key an archive password is not; the permissions list,
+     whose answers live in the OS; and disguise, which is a preference but a
+     device-local one. Nothing the archive answers is asked again: no name
+     field, no flag picker, no scales, no areas. */
   await waitingFor('the access mode step after the check', () =>
     page.waitForSelector('[data-next]', { timeout: 120000 })
   );
@@ -2096,7 +2121,12 @@ try {
      so no archive can have answered it (steps.ts). It arrived here with
      ticket 31 and needed no edit to restoreSteps() - only this click. */
   await waitingFor('the permissions step', () => page.waitForSelector('[data-permission-list]'));
-  await page.locator('[data-next]').click(); // permissions -> finish
+  await page.locator('[data-next]').click(); // permissions -> disguise
+  /* And disguise, for the same reason: it stores a preference, but a
+     device-local one, so no archive answered it either (ticket 32). Left
+     off, which is what skipping it would also mean. */
+  await waitingFor('the disguise step', () => page.waitForSelector('[data-list-row="disguise"]'));
+  await page.locator('[data-next]').click(); // disguise -> finish
   await waitingFor('the finish', () => page.waitForSelector('[data-finish]'));
 
   await page.locator('[data-finish]').click();
@@ -2159,6 +2189,78 @@ try {
   await page.waitForSelector('[data-home-hello]');
   ok('giving up on a restore leaves setup running as a new person');
 } catch (e) { fail('onboarding restore abandoned', e); }
+
+/* 13b1. turning the disguise on during setup leaves a finished install
+   rather than a setup that died halfway (redesign ticket 32, ADR-0079).
+
+   The web half of the ticket's acceptance. On Android the alias flip closes
+   the app and the proof is that the journal opens after the restart; there
+   is no restart here, so what this can show is the other half of the same
+   claim - the disguise is in force, every answer was written, and the first
+   run is over rather than waiting at step one. complete()'s ordering is
+   held to in the Node tier (onboarding/complete.test.ts) and on a device. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.locator('#ob-name').fill('Kit');
+  await page.locator('[data-next]').click(); // name -> flag
+  await page.locator('[data-next]').click(); // flag -> scales
+  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // areas -> lock
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
+
+  /* Held, not applied: the tab is still the app's own with the switch on,
+     because the answer is written by complete() and by nothing before it.
+     This is the assertion that would fail if the step ever wrote straight
+     through to `prefs.disguise` - which on Android would close the app
+     mid-setup and is the reason the step is last. */
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForSelector('[data-disguise-preview][data-on="true"]');
+  if ((await page.title()) === 'Notes') {
+    throw new Error('the disguise applied itself on the step rather than at the finish');
+  }
+
+  await page.locator('[data-next]').click(); // disguise -> finish
+  await page.locator('[data-finish]').click();
+
+  /* Both halves of "a finished install", in the order they matter. The
+     disguise is in force, and the app is on Home under it rather than back
+     at step one. */
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  await page.waitForSelector('[data-home-hello]');
+  const disguisedGreet = await page.locator('[data-home-hello]').textContent();
+  if (!disguisedGreet.includes('Kit')) {
+    throw new Error('the name answered before the disguise did not survive it: ' + disguisedGreet);
+  }
+  await heldOnHome('finishing setup with the disguise on came back to setup');
+
+  /* And it survives a reload, which is the closest a browser gets to the
+     restart Android does for free: `onboarded` and `disguise` both came off
+     SQLite this time rather than out of the page that wrote them. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  if (await page.locator('[data-next]').count()) {
+    throw new Error('a disguised finish left the first run unfinished');
+  }
+  if ((await page.title()) !== 'Notes') {
+    throw new Error('the disguise did not survive a reload: ' + (await page.title()));
+  }
+
+  /* Off again, or every flow after this one meets a disguised app - the same
+     courtesy flow 18 pays after its own toggle. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title !== 'Notes', null, { timeout: 8000 });
+  await page.keyboard.press('Escape');
+  ok('turning the disguise on during setup finishes the first run under it');
+} catch (e) { fail('onboarding disguise', e); }
 
 /* 13b. the settings scales sheet is the same list onboarding drew, and a
    tick is the change - there is no confirm on the sheet and never was
@@ -2304,7 +2406,8 @@ try {
   if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
   await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
-  await page.locator('[data-next]').click(); // permissions -> finish
+  await page.locator('[data-next]').click(); // permissions -> disguise
+  await page.locator('[data-next]').click(); // disguise -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
@@ -4236,7 +4339,7 @@ try {
 
   /* Closing the running wear session: the end day is picked, never assumed,
      so the confirm is refused until the field has one. */
-  await page.locator('[data-coming-back-item="wear-session"] [data-notice-action]').click();
+  await page.locator('[data-coming-back-yes="wear-session"]').click();
   await page.waitForSelector('[data-coming-back-wear-confirm]');
   if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
     throw new Error('the wear session could be closed without naming the day it ended');
@@ -4261,7 +4364,7 @@ try {
   }
 
   // And a no takes the row away without writing anything.
-  await page.locator('[data-coming-back-item="dose"] [data-notice-dismiss]').click();
+  await page.locator('[data-coming-back-no="dose"]').click();
   await page.waitForSelector('[data-coming-back-item="dose"]', { state: 'detached' });
 
   /* The moment is over. Home is where a return is noticed, so this is the

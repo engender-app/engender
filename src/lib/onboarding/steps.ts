@@ -27,6 +27,7 @@ export type OnboardingStep =
   | 'areas'
   | 'lock'
   | 'permissions'
+  | 'disguise'
   | 'done';
 
 /* What a first run settles, and why each one is here rather than left to
@@ -51,10 +52,17 @@ export type OnboardingStep =
               device, the list of what it can reach is the claim made
               concrete, and because saying it once beats four inline
               explanations nobody sees together.
+     disguise whether the app wears a different name and icon outside
+              itself (phase 10 redesign ticket 32, ADR-0079) - the one
+              privacy control nobody can discover before they need it,
+              because everything it changes is in the launcher, the tab
+              strip and the home screen rather than on any screen the app
+              draws
 
-   Five settings and one list, plus a welcome and a finish. Everything else
-   the app has a preference for is either already right by default or is
-   something a person goes looking for once they know the app.
+   Five settings, one list and one last question, plus a welcome and a
+   finish. Everything else the app has a preference for is either already
+   right by default or is something a person goes looking for once they
+   know the app.
 
    The settled shape (phase 10 redesign ticket 29, DIRECTION.md rule 12) is
    ten steps, and this list becomes it as the tickets that build each step
@@ -63,12 +71,19 @@ export type OnboardingStep =
      welcome, name, flag, scales, areas, access mode, PIN pad,
      permissions, disguise, done
 
-   `lock` splits into the mode list and the pad (ticket 30); `disguise` is
-   the last question, applied last (ticket 32). What ticket 31 landed:
-   `checkin` left the flow and `permissions` took its place. The daily nudge
-   is not asked for in setup any more - the notification row's reason line
-   is what names it, and the switch itself stays on the reminders screen,
-   where skipping the step leaves it exactly as it was. */
+   `lock` is the one step left to split, into the mode list and the pad
+   (ticket 30). What ticket 31 landed: `checkin` left the flow and
+   `permissions` took its place. The daily nudge is not asked for in setup
+   any more - the notification row's reason line is what names it, and the
+   switch itself stays on the reminders screen, where skipping the step
+   leaves it exactly as it was.
+
+   What ticket 32 landed: `disguise`, after the permissions and before the
+   finish. It sits there for a mechanical reason rather than a rhetorical
+   one - turning it on swaps the Android launcher alias, which closes the
+   app, and the flow holds every answer in memory until `complete()` writes
+   them. A disguise switch anywhere earlier would take the rest of setup
+   down with it. Last question, applied last. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -77,6 +92,7 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'areas',
   'lock',
   'permissions',
+  'disguise',
   'done'
 ];
 
@@ -123,6 +139,13 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
      there is nothing here for an archive to have carried. That is the same
      reason it survives a restore - device state is not journal state. */
   permissions: [],
+  /* `disguise` is a preference, and a device-local one (ticket 32,
+     ADR-0079): what a person is hiding on this phone is not a fact about
+     their journal, so it does not travel and this step runs after a restore
+     like any other. Listed rather than left empty, because the honest entry
+     is the key it writes - if `disguise` ever became portable this map is
+     where that would show up, and the step would stop being asked. */
+  disguise: ['disguise'],
   done: []
 };
 
