@@ -663,10 +663,13 @@ const page = `<title>Setup Wears the Field</title>
         step.
       </li>
       <li>
-        <strong>The pad screen still scrolls at its own address.</strong> 52px at 390 x 844 and
-        318px at 320 x 568, down from 76 and 398. What is left is the settings screen's header and
-        the card it wraps the module in rather than anything on the pad: the gate shell is ticket
-        34's.
+        <strong>The pad inside setup is not measured, and calling that out of scope would be
+        dishonest.</strong> The demo's first-run control leaves the access mode in place, so the
+        lock step falls to its toggle and never mounts the module - which means the no-scroll loop
+        walks nine screens and never the pad. What the shots above are is the same module at its
+        settings address, a different frame: the pad itself is 260px at 390 x 844 and 216 in the
+        short form, down from 284 at both, and the screen it sits on scrolls 52px and 318px, down
+        from 76 and 398. Ticket 34 needs a way in before either ticket can claim the pad's own fit.
       </li>
       <li>
         <strong>The rest of the palette still arrives in one frame.</strong> The field's colour
