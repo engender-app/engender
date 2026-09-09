@@ -2,13 +2,14 @@
   /* The first run (F16), rebuilt for phase 5 ticket 26.
 
      Five settings, one pass. What a person had to leave here and go and find
-     afterwards was the flag and the daily check-in, and both are things
-     someone decides in the first minute and almost never revisits: the flag
-     because it is the app's whole look, the check-in because a journal
-     nobody is reminded about is a journal that stops after a week. So the
-     flow is welcome, name, flag, scales, areas, lock, check-in, finish, and
-     the order and the skip rules live in $lib/onboarding/steps.ts rather than
-     in a run of `step === 3` comparisons here.
+     afterwards was the flag, which is the app's whole look and something
+     someone decides in the first minute and almost never revisits. So the
+     flow is welcome, name, flag, scales, areas, lock, permissions, finish,
+     and the order and the skip rules live in $lib/onboarding/steps.ts rather
+     than in a run of `step === 3` comparisons here. The daily check-in used
+     to be the last question and is not asked here any more (phase 10
+     redesign ticket 31): the permissions step names it as one of the things
+     a notification is for, and the switch stays on the reminders screen.
 
      Two rules the user set for this ticket, and they are why the foot of
      every step looks the way it does. Every step that stores something

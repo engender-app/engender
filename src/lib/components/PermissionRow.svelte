@@ -21,6 +21,11 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import type { GrantRow } from '$lib/permissions/catalogue';
 
+  /* Written out rather than reached through `m[note]`: check-copy.mjs reads
+     every `m.<key>` in the tree as plain text to find the keys nothing calls,
+     and a dynamic lookup is invisible to it. */
+  const NOTE = { browserHolds: m.perms_note_browser_holds };
+
   let {
     row,
     title,
@@ -42,12 +47,16 @@
   } = $props();
 </script>
 
+<!-- The reason always, and a second line only on the one row that can dead
+     end: a web prompt the browser has refused and will not show again, which
+     is the single refusal the app cannot hand a button to. ListRow drops a
+     falsy line, so every other row is one line under its title. -->
 <ListRow
   static
   key={`perm-${row.key}`}
   icon={row.icon}
   {title}
-  subtitle={why}
+  subtitle={[why, row.note !== null && NOTE[row.note]()]}
   chevron={false}
   data-permission={row.key}
   data-permission-state={row.state}
@@ -97,10 +106,15 @@
   }
 
   /* A block of the area's own stripe, which is what a control that is the
-     row's one action gets here (rule 4). Shorter than the app's standing
-     button because it sits inside a 60px row. */
+     row's one action gets here (rule 4). Narrower than the app's standing
+     button, which spends var(--space-6) either side and would leave a
+     two-word label no room beside a reason. */
   .perm-grant {
-    min-height: 36px;
+    /* Android's 48dp floor, which PRODUCT.md takes as the app's own because
+       it is the stricter of the two platforms. The row is the only thing
+       around it and the row is not itself a target, so this button is the
+       whole of what a finger has to find. */
+    min-height: var(--touch-target);
     padding: 0 var(--space-3);
     font-size: 15px;
     background: var(--role-draw);
