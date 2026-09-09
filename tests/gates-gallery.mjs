@@ -13,16 +13,43 @@
         node tests/gates-gallery.mjs [outDir]
    Default outDir is .claude/gate-shots, which is gitignored and durable. */
 import { createServer, preview } from 'vite';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outDir = resolve(process.argv[2] ?? resolve(here, '../.claude/gate-shots'));
+const argv = process.argv.slice(2);
+/* The gates alone, which is what a gate ticket's sign-off shows: the first
+   run has its own galleries since it became a step machine, and a review page
+   that also carries ten setup steps is a review page nobody can find the
+   change in (Alicja, on redesign ticket 07: "only showcase the things that
+   actually changed in this ticket"). */
+const gatesOnly = argv.includes('--gates-only');
+const themeAt = argv.indexOf('--themes');
+/* The first bare argument, skipping any that is a flag's own value: `node
+   tests/gates-gallery.mjs --themes light` names a theme, not a directory. */
+const flagValues = new Set(themeAt >= 0 ? [argv[themeAt + 1]] : []);
+const outDir = resolve(
+  argv.find((a) => !a.startsWith('--') && !flagValues.has(a)) ?? resolve(here, '../.claude/gate-shots')
+);
 
-const THEMES = ['dark', 'light'];
+const THEMES = themeAt >= 0 ? argv[themeAt + 1].split(',') : ['dark', 'light'];
+
+/* Rule 14's sizes: the two a phone has at rest, the two big ones, and a
+   window shortened to what a raised keyboard leaves. A gate's frame is
+   `overflow: clip`, which draws no scrollbar and still reports what it is
+   hiding, so a gate that stopped fitting would cut its own way out off the
+   bottom in silence. Measured here rather than asserted in the stylesheet
+   (redesign ticket 34). */
+const FLOOR_SIZES = [
+  { width: 320, height: 568 },
+  { width: 360, height: 640 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 390, height: 360 }
+];
 
 /* Every state the eleven scenes cover. Shot on the default flag in both
    themes: what changes between palettes on a gate is one accent and one
@@ -188,6 +215,48 @@ await fixture.listen();
       await shoot(page, `gate-access-choice-${palette}-${theme}`);
     }
   }
+  await select('Palette', 'trans');
+
+  /* Rule 14, measured rather than asserted (redesign ticket 34): every gate
+     at every size, reading what the frame is hiding. Two reads, because they
+     answer different questions - the frame says the gate did not grow past
+     the window, and the page inside it is the one region that may scroll and
+     on the long gates does. A gate whose frame reports overflow has carried
+     its own way out off the bottom edge with nothing on screen to say so. */
+  const floor = {};
+  for (const size of FLOOR_SIZES) {
+    await page.setViewportSize(size);
+    for (const scene of SCENES) {
+      /* Off the scene and back, for the reason the per-mode loop above gives:
+         the stage is keyed on the scene name, so re-selecting the one already
+         chosen changes nothing and the module would still be showing whatever
+         screen the last click left it on. Measured without this, the first
+         size reported 5px hidden on `access-choice` that belonged to a
+         passphrase detail screen left standing from the loop before it. */
+      await select('Scene', scene === 'converting' ? 'schema-too-new' : 'converting');
+      await select('Scene', scene);
+      const read = await page.evaluate(() => {
+        const frame = document.querySelector('.screen-gate');
+        const region = document.querySelector('.gate-page');
+        const of = (el) => (el ? el.scrollHeight - el.clientHeight : null);
+        return { frame: of(frame), page: of(region) };
+      });
+      floor[`${scene}-${size.width}x${size.height}`] = read;
+      if (read.frame > 0) {
+        console.log(
+          `OVER THE FLOOR  ${scene} at ${size.width}x${size.height}: the frame hides ${read.frame}px`
+        );
+      }
+    }
+  }
+  await writeFile(`${outDir}/floor.json`, JSON.stringify(floor, null, 2));
+  const breaches = Object.entries(floor).filter(([, r]) => r.frame > 0);
+  console.log(
+    breaches.length
+      ? `${breaches.length} of ${Object.keys(floor).length} gate/size pairs breach rule 14`
+      : `every gate clears rule 14 at all ${FLOOR_SIZES.length} sizes`
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
 
   await page.close();
 }
@@ -195,6 +264,7 @@ await fixture.listen();
 await fixture.close();
 
 /* ---------- the first run, from the app's own build ---------- */
+if (!gatesOnly) {
 const app = await preview({ preview: { port: 0 } });
 const address = app.httpServer.address();
 const base = `http://localhost:${address.port}`;
@@ -298,6 +368,7 @@ const base = `http://localhost:${address.port}`;
 }
 
 await app.close();
+}
 await browser.close();
 
 console.log(`${shots.length} shots in ${outDir}`);

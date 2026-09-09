@@ -1,7 +1,7 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { resetApp } from '$lib/stores/boot.svelte';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import Icon from './Icon.svelte';
@@ -36,7 +36,7 @@
 {#if usingRecoveryKey}
   <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
 {:else}
-<GateScreen icon="alert" tone="alert" title={m.dbr_title()}>
+<GateScreen title={m.dbr_title()}>
   <!-- One body per state rather than one body plus a caveat. The original
        ends "so this copy cannot be reopened", which above a button that
        reopens it is the exact thing docs/ui-copy.md forbids on a risk
@@ -48,7 +48,7 @@
        a frame later. A title with no body for one frame is the honest
        version (docs/ui-copy.md, the screens that carry risk). -->
   {#if recoveryKeyPresence.known}
-  <p class={gateBodyClass(body)} data-device-bound-recovery>{body}</p>
+  <p class="gate-body" data-device-bound-recovery>{body}</p>
   {#if recoveryKeyPresence.exists}
     <div class="gate-actions">
       <button class="btn btn-primary" data-use-recovery-key onclick={() => (usingRecoveryKey = true)}>
@@ -60,7 +60,7 @@
          the screen must not read as blame, so it says what the thing is and
          that it is worth having next time, and stops - no "you should have",
          and nothing about what they did or did not do. -->
-    <p class={gateBodyClass(m.dbr_recovery_none(), 'is-small')} data-device-recovery-none>
+    <p class="gate-body" data-device-recovery-none>
       {m.dbr_recovery_none()}
     </p>
   {/if}

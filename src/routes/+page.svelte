@@ -44,6 +44,7 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
+  import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -383,7 +384,16 @@
   let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
-  let showBackupNotice = $derived(backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed);
+  /* Held back while the app is opening, and only then (redesign ticket 34).
+     A notice whose read answers during the unlock's transition is not drawn
+     while it arrives - the browser is painting the transition's snapshots -
+     so it is simply there in the frame the paint lifts on, with the rows
+     below it shoved down. Waiting means it arrives on a screen that has
+     stopped moving, which is where a notice opening its own height reads as
+     the change it is. Nothing about the read waits; only the appearing. */
+  let showBackupNotice = $derived(
+    backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
+  );
 
   /* The appointment debrief offer (phase 6 ticket 08, rekeyed to an
      appointment id by ticket 58, ADR-0066): the most recent past

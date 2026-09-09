@@ -2582,6 +2582,19 @@ try {
   await page.waitForSelector('[data-settings-list]');
   ok("Today's gear reaches Settings");
 
+  /* Rule 7's chrome case, the phone half (carpet 25). The screen arrives on
+     a field like every other screen in the app, and it shows a back
+     control, because the gear that led here is in Today's foot. Both are
+     read as painted rather than as attached: the whole finding this closes
+     was a screen whose header was in the DOM and drew nothing. */
+  if (!(await page.locator('[data-field-blind]').first().isVisible()))
+    throw new Error('/settings draws no field on the phone');
+  if (!(await page.locator('[data-screen-back]').isVisible()))
+    throw new Error('/settings draws no back control on the phone');
+  await page.locator('[data-screen-back]').click();
+  await page.waitForURL((url) => new URL(url).pathname === '/');
+  ok("/settings on the phone: the field, and back to Today");
+
   /* The rail's chrome is expected everywhere (ADR-0076); what "no other
      screen header does" actually means is ScreenHeader's own root, which
      every deep screen and every door but Today renders. `attached`, not
@@ -2622,6 +2635,20 @@ try {
   await page.waitForURL(/\/settings$/);
   await page.waitForSelector('[data-settings-list]');
   ok('rail settings row reaches Settings, four doors stay four');
+
+  /* Rule 7's chrome case, the desktop half (carpet 25): the same field, and
+     no back control, because the way in is a row in the rail and there is
+     nothing behind it to go back to. The control is dropped by
+     components.css inside this shell's own container query, the same way
+     the bottom bar is, so it stays in the markup and `display: none` is
+     what takes it out of the paint, the tab order and the accessibility
+     tree - which is why this counts visible matches rather than attached
+     ones. */
+  if (!(await page.locator('[data-field-blind]').first().isVisible()))
+    throw new Error('/settings draws no field in the 1024px shell');
+  const backOnDesktop = await page.locator('[data-screen-back]:visible').count();
+  if (backOnDesktop) throw new Error('/settings draws a back control in the 1024px shell');
+  ok('/settings in the 1024px shell: the field, and no back control');
 } catch (e) { fail('rail settings row', e); }
 
 /* 15. reminders web note at desktop */
@@ -2775,9 +2802,17 @@ try {
     probe.style.color = 'var(--text)';
     document.body.append(probe);
     const want = getComputedStyle(probe);
-    const got = getComputedStyle(document.querySelector('[data-home-field]'));
+    const field = document.querySelector('[data-home-field]');
+    /* The colour off the blind, the ink off the box. The field paints
+       nothing since redesign ticket 28: its colour is a block a window tall
+       hanging inside it whose bottom edge is a clip, which is what lets the
+       edge move without the box being resized. Read off the box, the
+       background has been `rgba(0, 0, 0, 0)` ever since - so this flow was
+       failing on a true statement about the wrong element. */
+    const got = getComputedStyle(field);
+    const paint = getComputedStyle(field.querySelector('[data-field-blind]'));
     const out = {
-      background: got.backgroundColor,
+      background: paint.backgroundColor,
       surface2: want.backgroundColor,
       ink: got.color,
       text: want.color,
