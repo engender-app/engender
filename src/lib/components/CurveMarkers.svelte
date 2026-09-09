@@ -203,17 +203,10 @@
 </g>
 
 <style>
-  /* Mixed from --text rather than given a hue of its own, which is the kit
-     layer's rule and holds for the same reason: eight palettes across two
-     themes, and ink is the only thing all of them share.
-
-     Lighter than the kit's 52% though, and thinner. A mark has to sit above
-     the axis labels and below anything plotted, and what is plotted here is
-     a 34%-opacity wash rather than a line - at the kit's weight the marks
-     were the darkest thing on the card. */
+  /* A guide (rule 9, ticket 24): 1px in --text-2. */
   .curve-marker {
-    stroke: color-mix(in oklab, var(--text) 30%, transparent);
-    stroke-width: 1.25;
+    stroke: var(--text-2);
+    stroke-width: 1;
     stroke-linecap: round;
     /* --dur-fast is already 1ms under prefers-reduced-motion (theme/base.css),
        so this needs no media query of its own. */

@@ -719,6 +719,19 @@ describe('rule 9: chart ink', () => {
     expect(face).toMatch(/border:\s*2px solid var\(--text\)/);
     expect(face).toMatch(/height:\s*28px/);
   });
+
+  it('holds the constellation trail and the curve markers to a guide, not their old 1.25 (ticket 24)', () => {
+    const trail = ruleFor(
+      styleBlocks('src/lib/components/GenderConstellationChart.svelte'),
+      '.cn-trail line'
+    )?.body ?? '';
+    expect(trail).toMatch(/stroke-width:\s*1\b/);
+    expect(trail).toMatch(/stroke:\s*var\(--text-2\)/);
+
+    const marker = ruleFor(styleBlocks('src/lib/components/CurveMarkers.svelte'), '.curve-marker')?.body ?? '';
+    expect(marker).toMatch(/stroke-width:\s*1\b/);
+    expect(marker).toMatch(/stroke:\s*var\(--text-2\)/);
+  });
 });
 
 describe('the two 200% zoom defects (ticket 07)', () => {
