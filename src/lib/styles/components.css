@@ -404,7 +404,17 @@
   }
 }
 .btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }
-.btn-ghost { background: none; color: var(--accent); }
+/* --accent-ink, not --accent, and it is a contrast fix rather than a look
+   change: the two are the same hue and the ink is only pulled toward --text
+   until it clears the 4.5:1 small-text floor on all three surfaces in every
+   palette and theme (palettes.css, and palette-contrast.test.ts holds it
+   there). Raw --accent is sized to be sat on rather than read - on trans
+   light it is 4.38:1 against --bg, which is what setup's two ways past a
+   step measured at 16px/750 when redesign ticket 33 walked every step of
+   the flow through tests/setup-contrast.mjs. Every ghost button in the app
+   was under the floor on that pair; the token for accent-coloured text
+   already existed and this rule was not using it. */
+.btn-ghost { background: none; color: var(--accent-ink); }
 .btn-danger { background: var(--danger-soft); color: var(--danger); }
 .btn-block { width: 100%; }
 
