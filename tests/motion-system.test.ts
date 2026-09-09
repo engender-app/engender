@@ -1197,11 +1197,17 @@ describe('the cap on animating layout', () => {
     { selector: '.kit-bar-mark', props: ['width'], note: 'the inline bar in a tile' },
     { selector: '.kit-dist-mark', props: ['height'], note: 'a distribution column' },
     { selector: '.kit-ordered-seg', props: ['width'], note: "OrderedStrip's segments" },
-    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" }
+    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" },
     /* `.setup-reveal` was here, onboarding's one grid-template animation: the
        fold under the check-in switch that opened to show a time field. The
        check-in step left setup with phase 10 redesign ticket 31 and took the
        fold with it, so the app has no grid-template animation left. */
+    {
+      selector: '.btn-primary::after',
+      props: ['left', 'right'],
+      note:
+        "redesign ticket 37's press-swipe prototype - an absolutely positioned empty box out of the button's flow, the same shape as .segment-pill's exemption, but landed here unaudited rather than moved up: nobody has argued or benchmarked the bound yet"
+    }
   ];
 
   const LAYOUT = [

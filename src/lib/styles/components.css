@@ -354,8 +354,8 @@
   transform: skewX(-18deg);
   pointer-events: none;
   transition:
-    left 220ms linear 35ms,
-    right 220ms linear;
+    left var(--dur-med) linear var(--stagger-step),
+    right var(--dur-med) linear;
 }
 .btn-primary.is-swiping::after {
   left: 145%;
