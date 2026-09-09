@@ -45,7 +45,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { hoverHints } from '$lib/a11y/hoverHint';
-  import { chromelessPath, cutsInsteadOfMoving, replacesAppNavigation } from '$lib/navigation/chromeless';
+  import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';

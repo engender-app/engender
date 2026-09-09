@@ -22,6 +22,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { SETUP_STEPS } from './setup-flow.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -52,18 +53,7 @@ const SIZES = {
   wide: { width: 430, height: 932 }
 };
 
-/** The runtime flow, in order. `lock` is the access-mode step. */
-const ORDER = [
-  'welcome',
-  'name',
-  'flag',
-  'scales',
-  'areas',
-  'lock',
-  'permissions',
-  'disguise',
-  'done'
-];
+const ORDER = SETUP_STEPS;
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
@@ -269,6 +259,9 @@ await app.close();
 await browser.close();
 
 console.log(`${shots.length} shots in ${outDir}`);
+/* 4px of tolerance for the same reason the walkthrough gives: the field's
+   height is a fraction of 175px and scrollHeight is an integer. */
 for (const [name, m] of Object.entries(scroll)) {
-  if (m.overflow > 0) console.log(`  SCREEN SCROLLS: ${name} by ${m.overflow}px`);
+  if (m.overflow > 4) console.log(`  SCREEN SCROLLS: ${name} by ${m.overflow}px`);
+  if (m.frame > 4) console.log(`  FRAME CLIPPED: ${name} by ${m.frame}px`);
 }

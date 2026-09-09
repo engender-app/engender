@@ -2004,8 +2004,15 @@ try {
       if (small.length) {
         throw new Error(`under the touch floor at ${where}: ${JSON.stringify(small)}`);
       }
-      if (read.region > 0) throw new Error(`the screen scrolls at ${where}: ${read.region}px`);
-      if (read.screen > 0) throw new Error(`the frame is clipped at ${where}: ${read.screen}px`);
+      /* A few pixels of tolerance, and only here: the field's height is the
+         sun's reach at this step, which is `175px` times a fraction, so the
+         frame's content height is fractional and `scrollHeight` is an
+         integer. Measured at 360x640 on the areas step, that rounding is
+         2px. It cannot hide a misfit - the ones this rule exists for were
+         571px on the permissions step and 964 on the areas step. */
+      const rounding = 4;
+      if (read.region > rounding) throw new Error(`the screen scrolls at ${where}: ${read.region}px`);
+      if (read.screen > rounding) throw new Error(`the frame is clipped at ${where}: ${read.screen}px`);
       if (read.footBottom > read.window + 1) {
         throw new Error(`the foot is off the window at ${where}: ${read.footBottom} of ${read.window}`);
       }

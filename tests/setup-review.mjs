@@ -23,6 +23,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
+import { SETUP_STEPS } from './setup-flow.mjs';
+
 const run = promisify(execFile);
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -56,17 +58,21 @@ const motion = JSON.parse(await readFile(resolve(root, '.claude/setup-motion.jso
 
 /* ---------- the frame, step by step ---------- */
 
-const STEPS = [
-  ['welcome', 'Welcome'],
-  ['name', 'The name'],
-  ['flag', 'The flag'],
-  ['scales', 'The scales'],
-  ['areas', 'The areas'],
-  ['lock', 'How it opens'],
-  ['permissions', 'What it can ask for'],
-  ['disguise', 'The disguise'],
-  ['done', 'The finish']
-];
+/* What each step is called on the page. The order is the flow's own
+   (tests/setup-flow.mjs), so a step added to the flow shows up here as a
+   missing label rather than as a shot silently left out. */
+const LABELS = {
+  welcome: 'Welcome',
+  name: 'The name',
+  flag: 'The flag',
+  scales: 'The scales',
+  areas: 'The areas',
+  lock: 'How it opens',
+  permissions: 'What it can ask for',
+  disguise: 'The disguise',
+  done: 'The finish'
+};
+const STEPS = SETUP_STEPS.map((key) => [key, LABELS[key] ?? key]);
 
 const stepPairs = [];
 for (const [key, label] of STEPS) {
