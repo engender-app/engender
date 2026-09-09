@@ -421,10 +421,27 @@
 }
 
 /* ---------- cards & rows ---------- */
+/* The old world's generic surface, and the one rule 4 reaches furthest
+   through: 13 routes draw a `.card` and none of them is a list, a chart or
+   a tile, so ticket 07 could not re-token it and handed it here.
+
+   What changed is the elevation, not the box. Rule 4 gives the app one
+   shadow and it belongs to the floating bar; a card that floats is a third
+   voice saying "this is a thing" beside the colour that is content and the
+   lines that are structure. The edge the shadow was standing in for is
+   drawn instead, at --hairline, which is what every flush group in the kit
+   already begins and ends with - the same trade the sheet made when it gave
+   up --shadow-3 for a line (see .sheet below).
+
+   What did not change is that this is still a box. Laying each of those 13
+   screens' content flush on the page is an arrangement change per screen,
+   which is the carpet's (ticket 20 files them); one shared line can retire
+   the elevation without touching a single screen's structure, and that is
+   what this is. */
 .card {
   background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-block);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4);
 }
 
@@ -1177,7 +1194,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   scale: 1.08;
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: var(--shadow-1);
 }
 
 .value-row, .cal-num, .pin-dots { font-variant-numeric: tabular-nums; }
@@ -1264,11 +1280,15 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   border-radius: 50%;
   background: var(--surface);
   border: 3px solid var(--accent);
-  box-shadow: var(--shadow-1);
   transition: box-shadow var(--dur-fast) var(--ease-out);
 }
+/* Held, the thumb takes the wash the row's press takes, drawn as a ring
+   because a ring is the only thing box-shadow spells (kit.css says the same
+   at .kit-block's inward edge). This is response, not elevation, so rule 4
+   leaves it alone - what it lost is the --shadow-1 that used to sit under
+   it and said the thumb was floating over the lane. */
 .slider.is-holding .slider-thumb {
-  box-shadow: var(--shadow-1), 0 0 0 9px color-mix(in oklab, var(--accent) 20%, transparent);
+  box-shadow: 0 0 0 9px color-mix(in oklab, var(--accent) 20%, transparent);
 }
 /* The ring belongs to the control, not to the thumb: melt focuses the thumb
    on pointerdown so a keyboard user and a finger both end up with the thumb
@@ -1391,10 +1411,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   min-height: 96px;
   position: relative;
   background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-block);
-  box-shadow: var(--shadow-1);
   color: var(--text); text-decoration: none;
-  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 /* The container transform's own layer (EntryCard.svelte) - a plain fill the
    same shape as the card, behind its real content, and the only thing that
@@ -1407,9 +1426,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   z-index: 0;
 }
 .entry-side, .entry-main { position: relative; z-index: 1; }
-/* Shadow only, no lift - DIRECTION.md tier 4 bans hover-dependent motion,
-   and the lift never had a touch equivalent to answer to (ticket 15). */
-.entry-card:hover { box-shadow: var(--shadow-2); }
+/* Nothing on hover. The rule here was a shadow and no lift, on the argument
+   that tier 4 bans hover-dependent motion and the lift had no touch
+   equivalent (ticket 15) - and rule 4 has since taken the shadow too, which
+   leaves the argument with nothing to make. A hover state that a finger can
+   never reach is not worth a second elevation for the app. */
 .entry-card + .entry-card { margin-top: var(--space-3); }
 .entry-side { padding-top: 2px; }
 .mood-dot {
@@ -1952,7 +1973,13 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   padding: var(--space-3) var(--space-4);
   display: flex; align-items: center; gap: var(--space-4);
   font-size: var(--text-sm); font-weight: var(--weight-medium);
-  box-shadow: var(--shadow-3);
+  /* No shadow, and none needed: this is already rule 4's ink treatment -
+     --text as the ground with --bg as the type - which is the strongest
+     separation the app has and does not want a third one under it. It used
+     to cast --shadow-3, the top of a ramp that no longer exists, the same
+     spend the sheet gave up for a line below. A solid block over content
+     with nothing beneath it is how Jobber and Riot Mobile draw the same
+     thing (Mobbin, fifth pass). */
   opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out);
   z-index: 50;
   /* SF-002: nowrap let a longer translated string (Polish routinely runs
@@ -2351,7 +2378,13 @@ body > .flatpickr-calendar,
 .flatpickr-calendar.inline {
   font-family: inherit;
   background: var(--surface);
-  box-shadow: var(--shadow-1);
+  /* A line rather than a shadow, which is the trade the sheet already made
+     and what a flat picker looks like where one ships: Deel's and Kit's are
+     a bordered box with sharp corners over a dimmed page, no elevation
+     (Mobbin, fifth pass). --outline rather than --hairline because this is
+     a surface's own edge against arbitrary content, not a separator inside
+     a list. */
+  border: 1px solid var(--outline);
   border-radius: var(--r-block);
 }
 .flatpickr-calendar.inline {
@@ -2453,10 +2486,12 @@ html[data-a11y-motion='reduce'] .skeleton::after {
   .skeleton::after { display: none; }
 }
 
+/* A placeholder wears what it is standing in for, so both of these follow
+   .card above: the hairline, and no elevation. */
 .skeleton-card {
   background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-block);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4);
   display: flex; align-items: flex-start; gap: var(--space-3);
 }
@@ -2467,8 +2502,8 @@ html[data-a11y-motion='reduce'] .skeleton::after {
 
 .skeleton-block {
   background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-block);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4);
   display: flex; flex-direction: column; gap: var(--space-3);
 }
@@ -2501,7 +2536,6 @@ html[data-a11y-motion='reduce'] .skeleton::after {
     background: var(--surface);
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
-    box-shadow: var(--shadow-2);
     /* No padding of its own: the rows are separated by hairlines and each one
        runs the full width of the panel, the way a list card's rows do. Inset
        rows would leave the hairline floating short of both edges. */

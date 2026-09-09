@@ -244,6 +244,16 @@ const read = (radii, sizes, strokes) =>
       for (const el of root.querySelectorAll('*')) {
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        /* Effective opacity, because opacity composes down the tree and an
+           invisible element's corners are not on screen. The chart picker's
+           real select sits at opacity 0 under its drawn face - it is there
+           to open the platform's list, not to be looked at - and its user
+           agent 7.5px corner was reported as the one radius in the app
+           outside rule 5's budget. */
+        let shown = Number(cs.opacity);
+        for (let up = el.parentElement; up && up !== root && shown; up = up.parentElement)
+          shown *= Number(getComputedStyle(up).opacity);
+        if (!shown) continue;
 
         if (cs.boxShadow && cs.boxShadow !== 'none' && !shadowAllowed(el, cs.boxShadow))
           note('elevation', el, cs.boxShadow.replace(/\s+/g, ' ').slice(0, 60));

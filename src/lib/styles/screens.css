@@ -52,7 +52,11 @@
   position: sticky; bottom: calc(var(--space-2) - var(--space-5));
   z-index: 20; display: flex; margin-top: var(--space-5);
 }
-.editor-savebar .btn { width: 100%; box-shadow: var(--shadow-2); }
+/* No shadow. The bar it sits on is pinned over a scrolling column, which
+   is what the offset above buys a hairline for; the button on it is a
+   button, and rule 4 gives the app one shadow, which belongs to the
+   floating bar. It reached four screens' primary action. */
+.editor-savebar .btn { width: 100%; }
 .photo-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .photo-wrap { position: relative; }
 /* SH-107: the visible badge stays 24px (::before), but the button itself -
@@ -146,8 +150,8 @@
 }
 .wrapped-stat {
   background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-block);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4) var(--space-3);
   text-align: center;
 }
@@ -160,7 +164,7 @@
 /* The wrapped card (ticket 16): a self-contained frame, unlike the wrapped
    screens above which lay their stats directly on the page. It reuses
    .wrapped-stats/.wrapped-stat rather than duplicating that tile styling. */
-.wrapped-card { background: var(--surface); border-radius: var(--r-block); box-shadow: var(--shadow-1); padding: var(--space-5); }
+.wrapped-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-block); padding: var(--space-5); }
 .wrapped-card .wrapped-stats { margin-bottom: 0; }
 .wrapped-card-art {
   height: 96px;
@@ -766,7 +770,10 @@
   content: '';
   position: absolute; inset: 0; margin: auto;
   width: 22px; height: 22px; border-radius: 50%;
-  background: var(--surface); box-shadow: var(--shadow-1);
+  /* A disc knocking the icon out of the photo behind it. The hairline is
+     what holds its edge where the photo is light; the shadow it replaces
+     was the app's second elevation on a 22px mark. */
+  background: var(--surface); border: 1px solid var(--hairline);
 }
 .compare-gap { text-align: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-display); margin-bottom: var(--space-5); }
 .compare-nav { display: flex; align-items: center; gap: var(--space-1); }
