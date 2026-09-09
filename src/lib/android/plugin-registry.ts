@@ -13,6 +13,7 @@ export const androidPluginOwners = {
   deviceReset: 'data/android-device-reset-bridge',
   print: 'print/android-bridge',
   sensitiveClipboard: 'data/recovery-key-clipboard-bridge',
+  permissions: 'permissions/android-bridge',
   // Official @capacitor/app plugin, not one of ours - imported directly
   // from that package rather than through registerAndroidPlugin() below,
   // but still asserted at startup like every other required plugin
@@ -40,6 +41,7 @@ const androidPluginRegistry = [
   { name: 'DeviceReset', owner: androidPluginOwners.deviceReset },
   { name: 'Print', owner: androidPluginOwners.print },
   { name: 'SensitiveClipboard', owner: androidPluginOwners.sensitiveClipboard },
+  { name: 'Permissions', owner: androidPluginOwners.permissions },
   { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 
