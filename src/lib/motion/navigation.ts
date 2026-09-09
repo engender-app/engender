@@ -24,6 +24,7 @@ import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
 
 import { travelSettle } from './blindSettle';
+import { PART_TRAVEL } from './fieldBlind';
 import {
   crossfadeDuration,
   EASE_OUT,
@@ -38,6 +39,9 @@ import type { DurationToken } from './tokens';
    entrance from an exit. Each primitive below reads it as an entrance,
    which is why they are documented as `in:`/`out:` pairs. */
 type Direction = 'in' | 'out' | 'both';
+
+/** No curve at all, for the one primitive that shapes its own values. */
+const LINEAR = (t: number) => t;
 
 /** The substitute every tier-2 primitive falls back to under reduced
     motion: the same crossfade, none of the movement. */
@@ -110,6 +114,75 @@ export function sharedAxisX(
   );
 }
 
+/**
+ * Tier 2, a step machine: one thing printed on the field leaving or
+ * arriving while the field's own edge moves under it (redesign ticket 33).
+ *
+ * The same two movements app.css runs on `::view-transition-*(*.field-part)`
+ * for a navigation, written for real elements rather than for photographs of
+ * them: a step change is not a navigation, so the question and the answers
+ * are still in the DOM and can be transitioned directly. No frame carries
+ * two of them - the outgoing one fades out over `--dur-fast` and the
+ * incoming one waits that long before starting - and the ride with the edge
+ * is not here at all: it belongs to the box both sides sit in, which travels
+ * once for the pair of them.
+ *
+ * `printed` is what tells a thing painted on the field from a thing
+ * standing under it: the first travels 12px the way the edge is going and
+ * the second only fades, because it is already riding the edge in full.
+ *
+ * That 12px is read out of `--part-travel` rather than passed in, and the
+ * sign is the whole reason. Which way a part travels depends on which way
+ * the edge went, and the edge's own direction is not known when the
+ * transition starts - the field has not been measured yet, and forward is
+ * not the same as taller (the areas step's three-line question makes a
+ * taller field than the step after it). Written into the keyframes as a
+ * var(), the browser resolves it per frame off whatever the edge published,
+ * and the first frame - where the travel is multiplied by nothing - cannot
+ * be wrong.
+ */
+export function fieldPart(
+  _node: Element,
+  params: { printed?: boolean } = {},
+  options: { direction?: Direction } = {}
+): TransitionConfig {
+  if (isReducedMotion()) return crossfadeOnly();
+  /* Leaving goes with the edge and arriving comes from the far side of it,
+     which is what stops the two reading as one element sliding through. */
+  const sign = options.direction === 'out' ? 1 : -1;
+  const move = (u: number) =>
+    params.printed
+      ? `transform: translateY(calc(var(--part-travel, ${PART_TRAVEL}px) * ${sign * u}))`
+      : '';
+  const fast = motionDuration('--dur-fast');
+  return {
+    duration: fast,
+    /* Half a --dur-fast, and the arithmetic below is why. The incoming half
+       used to wait a whole one, which is the sequence app.css runs on the
+       field's own pseudo elements - and measured on this ticket's flipbooks
+       it left five frames, about 85ms, with no question on the field at
+       all. A photograph of a screen can afford that; a real element cannot,
+       and "no frame shows an element in neither place" is this ticket's
+       own acceptance.
+
+       So the two halves are a crossfade whose opacities sum to one at every
+       moment: each runs at twice its own rate and holds at full, so the
+       outgoing one is solid for the first half of its length, the incoming
+       one is solid for the last half of its, and the crossover is the 75ms
+       between. No frame is empty and no frame carries two solid ones. */
+    delay: options.direction === 'out' ? 0 : Math.round(fast / 2),
+    /* Linear, because the shape is in the css below rather than in the
+       curve: an eased opacity and a doubled rate would compound into a
+       crossover neither of them describes. */
+    easing: LINEAR,
+    css: (t, u) => `opacity: ${Math.min(1, t * 2)}; ${move(u)}`
+  };
+}
+
+/**
+ * Tier 2, sheets: rise by `--motion-distance-md`. Dismissal is the
+ * component's job rather than this one's - it follows the drag rather than
+ * replaying this backwards.
 /** How far a sheet has to go to be off the bottom of the frame it is in:
  *  its own height, or the distance from its top edge to that floor, whichever
  *  is further.

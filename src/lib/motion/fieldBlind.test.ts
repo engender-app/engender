@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { carryBlind } from './fieldBlind';
+import { blindVariables, carryBlind } from './fieldBlind';
 
 type Styled = { style: Record<string, string> };
 const el = (): Styled => ({ style: {} });
@@ -192,5 +192,51 @@ describe('the blind, carried across a navigation', () => {
     expect(doc.root.style.props.get('--blind-to')).toBe('215px');
     expect(doc.root.style.props.get('--blind-delta')).toBe('-215px');
     expect(doc.root.style.props.get('--part-travel')).toBe('12px');
+  });
+});
+
+describe('the five properties one moving edge is worth', () => {
+  it('offsets the incoming content by what the edge gained, so it rides down with it', () => {
+    const v = blindVariables({ from: 82, to: 183 });
+    expect(v['--blind-from']).toBe('82px');
+    expect(v['--blind-to']).toBe('183px');
+    /* Negative: the field grew, so the content below starts higher than
+       where it now sits and travels down onto it. */
+    expect(v['--blind-delta']).toBe('-101px');
+    expect(v['--part-travel']).toBe('12px');
+  });
+
+  it('sends a part the other way where the edge is being pulled up', () => {
+    const v = blindVariables({ from: 183, to: 82 });
+    expect(v['--blind-delta']).toBe('101px');
+    expect(v['--part-travel']).toBe('-12px');
+  });
+
+  it('hands the stylesheet the settle for this travel and no other', () => {
+    const small = blindVariables({ from: 100, to: 112 });
+    /* Under the settle floor: a move, not a landing. */
+    expect(small['--blind-ease']).toBe('var(--ease-out)');
+    expect(blindVariables({ from: 82, to: 183 })['--blind-ease']).toMatch(/^linear\(/);
+  });
+});
+
+describe("the sun across setup's handover", () => {
+  it('names every ring per side by default, so they close and open', () => {
+    const rings = [el(), el()];
+    const { as } = fakeDocument([field({ height: 100, rings })]);
+    carryBlind(as);
+    expect(rings.map((r) => r.style.viewTransitionName)).toEqual(['sun-a-0', 'sun-a-1']);
+  });
+
+  it('leaves them unnamed where the sun is the same object at the same size', () => {
+    /* Redesign ticket 33: setup's sun has grown to exactly the scale Home
+       draws it at, so naming it would close and reopen the app's own mark
+       at the moment the app opens. Unnamed, it stays inside each screen's
+       snapshot, and two identical images crossfading is a sun standing
+       still. */
+    const rings = [el(), el()];
+    const { as } = fakeDocument([field({ height: 100, rings })]);
+    carryBlind(as, { holdSun: true });
+    expect(rings.map((r) => r.style.viewTransitionName)).toEqual([undefined, undefined]);
   });
 });

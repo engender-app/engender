@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chromelessPath, replacesAppNavigation } from './chromeless.ts';
+import { chromelessPath, cutsInsteadOfMoving, replacesAppNavigation } from './chromeless.ts';
 
 describe('the routes that render without chrome', () => {
   it('is onboarding, all of it', () => {
@@ -71,5 +71,54 @@ describe('the routes that render instead of the app rather than inside it', () =
   it('is not an ordinary screen', () => {
     expect(replacesAppNavigation('/')).toBe(false);
     expect(replacesAppNavigation('/settings')).toBe(false);
+  });
+});
+
+describe('which navigations cut instead of moving', () => {
+  it('cuts a cold start, which has nothing to come from', () => {
+    expect(cutsInsteadOfMoving(null, '/')).toBe(true);
+    expect(cutsInsteadOfMoving(null, '/onboarding')).toBe(true);
+  });
+
+  it('cuts on the way into setup, where there is no app yet', () => {
+    /* The shell redirects here because `prefs.onboarded` is false, so
+       nothing was navigated away from - the app had not been drawn. */
+    expect(cutsInsteadOfMoving('/', '/onboarding')).toBe(true);
+  });
+
+  it('moves on the way out of setup, which is the app opening', () => {
+    /* Redesign ticket 33. Somebody pressed "Start writing" and the app
+       opened; rule 12 already says the sun's handover to Home is one object
+       at one size, and a cut made the app's largest surface change in a
+       single frame at the end of ten steps that had all moved. Both doors
+       out of setup are the same act and complete() is one function for
+       them. */
+    expect(cutsInsteadOfMoving('/onboarding', '/')).toBe(false);
+    expect(cutsInsteadOfMoving('/onboarding/flag', '/')).toBe(false);
+  });
+
+  it('still cuts between two steps of setup, which is not a navigation at all', () => {
+    /* A step change is state inside one route (stepBlind.ts moves the edge
+       for it), so a navigation between two onboarding paths is the redirect
+       finding its way rather than a step being taken. */
+    expect(cutsInsteadOfMoving('/onboarding', '/onboarding/flag')).toBe(true);
+  });
+
+  it('cuts both ways for the room, whose own ticket asked for one way in', () => {
+    expect(cutsInsteadOfMoving('/health/appointments', '/health/appointments/in-the-room')).toBe(
+      true
+    );
+    expect(cutsInsteadOfMoving('/health/appointments/in-the-room', '/health/appointments')).toBe(
+      true
+    );
+  });
+
+  it('moves the return moment both ways (ticket 35)', () => {
+    expect(cutsInsteadOfMoving('/', '/coming-back')).toBe(false);
+    expect(cutsInsteadOfMoving('/coming-back', '/')).toBe(false);
+  });
+
+  it('moves between two ordinary screens', () => {
+    expect(cutsInsteadOfMoving('/', '/calendar')).toBe(false);
   });
 });
