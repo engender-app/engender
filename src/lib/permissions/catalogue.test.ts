@@ -92,6 +92,33 @@ describe('what a grant button does', () => {
   });
 });
 
+describe('the note on the one row that can dead-end', () => {
+  /* A refused web prompt is the only refusal the app cannot hand a way out
+     of: the browser will not show the dialog again and a page cannot open
+     its site settings. Without a line saying where the browser keeps it,
+     that row is a sentence and a full stop. */
+  it('says where the browser keeps a refusal it will not prompt for again', () => {
+    const asked = new Set<GrantKey>(['microphone']);
+    expect(rowFor('microphone', 'web', NOTHING, asked).note).toBe('browserHolds');
+    expect(rowFor('camera', 'web', NOTHING, asked).note).toBe(null);
+  });
+
+  it('carries no note where the button already says what happens next', () => {
+    /* Exact alarms included, deliberately: it links to settings from the
+       first render and the label is what says so. A note there cost three
+       lines beside the button and the step has none to spare. */
+    expect(rowFor('exactAlarms', 'android', NOTHING, new Set()).note).toBe(null);
+    expect(rowFor('microphone', 'android', NOTHING, new Set()).note).toBe(null);
+    expect(rowFor('microphone', 'android', NOTHING, new Set<GrantKey>(['microphone'])).note).toBe(null);
+    expect(rowFor('notifications', 'web', NOTHING, new Set()).note).toBe(null);
+  });
+
+  it('drops the note once the capability is granted after all', () => {
+    const granted: GrantStates = { ...NOTHING, microphone: 'granted' };
+    expect(rowFor('microphone', 'web', granted, new Set<GrantKey>(['microphone'])).note).toBe(null);
+  });
+});
+
 describe('the group that needs no permission', () => {
   it('is what the system hands over one file at a time, plus print and the clipboard', () => {
     expect(AMBIENT_KEYS).toEqual(['takePhoto', 'pickFile', 'backupFolder', 'print', 'clipboard']);

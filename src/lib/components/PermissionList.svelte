@@ -180,11 +180,14 @@
     margin-top: 0;
   }
 
+  /* Not a third caption. It is the strongest thing on the screen - the claim
+     the whole list exists to make concrete - so it is written in the page's
+     own ink rather than in the secondary the captions take. */
   .perm-closer {
     margin: var(--space-2) 0 0;
     font-size: 15px;
     font-weight: 600;
-    color: var(--text-2);
+    color: var(--text);
   }
 
 </style>

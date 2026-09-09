@@ -56,12 +56,29 @@ export type GrantAction = 'prompt' | 'settings' | 'none';
     intent for it. */
 export type SettingsTarget = 'notifications' | 'exactAlarms' | 'appInfo';
 
+/** The second line a row grows when there is nowhere for its control to
+    send anybody.
+
+    One case: a refused web prompt. Every other refusal ends on a button into
+    the right system screen, and this is the one the app cannot offer, because
+    a page cannot open the browser's own site settings - so the row says where
+    the browser keeps it rather than ending on an inert word.
+
+    The exact-alarms row was the other candidate and was cut. It shows a
+    settings link from the first render, beside three siblings showing Allow,
+    which a note would have explained - but the note ran to three lines beside
+    the button on a 390px phone, on the one step in setup with the least room
+    to spare (`.claude/permissions-measurements.json`), and the label already
+    says where pressing it goes. */
+export type RowNote = 'browserHolds';
+
 export interface GrantRow {
   key: GrantKey;
   icon: string;
   state: GrantState;
   action: GrantAction;
   settingsTarget: SettingsTarget | null;
+  note: RowNote | null;
 }
 
 export interface AmbientRow {
@@ -81,7 +98,11 @@ const AMBIENT_ICON: Record<AmbientKey, string> = {
   pickFile: 'image',
   backupFolder: 'download',
   print: 'documents',
-  clipboard: 'key'
+  /* Not `key`, though what is copied is the recovery key: `/settings`' own
+     row into this list wears that glyph, and the same icon meaning two
+     things one navigation apart is the kind of small lie a list like this
+     cannot afford. */
+  clipboard: 'note'
 };
 
 /** Where a refusal can send somebody, per capability. Null on the web: a
@@ -124,12 +145,20 @@ export function grantRows(
   return GRANT_KEYS.map((key) => {
     const state = availableOn(key, platform) ? states[key] : 'unavailable';
     const settingsTarget = settingsTargetFor(key, platform);
-    return { key, icon: GRANT_ICON[key], state, settingsTarget, action: actionFor() };
+    const action = actionFor();
+    return { key, icon: GRANT_ICON[key], state, settingsTarget, action, note: noteFor() };
 
     function actionFor(): GrantAction {
       if (state !== 'denied') return 'none';
       if (key === 'exactAlarms' || asked.has(key)) return settingsTarget ? 'settings' : 'none';
       return 'prompt';
+    }
+
+    /* Only where the row would otherwise dead-end. Every second line costs
+       the step height it can least afford, so a row whose button says what
+       happens next does not get one. */
+    function noteFor(): RowNote | null {
+      return state === 'denied' && asked.has(key) && !settingsTarget ? 'browserHolds' : null;
     }
   });
 }
