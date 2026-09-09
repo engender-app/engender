@@ -2,7 +2,6 @@
 # this check (or accepted since) - the long tail future screen tickets move
 # out one at a time. Regenerate with `node scripts/check-screens-classes.mjs
 # --update` after moving a class out or deliberately accepting a new one.
-checkin-card
 compare-metrics
 compare-metrics-header
 compare-metrics-row

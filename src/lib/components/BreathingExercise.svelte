@@ -122,8 +122,16 @@
   );
 </script>
 
+<!-- Carpet 30: no container. A breathing exercise is a ring, and the ring
+     is the object rather than something that needs a box to say it is one -
+     which is also what every reference does (Mobbin, eight of eight
+     breathing screens: QUITTR, stoic., Finch, Breathwrk, Calm, Opal, WHOOP,
+     Waking Up all draw the ring straight on the page). rule 4's argument for
+     a fourth treatment had to be made here or nowhere, and this is where it
+     failed: the card was carrying "this is a thing you do" for a drawing
+     that already says so at 272px across. -->
 <div
-  class="card breathing-card"
+  class="breathing-exercise"
   data-kit-surface
   data-breathing-exercise
   {...roleAttrs(role)}
@@ -186,8 +194,13 @@
                 {/each}
               </div>
             {:else}
-              <span class="breathing-idle-title">{m.safe_space_calm_title()}</span>
-              <span class="breathing-idle-sub">4 · 4 · 4 · 4</span>
+              <!-- The pattern, and not the title a second time: /doubt already
+                   heads this area with `safe_space_calm_title`, and the card
+                   was the only thing that had kept the two apart. The figure
+                   sits in the slot the phase word takes once the count is
+                   running, so starting changes what the core says rather than
+                   where it says it. -->
+              <span class="breathing-pattern">4 · 4 · 4 · 4</span>
               <div class="breathing-dots" aria-hidden="true">
                 {#each BOX_BREATHING_PHASES as _}
                   <span class="breathing-dot"></span>
@@ -216,12 +229,13 @@
 </div>
 
 <style>
-  .breathing-card {
+  /* On the page, so the padding a card owed its own edge goes with the edge.
+     What is left is the column and its rhythm. */
+  .breathing-exercise {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: var(--space-5) var(--space-4);
     gap: var(--space-4);
   }
 
@@ -324,7 +338,6 @@
     height: 240px;
     border-radius: 50%;
     border: var(--role-hairline);
-    background: var(--bg-card);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -340,7 +353,6 @@
     height: 210px;
     border-radius: 50%;
     border: 1px solid var(--role-draw);
-    background: var(--bg-subtle);
     transform-origin: center center;
     will-change: transform, opacity;
     transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
@@ -421,18 +433,16 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .breathing-idle-title {
+  /* The phase word's own slot, in the display face at the same size, so the
+     core reads as one line changing rather than two layouts swapping. Letter-
+     spaced, because four numerals and three separators need the air a word
+     does not. */
+  .breathing-pattern {
     font-family: var(--font-display);
-    font-size: var(--text-lg, 1.125rem);
+    font-size: var(--text-xl);
     font-weight: var(--weight-display);
-    color: var(--text);
-  }
-
-  .breathing-idle-sub {
-    font-size: var(--text-sm);
-    color: var(--text-2, var(--muted));
+    color: var(--text-2);
     letter-spacing: 0.08em;
-    font-weight: 500;
   }
 
   .breathing-dots {
