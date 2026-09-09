@@ -22,7 +22,7 @@ describe('the step list', () => {
     expect(new Set(ONBOARDING_STEPS).size).toBe(ONBOARDING_STEPS.length);
   });
 
-  it('sets the five things a first run has to settle, in that order', () => {
+  it('sets the five things a first run has to settle, then the list of what the app can ask for, then the last question', () => {
     expect(ONBOARDING_STEPS).toEqual([
       'welcome',
       'name',
@@ -30,9 +30,30 @@ describe('the step list', () => {
       'scales',
       'areas',
       'lock',
-      'checkin',
+      'permissions',
+      'disguise',
       'done'
     ]);
+  });
+
+  /* Phase 10 redesign ticket 31. The daily check-in stopped being a
+     question setup asks: the answers the permissions step collects belong
+     to the OS, and the check-in switch stays on the reminders screen where
+     it always was. A step list that still named `checkin` would mean the
+     route had a branch for a step that no longer draws anything. */
+  it('no longer asks about the daily check-in', () => {
+    expect(ONBOARDING_STEPS).not.toContain('checkin');
+  });
+
+  /* ADR-0079 and ticket 32. Disguise is asked last because turning it on
+     closes the app on Android, and setup holds every answer in memory
+     until complete() writes them - so anywhere earlier in the flow the
+     alias flip would take the rest of setup down with it. The finish still
+     follows it: the question is last, the screen that says setup is over
+     is not. */
+  it('asks about disguise last, with only the finish after it', () => {
+    expect(stepAfter(ONBOARDING_STEPS, 'disguise')).toBe('done');
+    expect(stepBefore(ONBOARDING_STEPS, 'done')).toBe('disguise');
   });
 
   it('walks forward and back, and stops at both ends', () => {
@@ -75,8 +96,17 @@ describe('skipping', () => {
       'scales',
       'areas',
       'lock',
-      'checkin'
+      'permissions',
+      'disguise'
     ]);
+  });
+
+  /* The permissions step sets nothing of the app's own, so its Skip has
+     nothing to protect - and it carries one anyway (ticket 31). Skipping it
+     grants nothing and blocks nothing, which is the only honest reading of
+     a step whose answers all live in the OS. */
+  it('lets the permissions step be skipped like any other', () => {
+    expect(isSkippable('permissions')).toBe(true);
   });
 });
 

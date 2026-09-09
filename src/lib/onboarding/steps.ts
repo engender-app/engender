@@ -19,7 +19,8 @@ export type OnboardingStep =
   | 'scales'
   | 'areas'
   | 'lock'
-  | 'checkin'
+  | 'permissions'
+  | 'disguise'
   | 'done';
 
 /* What a first run settles, and why each one is here rather than left to
@@ -35,12 +36,26 @@ export type OnboardingStep =
               person has just ticked their scales, which is the same
               question about the journal one step earlier
      lock     whether leaving the app locks it
-     checkin  the daily prompt, which is the difference between a journal
-              kept and a journal installed
+     permissions
+              everything the app can ask this device for, with a reason
+              each and a button each (phase 10 redesign ticket 31). Not a
+              preference: the answers live in the OS, so this is the one
+              step that settles nothing of the app's own. It is here
+              because for an app whose claim is that nothing leaves the
+              device, the list of what it can reach is the claim made
+              concrete, and because saying it once beats four inline
+              explanations nobody sees together.
+     disguise whether the app wears a different name and icon outside
+              itself (phase 10 redesign ticket 32, ADR-0079) - the one
+              privacy control nobody can discover before they need it,
+              because everything it changes is in the launcher, the tab
+              strip and the home screen rather than on any screen the app
+              draws
 
-   Six settings, six steps, plus a welcome and a finish. Everything else
-   the app has a preference for is either already right by default or is
-   something a person goes looking for once they know the app.
+   Five settings, one list and one last question, plus a welcome and a
+   finish. Everything else the app has a preference for is either already
+   right by default or is something a person goes looking for once they
+   know the app.
 
    The settled shape (phase 10 redesign ticket 29, DIRECTION.md rule 12) is
    ten steps, and this list becomes it as the tickets that build each step
@@ -49,10 +64,19 @@ export type OnboardingStep =
      welcome, name, flag, scales, areas, access mode, PIN pad,
      permissions, disguise, done
 
-   `lock` splits into the mode list and the pad (ticket 30); `checkin`
-   leaves the flow, its nudge offered by the permissions step's
-   notification row and kept in Settings (ticket 31); `disguise` is the
-   last question, applied last (ticket 32). */
+   `lock` is the one step left to split, into the mode list and the pad
+   (ticket 30). What ticket 31 landed: `checkin` left the flow and
+   `permissions` took its place. The daily nudge is not asked for in setup
+   any more - the notification row's reason line is what names it, and the
+   switch itself stays on the reminders screen, where skipping the step
+   leaves it exactly as it was.
+
+   What ticket 32 landed: `disguise`, after the permissions and before the
+   finish. It sits there for a mechanical reason rather than a rhetorical
+   one - turning it on swaps the Android launcher alias, which closes the
+   app, and the flow holds every answer in memory until `complete()` writes
+   them. A disguise switch anywhere earlier would take the rest of setup
+   down with it. Last question, applied last. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -60,7 +84,8 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'scales',
   'areas',
   'lock',
-  'checkin',
+  'permissions',
+  'disguise',
   'done'
 ];
 

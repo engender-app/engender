@@ -1710,8 +1710,8 @@ try {
 
 
 /* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
-   redesign ticket 22: eight steps - welcome, name, flag, scales, areas,
-   lock, check-in, finish) */
+   redesign tickets 22, 31 and 32: nine steps - welcome, name, flag, scales,
+   areas, lock, permissions, disguise, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1821,18 +1821,78 @@ try {
   await page.locator('[data-list-row="area-care"]').click();
   await page.locator('[data-list-row="area-eras"]').click();
   await page.locator('[data-next]').click(); // areas -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
+  await page.locator('[data-next]').click(); // lock -> permissions
 
-  /* Ticket 46: the persona premise this step answers is that it defaults
-     the daily nudge on. It doesn't - confirmed here at the switch itself,
-     not only by never touching it below. */
-  if ((await page.getByRole('switch', { name: 'Daily check-in' }).getAttribute('aria-checked')) === 'true') {
-    throw new Error('daily check-in switched itself on by default');
+  /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
+     step that names everything the app can ask this device for. Four rows
+     it can ask about and a second group it never asks about, and on the web
+     the two Android-only rows say so rather than offering a dead button. */
+  await page.waitForSelector('[data-permission-list]');
+  const grantable = await page.locator('[data-grant]').evaluateAll((els) =>
+    els.map((el) => el.dataset.grant)
+  );
+  if (grantable.join() !== 'microphone,camera') {
+    throw new Error('the web build should offer only the two prompts it has: ' + grantable.join());
+  }
+  for (const key of ['notifications', 'exactAlarms']) {
+    const row = page.locator(`[data-permission="${key}"]`);
+    if ((await row.count()) !== 1) throw new Error(`the ${key} row is missing from the list`);
+    if ((await row.getAttribute('data-permission-state')) !== 'unavailable') {
+      throw new Error(`${key} should read as unavailable on the web`);
+    }
+    const trailing = await row.textContent();
+    if (!trailing.includes('Android only')) {
+      throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
+    }
+  }
+  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
+      throw new Error(`the ${key} row is missing from the no-permission group`);
+    }
+  }
+  for (const key of ['backupFolder', 'batteryOptimisation']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
+      throw new Error(`the web build has no ${key} and should not list one`);
+    }
+  }
+  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
+    throw new Error('the list does not end on the fact that there is no internet permission');
+  }
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+
+  /* Skippable like every other step, and skipping grants nothing - which is
+     the only thing there is to check, since nothing here is stored. */
+  if ((await page.locator('[data-skip-step]').count()) !== 1) {
+    throw new Error('the permissions step carries no Skip');
   }
 
-  await page.locator('[data-next]').click(); // check-in -> finish
+  await page.locator('[data-next]').click(); // permissions -> disguise
+
+  /* Ticket 32: setup's last question, and the one answer that is not
+     applied where it is given. The switch arrives off, the row carries the
+     platform's own consequence, and the preview under it names what the
+     launcher would show. Nothing about the app has changed by reaching the
+     step - the tab is still the app's own, which is asserted on Home
+     below, after a skip. */
+  const disguiseSwitch = page.getByRole('switch', { name: 'Disguise app' });
+  if ((await disguiseSwitch.getAttribute('aria-checked')) === 'true') {
+    throw new Error('the disguise step arrived already switched on');
+  }
+  const disguiseReason = await page.locator('[data-list-row="disguise"]').textContent();
+  if (!/browser tab|launcher/.test(disguiseReason)) {
+    throw new Error('the disguise row says nothing about what changes: ' + JSON.stringify(disguiseReason));
+  }
+  const previewName = await page.locator('[data-disguise-name]').textContent();
+  if (previewName !== 'Notes') throw new Error('the disguise preview names: ' + previewName);
+
+  /* Skipped rather than answered, which is this flow's half of the AC: a
+     skip leaves the stored value alone. The toggled-on half is 13c. */
+  await page.locator('[data-skip-step]').click(); // disguise skipped -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
+  if ((await page.title()) === 'Notes') {
+    throw new Error('skipping the disguise step disguised the app anyway');
+  }
   const greet = await page.locator('[data-home-hello]').textContent();
   if (!greet.includes('Ola')) throw new Error('greeting: ' + greet);
   if (await page.evaluate(() => document.documentElement.dataset.palette) !== 'nonbinary') {
@@ -1897,6 +1957,78 @@ try {
   await page.waitForSelector('[data-home-hello]');
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
+
+/* 13b1. turning the disguise on during setup leaves a finished install
+   rather than a setup that died halfway (redesign ticket 32, ADR-0079).
+
+   The web half of the ticket's acceptance. On Android the alias flip closes
+   the app and the proof is that the journal opens after the restart; there
+   is no restart here, so what this can show is the other half of the same
+   claim - the disguise is in force, every answer was written, and the first
+   run is over rather than waiting at step one. complete()'s ordering is
+   held to in the Node tier (onboarding/complete.test.ts) and on a device. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-next]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.locator('#ob-name').fill('Kit');
+  await page.locator('[data-next]').click(); // name -> flag
+  await page.locator('[data-next]').click(); // flag -> scales
+  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // areas -> lock
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
+
+  /* Held, not applied: the tab is still the app's own with the switch on,
+     because the answer is written by complete() and by nothing before it.
+     This is the assertion that would fail if the step ever wrote straight
+     through to `prefs.disguise` - which on Android would close the app
+     mid-setup and is the reason the step is last. */
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForSelector('[data-disguise-preview][data-on="true"]');
+  if ((await page.title()) === 'Notes') {
+    throw new Error('the disguise applied itself on the step rather than at the finish');
+  }
+
+  await page.locator('[data-next]').click(); // disguise -> finish
+  await page.locator('[data-finish]').click();
+
+  /* Both halves of "a finished install", in the order they matter. The
+     disguise is in force, and the app is on Home under it rather than back
+     at step one. */
+  await page.waitForFunction(() => document.title === 'Notes', null, { timeout: 8000 });
+  await page.waitForSelector('[data-home-hello]');
+  const disguisedGreet = await page.locator('[data-home-hello]').textContent();
+  if (!disguisedGreet.includes('Kit')) {
+    throw new Error('the name answered before the disguise did not survive it: ' + disguisedGreet);
+  }
+  await heldOnHome('finishing setup with the disguise on came back to setup');
+
+  /* And it survives a reload, which is the closest a browser gets to the
+     restart Android does for free: `onboarded` and `disguise` both came off
+     SQLite this time rather than out of the page that wrote them. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-home-hello]');
+  if (await page.locator('[data-next]').count()) {
+    throw new Error('a disguised finish left the first run unfinished');
+  }
+  if ((await page.title()) !== 'Notes') {
+    throw new Error('the disguise did not survive a reload: ' + (await page.title()));
+  }
+
+  /* Off again, or every flow after this one meets a disguised app - the same
+     courtesy flow 18 pays after its own toggle. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.getByRole('button', { name: /Disguise/i }).click();
+  await page.getByRole('switch', { name: 'Disguise app' }).click();
+  await page.waitForFunction(() => document.title !== 'Notes', null, { timeout: 8000 });
+  await page.keyboard.press('Escape');
+  ok('turning the disguise on during setup finishes the first run under it');
+} catch (e) { fail('onboarding disguise', e); }
 
 /* 13b. the settings scales sheet is the same list onboarding drew, and a
    tick is the change - there is no confirm on the sheet and never was
@@ -2041,8 +2173,9 @@ try {
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
   await page.locator('[data-skip-step]').click(); // areas -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
-  await page.locator('[data-next]').click(); // check-in -> finish
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
+  await page.locator('[data-next]').click(); // disguise -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
@@ -3270,7 +3403,7 @@ try {
 try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
-    '/settings/security', '/settings/tags', '/settings/trash', '/settings/reminders',
+    '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
@@ -3291,6 +3424,44 @@ try {
   ok(`all ${SETTINGS_AREA_ROUTES.length} settings-area routes still answer at their own address`);
 } catch (e) {
   fail('More hub route characterization', e);
+}
+
+/* The permissions list has a permanent home (phase 10 redesign ticket 31).
+   Setup's step says every one of these can be granted later, and the only
+   thing that makes that sentence true is a screen in Settings drawing the
+   same list from the same component - so what this checks is that the row
+   is there, that it leads somewhere, and that what it leads to is the same
+   rows under the same reasons, not a second list saying something close. */
+try {
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('a[href="/settings/permissions"]').click();
+  await page.waitForSelector('[data-permission-list]');
+  await page.waitForFunction(() => location.pathname === '/settings/permissions');
+
+  const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
+    els.map((el) => el.dataset.permission)
+  );
+  const expected = [
+    'notifications',
+    'exactAlarms',
+    'microphone',
+    'camera',
+    'takePhoto',
+    'pickFile',
+    'print',
+    'clipboard',
+    'biometric'
+  ];
+  if (onScreen.join() !== expected.join()) {
+    throw new Error('the settings screen draws a different list: ' + onScreen.join());
+  }
+  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
+    throw new Error('the settings screen drops the no-internet line');
+  }
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+  ok('the permissions list has a permanent home in Settings, drawn from the same component');
+} catch (e) {
+  fail('permissions in Settings', e);
 }
 
 /* Carpet ticket 14: the measurements screen's capture-protocol notice is one
