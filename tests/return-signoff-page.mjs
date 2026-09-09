@@ -103,9 +103,20 @@ await browser.close();
 
 const flip = JSON.parse(await readFile(resolve(root, '.claude/return-flipbook.json'), 'utf8'));
 const template = await readFile(resolve(here, 'return-signoff-page.html'), 'utf8');
+/* Counted before substituting, because `String.replace` with a string
+   pattern takes the *first* match and says nothing about the rest. The
+   token was once mentioned a second time in the template's own opening
+   comment, so 5.6MB of data URIs went into that comment and the script kept
+   an unsubstituted literal - a syntax error, and a published page that drew
+   none of its images while looking structurally fine on disk. */
+const token = '__PAYLOAD__';
+const found = template.split(token).length - 1;
+if (found !== 1) {
+  throw new Error(`the template must name ${token} exactly once; found ${found}`);
+}
 /* A replacer function, not a string: a data URI can hold `$&` and a plain
    string replacement would expand it. */
 const payload = JSON.stringify({ stills, flip });
-const html = template.replace('__PAYLOAD__', () => payload);
+const html = template.replace(token, () => payload);
 await writeFile(outFile, html);
 console.log(`stills ${(bytes / 1e6).toFixed(2)}MB · page ${(html.length / 1e6).toFixed(2)}MB → ${outFile}`);
