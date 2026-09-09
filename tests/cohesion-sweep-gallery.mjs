@@ -13,7 +13,8 @@
    What it reads per route, each keyed to the rule it answers to:
      elevation  rule 4  - any box-shadow outside the floating bar's one
      radius     rule 5  - any corner outside 0/1/2/4/6/8/50%/100%/999px
-     type       rule 2  - any font-size outside 15/16/17/19/21/28/40/48
+     type       rule 2  - any font-size outside 15/16/17/19/21/28/40/48,
+                          except .wrapped-cover-year's named 64px (carpet 23)
      field      rule 7  - a door with no field, a deep screen with no back
      tint       rule 3  - --role-tint or --role-wash as a background
      ink        rule 9  - a stroke-width outside 1/2/12/14 and the bar ends
@@ -438,7 +439,11 @@ const read = () =>
         const hasOwnText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
         if (hasOwnText) {
           const px = Math.round(parseFloat(cs.fontSize) * 10) / 10;
-          if (!sizeOk.has(Math.round(px))) note('type', el, `${px}px`);
+          /* The wrapped cover's year is a named exception (rule 2, carpet
+             23): the one screen that is a poster rather than a door, so its
+             64px title is legal by selector rather than added to the scale. */
+          const isWrappedYear = el.classList.contains('wrapped-cover-year') && Math.round(px) === 64;
+          if (!isWrappedYear && !sizeOk.has(Math.round(px))) note('type', el, `${px}px`);
         }
 
         const bg = cs.backgroundImage + ' ' + cs.backgroundColor;
