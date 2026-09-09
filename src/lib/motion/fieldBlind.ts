@@ -46,8 +46,13 @@ import { blindSettle } from './blindSettle';
    a person saw at the end of ten steps was one field fading out and another
    appearing. Alicja, on the ticket's own renders: "the field must always
    stay a single object that transitions to other states only by moving up
-   or down". */
-const FIELD = '[data-screen-field], [data-home-field], [data-setup-field]';
+   or down".
+
+   The gates joined it the same way one ticket later, and the change they
+   need is not only this line: a gate is not a route, so there is no
+   navigation for the layout to catch. $lib/motion/appOpening is what runs
+   this carry when the secret is accepted. */
+const FIELD = '[data-screen-field], [data-home-field], [data-setup-field], [data-gate-field]';
 const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
 const PART = '[data-field-part]';
