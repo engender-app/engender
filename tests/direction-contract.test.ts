@@ -465,6 +465,51 @@ describe('rule 2: type', () => {
       expect(body, prelude).toMatch(/font-weight:\s*var\(--weight-medium\)/);
     }
   });
+
+  /* Every other screen is a door or hangs off one, and the door title (48px)
+     is the largest thing on it. The wrapped cover is the one screen that is
+     a poster rather than a door, and its year is the whole image, so it
+     alone may go above 48 (Alicja's triage decision, carpet 23; DIRECTION.md
+     rule 2). Allowed by selector, not by value, so the exception cannot
+     spread - the same shape as ADR-0077's mood-block radius exception. */
+  it("holds every display-face size at 48 or under, except the wrapped cover's poster year", () => {
+    const base = baseTokens();
+    function resolvePx(value: string): number {
+      let v = value.trim();
+      const varRef = /^var\((--[a-z0-9-]+)\)$/.exec(v);
+      if (varRef) v = (base[varRef[1]] ?? '').trim();
+      const rem = /^([\d.]+)rem$/.exec(v);
+      if (rem) return Number(rem[1]) * 16;
+      const px = /^([\d.]+)px$/.exec(v);
+      if (px) return Number(px[1]);
+      return NaN;
+    }
+    const sources: Array<[string, string]> = [
+      ['kit', sheet('kit')],
+      ['components', sheet('components')],
+      ['app', sheet('app')],
+      ['screens', sheet('screens')],
+      ...svelteFiles().map((f) => [f, styleBlocks(f)] as [string, string])
+    ];
+    let seenException = false;
+    for (const [where, css] of sources) {
+      for (const rule of rules(css)) {
+        const decl = Object.fromEntries(declarations(rule.body));
+        if (!decl['font-size']) continue;
+        const size = resolvePx(decl['font-size']);
+        if (Number.isNaN(size)) continue;
+        if (size === 64 && /\.wrapped-cover-year\b/.test(rule.prelude)) {
+          seenException = true;
+          continue;
+        }
+        expect(
+          size,
+          `${where}: ${rule.prelude} { font-size: ${decl['font-size']} } exceeds the door title`
+        ).toBeLessThanOrEqual(48);
+      }
+    }
+    expect(seenException, 'should see the wrapped cover year at its named 64px exception').toBe(true);
+  });
 });
 
 describe('rule 4: surfaces are flush, block or ink', () => {
