@@ -1974,7 +1974,13 @@ try {
     page.waitForEvent('download', { timeout: 120000 }),
     page.locator('[data-confirm-export]').click()
   ]);
-  const archivePath = await archive.path();
+  /* The bytes with the name spelled out, not the download's own path: what
+     `path()` returns is a Playwright temp file whose basename is a random
+     id, so `setFiles(path)` hands the picker a file called something like
+     `abc123` and the block on screen never draws the name this flow is
+     waiting for. The archive is one entry, so carrying it in memory is
+     nothing. */
+  const archiveBytes = await readFile(await archive.path());
 
   /* Emptied again, and the flag put back to something the archive will have
      to overwrite, so a palette reading lesbian at the end can only have come
@@ -2020,7 +2026,13 @@ try {
 
   /* And the real one over the top of it, which is also the check that a
      second pick clears the first one's refusal. */
-  page.once('filechooser', (chooser) => chooser.setFiles(archivePath));
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: archive.suggestedFilename(),
+      mimeType: 'application/octet-stream',
+      buffer: archiveBytes
+    })
+  );
   await page.locator('[data-restore-pick]').click();
   await waitingFor(`the block drawing ${archive.suggestedFilename()}`, () =>
     page.waitForFunction(
@@ -2067,6 +2079,17 @@ try {
   if (palette !== 'lesbian') {
     throw new Error(`the archive's own flag did not come back with it: ${palette}`);
   }
+  /* And the flag put back, because the restore left this journal on the
+     archive's palette and the flows after this one read colours off the
+     document. A flow that changes the palette puts it back, which is the
+     rule 13b0 above already follows. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="trans"]').click();
+  await waitingFor('the flag going back to trans after the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
+
   ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
 } catch (e) { fail('onboarding restore', e); }
 
