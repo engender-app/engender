@@ -18,6 +18,17 @@
    for the `-before` halves (vite preview serves the cwd's build, so a
    before/after pair needs two checkouts rather than two builds in one).
 
+   `return-signoff-crops.mjs` takes `--before` and runs against main as it
+   stands, because the elements it crops have names on both sides. The
+   before *flipbook* does not: the motion recorder drives the offer's
+   `data-coming-back-yes`/`-no`, which exist only after this ticket, so the
+   before frames were taken with a copy of it carrying main's own handles
+   (the notice's action and dismiss) in the detached worktree. That copy is
+   deliberately not committed - it stops being runnable the moment this
+   branch merges and main is this code - so the before column of the page
+   is evidence with a date on it rather than something a later session can
+   regenerate.
+
    Run: node tests/return-signoff-page.mjs [outFile]
    Default outFile is .claude/return-signoff.html, which is gitignored. */
 import { readFile, writeFile } from 'node:fs/promises';
