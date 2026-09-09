@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   BOX_BREATHING_PHASES,
@@ -81,5 +82,36 @@ describe('phaseProgress', () => {
   it('scales to whatever duration a phase carries', () => {
     expect(phaseProgress(8, 8)).toBeCloseTo(0.125);
     expect(phaseProgress(8, 1)).toBe(1);
+  });
+});
+
+/* The ring's reset, held at the level a source read can hold it (carpet 30).
+
+   `tickBreathing` reassigns the whole state object every second, so an
+   `$effect` that reads any field of `breath` depends on `breath` itself and
+   re-runs on every tick. The reset effect in `BreathingExercise.svelte` read
+   `breath.running` one line under a comment claiming it was keyed on
+   `phaseIndex` alone, so it emptied the ring every second and had a single
+   frame to transition out of it. Measured on a frame sampler against main at
+   8ae757fa, over 9s of a running exercise: the drawn fraction reached 18.7%,
+   37.5%, 56.2% and 75% and dropped to 0.0% in between, four times per 4s
+   phase. Keyed through a `$derived` it rises 6.2% to 93.7% across the phase
+   and resets once, at the boundary.
+
+   A source read rather than a render, because the defect is a reactivity
+   graph and neither the pure module below nor any DOM assertion can see it:
+   what a test can hold is that the effect reads the derived and nothing off
+   `breath`. Seen to fail against the old line. */
+describe('the countdown ring resets once a phase, not once a second', () => {
+  const source = readFileSync('src/lib/components/BreathingExercise.svelte', 'utf8');
+  const effect = /\$effect\(\(\) => \{([\s\S]*?)\n  \}\);/.exec(
+    source.slice(source.indexOf('let ringPhase'))
+  );
+
+  it('keys the reset on a derived phase rather than on the state object', () => {
+    expect(source).toMatch(/let ringPhase = \$derived\(/);
+    expect(effect, 'no $effect after the ringPhase derived').toBeTruthy();
+    expect(effect![1]).toMatch(/ringPhase/);
+    expect(effect![1], 'the effect reads breath and so re-runs every tick').not.toMatch(/\bbreath\b/);
   });
 });
