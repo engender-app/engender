@@ -772,11 +772,14 @@
          there's nothing here to attach ticket 12's "warning before any
          encrypted export" to. Its real Android implementation must show
          the same warning the manual export sheet above does, once. -->
+    <!-- The card had been the only thing saying where this area began, and
+         it follows another area rather than the screen's own header, so
+         unboxed it needs the heading (rule 4, and the entry editor's
+         precedent). The switch row's title moves up into it rather than
+         being said twice; the switch keeps it as its accessible name. -->
+    <SectionHeading text={m.exp_auto_title()} />
     <div class="spread">
-      <span class="kit-row-text">
-        <span class="kit-row-title">{m.exp_auto_title()}</span>
-        <span class="kit-row-sub">{m.exp_auto_sub()}</span>
-      </span>
+      <span class="small muted">{m.exp_auto_sub()}</span>
       <Switch checked={prefs.autoExportEnabled} label={m.exp_auto_title()}
         onChange={setAutoEnabled} />
     </div>
