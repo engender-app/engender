@@ -250,7 +250,7 @@ const AUDITED = ['.card', '.editor-savebar'];
    build for its whole life, and its findings merge into the report the main
    run already wrote. */
 const PIN_ANDROID = args.includes('--pin-android');
-const GATED = [{ path: '/settings/reminders', name: 'reminders-android', shoot: '.card.checkin-card' }];
+const GATED = [{ path: '/settings/reminders', name: 'reminders', shoot: '.card.checkin-card' }];
 const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
 const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/cohesion-sweep-gallery.mjs';
 let pinnedLeg = false;
@@ -977,7 +977,14 @@ if (!PIN_ANDROID)
 const walk = PIN_ANDROID
   ? GATED
   : [...ROUTES, ...resolved.filter((r) => r.path).map((r) => ({ path: r.path, name: r.name }))];
-await walkRoutes(walk, PIN_ANDROID ? { androidBranch: true } : {});
+/* The gated readings are labelled with a state of their own, because the
+   web branch of the same address is in the same table: `/settings/reminders`
+   read twice, once as the list nobody on the web can see, is two different
+   screens and the report has to say which. The state carries no selector to
+   click - the branch is reached by the build, not by the page - and it names
+   the shot as well, so `reminders-android-trans-light.png` still says what
+   it is. */
+await walkRoutes(walk, PIN_ANDROID ? { state: { name: 'android' } } : {});
 pinnedLeg = PIN_ANDROID;
 
 
