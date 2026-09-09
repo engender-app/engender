@@ -2775,9 +2775,17 @@ try {
     probe.style.color = 'var(--text)';
     document.body.append(probe);
     const want = getComputedStyle(probe);
-    const got = getComputedStyle(document.querySelector('[data-home-field]'));
+    const field = document.querySelector('[data-home-field]');
+    /* The colour off the blind, the ink off the box. The field paints
+       nothing since redesign ticket 28: its colour is a block a window tall
+       hanging inside it whose bottom edge is a clip, which is what lets the
+       edge move without the box being resized. Read off the box, the
+       background has been `rgba(0, 0, 0, 0)` ever since - so this flow was
+       failing on a true statement about the wrong element. */
+    const got = getComputedStyle(field);
+    const paint = getComputedStyle(field.querySelector('[data-field-blind]'));
     const out = {
-      background: got.backgroundColor,
+      background: paint.backgroundColor,
       surface2: want.backgroundColor,
       ink: got.color,
       text: want.color,

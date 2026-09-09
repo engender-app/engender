@@ -133,6 +133,73 @@ describe('what a gate may show', () => {
     }
   });
 
+  it('draws one pad, in setup and at every gate', () => {
+    /* Redesign ticket 34's own acceptance: "the pad is one component and one
+       drawing across setup and the gates". It was already one component -
+       ticket 53 extracted it when the PIN got three jobs - and the thing that
+       could quietly stop being true is the drawing: a second `.pin-key` or
+       `.pin-dot` rule in a screen's own block, or a mount that reaches for
+       something other than PinPad. Both are greps because both are
+       negatives. */
+    const mounts = ['src/lib/components/PinEntry.svelte', 'src/lib/components/AccessModeSetup.svelte'];
+    for (const path of mounts) {
+      expect(read(path), path).toContain("import PinPad from './PinPad.svelte'");
+      expect(stripScript(read(path)), path).toContain('<PinPad');
+    }
+    /* Nowhere else may draw one. The keypad markup lives in PinPad and the
+       two screens above mount it; a third copy is what this catches. */
+    const drawn = [...GATE_CONTENT, 'src/routes/onboarding/+page.svelte'].filter((path) =>
+      stripComments(stripScript(read(path))).includes('class="pin-key"')
+    );
+    expect(drawn).toEqual(['src/lib/components/PinPad.svelte']);
+    /* And one set of rules for it. `components.css` is the always-loaded
+       sheet both surfaces read; a `.pin-key` or `.pin-dot` selector in a
+       route's own scoped block would be a second drawing that only one of
+       them wears. */
+    for (const [where, css] of [
+      ['screens', read('src/lib/styles/screens.css')],
+      ['onboarding', read('src/routes/onboarding/+page.svelte').slice(read('src/routes/onboarding/+page.svelte').indexOf('<style>'))]
+    ] as const) {
+      expect(stripComments(css), where).not.toMatch(/\.pin-(key|dot|pad)\s*[,{]/);
+    }
+  });
+
+  it('animates no gate onto the screen, and says why where the shell is', () => {
+    /* Rule 15 and ADR-0078's cut list: a cold start has nothing to come from
+       and a mid-session lock arriving is the one state change whose whole
+       value is being instant. Everything after that first frame moves, which
+       is what $lib/motion/appOpening is for - and it only ever runs on the
+       change that *ends* a gate.
+
+       Two negatives and one positive. Nothing a gate is built from may bring
+       the screen on: not the frame, not the field, and not the mount. The
+       title is the exception that proves it - it carries `in:`/`out:`
+       because a gate asks more than one thing over its life and that change
+       is inside a settled screen, which is the half of rule 15 that says
+       everything after the first frame moves. So the rule is written against
+       the three elements that are the screen rather than against the file. */
+    const shellMarkup = stripComments(stripScript(read('src/lib/components/GateScreen.svelte')));
+    for (const frame of ['screen screen-gate', 'gate step-field-host', 'gate-field step-field']) {
+      const at = shellMarkup.indexOf(`class="${frame}"`);
+      expect(at, `${frame} is not the shell's own element any more`).toBeGreaterThan(-1);
+      const tag = shellMarkup.slice(at, shellMarkup.indexOf('>', at));
+      expect(tag, `${frame} animates its own arrival`).not.toMatch(/\b(in|transition):[a-zA-Z]/);
+    }
+    for (const path of GATES) {
+      const mount = stripComments(stripScript(read(path)));
+      for (const at of [...mount.matchAll(/<GateScreen[^>]*>/g)]) {
+        expect(at[0], `${path}: a gate animating its own arrival`).not.toMatch(
+          /\b(in|transition):[a-zA-Z]/
+        );
+      }
+    }
+    const shell = read('src/lib/components/GateScreen.svelte');
+    expect(shell).toMatch(/arrival is a cut on every gate/i);
+    /* The one direction that does move, named in the shell so the two halves
+       of the decision are read together. */
+    expect(shell).toContain('appOpening');
+  });
+
   it('carries no shadow, which the redesign gives only to the floating bar', () => {
     /* DIRECTION.md decision 2: separation is a 1px outline, and the app's
        one shadow belongs to the nav bar and its add button. Twelve elevated
