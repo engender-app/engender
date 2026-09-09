@@ -1898,6 +1898,132 @@ try {
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
 
+/* 13c. a first run that restores (phase 10 redesign ticket 36).
+
+   The whole path a person on a new phone takes: say on the welcome that you
+   already have a backup, hand over the file and its password, and get the
+   journal back without being asked to invent a life you already have.
+
+   The archive is a real one, exported from this demo journal a moment
+   earlier through the export screen, because a fixture would prove the
+   screen wires up and not that a journal survives the round trip. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  const dayEntries = async () => {
+    await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
+    await booted();
+    await page.waitForSelector('[data-entry-card]');
+    return page.locator('[data-entry-card]').count();
+  };
+  const before = await dayEntries();
+
+  await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('#exp-pass').fill('walkthrough');
+  await page.locator('[data-export]').click();
+  const [archive] = await Promise.all([
+    page.waitForEvent('download', { timeout: 120000 }),
+    page.locator('[data-confirm-export]').click()
+  ]);
+  const archiveBytes = await readFile(await archive.path());
+
+  /* The jump empties the journal, which is what a new phone is. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-restore-start]');
+
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+
+  /* The refusal first, on the file that is not an archive, because this is
+     the ticket where being wrong loses somebody's journal: what has to hold
+     is that a refused archive says so and leaves the person on the step with
+     the way back still there, not that the happy path works. The handle is
+     the kind, matching the Settings screen's own - the walkthrough grips a
+     kind, never a sentence in one language. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'not-a-backup.ttbackup',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from('this is not an archive')
+    })
+  );
+  await page.locator('[data-restore-pick]').click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-restore-file]')?.textContent.includes('not-a-backup')
+  );
+  await page.locator('#ob-restore-pass').fill('walkthrough');
+  await page.locator('[data-restore-check]').click();
+  await page.waitForSelector('[data-restore-error="not-an-archive"]');
+  if (await page.locator('[data-finish]').count()) {
+    throw new Error('a refused archive was let through to the finish');
+  }
+
+  /* And the real one over the top of it, which is also the check that a
+     second pick clears the first one's refusal. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: archive.suggestedFilename(),
+      mimeType: 'application/octet-stream',
+      buffer: archiveBytes
+    })
+  );
+  await page.locator('[data-restore-pick]').click();
+  await page.waitForFunction(
+    (name) => document.querySelector('[data-restore-file]')?.textContent.includes(name),
+    archive.suggestedFilename()
+  );
+  await page.locator('#ob-restore-pass').fill('walkthrough');
+  await page.locator('[data-restore-check]').click();
+
+  /* One step between the restore and the finish, and it is the access mode
+     step (steps.ts's restoreSteps). Nothing that the archive answers is
+     asked again: no name field, no flag picker, no scales, no areas. */
+  await page.waitForSelector('[data-next]', { timeout: 120000 });
+  if (await page.locator('#ob-name').count()) throw new Error('setup asked for a name the archive carries');
+  if (await page.locator('[data-palette-pick]').count()) {
+    throw new Error('setup asked for a flag the archive carries');
+  }
+  await page.locator('[data-next]').click(); // access mode -> finish
+  await page.waitForSelector('[data-finish]');
+
+  await page.locator('[data-finish]').click();
+  await page.waitForSelector('[data-home-hello]', { timeout: 120000 });
+  await heldOnHome('the restore was undone by a late navigation');
+
+  const after = await dayEntries();
+  if (after !== before) {
+    throw new Error(`the journal came back as ${after} entries, not the ${before} that were exported`);
+  }
+  ok(`a first run restores its own backup, ${before} entries, and refuses one that is not an archive`);
+} catch (e) { fail('onboarding restore', e); }
+
+/* 13d. and the way back out of it: a restore that is given up on leaves the
+   person on the welcome as somebody new, with the whole flow ahead of them
+   and nothing written. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+  await page.locator('[data-restore-abandon]').click();
+
+  /* Back on the welcome, and it is the ordinary welcome: the second action
+     is offered again, and the step after it is the name step rather than the
+     access mode, which is what says the flow is the full one. */
+  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.waitForSelector('#ob-name');
+
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+  ok('giving up on a restore leaves setup running as a new person');
+} catch (e) { fail('onboarding restore abandoned', e); }
+
 /* 13b. the settings scales sheet is the same list onboarding drew, and a
    tick is the change - there is no confirm on the sheet and never was
    (phase 5 ticket 35) */
