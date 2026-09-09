@@ -1166,14 +1166,24 @@
        its containing block's - which propagated all the way up and made the
        frame report exactly `--nav-clearance` of content it was hiding, on
        every step at every size. `clip` stops the propagation without making
-       anything a scroll container; the margin is what stops it also clipping
-       the paint, which has to be able to stand taller than this box for the
-       length of a close - the edge starts at the height the field had and
-       this box is already at the height it is going to. 50vh is far past any
-       field the flow draws (the tallest is 293px) and far short of the
-       window the paint is. */
+       anything a scroll container, and the margin is what stops it also
+       clipping the paint, which has to be able to stand taller than this box
+       for the length of a close: the edge starts at the height the field
+       had and this box is already at the height it is going to.
+
+       120px, and the number is the point. A clip container's clip box is
+       what its ancestors see, so a margin big enough to reach past the frame
+       propagates again - `50vh` did, and put 20px back on the disguise step
+       at 360x640, where the field is 323 and half a window is 320. The
+       largest close inside the flow is the areas step's 285 down to the lock
+       step's 252, and the settle runs 8px past its mark, so 41px is what the
+       paint actually needs; 120 is room to spare and still well inside the
+       shortest frame the flow is measured at. The handover is not
+       constrained by this at all - a named element escapes its ancestors'
+       clipping for the length of a navigation, which is the whole mechanism
+       ticket 28 relies on. */
     overflow: clip;
-    overflow-clip-margin: 50vh;
+    overflow-clip-margin: 120px;
   }
 
   /* The paint, split from the box above (ticket 28's mechanism, and the
@@ -1573,6 +1583,13 @@
   .setup-rule-input {
     display: block;
     width: 100%;
+    /* A field is a target, so it answers to `--touch-target` like every
+       other one - the kit's own `.input` carries this and a rule-shaped
+       input has no less claim on it. It matters in the short form, where
+       the display face drops to 21 and the box came out at 41px tall
+       (measured at 320x568 by the walkthrough's own floor check, which is
+       what found it). */
+    min-height: var(--touch-target);
     padding: 0 0 var(--space-2);
     font-family: var(--font-display);
     font-size: var(--text-2xl);
