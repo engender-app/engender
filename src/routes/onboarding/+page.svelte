@@ -483,7 +483,17 @@
              awaitingAccessMode for the same reason Skip and "leave setup"
              are (ticket 54): a step back from here would be a way past
              choosing an access mode, and there is none. -->
-        <button class="icon-btn press" data-back aria-label={m.back()} onclick={() => go(stepBefore(steps, step))}>
+        <!-- A step back off the restore step is giving up on the restore,
+             not walking to the step before it: the step before it is the
+             welcome, and arriving there still in the restore flow would
+             leave its primary button pointing back at the file picker
+             instead of at a new setup (ticket 36). -->
+        <button
+          class="icon-btn press"
+          data-back
+          aria-label={m.back()}
+          onclick={() => (step === 'restore' ? abandonRestore() : go(stepBefore(steps, step)))}
+        >
           <Icon name="arrowLeft" />
         </button>
       {/if}
@@ -514,10 +524,18 @@
                  there is nothing in it, solid once there is, and the change
                  between the two is the tap's answer. It clips open from its
                  own left edge rather than fading up, which is what every
-                 block in this app does when it arrives (rule 10). -->
+                 block in this app does when it arrives (rule 10).
+
+                 Out of the default press, and DIRECTION's tier 1 says why: a
+                 surface the width of the screen fills with a wash, because
+                 scaling one moves everything beside it. 0.94 on a 358px
+                 block walks each edge 10.7px inward with the question and
+                 the rule holding still, which reads as a yank. The wash is
+                 in the stylesheet below. -->
             <button
-              class="setup-file press"
+              class="setup-file"
               class:is-empty={!picked}
+              data-no-press
               data-restore-pick
               onclick={chooseArchive}
             >
@@ -714,7 +732,7 @@
                15's status line). A notice is what rule 12 keeps off a step,
                and a box in the colour of an error over a file somebody just
                picked would be shouting where a sentence does. -->
-          {#if restoring && step !== 'welcome'}
+          {#if restoring && (step === 'restore' || step === 'done')}
             <p class="setup-status" role="alert" data-restore-error={archiveErrorKind}>
               {archiveError}
             </p>
@@ -1027,6 +1045,10 @@
     background: transparent;
     border-style: dashed;
   }
+  /* Tier 1's answer for a surface this wide: a wash rather than the compact
+     depth (the markup opts out of press.css above and says why). */
+  .setup-file:active { background: color-mix(in oklab, var(--accent) 12%, var(--surface-2)); }
+  .setup-file.is-empty:active { background: color-mix(in oklab, var(--accent) 10%, transparent); }
   .setup-file-ico { display: flex; flex: none; color: var(--text-2); }
   .setup-file-name {
     font-weight: 700;
