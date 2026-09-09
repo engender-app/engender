@@ -151,6 +151,11 @@ await settle(web, '/settings');
 await web.getByRole('button', { name: /Disguise/i }).click();
 await web.waitForSelector('[data-disguise-preview]');
 await shoot(web, 'settings-sheet');
+/* And with it on, which is the state the block's two looks differ in. Left
+   on for nothing else: this is the last shot of the run. */
+await web.getByRole('switch', { name: 'Disguise app' }).click();
+await web.waitForSelector('[data-disguise-preview][data-on="true"]');
+await shoot(web, 'settings-sheet-on');
 await web.close();
 
 await writeFile(`${outDir}/scroll.json`, JSON.stringify(scroll, null, 2));
