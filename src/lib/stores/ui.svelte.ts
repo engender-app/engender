@@ -3,6 +3,20 @@
 export const ui = $state({
   /** Quick add's fan (F1, phase 5 ticket 18), openable from the bar and the rail. */
   chooserOpen: false,
+  /* The app is opening: a gate has taken the secret and the field is on its
+     way to the height the screen behind it draws ($lib/motion/appOpening,
+     redesign ticket 34).
+
+     Held here rather than in that module because it has to be a rune - the
+     surfaces that read it are components - and that module is node-tested,
+     which a `.svelte.ts` cannot be. What reads it is anything whose own read
+     answers during the opening: a view transition paints its snapshots over
+     the page, so a panel that mounts under one is not drawn arriving and is
+     simply there when the paint lifts, rows below it shoved down (Alicja,
+     round one: "a yank caused by the backup monit appearing between frames
+     24 and 25"). Waiting for this to clear puts it on a settled screen,
+     where opening its own height reads as the change it is. */
+  appOpening: false,
   /* Whether the pointer that opened the fan is still down. The add control
      sets it and quick add clears it, because the press-and-slide gesture
      starts on one component and finishes on another: the button opens the
