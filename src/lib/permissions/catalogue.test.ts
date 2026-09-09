@@ -3,19 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   AMBIENT_KEYS,
   GRANT_KEYS,
+  NOTHING_GRANTED as NOTHING,
   ambientRows,
   grantRows,
   type GrantKey,
   type GrantStates
 } from './catalogue';
-
-/** Nothing granted, nothing asked for yet: what a first run meets. */
-const NOTHING: GrantStates = {
-  notifications: 'denied',
-  exactAlarms: 'denied',
-  microphone: 'denied',
-  camera: 'denied'
-};
 
 const rowFor = (key: GrantKey, ...args: Parameters<typeof grantRows>) =>
   grantRows(...args).find((row) => row.key === key)!;
@@ -120,13 +113,29 @@ describe('the note on the one row that can dead-end', () => {
 });
 
 describe('the group that needs no permission', () => {
-  it('is what the system hands over one file at a time, plus print and the clipboard', () => {
-    expect(AMBIENT_KEYS).toEqual(['takePhoto', 'pickFile', 'backupFolder', 'print', 'clipboard']);
+  /* All seven the inventory files under this heading, not the five the
+     ticket's Scope enumerated. The list's whole claim is that it is the whole
+     list, so battery optimisation and the biometric are on it. */
+  it('is every capability the inventory says needs no permission', () => {
+    expect(AMBIENT_KEYS).toEqual([
+      'takePhoto',
+      'pickFile',
+      'backupFolder',
+      'print',
+      'clipboard',
+      'batteryOptimisation',
+      'biometric'
+    ]);
   });
 
-  it('drops the backup folder on the web, which has no folder to grant', () => {
+  it('drops the two rows the web has nothing to draw for, and keeps the biometric', () => {
     expect(ambientRows('android').map((row) => row.key)).toEqual(AMBIENT_KEYS);
-    expect(ambientRows('web').map((row) => row.key)).not.toContain('backupFolder');
+    const web = ambientRows('web').map((row) => row.key);
+    expect(web).not.toContain('backupFolder');
+    expect(web).not.toContain('batteryOptimisation');
+    /* Both platforms have one: a Keystore auth-bound key on Android, WebAuthn
+       PRF in a browser. */
+    expect(web).toContain('biometric');
   });
 
   it('gives every row an icon', () => {

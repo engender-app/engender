@@ -13,18 +13,8 @@
 import { androidPermissions } from './android-bridge';
 import { androidReminders } from '$lib/reminders/android-bridge';
 import { isAndroid } from '$lib/platform';
+import { NOTHING_GRANTED } from './catalogue';
 import type { GrantKey, GrantState, GrantStates, SettingsTarget } from './catalogue';
-
-/** Nothing granted. The starting point on both platforms, and what a failed
-    read falls back to: showing a capability as granted when the read did not
-    answer would be the one wrong way round - it would hide the button that
-    is the whole point of the row. */
-const NOTHING_GRANTED: GrantStates = {
-  notifications: 'denied',
-  exactAlarms: 'denied',
-  microphone: 'denied',
-  camera: 'denied'
-};
 
 /** Opens the device, then closes it again.
 

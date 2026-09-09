@@ -19,7 +19,12 @@
      uses - this tier runs the real bundle in a real browser, so paraglide
      resolves here the way it does in the app (mount.ts's own note). */
   import { m } from '$lib/paraglide/messages';
-  import { grantRows, type GrantKey, type GrantStates } from '$lib/permissions/catalogue';
+  import {
+    NOTHING_GRANTED as NOTHING,
+    grantRows,
+    type GrantKey,
+    type GrantStates
+  } from '$lib/permissions/catalogue';
   import PermissionRow from '$lib/components/PermissionRow.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import { readFlagRoles, roleAt, type Role } from '$lib/theme/roles';
@@ -41,12 +46,6 @@
     roles = readFlagRoles();
   });
 
-  const NOTHING: GrantStates = {
-    notifications: 'denied',
-    exactAlarms: 'denied',
-    microphone: 'denied',
-    camera: 'denied'
-  };
   const EVERYTHING: GrantStates = {
     notifications: 'granted',
     exactAlarms: 'granted',

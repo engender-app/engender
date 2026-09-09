@@ -29,6 +29,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import PermissionRow from '$lib/components/PermissionRow.svelte';
   import {
+    NOTHING_GRANTED,
     ambientRows,
     grantRows,
     type AmbientKey,
@@ -39,12 +40,7 @@
 
   let platform = $derived(isAndroid() ? ('android' as const) : ('web' as const));
 
-  let states = $state<GrantStates>({
-    notifications: 'denied',
-    exactAlarms: 'denied',
-    microphone: 'denied',
-    camera: 'denied'
-  });
+  let states = $state<GrantStates>({ ...NOTHING_GRANTED });
 
   /* What has already been put in front of the person in this visit. A row
      offers the real dialog until it has been shown once; after that the
@@ -124,7 +120,9 @@
     clipboard: {
       title: m.perm_clipboard,
       why: () => (isAndroid() ? m.perm_clipboard_why() : m.perm_clipboard_why_web())
-    }
+    },
+    batteryOptimisation: { title: m.perm_battery, why: m.perm_battery_why },
+    biometric: { title: m.perm_biometric, why: m.perm_biometric_why }
   };
 </script>
 

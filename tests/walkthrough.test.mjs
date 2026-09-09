@@ -1845,13 +1845,15 @@ try {
       throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
     }
   }
-  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard']) {
+  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
     if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
       throw new Error(`the ${key} row is missing from the no-permission group`);
     }
   }
-  if ((await page.locator('[data-permission="backupFolder"]').count()) !== 0) {
-    throw new Error('the web build has no backup folder to grant and should not list one');
+  for (const key of ['backupFolder', 'batteryOptimisation']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
+      throw new Error(`the web build has no ${key} and should not list one`);
+    }
   }
   if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
     throw new Error('the list does not end on the fact that there is no internet permission');
@@ -3342,7 +3344,17 @@ try {
   const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
     els.map((el) => el.dataset.permission)
   );
-  const expected = ['notifications', 'exactAlarms', 'microphone', 'camera', 'takePhoto', 'pickFile', 'print', 'clipboard'];
+  const expected = [
+    'notifications',
+    'exactAlarms',
+    'microphone',
+    'camera',
+    'takePhoto',
+    'pickFile',
+    'print',
+    'clipboard',
+    'biometric'
+  ];
   if (onScreen.join() !== expected.join()) {
     throw new Error('the settings screen draws a different list: ' + onScreen.join());
   }
