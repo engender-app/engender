@@ -9,6 +9,11 @@
    what the page painted, Chromium's own screencast, the same mechanism
    tests/panel-motion-gallery.mjs and tests/journal-motion-gallery.mjs use.
 
+   Redesign ticket 19 changed what the drag scene shows - a held handle
+   follows the finger to the day and snaps on release, where ticket 11
+   snapped on every move - and added the handoff: the way into the span's
+   retrospective, with the rail staying raised while the door goes.
+
    The last scene is recorded with reduced motion on, which is the ticket's
    own acceptance box: every movement clamps, and the flipbook shows the
    cut.
@@ -25,6 +30,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { startSampling, stopSampling } from './motion-sampling.mjs';
 import { farMark, seedEras } from './lookback-shared.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -106,7 +112,20 @@ const seed = async (page) => {
   await seedEras(page, settle);
 };
 
-async function record(page, cdp, name, note, act) {
+/* The span as the finger and then the settle have it: the start day the
+   rail reports, where the start grip stands, and the lifted layer's clip. */
+const READ_SPAN = `
+  const tl = document.querySelector('[data-span-timeline]');
+  const grip = document.querySelector('[data-span-handle="start"]');
+  const full = document.querySelector('.span-tl-full');
+  return {
+    start: tl ? Number(tl.dataset.spanStart) : null,
+    dragging: tl ? tl.classList.contains('is-dragging') : null,
+    gripX: grip ? Math.round(grip.getBoundingClientRect().left) : null,
+    clip: full ? getComputedStyle(full).clipPath : null
+  };`;
+
+async function record(page, cdp, name, note, act, options = {}) {
   const frames = [];
   const started = Date.now();
   const onFrame = async ({ data, sessionId }) => {
@@ -120,10 +139,19 @@ async function record(page, cdp, name, note, act) {
   cdp.on('Page.screencastFrame', onFrame);
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 60, everyNthFrame: 1 });
   await page.waitForTimeout(80);
+  if (options.read) await startSampling(page, options.read);
   await act();
-  await page.waitForTimeout(SCENE_MS);
+  await page.waitForTimeout(options.ms ?? SCENE_MS);
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
+  let samples;
+  if (options.read) {
+    try {
+      samples = await stopSampling(page);
+    } catch {
+      samples = [];
+    }
+  }
 
   const written = [];
   for (const [i, frame] of frames.entries()) {
@@ -131,7 +159,10 @@ async function record(page, cdp, name, note, act) {
     await writeFile(resolve(outDir, file), Buffer.from(frame.data, 'base64'));
     written.push({ file, at: frame.at });
   }
-  scenes.push({ name, note, frames: written });
+  /* A scene may name its own band for the flipbook (panel-motion-flipbook
+     reads `crop` per scene): the handoff is the whole top of the screen,
+     where the rail scenes are the rail alone. */
+  scenes.push({ name, note, frames: written, samples, ...(options.crop ? { crop: options.crop } : {}) });
   console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms`);
 }
 
@@ -189,8 +220,23 @@ try {
       });
       if (palette !== 'trans') continue;
       await arrive(page);
-      await record(page, cdp, `drag-${palette}-${theme}`, 'The start handle dragged 140px and released: it follows the finger with no easing, then settles onto the grain or a magnet.', () =>
-        dragStart(page, 140)
+      await record(page, cdp, `drag-${palette}-${theme}`, 'The start handle dragged 140px and released: it follows the finger to the day with no snap and no easing, then on release the handle, the clip and the frame travel to the grain or a magnet on --dur-med.', () =>
+        dragStart(page, 140),
+        { read: READ_SPAN }
+      );
+      /* The handoff into the span's retrospective (redesign ticket 19): the
+         rail is raised by a touch on a grip, then the way in is tapped. The
+         rail stays raised while the door goes, so the chosen stretch is the
+         last thing standing on the outgoing screen; the field blind and the
+         fade-through carry the change. */
+      await arrive(page);
+      const grip = await page.locator('[data-span-handle="end"]').boundingBox();
+      await page.mouse.click(grip.x + grip.width / 2, grip.y + grip.height - 8);
+      await page.mouse.move(4, 4);
+      await page.waitForTimeout(400);
+      await record(page, cdp, `handoff-${palette}-${theme}`, 'The way into the span\'s retrospective tapped with the rail raised: the rail stays up while the door leaves, the field\'s edge travels to the deep screen\'s height, and the range view arrives under it.', () =>
+        page.locator('[data-lookback-read]').click(),
+        { crop: { top: 0, height: 720 } }
       );
       await arrive(page);
       await record(page, cdp, `rail-${palette}-${theme}`, 'The rail tapped between the handles: the nearer one comes to the finger.', async () => {

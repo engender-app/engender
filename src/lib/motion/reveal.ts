@@ -624,8 +624,19 @@ function sharesItsLine(node: Element): boolean {
  * defects. After the screen has settled the same entrance is a change worth
  * showing: closing one live tile promotes another out of the fold, and that
  * one should open its own height rather than appear at full size and shove
- * the rows below it. Leaving is never suppressed, because a panel that goes
- * during the arrival window went because somebody dismissed it.
+ * the rows below it.
+ *
+ * **And so is leaving, for the same window.** Carpet ticket 04 wrote that
+ * leaving is never suppressed because a panel that goes during the arrival
+ * window went because somebody dismissed it, and that premise is wrong for a
+ * capped grid: Home's live tiles answer their reads one by one, and a heavier
+ * tile answering after a lighter one displaces it into the fold, which is the
+ * list settling rather than anybody's tap - nobody taps inside the first
+ * 240ms of a screen. The displaced tile dissolved in front of the reader
+ * while the screen was still arriving, a ghost under the log strip for
+ * 200ms on every arrival with a full grid (redesign ticket 19, found on the
+ * agenda's flipbook and present on main). A leave inside the window cuts,
+ * before the swap check, so a settling swap draws neither half.
  *
  * `skip` is the same escape `disclose` documents, for the caller that can see
  * a SvelteKit navigation and this module cannot.
@@ -653,7 +664,7 @@ export function collapse(
       collapse(node, params, each)) as unknown as TransitionConfig;
   }
   if (isReducedMotion() || params?.skip) return { duration: 0 };
-  if (options?.direction === 'in' && stillArriving()) return { duration: 0 };
+  if (stillArriving()) return { duration: 0 };
   /* A panel arriving on a settled screen does not wait its turn in the
      grid's stagger (kit.css, --tile-index): the stagger is for a grid
      arriving together, and the third tile out of the fold sat as a blank
