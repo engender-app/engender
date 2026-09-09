@@ -2079,6 +2079,17 @@ try {
   if (palette !== 'lesbian') {
     throw new Error(`the archive's own flag did not come back with it: ${palette}`);
   }
+  /* And the flag put back, because the restore left this journal on the
+     archive's palette and the flows after this one read colours off the
+     document. A flow that changes the palette puts it back, which is the
+     rule 13b0 above already follows. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="trans"]').click();
+  await waitingFor('the flag going back to trans after the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
+
   ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
 } catch (e) { fail('onboarding restore', e); }
 
@@ -2103,19 +2114,6 @@ try {
 
   await page.locator('[data-leave-setup]').click();
   await page.waitForSelector('[data-home-hello]');
-
-  /* The demo persona back, for every flow after this one. The three
-     onboarding flows above all jump to a first run, which empties the
-     journal, and they get away with it because the next cold start seeds the
-     persona again into an empty one. The restore flow does not leave it
-     empty: it leaves one entry out of its own archive, and its own palette,
-     so nothing reseeds and the rest of the suite reads a one-entry journal
-     in the wrong colours. "Reset demo state" is the control that means
-     exactly this, preferences included. */
-  await page.locator('[data-reset-demo]').click();
-  await page.waitForSelector('[data-home-hello]');
-  await page.waitForFunction(() => document.documentElement.dataset.palette === 'trans');
-
   ok('giving up on a restore leaves setup running as a new person');
 } catch (e) { fail('onboarding restore abandoned', e); }
 
