@@ -151,7 +151,7 @@ const ROUTES = [
        30 was trying to decide about it. A state is read as its own reading
        rather than folded into the screen's, so the base route stays a
        reading of the screen and the sheet is a reading of the sheet. */
-    states: [{ name: 'disguise-sheet', open: ['[data-row-main="disguise"]'] }]
+    states: [{ name: 'disguise-sheet', open: ['[data-list-row="disguise"]'] }]
   },
   { path: '/settings/access-mode' },
   { path: '/settings/affirmations' },
@@ -244,7 +244,7 @@ const AUDITED = ['.card', '.editor-savebar'];
    build for its whole life, and its findings merge into the report the main
    run already wrote. */
 const PIN_ANDROID = args.includes('--pin-android');
-const GATED = [{ path: '/settings/reminders', name: 'reminders-android' }];
+const GATED = [{ path: '/settings/reminders', name: 'reminders-android', shoot: '.card.checkin-card' }];
 const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
 const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/cohesion-sweep-gallery.mjs';
 let pinnedLeg = false;
@@ -553,7 +553,11 @@ const read = () =>
       const census = {};
       for (const base of AUDITED)
         for (const el of root.querySelectorAll(base)) {
-          const key = `.${[...el.classList].join('.')}`;
+          /* Without the compiler's scope class, which is not a variant:
+             `.card.breathing-card.svelte-k4blm0` was drawn on /doubt and
+             read as a gap against the source's `.card.breathing-card`,
+             which is the instrument inventing the hole it exists to find. */
+          const key = `.${[...el.classList].filter((c) => !c.startsWith('svelte-')).join('.')}`;
           census[key] = (census[key] ?? 0) + 1;
         }
 
@@ -792,6 +796,20 @@ const record = async (route, palette, theme, extra = {}) => {
       ...extra,
       state: state?.name
     });
+    /* A surface only one build can draw is a number nobody can check, so
+       the gated leg leaves the picture beside the count. */
+    if (route.shoot) {
+      const clip = await page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: Math.max(0, r.left - 10), y: Math.max(0, r.top - 10), width: r.width + 20, height: r.height + 20 };
+      }, route.shoot);
+      if (clip) {
+        await page.screenshot({ path: `${outDir}/${name}.png`, clip });
+        shots.push({ name, route: route.path, selector: route.shoot, file: `${name}.png` });
+      }
+    }
     return reading;
   } catch (err) {
     audit.push({
@@ -945,6 +963,7 @@ if (PIN_ANDROID)
     console.log('no earlier audit to merge into; the gated leg stands alone');
   }
 audit.unshift(...(earlier.audit ?? []));
+shots.unshift(...(earlier.shots ?? []));
 proof.unshift(...(earlier.proof ?? []));
 const routes = (earlier.routes ?? 0) + walk.length;
 
