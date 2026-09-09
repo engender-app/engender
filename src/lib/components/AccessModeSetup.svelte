@@ -73,6 +73,7 @@
   import { isAndroid } from '$lib/platform';
   import { PIN_LENGTH } from '$lib/crypto/params';
   import { prfAvailable } from '$lib/data/webauthn-prf';
+  import { fieldPart } from '$lib/motion/navigation';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import {
     backToDetail,
@@ -281,10 +282,22 @@
   let shownError = $derived(error || localError);
 </script>
 
+<!-- One step in three states, and a state change moves (ADR-0078). The
+     module's screens used to swap in a single frame: the four modes were
+     there and then the chosen one's consequence was, with nothing in
+     between - "a mode picked inside the gate, yank between frame 1 and 2"
+     (Alicja, round one on redesign ticket 34). They cross now, on the same
+     crossfade setup's own steps take, over a grid cell that holds both so
+     the two overlap rather than stacking and doubling the page's height
+     while they do. The field's edge is already travelling underneath, since
+     the gate's title changes with the screen. -->
+<div class="am-stage">
+  {#key screen.screen}
+    <div class="am-stage-screen" in:fieldPart out:fieldPart>
 {#if screen.screen === 'list'}
   {#if purpose !== 'recovered'}
     <div class="am-intro">
-      <p class="gate-body is-long" data-access-intro>
+      <p class="gate-body" data-access-intro>
         {purpose === 'change' ? m.am_change_body() : m.am_setup_body()}
       </p>
     </div>
@@ -312,8 +325,8 @@
        never on the screen that follows it. -->
   <div class="am-chosen" data-access-chosen={screen.mode}>
     <!-- The consequence, on the screen where the choice is actually made and
-         above the control that makes it. Left-aligned, for the reason
-         .gate-body.is-long exists: this is four or five lines of prose whose
+         above the control that makes it. Left, as everything on a gate is
+         since redesign ticket 34: this is four or five lines of prose whose
          whole job is being read once and understood, and centred prose goes
          ragged at both edges. It was centred in the first build of this
          screen, which is what the render caught.
@@ -333,7 +346,7 @@
       <!-- Said once, next to both modes it is true of, because it is the
            one sentence that turns "tied to this device" into something a
            person can act on. -->
-      <p class="am-export-note gate-body is-long is-small" data-access-export-note>{m.am_export_note()}</p>
+      <p class="am-export-note gate-body" data-access-export-note>{m.am_export_note()}</p>
     {/if}
 
     {#if needsSecret(screen.mode)}
@@ -378,10 +391,12 @@
   <div class="am-secret" data-access-secret={screen.mode}>
     {#if screen.mode === 'passphrase'}
       <form class="gate-form" onsubmit={submitPassphrase}>
-        <div>
+        <!-- Both on the rule (rule 13): a passphrase is a typed answer with
+             its characters hidden, and this screen is the gate's own. -->
+        <div class="typed">
           <label class="field-label" for="am-passphrase">{m.pp_label_setup()}</label>
           <input
-            class="input"
+            class="rule-input"
             type="password"
             id="am-passphrase"
             name="passphrase"
@@ -390,10 +405,10 @@
             disabled={busy}
           />
         </div>
-        <div>
+        <div class="typed">
           <label class="field-label" for="am-passphrase-confirm">{m.pp_label_confirm()}</label>
           <input
-            class="input"
+            class="rule-input"
             type="password"
             id="am-passphrase-confirm"
             name="confirmation"
@@ -424,8 +439,30 @@
     </div>
   </div>
 {/if}
+    </div>
+  {/key}
+</div>
 
 <style>
+  /* Both screens in one cell while they cross, so the outgoing one does not
+     stand above the incoming one and double the height of the page for the
+     length of the change. Setup's own stage is the same shape and for the
+     same reason. */
+  .am-stage {
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .am-stage > * {
+    grid-area: 1 / 1;
+    min-height: 0;
+  }
+  .am-stage-screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   /* The module's own notice surface: one outline, an icon, and as many lines
      as the consequence being stated actually needs. Local rather than in
      screens.css because this is its only consumer
@@ -437,11 +474,11 @@
      options" block. The options are rows now; what this carries is one
      mode's consequence.
 
-     Left-aligned, for the same reason .gate-body.is-long is: four or five
+     Left, as everything on a gate is since redesign ticket 34: four or five
      lines of prose that has to be read once and understood does not go in a
-     centred column, and the gate frame centres everything by default. The
-     first build of this screen inherited that centring, which is what
-     looking at the render caught. */
+     centred column. The gate frame used to centre everything by default and
+     the first build of this screen inherited it, which is what looking at
+     the render caught. */
   .am-notice {
     display: flex;
     gap: var(--space-3);

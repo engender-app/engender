@@ -29,6 +29,8 @@
      mode is not a free choice, since it has to survive the rewrite. */
 
   import { m } from '$lib/paraglide/messages';
+  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { appWordmark } from '$lib/disguise/identity';
   import Progress from '$lib/components/Progress.svelte';
   import { createProgress } from '$lib/components/progress.svelte';
   import {
@@ -43,7 +45,7 @@
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import AccessModeSetup, { accessModeSetupErrorMessage, accessModeTitle, type AccessSetupMode } from './AccessModeSetup.svelte';
@@ -171,6 +173,10 @@
     unlockingPin ? m.pin_forgot() : unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot()
   );
 
+  /* The wordmark on the unlock, its own words on the four screens that are
+     not one - GateScreen.svelte argues both, for all six gates at once. This
+     gate can never greet by name: it renders before the journal the name
+     lives in can be read. */
   let gateTitle = $derived(
     converting && mode === 'setup'
       ? m.pp_convert_setup_title()
@@ -180,9 +186,7 @@
           ? chosenMode === null
             ? m.am_setup_title()
             : accessModeTitle(chosenMode)
-          : unlockingPin
-            ? m.pin_greeting()
-            : m.pp_unlock_title()
+          : appWordmark(prefs.disguise, m.app_name())
   );
 
   /** The setup module's answer, wired through boot.svelte.ts's own submit
@@ -273,11 +277,11 @@
        behind this one holding a half-typed secret. -->
   <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
 {:else if screen === 'conversion-refused'}
-  <GateScreen icon="alert" tone="alert" title={m.pp_convert_refused_title()}>
-    <p class={gateBodyClass(refusalBody)} data-conversion-refusal>{refusalBody}</p>
+  <GateScreen title={m.pp_convert_refused_title()}>
+    <p class="gate-body" data-conversion-refusal>{refusalBody}</p>
   </GateScreen>
 {:else if showConverting}
-  <GateScreen icon="lock" title={m.pp_converting_title()}>
+  <GateScreen title={m.pp_converting_title()}>
     <!-- SF-004: conversion used to advance through stages with no
          announcement - a silent content swap for anyone not watching the
          screen during a process that can take a while. The sentence is the
@@ -289,16 +293,14 @@
     <!-- True, and worth saying: every step is written down before it
          happens, so a closed tab or a dead battery resumes rather than
          starts over (conversion.ts). -->
-    <p class="gate-body is-small" style="margin-top:var(--space-4)">{m.pp_converting_note()}</p>
+    <p class="gate-body" style="margin-top:var(--space-5)">{m.pp_converting_note()}</p>
   </GateScreen>
 {:else if screen === 'form'}
-  <!-- No name in the unlock greeting on purpose: the display name lives in
-       the encrypted journal, and this screen renders before it can be read. -->
-  <GateScreen icon={choosingMode ? 'shield' : 'lock'} title={gateTitle}>
+  <GateScreen title={gateTitle}>
     {#if choosingMode}
       <AccessModeSetup purpose="setup" {busy} {error} onChoose={choose} bind:chosen={chosenMode} />
     {:else}
-      <p class={gateBodyClass(formBody)}>{formBody}</p>
+      <p class="gate-body">{formBody}</p>
 
       {#if unlockingPin}
         <PinEntry onVerify={submitPin} />
@@ -311,12 +313,16 @@
         <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       {:else}
         <form class="gate-form" onsubmit={submitPassphrase}>
-          <div>
+          <!-- A typed answer sits on the rule (rule 13), and a passphrase is
+               that shape with its characters hidden. The same drawing setup's
+               name step wears; `.typed` is what draws the rule in from the
+               left on focus. -->
+          <div class="typed">
             <label class="field-label" for="journal-passphrase">
               {mode === 'setup' ? m.pp_label_setup() : m.pp_label_unlock()}
             </label>
             <input
-              class="input"
+              class="rule-input"
               type="password"
               id="journal-passphrase"
               name="passphrase"

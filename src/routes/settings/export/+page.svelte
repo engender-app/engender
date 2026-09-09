@@ -963,7 +963,7 @@
       </div>
     {/if}
     {#if daylioPreview}
-      <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
+      <div class="card" style="margin-bottom:var(--space-4)">
         <div class="rows-divide value-row"><span>{m.daylio_entries_to_add()}</span><strong>{daylioPreview.entryCount}</strong></div>
         <div class="rows-divide value-row">
           <span>{m.daylio_activities_to_tags()}</span>
@@ -1027,7 +1027,7 @@
            arriving, how each mood landed, and what stays behind. The rows
            arrive in sequence on the app's own stagger, which reads down the
            list in the order somebody would check it. -->
-      <div class="card" style="box-shadow:none;background:var(--surface-2);margin-bottom:var(--space-4)">
+      <div class="card" style="margin-bottom:var(--space-4)">
         {#if nothingArriving(backupPreview)}
           <p class="muted small" style="margin:0" data-import-nothing-new>{m.dlb_nothing_new()}</p>
         {:else}

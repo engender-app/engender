@@ -959,3 +959,81 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
     expect(deep?.body).toMatch(/border-radius:\s*var\(--r-block\)/);
   });
 });
+
+/* Carpet 30: the bespoke `.card` variants, and grounds.
+   ============================================================
+   Ticket 20's sweep counted four `.card` variants where the source had
+   six, and carpet 28's ground check then found sixty-seven elements
+   painting `--surface` or `--surface-2` where rule 4 has three treatments
+   and none of them is a tone. Both are held here rather than in a
+   comment, because the tonal ground on the three disguise rows survived
+   ticket 20 exactly by being written down and not asserted.
+
+   Every assertion below was seen to fail against main at 8ae757fa. */
+describe('rule 4: what carpet 30 decided', () => {
+  /** The class names each `class="..."` attribute in `file` pairs with
+      `card`, which is what a variant is: a modifier on the shared surface.
+      Read off the attribute rather than off a stylesheet, since a variant
+      only exists where markup asks for one. */
+  function cardVariants(file: string): string[] {
+    const out: string[] = [];
+    for (const [, list] of read(file).matchAll(/class="([^"{}]*)"/g)) {
+      const names = list.trim().split(/\s+/);
+      if (!names.includes('card')) continue;
+      out.push(...names.filter((name) => name !== 'card'));
+    }
+    return out;
+  }
+
+  /* `.card.spread` went with carpet 29, and these three go here: the
+     check-in card and the breathing card lose the surface, and
+     `.card.no-print` turns out not to be a variant at all - `no-print` is
+     app.css's print utility (`display: none !important` inside @media
+     print), so that one is a plain `.card` wearing a utility and belongs
+     to carpet 21 with the other eighteen. Which leaves the allowlist at
+     exactly that one name, and it is here so the next variant somebody
+     invents has to argue with a failing test rather than with a sweep
+     nobody has re-run. */
+  it('leaves no bespoke .card variant in the source', () => {
+    const found = new Set<string>();
+    for (const file of svelteFiles()) for (const name of cardVariants(file)) found.add(name);
+    expect([...found].sort()).toEqual(['no-print']);
+  });
+
+  /* The 1.5px `--accent-border` edge was the group saying "this is the
+     app's own daily check-in, not a reminder you made", which is a claim
+     rule 4 has no treatment for. The row's own title says it in words. */
+  it('takes the box off the check-in group and retires its rule', () => {
+    const screen = read('src/routes/settings/reminders/+page.svelte');
+    expect(screen).not.toMatch(/checkin-card/);
+    expect(stripComments(read(SHEETS.screens))).not.toMatch(/checkin-card/);
+  });
+
+  /* The breathing exercise is a ring, and a ring is the object rather than
+     something that needs a container to say it is one. Its two grounds went
+     with the card: `--bg-card` and `--bg-subtle` are declared nowhere in
+     the token layer, so both had been resolving to nothing since the token
+     pass - the card around them was the only ground the surface had. */
+  it('takes the box off the breathing exercise and the two dead grounds with it', () => {
+    const file = 'src/lib/components/BreathingExercise.svelte';
+    /* The class attributes rather than the file, since the comment above the
+       markup has to be allowed to say what it stopped being. */
+    for (const [, list] of read(file).matchAll(/class="([^"{}]*)"/g))
+      expect(list.trim().split(/\s+/), file).not.toContain('card');
+    expect(styleBlocks(file)).not.toMatch(/--bg-(card|subtle)/);
+  });
+
+  /* The ground rule itself, on the one spelling that can put a tone under a
+     container without any stylesheet saying so. Both instances were on
+     `/settings/export`'s two import previews, and each also carried a
+     `box-shadow: none` that ticket 20 had already made redundant. */
+  it('grounds no container with a tonal fill', () => {
+    for (const file of svelteFiles()) {
+      for (const [, style] of read(file).matchAll(/style="([^"{}]*)"/g)) {
+        expect(style, `${file} grounds a container inline`).not.toMatch(
+          /background:\s*var\(--surface(-2)?\)/
+        );
+      }
+    }
+  });
+});

@@ -31,6 +31,7 @@
      the two lists a person can meet, and both are worth a picture. */
 
   import { bootState } from '$lib/stores/boot.svelte';
+  import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import { bootStates, bootTransitions } from '$lib/stores/boot-state';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
@@ -98,9 +99,19 @@
      itself. */
   setPlatform('web');
 
+  /* The palette and the theme, and then the flag they resolve to. The
+     refresh is what the app's shell does one line after stamping the same
+     two attributes, and without it `--field` and `--field-ink` are simply
+     absent here: every gate drew its title on the page instead of on the
+     flag's second colour, which is the whole of what redesign ticket 34
+     gave them. Found by looking at a render - the shots came out white -
+     and it had taken the contrast walk with it, which was measuring a title
+     against a background it is not drawn on. Same fix day-mount.ts already
+     carries for the day fixture. */
   $effect(() => {
     document.documentElement.dataset.palette = palette;
     document.documentElement.dataset.theme = theme;
+    refreshActiveFlag(document, false);
   });
 
   /* Set synchronously on the way in, not from an $effect. `isAndroid()` is

@@ -358,6 +358,27 @@ export function markScreenArrival(now: number = performance.now()): void {
   arrivedAt = now;
 }
 
+/**
+ * Closes the window early, for an arrival that outlasts it.
+ *
+ * The app opening is the one (redesign ticket 34): it runs for --dur-slow
+ * and the boot marks an arrival part-way through it, when the journal
+ * finishes opening, so the window was still standing after the screen had
+ * stopped moving. Measured on a cold start, the stale-backup notice landed
+ * 11ms after the opening ended and 21ms before the window would have shut,
+ * so it was read as part of the screen assembling and appeared in one frame
+ * with the rows below it shoved down - "there is a yank caused by the backup
+ * monit appearing between frames 24 and 25" (Alicja, round one).
+ *
+ * The rule the window states is unchanged: while the screen is still
+ * arriving a panel appearing is part of that, and once it has stopped a
+ * panel appearing is a change. This is only how a long arrival says it has
+ * stopped.
+ */
+export function endScreenArrival(): void {
+  arrivedAt = -Infinity;
+}
+
 /* A screen's panels are gated on reads that answer a few dozen milliseconds
    after it mounts, so their `{#if}`s all flip shortly *after* arrival rather
    than during it. The window is the screen's own arrival duration: while the
