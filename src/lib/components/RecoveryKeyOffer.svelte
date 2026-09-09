@@ -32,6 +32,7 @@
      for the other a completed secret change, and both had somewhere they
      were already going. */
   import { m } from '$lib/paraglide/messages';
+  import Notice from './kit/Notice.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
 
@@ -41,10 +42,7 @@
   let body = $derived(variant === 'secret-changed' ? m.rkn_offer() : m.rko_body_web());
 </script>
 
-<div class="card" data-recovery-offer={variant}>
-  <p class="ob-text">{m.rko_title()}</p>
-  <p class="ob-text">{body}</p>
-</div>
+<Notice data-recovery-offer={variant} icon="key" title={m.rko_title()} text={body} />
 
 <ListCard>
   <ListRow key="make-recovery-key" icon="key" title={m.rko_make()} href="/settings/recovery-key" />

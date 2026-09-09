@@ -6,6 +6,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
   let builtIns = $derived(vocabulary.bodyRegions.filter((r) => r.builtIn));
   let customs = $derived(vocabulary.bodyRegions.filter((r) => !r.builtIn));
@@ -17,41 +18,37 @@
 <div class="screen">
   <ScreenHeader title={m.body_regions_row_title()} back="/settings" subtitle={m.body_regions_intro()} />
 
-  <section class="card" style="margin-bottom:var(--space-4)">
-    <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.body_regions_builtin_heading()}</h2>
-    <div class="managed-tags">
-      {#each builtIns as r (r.id)}
-        <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
-          <span class="managed-label">{r.name}</span>
-          {#if r.hidden}<span class="muted small">{m.body_regions_hidden()}</span>{/if}
-          <span class="managed-actions">
-            <button
-              class="icon-btn"
-              data-region-hide={r.id}
-              aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
-              onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
-            >
-              <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
-            </button>
-          </span>
-        </div>
-      {/each}
-    </div>
-  </section>
+  <SectionHeading text={m.body_regions_builtin_heading()} />
+  <div class="managed-tags">
+    {#each builtIns as r (r.id)}
+      <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
+        <span class="managed-label">{r.name}</span>
+        {#if r.hidden}<span class="muted small">{m.body_regions_hidden()}</span>{/if}
+        <span class="managed-actions">
+          <button
+            class="icon-btn"
+            data-region-hide={r.id}
+            aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
+            onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
+          >
+            <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
+          </button>
+        </span>
+      </div>
+    {/each}
+  </div>
 
-  <section class="card" style="margin-bottom:var(--space-4)">
-    <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.body_regions_custom_heading()}</h2>
-    {#if customs.length === 0}
-      <p class="muted small">{m.body_regions_custom_empty()}</p>
-    {/if}
-    <div class="managed-tags">
-      {#each customs as r (r.id)}
-        <div class="rows-divide managed-tag">
-          <span class="managed-label">{r.name}</span>
-        </div>
-      {/each}
-    </div>
-  </section>
+  <SectionHeading text={m.body_regions_custom_heading()} />
+  {#if customs.length === 0}
+    <p class="muted small">{m.body_regions_custom_empty()}</p>
+  {/if}
+  <div class="managed-tags">
+    {#each customs as r (r.id)}
+      <div class="rows-divide managed-tag">
+        <span class="managed-label">{r.name}</span>
+      </div>
+    {/each}
+  </div>
 
   <button
     class="btn btn-soft"
