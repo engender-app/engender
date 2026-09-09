@@ -19,8 +19,9 @@
    still for 107ms and then the whole screen cut.
 
    The room is on the narrower list because it is read while somebody is
-   being spoken to and its own ticket asked for one deliberate way in and
-   out; changing that is not this ticket's to do.
+   being spoken to and a floating tab bar would be four ways to leave by
+   accident mid-sentence; the screen's own header back control (carpet 27)
+   is a deliberate exception to that and does not put the bar back.
 
    Here rather than in the layout for the reason active-tab.ts gives: the
    rule is a table, the layout is where a table gets buried, and a rule

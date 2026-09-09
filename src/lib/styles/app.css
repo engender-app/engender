@@ -429,7 +429,7 @@ body {
    456ms sequence is 16.7ms in both runs, and the single long frame in each
    (34ms, 63ms) lands at +59ms and +78ms, which is the route change drawing
    the new screen rather than anything the pill does. Not the device tier -
-   see that script's own note on which machine may be quoted for what. */
+   see that script's own note on which machine may be quoted for what.
 
    The old version said it with `scale` and a keyframe, and paid for it
    twice. The stretch was a tuned percentage of the pill's own length (18% at

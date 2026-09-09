@@ -5203,6 +5203,50 @@ try {
   const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
+  /* The room's field and back control (carpet 27): a visit today puts the
+     room's row on this screen. Opened from here, back's fallback and its
+     actual destination are the same URL, which proves the field and the
+     control exist but nothing about smartBack - a plain link to the
+     fallback would pass this identically. */
+  await page.locator('[data-list-row="in-the-room"]').click();
+  await page.waitForSelector('[data-in-the-room]');
+  if ((await page.locator('[data-screen-back]').count()) !== 1) {
+    throw new Error('the room has no back control');
+  }
+  const roomField = page.locator('[data-field-blind]');
+  const roomFieldBox = await roomField.boundingBox();
+  const appRootBox = await page.locator('[data-app-root]').boundingBox();
+  if (!roomFieldBox || !appRootBox || roomFieldBox.width < appRootBox.width * 0.9) {
+    throw new Error('the room has no field under its header');
+  }
+  await page.click('[data-screen-back]');
+  await page.waitForURL('**/health/appointments');
+  await page.waitForSelector('[data-appointment]');
+
+  /* The appointment-prep list also opens the room, on any day (its own
+     comment), and it is not the fallback - so pressing back from there is
+     what actually tells smartBack apart from a bare link to
+     /health/appointments. This is the shape the ticket's own motivating
+     bug was: a hardcoded destination that is not where the screen was
+     opened from. */
+  await page.goto(BASE + '/health/appointment-prep', { waitUntil: 'networkidle' });
+  await booted();
+  if (!(await page.locator('[data-list-row="in-the-room"]').count())) {
+    await page.click('[data-add]');
+    await page.waitForSelector('#appointment-prep-input');
+    await page.fill('#appointment-prep-input', 'ask about the referral');
+    await page.click('[data-save-appointment-item]');
+    await page.waitForSelector('[data-list-row="in-the-room"]');
+  }
+  await page.click('[data-list-row="in-the-room"]');
+  await page.waitForSelector('[data-in-the-room]');
+  await page.click('[data-screen-back]');
+  await page.waitForURL('**/health/appointment-prep');
+  await page.waitForSelector('[data-list-row="in-the-room"]');
+
+  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
+  await booted();
+
   /* Editing opens on what is stored, and the kind just used is offered as a
      chip - the only suggestion the app is entitled to make, since nothing
      ships in either language. Tapping one fills the field rather than

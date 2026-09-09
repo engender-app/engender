@@ -239,10 +239,11 @@
 }
 /* A hidden title with no back control and no actions leaves the field
    nothing to hold, so the header collapses to nothing visible rather than
-   painting an empty band: the in-the-room screen is chromeless on purpose,
-   and the two hubs that hide their title gain their field's contents from
-   tickets 09 and 15. A screen can hide its title and still show a back
-   control or an action, and those keep the field.
+   painting an empty band: /settings is this today (carpet 25, unresolved),
+   and the two hubs that hide their title otherwise gain their field's
+   contents from tickets 09 and 15. A screen can hide its title and still
+   show a back control or an action, and those keep the field - the room
+   does now (carpet 27).
 
    Unpainted, not display: none. The visually hidden title inside is still
    the screen's heading for a screen reader and the document outline (the
