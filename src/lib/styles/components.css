@@ -251,7 +251,7 @@
 .section-title h2::before {
   content: '';
   width: 16px; height: 7px; border-radius: 4px;
-  background: var(--grad-accent);
+  background: var(--text);
   flex-shrink: 0;
 }
 .section-aside { font-size: var(--text-sm); color: var(--text-2); }
@@ -313,7 +313,11 @@
    PIN pad's dead keys already use. */
 .btn:disabled { cursor: default; opacity: 0.45; }
 .icon-btn:disabled { cursor: default; opacity: 0.45; }
-.btn-primary { background: var(--grad-accent); color: var(--on-accent); box-shadow: var(--shadow-1); }
+/* Ink, the same pairing as .segment's active pill, the notice's icon square
+   and a tile's action button (DIRECTION.md rule 4): --text as the ground,
+   --bg as the type. No box-shadow - the kit's one shadow belongs to the
+   floating add button, not this control. */
+.btn-primary { background: var(--text); color: var(--bg); }
 /* Behind a hover query because this rule sits after .btn:active and carries
    the same specificity, so on a touch screen it wins. Chromium applies
    :hover on tap and leaves it applied until something else is tapped, which
@@ -334,7 +338,6 @@
    are ticket 18's, not this ticket's. */
 @media (hover: hover) {
   .btn-primary:hover:not(:active) {
-    box-shadow: var(--shadow-2);
     transform: translateY(-1px);
     filter: saturate(1.15);
   }
