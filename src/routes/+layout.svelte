@@ -29,6 +29,7 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
+  import { saveBar } from '$lib/stores/saveBar.svelte';
   import { bootState, recoveryUnlock, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -697,51 +698,68 @@
       <AppNav />
     {/if}
 
-    <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
-      {#if schemaTooNew}
-        <SchemaTooNew />
-      {:else if needsPassphrase}
-        <JournalGate />
-      {:else if needsAuthentication}
-        <AndroidKeyGate />
-      {:else if needsDeviceRecovery}
-        <DeviceBoundRecovery />
-      {:else if needsAccessModeAfterRecovery}
-        <!-- Before the lock rather than after it: a session that has just
-             been recovered has nothing for a re-entry screen to ask, since
-             the secret it would ask for is the one that failed. -->
-        <PostRecoveryAccessMode />
-      {:else if locked}
-        <!-- Instead of the route, not over it: nothing below this renders,
-             so no screen mounts and no query runs while the app is locked.
+    <!-- The scroll region and the foot a screen may ask for, stacked. The
+         box is what lets the column reserve the foot's room by layout
+         rather than by arithmetic: the foot is the region's flex sibling
+         rather than a second pinned thing inside it, so no screen can end
+         up with a control under it (carpet 26, and
+         $lib/stores/saveBar.svelte for what that cost before). It is also
+         what puts the pair beside the rail rather than under it at desktop
+         width, where `.app` itself is a row.
 
-             What that costs, decided and kept (phase 8 features ticket 49
-             item 3): the route unmounts, so component state and scroll
-             position go with it, and unlocking is not a navigation, so
-             `restoreScroll` never runs either. The app comes back at the top
-             of the screen it was on. Asked to put somebody back exactly where
-             they were reading - pass 3's D5 - the answer here is no, on
-             purpose. Not rendering the journal behind a lock screen is the
-             property the gesture exists for, and quick exit is the gesture
-             for somebody walking in: redrawing the paragraph that was just
-             hidden, a second after the passphrase is typed in front of that
-             person, is not a kindness. The URL is untouched, so what the
-             person does get back is the screen itself.
+         The landmark is on this box rather than on the scroll region
+         inside it, because the foot moved: a screen's one commitment is
+         part of the screen, and left outside <main> it would be a group of
+         controls belonging to no landmark at all. The skip link still
+         lands on the region, which is what a person wants to be put at the
+         top of. -->
+    <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
+        {#if schemaTooNew}
+          <SchemaTooNew />
+        {:else if needsPassphrase}
+          <JournalGate />
+        {:else if needsAuthentication}
+          <AndroidKeyGate />
+        {:else if needsDeviceRecovery}
+          <DeviceBoundRecovery />
+        {:else if needsAccessModeAfterRecovery}
+          <!-- Before the lock rather than after it: a session that has just
+               been recovered has nothing for a re-entry screen to ask, since
+               the secret it would ask for is the one that failed. -->
+          <PostRecoveryAccessMode />
+        {:else if locked}
+          <!-- Instead of the route, not over it: nothing below this renders,
+               so no screen mounts and no query runs while the app is locked.
 
-             A journal with no access secret at all never reaches this branch.
-             It takes `lockState.blanked` instead - an overlay above a tree
-             that stays mounted - and does keep its position, which is where
-             the original "already true, by construction" reading came from.
-             walkthrough.test.mjs flow 18 asserts the passphrase case, since
-             that is every journal this feature exists for. -->
-        <SessionUnlock mode={bootState.accessMode} />
-      {:else if redirectingToOnboarding}
-        <!-- The effect above is already navigating here; nothing renders
-             for the frame that takes, so a brand new install's first paint
-             is never whatever route the URL happened to be (ticket 54). -->
-      {:else}
-        {@render children()}
-      {/if}
+               What that costs, decided and kept (phase 8 features ticket 49
+               item 3): the route unmounts, so component state and scroll
+               position go with it, and unlocking is not a navigation, so
+               `restoreScroll` never runs either. The app comes back at the top
+               of the screen it was on. Asked to put somebody back exactly where
+               they were reading - pass 3's D5 - the answer here is no, on
+               purpose. Not rendering the journal behind a lock screen is the
+               property the gesture exists for, and quick exit is the gesture
+               for somebody walking in: redrawing the paragraph that was just
+               hidden, a second after the passphrase is typed in front of that
+               person, is not a kindness. The URL is untouched, so what the
+               person does get back is the screen itself.
+
+               A journal with no access secret at all never reaches this branch.
+               It takes `lockState.blanked` instead - an overlay above a tree
+               that stays mounted - and does keep its position, which is where
+               the original "already true, by construction" reading came from.
+               walkthrough.test.mjs flow 18 asserts the passphrase case, since
+               that is every journal this feature exists for. -->
+          <SessionUnlock mode={bootState.accessMode} />
+        {:else if redirectingToOnboarding}
+          <!-- The effect above is already navigating here; nothing renders
+               for the frame that takes, so a brand new install's first paint
+               is never whatever route the URL happened to be (ticket 54). -->
+        {:else}
+          {@render children()}
+        {/if}
+      </div>
     </main>
 
     <QuickAdd />

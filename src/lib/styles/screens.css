@@ -24,32 +24,12 @@
 /* ---------- Entry editor and friends ---------- */
 .editor-heading { font-size: var(--text-md); font-weight: var(--weight-bold); margin: 0 0 var(--space-3); font-family: var(--font-body); }
 
-/* Sticky against the scroll port, whose bottom edge is the window's - the
-   scroll region's own bottom padding sits inside the scrollable area and
-   does not move this. So it clears the floating bar by naming the same
-   clearance the scroll region uses (app.css). */
-.editor-savebar {
-  /* On the bar rather than floating above it (Alicja, 2026-08-25: "too
-     high"). It cleared the bar by 140px, and the reason is that a sticky
-     offset is measured from the scroll port's *padding* edge, not its border
-     edge - and `.app-main` already reserves --nav-clearance of bottom padding
-     for the bar (app.css). Asking for --nav-clearance on top of that counted
-     the bar twice.
+/* The entry editor's save bar and every other screen's foot left screens.css
+   with carpet 26: a foot is the frame's now, drawn as `.app-savebar` in
+   app.css and written as `<SaveBar>` by the screen that owns its buttons.
+   What was here was `position: sticky` with a negative offset, which is
+   what put it over the column rather than under it. */
 
-     That padding edge sits --space-5 above the bar, because --nav-clearance
-     is what the bar occupies plus a breath so a scrolling column's last row
-     does not stop dead against its shadow. A footer that means to sit *on*
-     the bar wants to give that breath back and keep a hairline, which is a
-     negative offset - the one case where a sticky element is asked to sit
-     below the edge it sticks to. */
-  position: sticky; bottom: calc(var(--space-2) - var(--space-5));
-  z-index: 20; display: flex; margin-top: var(--space-5);
-}
-/* No shadow. The bar it sits on is pinned over a scrolling column, which
-   is what the offset above buys a hairline for; the button on it is a
-   button, and rule 4 gives the app one shadow, which belongs to the
-   floating bar. It reached four screens' primary action. */
-.editor-savebar .btn { width: 100%; }
 .photo-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .photo-wrap { position: relative; }
 /* SH-107: the visible badge stays 24px (::before), but the button itself -
@@ -900,7 +880,6 @@
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  .editor-savebar { bottom: var(--space-4); }
 
   /* Home's outline frame on the web (phase 5 ticket 32.11) is gone with
      redesign ticket 23: the field is the column's top edge now, a

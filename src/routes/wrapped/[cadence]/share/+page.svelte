@@ -37,6 +37,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
 
   const today = todayEpochDay();
 
@@ -183,11 +184,11 @@
       <!-- On the navigation bar rather than in the page: this is the screen's
            one commitment, it is the same bar the entry editor's save sits on,
            and a button that scrolls away is a button you go looking for. -->
-      <div class="editor-savebar">
+      <SaveBar>
         <button class="btn btn-primary" data-generate disabled={running || nothingPicked} onclick={make}>
           <span>{m.pj_generate()}</span>
         </button>
-      </div>
+      </SaveBar>
     {/if}
   {/if}
 </div>

@@ -72,7 +72,7 @@ async function shoot(page, name) {
   await page.evaluate(() => {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
     document.querySelector('.demo-bar')?.remove();
-    for (const el of document.querySelectorAll('.editor-savebar, [class*="app-nav"], nav')) {
+    for (const el of document.querySelectorAll('[data-app-savebar], [class*="app-nav"], nav')) {
       if (getComputedStyle(el).position !== 'static') el.style.position = 'static';
     }
   });

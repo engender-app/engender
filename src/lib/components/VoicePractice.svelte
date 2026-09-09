@@ -41,6 +41,7 @@
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -218,14 +219,14 @@
       <p class="muted small vp-sealed-note">{m.vb_practice_sealed_note()}</p>
     </div>
 
-    <div class="editor-savebar vp-review-actions">
+    <SaveBar arrange="row">
       <button class="btn btn-ghost" data-vp-discard disabled={saving} onclick={discardTake}>
         <span>{m.vb_practice_discard()}</span>
       </button>
       <button class="btn btn-primary" data-vp-save disabled={saving} onclick={saveTake}>
         <Icon name="check" size={20} /><span>{m.vb_practice_save()}</span>
       </button>
-    </div>
+    </SaveBar>
   {:else}
     <div class="screen-part vp-body">
       <p class="muted small vp-lead">{m.vb_practise_lead()}</p>
@@ -249,7 +250,7 @@
       {/if}
     </div>
 
-    <div class="editor-savebar">
+    <SaveBar>
       {#if running}
         <button class="btn btn-primary" data-vp-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
@@ -259,7 +260,7 @@
           <Icon name="mic" size={20} /><span>{m.vb_record()}</span>
         </button>
       {/if}
-    </div>
+    </SaveBar>
   {/if}
 </div>
 
@@ -280,16 +281,4 @@
     margin: var(--space-4) 0 0;
   }
 
-  /* Discard and Save, side by side rather than stacked - the savebar's own
-     default - because neither is the primary action a person came to the
-     screen for the way a single save button usually is: declining to keep
-     a take is as ordinary an outcome here as keeping it. */
-  .vp-review-actions {
-    display: flex;
-    gap: var(--space-3);
-  }
-
-  .vp-review-actions .btn {
-    flex: 1;
-  }
 </style>

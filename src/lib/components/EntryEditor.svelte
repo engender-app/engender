@@ -56,6 +56,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { effectCategoryName } from '$lib/data/vocabulary/labels';
@@ -1209,11 +1210,11 @@
     </section>
   </div>
 
-  <div class="editor-savebar">
+  <SaveBar>
     <button class="btn btn-primary" data-save disabled={saving} onclick={saveEntry}>
       <Icon name="check" size={20} /><span>{m.save_entry()}</span>
     </button>
-  </div>
+  </SaveBar>
   {/if}
 
   <Sheet bind:open={templateSheetOpen} title={m.use_template()}>

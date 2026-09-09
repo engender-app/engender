@@ -47,6 +47,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -281,11 +282,11 @@
             </div>
           </div>
         {:else}
-          <div class="editor-savebar journey-actions">
+          <SaveBar>
             <button class="btn btn-primary press" data-generate disabled={running || selected.length === 0} onclick={make}>
               <span>{m.pj_generate()}</span>
             </button>
-          </div>
+          </SaveBar>
           <Progress run={progress} label={m.pj_running()} handle="journey" />
         {/if}
       </div>
