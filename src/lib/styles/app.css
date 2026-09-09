@@ -143,6 +143,89 @@ body {
   padding-bottom: var(--nav-clearance);
 }
 
+/* ---------- the column: the scroll region, and the foot beside it ----------
+
+   Two pinned things sit over this column and only one of them ever floated.
+   `.app-nav` is absolute against the frame and the region reserves
+   `--nav-clearance` for it, which is the promise that lets a bar cover a
+   row mid-scroll and not at the end of the column. The save bar was the
+   second one and it made no such promise: `position: sticky` at the end of
+   the content, over a column that did not know it was there, so it landed
+   on whatever the screen happened to have at that height - the bottom 19px
+   of a 48px slider on `/settings/dimension`, 44 of the same slider's 48 in
+   the entry editor, 36px of a selected photo cell on `/media/photos/export`
+   (carpet 28's occlusion pass; `$lib/stores/saveBar.svelte` has the
+   arithmetic that made every fix from inside the column impossible).
+
+   So the foot is out of the region and beside it, and the reservation is
+   layout: the region is a foot shorter, and nothing is under the foot at
+   any scroll position. This box is what holds the two together, and what
+   keeps them beside the rail rather than under it at desktop width, where
+   `.app` itself is a row. */
+.app-column {
+  flex: 1;
+  /* A flex item will not go below its content's size without this, so a
+     long screen would grow the column and push the foot off the frame
+     instead of letting the region scroll. */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* What the region owes below its content, on a screen that has a foot: the
+   foot holds the floating bar's room itself (below), so asking for
+   `--nav-clearance` here as well would count the bar twice - which is the
+   defect the sticky version's own negative offset was written to undo. The
+   breath between the last block and the foot is the block's own trailing
+   margin (`.screen > *`), the same 20 the sticky bar's `margin-top`
+   collapsed into. */
+.app-column.has-savebar > .app-main {
+  padding-bottom: 0;
+}
+
+/* The foot itself: the one commitment a deep screen asks for.
+
+   It sits *on* the floating bar rather than above it, keeping `--space-2`
+   and giving the breath back - the trade the sticky version documented and
+   Alicja asked for (2026-08-25, "too high"). Held as the padding under the
+   controls, since a box in the frame's flow has no scroll port for an
+   offset to be measured from. Its ground is the page's, as it always was:
+   the foot is where the column ends, not a surface over it (rule 4).
+
+   Two of the three arrangements are in the app's vocabulary already: rule
+   12's foot is a primary with the ways past it under it, and rule 15's is
+   one control. `row` is the third - two of equal weight, where declining is
+   as ordinary an outcome as keeping (a voice take). */
+.app-savebar {
+  flex: 0 0 auto;
+  display: flex;
+  padding: var(--space-3) var(--space-5) calc(var(--nav-clearance) - var(--space-5) + var(--space-2));
+  /* Opaque, and this is mechanism rather than decoration. The column gives
+     up the foot's room on the last frame of its arrival and takes it back
+     on the first frame of its leave ($lib/motion/foot), which is invisible
+     only because the strip being clipped is already covered: through a
+     see-through foot the same swap reads as a band of content disappearing
+     in one frame. `.return-foot` says the same thing for the same reason
+     ("opaque, or the rows scroll through it").
+
+     The ground is the page's, so nothing here is a surface (rule 4): what
+     the hairline marks is where the column ends, which is what rule 12's
+     foot is - "pinned to the bottom edge above a hairline". The app draws
+     this foot twice already, in setup and on the return moment, and both
+     draw the line. */
+  background: var(--bg);
+  border-top: 1px solid var(--hairline);
+}
+.app-savebar .btn { width: 100%; }
+.savebar-row {
+  gap: var(--space-3);
+}
+.savebar-row .btn { flex: 1; }
+.savebar-stack {
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 /* What the floating bar occupies, measured from the bottom of the window:
    its own height, the gap it floats above the edge by, the system inset
    under that, and a breath so the last row of content does not stop dead
@@ -672,7 +755,15 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
    ticket could wire tier 2 through the whole app without remounting a page
    component on every navigation.
    ============================================================ */
-.app-main { view-transition-name: screen; }
+/* The column rather than the scroll region inside it, since carpet 26 put
+   the foot beside the region: a group holds one box for both sides of a
+   transition, so naming the region would hand the browser a box a foot
+   shorter on a screen that has one than on the screen being left, and a
+   tween of the box is a scale of the picture in it. The column is the same
+   size on every screen, foot or no foot, and the foot rides inside its
+   snapshot exactly as it did when it was a block at the end of the
+   column. */
+.app-column { view-transition-name: screen; }
 
 /* The floating bar is its own group, above the screen's (Alicja, 2026-08-25:
    "during the transition the new tab is rendering above the nav for a
@@ -1063,9 +1154,25 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   /* The rail has taken the left inset, so the scroll region beside it only
      owes the right one. */
   .app-main { flex: 1; padding-left: 0; }
+  /* The centred column's own width, named once: the screen and the foot
+     under it are two boxes that have to be the same width to line up, and
+     carpet 26 is what made that two rules instead of one. */
+  .app { --column-max: calc(var(--content-max) + 2 * var(--space-5)); }
   .screen {
-    max-width: calc(var(--content-max) + 2 * var(--space-5));
+    max-width: var(--column-max);
     margin: 0 auto;
+  }
+  /* The foot takes the column's width and its inset, so it lines up with
+     the content above it rather than with the window. Nothing floats over
+     this shell, so what is under the foot is the page's own edge: 20, the
+     screen's inset, and not the 56px the phone's bar needs - that number
+     was the clearance a column reserved for a bar this width does not
+     have. */
+  .app-savebar {
+    width: 100%;
+    max-width: var(--column-max);
+    margin: 0 auto;
+    padding-bottom: var(--space-5);
   }
 }
 
