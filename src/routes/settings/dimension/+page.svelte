@@ -10,6 +10,7 @@
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
 
   let name = $state('');
   let low = $state('');
@@ -88,9 +89,9 @@
     <DimensionSlider dim={previewDim} value={Math.round(max * 0.6)} onInput={() => {}} />
   {/key}
 
-  <div class="editor-savebar">
+  <SaveBar>
     <button class="btn btn-primary" data-save onclick={saveDimension}>
       <Icon name="check" size={20} /><span>{m.cd_save()}</span>
     </button>
-  </div>
+  </SaveBar>
 </div>

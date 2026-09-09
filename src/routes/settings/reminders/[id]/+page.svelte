@@ -18,6 +18,7 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
 
   const TYPES = [
     { value: 'med', label: m.rem_type_med() },
@@ -124,9 +125,9 @@
     </div>
   </div>
 
-  <div class="editor-savebar">
+  <SaveBar>
     <button class="btn btn-primary" data-save onclick={saveReminder}>
       <Icon name="check" size={20} /><span>{m.rem_save()}</span>
     </button>
-  </div>
+  </SaveBar>
 </div>

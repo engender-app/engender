@@ -234,7 +234,7 @@ const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabin
    by their whole class list rather than by the base, so a variant nobody
    predicted shows up as itself - which is how carpet 21 came to say four
    when the source has six. */
-const AUDITED = ['.card', '.editor-savebar'];
+const AUDITED = ['.card', '.app-savebar'];
 
 /* The gated leg, which is its own run of this script rather than a second
    act inside the main one. `/settings/reminders` draws its Android branch -
