@@ -1,6 +1,11 @@
 <!-- The sign-off page for redesign ticket 35, built by
      tests/return-signoff-page.mjs, which substitutes the crops and the
-     flipbook bundle into __PAYLOAD__ below. Dressed in the app's own
+     flipbook bundle into the placeholder in the script at the foot of this
+     file. That token is named there and nowhere else on purpose: a string
+     replace takes the first match, so a second mention - in a comment like
+     this one - swallows the whole payload and leaves the script with an
+     unsubstituted literal, which is a syntax error and a page that renders
+     none of its images. Dressed in the app's own
      direction, because that is what it is reviewing: hairlines and blocks
      rather than cards, one 6px radius, no shadow, Outfit 800 over Nunito,
      the trans field's own pink as the single accent. -->
@@ -528,7 +533,9 @@
         const img = el('img');
         img.src = pack[side];
         img.alt = spec.title + ', ' + side;
-        img.loading = 'lazy';
+        /* No lazy loading: every image is already a data URI in this
+           document, so deferring one buys no network and only means a
+           reader who scrolls fast meets an empty box. */
         const cap = el('figcaption');
         cap.append(el('span', 'tag', side === 'before' ? 'before · main' : 'after · this branch'));
         cap.append(document.createElement('br'));
