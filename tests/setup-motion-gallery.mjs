@@ -40,6 +40,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { SETUP_STEPS } from './setup-flow.mjs';
 import { startSampling, stopSampling } from './motion-sampling.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,18 +59,7 @@ const SCENE_MS = 1000;
 const SUN_MS = 1500;
 const VIEWPORT = { width: 390, height: 844 };
 
-/** The runtime flow, in order. */
-const ORDER = [
-  'welcome',
-  'name',
-  'flag',
-  'scales',
-  'areas',
-  'lock',
-  'permissions',
-  'disguise',
-  'done'
-];
+const ORDER = SETUP_STEPS;
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });

@@ -38,7 +38,7 @@
 
 import type { Action } from 'svelte/action';
 
-import { blindVariables } from './fieldBlind';
+import { blindVariables, VARIABLES } from './fieldBlind';
 
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
@@ -115,6 +115,15 @@ export const blindEdge: Action<HTMLElement> = (node) => {
       cancelAnimationFrame(frame);
       observer.disconnect();
       delete host.dataset[HOLD];
+      /* Everything this published, given back. Setup mounts once per
+         session, so nothing has been seen to depend on it - but a
+         mechanism that leaves five custom properties and an edge on an
+         element it no longer watches is one an unrelated screen can
+         inherit, and the two properties this file writes itself are not
+         in `blindVariables`'s list. */
+      for (const property of [...VARIABLES, '--blind-edge', '--part-delta']) {
+        host.style.removeProperty(property);
+      }
     }
   };
 };

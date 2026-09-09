@@ -25,6 +25,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { SETUP_STEPS } from './setup-flow.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -37,17 +38,7 @@ const PALETTES = flag(
   'trans,nonbinary,genderfluid,bisexual,lesbian,pansexual,rainbow,agender'
 ).split(',');
 const THEMES = flag('themes', 'light,dark').split(',');
-const ORDER = [
-  'welcome',
-  'name',
-  'flag',
-  'scales',
-  'areas',
-  'lock',
-  'permissions',
-  'disguise',
-  'done'
-];
+const ORDER = SETUP_STEPS;
 
 /* Read in the page: every element with text of its own, the colour it is
    drawn in, the first background above it that paints, and the ratio. */

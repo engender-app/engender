@@ -23,6 +23,7 @@
 import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
 
+import { PART_TRAVEL } from './fieldBlind';
 import {
   crossfadeDuration,
   EASE_OUT,
@@ -139,7 +140,9 @@ export function fieldPart(
      which is what stops the two reading as one element sliding through. */
   const sign = options.direction === 'out' ? 1 : -1;
   const move = (u: number) =>
-    params.printed ? `transform: translateY(calc(var(--part-travel, 12px) * ${sign * u}))` : '';
+    params.printed
+      ? `transform: translateY(calc(var(--part-travel, ${PART_TRAVEL}px) * ${sign * u}))`
+      : '';
   const fast = motionDuration('--dur-fast');
   return {
     duration: fast,

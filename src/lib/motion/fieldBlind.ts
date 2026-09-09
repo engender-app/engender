@@ -60,8 +60,13 @@ const BLIND_NAME = 'blind';
     top of the ride it takes with the blind. Under the field's own 16px of
     bottom padding, so an element travelling towards the edge cannot reach
     it: nothing painted on the blind ever sticks out of it (Alicja, round
-    one, 2026-09-09). */
-const PART_TRAVEL = 12;
+    one, 2026-09-09).
+
+    Exported because `fieldPart` in navigation.ts writes the same distance as
+    a var() fallback, for the frame before this module has published one -
+    and a second literal there would be a second source of truth for one
+    number. */
+export const PART_TRAVEL = 12;
 
 /* Which carry owns the variables on the root. A navigation superseded by
    another leaves its own `release` to run late, and a late release used to
@@ -135,7 +140,16 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
   return carry;
 }
 
-const VARIABLES = ['--blind-from', '--blind-to', '--blind-delta', '--blind-ease', '--part-travel'];
+/** The five a moving edge publishes. Exported so whoever publishes them can
+    also give them back: a navigation's carry does it in `release`, and
+    setup's own action does it when the screen is destroyed. */
+export const VARIABLES = [
+  '--blind-from',
+  '--blind-to',
+  '--blind-delta',
+  '--blind-ease',
+  '--part-travel'
+];
 
 /**
  * What one edge moving from `from` to `to` is worth, as the five custom
