@@ -669,76 +669,136 @@
 /* ---------- Custom dimension ---------- */
 .cd-endpoints { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 
-/* ---------- The gates (phase 5 ticket 26) ----------
+/* ---------- The gates (phase 5 ticket 26, redressed by redesign ticket 34)
 
-   The five pre-unlock screens and the lock setup, all built from
-   GateScreen.svelte. They used to be .applock, a top-aligned 360px column
-   with a badge, and the six copies had drifted from each other; the shell
-   owns the frame now and this is the frame.
+   The five pre-unlock screens and the mid-session lock, all built from
+   GateScreen.svelte. What stood here was a centred 360px column with a 60px
+   tinted disc on top of it: chrome from before DIRECTION.md, on the screens
+   most people meet most often.
 
-   Centred in the viewport rather than pinned under the status bar. A gate
-   is the only thing on the screen and there is nothing above or below it to
-   line up with, so the top of the window is an arbitrary place to start
-   from - and on a tall phone it left a lock screen's pad floating in the
-   upper third with a third of the screen empty beneath it. */
-.screen-gate { display: flex; flex-direction: column; }
+   A gate is a step with nothing to skip (rule 15). So it takes rule 12's
+   shape - a field from the window's top edge holding one title at 48, the
+   page under it - and loses the sun, the back, the skip, the leave and the
+   progress, none of which a gate can have. The field's drawing is the shared
+   one in components.css (`.step-field*`), the same object setup wears, so an
+   edge that moves and a thing printed on it cannot come apart between the two
+   surfaces. What is left here is a gate's own composition. */
+
+/* The frame is exactly the window and never scrolls (rule 14). `clip` rather
+   than `hidden`, for the reason `.screen-setup` gives: `overflow: hidden`
+   makes an element a scroll container that draws no scrollbar, and the
+   browser will scroll one itself to bring a focused input into view - which
+   on a passphrase gate would carry the field and the title behind the status
+   bar with nothing on screen to say the screen had moved. `clip` is not a
+   scroll container, so there is no scrollTop for anything to set. */
+.screen-gate {
+  height: 100%;
+  min-height: 0;
+  overflow: clip;
+  display: flex;
+  flex-direction: column;
+}
+.screen > .screen-gate,
+.screen-gate > .gate {
+  /* .screen's own 20px rhythm between blocks has nothing to space here: the
+     frame is one child. */
+  margin-bottom: 0;
+}
 .gate {
-  flex: 1 0 auto;
-  display: flex; flex-direction: column; justify-content: center;
-  width: 100%; max-width: 360px; margin: 0 auto;
-  padding: var(--space-7) 0 var(--space-8);
-  text-align: center;
-  position: relative; z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  position: relative;
+  /* Where the edge rests before stepBlind's first measurement, and the only
+     frame this value is read on: the top inset, the field's own 8 above the
+     title, a one-line title at 48 set solid, and the field's 16 under it.
+     A two-line title measures taller and travels there from here. */
+  --blind-edge: calc(var(--inset-top) + var(--space-2) + 46px + var(--space-4));
 }
-/* A tinted shape needs a hairline (DIRECTION.md's token note): --accent-soft
-   at a low tint on a light card is the card, and the mark disappeared,
-   leaving the glyph sitting on the page. */
-.gate-mark {
-  width: 60px; height: 60px; border-radius: 50%;
-  background: var(--accent-soft); color: var(--on-accent-soft);
-  border: 1px solid var(--accent-border);
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto var(--space-5);
-}
-/* Alert colours the mark and stops there. The gates say what happened in
-   words, and a red disc is not one of them - it is the difference between
-   "type your PIN" and "this journal cannot be opened here any more", which
-   the person needs before they read the first sentence, not instead of it. */
-.gate.is-alert .gate-mark {
-  background: var(--danger-soft); color: var(--danger);
-  border-color: color-mix(in oklab, var(--danger) 30%, transparent);
-}
+
+/* 48 in the display face at 800, tracked one step tighter than the scale's
+   own -0.04em and set solid: the door title's treatment (rule 2). On a gate
+   this is the greeting, or the app's own name where there is nobody to greet
+   by name - which is the same wordmark, at the same size, that Home paints
+   on its own field a frame later. */
 .gate-title {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: var(--text-2xl);
+  font-size: var(--text-4xl);
   font-weight: var(--weight-display);
-  letter-spacing: var(--display-track);
-  line-height: var(--leading-display);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  color: var(--field-ink);
   text-wrap: balance;
-  margin: 0 0 var(--space-3);
+  /* A 48px word is wider than a 195px window at 200% zoom, which is where
+     every title in the app took this rule (ticket 35). */
+  overflow-wrap: break-word;
 }
-.gate-body { color: var(--text-2); margin: 0 0 var(--space-4); }
-.gate-body:last-child { margin-bottom: 0; }
-.gate-body.is-small { font-size: var(--text-sm); }
-/* A paragraph rather than a line, which GateScreen decides by length. Both
-   edges go ragged on centred prose and the eye loses the start of each
-   line; these are the screens whose whole point is being read once and
-   understood. */
-.gate-body.is-long { text-align: left; }
-/* The gate's own controls, and then, under a line, the way out that is not
-   a way in: forget the PIN, reset the app, give up on this journal. The
-   line is there so the destructive option is never the next thing a thumb
-   lands on after the primary one. */
-.gate-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
-/* Left, inside a centred gate. A label sitting centred over a field it
-   belongs to reads as a caption for the whole screen rather than as the
-   name of that box. */
-.gate-form { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); text-align: left; }
+
+/* The page under the edge, and the one region a gate may scroll: the frame
+   above cannot, so a gate can never carry its own way out off the window.
+   It bleeds to the screen's edges and pads back in, because a region that
+   scrolls clips on both axes and a block reaching past the content edge
+   inside it would be cut. */
+.gate-page {
+  margin: 0 calc(-1 * var(--space-5));
+  padding: 0 var(--space-5) var(--space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* One line under the field, on the page, 12 below the edge: what the secret
+   is for, at 15/600 in the secondary ink (rules 2 and 12).
+
+   One drawing for the line and for the prose. Before this the class decided
+   between a centred line and a left-aligned paragraph by counting
+   characters, because a gate's frame centred everything by default and six
+   centred lines of a passphrase consequence go ragged at both edges. Nothing
+   is centred now, so there is nothing left to decide: `pp_unlock_body` at 54
+   characters and `pp_convert_setup_body` at 266 are the same voice at the
+   same size, which is the size the module's own consequence prose next to
+   them has always been. */
+.gate-body {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-body);
+  color: var(--text-2);
+}
+
+/* The gate's own controls, 20 under the line (rule 1). */
+.gate-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-5); }
+.gate-form { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+/* And then, under a hairline, the way out that is not a way in: forget the
+   PIN, reset the app, give up on this journal. The line is there so the
+   destructive option is never the next thing a thumb lands on after the
+   primary one. `margin-top: auto` puts it at the foot of whatever room the
+   control above left, which on every gate but the long ones is the bottom of
+   the window. */
 .gate-foot {
-  margin-top: var(--space-7);
+  margin-top: auto;
   padding-top: var(--space-5);
   border-top: 1px solid var(--hairline);
 }
+/* Nothing but a hairline's worth of room between the control and the way out
+   on the screens where the control is the whole page. */
+.gate-foot > * + * { margin-top: var(--space-2); }
+
+/* A pad sits in the middle of the room it has (Alicja, round one on this
+   ticket: "can the pin pad be actually in the center of the screen"). Two
+   auto gaps - one above the dots, one under the status line - so the free
+   space between the line and the way out splits evenly around the pad
+   instead of piling up under it. The foot's own `margin-top: auto` is turned
+   off here, or the space would divide three ways and the pad would sit high.
+   Where there is no free space, on a short window or a long gate, every auto
+   collapses to nothing and this rule does not apply itself. */
+.gate-page:has(.pin-pad) .pin-dots { margin-top: auto; }
+.gate-page:has(.pin-pad) .pin-status { margin-bottom: auto; }
+.gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
 /* Determinate where there is a number to be determinate about. The
@@ -746,7 +806,54 @@
    left, and that was being spent on a sentence alone while the screen it
    sits on can hold someone for minutes. The shape is .rail's; what this
    adds is where it sits. */
-.gate-progress { margin: var(--space-4) 0 0; }
+.gate-progress { margin: var(--space-5) 0 0; }
+
+/* ---------- the gates, short ----------
+
+   Under 640px tall - what a raised keyboard leaves on any phone, and what a
+   320px phone has at rest - the field drops to the title at 21, the
+   sheet-heading size (rule 14's short form, the same numbers setup takes).
+   The pad has its own short form in components.css, since the pad has two
+   addresses and its composition is the pad's rather than the screen's. */
+@media (max-height: 639px) {
+  .gate {
+    --blind-edge: calc(var(--inset-top) + var(--space-2) + 22px + var(--space-3));
+  }
+  .gate-title {
+    font-size: var(--text-xl);
+    letter-spacing: var(--display-track);
+    line-height: var(--leading-display);
+  }
+  .gate-field {
+    padding-bottom: var(--space-3);
+  }
+  .gate-foot {
+    padding-top: var(--space-3);
+  }
+}
+
+/* ---------- the gates, wide ----------
+
+   The field is a banner across the app's own column with the one radius on
+   all four corners, which is Today's treatment (rule 7) and setup's at this
+   width. The paint stops bleeding to the window's edges because there are no
+   window edges to bleed to any more - the column has its own. */
+@container app (min-width: 1024px) {
+  .gate {
+    --blind-edge: calc(var(--space-6) + 46px + var(--space-4));
+  }
+  .gate-field {
+    margin: 0;
+    padding: var(--space-6) var(--space-5) var(--space-4);
+  }
+  .gate-field > .step-field-paint {
+    clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0 round var(--r-block));
+  }
+  .gate-page {
+    margin: 0;
+    padding: 0 0 var(--space-5);
+  }
+}
 
 /* ---------- Progress photos ---------- */
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-3); }
