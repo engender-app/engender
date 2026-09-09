@@ -38,7 +38,16 @@
 
 import { blindSettle } from './blindSettle';
 
-const FIELD = '[data-screen-field], [data-home-field]';
+/* Every box that measures a field, so the blind is one object across every
+   navigation the app makes. Setup's own field was missing from this list
+   until redesign ticket 33, which meant the outgoing side of setup's
+   handover contributed nothing: the blind opened from no height at all
+   while setup's field crossfaded away inside the screen's snapshot, so what
+   a person saw at the end of ten steps was one field fading out and another
+   appearing. Alicja, on the ticket's own renders: "the field must always
+   stay a single object that transitions to other states only by moving up
+   or down". */
+const FIELD = '[data-screen-field], [data-home-field], [data-setup-field]';
 const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
 const PART = '[data-field-part]';

@@ -1802,7 +1802,7 @@ try {
      step has one heading and it is the question (DIRECTION.md rule 12), so a
      group inside a list is named by 15/600 in the secondary ink - the same
      drawing the permissions step already used for its two groups. */
-  const areaHeadings = (await page.locator('.setup-caption').allTextContents()).map((t) => t.trim());
+  const areaHeadings = (await page.locator('[data-setup-caption]').allTextContents()).map((t) => t.trim());
   if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
@@ -1967,8 +1967,8 @@ try {
       await page.waitForTimeout(500);
       const read = await page.evaluate(() => {
         const region = document.querySelector('[data-app-scroll-region]');
-        const screen = document.querySelector('.screen-setup');
-        const foot = document.querySelector('.setup-foot');
+        const screen = document.querySelector('[data-setup-frame]');
+        const foot = document.querySelector('[data-setup-foot]');
         return {
           question: document.querySelector('[data-setup-question]')?.textContent?.trim() ?? '',
           region: region ? region.scrollHeight - region.clientHeight : 0,
@@ -1978,6 +1978,32 @@ try {
         };
       });
       const where = `${size.width}x${size.height} step ${step + 1} (${read.question})`;
+      /* Every control on the step, against --touch-target. The short form
+         is where this bites: rule 14 asked for the foot's second line at
+         40px and 40 is under Android's 48dp floor, which is the stricter of
+         the two platforms this ships on. Measured rather than reasoned about
+         because the frame gives the foot whatever the field and the answers
+         leave it. */
+      const small = await page.evaluate(() => {
+        const floor = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--touch-target')
+        );
+        const inFrame = '[data-setup-frame] ';
+        return [...document.querySelectorAll(`${inFrame}button, ${inFrame}a, ${inFrame}input`)]
+          .filter((el) => el.offsetParent !== null && el.type !== 'hidden')
+          .map((el) => {
+            const box = el.getBoundingClientRect();
+            return {
+              what: el.textContent?.trim().slice(0, 20) || el.id || el.tagName,
+              w: Math.round(box.width),
+              h: Math.round(box.height)
+            };
+          })
+          .filter((c) => c.w > 0 && c.h > 0 && Math.min(c.w, c.h) < floor - 0.5);
+      });
+      if (small.length) {
+        throw new Error(`under the touch floor at ${where}: ${JSON.stringify(small)}`);
+      }
       if (read.region > 0) throw new Error(`the screen scrolls at ${where}: ${read.region}px`);
       if (read.screen > 0) throw new Error(`the frame is clipped at ${where}: ${read.screen}px`);
       if (read.footBottom > read.window + 1) {
@@ -2006,7 +2032,7 @@ try {
   /* Nothing to put back: the next flow's own `fresh()` replaces the
      document this one styled. */
   await page.setViewportSize({ width: 390, height: 844 });
-  ok('no step of setup scrolls, at 320/360/390/430 wide and with the window at 360');
+  ok('no step of setup scrolls and no control is under the touch floor, at 320/360/390/430 wide and with the window at 360');
 } catch (e) { fail('setup no-scroll', e); }
 
 /* 13a. every step can be left, and leaving keeps what was chosen so far

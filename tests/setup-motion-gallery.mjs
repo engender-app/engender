@@ -224,6 +224,38 @@ const READ_TICK = `
     })
   };`;
 
+/* The handover, which is a navigation and so has nothing in the DOM to
+   read: setup's field is gone by the time it has finished moving. What
+   moves is the blind's own pseudo element, and its clip is where the edge
+   is on that frame - the same read ticket 28's recorder takes, and the only
+   one that can say whether the field travelled as one object or was
+   replaced by another (Alicja, on this ticket's own renders: "the field
+   must always stay a single object that transitions to other states only by
+   moving up or down"). Both sides are read: one name across the navigation
+   means the old and the new pseudo carry the same clip on every frame, and
+   two different numbers would mean two fields. */
+const READ_HANDOVER = `
+  const read = (pseudo, prop) =>
+    getComputedStyle(document.documentElement, pseudo)?.getPropertyValue(prop) ?? '';
+  const edgeOf = (side) => {
+    const clip = read('::view-transition-' + side + '(blind)', 'clip-path');
+    const cut = /inset\(0px 0px (-?[\d.]+)px/.exec(clip)?.[1];
+    return cut === undefined ? null : Math.round(innerHeight - Number(cut));
+  };
+  const px = (value) => {
+    const parts = String(value).split(/\s+/);
+    const found = /(-?[\d.]+)px/.exec(parts[1] ?? '');
+    return found ? Math.round(Number(found[1])) : null;
+  };
+  return {
+    nav: document.documentElement.dataset.nav ?? null,
+    edgeOld: edgeOf('old'),
+    edgeNew: edgeOf('new'),
+    contentRide: px(read('::view-transition-new(screen)', 'translate')),
+    questionRide: px(read('::view-transition-old(fp-a-1)', 'translate')),
+    questionFade: read('::view-transition-old(fp-a-1)', 'opacity')
+  };`;
+
 /* A digit typed: which dots are filled and what each is scaled to. */
 const READ_PAD = `
   const dots = [...document.querySelectorAll('.pin-dot')];
@@ -353,7 +385,7 @@ async function scenesFor(page, cdp, tag, notes) {
     `${tag}finish`,
     notes.finish,
     () => page.locator('[data-finish]').click(),
-    null,
+    READ_HANDOVER,
     { ms: 1400 }
   );
 
@@ -391,7 +423,7 @@ try {
       rowTicked:
         "A scale ticked: the box's colour arrives flat over --dur-fast and the mark is drawn onto it over --dur-slow, so the two read as the mark being put there rather than as one event.",
       finish:
-        "The finish handing over: the primary is pressed, the answers are written, and the app arrives on its own blind - setup's field closing to Home's.",
+        "The finish handing over. The field is one object the whole way: its edge is pulled from the finish step's height up to Home's, with the question printed on it fading where it stands and Home's content rising under it on the same clock. The sun holds still inside both snapshots, because it has grown one step's worth per step to exactly the scale Home draws it at.",
       padDigit:
         "A digit typed: the dot lands on --ease-press while its colour arrives flat, and the key answers the finger with the kit's own press depth."
     });

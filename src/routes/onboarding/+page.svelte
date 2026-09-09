@@ -553,7 +553,7 @@
      571px of overflow on the permissions step and 964 on the areas step
      (ticket 31). Now the screen is exactly the window, the answers have
      their own region, and the question and the foot cannot move at all. -->
-<div class="screen screen-setup" style={`--step-grow:${growth}`}>
+<div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`}>
   <div class="setup">
     <!-- The field. Its height is the sun's reach at this step plus the
          question, so it comes down one step's worth per step with the
@@ -571,7 +571,13 @@
            The sun is inside the clip because it is painted on the field
            too - at every step the sun's reach is under the field's own
            edge, so the clip never cuts it. -->
-      <div class="setup-paint">
+      <!-- `data-field-blind`, so this block is the blind on a navigation as
+           well as the paint on a step change (ticket 28's mechanism): the
+           name is handed to it for the outgoing capture and setup's edge
+           travels to Home's rather than fading out while another field
+           appears. The attribute is what $lib/motion/fieldBlind looks for;
+           the shape is this file's own. -->
+      <div class="setup-paint" data-field-blind>
         <!-- The flag being left, on top of the flag arriving and under the
              sun, wiping off towards the far corner: the new colour is
              uncovered from the sun's own corner outwards, which is where
@@ -633,6 +639,7 @@
           <button
             class="icon-btn press"
             data-back
+            data-field-part
             aria-label={m.back()}
             onclick={() => (step === 'restore' ? abandonRestore() : go(stepBefore(steps, step)))}
           >
@@ -649,9 +656,16 @@
            that did not move. -->
       <div class="setup-ask">
         {#key question}
+          <!-- `data-field-part` for the same reason the paint carries
+               `data-field-blind`: on a navigation the question is printed on
+               the field and rides its edge, fading where it stands, rather
+               than being part of the screen's own crossfade. Between steps
+               it is the two transitions below that move it - one mechanism
+               per kind of change, both reading one set of numbers. -->
           <h1
             class="setup-title"
             data-setup-question
+            data-field-part
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >
@@ -802,7 +816,7 @@
                      this drawing comes from. -->
                 <div class="setup-areas">
                   {#each sections as section (section.key)}
-                    <p class="setup-caption">{hubGroupHeading(section.key)}</p>
+                    <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
                     <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
                       {#each section.rows as row (row.spec.key)}
                         <ListRow
@@ -942,7 +956,7 @@
          step side by side under it. Three controls, two lines, above a
          hairline, and it does not move between steps (rule 12) - it is
          outside the box that rides the edge for exactly that reason. -->
-    <div class="setup-foot">
+    <div class="setup-foot" data-setup-foot>
       {#if awaitingAccessMode}
         <!-- The module above carries its own submit action, and there is no
              other way past it (ticket 54, matching AccessModeSetup's own
@@ -1538,7 +1552,7 @@
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
-    line-height: 1.25;
+    line-height: 1.3;
   }
   .setup-flags .palette-swatch.is-active .swatch-name {
     color: var(--text);
@@ -1710,10 +1724,18 @@
 
      Under 640px tall, which is what a raised keyboard leaves on any phone
      and what a 320px phone has at rest: the field drops to the back
-     control's row plus the question at 21, the sun draws at 0.6 of its step
-     scale, and the foot's second line drops to 40. The answers do not
-     change - the whole point of the short form is that the room comes out
-     of the frame rather than out of what is being asked. */
+     control's row plus the question at 21 and the sun draws at 0.6 of its
+     step scale. The answers do not change - the whole point of the short
+     form is that the room comes out of the frame rather than out of what is
+     being asked.
+
+     Rule 14 also says the foot's second line drops to 40px, and that one is
+     not built: 40 is under `--touch-target`, which is Android's 48dp floor
+     and the stricter of the two platforms this ships on. Measured at
+     320x568, the two ways past a step were 56.8x40 and 166.9x40. The rule
+     was written off a sheet rather than against the floor, and the eight
+     pixels it was buying come out of a region that already scrolls on the
+     steps where they were needed. */
   @media (max-height: 639px) {
     .screen-setup {
       --sun-mult: 0.6;
@@ -1743,9 +1765,6 @@
     }
     .setup-foot {
       padding: var(--space-2) 0;
-    }
-    .setup-outs .btn {
-      min-height: 40px;
     }
   }
 
