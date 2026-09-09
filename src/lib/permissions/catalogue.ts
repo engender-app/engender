@@ -26,14 +26,23 @@
 export const GRANT_KEYS = ['notifications', 'exactAlarms', 'microphone', 'camera'] as const;
 export type GrantKey = (typeof GRANT_KEYS)[number];
 
-/** The ones that need no permission, because the system asks instead and
-    hands the app exactly one thing back. */
+/** The ones that need no permission. Five of them because the system asks
+    instead and hands the app exactly one thing back; the last two because
+    they are the device's own business and the app only ever gets the answer.
+
+    All seven, rather than the five the ticket's Scope enumerated: the whole
+    claim of this list is that it is the whole list, and the inventory
+    (`.scratch/phase-10/redesign/permissions-inventory.md`) files battery
+    optimisation and the biometric under exactly this heading. A list that
+    quietly drops two of them is not the claim it says it is. */
 export const AMBIENT_KEYS = [
   'takePhoto',
   'pickFile',
   'backupFolder',
   'print',
-  'clipboard'
+  'clipboard',
+  'batteryOptimisation',
+  'biometric'
 ] as const;
 export type AmbientKey = (typeof AMBIENT_KEYS)[number];
 
@@ -44,6 +53,22 @@ export type Platform = 'android' | 'web';
 export type GrantState = 'granted' | 'denied' | 'unavailable';
 
 export type GrantStates = Record<GrantKey, GrantState>;
+
+/** Nothing granted: where both platforms start, what a failed read falls back
+    to, and what every test and fixture builds its cases from.
+
+    Here rather than in `grant.ts` because this is the module that owns the
+    shape, and four copies of the same four keys is how a fifth capability
+    ends up silently missing from one of them. Falling back to this rather
+    than to granted is the one direction that cannot mislead: it shows a
+    button that may turn out to be unnecessary instead of hiding one that
+    was. */
+export const NOTHING_GRANTED: GrantStates = {
+  notifications: 'denied',
+  exactAlarms: 'denied',
+  microphone: 'denied',
+  camera: 'denied'
+};
 
 /** What pressing the row's trailing control does. `none` is a row with
     nothing to press: granted, unavailable, or refused with nowhere to send
@@ -102,7 +127,9 @@ const AMBIENT_ICON: Record<AmbientKey, string> = {
      row into this list wears that glyph, and the same icon meaning two
      things one navigation apart is the kind of small lie a list like this
      cannot afford. */
-  clipboard: 'note'
+  clipboard: 'note',
+  batteryOptimisation: 'zap',
+  biometric: 'fingerprint'
 };
 
 /** Where a refusal can send somebody, per capability. Null on the web: a
@@ -163,13 +190,21 @@ export function grantRows(
   });
 }
 
+/** Rows the web has nothing to draw for.
+
+    The backup folder is `ACTION_OPEN_DOCUMENT_TREE`, Android's, and the web
+    build's export is a download rather than a folder the app keeps writing
+    to. Battery optimisation is an Android idea altogether: there is no
+    browser equivalent to be exempted from, and the web build schedules
+    nothing that could be delayed by one (ADR-0063). The biometric stays on
+    both, because both have one - a Keystore auth-bound key on Android and
+    WebAuthn PRF in a browser. */
+const ANDROID_ONLY_AMBIENT: readonly AmbientKey[] = ['backupFolder', 'batteryOptimisation'];
+
 /** The second group, which has no buttons because there is nothing to press:
-    the system asks at the moment it is used, and hands over the one file it
-    was asked for. The backup folder is the one that does not exist on the
-    web - `ACTION_OPEN_DOCUMENT_TREE` is Android's, and the web build's export
-    is a download rather than a folder the app keeps writing to. */
+    the system asks at the moment it is used, or never asks the app at all. */
 export function ambientRows(platform: Platform): AmbientRow[] {
-  return AMBIENT_KEYS.filter((key) => platform === 'android' || key !== 'backupFolder').map(
-    (key) => ({ key, icon: AMBIENT_ICON[key] })
-  );
+  return AMBIENT_KEYS.filter(
+    (key) => platform === 'android' || !ANDROID_ONLY_AMBIENT.includes(key)
+  ).map((key) => ({ key, icon: AMBIENT_ICON[key] }));
 }
