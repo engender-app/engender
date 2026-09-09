@@ -38,7 +38,16 @@
 
 import { blindSettle } from './blindSettle';
 
-const FIELD = '[data-screen-field], [data-home-field]';
+/* Every box that measures a field, so the blind is one object across every
+   navigation the app makes. Setup's own field was missing from this list
+   until redesign ticket 33, which meant the outgoing side of setup's
+   handover contributed nothing: the blind opened from no height at all
+   while setup's field crossfaded away inside the screen's snapshot, so what
+   a person saw at the end of ten steps was one field fading out and another
+   appearing. Alicja, on the ticket's own renders: "the field must always
+   stay a single object that transitions to other states only by moving up
+   or down". */
+const FIELD = '[data-screen-field], [data-home-field], [data-setup-field]';
 const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
 const PART = '[data-field-part]';
@@ -51,8 +60,13 @@ const BLIND_NAME = 'blind';
     top of the ride it takes with the blind. Under the field's own 16px of
     bottom padding, so an element travelling towards the edge cannot reach
     it: nothing painted on the blind ever sticks out of it (Alicja, round
-    one, 2026-09-09). */
-const PART_TRAVEL = 12;
+    one, 2026-09-09).
+
+    Exported because `fieldPart` in navigation.ts writes the same distance as
+    a var() fallback, for the frame before this module has published one -
+    and a second literal there would be a second source of truth for one
+    number. */
+export const PART_TRAVEL = 12;
 
 /* Which carry owns the variables on the root. A navigation superseded by
    another leaves its own `release` to run late, and a late release used to
@@ -61,6 +75,21 @@ const PART_TRAVEL = 12;
    field simply absent for the length of the transition. Only the carry that
    published them may remove them. */
 let current: BlindCarry | null = null;
+
+export interface CarryOptions {
+  /** The one navigation where the sun is the same object at the same size on
+      both sides, and so must not be drawn twice.
+
+      Setup's finish (redesign ticket 33): the sun has grown one step's worth
+      per step and arrives at exactly the scale Home draws it at, which is
+      what rule 12 means by "one object at one size rather than two suns".
+      Named per side, its rings would close outermost-first and open again
+      outermost-first, which is the app's own mark flickering at the moment
+      the app opens. Left unnamed they stay inside each screen's snapshot and
+      crossfade with it, and two identical images crossfading is a sun
+      standing still while the field closes around it. */
+  holdSun?: boolean;
+}
 
 export interface BlindCarry {
   /** After the incoming screen has mounted, before it is captured. */
@@ -83,32 +112,20 @@ interface Side {
  * settles. Never returns null: a screen with no field is the blind's limit
  * case - closed to nothing - and the other side still has an edge to move.
  */
-export function carryBlind(doc: Document = document): BlindCarry {
+export function carryBlind(doc: Document = document, options: CarryOptions = {}): BlindCarry {
   const root = doc.documentElement;
-  const before = name(doc, 'a');
+  const before = name(doc, 'a', undefined, options);
   let after: Side | null = null;
 
   const carry: BlindCarry = {
     swap() {
       release(before);
-      after = name(doc, 'b', before);
-      const settle = blindSettle({ from: before.height, to: after.height });
-      root.style.setProperty('--blind-from', `${before.height}px`);
-      root.style.setProperty('--blind-to', `${after.height}px`);
-      /* What the incoming content starts offset by, so it arrives with the
-         edge rather than waiting under it: positive where the blind is
-         closing, since the content starts where the taller field's edge
-         was and travels up to its own place. */
-      root.style.setProperty('--blind-delta', `${before.height - after.height}px`);
-      root.style.setProperty('--blind-ease', settle.easing);
-      /* Which way the things painted on the field leave and arrive: with
-         the blind, so on a blind being pulled down the old text drops and
-         the new comes from above, and on one being pulled up they both go
-         the other way (Alicja, round one). */
-      root.style.setProperty(
-        '--part-travel',
-        `${after.height > before.height ? PART_TRAVEL : -PART_TRAVEL}px`
-      );
+      after = name(doc, 'b', before, options);
+      for (const [property, value] of Object.entries(
+        blindVariables({ from: before.height, to: after.height })
+      )) {
+        root.style.setProperty(property, value);
+      }
       current = carry;
     },
     release() {
@@ -123,12 +140,58 @@ export function carryBlind(doc: Document = document): BlindCarry {
   return carry;
 }
 
-const VARIABLES = ['--blind-from', '--blind-to', '--blind-delta', '--blind-ease', '--part-travel'];
+/** The five a moving edge publishes. Exported so whoever publishes them can
+    also give them back: a navigation's carry does it in `release`, and
+    setup's own action does it when the screen is destroyed. */
+export const VARIABLES = [
+  '--blind-from',
+  '--blind-to',
+  '--blind-delta',
+  '--blind-ease',
+  '--part-travel'
+];
+
+/**
+ * What one edge moving from `from` to `to` is worth, as the five custom
+ * properties the stylesheet moves everything with.
+ *
+ * A navigation publishes them on the root, where a view transition's pseudo
+ * elements are the only thing that can read them. Setup's step machine
+ * publishes the same five on its own screen element instead (redesign
+ * ticket 33): a step change is not a navigation, so it moves real elements
+ * rather than photographs of them, and the arithmetic of how far and on
+ * which curve is the same question either way. One owner, so the two can
+ * never disagree about which way a part travels.
+ */
+export function blindVariables({
+  from,
+  to
+}: {
+  from: number;
+  to: number;
+}): Record<string, string> {
+  const settle = blindSettle({ from, to });
+  return {
+    '--blind-from': `${from}px`,
+    '--blind-to': `${to}px`,
+    /* What the incoming content starts offset by, so it arrives with the
+       edge rather than waiting under it: positive where the blind is
+       closing, since the content starts where the taller field's edge was
+       and travels up to its own place. */
+    '--blind-delta': `${from - to}px`,
+    '--blind-ease': settle.easing,
+    /* Which way the things painted on the field leave and arrive: with the
+       blind, so on a blind being pulled down the old text drops and the new
+       comes from above, and on one being pulled up they both go the other
+       way (Alicja, round one). */
+    '--part-travel': `${to > from ? PART_TRAVEL : -PART_TRAVEL}px`
+  };
+}
 
 /** Names one side's field and measures it. `skip` is the side already
     named, which can still be in the DOM when the incoming one is looked
     for. */
-function name(doc: Document, side: 'a' | 'b', skip?: Side): Side {
+function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions = {}): Side {
   const fields = [...doc.querySelectorAll<HTMLElement>(FIELD)];
   const field = skip ? fields.find((el) => !skip.named.includes(el)) : fields[0];
   if (!field) return { height: 0, named: [] };
@@ -165,7 +228,9 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side): Side {
      the one that moves, and it closes to nothing. */
   if (height > 0) take(field.querySelector<HTMLElement>(BLIND), BLIND_NAME);
   field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`));
-  field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
+  if (!options.holdSun) {
+    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
+  }
 
   return { height, named };
 }

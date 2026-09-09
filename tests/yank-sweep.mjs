@@ -89,6 +89,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { SETUP_STEPS } from './setup-flow.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -167,8 +168,60 @@ const SCENES = [
   { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-add]', is: 'the sheet rising' },
   { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
-  { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' }
+  { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
+  /* Setup's four movements (redesign ticket 33). `before` is what these need
+     that no other scene does: the flow is reached through the demo's
+     first-run control and then walked, and `settle` deliberately leaves
+     setup when it finds it. Every step change moves the field's own edge
+     rather than running a view transition, so three of these read as state
+     changes and the handover reads as a transition - which is the sweep
+     deciding, not the scene declaring. */
+  {
+    name: 'setup-step-forward',
+    at: '/',
+    before: (p) => firstRunTo(p, 'flag'),
+    act: '[data-next]',
+    is: "the field's edge pulled down to the next step, with the question riding it"
+  },
+  {
+    name: 'setup-step-back',
+    at: '/',
+    before: (p) => firstRunTo(p, 'scales'),
+    act: '[data-back]',
+    is: 'the same edge pulled up, which is the direction that must not overshoot'
+  },
+  {
+    name: 'setup-flag-pick',
+    at: '/',
+    before: (p) => firstRunTo(p, 'flag'),
+    act: '[data-palette-pick="agender"]',
+    is: 'a flag picked: the frame landing, the field wiping, the sun redrawing over the old one'
+  },
+  {
+    name: 'setup-handover',
+    at: '/',
+    before: (p) => firstRunTo(p, 'done'),
+    act: '[data-finish]',
+    nav: true,
+    is: "setup's field closing to Home's, as one object"
+  }
 ];
+
+/** The first run, walked to `target`. The demo bar is removed by `settle`,
+    so the jump is set on the control rather than selected through it. */
+async function firstRunTo(p, target) {
+  await p.locator('#demo-jump').evaluate((el) => {
+    el.value = 'first-run';
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForSelector('[data-next]');
+  for (const step of SETUP_STEPS) {
+    await p.waitForTimeout(500);
+    if (step === 'name') await p.locator('#ob-name').fill('Ola');
+    if (step === target) return;
+    await p.locator('[data-next]').click();
+  }
+}
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
@@ -191,7 +244,12 @@ const settle = async (path) => {
   }
   await page.evaluate(() => {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
-    for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
+    /* Hidden rather than removed since redesign ticket 33: setup's own
+       scenes reach the flow through the demo's first-run control, and a
+       removed bar takes the control with it. Nothing measures the bar
+       either way - it is out of the frame and out of the flow. */
+    for (const bar of document.querySelectorAll('.demo-bar')) bar.style.display = 'none';
+    document.body.classList.remove('has-demo-bar');
   });
 };
 
@@ -320,6 +378,37 @@ const sample = (act, ms, names) =>
               if (cs.display === 'none') continue;
               const box = el.getBoundingClientRect();
               if (!box.width && !box.height) continue;
+              /* A box that draws nothing of its own is not something a
+                 person can see teleport or vanish - what they see are the
+                 painted things inside it - and it is keyed by the text of
+                 its descendants, which makes it worse than useless: change
+                 the words inside a wrapper and the wrapper's key changes,
+                 so one mark vanishes and another arrives at the same
+                 position with no pixel having moved. Setup's step change
+                 does exactly that (redesign ticket 33) and reported 16 of
+                 these across two scenes - `.app-main`, `.screen-setup`,
+                 `.setup`, `.setup-field`, `.setup-ask`, `.setup-below` and
+                 `.setup-stage`, every one of them a transparent box that
+                 sat still at opacity 1 the whole time. The painted marks
+                 inside them were clean, and the recording agrees.
+
+                 So an element earns a mark by painting something of its own
+                 or by holding its own words. The proof scene's two marks
+                 have a background and their own text, which is what keeps
+                 this from being a way to make the sweep quiet. */
+              const paints =
+                cs.backgroundImage !== 'none' ||
+                cs.borderTopWidth !== '0px' ||
+                cs.borderBottomWidth !== '0px' ||
+                cs.borderLeftWidth !== '0px' ||
+                cs.borderRightWidth !== '0px' ||
+                cs.boxShadow !== 'none' ||
+                cs.outlineStyle !== 'none' ||
+                !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor);
+              const ownWords = [...el.childNodes].some(
+                (n) => n.nodeType === 3 && n.textContent.trim().length > 0
+              );
+              if (!paints && !ownWords) continue;
               const k = key(el);
               /* First one wins: a repeated key inside one frame is a list of
                  identical marks, and following the first is enough to see a
@@ -470,6 +559,7 @@ for (const scene of SCENES) {
   if (only.length && !only.includes(scene.name)) continue;
   try {
     await settle(scene.at);
+    if (scene.before) await scene.before(page);
     await page.waitForTimeout(1400);
     if (scene.act === 'inject') await injectProof();
     const all_frames = await sample(scene.act, SCENE_MS, VT_NAMES);

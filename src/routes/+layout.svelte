@@ -45,7 +45,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { hoverHints } from '$lib/a11y/hoverHint';
-  import { chromelessPath, replacesAppNavigation } from '$lib/navigation/chromeless';
+  import { chromelessPath, cutsInsteadOfMoving } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';
@@ -271,17 +271,16 @@
       type: navigation.type,
       delta: navigation.delta,
       isAndroid: isAndroid(),
-      /* `replacesAppNavigation`, not `chromelessPath`: a route with no bar
-         is not therefore a route the app did not walk to. Asked of both
-         sides, as this fact has always been - leaving a gate is as much
-         "not a navigation" as arriving at one - and the return moment is
-         on neither side of it, so stepping into it and back out both move
-         (redesign ticket 35; Alicja read the cut as a yank between frames
-         7 and 8 of the empty state's flipbook). */
+      /* `cutsInsteadOfMoving`, not `chromelessPath`: a route with no bar is
+         not therefore a route the app did not walk to. The return moment is
+         on neither list, so stepping into it and back out both move
+         (redesign ticket 35; Alicja read the cut as a yank between frames 7
+         and 8 of the empty state's flipbook) - and setup's two legs are not
+         the same question either, which is redesign ticket 33's own finding:
+         arriving is the shell redirecting because there is no app yet, and
+         leaving is the app opening. The table says which is which. */
       isChromeless:
-        replacesApp ||
-        replacesAppNavigation(navigation.from?.url.pathname ?? '') ||
-        replacesAppNavigation(navigation.to.url.pathname),
+        replacesApp || cutsInsteadOfMoving(navigation.from?.url.pathname ?? null, navigation.to.url.pathname),
       /* Gathered here for the same reason `isAndroid` is: whether a sheet is
          open over the outgoing screen is not something the two URLs can
          answer, and screen-transition.ts stays a pure table by being told
@@ -316,7 +315,14 @@
        than on the tab crossing alone - a screen with no field is the blind
        closed to nothing rather than a case to skip - and see
        $lib/motion/fieldBlind for why this is not a stylesheet rule. */
-    const blind = carryBlind();
+    const blind = carryBlind(document, {
+      /* Setup's finish is the one navigation whose sun is the same object at
+         the same size on both sides (redesign ticket 33, rule 12): it has
+         grown one step's worth per step and arrives at Home's resting
+         scale, so it holds still inside the two snapshots while the field
+         closes around it rather than closing and opening its own rings. */
+      holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding')
+    });
 
     return new Promise((resolve) => {
       document.documentElement.dataset.nav = pattern;
