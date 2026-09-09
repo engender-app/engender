@@ -24,6 +24,45 @@
      in a back stack than an honest empty state, and the empty state here is
      the true sentence: the app is not holding anything for you right now.
 
+     ## The shape: a step, not a screen
+
+     Redesign ticket 35 redraws it against `DIRECTION.md` rule 15, which
+     names this route in as many words: a step is one purpose, no
+     navigation and a short list, and it takes the field with a title, the
+     flush list, and rule 12's foot with one control. So three things
+     changed from the phase 8 drawing.
+
+     **No back control and no tab bar.** The route is chromeless
+     (`navigation/chromeless.ts`), which is the in-the-room view's own
+     argument at the other end of the app: a bar floating over a focused
+     moment is four more ways off it, and this one already has a way off
+     written into its foot. The back chevron went with it - a step has no
+     parent, and a moment that is linked from nowhere (ADR-0062) has
+     nothing above it to go back to.
+
+     **One list, not two surfaces.** Rule 12 forbids a notice on a step,
+     and rule 15 says "the flush list" in the singular. What the phase 8
+     review actually wanted from two surfaces was that ADR-0062's ordering
+     be visible, and the flush list carries that without a container: the
+     things the journal held take role 0 on their icon block and go
+     somewhere, the two offers take role 1 and answer in place. Two
+     colours and two row shapes, one run of hairlines.
+
+     **The offer row keeps the labelled yes.** That is the other half of
+     the same review - the first pass showed the no and hid the yes, an
+     unlabelled tap on the row body with an unmarked x beside it - and
+     losing `Notice` must not lose it. So an offer is Cash App's
+     permission shape as the fourth Mobbin sweep took it (rule 13): the
+     icon block, the title, one reason line, and two labelled controls
+     under them, flush on the page. The yes is `--text` and underlined,
+     the no is `--text-2`, and both take the full 48px target.
+
+     Both are still registered offers (`offers.ts`), so a confirmation
+     reaches its write through `answerOffer` like every other offer in the
+     app, and each asks about exactly the item it is about: logging the
+     dose from one slot says nothing about the slots around it, and closing
+     one session asks about no other.
+
      ## The rows
 
      Five kinds, in one order, and the order is the argument. A letter that
@@ -32,30 +71,6 @@
      and an unlogged slot are housekeeping. Reading the housekeeping first
      would make this a to-do list.
 
-     What arrived is a list card of rows, each going to the screen that owns
-     it and writing nothing. What can be tidied is one `Notice` each, and
-     the difference in surface is the whole point: the first pass had all
-     five as rows in two cards, and a design review found that the ordering
-     ADR-0062 calls "the argument" was invisible - a role paints a row's icon
-     disc, not the card behind it, so in dark the two cards were identical
-     and the letter from somebody's past self read as a peer of a binder
-     timer. `Notice` is the app's own shape for "here is something, and here
-     is the one thing you can do about it", which is exactly what an offer
-     is; it carries the flag stripe, a labelled action and a dismiss, and it
-     leaves through its own `disclose` so answering collapses the space it
-     held instead of dropping the page a frame.
-
-     It also fixes what the same review called showing the no and hiding the
-     yes. As rows, the writing action was an unlabelled tap on the row body
-     with an unmarked x beside it - the shape AreaFinish.svelte's own comment
-     argues against. Notice's `action` is the labelled yes.
-
-     Both are registered offers (`offers.ts`), so a confirmation reaches its
-     write through `answerOffer` like every other offer in the app, and each
-     asks about exactly the item it is about: logging the dose from one slot
-     says nothing about the slots around it, and closing one session asks
-     about no other.
-
      A no is local and lives as long as the screen, per ADR-0062: the surface
      is a moment, so a preference recording the decline would be storing an
      answer nothing will ask again. `declined` is that, and the reason it
@@ -63,11 +78,35 @@
 
      ## Motion
 
-     Tier 3, change within a screen. The card stays mounted and `resize`
-     carries its height as rows leave, the same reason AreaFinish.svelte
-     gives: a `{#key}` would destroy and rebuild the card, and the rows
-     answered here leave one at a time under a person's own tap. */
+     The screen is nothing but arriving things, so it takes ADR-0078's
+     grammar whole rather than one signature moment.
+
+     - **An item arrives** the way a day on the agenda does (redesign
+       ticket 19): its 36px icon block clips open from its own left edge
+       over `--dur-slow`, one `--stagger-step` per row and capped at the
+       seventh, and the words beside it cut, as words do. The list itself
+       comes in under the field's blind (ticket 28), which is the
+       navigation's own movement and not this screen's.
+     - **An offer opens** as every sheet in the app does, rising from the
+       bottom edge (`sheetRise`).
+     - **An answer lands** as the sheet leaves and the toast says what was
+       written. The write is the state change; the toast is the only other
+       signal there is, because the row it was about is on its way out in
+       the same frame.
+     - **An answered row leaves** by giving its own height back
+       (`disclose`), the rows under it closing up with it rather than
+       jumping. `resize` is not needed any more: there is no card holding
+       a height, only a run of rows between two hairlines, and each of
+       them owns the height it gives back.
+     - **The empty state** is what the space the last row gave back turns
+       into. The line under the field is the screen's own, so it changes
+       where it stands while the list closes under it.
+
+     Reduced motion clamps every one of these: the clip becomes a cut, the
+     disclose a removal, the sheet a fade. Recorded frame by frame by
+     `tests/return-motion-gallery.mjs`. */
   import { goto } from '$app/navigation';
+  import { navigating } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -93,15 +132,16 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { resize } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
+  import { roleAttrs } from '$lib/components/kit/role';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
   const today = todayEpochDay();
@@ -133,16 +173,34 @@
   let declined = $state(new Set<string>());
   let showing = $derived(waitingRows.rows.filter((item) => !declined.has(waitingItemKey(item))));
 
-  /* Two groups, in the order `comingBack.ts` already put the items in.
-     Split here rather than only in that order because an order nobody can
-     see is not an order: a letter that unlocked is something the journal was
-     holding for the person and a slot that went unlogged is a chore, and one
-     undifferentiated run of nine rows says they are the same kind of thing.
-     Two cards, no headings - a heading over the second group would have to
-     name it, and every honest name for it ("loose ends", "to sort out") is
-     the bill this screen is written not to be. */
-  let arrivals = $derived(showing.filter((item) => item.kind !== 'wear-session' && item.kind !== 'dose'));
-  let chores = $derived(showing.filter((item) => item.kind === 'wear-session' || item.kind === 'dose'));
+  /** Whether an item is one of the two the screen can answer in place.
+      `comingBack.ts` already orders the list so these come last, which is
+      ADR-0062's argument - a letter from somebody's past self is not a peer
+      of a binder timer - and this is what draws the difference: an offer
+      takes role 1 and two labelled controls, everything else takes role 0
+      and a chevron to the screen that owns it. Two colours and two shapes
+      inside one flush list, which is what rule 15 leaves room for; the two
+      cards that used to carry the split are what rule 12 took away. */
+  const isOffer = (item: WaitingItem) => item.kind === 'wear-session' || item.kind === 'dose';
+
+  /* The line under the field, which is rule 12's one line and the same slot
+     whether or not anything is waiting. Empty is a state of this screen
+     rather than a screen of its own: the list closing under the line is the
+     movement, and a titled notice in the space it gave back would be the
+     second heading rule 12 forbids and the contradiction phase 8's own
+     review found under "Waiting for you".
+
+     `loading` is asked rather than `showing.length` alone, or the true
+     sentence would flash over a read still in flight. */
+  let line = $derived(
+    !waitingRows.loading && showing.length === 0 ? m.coming_back_empty_body() : m.coming_back_intro()
+  );
+
+  /* The same escape `disclose` documents: Svelte runs an out-transition when
+     the *page* unmounts these rows during a navigation, not only when a row
+     is answered, and a screen leaving should not spend --dur-fast collapsing
+     five rows behind the one that is arriving. */
+  let panel = $derived({ skip: navigating.to !== null });
 
   /* Arriving is meeting it. Stamped as soon as the read answers, so a person
      who reads this and writes nothing is not shown it again tomorrow - and
@@ -245,7 +303,7 @@
     const day = doseDraft.item.slotEpochDay;
     doseDraft = null;
     if (await answerOffer(DOSE_OFFER, subject, 'confirm', journal)) {
-      /* Said out loud, because the only other signal is a notice
+      /* Said out loud, because the only other signal is the row
          disappearing. `answerOffer`'s return value is what makes this
          honest: it is false on a stale confirm, and a screen that toasted
          regardless would be claiming a write that never happened. */
@@ -282,122 +340,133 @@
   }
 </script>
 
-<div class="screen">
-  <ScreenHeader title={m.coming_back_title()} back="/" screen="coming-back" />
+<div class="screen screen-return">
+  <!-- The field with a title and nothing else (rule 15). No back control:
+       the step has no parent, and the foot below is the way off. -->
+  <ScreenHeader title={m.coming_back_title()} subtitle={line} screen="coming-back" />
 
-  <ReadGate read={waitingRows} variant="card" count={3}>
-  {#snippet empty()}
-    <!-- A remark rather than a titled notice, which is Notice's own
-         distinction: reached by hand with nothing waiting, a heading here
-         sat directly under the screen's "Waiting for you" and read as a
-         contradiction of it. One sentence, and the way back. -->
-    <Notice
-      key="coming-back-empty"
-      icon="info"
-      role={roleAt(activeFlag.roles, 0)}
-      text={m.coming_back_empty_body()}
-      action={{ label: m.nav_home(), href: '/', primary: true }}
-    />
-  {/snippet}
+  <ReadGate read={waitingRows} variant="line" count={4}>
+    <!-- Nothing. The line under the field already says the true sentence,
+         and a second surface saying it again is the contradiction the
+         phase 8 review found. -->
+    {#snippet empty()}{/snippet}
 
-  {#snippet rows()}
-    <div class="screen-part">
-      <p class="muted small coming-back-intro">{m.coming_back_intro()}</p>
-
-      <!-- What the journal was holding *for* the person. Kept mounted while
-           its rows leave under their own taps: `resize` animates a box that
-           changes size under its own content, which is what a card losing a
-           row is, and a `{#key}` would have destroyed and rebuilt it. -->
-      {#if arrivals.length > 0}
-        <div use:resize>
-          <ListCard role={roleAt(activeFlag.roles, 0)}>
-            {#each arrivals as item (waitingItemKey(item))}
-              {#if item.kind === 'letter'}
-                <ListRow
-                  key="coming-back-letter"
-                  data-coming-back-item="letter"
-                  icon="book"
-                  title={m.coming_back_letter_title()}
-                  subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
-                  href="/transition/letters"
-                />
-              {:else if item.kind === 'milestone'}
-                <ListRow
-                  key="coming-back-milestone"
-                  data-coming-back-item="milestone"
-                  icon="flag"
-                  title={item.name}
-                  subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
-                  href="/transition/milestones"
-                />
-              {:else}
-                <!-- The era is neither an arrival nor a chore: it is where
-                     the person is, and it sits with the arrivals because it
-                     is the one row on the screen that is theirs rather than
-                     the app's. -->
-                <ListRow
-                  key="coming-back-era"
-                  data-coming-back-item="era"
-                  icon="columns"
-                  title={item.name}
-                  subtitle={item.startEpochDay === null
-                    ? m.coming_back_era_sub_no_start()
-                    : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
-                  href="/transition/eras"
-                />
-              {/if}
-            {/each}
-          </ListCard>
-        </div>
-      {/if}
-    </div>
-
-    <!-- What can be tidied, one Notice each. Its own `screen-part`, which
-         is what stamps the space above it (ADR-0038: cross-block spacing by
-         attribute, never a margin a screen invents). Role 1 rather than the
-         arrivals' role 0, so the two halves of the screen are two areas the
-         way every other screen's are. -->
-    {#if chores.length > 0}
-      <div class="screen-part stack-3">
-        {#each chores as item (waitingItemKey(item))}
-          {#if item.kind === 'wear-session'}
-            <Notice
-              key="coming-back-wear"
-              data-coming-back-item="wear-session"
-              icon="clock"
-              role={roleAt(activeFlag.roles, 1)}
-              title={wearReturningRowTitle(item.wearKind)}
-              text={m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) })}
-              action={{ label: WEAR_OFFER.copy.confirm(), onclick: () => openWear(item) }}
-              dismiss={{ label: WEAR_OFFER.copy.decline(), onclick: () => decline(item) }}
-            />
-          {:else}
-            <Notice
-              key="coming-back-dose"
-              data-coming-back-item="dose"
-              icon="clock"
-              role={roleAt(activeFlag.roles, 1)}
-              title={m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) })}
-              text={m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` })}
-              action={{ label: DOSE_OFFER.copy.title(), onclick: () => openDose(item) }}
-              dismiss={{ label: DOSE_OFFER.copy.decline(), onclick: () => decline(item) }}
-            />
-          {/if}
+    {#snippet rows()}
+      <!-- One flush list, in the order comingBack.ts put the items in
+           (ADR-0062). Each row owns the height it gives back when it is
+           answered, and the block on it clips open from its own left edge
+           one stagger step after the row above (rule 10, ticket 19's
+           agenda). Capped at the seventh where the tiles' stagger is. -->
+      <ListCard>
+        {#each showing as item, i (waitingItemKey(item))}
+          <div
+            class="rows-divide"
+            transition:disclose={panel}
+            style:--row-index={Math.min(6, i)}
+            {...roleAttrs(roleAt(activeFlag.roles, isOffer(item) ? 1 : 0))}
+          >
+            {#if item.kind === 'letter'}
+              <ListRow
+                key="coming-back-letter"
+                data-coming-back-item="letter"
+                icon="book"
+                title={m.coming_back_letter_title()}
+                subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
+                href="/transition/letters"
+              />
+            {:else if item.kind === 'milestone'}
+              <ListRow
+                key="coming-back-milestone"
+                data-coming-back-item="milestone"
+                icon="flag"
+                title={item.name}
+                subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
+                href="/transition/milestones"
+              />
+            {:else if item.kind === 'era'}
+              <!-- The era is neither an arrival nor an offer: it is where
+                   the person is, and it sits with the arrivals because it
+                   is the one row on the screen that is theirs rather than
+                   the app's. -->
+              <ListRow
+                key="coming-back-era"
+                data-coming-back-item="era"
+                icon="columns"
+                title={item.name}
+                subtitle={item.startEpochDay === null
+                  ? m.coming_back_era_sub_no_start()
+                  : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
+                href="/transition/eras"
+              />
+            {:else if item.kind === 'wear-session'}
+              {@render offer(
+                'wear-session',
+                wearReturningRowTitle(item.wearKind),
+                m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) }),
+                WEAR_OFFER.copy.confirm(),
+                () => openWear(item),
+                WEAR_OFFER.copy.decline(),
+                () => decline(item)
+              )}
+            {:else}
+              {@render offer(
+                'dose',
+                m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) }),
+                m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` }),
+                DOSE_OFFER.copy.title(),
+                () => openDose(item),
+                DOSE_OFFER.copy.decline(),
+                () => decline(item)
+              )}
+            {/if}
+          </div>
         {/each}
-      </div>
-    {/if}
+      </ListCard>
+    {/snippet}
+  </ReadGate>
 
-    <!-- A way off the screen that is not the back chevron. Somebody who has
-         read this and wants none of it should not have to work out that back
-         is how you agree to nothing. -->
-    <div class="screen-part">
-      <button class="btn btn-ghost coming-back-done" data-coming-back-done onclick={() => goto('/')}>
-        <span>{m.coming_back_done_action()}</span>
-      </button>
-    </div>
-  {/snippet}
-</ReadGate>
+  <!-- Rule 12's foot, with rule 15's one control: pinned to the bottom edge
+       above a hairline, and it never moves. Somebody who has read this and
+       wants none of it should not have to work out that back is how you
+       agree to nothing - and with the route chromeless there is no back to
+       work out. Primary because it is the screen's only call to action, on
+       a screen that is asking for nothing else. -->
+  <div class="return-foot">
+    <button class="btn btn-primary btn-block" data-coming-back-done onclick={() => goto('/')}>
+      <span>{m.coming_back_done_action()}</span>
+    </button>
+  </div>
 </div>
+
+<!-- An offer, drawn as Cash App's permission shape (rule 13, the fourth
+     Mobbin sweep): the icon block, the title, one reason line, and the two
+     labelled controls under them. The yes is labelled and visible, which is
+     what the phase 8 review asked for and what carrying the answer on the
+     row body alone would give back. Not a ListRow: that row is one control
+     across its whole width, and this one is two. -->
+{#snippet offer(
+  kind: string,
+  title: string,
+  reason: string,
+  yes: string,
+  onYes: () => void,
+  no: string,
+  onNo: () => void
+)}
+  <div class="return-offer" data-coming-back-item={kind}>
+    <div class="return-offer-said">
+      <span class="kit-row-ico"><Icon name="clock" size={22} /></span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{title}</span>
+        <span class="kit-row-sub">{reason}</span>
+      </span>
+    </div>
+    <div class="return-offer-answers">
+      <button type="button" class="return-yes press" data-coming-back-yes={kind} onclick={onYes}>{yes}</button>
+      <button type="button" class="return-no press" data-coming-back-no={kind} onclick={onNo}>{no}</button>
+    </div>
+  </div>
+{/snippet}
 
 <Sheet bind:open={() => doseDraft !== null, (open) => !open && (doseDraft = null)} title={DOSE_OFFER.copy.title()}>
   {#if doseDraft}
@@ -546,12 +615,111 @@
 </Sheet>
 
 <style>
-  .coming-back-intro {
-    margin-bottom: var(--space-4);
+  /* A column, so the foot can be pushed to the bottom edge on a screen with
+     one row on it and stay there on a screen with nine. */
+  .screen-return {
+    display: flex;
+    flex-direction: column;
   }
 
-  .coming-back-done {
-    width: 100%;
+  /* Every item arrives as a block does: its icon square clips open from its
+     own left edge over --dur-slow, one --stagger-step per row of the
+     arrival, the words beside it cutting (rule 10, ADR-0078; the agenda's
+     day block on Home is the same movement at the same size). --row-index
+     is set by the list and capped at the seventh where the tiles' stagger
+     is. Filled both ways so the 1ms reduced-motion clamp ends it where it
+     rests, and outset by 6px for the focus ring, as every block's is.
+
+     :global because most of these squares are drawn inside ListRow and a
+     scoped selector would never reach them; the offer's own square is in
+     this file and the same selector catches both. Here rather than in
+     kit.css because a row icon is not a block that moves anywhere else in
+     the app yet - that is ticket 20's sweep to make, not this ticket's. */
+  .screen-return :global(.kit-row-ico) {
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--row-index, 0) * var(--stagger-step));
+  }
+
+  /* ---- an offer ----------------------------------------------------
+     The icon block, the title, one reason line, and two labelled controls
+     under them (rule 13; Cash App's permission shape). Its own padding
+     rather than .kit-row's, because it is two rows of content and the
+     hairline between it and its neighbours is .rows-divide's. */
+  .return-offer {
+    padding: var(--space-2) 0;
+  }
+
+  .return-offer-said {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+  }
+
+  /* Indented to the text column, so the two answers line up under what they
+     are answering rather than under the block. 36 is the icon square and 12
+     is the row's gap. */
+  .return-offer-answers {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    padding-left: calc(36px + var(--space-3));
+  }
+
+  /* Underlined ink rather than the accent, which is what phase 10 does with
+     a text action everywhere else (kit.css, .kit-heading-action): on a page
+     whose colour is spent as blocks, an accent-coloured word is a fourth
+     voice. The yes is --text and the no is --text-2, which is the whole of
+     the weighting between them - the no is present, never hidden, and never
+     the louder of the two. */
+  .return-yes,
+  .return-no {
+    min-height: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 2px;
+  }
+
+  .return-yes {
+    color: var(--text);
+  }
+
+  .return-no {
+    color: var(--text-2);
+  }
+
+  /* ---- the foot ----------------------------------------------------
+     Rule 12's foot with rule 15's one control, pinned to the window's
+     bottom edge above a hairline and never moving between states.
+
+     `margin-top: auto` puts it on the bottom edge of a screen whose list is
+     short; `position: sticky` keeps it there when the list is long enough
+     to scroll under it. The negative offset is the one .editor-savebar
+     documents: a sticky bottom is measured from the scroll port's padding
+     edge, and the region already holds --nav-clearance of padding there, so
+     a foot that means to sit *on* the edge gives that breath back. The
+     system inset stays, as the foot's own padding. */
+  .return-foot {
+    position: sticky;
+    bottom: calc(-1 * var(--space-5));
+    margin-top: auto;
+    margin-bottom: 0;
+    /* Out through .screen's own 20 so the hairline runs the window's width,
+       then padded back in so the control starts where the rows do. */
+    margin-inline: calc(-1 * var(--space-5));
+    padding: var(--space-3) var(--space-5) calc(var(--space-3) + var(--inset-bottom));
+    border-top: 1px solid var(--hairline);
+    /* Opaque, or the rows scroll through it. */
+    background: var(--bg);
   }
 
   .coming-back-sheet-body {
