@@ -818,6 +818,23 @@ describe('rules 7 and 8: the field and the sun (ticket 23)', () => {
     expect(element(header, 'data-screen-header')).toContain('data-screen-subtitle');
   });
 
+  /* Rule 7's third case, chrome (carpet 25). A door never shows a back
+     control and a deep screen always does; chrome shows the field and shows
+     a back control on the phone only, which is the one place in rule 7
+     where the answer differs by shell. So the control is drawn and then
+     dropped inside the 1024px shell's own container query - one rule, in
+     the query the bar and the rail already hand over in, rather than a
+     width read in script. */
+  it('drops the chrome back control in the 1024px shell and nowhere else', () => {
+    expect(header).toContain('class:is-chrome={chrome}');
+    const dropped = rules(sheet('components')).filter(
+      (r) => r.prelude === '.screen-header.is-chrome .screen-back'
+    );
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0].at).toBe('@container app (min-width: 1024px)');
+    expect(dropped[0].body).toMatch(/display:\s*none/);
+  });
+
   it("paints the screen's field in --field with --field-ink, bleeding to the screen's edges", () => {
     const css = sheet('components');
     const field = ruleFor(css, '.screen-field');
