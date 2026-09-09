@@ -1200,8 +1200,6 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     --text-2: #444444;
     --outline: #CCCCCC;
     --hairline: #CCCCCC;
-    --shadow-1: none;
-    --shadow-2: none;
   }
 
   /* Paper has neither a display cutout nor a floating bar, so the insets

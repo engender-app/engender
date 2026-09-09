@@ -283,7 +283,9 @@
     content: '';
     position: absolute; inset: 0; margin: auto;
     width: 22px; height: 22px; border-radius: 50%;
-    background: var(--surface); box-shadow: var(--shadow-1);
+    /* The same disc as .starred-photo-unstar::before in screens.css, and
+       the same trade: a hairline rather than the app's second elevation. */
+    background: var(--surface); border: 1px solid var(--hairline);
   }
 
   /* The two-up progress-photo comparison. These lived in screens.css while
