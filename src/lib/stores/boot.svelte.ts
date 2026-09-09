@@ -73,7 +73,8 @@ import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
 import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
-import type { BootState } from './boot-state';
+import { bootGate, type BootState } from './boot-state';
+import { openApp } from '../motion/appOpening';
 import { performPlatformEffect } from './boot-platform';
 import {
   describeError,
@@ -91,8 +92,9 @@ let machine: BootMachine = initialBoot();
 export const bootState = $state<BootState>({ ...machine.boot });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
-    started. Synchronous on purpose: by the time a caller's dispatch returns,
-    the screen it renders has already changed. */
+    started. Synchronous but for one case: the event that ends a gate
+    publishes itself a frame later, inside a view transition, because the app
+    arriving is a movement rather than a swap ($lib/motion/appOpening). */
 function dispatch(event: BootEvent): void {
   let step;
   try {
@@ -105,8 +107,23 @@ function dispatch(event: BootEvent): void {
        says what actually happened. */
     step = reduce(machine, { type: 'boot-failed', message: describeError(error) });
   }
+  /* Asked of the state the screen is drawn from, not of the machine: this is
+     "is a gate on screen right now", and the answer after is "and it is not
+     any more", which is the whole of the condition. A gate giving way to
+     another gate is not it - a refusal is the same screen changing its mind,
+     and it moves on the field's own edge without a transition (stepBlind). */
+  const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
   machine = step.machine;
-  Object.assign(bootState, machine.boot);
+  /* Off `machine` rather than off the step it came from, so a second event
+     landing inside the frame this one is capturing cannot be undone by an
+     older answer arriving late. */
+  const publish = () => Object.assign(bootState, machine.boot);
+  if (opensApp) openApp(publish);
+  else publish();
+  /* Started before the publication rather than after it, which is the order
+     this always ran in for every event but the one above. Nothing in `run`
+     reads `bootState` - the machine holds what an effect needs - so the two
+     orders are the same for every effect there is. */
   for (const effect of step.effects) void run(effect);
 }
 

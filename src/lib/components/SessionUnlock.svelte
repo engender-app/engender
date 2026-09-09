@@ -33,6 +33,7 @@
   import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { isAndroid } from '$lib/platform';
   import { appWordmark } from '$lib/disguise/identity';
+  import { openApp } from '$lib/motion/appOpening';
   import type { JournalAccessMode } from '$lib/data/journal-access-mode';
   import GateScreen from './GateScreen.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
@@ -40,6 +41,17 @@
   import Sheet from './Sheet.svelte';
 
   let { mode }: { mode: JournalAccessMode } = $props();
+
+  /* What every one of the four ways in below ends on: the app coming back,
+     as the field opening from this screen's title onto the one Home draws
+     rather than this screen being replaced (redesign ticket 34).
+
+     Here rather than inside `markUnlocked`, which the cold-start gates reach
+     through the boot machine's own `mark-unlocked` effect: that path is
+     already inside a transition by the time the effect runs, and starting a
+     second one from under the first skips it - the app would appear in a
+     single frame, which is exactly what this exists to stop. */
+  const opened = () => openApp(markUnlocked);
 
   let passphrase = $state('');
   let error = $state('');
@@ -52,7 +64,7 @@
   async function submitPin(entered: string): Promise<PinAttempt> {
     try {
       await unlockJournalPin(entered);
-      markUnlocked();
+      opened();
       return 'ok';
     } catch (e) {
       return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
@@ -70,7 +82,7 @@
     try {
       await unlockJournalPassphrase(passphrase);
       passphrase = '';
-      markUnlocked();
+      opened();
     } catch (e) {
       const deviceGone = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
       error = e instanceof DeviceBindingUnavailableError ? deviceGone : m.pp_wrong();
@@ -87,7 +99,7 @@
     error = '';
     try {
       await unlockJournalBiometric();
-      markUnlocked();
+      opened();
     } catch (e) {
       console.error('the biometric unlock failed', e);
       error = m.bm_unlock_failed();
@@ -111,7 +123,7 @@
         deviceCredential: false
       });
       if (result.unlocksJournal) {
-        markUnlocked();
+        opened();
         return;
       }
       error =
