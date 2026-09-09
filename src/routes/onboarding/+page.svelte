@@ -2,13 +2,14 @@
   /* The first run (F16), rebuilt for phase 5 ticket 26.
 
      Five settings, one pass. What a person had to leave here and go and find
-     afterwards was the flag and the daily check-in, and both are things
-     someone decides in the first minute and almost never revisits: the flag
-     because it is the app's whole look, the check-in because a journal
-     nobody is reminded about is a journal that stops after a week. So the
-     flow is welcome, name, flag, scales, areas, lock, check-in, finish, and
-     the order and the skip rules live in $lib/onboarding/steps.ts rather than
-     in a run of `step === 3` comparisons here.
+     afterwards was the flag, which is the app's whole look and something
+     someone decides in the first minute and almost never revisits. So the
+     flow is welcome, name, flag, scales, areas, lock, permissions, finish,
+     and the order and the skip rules live in $lib/onboarding/steps.ts rather
+     than in a run of `step === 3` comparisons here. The daily check-in used
+     to be the last question and is not asked here any more (phase 10
+     redesign ticket 31): the permissions step names it as one of the things
+     a notification is for, and the switch stays on the reminders screen.
 
      Two rules the user set for this ticket, and they are why the foot of
      every step looks the way it does. Every step that stores something
@@ -64,6 +65,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import PermissionList from '$lib/components/PermissionList.svelte';
 
   /* Keyed, not worded, so the flag names translate with the rest of the
      catalogue. The same eight, in the same order, as Settings' own picker -
@@ -150,8 +152,6 @@
   );
 
   let lockOnLeave = $state(false);
-  let checkIn = $state(false);
-  let checkInTime = $state(prefs.checkInTime);
 
   /* The access-mode module's own working state (ticket 53's four modes,
      wired in at this one step by ticket 54). Local to this step rather than
@@ -230,7 +230,11 @@
     else if (step === 'scales') scales = null;
     else if (step === 'areas') areas = null;
     else if (step === 'lock') lockOnLeave = false;
-    else if (step === 'checkin') checkIn = false;
+    /* The permissions step is not in this list, and that is the whole of
+       what skipping it does (ticket 31). Its answers live in the OS rather
+       than in `prefs`, so there is no stored default for a Skip to protect:
+       nothing was granted, nothing is revoked, and every row is still there
+       under /settings/permissions. */
     go(stepAfter(steps, step));
   }
 
@@ -258,10 +262,6 @@
     if (scales) prefs.activeScales = scales;
     if (areas) prefs.onboardingAreas = areas;
     if (lockOnLeave) prefs.lockOnLeave = true;
-    if (checkIn) {
-      prefs.checkInEnabled = true;
-      prefs.checkInTime = checkInTime;
-    }
     prefs.onboarded = true;
     goto(onboardingDestination());
   }
@@ -461,30 +461,21 @@
                 </ListRow>
               </ListCard>
             {/if}
-          {:else if step === 'checkin'}
-            <h1 class="setup-title">{m.ob_checkin_title()}</h1>
-            <p class="setup-body">{m.ob_checkin_body()}</p>
-            <ListCard>
-              <ListRow key="check-in" title={m.checkin_title()} subtitle={m.checkin_sub()} chevron={false}>
-                {#snippet trailing()}
-                  <Switch checked={checkIn} label={m.checkin_title()} onChange={(v) => (checkIn = v)} />
-                {/snippet}
-              </ListRow>
-              <div class="setup-reveal" class:is-open={checkIn} data-checkin-extra>
-                <div>
-                  <div class="setup-time">
-                    <label class="field-label" for="ob-checkin-time">{m.checkin_time()}</label>
-                    <input
-                      class="input"
-                      type="time"
-                      id="ob-checkin-time"
-                      name="ob-checkin-time"
-                      bind:value={checkInTime}
-                    />
-                  </div>
-                </div>
-              </div>
-            </ListCard>
+          {:else if step === 'permissions'}
+            <!-- Where the daily check-in used to be asked about (ticket 31).
+                 The nudge is not a question setup asks any more: it is one
+                 of the reasons under the notification row here, and the
+                 switch itself stays on the reminders screen. What this step
+                 does instead is name everything the app can reach on this
+                 device, once, in the place where somebody is already
+                 deciding what the app is allowed to be.
+
+                 The list is the same component /settings/permissions draws,
+                 which is what makes "you can do this later" true rather than
+                 a promise of a second screen that says something close. -->
+            <h1 class="setup-title">{m.ob_perms_title()}</h1>
+            <p class="setup-body">{m.ob_perms_body()}</p>
+            <PermissionList />
           {:else}
             <h1 class="setup-title">{name.trim() ? m.ob_done_title_named({ name: name.trim() }) : m.ob_done_title()}</h1>
             <p class="setup-body">{m.ob_done_body()}</p>
@@ -705,33 +696,6 @@
   .setup-def + .setup-body { text-align: justify; }
   .setup-body { color: var(--text-2); margin: 0; }
   .setup-step .input { margin-top: var(--space-2); }
-  .setup-time { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
-  .setup-time .input { width: 118px; margin: 0; }
-
-  /* Tier 3, a change within the screen: the row that depends on a switch
-     opens its own height rather than making the foot of the screen jump. A
-     grid track rather than a JS height tween, so the reduced-motion clamp in
-     base.css reaches it like any other CSS transition. */
-  .setup-reveal {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows var(--dur-med) var(--ease-out);
-  }
-  .setup-reveal > * { overflow: hidden; }
-  .setup-reveal.is-open { grid-template-rows: 1fr; }
-  /* The kit draws a row's separator with `.kit-row + .kit-row`, and this
-     wrapper stands between the two rows so the adjacency never matches. The
-     card lost its hairline and read as one block rather than as two settings.
-     Same geometry as the kit's own rule, and only while the row is showing -
-     a 1px line at the top of a track collapsed to 0fr is a line with nothing
-     under it. */
-  .setup-reveal.is-open :global(.kit-row::before) {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: var(--hairline);
-  }
 
   .setup-foot {
     margin-top: auto;

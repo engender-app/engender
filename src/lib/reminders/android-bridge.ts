@@ -40,6 +40,10 @@ interface AndroidRemindersBridge {
   getStatus(): Promise<AndroidReminderStatus>;
   requestNotificationPermission(): Promise<AndroidReminderStatus>;
   requestExactAlarmPermission(): Promise<void>;
+  /** The app's notification settings screen, opened unconditionally - the
+      way back from a refusal the OS has stopped offering a dialog for
+      (phase 10 redesign ticket 31). */
+  openNotificationSettings(): Promise<void>;
   openBatterySettings(): Promise<void>;
   consumeLaunchRoute(): Promise<{ route: string | null }>;
 }
