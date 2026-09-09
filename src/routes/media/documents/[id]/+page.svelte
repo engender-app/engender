@@ -474,7 +474,7 @@
       </div>
     {/if}
 
-    <div class="editor-section">
+    <div>
       <Field label={m.document_title_label()} id="document-title">
         {#snippet children(id)}
           <input class="input" {id} name="document-title" bind:value={draft.title} />
