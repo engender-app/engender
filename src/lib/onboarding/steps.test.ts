@@ -26,7 +26,7 @@ describe('the step list', () => {
     expect(new Set(ONBOARDING_STEPS).size).toBe(ONBOARDING_STEPS.length);
   });
 
-  it('sets the five things a first run has to settle, in that order', () => {
+  it('sets the five things a first run has to settle, then the list of what the app can ask for', () => {
     expect(ONBOARDING_STEPS).toEqual([
       'welcome',
       'name',
@@ -34,9 +34,18 @@ describe('the step list', () => {
       'scales',
       'areas',
       'lock',
-      'checkin',
+      'permissions',
       'done'
     ]);
+  });
+
+  /* Phase 10 redesign ticket 31. The daily check-in stopped being a
+     question setup asks: the answers the permissions step collects belong
+     to the OS, and the check-in switch stays on the reminders screen where
+     it always was. A step list that still named `checkin` would mean the
+     route had a branch for a step that no longer draws anything. */
+  it('no longer asks about the daily check-in', () => {
+    expect(ONBOARDING_STEPS).not.toContain('checkin');
   });
 
   it('walks forward and back, and stops at both ends', () => {
@@ -79,8 +88,16 @@ describe('skipping', () => {
       'scales',
       'areas',
       'lock',
-      'checkin'
+      'permissions'
     ]);
+  });
+
+  /* The permissions step sets nothing of the app's own, so its Skip has
+     nothing to protect - and it carries one anyway (ticket 31). Skipping it
+     grants nothing and blocks nothing, which is the only honest reading of
+     a step whose answers all live in the OS. */
+  it('lets the permissions step be skipped like any other', () => {
+    expect(isSkippable('permissions')).toBe(true);
   });
 });
 
@@ -177,7 +194,13 @@ describe('a first run that restores an archive', () => {
   });
 
   it('opens on the welcome, offers the restore, and ends on the finish', () => {
-    expect(RESTORED).toEqual(['welcome', 'restore', 'lock', 'done']);
+    /* `permissions` is in it because ticket 31 landed while this branch was
+       open and the flow picked it up with no edit here: it stores no
+       preference, so `archiveAnswers` can never call it carried. That is the
+       whole argument for reading this off PORTABLE_KEYS rather than keeping
+       a second list - the second list would have silently dropped the step
+       that asks this device what the app may reach. */
+    expect(RESTORED).toEqual(['welcome', 'restore', 'lock', 'permissions', 'done']);
   });
 
   it('has no skip on the restore step: it is the reason this flow was entered', () => {

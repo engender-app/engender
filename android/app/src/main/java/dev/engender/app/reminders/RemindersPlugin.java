@@ -98,6 +98,23 @@ public class RemindersPlugin extends Plugin {
         call.resolve(status());
     }
 
+    /* The way back from a refusal (phase 10 redesign ticket 31). Distinct
+       from requestNotificationPermission above, which only reaches the
+       settings screen when notifications are off app-wide: once
+       POST_NOTIFICATIONS has been refused twice Android stops showing the
+       dialog and requestPermissionForAlias returns without doing anything,
+       so the permissions list needs a call that always opens the screen
+       rather than one that sometimes does. */
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        try {
+            openNotificationSettings();
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
     @PluginMethod
     public void requestExactAlarmPermission(PluginCall call) {
         try {
