@@ -5,12 +5,13 @@
    preview block was lifted out of, which has to look exactly as it did.
    Nothing else in setup and nothing else in the app.
 
-   The Android shots spoof `window.Capacitor` before the app boots, which
-   is the whole of what `isAndroid()` reads (platform.ts). That is honest
-   for a copy render - the same component, its other branch - and it is the
-   only way to see the Android wording in a browser. It is not a device
-   render and nothing about the launcher is real in it; the restart itself
-   is proven on the emulator, not here.
+   Web only, deliberately. The step's row and note branch on isAndroid(),
+   and there is no honest way to see the Android branch here: the app
+   bundles Capacitor, so `window.Capacitor` exists in a browser already and
+   answers "web", and an init script that redefines it is overwritten on
+   boot. Faking it harder would mean a render whose platform is a lie in
+   every other respect too. The Android wording is shot on the emulator
+   instead, through the WebView's own devtools endpoint, where it is real.
 
    Run: VITE_DEMO=1 npm run build   first, then
         node tests/disguise-step-gallery.mjs
@@ -42,18 +43,8 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const scroll = {};
 const shots = [];
 
-/** A fresh context per platform: the Capacitor spoof has to be in place
-    before the app's first script runs, and a context cannot un-spoof. */
-async function open(android) {
+async function open() {
   const context = await browser.newContext({ viewport: SIZES.phone, deviceScaleFactor: 2 });
-  if (android) {
-    await context.addInitScript(() => {
-      // Only what platform.ts asks for. Nothing here pretends a plugin
-      // exists; the Android plugin registry answers a missing one on its
-      // own, and no plugin is called by the step being shot.
-      window.Capacitor = { getPlatform: () => 'android' };
-    });
-  }
   return context.newPage();
 }
 
@@ -131,7 +122,7 @@ const turnOn = async (page) => {
 };
 
 /* ---------- the step, web copy, off and on ---------- */
-const web = await open(false);
+const web = await open();
 for (const [palette, theme] of [
   ['trans', 'light'],
   ['trans', 'dark'],
@@ -161,15 +152,6 @@ await web.getByRole('button', { name: /Disguise/i }).click();
 await web.waitForSelector('[data-disguise-preview]');
 await shoot(web, 'settings-sheet');
 await web.close();
-
-/* ---------- the same step with the Android wording ---------- */
-const android = await open(true);
-await wear(android, 'trans', 'light');
-await stepToDisguise(android);
-await shoot(android, 'step-off-android');
-await turnOn(android);
-await shoot(android, 'step-on-android');
-await android.close();
 
 await writeFile(`${outDir}/scroll.json`, JSON.stringify(scroll, null, 2));
 await app.close();
