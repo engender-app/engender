@@ -99,8 +99,8 @@ describe('sheet rise', () => {
   /* A sheet's travel is its own, so the stub is a box plus the scrim it sits
      in - the frame the app's sheets are fixed to, which is what "the window's
      bottom edge" means when the app is a phone frame inside a page. Numbers
-     read like the real thing: an 800px frame with a 500px sheet on its floor,
-     which is the dose sheet on /coming-back. */
+     read like the real thing: a phone-sized frame with a sheet standing on
+     its floor, which is every sheet in the app at 390px wide. */
   function sheetNode(top: number, bottom: number, frameBottom = 800) {
     return {
       getBoundingClientRect: () => ({ top, bottom, height: bottom - top }),
@@ -149,27 +149,50 @@ describe('sheet rise', () => {
     expect(frame(sheetRise(sheetNode(120, 800)).css!, 0)).toMatch(/translateY\(680px\)/);
   });
 
-  /* The yank between frames 1 and 2, measured. Svelte runs an exit as
-     `1 - easing(p)`, so --ease-out - which leaves at its steepest - spends a
-     sixth of the travel before the second frame is painted. --ease-in-out
-     departs gently and picks up speed, which is what an object leaving
-     does. */
+  /* The field's own settle (ticket 28), which is what Alicja asked a sheet to
+     take: coming up it runs past its mark and comes back. Svelte reads an
+     entrance as t = easing(p) and the geometry below uses u = 1 - t, so an
+     easing that passes 1 is the sheet passing its resting place. */
+  it('runs past its mark coming up, and lands on it', () => {
+    stubDocument(TOKENS);
+    const { easing } = sheetRise(sheetNode(300, 800), {}, { direction: 'in' });
+    const peak = Math.max(...Array.from({ length: 101 }, (_, i) => easing!(i / 100)));
+    /* 6% of 500px is 30px, capped at 8, which is 1.6% of the travel. */
+    expect(peak).toBeGreaterThan(1);
+    expect((peak - 1) * 500).toBeCloseTo(8, 0);
+    expect(easing!(1)).toBe(1);
+  });
+
+  it('does not run past anything going down', () => {
+    stubDocument(TOKENS);
+    const { easing } = sheetRise(sheetNode(300, 800), {}, { direction: 'out' });
+    for (let i = 0; i <= 100; i++) expect(easing!(i / 100)).toBeLessThanOrEqual(1);
+  });
+
+  /* The yank between frames 1 and 2, measured. An exit is t = 1 - easing(p),
+     so the displacement follows the curve forwards and --ease-out - which
+     leaves at four times its average speed - spends a fifth of the travel
+     before the second frame is painted. --ease-out-soft is the same
+     deceleration with the instant off the front, and it is the one the
+     blind's close already takes for this exact reason. */
   it('leaves gently rather than at its steepest', () => {
     stubDocument(TOKENS);
-    const { duration, easing } = sheetRise(sheetNode(300, 800));
+    const { duration, easing } = sheetRise(sheetNode(300, 800), {}, { direction: 'out' });
     const oneFrame = 16 / duration!;
-    expect(easing!(oneFrame), 'the first frame of the exit').toBeLessThan(0.05);
+    expect(easing!(oneFrame), 'the first frame of the exit').toBeLessThan(0.06);
     expect(EASE_OUT(oneFrame), 'what --ease-out would have done').toBeGreaterThan(0.15);
   });
 
-  it('runs both ways on --dur-med', () => {
+  it('runs both ways on --dur-slow', () => {
     stubDocument(TOKENS);
-    expect(sheetRise(sheetNode(300, 800)).duration).toBe(240);
+    for (const direction of ['in', 'out'] as const) {
+      expect(sheetRise(sheetNode(300, 800), {}, { direction }).duration).toBe(380);
+    }
   });
 
   it('crossfades with no transform at all under reduced motion', () => {
     stubDocument(TOKENS, true);
-    const { css, duration } = sheetRise(sheetNode(300, 800));
+    const { css, duration } = sheetRise(sheetNode(300, 800), {}, { direction: 'in' });
     expect(duration).toBe(120);
     expect(frame(css!, 0.5)).not.toContain('transform');
     expect(frame(css!, 0.5)).toMatch(/opacity: 0\.5/);
