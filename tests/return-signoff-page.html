@@ -1,0 +1,737 @@
+<!-- The sign-off page for redesign ticket 35, built by
+     tests/return-signoff-page.mjs, which substitutes the crops and the
+     flipbook bundle into the placeholder in the script at the foot of this
+     file. That token is named there and nowhere else on purpose: a string
+     replace takes the first match, so a second mention - in a comment like
+     this one - swallows the whole payload and leaves the script with an
+     unsubstituted literal, which is a syntax error and a page that renders
+     none of its images. Dressed in the app's own
+     direction, because that is what it is reviewing: hairlines and blocks
+     rather than cards, one 6px radius, no shadow, Outfit 800 over Nunito,
+     the trans field's own pink as the single accent. -->
+<title>The Return Moment</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Nunito:wght@400;600;700&display=swap">
+<style>
+  /* The page is dressed in the app's own direction, because that is what it
+     is reviewing: hairlines and blocks rather than cards, one 6px radius,
+     no shadow anywhere, Outfit 800 over Nunito, and the trans field's own
+     pink as the single accent. */
+  :root {
+    --ground: #f2f5f8;
+    --surface: #fbfcfd;
+    --ink: #101820;
+    --ink-2: #4c5b67;
+    --hairline: rgba(16, 24, 32, 0.16);
+    --rule: #101820;
+    --field: #f5a9b8;
+    --field-ink: #101820;
+    --role-1: #5bcefa;
+    --good: #1c7a52;
+    --bad: #a32b3f;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --radius: 6px;
+    color-scheme: light dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1319;
+      --surface: #151c24;
+      --ink: #e9eff4;
+      --ink-2: #94a5b3;
+      --hairline: rgba(233, 239, 244, 0.18);
+      --rule: #e9eff4;
+      --good: #58c894;
+      --bad: #f18a9c;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0e1319;
+    --surface: #151c24;
+    --ink: #e9eff4;
+    --ink-2: #94a5b3;
+    --hairline: rgba(233, 239, 244, 0.18);
+    --rule: #e9eff4;
+    --good: #58c894;
+    --bad: #f18a9c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* ---- the field, which is the page's own header: the app's rule 7 shape,
+     borrowed so the page opens on the thing it is about. ---- */
+  .field {
+    background: var(--field);
+    color: var(--field-ink);
+    border-radius: 0 0 var(--radius) var(--radius);
+    margin: -48px -24px 0;
+    padding: 40px 24px 20px;
+  }
+
+  .field h1 {
+    font-family: Outfit, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(38px, 7vw, 60px);
+    letter-spacing: -0.045em;
+    line-height: 0.95;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    font-size: 17px;
+    font-weight: 600;
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .head { display: flex; flex-direction: column; gap: 12px; }
+
+  /* A section is named by a 3px rule and a 28px heading, 40 above the rule
+     and 12 under it, which is the app's rule 1. */
+  section { display: flex; flex-direction: column; gap: 20px; }
+
+  section > h2 {
+    font-family: Outfit, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0;
+    padding-top: 12px;
+    border-top: 3px solid var(--rule);
+  }
+
+  section > p, li { max-width: 66ch; color: var(--ink-2); margin: 0; }
+  section > p strong, li strong { color: var(--ink); font-weight: 700; }
+  ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+
+  h3 {
+    font-family: Outfit, system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  code { font-family: var(--mono); font-size: 0.9em; }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  /* ---- before / after pairs ---- */
+  .pairs { display: flex; flex-direction: column; gap: 40px; }
+
+  .pair { display: flex; flex-direction: column; gap: 12px; }
+
+  .pair-shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+
+  .shot { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .shot.is-tall img { max-height: 78vh; width: auto; max-width: 100%; }
+  .shot figcaption { color: var(--ink-2); font-size: 14px; }
+
+  /* ---- the flipbook ---- */
+  .books { display: flex; flex-direction: column; gap: 48px; }
+
+  .book { display: flex; flex-direction: column; gap: 14px; }
+  .book-note { color: var(--ink-2); max-width: 74ch; }
+
+  .stage {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-start;
+    max-width: 800px;
+  }
+
+  .reel { display: flex; flex-direction: column; gap: 10px; }
+
+  .reel img {
+    display: block;
+    width: 320px;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .controls { display: flex; align-items: center; gap: 8px; width: 320px; max-width: 100%; }
+
+  .controls button {
+    font-family: var(--mono);
+    font-size: 15px;
+    min-width: 34px;
+    height: 34px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--ground); }
+  .controls input[type="range"] { flex: 1; min-width: 0; accent-color: var(--field); }
+
+  .stamp {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    width: 320px;
+    max-width: 100%;
+  }
+  .stamp b { font-weight: 700; }
+
+  .readout {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    flex: 1 1 260px;
+    min-width: 240px;
+    max-width: 420px;
+    border-left: 1px solid var(--hairline);
+    padding-left: 20px;
+    align-self: stretch;
+    overflow-x: auto;
+  }
+  .readout dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+  .readout dt { color: var(--ink-2); }
+  .readout dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ---- the measured table ---- */
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  caption { text-align: left; color: var(--ink-2); font-size: 14px; padding-bottom: 10px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  thead th { border-bottom: 3px solid var(--rule); font-family: var(--mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 400; color: var(--ink-2); }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .yes { color: var(--good); font-weight: 700; }
+  .no { color: var(--bad); font-weight: 700; }
+
+  .refs { display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; color: var(--ink-2); }
+  .refs a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+  :is(a, button, input, [tabindex]):focus-visible { outline: 2px solid var(--field); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media (max-width: 620px) {
+    .wrap { padding: 32px 16px 64px; gap: 44px; }
+    .field { margin: -32px -16px 0; padding: 28px 16px 16px; }
+    .readout { border-left: 0; padding-left: 0; border-top: 1px solid var(--hairline); padding-top: 14px; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="field">
+    <h1>The return moment</h1>
+  </header>
+
+  <div class="head">
+    <p class="lede">
+      <code>/coming-back</code> is the screen somebody meets after weeks away, and it had not been
+      looked at since phase 8. Redesign ticket 35 redraws it as a step under DIRECTION.md rule 15
+      and gives it the five movements it owes. Everything here is trans, light, at
+      390&times;844.
+    </p>
+    <p class="lede" style="font-weight:400">
+      Everything below is only this screen. Every number is read off the built app at 390&times;844
+      with reduce-motion off, and the &ldquo;before&rdquo; column is <code>main</code> at
+      <code>b9e88296</code>, recorded the same way. Second round: the flipbooks are re-recorded after
+      the sign-off fix, so the arrivals here are the ones that carry the field&rsquo;s blind.
+    </p>
+  </div>
+
+  <section>
+    <h2>What the rule asked for</h2>
+    <p>
+      Rule 15 names this route in as many words: a step is <strong>one purpose, no navigation and
+      a short list</strong>, and it takes the field with a title, the flush list, and rule 12&rsquo;s
+      foot with one control. Three things followed from that.
+    </p>
+    <ul>
+      <li><strong>No tab bar and no back chevron.</strong> The route is chromeless now, the way the
+      in-the-room view is: a bar floating over a moment is four more ways off it, and the foot
+      already carries the one. A step has no parent, and a moment linked from nowhere has nothing
+      above it to go back to.</li>
+      <li><strong>One flush list, not two surfaces.</strong> Rule 12 forbids a notice on a step. What
+      the phase 8 review wanted from two cards was that the ordering be visible &mdash; a letter from
+      somebody&rsquo;s past self is not a peer of a binder timer &mdash; and role 0 with a chevron
+      against role 1 with two labelled controls carries that without a container.</li>
+      <li><strong>The offer row keeps its labelled yes.</strong> That was the other half of the same
+      review. The icon block, the title and the reason line are rule 13&rsquo;s row exactly as it
+      draws one; what rule 13 does not spell out is a row whose answer is two controls rather than a
+      tick or a switch, and this ticket adds that case. The yes is <code>--text</code> and the no is
+      <code>--text-2</code>, both underlined at 2px like every other text action in phase 10, both at
+      the full 48px target, 20px apart. Nearest reference: Cash App&rsquo;s notification screen, which
+      the fourth sweep read for the permissions step &mdash; a title, a reason and two buttons, flush
+      on the page. Its icon is not where this block comes from; that is rule 6&rsquo;s row icon.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>The screen</h2>
+    <p>
+      Two states, both reached the way a person reaches them: five weeks away, and the route opened
+      by hand with the journal holding nothing.
+    </p>
+    <div class="pairs" id="screens"></div>
+  </section>
+
+  <section>
+    <h2>The parts that changed</h2>
+    <p>
+      Crops rather than screens, so what is on the page is what this ticket touched.
+    </p>
+    <div class="pairs" id="parts"></div>
+  </section>
+
+  <section>
+    <h2>Polish, where a step grows</h2>
+    <p>
+      A step&rsquo;s field is never a fixed height, and Polish is where that earns its keep. Same
+      palette, same theme, same journal.
+    </p>
+    <div class="pairs" id="polish"></div>
+  </section>
+
+  <section>
+    <h2>The five movements</h2>
+    <p>
+      Chromium&rsquo;s own screencast off the built app, one frame per paint, with the millisecond it
+      landed. The readout beside each reel is a separate per-animation-frame sample of what that
+      movement animates, taken in the same scene: a recording shows that something moved, and the
+      numbers say by how much and when. Drag the scrubber, or use the arrow keys.
+    </p>
+    <div class="books" id="books-after"></div>
+  </section>
+
+  <section>
+    <h2>The same five, clamped</h2>
+    <p>
+      With <code>prefers-reduced-motion: reduce</code> set. Substitute, never delete: a clip becomes a
+      cut, a height travel becomes a removal, the sheet fades where it stands.
+    </p>
+    <div class="books" id="books-reduce"></div>
+  </section>
+
+  <section>
+    <h2>Before, for the two that are comparable</h2>
+    <p>
+      The arrival and an answered row, recorded off <code>main</code> in the same scenes. The row is the
+      one worth naming: the screen&rsquo;s own comment on <code>main</code> says the notice
+      &ldquo;leaves through its own <code>disclose</code> so answering collapses the space it
+      held&rdquo;, and the built app did not do that.
+    </p>
+    <div class="books" id="books-before"></div>
+  </section>
+
+  <section>
+    <h2>The sign-off round</h2>
+    <p>
+      One defect named and one rule demanded, and both were this ticket&rsquo;s. The empty state
+      arriving had <strong>&ldquo;no animation at all, yank between frames 7 and 8&rdquo;</strong>, and
+      <strong>every screen must keep the field blind effect</strong>.
+    </p>
+    <p>
+      Making the route chromeless routed it into <code>screen-transition.ts</code>&rsquo;s first line
+      &mdash; <code>if (from === null || isChromeless) return 'none'</code> &mdash; which is written
+      for gates: the screens that render <em>instead of</em> the app, and so have no outgoing screen
+      for an edge to travel from. <code>chromelessPath</code> was the only predicate for &ldquo;this
+      route has no chrome&rdquo;, and that rule was already reading it to mean &ldquo;this route is not
+      somewhere the app walked to&rdquo;. One predicate, two questions, and the answer to the second was
+      wrong. Nothing failed: the route worked, looked right in every still, and arrived as a hard cut.
+    </p>
+    <p>
+      The two questions have two predicates now, and <strong>ADR-0080</strong> writes the rule down
+      rather than leaving it as a mechanism ticket 28 happened to build: every navigation between two
+      screens of the app runs the blind, a screen with no field is the limit case rather than an
+      exception, absence of chrome is never an exemption, and the cut list is four enumerated cases and
+      closed. A screen that cuts is not broken, so nothing fails &mdash; it just quietly stops being
+      part of the app, which is what earns it an ADR.
+    </p>
+    <div class="table-scroll">
+      <table>
+        <caption>The two arrivals, before and after the fix, off the built app.</caption>
+        <thead>
+          <tr><th scope="col">Scene</th><th scope="col">Cut (as signed off)</th><th scope="col">With the blind</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>The empty state arriving</td>
+            <td class="num"><span class="no">18 frames / 290ms</span><br>one 29KB &rarr; 10KB jump at frame 7</td>
+            <td class="num"><span class="yes">33 frames / 552ms</span><br>the edge walks down over eight frames</td>
+          </tr>
+          <tr>
+            <td>The items arriving</td>
+            <td class="num"><span class="no">cut</span><br>only the row blocks moved</td>
+            <td class="num"><span class="yes">the blind comes up</span><br>Home&rsquo;s wordmark fades where it stands, blocks clip open under the edge</td>
+          </tr>
+          <tr>
+            <td>The same two, reduce-motion</td>
+            <td class="num"><span class="no">3&ndash;4 frames</span><br>a bare cut</td>
+            <td class="num"><span class="yes">20 frames / ~409ms</span><br>the crossfade its contract asks for</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>What was measured</h2>
+    <div class="table-scroll">
+      <table>
+        <caption>Read off the built app, 390&times;844, trans light, <code>--dur-slow</code> live at <code>.38s</code> and <code>data-a11y-motion="normal"</code>.</caption>
+        <thead>
+          <tr><th scope="col">Movement</th><th scope="col">main</th><th scope="col">This branch</th><th scope="col">Reduce-motion</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>An item arriving</td>
+            <td class="num"><span class="no">no movement</span><br>rows whole in the first frame they are drawn</td>
+            <td class="num"><span class="yes">clip 100% &rarr; 0</span><br>380ms per block, 50ms apart, capped at the 7th</td>
+            <td class="num">whole in frame 1</td>
+          </tr>
+          <tr>
+            <td>An answered row leaving</td>
+            <td class="num"><span class="no">137px &rarr; 0 in one frame</span><br>held 137px for the 118ms the decline took</td>
+            <td class="num"><span class="yes">112px &rarr; 0 over 150ms</span><br>moves on the frame after the tap; contents pinned and clipped</td>
+            <td class="num">469 &rarr; 357 in one frame</td>
+          </tr>
+          <tr>
+            <td>The rows under it</td>
+            <td class="num">n/a</td>
+            <td class="num"><span class="yes">close up with it</span><br>list 469 &rarr; 357 on the same curve</td>
+            <td class="num">already closed in frame 1</td>
+          </tr>
+          <tr>
+            <td>An offer opening</td>
+            <td class="num">sheet rises</td>
+            <td class="num">sheet rises, unchanged<br>top 337 &rarr; 330, scrim 0.21 &rarr; 1 over 240ms</td>
+            <td class="num">fades where it stands</td>
+          </tr>
+          <tr>
+            <td>An empty list</td>
+            <td class="num"><span class="no">two hairlines, 2px apart</span><br>left behind under the line</td>
+            <td class="num"><span class="yes">nothing</span><br>list height 0</td>
+            <td class="num">nothing</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>What the ticket did not change</h2>
+    <ul>
+      <li>Every one of ADR-0062&rsquo;s decisions. Three weeks, once per gap, linked from nowhere, no
+      count of what was missed, no notification, backfill per item only.</li>
+      <li>The reads behind the screen, and whether more than one dose slot is ever offered.</li>
+      <li>No figure anywhere states how much was missed, and a backfill still leaves the record&rsquo;s
+      holes where they were: the dose sheet says so in as many words.</li>
+      <li>Each offer is answerable once and mints nothing without confirmation.</li>
+    </ul>
+    <p>
+      One copy change the redraw forced. The line under the field is rule 12&rsquo;s one line, two at
+      most, and the old intro set three at 15px; the half worth keeping is the permission, so it reads
+      <strong>&ldquo;Take what you want, leave the rest.&rdquo;</strong> and the title carries the rest.
+      The two sheets&rsquo; second control says <strong>Cancel</strong> now rather than the offer&rsquo;s
+      own <em>Leave it</em>: the row behind the sheet wears those words and they answer the offer, and
+      closing a sheet does not.
+    </p>
+  </section>
+
+  <section>
+    <h2>The Mobbin sweep this took from</h2>
+    <div class="refs">
+      <p>
+        Read for step machines rather than doors, and only for structure. Taken:
+      </p>
+      <ul>
+        <li><a href="https://mobbin.com/screens/be5cd190-352d-4597-a544-31cb00eeea3a">Cash App, &ldquo;Turn on notifications&rdquo;</a>
+        &mdash; an icon block, a title, a reason and two buttons, flush on the page. That is the offer row.</li>
+        <li><a href="https://mobbin.com/screens/9d33d5b5-0ae2-47c5-9388-95004b16270f">Too Good To Go, &ldquo;Never miss your pickup&rdquo;</a>
+        and <a href="https://mobbin.com/screens/8e591aa2-5546-4011-bbe1-640c9dff5523">Monese, &ldquo;Question 5 of 5&rdquo;</a>
+        &mdash; rows between hairlines with no container, one reason line under a title.</li>
+        <li><a href="https://mobbin.com/screens/bab3490e-25c1-4731-aa5f-f576fc2b58b0">Life Reset</a> and
+        <a href="https://mobbin.com/screens/da18f710-765d-4312-8be3-23d9c0a25b92">Tiimo</a>
+        &mdash; the skeleton, and a foot that never moves.</li>
+        <li><a href="https://mobbin.com/screens/b43ad12e-e8ed-4a50-a2c5-cb864285b649">Waking Up, Messages</a>
+        &mdash; one sentence as the whole of an empty state, with no tick disc and no illustration.
+        <a href="https://mobbin.com/screens/183421be-24a2-47db-b692-a98293277b3a">Airwallex</a> is where the
+        count sits only on the thing that has one.</li>
+      </ul>
+      <p>
+        Not taken, and worth naming as the anti-reference:
+        <a href="https://mobbin.com/screens/321454f7-be6f-48af-999a-4bb5f4d2f09d">Runna&rsquo;s
+        &ldquo;Let&rsquo;s keep your progress going&rdquo;</a>, which is a coach, a pep talk and a
+        sentence that counts the workouts you missed. This app refuses all three, and ADR-0062 is why.
+      </p>
+    </div>
+  </section>
+</div>
+
+<script>
+  const DATA = __PAYLOAD__;
+
+  /* ---- before / after shots ------------------------------------------- */
+  const SHOTS = [
+    {
+      key: 'screen',
+      title: 'Five weeks away',
+      tall: true,
+      before: 'The back chevron on the field, a three-line intro, the two offers as notices with a near-black ink square and an unlabelled × for the no, and the tab bar over the bottom of it — which cuts the dose notice off mid-sentence.',
+      after: 'The field with the title alone, one line under it, six rows between two hairlines, and the foot pinned to the bottom edge. Role 0 on the four the journal held, role 1 on the two it can answer.'
+    },
+    {
+      key: 'empty',
+      title: 'Nothing waiting',
+      tall: true,
+      before: 'A titled notice under the screen’s own “Waiting for you”, with Home as its action.',
+      after: 'The true sentence in the line’s own slot, and the foot’s one control as the way off. No second heading, and nothing to contradict.'
+    },
+    {
+      key: 'offer',
+      title: 'An offer',
+      before: 'A notice: the labelled yes, and the no as an unmarked × at the far corner. Its ink square is —text, not the flag’s stripe.',
+      after: 'A row: the stripe on the block, the reason under the title, and both answers labelled and weighted — the yes in —text, the no in —text-2.'
+    },
+    {
+      key: 'foot',
+      title: 'The foot',
+      before: 'The app’s floating tab bar, which is four ways off a screen with one purpose.',
+      after: 'Rule 12’s foot with rule 15’s one control, above a hairline that runs the window’s width. It does not move between the two states.'
+    },
+    {
+      key: 'screenPl',
+      title: 'The same step in Polish',
+      tall: true,
+      before: 'Three lines of intro become four, and the dose notice runs further under the tab bar.',
+      after: 'The field is never a fixed height, so a title or a reason line that wraps grows it rather than clipping. “Zaplanowana dawka na 7 września 2026” takes two lines and the row takes the height for it.'
+    },
+    {
+      key: 'offerPl',
+      title: 'A Polish offer row',
+      before: 'The two answers are a labelled “Zamknij sesję” and an unmarked ×.',
+      after: '“Zamknij sesję” beside “Zostaw włączoną”, both labelled, both at the full target.'
+    },
+    {
+      key: 'sheetFoot',
+      title: 'The sheet’s foot',
+      before: 'The second control wears the offer’s own decline, so “Leave it running” means two different things on one screen.',
+      after: 'Cancel. Closing a sheet is not answering the offer, and the row behind it is where that answer lives.'
+    }
+  ];
+
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+
+  function renderShots(host, keys) {
+    for (const spec of SHOTS.filter((s) => keys.includes(s.key))) {
+      const pack = DATA.stills[spec.key];
+      if (!pack) continue;
+      const pair = el('div', 'pair');
+      pair.append(el('h3', null, spec.title));
+      const shots = el('div', 'pair-shots');
+      for (const side of ['before', 'after']) {
+        if (!pack[side]) continue;
+        const fig = el('figure', 'shot' + (spec.tall ? ' is-tall' : ''));
+        fig.style.margin = '0';
+        const img = el('img');
+        img.src = pack[side];
+        img.alt = spec.title + ', ' + side;
+        /* No lazy loading: every image is already a data URI in this
+           document, so deferring one buys no network and only means a
+           reader who scrolls fast meets an empty box. */
+        const cap = el('figcaption');
+        cap.append(el('span', 'tag', side === 'before' ? 'before · main' : 'after · this branch'));
+        cap.append(document.createElement('br'));
+        cap.append(document.createTextNode(spec[side]));
+        fig.append(img, cap);
+        shots.append(fig);
+      }
+      pair.append(shots);
+      host.append(pair);
+    }
+  }
+
+  renderShots(document.getElementById('screens'), ['screen', 'empty']);
+  renderShots(document.getElementById('parts'), ['offer', 'foot', 'sheetFoot', 'field', 'offerPl']);
+  renderShots(document.getElementById('polish'), ['screenPl']);
+
+  /* ---- the flipbook ---------------------------------------------------- */
+
+  /** The sample nearest a frame's own millisecond. The two clocks are
+      independent - the screencast's and the page's rAF loop - so a frame is
+      matched to a reading rather than assumed to share an index with one. */
+  function sampleAt(scene, ms) {
+    if (!scene.samples || !scene.samples.length) return null;
+    let best = scene.samples[0];
+    for (const s of scene.samples) if (Math.abs(s.t - ms) < Math.abs(best.t - ms)) best = s;
+    return best;
+  }
+
+  /** The clip's own percentage, out of `inset(-6px calc(N% - 6px) ...)`. A
+      block is whole at 0 and unpainted at 100. */
+  function clipPct(value) {
+    if (!value || value === 'none') return null;
+    const m = /calc\(([-\d.]+)%/.exec(value);
+    if (m) return Number(m[1]).toFixed(1) + '%';
+    if (/\b100%/.test(value)) return '100.0%';
+    return '0.0%';
+  }
+
+  function readoutFor(scene, sample) {
+    const rows = [];
+    if (!sample) return rows;
+    if ('heights' in sample) {
+      rows.push(['rows', String(sample.rows)]);
+      rows.push(['row heights', '[' + (sample.heights || []).join(', ') + ']']);
+      rows.push(['list height', sample.listHeight + 'px']);
+      const clips = (sample.clips || []).map(clipPct).filter((c) => c !== null);
+      if (clips.length) rows.push(['blocks clipped', clips.join('  ')]);
+      if (sample.line) rows.push(['the line', '“' + sample.line + '”']);
+    } else if ('sheetTop' in sample) {
+      rows.push(['sheet', sample.open ? 'on screen' : 'gone']);
+      if (sample.sheetTop !== null) rows.push(['top edge', sample.sheetTop + 'px']);
+      if (sample.scrimOpacity !== null) rows.push(['withdrawal', Number(sample.scrimOpacity).toFixed(2)]);
+    }
+    if (sample.motion) rows.push(['motion', sample.motion]);
+    return rows;
+  }
+
+  function makeReel(scene, label) {
+    const reel = el('div', 'reel');
+    const img = el('img');
+    img.alt = scene.name + ', frame 1';
+    img.src = scene.frames[0].uri;
+    img.width = scene.w;
+    img.height = scene.h;
+
+    const stamp = el('div', 'stamp');
+    const controls = el('div', 'controls');
+    const back = el('button', null, '‹');
+    back.setAttribute('aria-label', 'previous frame');
+    const fwd = el('button', null, '›');
+    fwd.setAttribute('aria-label', 'next frame');
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = '0';
+    range.max = String(scene.frames.length - 1);
+    range.value = '0';
+    range.setAttribute('aria-label', label + ': frame');
+    controls.append(back, range, fwd);
+
+    const readout = el('div', 'readout');
+    const dl = document.createElement('dl');
+    readout.append(dl);
+
+    const show = (i) => {
+      const n = Math.max(0, Math.min(scene.frames.length - 1, i));
+      range.value = String(n);
+      const frame = scene.frames[n];
+      img.src = frame.uri;
+      img.alt = scene.name + ', frame ' + (n + 1);
+      stamp.innerHTML = '';
+      stamp.append(el('span', 'tag', label));
+      stamp.append(document.createTextNode('  '));
+      const b = el('b', null, 'frame ' + (n + 1) + ' / ' + scene.frames.length);
+      stamp.append(b, document.createTextNode(' · ' + frame.at + 'ms'));
+      dl.innerHTML = '';
+      for (const [k, v] of readoutFor(scene, sampleAt(scene, frame.at))) {
+        dl.append(el('dt', null, k), el('dd', null, v));
+      }
+    };
+
+    back.addEventListener('click', () => show(Number(range.value) - 1));
+    fwd.addEventListener('click', () => show(Number(range.value) + 1));
+    range.addEventListener('input', () => show(Number(range.value)));
+    range.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); show(Number(range.value) - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); show(Number(range.value) + 1); }
+    });
+
+    reel.append(img, controls, stamp);
+    show(0);
+    return { reel, readout };
+  }
+
+  const TITLES = {
+    arrive: 'The items arriving',
+    'offer-open': 'An offer opening',
+    'answer-lands': 'An answer landing',
+    'row-leaves': 'An answered row leaving',
+    empty: 'The empty state arriving'
+  };
+  const base = (name) => name.replace(/^reduce-/, '');
+
+  function renderBooks(host, scenes, pairWith) {
+    for (const scene of scenes) {
+      const book = el('div', 'book');
+      book.append(el('h3', null, TITLES[base(scene.name)] || scene.name));
+      book.append(el('p', 'book-note', scene.note));
+      const stage = el('div', 'stage');
+      const mine = makeReel(scene, scene.name.startsWith('reduce-') ? 'reduce-motion' : 'this branch');
+      stage.append(mine.reel);
+      const other = pairWith && pairWith.find((s) => s.name === scene.name);
+      if (other) stage.append(makeReel(other, 'main').reel);
+      /* A scene recorded across a full page load kept no sampling loop - the
+         document it was running in went with the navigation - so it gets the
+         frames and no column of numbers rather than an empty one. */
+      if (scene.samples && scene.samples.length) stage.append(mine.readout);
+      book.append(stage);
+      host.append(book);
+    }
+  }
+
+  const after = DATA.flip.sets.after || [];
+  const beforeSet = DATA.flip.sets.before || [];
+  renderBooks(document.getElementById('books-after'), after.filter((s) => !s.name.startsWith('reduce-')));
+  renderBooks(document.getElementById('books-reduce'), after.filter((s) => s.name.startsWith('reduce-')));
+  renderBooks(document.getElementById('books-before'), beforeSet);
+</script>

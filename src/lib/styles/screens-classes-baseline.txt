@@ -10,8 +10,6 @@ compare-metrics-tags
 compare-period-label
 compare-picker
 day-add
-disguise-icon
-disguise-preview
 drag-dots
 entry-days
 gate

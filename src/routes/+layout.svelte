@@ -45,7 +45,7 @@
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { readReturnGap, readWhatIsWaiting } from '$lib/data/comingBackReads';
   import { hoverHints } from '$lib/a11y/hoverHint';
-  import { chromelessPath } from '$lib/navigation/chromeless';
+  import { chromelessPath, replacesAppNavigation } from '$lib/navigation/chromeless';
   import { screenTransition } from '$lib/navigation/screen-transition';
   import { closeEntryContainer } from '$lib/motion/container.svelte';
   import { carryBlind } from '$lib/motion/fieldBlind';
@@ -162,19 +162,24 @@
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
 
-  /* The routes that render without chrome whoever is looking at them
-     (navigation/chromeless.ts) folded together with the gate states, which
-     depend on how boot went and are this file's own. */
-  let chromeless = $derived(
+  /* What is being drawn instead of the app: the gate states, which depend
+     on how boot went and are this file's own. Held apart from the routes
+     below because two different questions are asked of it - what chrome to
+     paint, and whether a navigation happened at all
+     (navigation/chromeless.ts says why). */
+  let replacesApp = $derived(
     locked ||
       needsAccessModeAfterRecovery ||
       needsPassphrase ||
       needsAuthentication ||
       needsDeviceRecovery ||
       schemaTooNew ||
-      onboardingFirstRun ||
-      chromelessPath(path)
+      onboardingFirstRun
   );
+
+  /* Those, plus the routes that render without chrome whoever is looking at
+     them - which now includes a step the app does navigate to. */
+  let chromeless = $derived(replacesApp || chromelessPath(path));
 
   /* The other half of the exception above: onboarding is a route like any
      other, so getting there needs the same redirect the returning-user
@@ -266,7 +271,17 @@
       type: navigation.type,
       delta: navigation.delta,
       isAndroid: isAndroid(),
-      isChromeless: chromeless || chromelessPath(navigation.to.url.pathname),
+      /* `replacesAppNavigation`, not `chromelessPath`: a route with no bar
+         is not therefore a route the app did not walk to. Asked of both
+         sides, as this fact has always been - leaving a gate is as much
+         "not a navigation" as arriving at one - and the return moment is
+         on neither side of it, so stepping into it and back out both move
+         (redesign ticket 35; Alicja read the cut as a yank between frames
+         7 and 8 of the empty state's flipbook). */
+      isChromeless:
+        replacesApp ||
+        replacesAppNavigation(navigation.from?.url.pathname ?? '') ||
+        replacesAppNavigation(navigation.to.url.pathname),
       /* Gathered here for the same reason `isAndroid` is: whether a sheet is
          open over the outgoing screen is not something the two URLs can
          answer, and screen-transition.ts stays a pure table by being told

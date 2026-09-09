@@ -152,7 +152,21 @@ describe('the first run', () => {
     expect(onboardingMarkup).toContain('onclick={leave}');
     expect(onboarding).toMatch(/function leave\(\)[\s\S]*?complete\(\);/);
     expect(onboarding).toContain('prefs.onboarded = true;');
-    expect(onboarding).toContain('goto(onboardingDestination());');
+    expect(onboarding).toContain('goto(onboardingDestination())');
+  });
+
+  it('applies the disguise through the module that orders it, never inline', () => {
+    /* Ticket 32. The route may hold the answer and may supply the four
+       steps, but the sequence - write, flush, disguise, leave - is
+       onboarding/complete.ts's, where the Node tier can hold it to the
+       order. An assignment to prefs.disguise anywhere in this file that is
+       not the durable one handed to completeSetup is the defect this
+       catches: on Android it flips the launcher alias and kills the
+       process, so writing it early ends the first run rather than the
+       step. */
+    expect(onboarding).toContain('completeSetup({');
+    expect(onboarding).toContain("setPreferenceDurably('disguise', true)");
+    expect(onboarding.match(/prefs\.disguise\s*=/g) ?? []).toHaveLength(0);
   });
 
   it('never turns app lock on by itself', () => {
