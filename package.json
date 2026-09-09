@@ -55,6 +55,7 @@
     "gallery:today": "VITE_DEMO=1 npm run build && node tests/today-gallery.mjs --tag after",
     "gallery:today-editor": "VITE_DEMO=1 npm run build && node tests/today-editor-gallery.mjs",
     "gallery:state-motion": "VITE_DEMO=1 npm run build && node tests/state-motion-gallery.mjs",
+    "gallery:restore": "VITE_DEMO=1 npm run build && node tests/restore-gallery.mjs",
     "gallery:setup-shape": "VITE_DEMO=1 npm run build && node tests/setup-shape-gallery.mjs --tag before && node tests/setup-shape-gallery.mjs --tag after --css tests/setup-shape-proposal.css",
     "deploy:release": "node scripts/journal-release.mjs deploy",
     "deploy:rollback": "node scripts/journal-release.mjs rollback",
