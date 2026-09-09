@@ -51,11 +51,27 @@
      **The offer row keeps the labelled yes.** That is the other half of
      the same review - the first pass showed the no and hid the yes, an
      unlabelled tap on the row body with an unmarked x beside it - and
-     losing `Notice` must not lose it. So an offer is Cash App's
-     permission shape as the fourth Mobbin sweep took it (rule 13): the
-     icon block, the title, one reason line, and two labelled controls
-     under them, flush on the page. The yes is `--text` and underlined,
-     the no is `--text-2`, and both take the full 48px target.
+     losing `Notice` must not lose it. So an offer is rule 13's row with
+     two labelled answers under it: the icon block and the title and the
+     reason line are the row exactly as rules 6 and 13 draw them, and what
+     rule 13 does not spell out is a row whose answer is two controls
+     rather than a tick or a switch. This ticket adds that case to the
+     row's, and `DIRECTION.md`'s own "What ticket 35 landed" section is
+     where it is written down - the four shapes rule 13 lists are four, and
+     a comment claiming one of them covers this would be citing authority
+     the document has not given.
+
+     The weighting: the yes in `--text` and the no in `--text-2`, both
+     underlined at 2px with a 3px offset, which is `.kit-heading-action`'s
+     treatment and phase 10's answer to a text action anywhere (an
+     accent-coloured word is a fourth voice on a page that spends its
+     colour as blocks). Both take the full 48px target, 20px apart.
+
+     The nearest reference is Cash App's notification screen, which the
+     fourth sweep read for ticket 31 - a title, a reason and two buttons,
+     flush on the page. Its icon is not what the block here comes from:
+     the sweep's own note rejects the bells and illustrations, and this
+     block is rule 6's row icon, a 36px square of the area's stripe.
 
      Both are still registered offers (`offers.ts`), so a confirmation
      reaches its write through `answerOffer` like every other offer in the
@@ -464,7 +480,10 @@
       sessions can be waiting at once - a binder and a tucking session - so
       the kind is not unique and cannot be the id. */
   id: string;
-  kind: string;
+  /** The union the read already carries, not a bare string: the two kinds
+      an offer can be are the two `comingBack.ts` can answer in place, and
+      the handle this stamps has to be one of them. */
+  kind: 'wear-session' | 'dose';
   title: string;
   reason: string;
   yes: string;

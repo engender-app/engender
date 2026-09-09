@@ -37,10 +37,13 @@
   const NAV = [
     /* Today, Journal, Look back, Transition (ticket 08) - none of the four
        reuses `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys
-       still say Home/Calendar/Stats/More everywhere else that already reads
-       them (the calendar and stats screens' own headers, a couple of CTA
+       still say Calendar/Stats/More everywhere else that already reads them
+       (the calendar and stats screens' own headers, a couple of CTA
        buttons), and this ticket's whole point is that the bar's word for a
-       door and a door's own word for itself are now free to differ. */
+       door and a door's own word for itself are now free to differ.
+       `nav_home` is gone: the return moment's empty state was its last
+       caller and redesign ticket 35 drew that state as a line rather than
+       a notice with Home as its action. */
     { href: '/', key: 'home', icon: 'home', label: () => m.today() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_journal() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_lookback() },
