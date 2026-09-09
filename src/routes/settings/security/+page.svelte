@@ -59,11 +59,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.settings_security_row()} back="/settings" />
-
-  <div class="card">
-    <p class="ob-text">{m.security_intro()}</p>
-  </div>
+  <ScreenHeader title={m.settings_security_row()} back="/settings" subtitle={m.security_intro()} />
 
   <div data-security-list>
     <ListCard>
