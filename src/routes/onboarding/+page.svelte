@@ -838,17 +838,7 @@
               <span>{m.ob_restore_start_again()}</span>
             </button>
           {/if}
-          {#if step !== 'done' && step !== 'restore'}
-            <!-- Every step carries a way straight into the app, and the
-                 restore step is the one that does not, for two reasons that
-                 agree. It is an errand rather than a question about a
-                 preference, and its own out - back to the welcome as a new
-                 person - reaches the app in one more tap through the control
-                 that was already there. And the third control cost the step
-                 52px of foot, which is 20px more than a 390x844 phone has
-                 (DIRECTION rule 14, measured: `npm run gallery:restore`
-                 writes the overflow per state to scroll.json). Two controls,
-                 two meanings, and the step fits. -->
+          {#if step !== 'done'}
             <button class="btn btn-ghost" data-leave-setup onclick={leave}><span>{m.ob_leave()}</span></button>
           {/if}
         </div>
@@ -1056,7 +1046,12 @@
     width: 100%;
     margin-top: var(--space-2);
     padding: var(--space-4);
-    min-height: 72px;
+    /* 64 rather than 72, and the eight pixels are DIRECTION rule 14's. The
+       step carries three controls in its foot like every other step, and
+       with them it was 20px past a 390x844 phone; the room comes out of this
+       block, the two gaps below it and the status line's reserve rather than
+       out of a control. Still well clear of the 48px touch floor. */
+    min-height: 64px;
     text-align: left;
     color: var(--text);
     background: var(--surface-2);
@@ -1090,7 +1085,7 @@
      everywhere else in the app (rule 10). Drawn as a scaled pseudo-element
      rather than a width animation so it is one composited transform, and the
      transition is what the reduced-motion clamp in base.css reaches. */
-  .setup-typed { position: relative; margin-top: var(--space-5); }
+  .setup-typed { position: relative; margin-top: var(--space-4); }
   .setup-typed .field-label { display: block; margin-bottom: var(--space-2); }
   .setup-rule-input {
     display: block;
@@ -1133,8 +1128,13 @@
      (rule 15), so a refusal does not push the block and the rule up the
      screen on its way in. */
   .setup-status {
-    min-height: calc(var(--text-sm) * 2.6);
-    margin: var(--space-4) 0 0;
+    /* One line's worth, which every catalogued refusal on this step fits at
+       390px in both languages. A message that did wrap would grow the box and
+       push the foot, which is the shove the reserve exists to prevent - but
+       reserving two lines for a case that does not arise costs the step its
+       fit, and rule 14 is measured while the reserve is a guess. */
+    min-height: calc(var(--text-sm) * 2);
+    margin: var(--space-3) 0 0;
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--danger);
