@@ -173,15 +173,19 @@
 
 {#if open}
   <div
-    class="sheet-scrim scrim-withdraw is-open"
+    class="sheet-scrim"
     role="presentation"
     data-sheet-scrim
-    transition:fade={{ duration: scrimDuration() }}
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
     }}
     {@attach lockBackground}
   >
+    <div
+      class="sheet-scrim-tint scrim-withdraw"
+      data-sheet-tint
+      transition:fade={{ duration: scrimDuration() }}
+    ></div>
     <div
       class="sheet-drag"
       role="presentation"
@@ -209,3 +213,23 @@
     </div>
   </div>
 {/if}
+
+<style>
+  /* The tint and the withdrawal ride a layer of the scrim's own rather than
+     the scrim itself, and that is redesign ticket 38 rather than tidiness:
+     an element's opacity applies to everything inside it, and the sheet is
+     inside the scrim. Fading the scrim faded the sheet with it, so a sheet
+     that had stopped fading in its own transition still arrived translucent
+     - measured on the flipbook, the list behind it legible through it
+     halfway up its travel. The fan's scrim (QuickAdd) has no such problem
+     because the fan is its sibling; a sheet's is its child.
+
+     `pointer-events: none` keeps the layer out of the way of the tap that
+     dismisses: the scrim closes on a click whose target is the scrim
+     itself, and a layer over it would be that target instead. */
+  .sheet-scrim-tint {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+</style>
