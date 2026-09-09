@@ -987,7 +987,6 @@ const walk = PIN_ANDROID
 await walkRoutes(walk, PIN_ANDROID ? { state: { name: 'android' } } : {});
 pinnedLeg = PIN_ANDROID;
 
-
 if (PIN_ANDROID) {
   await writeFile(SCREEN, original);
   // Left as a plain demo build, which is what every other browser check in
