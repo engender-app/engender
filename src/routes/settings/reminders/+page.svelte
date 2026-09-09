@@ -10,6 +10,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -131,17 +132,26 @@
         />
       </div>
       {#if prefs.checkInEnabled}
-        <div class="spread">
-          <label class="small muted" for="checkin-time">{m.checkin_time()}</label>
-          <input
-            class="input"
-            style="width:110px"
-            type="time"
-            id="checkin-time"
-            name="checkin-time"
-            bind:value={prefs.checkInTime}
-          />
-        </div>
+        <!-- `Field spread`, so this row carries the same shape as the two
+             switch rows around it: the name at the left edge, the control at
+             the right. What was here wrote the pair by hand and capped the
+             input at `width: 110px`, which is under the min-content width of
+             a platform time control - notifications' `.quiet-window` already
+             says so about the same input - so the value was clipped and the
+             row read as a label losing an argument with a pill. The cap is
+             the 160px `/settings/reminders/[id]` gives the same field. -->
+        <Field label={m.checkin_time()} id="checkin-time" spread>
+          {#snippet children(id)}
+            <input
+              class="input"
+              style="max-width:160px"
+              type="time"
+              {id}
+              name="checkin-time"
+              bind:value={prefs.checkInTime}
+            />
+          {/snippet}
+        </Field>
         <div class="spread" data-checkin-affirmations>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.checkin_affirmations_title()}</span>

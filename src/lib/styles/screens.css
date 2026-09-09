@@ -647,6 +647,12 @@
 
 /* ---------- Reminders ---------- */
 .checkin-card { border: 1.5px solid var(--accent-border); }
+/* The time row sits straight under the check-in row's two lines of text, and
+   `.field` carries a bottom margin and no top one, so its label came up
+   against the sentence above it (Alicja, on the crop: "give a couple of px
+   more of a breathing space"). 8px, which is the gap the field already puts
+   between its own label and its control. */
+.checkin-card .field { margin-top: var(--space-2); }
 .next-preview {
   display: flex; align-items: center; gap: 6px;
   font-size: var(--text-sm); color: var(--on-accent-soft);
