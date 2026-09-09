@@ -152,11 +152,15 @@ const ROUTES = [
   { path: '/search/starred' },
   {
     path: '/settings',
-    /* `.card.spread` is drawn inside the disguise sheet, so no walk that
-       only loads the address has ever seen it - it counted 0 while carpet
-       30 was trying to decide about it. A state is read as its own reading
-       rather than folded into the screen's, so the base route stays a
-       reading of the screen and the sheet is a reading of the sheet. */
+    /* The disguise rows are drawn inside a sheet, so no walk that only
+       loads the address had ever seen them - `.card.spread` counted 0 while
+       carpet 30 was trying to decide about it, which is what this state was
+       added for. Carpet 29 has since taken that variant's ground and its
+       `.card` off it, and the state stays: a sheet's contents are three
+       rows, a segmented control and a switch that no other reading covers.
+       A state is read as its own reading rather than folded into the
+       screen's, so the base route stays a reading of the screen and the
+       sheet is a reading of the sheet. */
     states: [{ name: 'disguise-sheet', open: ['[data-list-row="disguise"]'] }]
   },
   { path: '/settings/access-mode' },
