@@ -369,71 +369,73 @@
            the gate cannot catch it, because the read still has rows and it
            is `declined` that emptied the list. -->
       {#if showing.length > 0}
-      <ListCard>
-        {#each showing as item, i (waitingItemKey(item))}
-          <div
-            class="rows-divide"
-            transition:disclose={panel}
-            style:--row-index={Math.min(6, i)}
-            {...roleAttrs(roleAt(activeFlag.roles, isOffer(item) ? 1 : 0))}
-          >
-            {#if item.kind === 'letter'}
-              <ListRow
-                key="coming-back-letter"
-                data-coming-back-item="letter"
-                icon="book"
-                title={m.coming_back_letter_title()}
-                subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
-                href="/transition/letters"
-              />
-            {:else if item.kind === 'milestone'}
-              <ListRow
-                key="coming-back-milestone"
-                data-coming-back-item="milestone"
-                icon="flag"
-                title={item.name}
-                subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
-                href="/transition/milestones"
-              />
-            {:else if item.kind === 'era'}
-              <!-- The era is neither an arrival nor an offer: it is where
-                   the person is, and it sits with the arrivals because it
-                   is the one row on the screen that is theirs rather than
-                   the app's. -->
-              <ListRow
-                key="coming-back-era"
-                data-coming-back-item="era"
-                icon="columns"
-                title={item.name}
-                subtitle={item.startEpochDay === null
-                  ? m.coming_back_era_sub_no_start()
-                  : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
-                href="/transition/eras"
-              />
-            {:else if item.kind === 'wear-session'}
-              {@render offer(
-                'wear-session',
-                wearReturningRowTitle(item.wearKind),
-                m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) }),
-                WEAR_OFFER.copy.confirm(),
-                () => openWear(item),
-                WEAR_OFFER.copy.decline(),
-                () => decline(item)
-              )}
-            {:else}
-              {@render offer(
-                'dose',
-                m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) }),
-                m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` }),
-                DOSE_OFFER.copy.title(),
-                () => openDose(item),
-                DOSE_OFFER.copy.decline(),
-                () => decline(item)
-              )}
-            {/if}
-          </div>
-        {/each}
-      </ListCard>
+        <ListCard>
+          {#each showing as item, i (waitingItemKey(item))}
+            <div
+              class="rows-divide"
+              transition:disclose={panel}
+              style:--row-index={Math.min(6, i)}
+              {...roleAttrs(roleAt(activeFlag.roles, isOffer(item) ? 1 : 0))}
+            >
+              {#if item.kind === 'letter'}
+                <ListRow
+                  key="coming-back-letter"
+                  data-coming-back-item="letter"
+                  icon="book"
+                  title={m.coming_back_letter_title()}
+                  subtitle={m.coming_back_letter_sub({ date: dayLong(item.unlockEpochDay) })}
+                  href="/transition/letters"
+                />
+              {:else if item.kind === 'milestone'}
+                <ListRow
+                  key="coming-back-milestone"
+                  data-coming-back-item="milestone"
+                  icon="flag"
+                  title={item.name}
+                  subtitle={m.coming_back_milestone_sub({ date: dayLong(item.epochDay) })}
+                  href="/transition/milestones"
+                />
+              {:else if item.kind === 'era'}
+                <!-- The era is neither an arrival nor an offer: it is where
+                     the person is, and it sits with the arrivals because it
+                     is the one row on the screen that is theirs rather than
+                     the app's. -->
+                <ListRow
+                  key="coming-back-era"
+                  data-coming-back-item="era"
+                  icon="columns"
+                  title={item.name}
+                  subtitle={item.startEpochDay === null
+                    ? m.coming_back_era_sub_no_start()
+                    : m.coming_back_era_sub({ date: dayLong(item.startEpochDay) })}
+                  href="/transition/eras"
+                />
+              {:else if item.kind === 'wear-session'}
+                {@render offer({
+                  id: waitingItemKey(item),
+                  kind: 'wear-session',
+                  title: wearReturningRowTitle(item.wearKind),
+                  reason: m.coming_back_wear_row_sub({ date: dayLong(item.startEpochDay) }),
+                  yes: WEAR_OFFER.copy.confirm(),
+                  onYes: () => openWear(item),
+                  no: WEAR_OFFER.copy.decline(),
+                  onNo: () => decline(item)
+                })}
+              {:else}
+                {@render offer({
+                  id: waitingItemKey(item),
+                  kind: 'dose',
+                  title: m.coming_back_dose_row({ date: dayLong(item.slotEpochDay) }),
+                  reason: m.coming_back_dose_row_sub({ amount: `${item.dose} ${item.doseUnit}` }),
+                  yes: DOSE_OFFER.copy.title(),
+                  onYes: () => openDose(item),
+                  no: DOSE_OFFER.copy.decline(),
+                  onNo: () => decline(item)
+                })}
+              {/if}
+            </div>
+          {/each}
+        </ListCard>
       {/if}
     {/snippet}
   </ReadGate>
@@ -457,26 +459,46 @@
      what the phase 8 review asked for and what carrying the answer on the
      row body alone would give back. Not a ListRow: that row is one control
      across its whole width, and this one is two. -->
-{#snippet offer(
-  kind: string,
-  title: string,
-  reason: string,
-  yes: string,
-  onYes: () => void,
-  no: string,
-  onNo: () => void
-)}
-  <div class="return-offer" data-coming-back-item={kind}>
+{#snippet offer(o: {
+  /** The item's own key, for the group's label association. Two wear
+      sessions can be waiting at once - a binder and a tucking session - so
+      the kind is not unique and cannot be the id. */
+  id: string;
+  kind: string;
+  title: string;
+  reason: string;
+  yes: string;
+  onYes: () => void;
+  no: string;
+  onNo: () => void;
+})}
+  <!-- A group named by its own title. Without it a screen reader running
+       the row list hears "Leave it" three times with nothing to tell them
+       apart, which is the same problem ListRow's `action` prop documents
+       for an unlabelled icon button - here the labels exist and it is which
+       item they belong to that goes missing. -->
+  <div
+    class="return-offer"
+    role="group"
+    aria-labelledby="coming-back-offer-{o.id}"
+    data-coming-back-item={o.kind}
+  >
     <div class="return-offer-said">
       <span class="kit-row-ico"><Icon name="clock" size={22} /></span>
       <span class="kit-row-text">
-        <span class="kit-row-title">{title}</span>
-        <span class="kit-row-sub">{reason}</span>
+        <span class="kit-row-title" id="coming-back-offer-{o.id}">{o.title}</span>
+        <span class="kit-row-sub">{o.reason}</span>
       </span>
     </div>
     <div class="return-offer-answers">
-      <button type="button" class="return-yes press" data-coming-back-yes={kind} onclick={onYes}>{yes}</button>
-      <button type="button" class="return-no press" data-coming-back-no={kind} onclick={onNo}>{no}</button>
+      <!-- No `press` class: press.css has been opt-out since phase 5 ticket
+           15, and the marker some older markup still carries names no rule
+           of its own. These two are ordinary buttons, so they take the
+           default depth by existing - which is right for a control the
+           width of its own label, and wrong only for a row the width of
+           the screen (which is what ListRow opts out of). -->
+      <button type="button" class="return-yes" data-coming-back-yes={o.kind} onclick={o.onYes}>{o.yes}</button>
+      <button type="button" class="return-no" data-coming-back-no={o.kind} onclick={o.onNo}>{o.no}</button>
     </div>
   </div>
 {/snippet}
