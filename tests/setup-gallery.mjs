@@ -30,8 +30,16 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const palette = flag('palette', 'trans');
+/* Shooting a worktree of main, where these parts have their old names. */
+const legacyNames = args.includes('--legacy');
 const theme = flag('theme', 'light');
-const outDir = resolve(here, `../.claude/setup-shots/${palette}-${theme}`);
+/* `--out` so the same script can shoot another checkout: it serves the
+   cwd's build (vite preview reads the cwd, not this file's directory), so a
+   before set is this script run from a worktree of main with somewhere else
+   to write. */
+const outDir = flag('out', null)
+  ? resolve(flag('out'))
+  : resolve(here, `../.claude/setup-shots/${palette}-${theme}`);
 
 /* The viewports rule 14 names: the phone the renders are read on, the
    narrow floor, a raised keyboard's remainder, and the wide end. 360 wide
@@ -111,6 +119,44 @@ const measure = () =>
     };
   });
 
+/* The components and the rules this ticket changed, shot one at a time
+   rather than as a screen. Alicja's note on ticket 07's sign-off: a review
+   page is crops of the things that actually changed, not the whole app
+   again. `legacy` is what the same part was called before this ticket, so a
+   before set shot off a worktree of main lands the pair under one name.
+
+   The keys are the pairs the review page puts side by side. */
+const PARTS = {
+  flag: [
+    ['field', '[data-setup-field]', '.setup-head'],
+    ['question', '[data-setup-question]', '.setup-title'],
+    ['line', '.setup-line', '.setup-body'],
+    ['flags', '.setup-flags', '.palette-grid'],
+    ['flag-chosen', '.palette-swatch.is-active', '.palette-swatch.is-active'],
+    ['foot', '.setup-foot', '.setup-foot']
+  ],
+  name: [['typed', '.setup-typed', '.setup-step .input']],
+  areas: [
+    ['caption', '.setup-caption', '.setup-areas .kit-heading'],
+    ['rows', '.setup-areas [data-list-card]', '.setup-areas [data-list-card]']
+  ],
+  permissions: [['perm-list', '[data-permission-list]', '[data-permission-list]']],
+  done: [['field-full', '[data-setup-field]', '.setup-head']]
+};
+
+const shootParts = async (step) => {
+  for (const [name, fresh, legacy] of PARTS[step] ?? []) {
+    const selector = legacyNames ? legacy : fresh;
+    const at = page.locator(selector).first();
+    if (!(await at.count())) {
+      console.log(`  part missing: ${name} (${selector})`);
+      continue;
+    }
+    await at.screenshot({ path: `${outDir}/part-${name}.png` });
+    shots.push(`part-${name}`);
+  }
+};
+
 const shoot = async (name) => {
   await strip();
   await page.waitForTimeout(600);
@@ -176,6 +222,7 @@ await wear();
 for (const step of ORDER) {
   await stepTo(step);
   await shoot(`${step}-phone`);
+  await shootParts(step);
 }
 
 /* ---------- the sizes rule 14 is measured at ---------- */

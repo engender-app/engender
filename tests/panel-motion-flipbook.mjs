@@ -54,6 +54,15 @@ const opt = (name) => {
 };
 const cropArg = opt('crop');
 const motionArg = opt('motion');
+/* How far down to draw each frame before encoding it. A band 800px tall off
+   a phone is small enough at full size; a scene whose subject is the whole
+   window is not - setup's steps move the field, the page under it and the
+   foot's stillness all at once (redesign ticket 33), so a flipbook of them
+   is 390x844 a frame and twelve scenes of that is well past what a review
+   page can carry. 0.66 keeps a 48px question legible and a 3px rule
+   visible. */
+const scaleArg = opt('scale');
+const scale = Number(scaleArg) || 1;
 const [cropTopArg, cropHeightArg] = (cropArg ?? '').split(',').map(Number);
 const cropTop = Number.isFinite(cropTopArg) ? cropTopArg : CROP_TOP;
 const cropHeight = Number.isFinite(cropHeightArg) ? cropHeightArg : CROP_HEIGHT;
@@ -71,20 +80,23 @@ const page = await browser.newPage();
 /** Crops and re-encodes one JPEG, in the page, and hands back a data URI.
     The box is `{ left, top, width, height }`; a null width means the frame's
     own, which is every vertical band this started out cropping. */
-async function shrink(bytes, box, quality) {
+async function shrink(bytes, box, quality, scale = 1) {
   return page.evaluate(
-    async ({ b64, box, quality }) => {
+    async ({ b64, box, quality, scale }) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${b64}`;
       await img.decode();
       const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.min(box.width ?? img.width, img.width - box.left));
-      canvas.height = Math.max(1, Math.min(box.height, img.height - box.top));
+      const w = Math.max(1, Math.min(box.width ?? img.width, img.width - box.left));
+      const h = Math.max(1, Math.min(box.height, img.height - box.top));
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, -box.left, -box.top);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, -box.left * scale, -box.top * scale, img.width * scale, img.height * scale);
       return { uri: canvas.toDataURL('image/jpeg', quality), w: canvas.width, h: canvas.height };
     },
-    { b64: bytes.toString('base64'), box, quality }
+    { b64: bytes.toString('base64'), box, quality, scale }
   );
 }
 
@@ -112,7 +124,7 @@ for (const pair of pairs) {
     const frames = [];
     let size = { w: 0, h: 0 };
     for (const frame of kept) {
-      const shrunk = await shrink(await readFile(resolve(root, frame.file)), box, 0.4);
+      const shrunk = await shrink(await readFile(resolve(root, frame.file)), box, 0.4, scale);
       total += shrunk.uri.length;
       size = { w: shrunk.w, h: shrunk.h };
       frames.push({ at: frame.at, uri: shrunk.uri });
