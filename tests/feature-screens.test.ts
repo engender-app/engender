@@ -92,7 +92,14 @@ const REACHED_FROM_INSIDE = [
      the prep list any time, never from the hub. On this list for the reason
      the note above it gives: chromeless is about the shell around a screen,
      and says nothing about whether the screen itself is built on the kit. */
-  'health/appointments/in-the-room'
+  'health/appointments/in-the-room',
+  /* Everything the app can ask this device for, listed in one place (phase
+     10 redesign ticket 31). Reached from a row beside security in Settings,
+     and from setup's permissions step, which draws the same component. On
+     this list for the reason the note above it gives: it is a feature screen
+     in every way this file asks about, and a screen that is not here escapes
+     every assertion in it. */
+  'settings/permissions'
 ];
 
 /** A hub row's route: the screen behind it, without the leading slash, since
@@ -102,6 +109,20 @@ const routeOf = (row: HubRow) => rowScreen(row).slice(1);
 const HUB_ROUTES = HUB_ROWS.filter((row) => !(row.key in NOT_A_FEATURE_SCREEN)).map(routeOf);
 
 const ROUTES = [...HUB_ROUTES, ...REACHED_FROM_INSIDE];
+
+/** A screen whose whole body is one shared component, and the file that
+    carries the kit on its behalf.
+
+    The grep below follows the hop rather than exempting the screen.
+    `/settings/permissions` is a ScreenHeader and `<PermissionList />`, and
+    that is the point of it: setup's permissions step draws the same
+    component, so "you can grant this later" leads to the same list rather
+    than to a second one written to look like it (phase 10 redesign ticket
+    31). A screen built that way is still on the kit; it is on the kit one
+    file along. */
+const KIT_VIA_COMPONENT: Record<string, string> = {
+  'settings/permissions': 'PermissionList'
+};
 
 const sourceOf = new Map(ROUTES.map((route) => [route, read(`src/routes/${route}/+page.svelte`)]));
 const markupOf = new Map(
@@ -116,7 +137,7 @@ const markupOf = new Map(
 );
 
 describe('every feature screen', () => {
-  it('is the hub, plus the fourteen screens reached only from inside another', () => {
+  it('is the hub, plus the fifteen screens reached only from inside another', () => {
     /* The count that was here covered all 36 routes and had been raised ten
        times since it was written as 26, twice by two branches that each
        thought they were adding the 28th. The hub's own rows no longer need
@@ -126,7 +147,7 @@ describe('every feature screen', () => {
        The fourteen below it still do, for the reason the note at the top of
        the file gives: a screen quietly dropped from a hand-written list and
        a screen quietly dropped from the redesign look identical. */
-    expect(REACHED_FROM_INSIDE.length).toBe(14);
+    expect(REACHED_FROM_INSIDE.length).toBe(15);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -154,7 +175,18 @@ describe('every feature screen', () => {
 
   it('builds every one of them out of the kit', () => {
     for (const route of ROUTES) {
-      expect(sourceOf.get(route), route).toMatch(/from '\$lib\/components\/kit\//);
+      const component = KIT_VIA_COMPONENT[route];
+      if (!component) {
+        expect(sourceOf.get(route), route).toMatch(/from '\$lib\/components\/kit\//);
+        continue;
+      }
+      /* Both halves, so the hop cannot become an exemption by accident: the
+         screen still has to be the component, and the component still has
+         to be the kit. */
+      expect(sourceOf.get(route), route).toContain(`$lib/components/${component}.svelte`);
+      expect(read(`src/lib/components/${component}.svelte`), component).toMatch(
+        /from '\$lib\/components\/kit\//
+      );
     }
   });
 
@@ -191,7 +223,11 @@ describe('what a first-run journal sees', () => {
            compiled into the bundle (data/voice/metrics.ts), so it has no
            empty state for the same reason the bundled directory has
            none. */
-        'practice/voice/metrics'
+        'practice/voice/metrics',
+        /* The permissions list is the same length on a first run as on a
+           thousandth: it describes what the app can reach, not what anybody
+           has written. There is no state in which it is empty. */
+        'settings/permissions'
       ].includes(route)
   );
 
@@ -238,7 +274,13 @@ describe('what the worker is still fetching', () => {
         'practice/entry-templates',
         // Reads no journal at all: seven figures explained, and not one of
         // the person's own numbers anywhere on it (ADR-0060).
-        'practice/voice/metrics'
+        'practice/voice/metrics',
+        /* Reads the OS rather than the journal: what the four grantable rows
+           show comes from two Capacitor plugins and, on the web, from
+           navigator.permissions. There is no query to wait on, and a
+           skeleton over a list whose rows are all known in advance would be
+           a placeholder for nothing. */
+        'settings/permissions'
       ].includes(route)
   );
 

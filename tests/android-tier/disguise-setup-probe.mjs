@@ -302,7 +302,7 @@ await ev("await window.__probe.waitFor('[data-skip-step]', 90000);");
 await sleep(1500);
 
 say('lock -> ', await ev('return window.__probe.advance();'));
-say('checkin -> ', await ev('return window.__probe.advance();'));
+say('permissions -> ', await ev('return window.__probe.advance();'));
 await ev("await window.__probe.waitFor('[data-list-row=\"disguise\"]');");
 await sleep(600);
 
