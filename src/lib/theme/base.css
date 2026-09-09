@@ -72,9 +72,15 @@
   --radius-pill: 999px;  /* a tag, which is a pill because it is one word */
 
   /* --- Elevation: soft ambient, never harsh --- */
-  --shadow-1: 0 1px 2px rgb(15 30 40 / 0.05), 0 2px 8px rgb(15 30 40 / 0.05);
-  --shadow-2: 0 2px 4px rgb(15 30 40 / 0.06), 0 8px 24px rgb(15 30 40 / 0.09);
-  --shadow-3: 0 4px 8px rgb(15 30 40 / 0.08), 0 16px 48px rgb(15 30 40 / 0.14);
+  /* The three-step elevation ramp retired with the cohesion sweep (redesign
+     ticket 20). Rule 4 gives the app one shadow and it belongs to the
+     floating bar, which has --shadow-float below; the ramp survived ticket
+     07 only because fifteen rules outside the kit still read it, and once
+     those became a hairline apiece nothing read it at all. Deliberately not
+     left defined-but-unused: a token that resolves is a token the next rule
+     reaches for, and `box-shadow: var(--shadow-1)` is a one-line way back
+     into a world this phase spent itself leaving.
+     tests/direction-contract.test.ts holds it retired. */
 
   /* The redesign separates surfaces with a line, not a plane, so it has one
      shadow: the floating nav bar and its add button, which genuinely do sit
