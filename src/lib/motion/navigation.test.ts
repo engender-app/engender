@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 
 import { containerReceive, containerSend, fadeThrough, sharedAxisX, sheetRise } from './navigation';
+import { EASE_OUT } from './tokens';
 
 /* The node tier has no DOM, and these read their durations and distances
    out of the token layer through $lib/motion/tokens. A stub document is
@@ -95,16 +96,83 @@ describe('shared-axis-X, into a detail from a list', () => {
 });
 
 describe('sheet rise', () => {
-  it('rises by the sheet distance and lands at rest', () => {
+  /* A sheet's travel is its own, so the stub is a box plus the scrim it sits
+     in - the frame the app's sheets are fixed to, which is what "the window's
+     bottom edge" means when the app is a phone frame inside a page. Numbers
+     read like the real thing: an 800px frame with a 500px sheet on its floor,
+     which is the dose sheet on /coming-back. */
+  function sheetNode(top: number, bottom: number, frameBottom = 800) {
+    return {
+      getBoundingClientRect: () => ({ top, bottom, height: bottom - top }),
+      closest: () => ({ getBoundingClientRect: () => ({ bottom: frameBottom }) })
+    } as unknown as Element;
+  }
+
+  it('travels its own height, not a token', () => {
     stubDocument(TOKENS);
-    const { css } = sheetRise(node);
-    expect(frame(css!, 0)).toMatch(/translateY\(24px\)/);
+    const { css } = sheetRise(sheetNode(300, 800));
+    expect(frame(css!, 0)).toMatch(/translateY\(500px\)/);
     expect(frame(css!, 1)).toMatch(/translateY\(0px\)/);
+  });
+
+  /* Ticket 38: a 24px nudge under an opacity fade is a crossfade, which is
+     how Alicja read it on ticket 35's flipbooks. ADR-0078: a block never
+     fades up from nothing. The scrim is what announces the sheet. */
+  it('does not fade - a solid object slides', () => {
+    stubDocument(TOKENS);
+    const { css } = sheetRise(sheetNode(300, 800));
+    expect(frame(css!, 0)).not.toContain('opacity');
+    expect(frame(css!, 0.5)).not.toContain('opacity');
+  });
+
+  /* Centred on a wide window, so the sheet's own height would leave its top
+     edge on screen. It goes past the frame's bottom edge instead. */
+  it('goes past the bottom edge when it is not sitting on it', () => {
+    stubDocument(TOKENS);
+    expect(frame(sheetRise(sheetNode(200, 600)).css!, 0)).toMatch(/translateY\(600px\)/);
+  });
+
+  /* Sheet.svelte's own comment: letting go past the threshold leaves the
+     sheet where the finger left it while the exit carries it the rest of the
+     way. The rect is read live, so a sheet dragged 200px down measures from
+     where it was left and carries on from there. */
+  it('carries a dragged sheet on from where the finger left it', () => {
+    stubDocument(TOKENS);
+    expect(frame(sheetRise(sheetNode(500, 1000)).css!, 0)).toMatch(/translateY\(500px\)/);
+  });
+
+  /* `.sheet-drag` caps at 85% of the scrim and `.sheet` scrolls inside that,
+     so the tall case is a shorter box, not a longer travel. Held here so the
+     cap failing shows up as a sheet that cannot clear the edge. */
+  it('clears the edge for a sheet capped at the frame height', () => {
+    stubDocument(TOKENS);
+    expect(frame(sheetRise(sheetNode(120, 800)).css!, 0)).toMatch(/translateY\(680px\)/);
+  });
+
+  /* The yank between frames 1 and 2, measured. Svelte runs an exit as
+     `1 - easing(p)`, so --ease-out - which leaves at its steepest - spends a
+     sixth of the travel before the second frame is painted. --ease-in-out
+     departs gently and picks up speed, which is what an object leaving
+     does. */
+  it('leaves gently rather than at its steepest', () => {
+    stubDocument(TOKENS);
+    const { duration, easing } = sheetRise(sheetNode(300, 800));
+    const oneFrame = 16 / duration!;
+    expect(easing!(oneFrame), 'the first frame of the exit').toBeLessThan(0.05);
+    expect(EASE_OUT(oneFrame), 'what --ease-out would have done').toBeGreaterThan(0.15);
+  });
+
+  it('runs both ways on --dur-med', () => {
+    stubDocument(TOKENS);
+    expect(sheetRise(sheetNode(300, 800)).duration).toBe(240);
   });
 
   it('crossfades with no transform at all under reduced motion', () => {
     stubDocument(TOKENS, true);
-    expect(frame(sheetRise(node).css!, 0.5)).not.toContain('transform');
+    const { css, duration } = sheetRise(sheetNode(300, 800));
+    expect(duration).toBe(120);
+    expect(frame(css!, 0.5)).not.toContain('transform');
+    expect(frame(css!, 0.5)).toMatch(/opacity: 0\.5/);
   });
 });
 
