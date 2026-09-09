@@ -29,17 +29,15 @@
 
   /* The countdown ring drawn around the halo (Alicja, 2026-08-31 review:
      "a nice stroke going around the circle filling up as the count goes
-     down"). Radius sits just outside the halo's own 1px border rather than
-     on top of it, so the ring reads as its own track instead of a second
-     outline fighting the first. */
-  /* The halo's own edge sits at a 120px radius (breathing-outer-ring is
-     240px across); a ring drawn at 123 turned out to be almost entirely
-     painted over by the halo's opaque background - the button and its
-     contents come after the ring in DOM order, so they paint on top of it,
-     and only a couple of the stroke's own pixels cleared the halo's edge.
-     132 with a 4px stroke draws the band from 130 to 134: a clean 10px gap
-     outside the halo rather than a stroke fighting its own background for
-     visibility. */
+     down").
+
+     132 rather than 123, which is where it started: the halo's contents
+     come after the ring in DOM order, so at 123 the stroke was painted over
+     by the halo itself and only a couple of its pixels cleared. The halo
+     reaches a 120px radius (breathing-outer-ring is 240px across), so 132
+     with the 6px stroke draws the band from 129 to 135 - a 9px gap outside
+     it, and nothing of the halo's to fight now that carpet 30 has taken its
+     border. */
   const RING_RADIUS = 132;
   const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
   let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -101,14 +99,21 @@
      from the previous phase's *full* ring straight to this phase's first
      target, which unfills before it fills rather than starting empty.
 
-     Keyed on phaseIndex alone, not on every tick: phaseIndex only changes
-     at a phase boundary (inhale -> hold-in -> exhale -> hold-out -> inhale,
-     tickBreathing's own cycle), so a second tick inside the same phase
-     leaves this effect untouched and the 1s-per-second transition below
-     keeps running uninterrupted. */
+     Keyed through a `$derived` and not off `breath` directly, which is what
+     it took to key on the boundary at all. `tickBreathing` reassigns the
+     whole state object every second, so an effect that read `breath.running`
+     - as this one did, one line under a comment claiming it was keyed on
+     `phaseIndex` alone - depended on `breath` itself and re-ran on every
+     tick. It set the ring empty each second and then had one frame to
+     transition out of it, so the fill never reached more than about a
+     twentieth of the circle: the ring had been a stub since the day it
+     landed, in a state no unit test can see and every render shows. Found
+     on carpet 30's crops, once unboxing had made the reading the thing the
+     surface is for. A `$derived` only invalidates when its value changes,
+     so this now runs exactly at a boundary and when running flips. */
+  let ringPhase = $derived(breath.running ? breath.phaseIndex : -1);
   $effect(() => {
-    void breath.phaseIndex;
-    if (!breath.running) return;
+    if (ringPhase < 0) return;
     ringResetting = true;
     const raf = requestAnimationFrame(() => {
       ringResetting = false;
@@ -283,11 +288,15 @@
      own, and stroke takes a paint value only. Reproducing its own colour
      formula here as opacity over --role-mark rather than trying to pull a
      colour out of the shorthand. */
+  /* A guide, at rule 9's weight for one. It was 4 - the same as the fill
+     that sweeps over it - so at rest the loudest mark on the screen was an
+     empty track, and once running the reading that matters was a 4px stub
+     on a 4px ring of the same colour. */
   .breathing-ring-track {
     fill: none;
     stroke: var(--role-mark);
     stroke-opacity: 0.35;
-    stroke-width: 4;
+    stroke-width: 2;
   }
 
   /* Drawn shapes read off --role-draw (kit.css: "the stripe as it is,
@@ -298,7 +307,7 @@
   .breathing-ring-progress {
     fill: none;
     stroke: var(--role-draw);
-    stroke-width: 4;
+    stroke-width: 6;
     stroke-linecap: round;
     transition: stroke-dashoffset 1s linear;
   }
@@ -323,21 +332,17 @@
     touch-action: manipulation;
   }
 
-  /* --role-hairline is already a full border shorthand (kit.css:
-     "1px solid <colour>") - `border: 1px solid var(--role-hairline)`
-     nested a width+style+colour value inside another border declaration,
-     which is not valid CSS and left this border computing to nothing.
-     Confirmed via computed style, not by reading the diff: every one of
-     this file's --role-accent/--role-hairline reads below resolved to an
-     empty custom property, since kit.css derives --role-draw, --role-mark,
-     --role-tint, --role-wash and --role-hairline from [data-kit-role], and
-     none of them is named --role-accent. */
+  /* No edge of its own (carpet 30). This was "the outermost fixed ambient
+     boundary", which is a container saying where the thing is - the card's
+     job, drawn a second time at 240px. Unboxed, five concentric circles
+     stood between the reading and the figure and only three of them had
+     one: the countdown, the aura and the core. What is left here is the
+     box the other two are centred in. */
   .breathing-outer-ring {
     position: relative;
     width: 240px;
     height: 240px;
     border-radius: 50%;
-    border: var(--role-hairline);
     display: flex;
     align-items: center;
     justify-content: center;
