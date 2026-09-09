@@ -635,7 +635,7 @@
   "ob_start_setup": "Zaczynajmy",
   "ob_have_backup": "Mam już kopię",
   "ob_restore_title": "Gdzie jest twoja kopia?",
-  "ob_restore_body": "Dziennik wraca z pliku kopii, który został wcześniej wyeksportowany. Innej drogi powrotu nie ma.",
+  "ob_restore_body": "Dziennik wraca wyłącznie z pliku kopii, który został wcześniej wyeksportowany.",
   "ob_restore_check": "Sprawdź tę kopię",
   "ob_restore_new_instead": "Zamiast tego zacznij od zera",
   "ob_restore_done_title": "Kopia jest gotowa",

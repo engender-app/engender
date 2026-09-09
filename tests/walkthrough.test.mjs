@@ -1917,13 +1917,27 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
 
+  /* Every wait in this flow says what it was waiting for. The reporter
+     prints one line per failure, and "waitForFunction: Timeout 30000ms" on a
+     flow with nine of them names none of them - which cost this ticket two
+     eight-minute runs to find out. */
+  const waitingFor = async (what, run) => {
+    try {
+      await run();
+    } catch (error) {
+      throw new Error(`${what}: ${String(error.message ?? error).split('\n')[0]}`);
+    }
+  };
+
   /* An empty journal is what a new phone is, and the jump is what makes
      one. Out of setup first, so the entry can be written. */
   const emptyFirstRun = async () => {
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
     await booted();
     await page.selectOption('#demo-jump', 'first-run');
-    await page.waitForSelector('[data-restore-start]');
+    await waitingFor('the welcome after the first-run jump', () =>
+      page.waitForSelector('[data-restore-start]')
+    );
   };
   await emptyFirstRun();
   await page.locator('[data-leave-setup]').click();
@@ -1931,8 +1945,13 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  await waitingFor('the palette picker on Settings', () =>
+    page.waitForSelector('[data-palette-pick="lesbian"]')
+  );
   await page.locator('[data-palette-pick="lesbian"]').click();
-  await page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian');
+  await waitingFor('the flag turning lesbian before the export', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
+  );
 
   /* Through the FAB, whose fan seeds the mood, so this needs no mood control
      of its own - the editor's and Home's log strip both answer to
@@ -1963,7 +1982,9 @@ try {
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('[data-palette-pick="trans"]').click();
-  await page.waitForFunction(() => document.documentElement.dataset.palette === 'trans');
+  await waitingFor('the flag going back to trans before the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
   await emptyFirstRun();
 
   await page.locator('[data-restore-start]').click();
@@ -1983,12 +2004,16 @@ try {
     })
   );
   await page.locator('[data-restore-pick]').click();
-  await page.waitForFunction(() =>
-    document.querySelector('[data-restore-file]')?.textContent.includes('not-a-backup')
+  await waitingFor('the block drawing the refused file', () =>
+    page.waitForFunction(() =>
+      document.querySelector('[data-restore-file]')?.textContent.includes('not-a-backup')
+    )
   );
   await page.locator('#ob-restore-pass').fill('walkthrough');
   await page.locator('[data-restore-check]').click();
-  await page.waitForSelector('[data-restore-error="not-an-archive"]');
+  await waitingFor('the refusal on the status line', () =>
+    page.waitForSelector('[data-restore-error="not-an-archive"]')
+  );
   if (await page.locator('[data-finish]').count()) {
     throw new Error('a refused archive was let through to the finish');
   }
@@ -1997,9 +2022,11 @@ try {
      second pick clears the first one's refusal. */
   page.once('filechooser', (chooser) => chooser.setFiles(archivePath));
   await page.locator('[data-restore-pick]').click();
-  await page.waitForFunction(
-    (name) => document.querySelector('[data-restore-file]')?.textContent.includes(name),
-    archive.suggestedFilename()
+  await waitingFor(`the block drawing ${archive.suggestedFilename()}`, () =>
+    page.waitForFunction(
+      (name) => document.querySelector('[data-restore-file]')?.textContent.includes(name),
+      archive.suggestedFilename()
+    )
   );
   await page.locator('#ob-restore-pass').fill('walkthrough');
   await page.locator('[data-restore-check]').click();
@@ -2007,16 +2034,20 @@ try {
   /* One step between the restore and the finish, and it is the access mode
      step (steps.ts's restoreSteps). Nothing that the archive answers is
      asked again: no name field, no flag picker, no scales, no areas. */
-  await page.waitForSelector('[data-next]', { timeout: 120000 });
+  await waitingFor('the access mode step after the check', () =>
+    page.waitForSelector('[data-next]', { timeout: 120000 })
+  );
   if (await page.locator('#ob-name').count()) throw new Error('setup asked for a name the archive carries');
   if (await page.locator('[data-palette-pick]').count()) {
     throw new Error('setup asked for a flag the archive carries');
   }
   await page.locator('[data-next]').click(); // access mode -> finish
-  await page.waitForSelector('[data-finish]');
+  await waitingFor('the finish', () => page.waitForSelector('[data-finish]'));
 
   await page.locator('[data-finish]').click();
-  await page.waitForSelector('[data-home-hello]', { timeout: 120000 });
+  await waitingFor('Home, after the restore ran', () =>
+    page.waitForSelector('[data-home-hello]', { timeout: 120000 })
+  );
   await heldOnHome('the restore was undone by a late navigation');
 
   /* The entry is back, in the journal, and the flag is back with it - which
@@ -2025,7 +2056,9 @@ try {
      would have are the ones restoreSteps() dropped. */
   await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
   await booted();
-  await page.waitForSelector('[data-entry-note]', { timeout: 30000 });
+  await waitingFor("today's entries, after the restore", () =>
+    page.waitForSelector('[data-entry-note]', { timeout: 30000 })
+  );
   const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
   if (!notes.some((note) => note.includes('The entry that came back'))) {
     throw new Error(`the restored journal has no entry from the archive: ${JSON.stringify(notes)}`);
