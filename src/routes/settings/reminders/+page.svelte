@@ -10,6 +10,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import Field from '$lib/components/kit/Field.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -131,17 +132,26 @@
         />
       </div>
       {#if prefs.checkInEnabled}
-        <div class="spread">
-          <label class="small muted" for="checkin-time">{m.checkin_time()}</label>
-          <input
-            class="input"
-            style="width:110px"
-            type="time"
-            id="checkin-time"
-            name="checkin-time"
-            bind:value={prefs.checkInTime}
-          />
-        </div>
+        <!-- The label above the control rather than beside it, which is
+             `Field`'s shape and what the reminder editor and quiet hours
+             already draw for the same input. Beside it, the label had to
+             share a row with a platform control whose min-content width is
+             its own (notifications' `.quiet-window` says so): the 110px this
+             was capped at is under that width, so the value was clipped and
+             the row read as a label losing an argument with a pill. 160px is
+             the cap `/settings/reminders/[id]` gives the same field. -->
+        <Field label={m.checkin_time()} id="checkin-time">
+          {#snippet children(id)}
+            <input
+              class="input"
+              style="max-width:160px"
+              type="time"
+              {id}
+              name="checkin-time"
+              bind:value={prefs.checkInTime}
+            />
+          {/snippet}
+        </Field>
         <div class="spread" data-checkin-affirmations>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
