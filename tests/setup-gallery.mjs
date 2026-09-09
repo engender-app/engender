@@ -105,6 +105,14 @@ const measure = () =>
     return {
       /* The screen's own overflow, which rule 14 holds at zero. */
       overflow: region ? region.scrollHeight - region.clientHeight : 0,
+      /* And the frame's, which is the read that matters more: it is
+         `overflow: clip`, so it draws nothing and still reports what it is
+         hiding. A step that stopped fitting would clip its own foot in
+         silence rather than scroll. */
+      frame: (() => {
+        const screen = document.querySelector('.screen-setup');
+        return screen ? screen.scrollHeight - screen.clientHeight : 0;
+      })(),
       viewport: window.innerHeight,
       field: h('[data-setup-field]'),
       question: h('[data-setup-question]'),

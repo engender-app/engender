@@ -1147,6 +1147,19 @@
     margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
     padding: calc(var(--inset-top) + var(--space-2)) var(--space-5) var(--space-4);
     color: var(--field-ink);
+    /* The paint below is a window tall and absolutely positioned in this
+       box, and an absolutely positioned child contributes its overflow to
+       its containing block's - which propagated all the way up and made the
+       frame report exactly `--nav-clearance` of content it was hiding, on
+       every step at every size. `clip` stops the propagation without making
+       anything a scroll container; the margin is what stops it also clipping
+       the paint, which has to be able to stand taller than this box for the
+       length of a close - the edge starts at the height the field had and
+       this box is already at the height it is going to. 50vh is far past any
+       field the flow draws (the tallest is 293px) and far short of the
+       window the paint is. */
+    overflow: clip;
+    overflow-clip-margin: 50vh;
   }
 
   /* The paint, split from the box above (ticket 28's mechanism, and the
