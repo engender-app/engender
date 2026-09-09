@@ -602,6 +602,22 @@ const read = () =>
       const region = root.querySelector('[data-app-scroll-region]') ?? root;
       const scrim = root.querySelector('.sheet-scrim');
 
+      /* Is some ancestor a scroller this element is merely scrolled out
+         of? Read off the computed overflow rather than a class, and only
+         for `auto` and `scroll`: those the user can bring back. */
+      const scrollableAway = (el) => {
+        const box = el.getBoundingClientRect();
+        for (let up = el.parentElement; up && up !== root; up = up.parentElement) {
+          const cs = getComputedStyle(up);
+          const scrolls = /auto|scroll/.test(cs.overflowX) || /auto|scroll/.test(cs.overflowY);
+          if (!scrolls) continue;
+          const port = up.getBoundingClientRect();
+          if (box.left < port.left || box.right > port.right || box.top < port.top || box.bottom > port.bottom)
+            return true;
+        }
+        return false;
+      };
+
       /* Pinned: anything that stays put while the column moves, which is
          either something outside the scroll region altogether - the
          floating bar is `position: absolute` against the frame, not fixed -
@@ -705,10 +721,17 @@ const read = () =>
                  Real clipping takes an edge with it, so the corners are not
                  evidence of it. A sibling covering a corner still is. */
               if (hit.contains(el) && (i === 0 || i === 4) && (j === 0 || j === 4)) continue;
+              /* And a control hanging out of a scroller it lives in is one
+                 scroll away, not lost - the same allowance the column
+                 itself gets from the walk below. `.segmented` is
+                 `overflow-x: auto`, so its off-screen segments are exactly
+                 that. `hidden` and `clip` earn no such allowance: nothing
+                 brings those back. */
+              if (hit.contains(el) && scrollableAway(el)) continue;
               /* A scrim covering the page is the scrim working. Everything
                  behind an open sheet is inert on purpose, so the reading is
                  of the sheet and not of what it is over. */
-              if (scrim && (hit === scrim || hit.contains(scrim))) continue;
+              if (scrim && (scrim.contains(hit) || hit.contains(scrim))) continue;
               if (where === 'mid-column' && pinned(hit)) continue;
               if (where === 'at rest' && hit.closest('[data-app-nav], [data-app-rail]')) continue;
               if (
