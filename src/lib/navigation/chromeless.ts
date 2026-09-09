@@ -26,6 +26,33 @@
    rule is a table, the layout is where a table gets buried, and a rule
    nobody can run in a test is one nobody can check. */
 
+/**
+ * Whether one navigation is a cut rather than a movement.
+ *
+ * `from` is null on a cold start, which has nothing to come from.
+ *
+ * Setup is the one route on the narrow list above whose two legs are not
+ * the same question, and redesign ticket 33 is where that showed. Arriving
+ * is not a navigation: there is no app yet, and the shell redirects here
+ * because `prefs.onboarded` is false. Leaving is - somebody pressed "Start
+ * writing" and the app opened, which is the moment the whole flow is for,
+ * and rule 12 already says the sun's handover to Home is one object at one
+ * size rather than two suns. Cut, it was the app's largest surface changing
+ * in a single frame at the end of ten steps that had all moved.
+ *
+ * This is ticket 35's lesson one route further on: one predicate answering
+ * two questions is what produced that ticket's own yank, and the fix each
+ * time is another question rather than a wider answer.
+ */
+export function cutsInsteadOfMoving(from: string | null, to: string): boolean {
+  if (from === null) return true;
+  /* Setup handing over to the app, by either of its two doors: the finish's
+     "Start writing" and every step's "Straight to the app" are the same
+     act, and complete() is literally one function for both. */
+  if (from.startsWith('/onboarding') && !to.startsWith('/onboarding')) return false;
+  return replacesAppNavigation(from) || replacesAppNavigation(to);
+}
+
 /** Renders instead of the app: no chrome, and no navigation to animate. */
 export function replacesAppNavigation(path: string): boolean {
   // Onboarding by prefix, since every step of it is chromeless; the room by

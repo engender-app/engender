@@ -948,8 +948,13 @@ describe('ticket 28: the field is a blind over the content', () => {
     const layout = readFileSync(join(root, 'src/routes/+layout.svelte'), 'utf8');
     expect(layout).toContain("import { carryBlind } from '$lib/motion/fieldBlind'");
     expect(layout, 'every navigation, not the tab crossing alone').toContain(
-      'const blind = carryBlind();'
+      'const blind = carryBlind(document, {'
     );
+    /* The one option it takes, and the one navigation that takes it: setup's
+       finish, where the sun is the same object at the same size on both
+       sides and naming its rings would close and reopen the app's own mark
+       at the moment the app opens (redesign ticket 33, rule 12). */
+    expect(layout).toMatch(/holdSun: \(navigation\.from\?\.url\.pathname \?\? ''\)\.startsWith\('\/onboarding'\)/);
     expect(layout).toContain('blind.swap()');
     expect(layout).toContain('blind.release()');
   });
