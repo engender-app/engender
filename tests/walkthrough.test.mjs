@@ -1958,6 +1958,238 @@ try {
   ok('skipping the flag step restores the flag it was reached with');
 } catch (e) { fail('onboarding flag skip', e); }
 
+/* 13c. a first run that restores (phase 10 redesign ticket 36).
+
+   The whole path a person on a new phone takes: say on the welcome that you
+   already have a backup, hand over the file and its password, and get the
+   journal back without being asked to invent a life you already have.
+
+   The archive is a real one, exported through the export screen a moment
+   earlier, because a fixture would prove the screen wires up and not that a
+   journal survives the round trip. It is a small one on purpose: what a
+   whole demo journal survives is flow 11b's question, and asking it twice
+   costs this suite a second full export and restore of every photo the
+   earlier flows imported. Here the journal is emptied first and given one
+   entry and one flag, so what has to come back is nameable - the note, and
+   the palette, which is a portable preference (ADR-0003) and therefore also
+   the proof that the flag step was rightly not asked. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+
+  /* Every wait in this flow says what it was waiting for. The reporter
+     prints one line per failure, and "waitForFunction: Timeout 30000ms" on a
+     flow with nine of them names none of them - which cost this ticket two
+     eight-minute runs to find out. */
+  const waitingFor = async (what, run) => {
+    try {
+      await run();
+    } catch (error) {
+      throw new Error(`${what}: ${String(error.message ?? error).split('\n')[0]}`);
+    }
+  };
+
+  /* An empty journal is what a new phone is, and the jump is what makes
+     one. Out of setup first, so the entry can be written. */
+  const emptyFirstRun = async () => {
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await booted();
+    await page.selectOption('#demo-jump', 'first-run');
+    await waitingFor('the welcome after the first-run jump', () =>
+      page.waitForSelector('[data-restore-start]')
+    );
+  };
+  await emptyFirstRun();
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await waitingFor('the palette picker on Settings', () =>
+    page.waitForSelector('[data-palette-pick="lesbian"]')
+  );
+  await page.locator('[data-palette-pick="lesbian"]').click();
+  await waitingFor('the flag turning lesbian before the export', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
+  );
+
+  /* Through the FAB, whose fan seeds the mood, so this needs no mood control
+     of its own - the editor's and Home's log strip both answer to
+     `[data-mood]` and picking between them is flow 2's problem, not this
+     flow's. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('#ed-note').fill('The entry that came back.');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+
+  await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('#exp-pass').fill('walkthrough');
+  await page.locator('[data-export]').click();
+  const [archive] = await Promise.all([
+    page.waitForEvent('download', { timeout: 120000 }),
+    page.locator('[data-confirm-export]').click()
+  ]);
+  /* The bytes with the name spelled out, not the download's own path: what
+     `path()` returns is a Playwright temp file whose basename is a random
+     id, so `setFiles(path)` hands the picker a file called something like
+     `abc123` and the block on screen never draws the name this flow is
+     waiting for. The archive is one entry, so carrying it in memory is
+     nothing. */
+  const archiveBytes = await readFile(await archive.path());
+
+  /* Emptied again, and the flag put back to something the archive will have
+     to overwrite, so a palette reading lesbian at the end can only have come
+     out of the file. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="trans"]').click();
+  await waitingFor('the flag going back to trans before the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
+  await emptyFirstRun();
+
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+
+  /* The refusal first, on the file that is not an archive, because this is
+     the ticket where being wrong loses somebody's journal: what has to hold
+     is that a refused archive says so and leaves the person on the step with
+     the way back still there, not that the happy path works. The handle is
+     the kind, matching the Settings screen's own - the walkthrough grips a
+     kind, never a sentence in one language. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: 'not-a-backup.ttbackup',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from('this is not an archive')
+    })
+  );
+  await page.locator('[data-restore-pick]').click();
+  await waitingFor('the block drawing the refused file', () =>
+    page.waitForFunction(() =>
+      document.querySelector('[data-restore-file]')?.textContent.includes('not-a-backup')
+    )
+  );
+  await page.locator('#ob-restore-pass').fill('walkthrough');
+  await page.locator('[data-restore-check]').click();
+  await waitingFor('the refusal on the status line', () =>
+    page.waitForSelector('[data-restore-error="not-an-archive"]')
+  );
+  if (await page.locator('[data-finish]').count()) {
+    throw new Error('a refused archive was let through to the finish');
+  }
+
+  /* And the real one over the top of it, which is also the check that a
+     second pick clears the first one's refusal. */
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({
+      name: archive.suggestedFilename(),
+      mimeType: 'application/octet-stream',
+      buffer: archiveBytes
+    })
+  );
+  await page.locator('[data-restore-pick]').click();
+  await waitingFor(`the block drawing ${archive.suggestedFilename()}`, () =>
+    page.waitForFunction(
+      (name) => document.querySelector('[data-restore-file]')?.textContent.includes(name),
+      archive.suggestedFilename()
+    )
+  );
+  await page.locator('#ob-restore-pass').fill('walkthrough');
+  await page.locator('[data-restore-check]').click();
+
+  /* Three steps between the restore and the finish, and all three are about
+     this device rather than about the journal (steps.ts's restoreSteps): the
+     access mode, whose key an archive password is not; the permissions list,
+     whose answers live in the OS; and disguise, which is a preference but a
+     device-local one. Nothing the archive answers is asked again: no name
+     field, no flag picker, no scales, no areas. */
+  await waitingFor('the access mode step after the check', () =>
+    page.waitForSelector('[data-next]', { timeout: 120000 })
+  );
+  if (await page.locator('#ob-name').count()) throw new Error('setup asked for a name the archive carries');
+  if (await page.locator('[data-palette-pick]').count()) {
+    throw new Error('setup asked for a flag the archive carries');
+  }
+  await page.locator('[data-next]').click(); // access mode -> permissions
+  /* The permissions step is in this flow because it stores no preference,
+     so no archive can have answered it (steps.ts). It arrived here with
+     ticket 31 and needed no edit to restoreSteps() - only this click. */
+  await waitingFor('the permissions step', () => page.waitForSelector('[data-permission-list]'));
+  await page.locator('[data-next]').click(); // permissions -> disguise
+  /* And disguise, for the same reason: it stores a preference, but a
+     device-local one, so no archive answered it either (ticket 32). Left
+     off, which is what skipping it would also mean. */
+  await waitingFor('the disguise step', () => page.waitForSelector('[data-list-row="disguise"]'));
+  await page.locator('[data-next]').click(); // disguise -> finish
+  await waitingFor('the finish', () => page.waitForSelector('[data-finish]'));
+
+  await page.locator('[data-finish]').click();
+  await waitingFor('Home, after the restore ran', () =>
+    page.waitForSelector('[data-home-hello]', { timeout: 120000 })
+  );
+  await heldOnHome('the restore was undone by a late navigation');
+
+  /* The entry is back, in the journal, and the flag is back with it - which
+     is the settings half of ADR-0003 and the reason the flag step was never
+     asked. Nothing from setup overwrote either: on this flow the steps that
+     would have are the ones restoreSteps() dropped. */
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await waitingFor("today's entries, after the restore", () =>
+    page.waitForSelector('[data-entry-note]', { timeout: 30000 })
+  );
+  const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!notes.some((note) => note.includes('The entry that came back'))) {
+    throw new Error(`the restored journal has no entry from the archive: ${JSON.stringify(notes)}`);
+  }
+  const palette = await page.evaluate(() => document.documentElement.dataset.palette);
+  if (palette !== 'lesbian') {
+    throw new Error(`the archive's own flag did not come back with it: ${palette}`);
+  }
+  /* And the flag put back, because the restore left this journal on the
+     archive's palette and the flows after this one read colours off the
+     document. A flow that changes the palette puts it back, which is the
+     rule 13b0 above already follows. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="trans"]').click();
+  await waitingFor('the flag going back to trans after the restore', () =>
+    page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
+  );
+
+  ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
+} catch (e) { fail('onboarding restore', e); }
+
+/* 13d. and the way back out of it: a restore that is given up on leaves the
+   person on the welcome as somebody new, with the whole flow ahead of them
+   and nothing written. */
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fresh('/');
+  await page.selectOption('#demo-jump', 'first-run');
+  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+  await page.locator('[data-restore-abandon]').click();
+
+  /* Back on the welcome, and it is the ordinary welcome: the second action
+     is offered again, and the step after it is the name step rather than the
+     access mode, which is what says the flow is the full one. */
+  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.waitForSelector('#ob-name');
+
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+  ok('giving up on a restore leaves setup running as a new person');
+} catch (e) { fail('onboarding restore abandoned', e); }
+
 /* 13b1. turning the disguise on during setup leaves a finished install
    rather than a setup that died halfway (redesign ticket 32, ADR-0079).
 

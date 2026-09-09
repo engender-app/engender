@@ -17,9 +17,20 @@
    silent fall through to "something went wrong". */
 
 import { m } from '$lib/paraglide/messages';
-import type { ArchiveFailureKind } from '$lib/data/archive/failure';
+import type { RestoreFailureKind, RestoreGuardKind } from '$lib/data/journal/restoreFlow';
 
-const IMPORT_MESSAGE: Record<ArchiveFailureKind, () => string> = {
+/* The three the screen catches itself, before the container is read
+   (restoreFlow.ts). Shared by both records below because they say the same
+   thing either way: an unpicked file is an unpicked file whether the button
+   pressed was Restore or the verify drill. */
+const GUARD_MESSAGE: Record<RestoreGuardKind, () => string> = {
+  'pick-first': m.imp_pick_first,
+  'password-needed': m.imp_password_needed,
+  'empty-file': m.imp_file_empty
+};
+
+const IMPORT_MESSAGE: Record<RestoreFailureKind, () => string> = {
+  ...GUARD_MESSAGE,
   'wrong-password': m.imp_wrong_password,
   'newer-version': m.imp_newer_version,
   'not-an-archive': m.imp_not_an_archive,
@@ -30,7 +41,8 @@ const IMPORT_MESSAGE: Record<ArchiveFailureKind, () => string> = {
 /* Same privacy shape as the scheduled-backup failure notification
    (AutoExportPlugin.notifyFailure): what went wrong with the file, never
    the journal or the folder it came from. */
-const VERIFY_MESSAGE: Record<ArchiveFailureKind, () => string> = {
+const VERIFY_MESSAGE: Record<RestoreFailureKind, () => string> = {
+  ...GUARD_MESSAGE,
   'wrong-password': m.verify_wrong_password,
   'newer-version': m.verify_newer_version,
   'not-an-archive': m.verify_not_an_archive,
@@ -38,6 +50,6 @@ const VERIFY_MESSAGE: Record<ArchiveFailureKind, () => string> = {
   failed: m.verify_failed
 };
 
-export const importFailureMessage = (kind: ArchiveFailureKind): string => IMPORT_MESSAGE[kind]();
+export const importFailureMessage = (kind: RestoreFailureKind): string => IMPORT_MESSAGE[kind]();
 
-export const verifyFailureMessage = (kind: ArchiveFailureKind): string => VERIFY_MESSAGE[kind]();
+export const verifyFailureMessage = (kind: RestoreFailureKind): string => VERIFY_MESSAGE[kind]();

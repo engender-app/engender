@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { PORTABLE_KEYS } from '../data/prefs/catalogue';
 import {
+  archiveAnswers,
   isSkippable,
   onboardingDestination,
   onboardingSteps,
+  restoreSteps,
   stepAfter,
+  stepAnswers,
   stepBefore,
   stepIndex,
   sunGrowth
@@ -152,5 +156,80 @@ describe('the sun growing through the flow', () => {
 
   it('never divides by zero on a one-step flow', () => {
     expect(sunGrowth(0, 1)).toBe(1);
+  });
+});
+
+describe('a first run that restores an archive', () => {
+  /* The failure directions first, because this is the ticket where a wrong
+     answer loses somebody's journal (ticket 36).
+
+     Two ways to be wrong, and they are not symmetrical. Asking again for
+     something the archive carries is the annoyance this ticket exists to
+     remove: the answer is overwritten a moment later anyway. Dropping a step
+     the archive does *not* carry is the one that breaks the install - the
+     access mode above all, since an archive password is not an access mode
+     (ADR-0041) and a journal with no key on this device does not open. */
+  const RESTORED = restoreSteps();
+
+  it('never drops a step whose answer the archive does not carry', () => {
+    for (const step of onboardingSteps()) {
+      if (!archiveAnswers(step)) expect(RESTORED, step).toContain(step);
+    }
+  });
+
+  it('keeps the access mode step, which an archive password is not', () => {
+    expect(archiveAnswers('lock')).toBe(false);
+    expect(RESTORED).toContain('lock');
+  });
+
+  it('reads what the archive carries off the portable set rather than a second list', () => {
+    /* The one guard against drift. `applyPortablePreferences` walks
+       PORTABLE_KEYS and nothing else, so a key that leaves that list stops
+       travelling - and its step has to start asking again the same day,
+       not whenever somebody notices. */
+    for (const step of onboardingSteps()) {
+      const answers = stepAnswers(step);
+      const carried =
+        answers.length > 0 &&
+        answers.every((key) => (PORTABLE_KEYS as readonly string[]).includes(key));
+      expect(archiveAnswers(step), step).toBe(carried);
+    }
+  });
+
+  it('classifies every step, so one added later cannot be silently unclassified', () => {
+    for (const step of [...onboardingSteps(), ...RESTORED]) {
+      expect(Array.isArray(stepAnswers(step)), step).toBe(true);
+    }
+  });
+
+  it('asks nothing the archive answers', () => {
+    for (const step of RESTORED) expect(archiveAnswers(step), step).toBe(false);
+  });
+
+  it('opens on the welcome, offers the restore, and ends on the finish', () => {
+    /* `permissions` and `disguise` are in it because tickets 31 and 32
+       landed while this branch was open and the flow picked both up with no
+       edit to restoreSteps(): one stores no preference at all, the other
+       stores a device-local one, so `archiveAnswers` can never call either
+       carried. That is the whole argument for reading this off
+       PORTABLE_KEYS rather than keeping a second list - a hand-kept list
+       would have silently dropped the step that asks this device what the
+       app may reach, and the step that hides the app. */
+    expect(RESTORED).toEqual(['welcome', 'restore', 'lock', 'permissions', 'disguise', 'done']);
+  });
+
+  it('has no skip on the restore step: it is the reason this flow was entered', () => {
+    expect(isSkippable('restore')).toBe(false);
+  });
+
+  it('grows the same sun over its own shorter flow, arriving at 1', () => {
+    expect(sunGrowth(0, RESTORED.length)).toBe(sunGrowth(0, onboardingSteps().length));
+    expect(sunGrowth(RESTORED.length - 1, RESTORED.length)).toBe(1);
+  });
+
+  it('walks forward and back over its own list', () => {
+    expect(stepAfter(RESTORED, 'welcome')).toBe('restore');
+    expect(stepBefore(RESTORED, 'lock')).toBe('restore');
+    expect(stepAfter(RESTORED, 'restore')).toBe('lock');
   });
 });
