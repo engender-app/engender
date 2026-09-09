@@ -11,6 +11,7 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 
+let seeded = false;
 const settle = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
@@ -20,12 +21,14 @@ const settle = async (path) => {
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
-  await page.evaluate(() => {
-    for (const t of document.querySelectorAll('[data-toast]')) t.remove();
-    for (const b of document.querySelectorAll('.demo-bar')) b.remove();
-  });
+  if (seeded)
+    await page.evaluate(() => {
+      for (const t of document.querySelectorAll('[data-toast]')) t.remove();
+      for (const b of document.querySelectorAll('.demo-bar')) b.remove();
+    });
   await page.waitForTimeout(900);
 };
+
 
 const dress = async (palette, theme) => {
   await settle('/settings');
@@ -59,6 +62,7 @@ await settle('/');
 await page.locator('[data-fill-every-feature]').click();
 await page.waitForURL('**/more', { timeout: 180000 });
 await page.waitForTimeout(2000);
+seeded = true;
 
 await dress('trans', 'light');
 
@@ -80,13 +84,12 @@ await crop('savebar-over-slider', '.dim-slider', 16);
 // 2. The back control under the title set solid.
 await crop('title-over-back', '.screen-header-row', 8);
 
-// 3. The tonal rows.
+// 3. The tonal rows, which live inside the disguise sheet.
 await settle('/settings');
+await page.locator('[data-list-row="disguise"]').click();
+await page.waitForTimeout(800);
 await crop('tonal-rows', '.card.spread', 10);
 
-// 4. The Android branch of the reminders list, if this build is the pinned one.
-await settle('/settings/reminders');
-await crop('checkin-card', '.card.checkin-card', 10);
 
 await browser.close();
 await app.close();
