@@ -45,7 +45,19 @@
      block they sit on, its ink and its bleed to the window's edges. Only
      large type may sit on the field, or a block of the page's own colour
      with page ink in it, which is how the search input's 16px is legal
-     there; tests/direction-contract.test.ts holds both halves. */
+     there; tests/direction-contract.test.ts holds both halves.
+
+     `chrome` is rule 7's third case (carpet 25). A door never shows a back
+     control and a deep screen always does, and Settings is neither: it is
+     chrome reached by one persistent control (ADR-0076), a gear in Today's
+     foot on the phone and a fifth row at the rail's foot on the desktop.
+     The two reaches want different answers - from the gear, back means
+     Today; from the rail, a back control points at nothing - so the flag
+     draws the control and components.css drops it inside the 1024px
+     shell's own container query, which is where the app decides between
+     the bar and the rail too (AppNav's note). A prop rather than a class
+     the screen remembers, so the next chrome screen asks for the case
+     rather than for its consequences. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
@@ -58,6 +70,7 @@
     backLabel,
     screen,
     titleHidden = false,
+    chrome = false,
     class: klass = '',
     actions,
     field
@@ -71,6 +84,8 @@
     /** The screen's own identity, for the walkthrough's handle (ADR-0029). */
     screen?: string;
     titleHidden?: boolean;
+    /** Rule 7's third case: chrome, whose back control is the phone's only. */
+    chrome?: boolean;
     class?: string;
     actions?: Snippet;
     /** What this door puts on the field under the title's line (rule 7). */
@@ -95,6 +110,7 @@
 <header
   class="screen-header {klass}"
   class:is-collapsed={titleHidden && !back && !actions && !field}
+  class:is-chrome={chrome}
   data-screen-header
 >
   <!-- The subtitle is a row of its own rather than a second line inside the
