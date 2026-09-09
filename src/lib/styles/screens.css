@@ -583,15 +583,28 @@
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .palette-swatch.is-active .swatch-name { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
-/* flag gradients (static flag colours, not theme tokens) */
-[data-swatch="trans"] { background: linear-gradient(135deg, #5BCEFA 20%, #F5A9B8 40%, #FFF 50%, #F5A9B8 60%, #5BCEFA 80%); }
-[data-swatch="nonbinary"] { background: linear-gradient(135deg, #FCF434 25%, #FFF 25% 50%, #9C59D1 50% 75%, #2C2C2C 75%); }
-[data-swatch="genderfluid"] { background: linear-gradient(135deg, #FF76A4 20%, #FFF 20% 40%, #C011D7 40% 60%, #2F2F2F 60% 80%, #2F3CBE 80%); }
-[data-swatch="bisexual"] { background: linear-gradient(135deg, #D60270 40%, #9B4F96 40% 60%, #0038A8 60%); }
-[data-swatch="lesbian"] { background: linear-gradient(135deg, #D52D00 20%, #FF9A56 20% 40%, #FFF 40% 60%, #D362A4 60% 80%, #A30262 80%); }
-[data-swatch="pansexual"] { background: linear-gradient(135deg, #FF218C 33%, #FFD800 33% 66%, #21B1FF 66%); }
-[data-swatch="rainbow"] { background: linear-gradient(135deg, #E40303 17%, #FF8C00 17% 33%, #FFED00 33% 50%, #008026 50% 66%, #004CFF 66% 83%, #732982 83%); }
-[data-swatch="agender"] { background: linear-gradient(135deg, #1A1A1A 15%, #B9B9B9 15% 30%, #FFF 30% 45%, #B9F484 45% 60%, #FFF 60% 75%, #B9B9B9 75% 90%, #1A1A1A 90%); }
+/* flag gradients (static flag colours, not theme tokens)
+
+   Horizontal bands, the way the sun draws the same stripes and the way the
+   flags themselves are made (phase 10, DIRECTION.md rule 13, redesign
+   ticket 33). They were a 135-degree wash, which is the treatment rule 8
+   already corrected for the sun: a flag's stripes have a direction and it
+   is not diagonal. The stops are exact fractions of the stripe count now
+   rather than the rounded ones the wash carried, so no band is a pixel
+   wider than its neighbours.
+
+   One rule for both readers. The first run draws these as 56px blocks two
+   across (rule 13) and Settings draws them as 40px discs; the bands are
+   right at either size, and a second copy of eight stripe lists is how the
+   two would drift. */
+[data-swatch="trans"] { background: linear-gradient(to bottom, #5BCEFA 0 20%, #F5A9B8 20% 40%, #FFF 40% 60%, #F5A9B8 60% 80%, #5BCEFA 80%); }
+[data-swatch="nonbinary"] { background: linear-gradient(to bottom, #FCF434 0 25%, #FFF 25% 50%, #9C59D1 50% 75%, #2C2C2C 75%); }
+[data-swatch="genderfluid"] { background: linear-gradient(to bottom, #FF76A4 0 20%, #FFF 20% 40%, #C011D7 40% 60%, #2F2F2F 60% 80%, #2F3CBE 80%); }
+[data-swatch="bisexual"] { background: linear-gradient(to bottom, #D60270 0 40%, #9B4F96 40% 60%, #0038A8 60%); }
+[data-swatch="lesbian"] { background: linear-gradient(to bottom, #D52D00 0 20%, #FF9A56 20% 40%, #FFF 40% 60%, #D362A4 60% 80%, #A30262 80%); }
+[data-swatch="pansexual"] { background: linear-gradient(to bottom, #FF218C 0 33.34%, #FFD800 33.34% 66.67%, #21B1FF 66.67%); }
+[data-swatch="rainbow"] { background: linear-gradient(to bottom, #E40303 0 16.67%, #FF8C00 16.67% 33.34%, #FFED00 33.34% 50%, #008026 50% 66.67%, #004CFF 66.67% 83.34%, #732982 83.34%); }
+[data-swatch="agender"] { background: linear-gradient(to bottom, #1A1A1A 0 14.29%, #B9B9B9 14.29% 28.58%, #FFF 28.58% 42.86%, #B9F484 42.86% 57.15%, #FFF 57.15% 71.44%, #B9B9B9 71.44% 85.72%, #1A1A1A 85.72%); }
 
 /* Mood preset previews (COL-001): the light-theme step values, shown as a
    static swatch regardless of the app's active theme - the same convention
