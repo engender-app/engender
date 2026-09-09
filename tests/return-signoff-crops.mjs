@@ -50,11 +50,11 @@ await mkdir(outDir, { recursive: true });
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
-const page = await browser.newPage({
-  viewport: { width: 390, height: 844 },
-  deviceScaleFactor: 2,
-  colorScheme: 'light'
-});
+/* One page per language, because the journal lives in the page's own
+   storage and the English pass answers the gap it seeded: a second pass
+   sharing it opens the route with nothing waiting and shoots a field with
+   no list under it. */
+let page;
 
 const settle = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
@@ -95,6 +95,11 @@ const openWear = before
     reloads the app. */
 async function pass(locale) {
   const tag = locale === 'en' ? '' : `-${locale}`;
+  page = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    colorScheme: 'light'
+  });
   await settle('/settings');
   await page.locator('[data-palette-pick="trans"]').click();
   await page.locator('[data-segment="light"]').click();
@@ -128,6 +133,7 @@ async function pass(locale) {
   await page.waitForTimeout(500);
   await bare();
   await shot(`sheet-foot${tag}`, SHEET_PART);
+  await page.close();
 }
 
 await pass('en');
