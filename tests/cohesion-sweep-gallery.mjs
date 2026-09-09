@@ -144,7 +144,15 @@ const ROUTES = [
   { path: '/search' },
   { path: '/search/questions' },
   { path: '/search/starred' },
-  { path: '/settings' },
+  {
+    path: '/settings',
+    /* `.card.spread` is drawn inside the disguise sheet, so no walk that
+       only loads the address has ever seen it - it counted 0 while carpet
+       30 was trying to decide about it. A state is read as its own reading
+       rather than folded into the screen's, so the base route stays a
+       reading of the screen and the sheet is a reading of the sheet. */
+    states: [{ name: 'disguise-sheet', open: ['[data-row-main="disguise"]'] }]
+  },
   { path: '/settings/access-mode' },
   { path: '/settings/affirmations' },
   { path: '/settings/body-regions' },
@@ -217,6 +225,69 @@ const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabin
    predicted shows up as itself - which is how carpet 21 came to say four
    when the source has six. */
 const AUDITED = ['.card', '.editor-savebar'];
+
+/* The gated leg, which is its own run of this script rather than a second
+   act inside the main one. `/settings/reminders` draws its Android branch -
+   the check-in card, the switch rows, the battery notice - only where
+   `isAndroid()` is true, so on the web it has always counted 0 and carpet
+   30 has a variant it cannot decide about. Pinning that screen's own
+   `isWeb` is `tests/unprompted-gallery.mjs`'s pattern, and the reason for
+   it holds here too: forcing `isAndroid()` sends boot at the Android SQLite
+   driver and the app never becomes ready, and a query parameter that forced
+   the branch would be a backdoor shipped to production for the sake of a
+   reading.
+
+   A second process rather than a rebuild mid-run, because a rebuild means a
+   new preview server on a new port, a new origin and an empty journal - and
+   when that leg failed to boot it took the whole main walk's audit down
+   with it, unwritten. A process that pins before it serves anything has one
+   build for its whole life, and its findings merge into the report the main
+   run already wrote. */
+const PIN_ANDROID = args.includes('--pin-android');
+const GATED = [{ path: '/settings/reminders', name: 'reminders-android' }];
+const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
+const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/cohesion-sweep-gallery.mjs';
+let pinnedLeg = false;
+let original = null;
+
+const build = () =>
+  new Promise((done, fail) => {
+    const child = spawn('npx', ['vite', 'build'], {
+      cwd: root,
+      stdio: 'inherit',
+      env: { ...process.env, VITE_DEMO: '1' }
+    });
+    child.on('exit', (code) => (code === 0 ? done() : fail(new Error(`vite build exited ${code}`))));
+  });
+
+if (PIN_ANDROID) {
+  original = await readFile(SCREEN, 'utf8');
+  const forced = original.replace('  let isWeb = $derived(!isAndroid());', PINNED);
+  if (forced === original) throw new Error(`${SCREEN} no longer has the shape this script pins`);
+  /* The restore writes `original` back, and over uncommitted work
+     `original` would be somebody's half-finished edit. */
+  const dirty = execFileSync('git', ['status', '--porcelain', '--', SCREEN], { cwd: root }).toString().trim();
+  if (dirty) throw new Error(`${SCREEN} has uncommitted changes - commit or stash them before the gated leg`);
+
+  /* `finally` covers a throw; a Ctrl-C is a signal and skips it, which
+     would leave the pinned file on disk. */
+  const putBack = () => writeFileSync(SCREEN, original);
+  process.on('SIGINT', () => {
+    putBack();
+    process.exit(130);
+  });
+  process.on('SIGTERM', () => {
+    putBack();
+    process.exit(143);
+  });
+  process.on('uncaughtException', (err) => {
+    putBack();
+    console.error(err);
+    process.exit(1);
+  });
+  await writeFile(SCREEN, forced);
+  await build();
+}
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
@@ -695,20 +766,43 @@ await seed();
 /* One reading, filed. Shared by the walk, the gated leg and the proof, so
    all three land in the same table with the same keys. */
 const record = async (route, palette, theme, extra = {}) => {
+  const state = extra.state;
   const slug = route.name ?? (route.path.replace(/^\//, '').replace(/\//g, '-') || 'today');
-  const name = `${slug}-${palette}-${theme}`;
+  const name = `${slug}${state ? `-${state.name}` : ''}-${palette}-${theme}`;
   try {
     await settle(route.path);
+    for (const selector of state?.open ?? []) {
+      await page.locator(selector).first().click();
+      await page.waitForTimeout(600);
+    }
     await strip();
     await page.waitForTimeout(900);
     const reading = await read();
     const counts = reading.found
       ? Object.fromEntries(Object.entries(reading.found).map(([k, v]) => [k, v.length]))
       : {};
-    audit.push({ route: route.path, palette, theme, name, ...reading, counts, door: !!route.door, ...extra });
+    audit.push({
+      route: route.path,
+      palette,
+      theme,
+      name,
+      ...reading,
+      counts,
+      door: !!route.door,
+      ...extra,
+      state: state?.name
+    });
     return reading;
   } catch (err) {
-    audit.push({ route: route.path, palette, theme, name, error: String(err).slice(0, 200), ...extra });
+    audit.push({
+      route: route.path,
+      palette,
+      theme,
+      name,
+      error: String(err).slice(0, 200),
+      ...extra,
+      state: state?.name
+    });
     return null;
   }
 };
@@ -717,7 +811,10 @@ const walkRoutes = async (list, extra = {}) => {
   for (const palette of PALETTES) {
     for (const theme of ['light', 'dark']) {
       await dress(palette, theme);
-      for (const route of list) await record(route, palette, theme, extra);
+      for (const route of list) {
+        await record(route, palette, theme, extra);
+        for (const state of route.states ?? []) await record(route, palette, theme, { ...extra, state });
+      }
     }
   }
 };
@@ -758,9 +855,11 @@ if (args.includes('--prove')) {
 }
 
 /* Resolve the dynamic routes to real addresses before the walk, so the
-   count reconciles against src/routes rather than against what seeded. */
+   count reconciles against src/routes rather than against what seeded. The
+   gated process skips it: it walks one address and its findings merge into
+   the reconciliation the main run already did. */
 const resolved = [];
-for (const { name, prefix, look } of RESOLVED) {
+for (const { name, prefix, look } of PIN_ANDROID ? [] : RESOLVED) {
   let found = null;
   let where = null;
   for (const from of look) {
@@ -781,82 +880,21 @@ for (const { name, prefix, look } of RESOLVED) {
 
 /* The new-entry form takes an epoch day rather than a record id, so it has a
    real address without anything to resolve. */
-resolved.push({ name: 'entry-new', path: `/entry/new/${Math.floor(Date.now() / 86400000)}`, from: 'computed' });
+if (!PIN_ANDROID)
+  resolved.push({ name: 'entry-new', path: `/entry/new/${Math.floor(Date.now() / 86400000)}`, from: 'computed' });
 
-const walk = [...ROUTES, ...resolved.filter((r) => r.path).map((r) => ({ path: r.path, name: r.name }))];
-await walkRoutes(walk);
+const walk = PIN_ANDROID
+  ? GATED
+  : [...ROUTES, ...resolved.filter((r) => r.path).map((r) => ({ path: r.path, name: r.name }))];
+await walkRoutes(walk, PIN_ANDROID ? { androidBranch: true } : {});
+pinnedLeg = PIN_ANDROID;
 
-/* The gated leg. `/settings/reminders` draws its Android branch - the
-   check-in card, the switch rows, the battery notice - only where
-   `isAndroid()` is true, so on the web it has always counted 0 and carpet
-   30 has a variant it cannot decide about. Pinning that screen's own
-   `isWeb` is `tests/unprompted-gallery.mjs`'s pattern and the reason for it
-   holds here too: forcing `isAndroid()` sends boot at the Android SQLite
-   driver and the app never becomes ready, and a query parameter would be a
-   backdoor shipped to production for the sake of a reading.
 
-   A new build means a new preview server on a new port, which is a new
-   origin and therefore an empty journal - so the leg re-seeds. Keeping the
-   port instead would keep the data and serve the old build out of the
-   service worker's cache, which is the worse of the two. */
-const GATED = [{ path: '/settings/reminders', name: 'reminders-android' }];
-const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
-const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/cohesion-sweep-gallery.mjs';
-let pinnedLeg = false;
-
-const build = () =>
-  new Promise((done, fail) => {
-    const child = spawn('npx', ['vite', 'build'], {
-      cwd: root,
-      stdio: 'inherit',
-      env: { ...process.env, VITE_DEMO: '1' }
-    });
-    child.on('exit', (code) => (code === 0 ? done() : fail(new Error(`vite build exited ${code}`))));
-  });
-
-const restart = async () => {
-  await app.close();
-  app = await preview({ root, preview: { port: 0 } });
-  base = `http://localhost:${app.httpServer.address().port}`;
-  await page.close();
-  page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-  watch(page);
-};
-
-if (args.includes('--pin-android')) {
-  const original = await readFile(SCREEN, 'utf8');
-  const forced = original.replace('  let isWeb = $derived(!isAndroid());', PINNED);
-  if (forced === original) throw new Error(`${SCREEN} no longer has the shape this script pins`);
-  /* The restore below writes `original` back, and over uncommitted work
-     `original` would be somebody's half-finished edit. */
-  const dirty = execFileSync('git', ['status', '--porcelain', '--', SCREEN], { cwd: root }).toString().trim();
-  if (dirty) throw new Error(`${SCREEN} has uncommitted changes - commit or stash them before the gated leg`);
-
-  /* `finally` covers a throw; a Ctrl-C is a signal and skips it, which
-     would leave the pinned file on disk. */
-  const restore = () => writeFileSync(SCREEN, original);
-  process.on('SIGINT', () => {
-    restore();
-    process.exit(130);
-  });
-  process.on('SIGTERM', () => {
-    restore();
-    process.exit(143);
-  });
-
-  try {
-    await writeFile(SCREEN, forced);
-    await build();
-    await restart();
-    await seed();
-    await walkRoutes(GATED, { androidBranch: true });
-    pinnedLeg = true;
-  } finally {
-    await writeFile(SCREEN, original);
-    // Left as a plain demo build, which is what every other browser check
-    // in the repo expects to find.
-    await build();
-  }
+if (PIN_ANDROID) {
+  await writeFile(SCREEN, original);
+  // Left as a plain demo build, which is what every other browser check in
+  // the repo expects to find.
+  await build();
 }
 
 await page.close();
@@ -896,13 +934,28 @@ const sourceCensus = async () => {
   return out;
 };
 
+/* The gated leg extends the report rather than replacing it: its whole
+   contribution is one address the main walk cannot draw, and a coverage
+   table split across two files is the gap it was meant to close. */
+let earlier = { audit: [], routes: 0, proof: [], resolved: [] };
+if (PIN_ANDROID)
+  try {
+    earlier = JSON.parse(await readFile(`${outDir}/audit.json`, 'utf8'));
+  } catch {
+    console.log('no earlier audit to merge into; the gated leg stands alone');
+  }
+audit.unshift(...(earlier.audit ?? []));
+proof.unshift(...(earlier.proof ?? []));
+const routes = (earlier.routes ?? 0) + walk.length;
+
 const inSource = await sourceCensus();
 const drawn = {};
 for (const reading of audit)
   for (const [key, n] of Object.entries(reading.census ?? {})) {
     drawn[key] ??= { most: 0, routes: [] };
     drawn[key].most = Math.max(drawn[key].most, n);
-    if (!drawn[key].routes.includes(reading.route)) drawn[key].routes.push(reading.route);
+    const at = `${reading.route}${reading.state ? ` (${reading.state})` : ''}`;
+    if (!drawn[key].routes.includes(at)) drawn[key].routes.push(at);
   }
 const coverage = [...new Set([...Object.keys(inSource), ...Object.keys(drawn)])].sort().map((key) => ({
   variant: key,
@@ -923,14 +976,14 @@ for (const reading of audit)
       const key = `${item.where} :: ${item.detail}`;
       groups[bucket] ??= {};
       groups[bucket][key] ??= { where: item.where, detail: item.detail, routes: [] };
-      const at = `${reading.route} ${reading.theme}`;
+      const at = `${reading.route}${reading.state ? ` (${reading.state})` : ''} ${reading.theme}`;
       if (!groups[bucket][key].routes.includes(at)) groups[bucket][key].routes.push(at);
     }
 
 const lines = [`# Cohesion sweep - ${tag}`, ''];
 lines.push(
-  `${walk.length} route(s) x ${PALETTES.length} palette(s) x 2 themes` +
-    (pinnedLeg ? `, plus ${GATED.length} on the pinned Android branch` : '') +
+  `${routes} route(s) x ${PALETTES.length} palette(s) x 2 themes` +
+    (pinnedLeg ? `, the last ${GATED.length} on the pinned Android branch` : '') +
     '.',
   ''
 );
@@ -955,7 +1008,19 @@ if (proof.length) {
 await writeFile(
   `${outDir}/audit.json`,
   JSON.stringify(
-    { tag, routes: walk.length, palettes: PALETTES, resolved, pinnedLeg, proof, coverage, groups, audit, shots, errors },
+    {
+      tag,
+      routes,
+      palettes: PALETTES,
+      resolved: earlier.resolved?.length ? earlier.resolved : resolved,
+      pinnedLeg,
+      proof,
+      coverage,
+      groups,
+      audit,
+      shots,
+      errors
+    },
     null,
     2
   )
@@ -964,7 +1029,7 @@ await writeFile(`${outDir}/findings.md`, `${lines.join('\n')}\n`);
 
 const diverging = audit.filter((a) => a.found && Object.values(a.counts).some((n) => n > 0));
 console.log(
-  `${walk.length} route(s) x ${PALETTES.length} palette(s) x 2 themes; ` +
+  `${routes} route(s) x ${PALETTES.length} palette(s) x 2 themes; ` +
     `${diverging.length} reading(s) with a divergence`
 );
 for (const [bucket, items] of Object.entries(groups))
