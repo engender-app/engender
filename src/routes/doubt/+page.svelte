@@ -348,7 +348,7 @@
     <SectionHeading text={m.doubt_snapshots_title()} />
     <div class="stack-3">
       {#each snapshots as snap (snap.id)}
-        <div class="card" data-kit-surface {...roleAttrs(roleAt(activeFlag.roles, 3))}>
+        <div class="kit-panel" data-kit-surface {...roleAttrs(roleAt(activeFlag.roles, 3))}>
           <div class="spread">
             <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
             <button
