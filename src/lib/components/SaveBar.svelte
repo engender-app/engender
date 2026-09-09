@@ -18,7 +18,6 @@
      setup and rule 15's on a gate. */
   import type { Snippet } from 'svelte';
   import { navigating } from '$app/state';
-  import { footFall, footRise } from '$lib/motion/foot';
   import { hostSaveBar } from '$lib/stores/saveBar.svelte';
 
   let {
@@ -27,27 +26,17 @@
   }: { children: Snippet; arrange?: 'one' | 'row' | 'stack' } = $props();
 </script>
 
-<!-- `|global` on both halves, and it is load-bearing rather than tidy: a
-     transition is local by default, so it plays only when the block that
-     holds it is the block whose condition changed. The block that mounts
-     and unmounts a foot is always in the screen - `{#if pair}`, a tab, an
-     editor's loading gate - which is an ancestor of this one, so without
-     the modifier neither half ever ran and Svelte left the node where the
-     action had moved it. Measured: two feet stacked in the column and 128px
-     of nothing between the region and the lower one
-     (tests/foot-motion-gallery.mjs, first run).
-
-     The travel is skipped while a navigation is in flight: Svelte runs an
-     out-transition when the page unmounts this node too, and on a
-     navigation the foot belongs to the screen's own snapshot rather than to
-     a second movement of its own ($lib/motion/foot, and the same escape
-     `disclose` documents). -->
+<!-- The rise and the fall belong to the host rather than to `in:`/`out:`
+     here, and that is a measurement rather than a preference: a Svelte
+     outro holds the whole `{#if}` branch it sits in on screen until it
+     finishes, which made a tab keep its old content for 380ms and then cut
+     ($lib/motion/foot has the note and the flipbook frames). `cuts` is
+     asked at the moment each end runs, so a navigation gets a cut and an
+     in-screen change gets the travel. -->
 <div
   class="app-savebar savebar-{arrange}"
   data-app-savebar
-  use:hostSaveBar
-  in:footRise|global={{ skip: !!navigating.to }}
-  out:footFall|global={{ skip: !!navigating.to }}
+  use:hostSaveBar={{ cuts: () => !!navigating.to }}
 >
   {@render children()}
 </div>

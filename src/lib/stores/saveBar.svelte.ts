@@ -31,6 +31,8 @@
    component's scoped styles all travel with the node, and a screen that
    unmounts takes its own foot with it.  */
 
+import { fallFoot, riseFoot } from '$lib/motion/foot';
+
 /** Selector for the box the bar is moved into: `.app-column` in +layout.svelte. */
 export const COLUMN = '[data-app-column]';
 
@@ -43,18 +45,31 @@ export const COLUMN = '[data-app-column]';
 export const saveBar = $state({ count: 0 });
 
 /**
- * Svelte action: host this node in the app column instead of in the screen.
+ * Svelte action: host this node in the app column instead of in the screen,
+ * and own both ends of its life there - it arrives on a rise and leaves on
+ * a fall, and it is removed when the fall is done ($lib/motion/foot).
+ *
+ * `cuts` is asked at both ends rather than read once, because the answer
+ * changes between them: a foot that arrived inside a screen can be leaving
+ * because the screen is, and a navigation carries the foot in the screen's
+ * own snapshot instead of moving it twice.
+ *
  * A tree with no column - a component mounted outside the shell, or a test
  * rendering the bar on its own - leaves the node where it is and counts
  * nothing, so the bar is still drawn and still reachable.
  */
-export function hostSaveBar(node: HTMLElement) {
+export function hostSaveBar(node: HTMLElement, options?: { cuts?: () => boolean }) {
   const column = node.ownerDocument.querySelector(COLUMN);
   if (!column) return;
   column.append(node);
   saveBar.count += 1;
+  riseFoot(node, options?.cuts?.() ?? false);
   return {
     destroy() {
+      /* The room is released here rather than when the node goes, so the
+         column stops reserving a foot's height the moment the foot starts
+         leaving - which is the same moment `fallFoot` gives that height
+         back to the region, under a foot still covering the strip. */
       saveBar.count -= 1;
       /* Its own removal, because moving it took that away: Svelte removes a
          block's nodes as a range between the anchors it left in the
@@ -63,7 +78,7 @@ export function hostSaveBar(node: HTMLElement) {
          first motion run: two stacked in the column at once. `remove()` on
          a node already gone is a no-op, so this stays right if Svelte's
          own removal ever reaches it. */
-      node.remove();
+      fallFoot(node, options?.cuts?.() ?? false).then(() => node.remove());
     }
   };
 }

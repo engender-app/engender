@@ -1131,8 +1131,12 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   /* The rail has taken the left inset, so the scroll region beside it only
      owes the right one. */
   .app-main { flex: 1; padding-left: 0; }
+  /* The centred column's own width, named once: the screen and the foot
+     under it are two boxes that have to be the same width to line up, and
+     carpet 26 is what made that two rules instead of one. */
+  .app { --column-max: calc(var(--content-max) + 2 * var(--space-5)); }
   .screen {
-    max-width: calc(var(--content-max) + 2 * var(--space-5));
+    max-width: var(--column-max);
     margin: 0 auto;
   }
   /* The foot takes the column's width and its inset, so it lines up with
@@ -1143,7 +1147,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
      have. */
   .app-savebar {
     width: 100%;
-    max-width: calc(var(--content-max) + 2 * var(--space-5));
+    max-width: var(--column-max);
     margin: 0 auto;
     padding-bottom: var(--space-5);
   }

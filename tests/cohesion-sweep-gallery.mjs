@@ -685,7 +685,7 @@ const read = () =>
          the point landed in. Walking up until the parent is an ancestor of
          the target gives the box that sits beside it in the tree, so a
          label and an icon inside the save bar's button are one finding
-         against `.editor-savebar` instead of three against its innards. */
+         against `.app-savebar` instead of three against its innards. */
       const coverer = (el, hit) => {
         let up = hit;
         while (up.parentElement && up.parentElement !== root && !up.parentElement.contains(el)) up = up.parentElement;
