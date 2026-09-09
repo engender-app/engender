@@ -2,13 +2,14 @@
   /* The first run (F16), rebuilt for phase 5 ticket 26.
 
      Five settings, one pass. What a person had to leave here and go and find
-     afterwards was the flag and the daily check-in, and both are things
-     someone decides in the first minute and almost never revisits: the flag
-     because it is the app's whole look, the check-in because a journal
-     nobody is reminded about is a journal that stops after a week. So the
-     flow is welcome, name, flag, scales, areas, lock, check-in, finish, and
-     the order and the skip rules live in $lib/onboarding/steps.ts rather than
-     in a run of `step === 3` comparisons here.
+     afterwards was the flag, which is the app's whole look and something
+     someone decides in the first minute and almost never revisits. So the
+     flow is welcome, name, flag, scales, areas, lock, permissions, finish,
+     and the order and the skip rules live in $lib/onboarding/steps.ts rather
+     than in a run of `step === 3` comparisons here. The daily check-in used
+     to be the last question and is not asked here any more (phase 10
+     redesign ticket 31): the permissions step names it as one of the things
+     a notification is for, and the switch stays on the reminders screen.
 
      Two rules the user set for this ticket, and they are why the foot of
      every step looks the way it does. Every step that stores something
@@ -31,7 +32,8 @@
 
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  import { isAndroid } from '$lib/platform';
+  import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { sharedAxisX } from '$lib/motion/navigation';
   import { motionDuration } from '$lib/motion/tokens';
   import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
@@ -41,6 +43,7 @@
     accessModeTitle,
     type AccessSetupMode
   } from '$lib/components/AccessModeSetup.svelte';
+  import { completeSetup } from '$lib/onboarding/complete';
   import {
     isSkippable,
     onboardingDestination,
@@ -61,9 +64,11 @@
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import DisguisePreview from '$lib/components/DisguisePreview.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import PermissionList from '$lib/components/PermissionList.svelte';
 
   /* Keyed, not worded, so the flag names translate with the rest of the
      catalogue. The same eight, in the same order, as Settings' own picker -
@@ -150,8 +155,16 @@
   );
 
   let lockOnLeave = $state(false);
-  let checkIn = $state(false);
-  let checkInTime = $state(prefs.checkInTime);
+
+  /* Setup's last answer (ADR-0079, phase 10 redesign ticket 32). Held like
+     every other one and never read back off `prefs`, which matters more
+     here than anywhere else in the flow: assigning `prefs.disguise` is what
+     flips the Android launcher alias, and that closes the app. So this
+     starts at false rather than at the stored value - a first run has
+     nothing stored to disagree with, and the demo's own first-run control
+     is the only way to reach setup with it already on, where the answer
+     someone gives here is still the answer. complete() applies it, last. */
+  let disguise = $state(false);
 
   /* The access-mode module's own working state (ticket 53's four modes,
      wired in at this one step by ticket 54). Local to this step rather than
@@ -230,7 +243,12 @@
     else if (step === 'scales') scales = null;
     else if (step === 'areas') areas = null;
     else if (step === 'lock') lockOnLeave = false;
-    else if (step === 'checkin') checkIn = false;
+    /* The permissions step is not in this list, and that is the whole of
+       what skipping it does (ticket 31). Its answers live in the OS rather
+       than in `prefs`, so there is no stored default for a Skip to protect:
+       nothing was granted, nothing is revoked, and every row is still there
+       under /settings/permissions. */
+    else if (step === 'disguise') disguise = false;
     go(stepAfter(steps, step));
   }
 
@@ -247,23 +265,33 @@
      to route an early leave through its own PIN screen before that was one
      choice made in the security module rather than two. */
   function complete() {
-    /* Guarded like the other four, and for the same reason: skipping a step
-       leaves the stored value alone rather than overwriting it with
-       nothing. An empty field wrote an empty name, so skipping the name
-       step erased one that was already there - which a first run never has,
-       and a first run reached a second time does. Clearing a name is
-       Settings' job, where the field is the stored value rather than a
-       draft of it. */
-    if (name.trim()) prefs.name = name.trim();
-    if (scales) prefs.activeScales = scales;
-    if (areas) prefs.onboardingAreas = areas;
-    if (lockOnLeave) prefs.lockOnLeave = true;
-    if (checkIn) {
-      prefs.checkInEnabled = true;
-      prefs.checkInTime = checkInTime;
-    }
-    prefs.onboarded = true;
-    goto(onboardingDestination());
+    /* The order is onboarding/complete.ts's, and it is there rather than
+       here because the disguise makes it load-bearing: applying it closes
+       the app on Android, so every other answer has to be in SQLite first
+       or a first run that ends in a disguise ends in nothing. */
+    void completeSetup({
+      writeAnswers() {
+        /* Guarded like the other four, and for the same reason: skipping a
+           step leaves the stored value alone rather than overwriting it
+           with nothing. An empty field wrote an empty name, so skipping the
+           name step erased one that was already there - which a first run
+           never has, and a first run reached a second time does. Clearing a
+           name is Settings' job, where the field is the stored value rather
+           than a draft of it. */
+        if (name.trim()) prefs.name = name.trim();
+        if (scales) prefs.activeScales = scales;
+        if (areas) prefs.onboardingAreas = areas;
+        if (lockOnLeave) prefs.lockOnLeave = true;
+        prefs.onboarded = true;
+      },
+      flushWrites: flushPreferences,
+      disguise,
+      /* Durably, and only here: everywhere else in the app a preference is
+         assigned and the screen carries on, but this assignment is what
+         makes the launcher alias flip and the process die. */
+      turnOnDisguise: () => setPreferenceDurably('disguise', true),
+      leaveSetup: () => void goto(onboardingDestination())
+    });
   }
 
   /* "Leave setup", from any step before the finish. Detours through the
@@ -461,30 +489,58 @@
                 </ListRow>
               </ListCard>
             {/if}
-          {:else if step === 'checkin'}
-            <h1 class="setup-title">{m.ob_checkin_title()}</h1>
-            <p class="setup-body">{m.ob_checkin_body()}</p>
+          {:else if step === 'permissions'}
+            <!-- Where the daily check-in used to be asked about (ticket 31).
+                 The nudge is not a question setup asks any more: it is one
+                 of the reasons under the notification row here, and the
+                 switch itself stays on the reminders screen. What this step
+                 does instead is name everything the app can reach on this
+                 device, once, in the place where somebody is already
+                 deciding what the app is allowed to be.
+
+                 The list is the same component /settings/permissions draws,
+                 which is what makes "you can do this later" true rather than
+                 a promise of a second screen that says something close. -->
+            <h1 class="setup-title">{m.ob_perms_title()}</h1>
+            <p class="setup-body">{m.ob_perms_body()}</p>
+            <PermissionList />
+          {:else if step === 'disguise'}
+            <h1 class="setup-title">{m.ob_disguise_title()}</h1>
+            <p class="setup-body">{m.ob_disguise_body()}</p>
+            <!-- A row with a switch, drawn as every other answer in the
+                 flow is (DIRECTION.md rule 13), and carrying the platform's
+                 own consequence as its reason rather than as a paragraph
+                 above it. On Android that reason is the one this step owes
+                 most: the app closes for a moment, because it does.
+
+                 The row is the last thing setup asks and the switch is
+                 held, not applied - `prefs.disguise` is untouched until
+                 complete(). Setup's own look does not answer it either
+                 (rule 12): the sun keeps growing and the field keeps its
+                 colour right through the finish. What does answer is the
+                 preview below, which is the one place a person can see
+                 what they are turning on before it is outside the app and
+                 too late to be surprised by. -->
             <ListCard>
-              <ListRow key="check-in" title={m.checkin_title()} subtitle={m.checkin_sub()} chevron={false}>
+              <ListRow
+                key="disguise"
+                title={m.disguise_app_title()}
+                subtitle={isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
+                chevron={false}
+              >
                 {#snippet trailing()}
-                  <Switch checked={checkIn} label={m.checkin_title()} onChange={(v) => (checkIn = v)} />
+                  <Switch
+                    checked={disguise}
+                    label={m.disguise_app_title()}
+                    onChange={(v) => (disguise = v)}
+                  />
                 {/snippet}
               </ListRow>
-              <div class="setup-reveal" class:is-open={checkIn} data-checkin-extra>
-                <div>
-                  <div class="setup-time">
-                    <label class="field-label" for="ob-checkin-time">{m.checkin_time()}</label>
-                    <input
-                      class="input"
-                      type="time"
-                      id="ob-checkin-time"
-                      name="ob-checkin-time"
-                      bind:value={checkInTime}
-                    />
-                  </div>
-                </div>
-              </div>
             </ListCard>
+            <!-- Settings' block, not a second one (ticket 32): a preview of
+                 the launcher that disagreed with the launcher would be
+                 worse than none, and two copies is how that happens. -->
+            <DisguisePreview on={disguise} />
           {:else}
             <h1 class="setup-title">{name.trim() ? m.ob_done_title_named({ name: name.trim() }) : m.ob_done_title()}</h1>
             <p class="setup-body">{m.ob_done_body()}</p>
@@ -705,33 +761,6 @@
   .setup-def + .setup-body { text-align: justify; }
   .setup-body { color: var(--text-2); margin: 0; }
   .setup-step .input { margin-top: var(--space-2); }
-  .setup-time { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
-  .setup-time .input { width: 118px; margin: 0; }
-
-  /* Tier 3, a change within the screen: the row that depends on a switch
-     opens its own height rather than making the foot of the screen jump. A
-     grid track rather than a JS height tween, so the reduced-motion clamp in
-     base.css reaches it like any other CSS transition. */
-  .setup-reveal {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows var(--dur-med) var(--ease-out);
-  }
-  .setup-reveal > * { overflow: hidden; }
-  .setup-reveal.is-open { grid-template-rows: 1fr; }
-  /* The kit draws a row's separator with `.kit-row + .kit-row`, and this
-     wrapper stands between the two rows so the adjacency never matches. The
-     card lost its hairline and read as one block rather than as two settings.
-     Same geometry as the kit's own rule, and only while the row is showing -
-     a 1px line at the top of a track collapsed to 0fr is a line with nothing
-     under it. */
-  .setup-reveal.is-open :global(.kit-row::before) {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: var(--hairline);
-  }
 
   .setup-foot {
     margin-top: auto;

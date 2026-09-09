@@ -15,6 +15,7 @@ import dev.engender.app.clipboard.SensitiveClipboardPlugin;
 import dev.engender.app.disguise.DisguisePlugin;
 import dev.engender.app.keystore.KeystorePlugin;
 import dev.engender.app.keystore.PinBindingPlugin;
+import dev.engender.app.permissions.PermissionsPlugin;
 import dev.engender.app.photos.PhotosPlugin;
 import dev.engender.app.print.PrintPlugin;
 import dev.engender.app.quickexit.QuickExitPlugin;
@@ -42,6 +43,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("QuickExit", QuickExitPlugin.class),
         new PluginEntry("DeviceReset", DeviceResetPlugin.class),
         new PluginEntry("Print", PrintPlugin.class),
+        new PluginEntry("Permissions", PermissionsPlugin.class),
         new PluginEntry("SensitiveClipboard", SensitiveClipboardPlugin.class),
         // NAV-001/NAV-002: the official @capacitor/app plugin, registered
         // the same way as our own plugins so the Android back gesture
