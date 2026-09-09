@@ -75,6 +75,7 @@ import { demoPreferences } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, type BootState } from './boot-state';
 import { openApp } from '../motion/appOpening';
+import { ui } from './ui.svelte';
 import { performPlatformEffect } from './boot-platform';
 import {
   describeError,
@@ -118,8 +119,13 @@ function dispatch(event: BootEvent): void {
      landing inside the frame this one is capturing cannot be undone by an
      older answer arriving late. */
   const publish = () => Object.assign(bootState, machine.boot);
-  if (opensApp) openApp(publish);
-  else publish();
+  if (opensApp) {
+    /* Flagged around the whole opening, not just its start: what reads it is
+       a surface deciding whether now is a moment it can arrive in
+       (ui.svelte.ts). */
+    ui.appOpening = true;
+    void openApp(publish).finally(() => (ui.appOpening = false));
+  } else publish();
   /* Started before the publication rather than after it, which is the order
      this always ran in for every event but the one above. Nothing in `run`
      reads `bootState` - the machine holds what an effect needs - so the two

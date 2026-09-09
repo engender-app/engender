@@ -73,6 +73,7 @@
   import { isAndroid } from '$lib/platform';
   import { PIN_LENGTH } from '$lib/crypto/params';
   import { prfAvailable } from '$lib/data/webauthn-prf';
+  import { fieldPart } from '$lib/motion/navigation';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import {
     backToDetail,
@@ -281,6 +282,18 @@
   let shownError = $derived(error || localError);
 </script>
 
+<!-- One step in three states, and a state change moves (ADR-0078). The
+     module's screens used to swap in a single frame: the four modes were
+     there and then the chosen one's consequence was, with nothing in
+     between - "a mode picked inside the gate, yank between frame 1 and 2"
+     (Alicja, round one on redesign ticket 34). They cross now, on the same
+     crossfade setup's own steps take, over a grid cell that holds both so
+     the two overlap rather than stacking and doubling the page's height
+     while they do. The field's edge is already travelling underneath, since
+     the gate's title changes with the screen. -->
+<div class="am-stage">
+  {#key screen.screen}
+    <div class="am-stage-screen" in:fieldPart out:fieldPart>
 {#if screen.screen === 'list'}
   {#if purpose !== 'recovered'}
     <div class="am-intro">
@@ -378,10 +391,12 @@
   <div class="am-secret" data-access-secret={screen.mode}>
     {#if screen.mode === 'passphrase'}
       <form class="gate-form" onsubmit={submitPassphrase}>
-        <div>
+        <!-- Both on the rule (rule 13): a passphrase is a typed answer with
+             its characters hidden, and this screen is the gate's own. -->
+        <div class="typed">
           <label class="field-label" for="am-passphrase">{m.pp_label_setup()}</label>
           <input
-            class="input"
+            class="rule-input"
             type="password"
             id="am-passphrase"
             name="passphrase"
@@ -390,10 +405,10 @@
             disabled={busy}
           />
         </div>
-        <div>
+        <div class="typed">
           <label class="field-label" for="am-passphrase-confirm">{m.pp_label_confirm()}</label>
           <input
-            class="input"
+            class="rule-input"
             type="password"
             id="am-passphrase-confirm"
             name="confirmation"
@@ -424,8 +439,30 @@
     </div>
   </div>
 {/if}
+    </div>
+  {/key}
+</div>
 
 <style>
+  /* Both screens in one cell while they cross, so the outgoing one does not
+     stand above the incoming one and double the height of the page for the
+     length of the change. Setup's own stage is the same shape and for the
+     same reason. */
+  .am-stage {
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .am-stage > * {
+    grid-area: 1 / 1;
+    min-height: 0;
+  }
+  .am-stage-screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   /* The module's own notice surface: one outline, an icon, and as many lines
      as the consequence being stated actually needs. Local rather than in
      screens.css because this is its only consumer

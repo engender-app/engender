@@ -961,6 +961,74 @@ a.segment {
 }
 .input:focus { border-color: var(--accent); outline: none; }
 
+/* ---------- a typed answer, on the rule ----------
+
+   Rule 13's third shape: the display face at 28 on a 3px bottom rule, no box
+   and no fill, the placeholder in the secondary ink. The person's name is
+   the first thing in the app set in the app's own voice, "and a passphrase
+   is the same shape with its characters hidden" - which is why this is here
+   rather than in onboarding's own block, where redesign ticket 33 first drew
+   it: setup asks for a name and an archive's password, and the gates ask for
+   a journal passphrase in three places (redesign ticket 34). One drawing, the
+   same argument the field and the pad already settle.
+
+   The recovery key is deliberately not this shape. It is a written-down
+   string being compared against the paper it was written on, so it keeps the
+   monospace box it was minted in (RecoveryKeyEntry.svelte). */
+.typed { position: relative; }
+.typed .field-label { display: block; margin-bottom: var(--space-2); }
+.rule-input {
+  display: block;
+  width: 100%;
+  /* A field is a target, so it answers to `--touch-target` like every other
+     one - the kit's own `.input` carries this and a rule-shaped input has no
+     less claim on it. It matters in the short form, where the display face
+     drops to 21 and the box came out at 41px tall (measured at 320x568 by
+     the walkthrough's own floor check, which is what found it). */
+  min-height: var(--touch-target);
+  padding: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--display-track);
+  line-height: var(--leading-display);
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-bottom: 3px solid var(--outline);
+  border-radius: 0;
+}
+.rule-input::placeholder {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-regular);
+  letter-spacing: normal;
+  color: var(--text-2);
+}
+/* The rule in --text over the resting one, drawn in from the left when the
+   field takes focus - the same left-to-right draw a section rule makes
+   everywhere else in the app (rule 10). A scaled pseudo element rather than
+   an animated width, so it is one composited transform; the transition is a
+   plain CSS one, so base.css's reduced-motion clamp turns it into a cut like
+   every other. */
+.typed::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: var(--text);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.typed:focus-within::after { transform: scaleX(1); }
+/* The short form (rule 14): the same drop the titles take under 640px, and
+   the pad's own. A gate asking for a passphrase with a keyboard up is the
+   place this is met most often. */
+@media (max-height: 639px) {
+  .rule-input { font-size: var(--text-xl); }
+}
+
 /* The wrapper a group opens inside (`disclose`). It establishes a block
    formatting context, and that is the whole of it: `disclose` sets
    `overflow: hidden` while it runs, which stops the last field's
@@ -2455,7 +2523,7 @@ html[data-a11y-motion='reduce'] .sun i { animation: none; }
    the container's stretch and sizes it to its content instead - which took
    the pad from 280px to the width of three digits and this rail, whose only
    child is 100% of it, to nothing at all. */
-.pin-wait { height: 3px; width: 100%; max-width: 200px; margin: 0 auto var(--space-3); }
+.pin-wait { height: 3px; width: 100%; max-width: 200px; margin: var(--space-5) auto var(--space-3); }
 .pin-wait i {
   background: var(--danger);
   /* Runs itself down rather than being handed a width per tick, so a
@@ -2514,8 +2582,16 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   .pin-dots { gap: var(--space-3); margin: var(--space-3) 0 var(--space-2); }
 }
 /* Holds its line whether or not there is anything to say, so the pad does
-   not jump down the screen on a wrong PIN. */
-.pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin-bottom: var(--space-3); }
+   not jump down the screen on a wrong PIN.
+
+   20 under the pad rather than sitting against it (rule 1's gap between
+   blocks; Alicja, round one: "'the pin is not right' and the number of
+   retries notice must be a little bit further from the numpad"). Where the
+   wait's own rail is between them the rail takes that 20 and the line closes
+   up to 12 behind it, so the pair still reads as one answer rather than as
+   two things under the pad. */
+.pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
+.pin-wait + .pin-status { margin-top: var(--space-3); }
 
 /* Quick exit's neutral page. Above everything, including the demo bar at
    60, and painted in the browser's own surface colours rather than the

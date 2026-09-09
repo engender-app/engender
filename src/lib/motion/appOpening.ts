@@ -28,9 +28,11 @@
 import { tick } from 'svelte';
 
 import { carryBlind } from './fieldBlind';
+import { endScreenArrival } from './reveal';
 
 /** What app.css keys the pattern off, the way a navigation's does. */
 const PATTERN = 'open';
+
 
 /**
  * Commits a state change that ends a gate, as a movement into the app.
@@ -40,15 +42,20 @@ const PATTERN = 'open';
  * same state change without the animation, which is the same substitute
  * reduced motion asks for.
  *
- * Deliberately not awaited by its callers: what they own is the secret being
- * accepted, and the app is open the instant `commit` has run. Nothing waits
- * on the animation, which is what keeps AC "nothing added delays a person
- * typing a correct secret" true by construction rather than by measurement.
+ * Hands back a promise that settles when the opening is over, which is what
+ * a caller holding "the app is opening" reads - the surfaces whose own reads
+ * answer during it wait for that rather than arriving in a frame the browser
+ * is not painting (see `ui.appOpening`). Nothing waits on it before the app
+ * is open: `commit` has already run by then, which is what keeps "nothing
+ * added delays a person typing a correct secret" true by construction.
  */
-export function openApp(commit: () => void, doc: Document | undefined = globalThis.document): void {
+export function openApp(
+  commit: () => void,
+  doc: Document | undefined = globalThis.document
+): Promise<void> {
   if (!doc?.startViewTransition) {
     commit();
-    return;
+    return Promise.resolve();
   }
 
   /* Before the old side is captured, and released when the transition is
@@ -70,7 +77,7 @@ export function openApp(commit: () => void, doc: Document | undefined = globalTh
     }
   });
 
-  void transition.finished
+  return transition.finished
     /* A transition superseded by another - a lock landing on the frame the
        app opened, which lock-on-leave can genuinely do - rejects rather than
        resolves, and that is not a failure. Swallowed here for the reason the
@@ -81,5 +88,13 @@ export function openApp(commit: () => void, doc: Document | undefined = globalTh
     .finally(() => {
       delete root.dataset.nav;
       blind.release();
+      /* The screen has stopped moving, so anything that lands from here on
+         is a change within it rather than part of it arriving. Said out loud
+         because this arrival outlasts the arrival window by more than twice
+         its length, and the boot marks a fresh one part-way through it when
+         the journal finishes opening: without this the first panel to answer
+         after the app opened appeared in a single frame (reveal.ts's
+         `endScreenArrival`). */
+      endScreenArrival();
     });
 }
