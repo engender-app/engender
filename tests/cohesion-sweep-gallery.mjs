@@ -17,6 +17,30 @@
      field      rule 7  - a door with no field, a deep screen with no back
      tint       rule 3  - --role-tint or --role-wash as a background
      ink        rule 9  - a stroke-width outside 1/2/12/14 and the bar ends
+     target     PRODUCT  - an interactive box rendered under 48x48
+     occlusion  PRODUCT  - anything covering an interactive box, measured
+     ground     rule 4  - --surface or --surface-2 as a ground, a fourth
+                          treatment beside flush, block and ink
+
+   The last three are carpet 28's, and each closes a hole this instrument
+   had. It read nothing about geometry, so the save bar covering the bottom
+   19px of a 48px slider on /settings/dimension was invisible to it across
+   all 75 routes (carpet 26) - Alicja found that by eye on a render the
+   sweep had already passed. And the 48px floor and the three surface
+   treatments were in the same state `box-shadow` was in before ticket 20:
+   a rule declared in one place - `accessibility-audit.test.ts` reads the
+   `--touch-target` token, `kit-surfaces.test.ts` reads the kit's sheets -
+   and holding nowhere else, because nothing had ever measured a rendered
+   box or a resolved ground.
+
+   Occlusion is answered by hit-testing rather than by comparing z-index,
+   because the ticket asks for the *effective* stacking and a declared 20
+   means nothing on its own inside a stacking context. `elementFromPoint`
+   is what the browser itself would do with a finger, so it also catches
+   the two neighbours of occlusion for free: a control clipped out of an
+   ancestor's overflow, and one under a `pointer-events` trap. It reads
+   the viewport, so the geometry pass steps the scroll region a screen at
+   a time instead of reading only what is above the fold.
 
    Every finding carries the selector chain that produced it, so triage
    groups by shared component instead of by screen.
@@ -33,10 +57,30 @@
    main's tip, for a before column - run it from *that* checkout's directory
    and hand it the same path as --root: vite's preview server resolves
    .svelte-kit/output relative to the cwd whatever root it is given, so
-   --root on its own silently sweeps this build twice under two tags. */
+   --root on its own silently sweeps this build twice under two tags.
+
+   `--prove` runs one extra route first with four marks built to be wrong -
+   an undersized button, a covered button, a tonal ground, and a big heading
+   inside a `display: none` parent that must *not* be reported - and exits
+   non-zero unless the first three are found and the fourth is not. A sweep
+   that reports nothing is worth nothing until it has been seen to find
+   something, and the fourth mark is the phantom ticket 20's triage pass
+   found: `display` is not inherited, so `getComputedStyle` on a hidden
+   element's child still answers `display: block`.
+
+   `--pin-android` adds the states no web build can reach. The reminders
+   list is `isAndroid()`-gated with no demo bypass, so `.card.checkin-card`
+   counts 0 in every walk and carpet 30 has nothing to decide against. This
+   pins that screen's own `isWeb` to false, rebuilds, walks the gated routes
+   and puts the file back, which is `tests/unprompted-gallery.mjs`'s pattern:
+   forcing `isAndroid()` itself sends boot at the Android SQLite driver and
+   the app never becomes ready, and a query parameter that forced the branch
+   would be a backdoor shipped to production for the sake of a reading. */
 import { preview } from 'vite';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 
@@ -159,11 +203,24 @@ const SIZES = new Set([12, 13, 14, 15, 16, 17, 19, 21, 24, 28, 40, 48]);
    the inline bar at 36, and the hairline a box draws at 1. 4 is the rail the
    rule names beside the donut, which the breathing ring also draws. */
 const STROKES = new Set([0, 0.8, 1, 1.5, 2, 2.5, 3, 4, 12, 14, 36]);
+/* `PRODUCT.md`: "touch targets >= 48px (Android's floor, which is the
+   stricter of the two platforms)". `--touch-target` is 48px and
+   `accessibility-audit.test.ts` asserts the token; this asserts the box. */
+const TOUCH_FLOOR = 48;
+/* The ticket's list, plus `textarea`, which is an input by every name but
+   its tag. `[tabindex]` is filtered to non-negative below: -1 is
+   programmatically focusable and not a pointer target. */
+const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabindex]';
+/* The surfaces whose variants the carpet counts. Matched elements are keyed
+   by their whole class list rather than by the base, so a variant nobody
+   predicted shows up as itself - which is how carpet 21 came to say four
+   when the source has six. */
+const AUDITED = ['.card', '.editor-savebar'];
 
 await mkdir(outDir, { recursive: true });
 const browser = await launchChromium();
-const app = await preview({ root, preview: { port: 0 } });
-const base = `http://localhost:${app.httpServer.address().port}`;
+let app = await preview({ root, preview: { port: 0 } });
+let base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
 const audit = [];
 const shots = [];
@@ -209,11 +266,12 @@ const dress = async (palette, theme) => {
 /* The audit, run in the page so it reads computed values rather than
    source. Walks the app frame only: the demo bar and anything a gallery
    injected are outside it, and so is the browser's own scrollbar. */
-const read = (radii, sizes, strokes) =>
+const read = () =>
   page.evaluate(
-    ([RADII, SIZES, STROKES]) => {
+    async ([RADII, SIZES, STROKES, INTERACTIVE, FLOOR, AUDITED]) => {
       const root = document.querySelector('[data-app-root]');
       if (!root) return { fatal: 'no app frame' };
+      const frame = root.getBoundingClientRect();
       const radiusOk = new Set(RADII);
       const sizeOk = new Set(SIZES);
       const strokeOk = new Set(STROKES);
@@ -243,7 +301,76 @@ const read = (radii, sizes, strokes) =>
         return /\)\s*0px\s+0px\s+0px\s+[\d.]+px$/.test(value.trim());
       };
 
-      const found = { elevation: [], radius: [], type: [], tint: [], ink: [] };
+      /* Rule 4 sanctions three treatments - flush (no ground), block (a
+         stripe with its ink) and ink (--text as a ground). A tonal ground
+         is a fourth, and it is invisible to a grep because the token is
+         spelled a dozen ways and resolves per palette and per theme. So
+         the two are resolved here, on this document, and compared against
+         what each element actually painted. */
+      const tone = getComputedStyle(document.documentElement);
+      const GROUNDS = [
+        ['--surface', tone.getPropertyValue('--surface').trim()],
+        ['--surface-2', tone.getPropertyValue('--surface-2').trim()]
+      ].filter(([, v]) => v);
+      /* Declared hexes against computed rgb(): resolved through the same
+         parser rather than compared as text. */
+      const swatch = document.createElement('span');
+      swatch.style.display = 'none';
+      document.body.append(swatch);
+      const asColour = (value) => {
+        swatch.style.backgroundColor = '';
+        swatch.style.backgroundColor = value;
+        return getComputedStyle(swatch).backgroundColor;
+      };
+      const groundOf = new Map(GROUNDS.map(([name, value]) => [asColour(value), name]));
+      swatch.remove();
+
+      /* The floor's documented exceptions, each by shape rather than by
+         class name, so none of them can be used to smuggle a small control
+         in under a new selector.
+
+         1. A link inside a sentence. It is `display: inline`, it takes the
+            line box's height, and growing it to 48px would open a hole in
+            the paragraph. Rule 4's notice draws its action this way.
+         2. Something nothing can hit: `pointer-events: none`, or disabled.
+            Not a target, so not a target failure.
+         3. A negative tabindex, which is a scroll region or a focus sink
+            asking to be reachable from script, not a control. */
+      const exemptTarget = (el, cs) => {
+        if (cs.pointerEvents === 'none') return true;
+        if (el.disabled) return true;
+        const tabindex = el.getAttribute('tabindex');
+        if (tabindex !== null && Number(tabindex) < 0 && !el.matches('button, a, input, select, textarea'))
+          return true;
+        if (cs.display === 'inline' && el.textContent.trim()) return true;
+        return false;
+      };
+
+      /* What a finger can actually find: the run through the element's own
+         centre in each direction where hit testing still answers with the
+         element or something inside it. It sees a pseudo-element's reach,
+         which has no box to measure, and it stops at anything covering the
+         control, which is the same thing from the other side. Run only on
+         a control whose box already failed, so the common case pays
+         nothing. */
+      const hitExtent = (el, box) => {
+        const cx = Math.round(box.left + box.width / 2);
+        const cy = Math.round(box.top + box.height / 2);
+        const mine = (x, y) => {
+          if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false;
+          const at = document.elementFromPoint(x, y);
+          return !!at && (at === el || el.contains(at));
+        };
+        if (!mine(cx, cy)) return { width: 0, height: 0 };
+        const run = (dx, dy) => {
+          let step = 1;
+          while (step <= FLOOR && mine(cx + dx * step, cy + dy * step)) step += 1;
+          return step - 1;
+        };
+        return { width: run(-1, 0) + run(1, 0) + 1, height: run(0, -1) + run(0, 1) + 1 };
+      };
+
+      const found = { elevation: [], radius: [], type: [], tint: [], ink: [], target: [], ground: [], occlusion: [] };
       const seen = new Set();
       const note = (bucket, el, detail) => {
         const key = `${bucket}|${chain(el)}|${detail}`;
@@ -276,6 +403,13 @@ const read = (radii, sizes, strokes) =>
            A zero-size box is the honest test for "on screen at all". */
         const box = el.getBoundingClientRect();
         if (!box.width || !box.height) continue;
+        /* And nothing parked off the frame. `.skip-link` sits at
+           `top: -48px` until a keyboard focuses it, so it has a real 146x40
+           box that is not on screen and is not a touch target; the same
+           argument as the zero-size box above, one axis out. Below the
+           frame is left alone, because that is unscrolled content rather
+           than somewhere off screen. */
+        if (box.bottom <= frame.top || box.right <= frame.left || box.left >= frame.right) continue;
 
         if (cs.boxShadow && cs.boxShadow !== 'none' && !shadowAllowed(el, cs.boxShadow))
           note('elevation', el, cs.boxShadow.replace(/\s+/g, ' ').slice(0, 60));
@@ -310,6 +444,9 @@ const read = (radii, sizes, strokes) =>
         const bg = cs.backgroundImage + ' ' + cs.backgroundColor;
         if (/role-tint|role-wash/.test(bg)) note('tint', el, 'tint as a ground');
 
+        const ground = groundOf.get(cs.backgroundColor);
+        if (ground) note('ground', el, `${ground} as a ground`);
+
         if (el.namespaceURI === 'http://www.w3.org/2000/svg' && !el.closest('.mood-face')) {
           const w = cs.strokeWidth;
           if (w && w !== '0px' && cs.stroke !== 'none') {
@@ -331,17 +468,289 @@ const read = (radii, sizes, strokes) =>
       const field = !!blind && blind.getBoundingClientRect().width > root.clientWidth * 0.9;
       const back = !!root.querySelector('[data-screen-back]');
 
-      return { found, header: !!header, field, back };
+      /* Coverage, so an unreached variant reads as a gap rather than as a
+         zero. Each audited base is counted by the whole class list of the
+         elements that matched it, drawn or not: `.card.spread` and
+         `.card.checkin-card` are the two ticket 20's walk never reached,
+         and a count nobody can see is what let ticket 21 size itself
+         against four variants when the source has six. */
+      const census = {};
+      for (const base of AUDITED)
+        for (const el of root.querySelectorAll(base)) {
+          const key = `.${[...el.classList].join('.')}`;
+          census[key] = (census[key] ?? 0) + 1;
+        }
+
+      /* Occlusion, answered the way a finger answers it. For every
+         interactive box a grid of points is handed to `elementFromPoint`,
+         which walks the real stacking order including every context a
+         declared z-index disappears into - the ticket asks for the
+         effective stacking, and a declared 20 means nothing on its own.
+         Three answers:
+
+           the element itself, or something inside it - clear;
+           an ancestor - the element is not on top of its own box, which is
+             a control clipped out of an overflow or under a pointer-events
+             trap, and is as unclickable as a covered one;
+           anything else - covered, and by that.
+
+         The overlap is measured off the two rects rather than counted in
+         samples, so a finding reads "19px of 48" and carpet 26 can size
+         itself from the list.
+
+         The scroll region is stepped a screen at a time, because
+         `elementFromPoint` only answers inside the viewport and a pinned
+         thing covers what is under it at every position, not only at rest.
+
+         **The app's own chrome is exempt at the positions where content is
+         meant to pass beneath it, and only there.** A floating bar that
+         content never went behind would not be floating; what the app
+         promises instead is a reservation, and the two halves of that
+         promise are what this checks. `.app-main` reserves
+         --nav-clearance for the bottom bar, so the bar may cover a row
+         mid-scroll and may not at the end of the column. The field blind
+         holds its own room at the top of the flow, so it may cover a row
+         once the column has moved and may not at rest. Everything else -
+         the save bar above all, which is a second pinned thing over the
+         same column and the column does not know it is there (carpet 26) -
+         is a finding wherever it lands. */
+      const seenCover = new Set();
+      const targets = new Map();
+      const occlusion = found.occlusion;
+      const region = root.querySelector('[data-app-scroll-region]') ?? root;
+
+      /* Pinned: anything that stays put while the column moves, which is
+         either something outside the scroll region altogether - the
+         floating bar is `position: absolute` against the frame, not fixed -
+         or something sticky or fixed inside it. Read off the computed
+         position and the tree rather than off a class, so a screen that
+         invents its own footer is caught too. */
+      const pinned = (el) => {
+        if (!region.contains(el)) return true;
+        for (let up = el; up && up !== region; up = up.parentElement) {
+          const at = getComputedStyle(up).position;
+          if (at === 'fixed' || at === 'sticky') return true;
+        }
+        return false;
+      };
+
+      /* How much of the target is actually dead, walked a pixel at a time
+         down the column the sample failed in. Two rects would do for a bar
+         lying across a slider and would answer 0px for the case that
+         motivated this: a 48px title set solid overflows its own border box
+         by the leading it does not have, so its *inline* box swallows the
+         bottom of the back control while the two boxes do not intersect at
+         all. Hit testing is the only thing that knows that, so hit testing
+         is what measures it. */
+      const band = (el, over, x, box) => {
+        let dead = 0;
+        let first = null;
+        let last = null;
+        for (let y = Math.ceil(box.top); y <= Math.floor(box.bottom); y++) {
+          if (y < 0 || y >= innerHeight) continue;
+          const at = document.elementFromPoint(x, y);
+          if (!at || !over.contains(at)) continue;
+          dead += 1;
+          first ??= y;
+          last = y;
+        }
+        const height = Math.round(box.height);
+        if (!dead) return `an edge of ${height}`;
+        const end = first - box.top < box.bottom - last ? 'top' : 'bottom';
+        return `the ${end} ${dead}px of ${height}`;
+      };
+
+      /* What covered it, as one object rather than as whichever descendant
+         the point landed in. Walking up until the parent is an ancestor of
+         the target gives the box that sits beside it in the tree, so a
+         label and an icon inside the save bar's button are one finding
+         against `.editor-savebar` instead of three against its innards. */
+      const coverer = (el, hit) => {
+        let up = hit;
+        while (up.parentElement && up.parentElement !== root && !up.parentElement.contains(el)) up = up.parentElement;
+        return up;
+      };
+      const settled = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const sweepStep = (where) => {
+        for (const el of root.querySelectorAll(INTERACTIVE)) {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+          if (exemptTarget(el, cs)) continue;
+          const box = el.getBoundingClientRect();
+          if (!box.width || !box.height) continue;
+          if (box.bottom <= frame.top || box.right <= frame.left || box.left >= frame.right) continue;
+          if (box.bottom <= 0 || box.top >= innerHeight) continue;
+
+          /* The rendered box against the 48px floor, taken here rather
+             than in the pass above because the answer needs the control on
+             screen: a box under the floor is not yet a finding, since a
+             control can be drawn small and hit large, and only hit testing
+             can see that. `.tag-info-btn` is 24x24 with an `::after` at
+             `inset: -12px` - a 48px target around a 24px glyph, the pattern
+             `.photo-remove` takes too - and a pseudo has no box to measure.
+             An element is measured as itself: a control nested inside a
+             larger control is still the thing a finger has to find.
+
+             The best reading over all the scroll positions wins, filed
+             after the walk. A control straddling the fold has its reach
+             cut by the viewport edge rather than by anything on the page,
+             and filing the first reading would make that the finding. */
+          const best = targets.get(el) ?? { w: 0, h: 0 };
+          let w = Math.round(box.width);
+          let h = Math.round(box.height);
+          if ((w < FLOOR || h < FLOOR) && box.top >= 0 && box.bottom <= innerHeight) {
+            const reach = hitExtent(el, box);
+            w = Math.max(w, reach.width);
+            h = Math.max(h, reach.height);
+          }
+          targets.set(el, { w: Math.max(best.w, w), h: Math.max(best.h, h) });
+
+          for (let i = 0; i < 5; i++)
+            for (let j = 0; j < 5; j++) {
+              const x = box.left + ((i + 0.5) / 5) * box.width;
+              const y = box.top + ((j + 0.5) / 5) * box.height;
+              if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+              const hit = document.elementFromPoint(x, y);
+              if (!hit || hit === el || el.contains(hit)) continue;
+              if (where === 'mid-column' && pinned(hit)) continue;
+              if (where === 'at rest' && hit.closest('[data-app-nav], [data-app-rail]')) continue;
+              if (
+                where === 'at the end of the column' &&
+                hit.closest('[data-field-blind], [data-screen-header], [data-home-header]')
+              )
+                continue;
+              const clipped = hit.contains(el);
+              const over = clipped ? hit : coverer(el, hit);
+              const by = chain(over);
+              const key = `${chain(el)}|${by}|${clipped}|${where}`;
+              if (seenCover.has(key)) continue;
+              seenCover.add(key);
+              occlusion.push({
+                where: chain(el),
+                detail: clipped
+                  ? `clipped out of ${by}, or under its pointer-events, ${where}`
+                  : `${band(el, over, x, box)} covered by ${by}, ${where}`
+              });
+            }
+        }
+      };
+
+      const top = region.scrollTop;
+      const floor = Math.max(0, region.scrollHeight - region.clientHeight);
+      sweepStep('at rest');
+      const stride = Math.max(1, Math.round(region.clientHeight * 0.85));
+      for (let at = stride; at < floor; at += stride) {
+        region.scrollTop = at;
+        await settled();
+        sweepStep('mid-column');
+      }
+      if (floor > 0) {
+        region.scrollTop = floor;
+        await settled();
+        sweepStep('at the end of the column');
+      }
+      region.scrollTop = top;
+      await settled();
+
+      /* One finding per rule, carrying its worst instance. Twenty tag
+         chips of twenty widths are one rule set 7px short, and three
+         info buttons whose expanded hit area is eaten by three different
+         neighbours are one rule too - filing the measurement rather than
+         the rule turns a component into a page of near-duplicates. */
+      const worst = new Map();
+      for (const [el, { w, h }] of targets) {
+        if (w >= FLOOR && h >= FLOOR) continue;
+        const key = chain(el);
+        const had = worst.get(key);
+        /* The worst single instance, not the worst of each axis taken
+           separately, which would report a box no instance has. */
+        if (!had || Math.min(w, h) < Math.min(had.w, had.h)) worst.set(key, { el, w, h });
+      }
+      for (const { el, w, h } of worst.values()) {
+        if (w < FLOOR && h < FLOOR) note('target', el, `${w}x${h}`);
+        else if (h < FLOOR) note('target', el, `${h}px tall`);
+        else note('target', el, `${w}px wide`);
+      }
+
+      return { found, header: !!header, field, back, census };
     },
-    [[...radii], [...sizes], [...strokes]]
+    [[...RADII], [...SIZES], [...STROKES], INTERACTIVE, TOUCH_FLOOR, AUDITED]
   );
 
 /* Seed the demo persona: every route below needs data to render anything,
    and the seed ends by navigating to /more. */
-await settle('/');
-await page.locator('[data-fill-every-feature]').click();
-await page.waitForURL('**/more', { timeout: 180000 });
-await page.waitForTimeout(2000);
+const seed = async () => {
+  await settle('/');
+  await page.locator('[data-fill-every-feature]').click();
+  await page.waitForURL('**/more', { timeout: 180000 });
+  await page.waitForTimeout(2000);
+};
+await seed();
+
+/* One reading, filed. Shared by the walk, the gated leg and the proof, so
+   all three land in the same table with the same keys. */
+const record = async (route, palette, theme, extra = {}) => {
+  const slug = route.name ?? (route.path.replace(/^\//, '').replace(/\//g, '-') || 'today');
+  const name = `${slug}-${palette}-${theme}`;
+  try {
+    await settle(route.path);
+    await strip();
+    await page.waitForTimeout(900);
+    const reading = await read();
+    const counts = reading.found
+      ? Object.fromEntries(Object.entries(reading.found).map(([k, v]) => [k, v.length]))
+      : {};
+    audit.push({ route: route.path, palette, theme, name, ...reading, counts, door: !!route.door, ...extra });
+    return reading;
+  } catch (err) {
+    audit.push({ route: route.path, palette, theme, name, error: String(err).slice(0, 200), ...extra });
+    return null;
+  }
+};
+
+const walkRoutes = async (list, extra = {}) => {
+  for (const palette of PALETTES) {
+    for (const theme of ['light', 'dark']) {
+      await dress(palette, theme);
+      for (const route of list) await record(route, palette, theme, extra);
+    }
+  }
+};
+
+/* The proof. Four marks built to be wrong go onto one real screen, the
+   audit runs over them, and the run fails unless the three checks carpet 28
+   added each catch their own and the fourth is left alone. A check nobody
+   has watched fail is a check that reports zero for the wrong reason, which
+   is what the 48px floor and the surface treatments had been doing all
+   along; and the fourth mark is the phantom ticket 20's triage found, where
+   `display: none` on a parent leaves `getComputedStyle` on its child still
+   answering `display: block`. */
+const proof = [];
+if (args.includes('--prove')) {
+  await settle('/settings');
+  await strip();
+  await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.className = 'prove-fixture';
+    host.style.cssText = 'position:relative;padding:8px;font-size:16px';
+    host.innerHTML = `
+      <button class="prove-small" style="display:flex;width:24px;height:24px;font-size:16px">x</button>
+      <span class="prove-stack" style="position:relative;display:block;width:60px;height:60px">
+        <button class="prove-covered" style="display:flex;width:60px;height:60px;font-size:16px">y</button>
+        <span class="prove-cover" style="position:absolute;left:0;bottom:0;width:60px;height:20px;z-index:9;background:#f0f"></span>
+      </span>
+      <div class="prove-tonal" style="width:100px;height:40px;background:var(--surface-2)"></div>
+      <div class="prove-hidden" style="display:none"><h1 style="font-size:32px">not on screen</h1></div>`;
+    document.querySelector('[data-app-scroll-region]')?.prepend(host);
+  });
+  const reading = await read();
+  const hit = (bucket, mark) => (reading?.found?.[bucket] ?? []).some((f) => f.where.includes(mark));
+  proof.push({ check: 'target', mark: '.prove-small at 24x24', want: true, got: hit('target', 'prove-small') });
+  proof.push({ check: 'occlusion', mark: '.prove-covered under .prove-cover', want: true, got: hit('occlusion', 'prove-covered') });
+  proof.push({ check: 'ground', mark: '.prove-tonal on --surface-2', want: true, got: hit('ground', 'prove-tonal') });
+  proof.push({ check: 'type', mark: '32px inside a display:none parent', want: false, got: hit('type', 'prove-hidden') });
+  await page.evaluate(() => document.querySelector('.prove-fixture')?.remove());
+}
 
 /* Resolve the dynamic routes to real addresses before the walk, so the
    count reconciles against src/routes rather than against what seeded. */
@@ -370,43 +779,201 @@ for (const { name, prefix, look } of RESOLVED) {
 resolved.push({ name: 'entry-new', path: `/entry/new/${Math.floor(Date.now() / 86400000)}`, from: 'computed' });
 
 const walk = [...ROUTES, ...resolved.filter((r) => r.path).map((r) => ({ path: r.path, name: r.name }))];
+await walkRoutes(walk);
 
-for (const palette of PALETTES) {
-  for (const theme of ['light', 'dark']) {
-    await dress(palette, theme);
-    for (const route of walk) {
-      const slug = route.name ?? (route.path.replace(/^\//, '').replace(/\//g, '-') || 'today');
-      const name = `${slug}-${palette}-${theme}`;
-      try {
-        await settle(route.path);
-        await strip();
-        await page.waitForTimeout(900);
-        const reading = await read(RADII, SIZES, STROKES);
-        const counts = reading.found
-          ? Object.fromEntries(Object.entries(reading.found).map(([k, v]) => [k, v.length]))
-          : {};
-        audit.push({ route: route.path, palette, theme, name, ...reading, counts, door: !!route.door });
-      } catch (err) {
-        audit.push({ route: route.path, palette, theme, name, error: String(err).slice(0, 200) });
-      }
+/* The gated leg. `/settings/reminders` draws its Android branch - the
+   check-in card, the switch rows, the battery notice - only where
+   `isAndroid()` is true, so on the web it has always counted 0 and carpet
+   30 has a variant it cannot decide about. Pinning that screen's own
+   `isWeb` is `tests/unprompted-gallery.mjs`'s pattern and the reason for it
+   holds here too: forcing `isAndroid()` sends boot at the Android SQLite
+   driver and the app never becomes ready, and a query parameter would be a
+   backdoor shipped to production for the sake of a reading.
+
+   A new build means a new preview server on a new port, which is a new
+   origin and therefore an empty journal - so the leg re-seeds. Keeping the
+   port instead would keep the data and serve the old build out of the
+   service worker's cache, which is the worse of the two. */
+const GATED = [{ path: '/settings/reminders', name: 'reminders-android' }];
+const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
+const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/cohesion-sweep-gallery.mjs';
+let pinnedLeg = false;
+
+const build = () =>
+  new Promise((done, fail) => {
+    const child = spawn('npx', ['vite', 'build'], {
+      cwd: root,
+      stdio: 'inherit',
+      env: { ...process.env, VITE_DEMO: '1' }
+    });
+    child.on('exit', (code) => (code === 0 ? done() : fail(new Error(`vite build exited ${code}`))));
+  });
+
+const restart = async () => {
+  await app.close();
+  app = await preview({ root, preview: { port: 0 } });
+  base = `http://localhost:${app.httpServer.address().port}`;
+  await page.close();
+  page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  watch(page);
+};
+
+if (args.includes('--pin-android')) {
+  const original = await readFile(SCREEN, 'utf8');
+  const forced = original.replace('  let isWeb = $derived(!isAndroid());', PINNED);
+  if (forced === original) throw new Error(`${SCREEN} no longer has the shape this script pins`);
+  /* The restore below writes `original` back, and over uncommitted work
+     `original` would be somebody's half-finished edit. */
+  const dirty = execFileSync('git', ['status', '--porcelain', '--', SCREEN], { cwd: root }).toString().trim();
+  if (dirty) throw new Error(`${SCREEN} has uncommitted changes - commit or stash them before the gated leg`);
+
+  /* `finally` covers a throw; a Ctrl-C is a signal and skips it, which
+     would leave the pinned file on disk. */
+  const restore = () => writeFileSync(SCREEN, original);
+  process.on('SIGINT', () => {
+    restore();
+    process.exit(130);
+  });
+  process.on('SIGTERM', () => {
+    restore();
+    process.exit(143);
+  });
+
+  try {
+    await writeFile(SCREEN, forced);
+    await build();
+    await restart();
+    await seed();
+    await walkRoutes(GATED, { androidBranch: true });
+    pinnedLeg = true;
+  } finally {
+    await writeFile(SCREEN, original);
+    // Left as a plain demo build, which is what every other browser check
+    // in the repo expects to find.
+    await build();
+  }
+}
+
+await page.close();
+await browser.close();
+await app.close();
+
+/* Coverage. A count of zero and a variant nobody drew read the same in a
+   table, and ticket 21 sized itself against four `.card` variants when the
+   source has six because of exactly that. So the source is counted too, and
+   anything the source has and the walk never drew is named a gap. */
+const sourceCensus = async () => {
+  const files = [];
+  const walkDir = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const at = join(dir, entry.name);
+      if (entry.isDirectory()) await walkDir(at);
+      else if (at.endsWith('.svelte')) files.push(at);
+    }
+  };
+  await walkDir(resolve(root, 'src'));
+  const bases = AUDITED.map((s) => s.replace(/^\./, ''));
+  const out = {};
+  for (const file of files) {
+    const text = await readFile(file, 'utf8');
+    for (const match of text.matchAll(/class="([^"]*)"/g)) {
+      /* An interpolated class is dropped rather than guessed at: what is
+         wanted is the literal variants, and a `{cond ? 'a' : 'b'}` has no
+         single answer at rest. */
+      const tokens = match[1].replace(/\{[^}]*\}/g, ' ').split(/\s+/).filter(Boolean);
+      if (!bases.some((b) => tokens.includes(b))) continue;
+      const key = `.${tokens.join('.')}`;
+      out[key] ??= { instances: 0, files: [] };
+      out[key].instances += 1;
+      if (!out[key].files.includes(file)) out[key].files.push(file.replace(`${root}/`, ''));
     }
   }
+  return out;
+};
+
+const inSource = await sourceCensus();
+const drawn = {};
+for (const reading of audit)
+  for (const [key, n] of Object.entries(reading.census ?? {})) {
+    drawn[key] ??= { most: 0, routes: [] };
+    drawn[key].most = Math.max(drawn[key].most, n);
+    if (!drawn[key].routes.includes(reading.route)) drawn[key].routes.push(reading.route);
+  }
+const coverage = [...new Set([...Object.keys(inSource), ...Object.keys(drawn)])].sort().map((key) => ({
+  variant: key,
+  inSource: inSource[key]?.instances ?? 0,
+  files: inSource[key]?.files ?? [],
+  drawnMost: drawn[key]?.most ?? 0,
+  routes: drawn[key]?.routes ?? [],
+  gap: !drawn[key] && !!inSource[key]
+}));
+
+/* Every finding, grouped by the rule and then by the selector chain, which
+   is how the carpet tickets are shaped: one shared component, the routes it
+   reaches. Carpet 26 needs the occlusion group to be able to size itself. */
+const groups = {};
+for (const reading of audit)
+  for (const [bucket, items] of Object.entries(reading.found ?? {}))
+    for (const item of items) {
+      const key = `${item.where} :: ${item.detail}`;
+      groups[bucket] ??= {};
+      groups[bucket][key] ??= { where: item.where, detail: item.detail, routes: [] };
+      const at = `${reading.route} ${reading.theme}`;
+      if (!groups[bucket][key].routes.includes(at)) groups[bucket][key].routes.push(at);
+    }
+
+const lines = [`# Cohesion sweep - ${tag}`, ''];
+lines.push(
+  `${walk.length} route(s) x ${PALETTES.length} palette(s) x 2 themes` +
+    (pinnedLeg ? `, plus ${GATED.length} on the pinned Android branch` : '') +
+    '.',
+  ''
+);
+for (const [bucket, items] of Object.entries(groups)) {
+  const rows = Object.values(items).sort((a, b) => b.routes.length - a.routes.length);
+  lines.push(`## ${bucket} (${rows.length})`, '');
+  for (const row of rows) lines.push(`- \`${row.where}\` - ${row.detail} - ${row.routes.length} reading(s): ${row.routes.join(', ')}`);
+  lines.push('');
+}
+lines.push('## coverage', '');
+for (const row of coverage)
+  lines.push(
+    `- \`${row.variant}\` - ${row.inSource} in source, drawn on ${row.routes.length} route(s)` +
+      (row.gap ? ' - **never drawn**' : '') +
+      (row.files.length ? ` - ${row.files.join(', ')}` : '')
+  );
+if (proof.length) {
+  lines.push('', '## proof', '');
+  for (const p of proof) lines.push(`- ${p.check}: ${p.mark} - ${p.got === p.want ? 'as expected' : 'WRONG'}`);
 }
 
 await writeFile(
   `${outDir}/audit.json`,
-  JSON.stringify({ tag, routes: walk.length, palettes: PALETTES, resolved, audit, shots, errors }, null, 2)
+  JSON.stringify(
+    { tag, routes: walk.length, palettes: PALETTES, resolved, pinnedLeg, proof, coverage, groups, audit, shots, errors },
+    null,
+    2
+  )
 );
-await page.close();
-await browser.close();
-await app.close();
+await writeFile(`${outDir}/findings.md`, `${lines.join('\n')}\n`);
 
 const diverging = audit.filter((a) => a.found && Object.values(a.counts).some((n) => n > 0));
 console.log(
   `${walk.length} route(s) x ${PALETTES.length} palette(s) x 2 themes; ` +
     `${diverging.length} reading(s) with a divergence`
 );
-console.log(`audit in ${outDir}/audit.json`);
+for (const [bucket, items] of Object.entries(groups))
+  console.log(`  ${bucket}: ${Object.keys(items).length} distinct`);
+const gaps = coverage.filter((c) => c.gap);
+if (gaps.length) console.log(`  coverage gaps: ${gaps.map((g) => g.variant).join(', ')}`);
+console.log(`audit in ${outDir}/audit.json, findings in ${outDir}/findings.md`);
+
+const failedProof = proof.filter((p) => p.got !== p.want);
+if (failedProof.length) {
+  console.error(`${failedProof.length} of ${proof.length} proof mark(s) did not behave:`);
+  for (const p of failedProof) console.error(`  ${p.check}: expected ${p.want ? 'a finding' : 'no finding'} for ${p.mark}`);
+  process.exitCode = 1;
+}
 if (errors.length) {
   console.error(`${errors.length} page error(s):`);
   for (const e of errors) console.error(`  ${e}`);
