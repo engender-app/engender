@@ -702,10 +702,11 @@
   }
 
   /* ---- an offer ----------------------------------------------------
-     The icon block, the title, one reason line, and two labelled controls
-     under them (rule 13; Cash App's permission shape). Its own padding
-     rather than .kit-row's, because it is two rows of content and the
-     hairline between it and its neighbours is .rows-divide's. */
+     Rule 13's row - the icon block, the title, one reason line - with two
+     labelled controls under it, which is the case rule 13 does not list and
+     this ticket adds. Its own padding rather than .kit-row's, because it is
+     two rows of content and the hairline between it and its neighbours is
+     .rows-divide's. */
   .return-offer {
     padding: var(--space-2) 0;
   }
