@@ -1050,8 +1050,19 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
     expect(follow[0].decls.translate).toBe('0 var(--blind-delta, 0px)');
     expect(follow.at(-1)!.decls.translate, 'ends where the screen rests').toBe('0 0');
-    /* Every pattern the app navigates with, not the tab crossing alone. */
-    for (const pattern of ['fade-through', 'shared-axis', 'shared-axis-back', 'container']) {
+    /* Every pattern in the sheet, read off the sheet rather than listed
+       here: a pattern is added by writing one of these rules, so a list of
+       its own is a list that a new pattern can be left out of. Redesign
+       ticket 34 added the fifth - the app opening, which is a state change
+       rather than a navigation - and this is the shape that would have
+       failed for it. */
+    const patterns = [
+      ...new Set(
+        [...app.matchAll(/html\[data-nav='([a-z-]+)'\]/g)].map((match) => match[1])
+      )
+    ];
+    expect(patterns.length).toBeGreaterThan(4);
+    for (const pattern of patterns) {
       const rule = ruleOf(app, `html[data-nav='${pattern}']::view-transition-new(screen)`);
       expect(declarations(rule?.body ?? '')['animation-name'], pattern).toMatch(
         /, blind-follow$/

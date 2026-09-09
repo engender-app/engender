@@ -11,11 +11,11 @@
    cascade actually gave it.
 
    So this walks the real DOM of every step in every palette and both
-   themes, resolves each text node's background by climbing until something
-   paints, and reports the worst ratio per step with the element that owns
-   it. Large text answers to 3:1 and anything smaller to 4.5:1 (WCAG 1.4.3);
-   the boundary is 24px, or 18.66px at weight 700 or more, which is the same
-   floor tests/direction-contract.test.ts uses.
+   themes and reports the worst ratio per step with the element that owns it.
+   The measurement itself - resolving what is behind a piece of type, the
+   field's paint included - is tests/contrast-walk.mjs, shared with the
+   gates' own walker since redesign ticket 34 gave the two surfaces one
+   field.
 
    Run: VITE_DEMO=1 npm run build   first, then
         node tests/setup-contrast.mjs [--palettes trans,agender] [--themes light,dark]
@@ -26,6 +26,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
+import { MEASURE } from './contrast-walk.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -39,95 +40,6 @@ const PALETTES = flag(
 ).split(',');
 const THEMES = flag('themes', 'light,dark').split(',');
 const ORDER = SETUP_STEPS;
-
-/* Read in the page: every element with text of its own, the colour it is
-   drawn in, the first background above it that paints, and the ratio. */
-const MEASURE = () => {
-  const parse = (value) => {
-    const m = /rgba?\(([^)]+)\)/.exec(value);
-    if (!m) return null;
-    const parts = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
-  };
-  const lum = ({ r, g, b }) => {
-    const chan = (v) => {
-      const s = v / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    };
-    return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b);
-  };
-  const ratio = (a, b) => {
-    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
-    return (hi + 0.05) / (lo + 0.05);
-  };
-  /* A translucent layer over what is behind it, which is what a wash and a
-     scrim are: composited rather than ignored, or a 12% accent fill would
-     be read as the surface under it. */
-  const over = (top, under) => ({
-    r: top.r * top.a + under.r * (1 - top.a),
-    g: top.g * top.a + under.g * (1 - top.a),
-    b: top.b * top.a + under.b * (1 - top.a),
-    a: 1
-  });
-  const behind = (el) => {
-    let stack = [];
-    /* The field paints nothing (redesign ticket 33): its colour is a
-       sibling block a window tall whose bottom edge is a clip, which is
-       what lets the edge move without the box being resized. So climbing
-       the ancestors from the question would walk straight past the flag
-       colour and land on the page - measured genderfluid's white question
-       at 1.07:1 against a light page it is not drawn on. Anything inside
-       the field is measured against the field. */
-    if (el.closest('[data-setup-field]')) {
-      const field = parse(
-        getComputedStyle(document.querySelector('.setup-paint')).backgroundColor
-      );
-      if (field) stack.push(field);
-    }
-    for (let node = el; node && stack.every((b) => b.a < 1); node = node.parentElement) {
-      const bg = parse(getComputedStyle(node).backgroundColor);
-      if (!bg || bg.a === 0) continue;
-      stack.push(bg);
-      if (bg.a === 1) break;
-    }
-    /* The page itself, where nothing above it painted anything solid. */
-    let base = parse(getComputedStyle(document.body).backgroundColor) ?? {
-      r: 255,
-      g: 255,
-      b: 255,
-      a: 1
-    };
-    for (const layer of stack.reverse()) base = over(layer, base);
-    return base;
-  };
-
-  const results = [];
-  for (const el of document.querySelectorAll('.screen-setup *')) {
-    const own = [...el.childNodes].some(
-      (n) => n.nodeType === 3 && n.textContent.trim().length > 0
-    );
-    if (!own) continue;
-    const style = getComputedStyle(el);
-    if (style.visibility === 'hidden' || style.display === 'none') continue;
-    if (Number(style.opacity) < 0.9) continue;
-    const box = el.getBoundingClientRect();
-    if (box.width < 1 || box.height < 1) continue;
-    const ink = parse(style.color);
-    if (!ink) continue;
-    const size = parseFloat(style.fontSize);
-    const weight = Number(style.fontWeight) || 400;
-    const large = size >= 24 || (size >= 18.66 && weight >= 700);
-    results.push({
-      what: `${el.tagName.toLowerCase()}.${(el.className.toString().split(' ')[0] || '-')}`,
-      text: el.textContent.trim().slice(0, 28),
-      size: Math.round(size * 10) / 10,
-      weight,
-      floor: large ? 3 : 4.5,
-      ratio: Math.round(ratio(ink, behind(el)) * 100) / 100
-    });
-  }
-  return results;
-};
 
 const outFile = resolve(here, '../.claude/setup-contrast.json');
 await mkdir(dirname(outFile), { recursive: true });
@@ -182,7 +94,7 @@ for (const palette of PALETTES) {
     for (const step of ORDER) {
       await page.waitForTimeout(450);
       if (step === 'name') await page.locator('#ob-name').fill('Ola');
-      const measured = await page.evaluate(MEASURE);
+      const measured = await page.evaluate(MEASURE, '.screen-setup');
       const failed = measured.filter((m) => m.ratio < m.floor);
       const low = measured.reduce((a, b) => (b.ratio < a.ratio ? b : a), { ratio: Infinity });
       findings[`${palette}-${theme}-${step}`] = { lowest: low, failed };

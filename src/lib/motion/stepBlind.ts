@@ -43,8 +43,11 @@ import { blindVariables, VARIABLES } from './fieldBlind';
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
 
-/** What is printed on the field and has to ride with its edge. */
-const ASK = '.setup-ask';
+/** What is printed on the field and has to ride with its edge. The shared
+    class, not a per-surface one: setup and the gates wear the same field
+    (components.css, redesign ticket 34) and this action is the only thing
+    that measures where the words sit inside it. */
+const ASK = '.step-field-ask';
 
 /**
  * Moves one field's bottom edge whenever the field's height changes, and
