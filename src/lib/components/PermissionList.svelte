@@ -12,21 +12,22 @@
      explicit that a step carries one heading; so the hosts own their heading
      and this owns the list under it.
 
+     What a grantable row looks like is PermissionRow's; what this device
+     currently allows is this file's. The two are separated so every row
+     state can be rendered against the real tokens rather than only the two a
+     desktop browser is ever in.
+
      Shape, from the fourth Mobbin sweep and rule 13: rows between hairlines,
-     a title at 17, one reason line under it, one control trailing. Squarespace's
-     permissions screen for the trailing Allow, Dot's for the granted row going
-     quiet - a word in --text-2 where the button was, rather than a row that
-     disappears and takes the explanation with it - and Truecaller's for a
-     refusal turning into a way into system settings on the row itself rather
-     than one button for the whole screen. Not taken: the card around each
-     group, the per-permission paragraph, and the pre-prompt screens that draw
-     the OS dialog as an illustration. */
+     a title at 17, one reason line under it, one control trailing. Not
+     taken: the card around each group, the per-permission paragraph, and the
+     pre-prompt screens that draw the OS dialog as an illustration. */
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { roleAt } from '$lib/theme/roles';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import PermissionRow from '$lib/components/PermissionRow.svelte';
   import {
     ambientRows,
     grantRows,
@@ -131,50 +132,14 @@
   <p class="perm-caption">{m.perms_group_ask()}</p>
   <ListCard role={roleAt(activeFlag.roles, 0)}>
     {#each grants as row (row.key)}
-      <ListRow
-        static
-        key={`perm-${row.key}`}
-        icon={row.icon}
+      <PermissionRow
+        {row}
         title={GRANT_COPY[row.key].title()}
-        subtitle={GRANT_COPY[row.key].why()}
-        chevron={false}
-        data-permission={row.key}
-        data-permission-state={row.state}
-      >
-        {#snippet trailing()}
-          <!-- Keyed on what the control is, so the swap from a button to a
-               settled word is an arrival rather than a label change: the
-               keyed block is a new element, and a new element runs the
-               entrance animation below. The wrapper carries that animation,
-               never the button: press.css holds the app's press at zero
-               specificity, so a transform on the control itself would
-               outrank :active and make it unpressable. -->
-          {#key `${row.action}-${row.state}`}
-            <span class="perm-trail" class:is-fresh={justChanged === row.key}>
-              {#if row.action === 'prompt' || row.action === 'settings'}
-                <button
-                  type="button"
-                  class="btn perm-grant"
-                  data-grant={row.key}
-                  disabled={busy === row.key}
-                  aria-label={row.action === 'prompt'
-                    ? m.perms_allow_aria({ thing: GRANT_COPY[row.key].title() })
-                    : m.perms_settings_aria({ thing: GRANT_COPY[row.key].title() })}
-                  onclick={() => press(row.key)}
-                >
-                  {row.action === 'prompt' ? m.perms_allow() : m.perms_open_settings()}
-                </button>
-              {:else if row.state === 'granted'}
-                <span class="perm-state" data-granted>{m.perms_allowed()}</span>
-              {:else if row.state === 'unavailable'}
-                <span class="perm-state">{m.perms_android_only()}</span>
-              {:else}
-                <span class="perm-state">{m.perms_browser_blocked()}</span>
-              {/if}
-            </span>
-          {/key}
-        {/snippet}
-      </ListRow>
+        why={GRANT_COPY[row.key].why()}
+        busy={busy === row.key}
+        fresh={justChanged === row.key}
+        onPress={() => press(row.key)}
+      />
     {/each}
   </ListCard>
 
@@ -222,62 +187,4 @@
     color: var(--text-2);
   }
 
-  .perm-trail {
-    display: inline-flex;
-    align-items: center;
-    /* Every swap moves. The default is a small rise into place; a grant that
-       just landed gets the bounce below instead. Transform and opacity only,
-       which is the whole of what materials.css allows. */
-    animation: perm-swap var(--dur-med) var(--ease-out) both;
-  }
-
-  /* A block of the area's own stripe, which is what a control that is the
-     row's one action gets here (rule 4). Shorter than the app's standing
-     button because it sits inside a 60px row, and no narrower than the
-     touch floor. */
-  .perm-grant {
-    min-height: 36px;
-    padding: 0 var(--space-3);
-    font-size: 15px;
-    background: var(--role-draw);
-    color: var(--role-fill-ink);
-    white-space: nowrap;
-  }
-
-  /* Dot's granted row: the control's place keeps the row's shape and loses
-     its weight, so a settled row reads as settled rather than vanishing and
-     taking its explanation with it. */
-  .perm-state {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-2);
-    text-align: right;
-  }
-
-  .perm-trail.is-fresh {
-    animation-name: perm-land;
-    animation-duration: var(--dur-slow);
-  }
-
-  @keyframes perm-swap {
-    from {
-      transform: translateY(4px);
-      opacity: 0;
-    }
-  }
-
-  @keyframes perm-land {
-    0% {
-      transform: scale(0.7);
-      opacity: 0;
-    }
-    60% {
-      transform: scale(1.08);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
 </style>
