@@ -8,7 +8,9 @@ import {
   EASE_OUT_POINTS,
   EASE_OUT_SOFT_POINTS,
   EASE_OUT_SOFT_VAR,
-  EASE_OUT_VAR
+  EASE_OUT_VAR,
+  travelOvershoot,
+  travelSettle
 } from './blindSettle';
 
 const easeOut = bezier(EASE_OUT_POINTS);
@@ -147,5 +149,42 @@ describe('the curve the settle is sampled from', () => {
       const t = i / (curve.length - 1);
       expect(value, `at ${Math.round(t * 100)}%`).toBeLessThanOrEqual(easeOut(t) + 0.06);
     }
+  });
+});
+
+/* The sheet is the second thing to take this settle, and it is the one that
+   cannot simply run past its mark: it stands on the bottom edge of the
+   window, so the distance it lifts off that edge is a strip of the page
+   showing underneath it (redesign ticket 38). */
+describe('the settle a sheet takes', () => {
+  const components = readFileSync(new URL('../styles/components.css', import.meta.url), 'utf8');
+
+  it('leaves the sheet exactly the room the overshoot can use', () => {
+    expect(
+      components,
+      '.sheet extends past the edge by the most travelOvershoot can ever return'
+    ).toContain(`--sheet-skirt: ${travelOvershoot(10_000)}px`);
+  });
+
+  it('runs past the mark coming up and lands on it', () => {
+    const curve = travelSettle(700, { closes: false });
+    const peak = Math.max(...Array.from({ length: 201 }, (_, i) => curve(i / 200)));
+    expect((peak - 1) * 700).toBeCloseTo(travelOvershoot(700), 1);
+    expect(curve(1)).toBe(1);
+  });
+
+  it('never runs past it going down', () => {
+    const curve = travelSettle(700, { closes: true });
+    for (let i = 0; i <= 200; i++) expect(curve(i / 200)).toBeLessThanOrEqual(1);
+  });
+
+  /* Both directions are --ease-out-soft, not the blind's own pick: a sheet
+     covers no content, so --ease-out's instant start buys nothing and costs
+     a 140px first frame. */
+  it('leaves on the same deceleration it arrives on', () => {
+    const soft = bezier(EASE_OUT_SOFT_POINTS);
+    const down = travelSettle(700, { closes: true });
+    for (const t of [0.05, 0.25, 0.5, 0.75]) expect(down(t)).toBeCloseTo(soft(t), 6);
+    expect(travelSettle(700, { closes: false })(0.05)).toBeLessThan(easeOut(0.05));
   });
 });

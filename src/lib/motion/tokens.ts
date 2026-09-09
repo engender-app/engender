@@ -54,7 +54,7 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored';
+export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored';
 type DistanceToken = '--motion-distance-sm' | '--motion-distance-md';
 
 /** The values base.css authors each token at, for the no-DOM path -

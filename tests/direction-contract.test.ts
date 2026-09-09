@@ -283,6 +283,69 @@ describe('rule 4: two line strengths', () => {
     for (const file of svelteFiles()) expect(read(file), file).not.toMatch(gone);
   });
 
+  /* The elevation half of rule 4, which ticket 07 recorded as "unchanged"
+     and left untested: the ban was real in the kit and nothing held it
+     anywhere else, which is how fifteen rules outside the kit kept a
+     --shadow-1 through the whole token pass. The cohesion sweep (ticket 20)
+     found them by rendering every route and reading the computed tree; this
+     is the same finding as a grep, so the next one cannot ship. */
+  it('retires the elevation ramp from both themes', () => {
+    for (const name of ['base', 'palettes'] as const)
+      expect(sheet(name), SHEETS[name]).not.toMatch(/--shadow-[123]\s*:/);
+  });
+
+  it('leaves nothing reading the ramp', () => {
+    const gone = /var\(--shadow-[123]\)/;
+    for (const name of Object.keys(SHEETS) as Array<keyof typeof SHEETS>)
+      expect(sheet(name), SHEETS[name]).not.toMatch(gone);
+    for (const file of svelteFiles()) expect(read(file), file).not.toMatch(gone);
+  });
+
+  /* What may still cast: the floating bar, which rule 4 names as the app's
+     one shadow, and a ring - box-shadow is the only spelling CSS has for
+     one, drawn inward as an inset (kit.css at .kit-block's edge) or outward
+     as a spread with no offset and no blur (a knockout, as the timeline's
+     dots draw). Neither is a surface floating, which is what the rule
+     bans. */
+  it('lets nothing but the floating bar and a ring cast one', () => {
+    const bar = /--shadow-float/;
+    const ring = /inset|(?:^|\s)0 0 0 /;
+    for (const name of Object.keys(SHEETS) as Array<keyof typeof SHEETS>) {
+      for (const rule of rules(sheet(name))) {
+        for (const [prop, value] of declarations(rule.body)) {
+          if (prop !== 'box-shadow' || value === 'none') continue;
+          expect(
+            bar.test(value) || ring.test(value),
+            `${SHEETS[name]}: ${rule.prelude} casts ${value}`
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  /* The six surfaces that gave up an elevation take a block's own edge, not
+     a separator's. Added because `.card` was left behind at --hairline when
+     the other five moved - the comment above it and the commit that made
+     the change both said --outline, and nothing read the declaration. A
+     rationale in a comment is not a contract. */
+  it('draws every unelevated surface edge at --outline', () => {
+    const surfaces = [
+      ['components', '.card'],
+      ['components', '.entry-card'],
+      ['components', '.skeleton-card'],
+      ['components', '.skeleton-block'],
+      ['screens', '.wrapped-card'],
+      ['screens', '.wrapped-stat']
+    ] as const;
+    for (const [name, selector] of surfaces) {
+      const rule = ruleFor(sheet(name), selector);
+      expect(rule, `${SHEETS[name]}: no rule for ${selector}`).toBeTruthy();
+      const border = declarations(rule!.body).find(([prop]) => prop === 'border');
+      expect(border, `${selector} should draw its own edge`).toBeTruthy();
+      expect(border![1], `${selector}`).toBe('1px solid var(--outline)');
+    }
+  });
+
   it('keeps the legibility boost, on the two lines that are left', () => {
     const boost = ruleFor(sheet('base'), "html[data-palette][data-theme][data-a11y-legibility='boost']");
     expect(boost).toBeTruthy();
