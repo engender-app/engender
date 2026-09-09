@@ -26,7 +26,7 @@ export type OnboardingStep =
   | 'scales'
   | 'areas'
   | 'lock'
-  | 'checkin'
+  | 'permissions'
   | 'done';
 
 /* What a first run settles, and why each one is here rather than left to
@@ -42,10 +42,17 @@ export type OnboardingStep =
               person has just ticked their scales, which is the same
               question about the journal one step earlier
      lock     whether leaving the app locks it
-     checkin  the daily prompt, which is the difference between a journal
-              kept and a journal installed
+     permissions
+              everything the app can ask this device for, with a reason
+              each and a button each (phase 10 redesign ticket 31). Not a
+              preference: the answers live in the OS, so this is the one
+              step that settles nothing of the app's own. It is here
+              because for an app whose claim is that nothing leaves the
+              device, the list of what it can reach is the claim made
+              concrete, and because saying it once beats four inline
+              explanations nobody sees together.
 
-   Six settings, six steps, plus a welcome and a finish. Everything else
+   Five settings and one list, plus a welcome and a finish. Everything else
    the app has a preference for is either already right by default or is
    something a person goes looking for once they know the app.
 
@@ -56,10 +63,12 @@ export type OnboardingStep =
      welcome, name, flag, scales, areas, access mode, PIN pad,
      permissions, disguise, done
 
-   `lock` splits into the mode list and the pad (ticket 30); `checkin`
-   leaves the flow, its nudge offered by the permissions step's
-   notification row and kept in Settings (ticket 31); `disguise` is the
-   last question, applied last (ticket 32). */
+   `lock` splits into the mode list and the pad (ticket 30); `disguise` is
+   the last question, applied last (ticket 32). What ticket 31 landed:
+   `checkin` left the flow and `permissions` took its place. The daily nudge
+   is not asked for in setup any more - the notification row's reason line
+   is what names it, and the switch itself stays on the reminders screen,
+   where skipping the step leaves it exactly as it was. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -67,7 +76,7 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'scales',
   'areas',
   'lock',
-  'checkin',
+  'permissions',
   'done'
 ];
 
@@ -109,7 +118,11 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   scales: ['activeScales'],
   areas: ['onboardingAreas'],
   lock: ['lockOnLeave'],
-  checkin: ['checkInEnabled', 'checkInTime'],
+  /* Nothing, and not because it was forgotten: the permissions step's
+     answers live in the OS rather than in a preference (ticket 31), so
+     there is nothing here for an archive to have carried. That is the same
+     reason it survives a restore - device state is not journal state. */
+  permissions: [],
   done: []
 };
 
@@ -139,9 +152,10 @@ export function archiveAnswers(step: OnboardingStep): boolean {
     to remove. What is left is the welcome, the restore itself, and the steps
     that are about this device rather than about the journal: the access mode
     above all, since an archive password is not an access mode (ADR-0041) and
-    the key has to be made here. The permissions and disguise steps join it
-    when tickets 31 and 32 land, on the same test - both are device state and
-    neither is in the archive. */
+    the key has to be made here. The permissions step joined it when ticket
+    31 landed, on this same test and with no edit needed: it stores no
+    preference, so it can never qualify as carried. Disguise will join it the
+    same way when ticket 32 lands - device state is not journal state. */
 export function restoreSteps(): readonly OnboardingStep[] {
   const rest = ALL_STEPS.filter((step) => step !== 'welcome' && !archiveAnswers(step));
   return ['welcome', 'restore', ...rest];

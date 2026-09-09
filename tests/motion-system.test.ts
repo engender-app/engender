@@ -1203,12 +1203,11 @@ describe('the cap on animating layout', () => {
     { selector: '.kit-bar-mark', props: ['width'], note: 'the inline bar in a tile' },
     { selector: '.kit-dist-mark', props: ['height'], note: 'a distribution column' },
     { selector: '.kit-ordered-seg', props: ['width'], note: "OrderedStrip's segments" },
-    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" },
-    {
-      selector: '.setup-reveal',
-      props: ['grid-template-rows'],
-      note: "onboarding's fold, the one grid-template animation in the app"
-    }
+    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" }
+    /* `.setup-reveal` was here, onboarding's one grid-template animation: the
+       fold under the check-in switch that opened to show a time field. The
+       check-in step left setup with phase 10 redesign ticket 31 and took the
+       fold with it, so the app has no grid-template animation left. */
   ];
 
   const LAYOUT = [
