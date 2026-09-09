@@ -31,7 +31,7 @@
   import { submitRecoveryKeyUnlock } from '$lib/stores/boot.svelte';
   import { RecoveryKeyMistypedError } from '$lib/crypto/recoveryKey';
   import { RecoveryKeyAbsentError } from '$lib/data/recovery-key';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -60,8 +60,8 @@
   }
 </script>
 
-<GateScreen icon="key" title={m.rke_title()} data-recovery-gate>
-  <p class={gateBodyClass(m.rke_body())} data-recovery-gate-body>{m.rke_body()}</p>
+<GateScreen title={m.rke_title()} data-recovery-gate>
+  <p class="gate-body" data-recovery-gate-body>{m.rke_body()}</p>
   <form class="gate-form" onsubmit={submit}>
     <div>
       <label class="field-label" for="journal-recovery-key">{m.rke_label()}</label>

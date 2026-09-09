@@ -32,6 +32,14 @@ const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g
     comment next to the code that replaced it without failing itself. */
 const stripComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+/** One rule's declarations, by exact selector. Enough for a sheet written
+    one selector per rule, which these are; direction-contract.test.ts has
+    the general parser for the checks that need one. */
+function ruleBody(css: string, prelude: string): string {
+  const at = css.indexOf(`\n${prelude} {`);
+  if (at === -1) return '';
+  return css.slice(at, css.indexOf('\n}', at));
+}
 
 /* Ticket 53 split LockScreen and PassphraseGate into three: the boot gate,
    the mid-session one, and the setup module the first of them renders. The
@@ -97,16 +105,99 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws no flag and names the app nowhere', () => {
-    /* The disguise question, answered by there being nothing to answer: no
-       gate carries the sun, the stripes or the app's name, so none of them
-       has a disguised variant to get wrong. */
+  it('draws no flag and never names the app except through the wordmark', () => {
+    /* No gate carries the sun or reads the stripes: the sun is Home's and
+       setup's (ADR-0035), and a single colour is not a flag, so the field a
+       gate wears since redesign ticket 34 is the flag's second colour and
+       nothing more - `--field` and `--field-ink`, published on <html> by
+       activeFlag, which answers disguise itself.
+
+       The app's name is the half that changed. Rule 15 makes it the title of
+       every gate that cannot greet by name, so "names the app nowhere" is no
+       longer the rule; the rule is that it may only be named through
+       `appWordmark`, which is what turns it into the decoy's name under
+       disguise. A raw `m.app_name()` on a lock screen shows the real name to
+       exactly the person the disguise exists for. */
     for (const path of GATES) {
-      const source = read(path);
+      /* Comments out first, so this rule can be argued for in prose beside
+         the code that keeps it without failing itself. */
+      const source = stripComments(read(path));
       expect(source, path).not.toContain('FlagSun');
       expect(source, path).not.toContain('activeFlag');
-      expect(source, path).not.toContain('m.app_name()');
+      for (const at of [...source.matchAll(/m\.app_name\(\)/g)]) {
+        const call = source.slice(Math.max(0, at.index - 60), at.index);
+        expect(call, `${path}: m.app_name() outside appWordmark()`).toMatch(
+          /appWordmark\([^()]*$/
+        );
+      }
     }
+  });
+
+  it('draws one pad, in setup and at every gate', () => {
+    /* Redesign ticket 34's own acceptance: "the pad is one component and one
+       drawing across setup and the gates". It was already one component -
+       ticket 53 extracted it when the PIN got three jobs - and the thing that
+       could quietly stop being true is the drawing: a second `.pin-key` or
+       `.pin-dot` rule in a screen's own block, or a mount that reaches for
+       something other than PinPad. Both are greps because both are
+       negatives. */
+    const mounts = ['src/lib/components/PinEntry.svelte', 'src/lib/components/AccessModeSetup.svelte'];
+    for (const path of mounts) {
+      expect(read(path), path).toContain("import PinPad from './PinPad.svelte'");
+      expect(stripScript(read(path)), path).toContain('<PinPad');
+    }
+    /* Nowhere else may draw one. The keypad markup lives in PinPad and the
+       two screens above mount it; a third copy is what this catches. */
+    const drawn = [...GATE_CONTENT, 'src/routes/onboarding/+page.svelte'].filter((path) =>
+      stripComments(stripScript(read(path))).includes('class="pin-key"')
+    );
+    expect(drawn).toEqual(['src/lib/components/PinPad.svelte']);
+    /* And one set of rules for it. `components.css` is the always-loaded
+       sheet both surfaces read; a `.pin-key` or `.pin-dot` selector in a
+       route's own scoped block would be a second drawing that only one of
+       them wears. */
+    for (const [where, css] of [
+      ['screens', read('src/lib/styles/screens.css')],
+      ['onboarding', read('src/routes/onboarding/+page.svelte').slice(read('src/routes/onboarding/+page.svelte').indexOf('<style>'))]
+    ] as const) {
+      expect(stripComments(css), where).not.toMatch(/\.pin-(key|dot|pad)\s*[,{]/);
+    }
+  });
+
+  it('animates no gate onto the screen, and says why where the shell is', () => {
+    /* Rule 15 and ADR-0078's cut list: a cold start has nothing to come from
+       and a mid-session lock arriving is the one state change whose whole
+       value is being instant. Everything after that first frame moves, which
+       is what $lib/motion/appOpening is for - and it only ever runs on the
+       change that *ends* a gate.
+
+       Two negatives and one positive. Nothing a gate is built from may bring
+       the screen on: not the frame, not the field, and not the mount. The
+       title is the exception that proves it - it carries `in:`/`out:`
+       because a gate asks more than one thing over its life and that change
+       is inside a settled screen, which is the half of rule 15 that says
+       everything after the first frame moves. So the rule is written against
+       the three elements that are the screen rather than against the file. */
+    const shellMarkup = stripComments(stripScript(read('src/lib/components/GateScreen.svelte')));
+    for (const frame of ['screen screen-gate', 'gate step-field-host', 'gate-field step-field']) {
+      const at = shellMarkup.indexOf(`class="${frame}"`);
+      expect(at, `${frame} is not the shell's own element any more`).toBeGreaterThan(-1);
+      const tag = shellMarkup.slice(at, shellMarkup.indexOf('>', at));
+      expect(tag, `${frame} animates its own arrival`).not.toMatch(/\b(in|transition):[a-zA-Z]/);
+    }
+    for (const path of GATES) {
+      const mount = stripComments(stripScript(read(path)));
+      for (const at of [...mount.matchAll(/<GateScreen[^>]*>/g)]) {
+        expect(at[0], `${path}: a gate animating its own arrival`).not.toMatch(
+          /\b(in|transition):[a-zA-Z]/
+        );
+      }
+    }
+    const shell = read('src/lib/components/GateScreen.svelte');
+    expect(shell).toMatch(/arrival is a cut on every gate/i);
+    /* The one direction that does move, named in the shell so the two halves
+       of the decision are read together. */
+    expect(shell).toContain('appOpening');
   });
 
   it('carries no shadow, which the redesign gives only to the floating bar', () => {
@@ -229,10 +320,23 @@ describe('the first run', () => {
     expect(onboarding).not.toContain('sharedAxisX');
     /* The edge, and everything riding it, is one clock: --dur-slow on the
        settle sampled per move. A second duration written here is how the
-       question and the page it sits on would come apart. */
+       question and the page it sits on would come apart.
+
+       The clock moved out of this screen's own block and into the shared
+       sheet when the gates took the same field (redesign ticket 34), so
+       what is asserted here is that the screen wears the shared drawing and
+       writes no second clock of its own. Two surfaces reading one set of
+       numbers is the whole point of rules 12 and 15 sharing a field. */
+    expect(onboardingMarkup).toMatch(/class="setup step-field-host"/);
+    expect(onboardingMarkup).toMatch(/class="setup-field step-field"/);
+    expect(onboardingMarkup).toContain('class="step-field-ask"');
+    expect(onboardingMarkup).toContain('class="step-field-below"');
     const styles = onboarding.slice(onboarding.indexOf('<style>'));
-    expect(styles).toMatch(/transition-property:\s*--blind-edge/);
+    expect(styles).not.toMatch(/transition-property:\s*--blind-edge/);
     expect(styles).not.toMatch(/cubic-bezier/);
+    const components = read('src/lib/styles/components.css');
+    expect(ruleBody(components, '.step-field-host')).toMatch(/transition-property:\s*--blind-edge/);
+    expect(ruleBody(components, '.step-field-host')).toMatch(/var\(--dur-slow\)/);
   });
 
   it('takes its surfaces from the kit and draws no card of its own', () => {

@@ -104,12 +104,19 @@
 </script>
 
 <div class="screen">
-  <!-- Hidden on the live build (Alicja, 2026-08-25): a visible "Settings"
-       sitting directly above "Appearance" is the same two-headers-stacked
-       problem DIRECTION.md 3d names for the More hub, even though this
-       screen isn't itself a tab - the title stays in the document for a
-       screen reader and the outline, same as there. -->
-  <ScreenHeader title={m.nav_settings()} titleHidden />
+  <!-- Rule 7's third case, chrome (carpet 25). The title was hidden here
+       from ticket 24 until the field existed: a visible "Settings" sitting
+       on the page directly above "Appearance" was two headers stacked
+       (Alicja, 2026-08-25), which a title on a block of the flag's colour
+       is not - it is the shape every deep screen in the app already draws,
+       and this screen was the one arriving with no top at all.
+
+       Back to Today, since the phone's gear is in Today's foot (ADR-0076),
+       and through smartBack for the rail and for every deep link that
+       reaches here. On the 1024px shell the control is dropped by
+       components.css: from a fifth row at the rail's foot there is nothing
+       for it to point at. -->
+  <ScreenHeader title={m.nav_settings()} back="/" chrome />
 
   <SectionHeading text={m.settings_appearance()} />
   <ListCard>

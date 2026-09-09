@@ -1040,6 +1040,29 @@ html[data-nav='container']::view-transition-new(screen) {
   animation-name: screen-crossfade, blind-follow;
 }
 
+/* The app opening for its owner: the secret is accepted and the gate gives
+   way (redesign ticket 34, $lib/motion/appOpening, which explains why this
+   one is not a navigation and has to start its own transition).
+
+   The only pattern in the app whose two screens do nothing but change
+   opacity, and the reason is that the movement is already there. A gate's
+   field is one title tall; Home's is 175px of the flag with the sun in it.
+   So the blind opens by that difference on --dur-slow, the wordmark printed
+   on it rides down onto the place Home draws its own, the sun's rings open
+   outermost-first as it goes, and the page follows the edge down instead of
+   waiting under it. A scale on top of all that - fade-through's 0.97 and
+   1.03, which the four tabs use because they are peers with nothing else
+   moving between them - is the app also being replaced while it opens.
+
+   The gate does not recede either, for the same reason: it is not going
+   anywhere, it is being covered. */
+html[data-nav='open']::view-transition-old(screen) {
+  animation-name: screen-fade-away;
+}
+html[data-nav='open']::view-transition-new(screen) {
+  animation-name: screen-crossfade, blind-follow;
+}
+
 /* The container transform is the one pattern that also cared about this: a
    transform on a named element moves the geometry the browser measured for the
    morph. With `.screen` carrying no animation at all there is nothing left to
