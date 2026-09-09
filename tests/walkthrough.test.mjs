@@ -1710,8 +1710,8 @@ try {
 
 
 /* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
-   redesign ticket 22, ticket 32: nine steps - welcome, name, flag, scales,
-   areas, lock, check-in, disguise, finish) */
+   redesign tickets 22, 31 and 32: nine steps - welcome, name, flag, scales,
+   areas, lock, permissions, disguise, finish) */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
@@ -1821,16 +1821,52 @@ try {
   await page.locator('[data-list-row="area-care"]').click();
   await page.locator('[data-list-row="area-eras"]').click();
   await page.locator('[data-next]').click(); // areas -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
+  await page.locator('[data-next]').click(); // lock -> permissions
 
-  /* Ticket 46: the persona premise this step answers is that it defaults
-     the daily nudge on. It doesn't - confirmed here at the switch itself,
-     not only by never touching it below. */
-  if ((await page.getByRole('switch', { name: 'Daily check-in' }).getAttribute('aria-checked')) === 'true') {
-    throw new Error('daily check-in switched itself on by default');
+  /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
+     step that names everything the app can ask this device for. Four rows
+     it can ask about and a second group it never asks about, and on the web
+     the two Android-only rows say so rather than offering a dead button. */
+  await page.waitForSelector('[data-permission-list]');
+  const grantable = await page.locator('[data-grant]').evaluateAll((els) =>
+    els.map((el) => el.dataset.grant)
+  );
+  if (grantable.join() !== 'microphone,camera') {
+    throw new Error('the web build should offer only the two prompts it has: ' + grantable.join());
+  }
+  for (const key of ['notifications', 'exactAlarms']) {
+    const row = page.locator(`[data-permission="${key}"]`);
+    if ((await row.count()) !== 1) throw new Error(`the ${key} row is missing from the list`);
+    if ((await row.getAttribute('data-permission-state')) !== 'unavailable') {
+      throw new Error(`${key} should read as unavailable on the web`);
+    }
+    const trailing = await row.textContent();
+    if (!trailing.includes('Android only')) {
+      throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
+    }
+  }
+  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
+      throw new Error(`the ${key} row is missing from the no-permission group`);
+    }
+  }
+  for (const key of ['backupFolder', 'batteryOptimisation']) {
+    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
+      throw new Error(`the web build has no ${key} and should not list one`);
+    }
+  }
+  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
+    throw new Error('the list does not end on the fact that there is no internet permission');
+  }
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+
+  /* Skippable like every other step, and skipping grants nothing - which is
+     the only thing there is to check, since nothing here is stored. */
+  if ((await page.locator('[data-skip-step]').count()) !== 1) {
+    throw new Error('the permissions step carries no Skip');
   }
 
-  await page.locator('[data-next]').click(); // check-in -> disguise
+  await page.locator('[data-next]').click(); // permissions -> disguise
 
   /* Ticket 32: setup's last question, and the one answer that is not
      applied where it is given. The switch arrives off, the row carries the
@@ -1942,8 +1978,8 @@ try {
   await page.locator('[data-next]').click(); // flag -> scales
   await page.locator('[data-next]').click(); // scales -> areas
   await page.locator('[data-next]').click(); // areas -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
-  await page.locator('[data-next]').click(); // check-in -> disguise
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
 
   /* Held, not applied: the tab is still the app's own with the switch on,
      because the answer is written by complete() and by nothing before it.
@@ -2137,8 +2173,8 @@ try {
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 4) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
   await page.locator('[data-skip-step]').click(); // areas -> lock
-  await page.locator('[data-next]').click(); // lock -> check-in
-  await page.locator('[data-next]').click(); // check-in -> disguise
+  await page.locator('[data-next]').click(); // lock -> permissions
+  await page.locator('[data-next]').click(); // permissions -> disguise
   await page.locator('[data-next]').click(); // disguise -> finish
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
@@ -3367,7 +3403,7 @@ try {
 try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
-    '/settings/security', '/settings/tags', '/settings/trash', '/settings/reminders',
+    '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
     '/settings/journey-anchor', '/settings/affirmations', '/settings/body-regions',
     '/settings/journaling-pause', '/media/photos',
     '/body/measurements', '/body/sizes', '/body/hair-progress',
@@ -3388,6 +3424,44 @@ try {
   ok(`all ${SETTINGS_AREA_ROUTES.length} settings-area routes still answer at their own address`);
 } catch (e) {
   fail('More hub route characterization', e);
+}
+
+/* The permissions list has a permanent home (phase 10 redesign ticket 31).
+   Setup's step says every one of these can be granted later, and the only
+   thing that makes that sentence true is a screen in Settings drawing the
+   same list from the same component - so what this checks is that the row
+   is there, that it leads somewhere, and that what it leads to is the same
+   rows under the same reasons, not a second list saying something close. */
+try {
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await page.locator('a[href="/settings/permissions"]').click();
+  await page.waitForSelector('[data-permission-list]');
+  await page.waitForFunction(() => location.pathname === '/settings/permissions');
+
+  const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
+    els.map((el) => el.dataset.permission)
+  );
+  const expected = [
+    'notifications',
+    'exactAlarms',
+    'microphone',
+    'camera',
+    'takePhoto',
+    'pickFile',
+    'print',
+    'clipboard',
+    'biometric'
+  ];
+  if (onScreen.join() !== expected.join()) {
+    throw new Error('the settings screen draws a different list: ' + onScreen.join());
+  }
+  if (!(await page.locator('[data-no-internet]').textContent()).includes('no internet permission')) {
+    throw new Error('the settings screen drops the no-internet line');
+  }
+  await expectNoHorizontalOverflow('[data-app-viewport]');
+  ok('the permissions list has a permanent home in Settings, drawn from the same component');
+} catch (e) {
+  fail('permissions in Settings', e);
 }
 
 /* Carpet ticket 14: the measurements screen's capture-protocol notice is one

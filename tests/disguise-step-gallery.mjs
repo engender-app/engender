@@ -101,7 +101,7 @@ const wear = async (page, palette, theme) => {
 };
 
 /** First run, walked to the disguise step, which is the last question. */
-const BEFORE_DISGUISE = ['welcome', 'name', 'flag', 'scales', 'areas', 'lock', 'checkin'];
+const BEFORE_DISGUISE = ['welcome', 'name', 'flag', 'scales', 'areas', 'lock', 'permissions'];
 const stepToDisguise = async (page) => {
   await settle(page, '/');
   await page.selectOption('#demo-jump', 'first-run');
