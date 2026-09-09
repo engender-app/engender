@@ -28,7 +28,8 @@
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bioGateDecision } from '$lib/lock/bio-consent';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import { appWordmark } from '$lib/disguise/identity';
+  import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import Icon from './Icon.svelte';
@@ -127,12 +128,12 @@
        A recovery key is a different file that no alias is involved in, so
        where one exists the way back goes first and the reset stops being the
        only thing on offer. -->
-  <GateScreen icon="alert" tone="alert" title={m.ak_invalidated_title()}>
+  <GateScreen title={m.ak_invalidated_title()}>
     <!-- Held back until the answer is in, for the reason
          DeviceBoundRecovery states: this body is the harder of the two to
          be wrong about, since it tells somebody their journal is gone. -->
     {#if recoveryKeyPresence.known}
-      <p class={gateBodyClass(invalidatedBody)} data-key-invalidated>{invalidatedBody}</p>
+      <p class="gate-body" data-key-invalidated>{invalidatedBody}</p>
     {/if}
     {#if recoveryKeyPresence.exists}
       <div class="gate-actions">
@@ -151,8 +152,8 @@
   <!-- No screen lock at all, so there is nothing for Keystore to bind a key
        to. The only screen here that asks for something outside the app, and
        the only one whose action is "look again". -->
-  <GateScreen icon="lock" title={m.ak_no_lock_title()}>
-    <p class={gateBodyClass(m.ak_no_lock_body())} data-needs-device-lock>{m.ak_no_lock_body()}</p>
+  <GateScreen title={m.ak_no_lock_title()}>
+    <p class="gate-body" data-needs-device-lock>{m.ak_no_lock_body()}</p>
     <div class="gate-actions">
       <button class="btn btn-primary" data-check-again disabled={busy} onclick={() => authenticate(false)}>
         <span>{busy ? m.ak_unlocking() : m.ak_check_again()}</span>
@@ -160,14 +161,16 @@
     </div>
   </GateScreen>
 {:else}
-  <!-- No name in the greeting, for the same reason the passphrase gate has
-       none: the display name lives in the encrypted journal, and this screen
-       renders before it can be read. -->
-  <GateScreen icon="fingerprint" title={m.ak_unlock_title()}>
+  <!-- The wordmark, not a greeting and not an instruction (rule 15): the
+       display name lives in the encrypted journal and this screen renders
+       before it can be read, and what to do is on the line under it. Through
+       `appWordmark`, so a disguised install shows the decoy's name on the one
+       screen a person other than its owner is most likely to be holding. -->
+  <GateScreen title={appWordmark(prefs.disguise, m.app_name())}>
     <!-- Polite rather than an alert: the prompt is Android's own dialog and
          takes the focus, so this line is what is waiting underneath when it
          goes, not something that interrupts. -->
-    <p class={gateBodyClass(explanation)} aria-live="polite" data-key-status>{explanation}</p>
+    <p class="gate-body" aria-live="polite" data-key-status>{explanation}</p>
 
     <div class="gate-actions">
       {#if refusal === null || refusal.wayForward === 'retry'}

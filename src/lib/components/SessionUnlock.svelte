@@ -32,8 +32,9 @@
   import { confirmWithBiometrics } from '$lib/lock/android-key';
   import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { isAndroid } from '$lib/platform';
+  import { appWordmark } from '$lib/disguise/identity';
   import type { JournalAccessMode } from '$lib/data/journal-access-mode';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
@@ -157,11 +158,22 @@
       answer instead. */
   let wayOut = $derived(mode === 'pin' ? m.pin_forgot() : mode === 'biometric' ? m.bm_no_way_in() : m.pp_forgot());
 
-  let title = $derived(prefs.name ? m.pin_greeting_named({ name: prefs.name }) : m.pin_greeting());
+  /* A gate greets you if it knows your name, and shows the app's own name if
+     it does not (DIRECTION.md rule 15). This screen is the one gate that can
+     do the first: the journal is open behind it, so `prefs.name` has been
+     read. Where it has not been set the title is the wordmark, which is the
+     same object at the same size that Home paints on its own field - so the
+     unlock's handover closes the field around a wordmark that holds still
+     rather than swapping one title for another. Through `appWordmark`, never
+     `m.app_name()` directly, because under disguise the name on a lock screen
+     is the one that must not be the real one (ADR-0035). */
+  let title = $derived(
+    prefs.name ? m.pin_greeting_named({ name: prefs.name }) : appWordmark(prefs.disguise, m.app_name())
+  );
 </script>
 
-<GateScreen icon="lock" {title} data-applock>
-  <p class={gateBodyClass(body)}>{body}</p>
+<GateScreen {title} data-applock>
+  <p class="gate-body">{body}</p>
 
   {#if mode === 'pin'}
     <PinEntry onVerify={submitPin} />

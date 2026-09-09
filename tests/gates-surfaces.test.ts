@@ -32,6 +32,14 @@ const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g
     comment next to the code that replaced it without failing itself. */
 const stripComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+/** One rule's declarations, by exact selector. Enough for a sheet written
+    one selector per rule, which these are; direction-contract.test.ts has
+    the general parser for the checks that need one. */
+function ruleBody(css: string, prelude: string): string {
+  const at = css.indexOf(`\n${prelude} {`);
+  if (at === -1) return '';
+  return css.slice(at, css.indexOf('\n}', at));
+}
 
 /* Ticket 53 split LockScreen and PassphraseGate into three: the boot gate,
    the mid-session one, and the setup module the first of them renders. The
@@ -97,15 +105,31 @@ describe('what a gate may show', () => {
     }
   });
 
-  it('draws no flag and names the app nowhere', () => {
-    /* The disguise question, answered by there being nothing to answer: no
-       gate carries the sun, the stripes or the app's name, so none of them
-       has a disguised variant to get wrong. */
+  it('draws no flag and never names the app except through the wordmark', () => {
+    /* No gate carries the sun or reads the stripes: the sun is Home's and
+       setup's (ADR-0035), and a single colour is not a flag, so the field a
+       gate wears since redesign ticket 34 is the flag's second colour and
+       nothing more - `--field` and `--field-ink`, published on <html> by
+       activeFlag, which answers disguise itself.
+
+       The app's name is the half that changed. Rule 15 makes it the title of
+       every gate that cannot greet by name, so "names the app nowhere" is no
+       longer the rule; the rule is that it may only be named through
+       `appWordmark`, which is what turns it into the decoy's name under
+       disguise. A raw `m.app_name()` on a lock screen shows the real name to
+       exactly the person the disguise exists for. */
     for (const path of GATES) {
-      const source = read(path);
+      /* Comments out first, so this rule can be argued for in prose beside
+         the code that keeps it without failing itself. */
+      const source = stripComments(read(path));
       expect(source, path).not.toContain('FlagSun');
       expect(source, path).not.toContain('activeFlag');
-      expect(source, path).not.toContain('m.app_name()');
+      for (const at of [...source.matchAll(/m\.app_name\(\)/g)]) {
+        const call = source.slice(Math.max(0, at.index - 60), at.index);
+        expect(call, `${path}: m.app_name() outside appWordmark()`).toMatch(
+          /appWordmark\([^()]*$/
+        );
+      }
     }
   });
 
@@ -229,10 +253,23 @@ describe('the first run', () => {
     expect(onboarding).not.toContain('sharedAxisX');
     /* The edge, and everything riding it, is one clock: --dur-slow on the
        settle sampled per move. A second duration written here is how the
-       question and the page it sits on would come apart. */
+       question and the page it sits on would come apart.
+
+       The clock moved out of this screen's own block and into the shared
+       sheet when the gates took the same field (redesign ticket 34), so
+       what is asserted here is that the screen wears the shared drawing and
+       writes no second clock of its own. Two surfaces reading one set of
+       numbers is the whole point of rules 12 and 15 sharing a field. */
+    expect(onboardingMarkup).toMatch(/class="setup step-field-host"/);
+    expect(onboardingMarkup).toMatch(/class="setup-field step-field"/);
+    expect(onboardingMarkup).toContain('class="step-field-ask"');
+    expect(onboardingMarkup).toContain('class="step-field-below"');
     const styles = onboarding.slice(onboarding.indexOf('<style>'));
-    expect(styles).toMatch(/transition-property:\s*--blind-edge/);
+    expect(styles).not.toMatch(/transition-property:\s*--blind-edge/);
     expect(styles).not.toMatch(/cubic-bezier/);
+    const components = read('src/lib/styles/components.css');
+    expect(ruleBody(components, '.step-field-host')).toMatch(/transition-property:\s*--blind-edge/);
+    expect(ruleBody(components, '.step-field-host')).toMatch(/var\(--dur-slow\)/);
   });
 
   it('takes its surfaces from the kit and draws no card of its own', () => {

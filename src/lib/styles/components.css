@@ -74,6 +74,149 @@
    can say something about. Setting a class alone makes nothing a stacking
    context - only a name does - so this is safe to leave on permanently. */
 [data-field-part] { view-transition-class: field-part; }
+
+/* ---------- a field whose edge moves without a navigation ----------
+
+   Setup and the gates are step machines (DIRECTION.md rules 12 and 15), and
+   a step is one screen in many states rather than two screens with a
+   photograph of each. So this field's bottom edge cannot be a view
+   transition: it is driven from the field's own measured height by
+   $lib/motion/stepBlind, and these are the rules that mechanism writes
+   into. Redesign ticket 33 built them inside onboarding's own scoped style
+   block; ticket 34 needs the same drawing on five gates, so the pattern is
+   here and each surface adds only what differs - setup the sun's reserve
+   and the back control's row, a gate nothing at all.
+
+   `.screen-field` above is the other half of the same idea and stays
+   separate on purpose. A door's field moves only on a navigation, so its
+   paint can be a clipped child; this one has to let its paint stand taller
+   than its box for the length of a close, which is what the split below is
+   for. */
+
+/* `--blind-edge` is where the field's bottom edge is, in pixels. Registered
+   rather than left a plain custom property for the reason every var()-driven
+   animation in this app has to be: an unregistered property has no type, so
+   it cannot be interpolated and a transition naming it would jump.
+   Registered as a length it animates, and the clip reads it per frame.
+
+   In the always-loaded sheet rather than in a screen's own block, because
+   the gates need it too and a route's stylesheet is code-split: registered
+   inside onboarding, the property simply did not exist on any page that had
+   not been through the first run. */
+@property --blind-edge {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+/* The host: whatever box holds the field and the page under it. It carries
+   the edge and the edge's own clock. Longhands rather than the shorthand
+   because --blind-ease is sampled per move and arrives as a linear(): an
+   unparseable one takes a whole shorthand with it on an old WebView, and
+   taking the transition with it is what would strand the edge. Each surface
+   sets its own `--blind-edge` fallback, since where the edge rests before
+   the first measurement is a fact about that surface's own first state. */
+.step-field-host {
+  transition-property: --blind-edge;
+  transition-duration: var(--dur-slow);
+  transition-timing-function: var(--blind-ease, var(--ease-out));
+}
+/* The frame the old geometry is painted on, written by stepBlind before the
+   browser paints and taken off on the frame after: the edge where it was,
+   everything that rides it back where it was, and nothing transitioning. It
+   is deliberately identical to the frame before it - that is the whole of
+   how a state change inside a step avoids a single-frame jump. */
+[data-blind-hold].step-field-host { transition: none; }
+
+/* The box that measures the field, and paints none of it. Bleeds up through
+   the inset the scroll region pads every screen by and out through
+   .screen's own 20, then pads back in by both, so the title starts where
+   the content under it does and sits as clear of the status bar as any
+   other first line. Decoration crosses the inset; nothing readable does. */
+.step-field {
+  position: relative;
+  flex: 0 0 auto;
+  margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
+  padding: calc(var(--inset-top) + var(--space-2)) var(--space-5) var(--space-4);
+  color: var(--field-ink);
+  /* The paint below is a window tall and absolutely positioned in this box,
+     and an absolutely positioned child contributes its overflow to its
+     containing block's - which propagated all the way up and made the frame
+     report exactly `--nav-clearance` of content it was hiding, on every step
+     at every size. `clip` stops the propagation without making anything a
+     scroll container, and the margin is what stops it also clipping the
+     paint, which has to be able to stand taller than this box for the length
+     of a close: the edge starts at the height the field had and this box is
+     already at the height it is going to.
+
+     120px, and the number is the point. A clip container's clip box is what
+     its ancestors see, so a margin big enough to reach past the frame
+     propagates again - `50vh` did, and put 20px back on setup's disguise
+     step at 360x640. The largest close in either flow needs 41px of room
+     (the travel plus the settle); 120 is room to spare and still well inside
+     the shortest frame anything here is measured at. The handover out is not
+     constrained by this at all - a named element escapes its ancestors'
+     clipping for the length of a navigation, which is the whole mechanism
+     ticket 28 relies on. */
+  overflow: clip;
+  overflow-clip-margin: 120px;
+}
+/* The paint, split from the box above (ticket 28's mechanism, and the same
+   reason it exists there): a flat block a window tall whose bottom edge is a
+   clip, so the edge moves without the block ever being resized and no frame
+   can deform the two bottom corners. A sibling of the content rather than a
+   wrapper round it, because the box may not clip the paint: the field's own
+   overflow would cut it back to the new height on the frame the height
+   changed, which is the jump the clip is here to prevent. */
+.step-field-paint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--field);
+  clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0 round 0 0 var(--r-block) var(--r-block));
+}
+/* What is printed on the field. One grid cell holds the outgoing words and
+   the incoming ones, so the two overlap rather than stacking and doubling
+   the field's height mid-change. */
+.step-field-ask {
+  position: relative;
+  z-index: 1;
+  display: grid;
+}
+.step-field-ask > * { grid-area: 1 / 1; }
+/* Everything under the edge, riding it on the edge's own clock, so the pair
+   reads as one sheet of page being uncovered rather than as two blocks each
+   finding its own way down (rule 10). */
+.step-field-below {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.step-field-ask,
+.step-field-below {
+  translate: 0 0;
+  transition-property: translate;
+  transition-duration: var(--dur-slow);
+  transition-timing-function: var(--blind-ease, var(--ease-out));
+}
+/* Its own delta, not the field's: everything under the field travels by what
+   the field gained, and what is printed on it does not, because most of that
+   gain is the words themselves getting taller and a box does not move
+   because it grew downwards. See stepBlind.ts. */
+[data-blind-hold] .step-field-ask {
+  translate: 0 var(--part-delta, 0px);
+  transition: none;
+}
+[data-blind-hold] .step-field-below {
+  translate: 0 var(--blind-delta, 0px);
+  transition: none;
+}
+
 /* On a screen, the field runs from the window's top edge to both side
    edges: back up through the inset the scroll region pads every screen by
    (the same bleed Home's sun makes, app.css) and out through .screen's own
