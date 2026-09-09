@@ -173,22 +173,46 @@ async function record(page, cdp, name, note, act, options = {}) {
   }
   const frames = [];
   const started = Date.now();
-  const onFrame = async ({ data, sessionId }) => {
+  /* Acked without awaiting: Chromium holds the next frame until the last one
+     is acknowledged, so a round trip per frame is a round trip of dropped
+     motion. */
+  const onFrame = ({ data, sessionId }) => {
     frames.push({ at: Date.now() - started, data });
-    try {
-      await cdp.send('Page.screencastFrameAck', { sessionId });
-    } catch {
+    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {
       /* Stopped between frame and ack: the ordinary end of a scene. */
-    }
+    });
   };
+  /* A pixel that never stops moving, for the length of the scene.
+
+     Chromium's screencast only emits on a new compositor frame, and coming
+     out of an idle page it takes about 90ms to start delivering them - which
+     put a 257px hole between the first two frames of a rise the page was
+     painting every 17ms. The samples proved the page was fine and the
+     recording was not. One compositor-only animation running throughout
+     keeps the pipeline warm, so the frames arrive at 60fps from the first
+     one. It is 1px, at 0.2% opacity, in the top-left corner, and outside
+     every band the flipbook keeps. */
+  await page.evaluate(() => {
+    const pulse = document.createElement('div');
+    pulse.dataset.screencastPulse = '';
+    pulse.style.cssText =
+      'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.002;' +
+      'background:currentColor;will-change:transform;animation:screencast-pulse 200ms linear infinite';
+    const style = document.createElement('style');
+    style.textContent =
+      '@keyframes screencast-pulse{from{transform:translateX(0)}to{transform:translateX(1px)}}';
+    document.head.append(style);
+    document.body.append(pulse);
+  });
   cdp.on('Page.screencastFrame', onFrame);
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 60, everyNthFrame: 1 });
-  await page.waitForTimeout(80);
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 45, everyNthFrame: 1 });
+  await page.waitForTimeout(200);
   await startSampling(page, READ_SHEET);
   await act();
   await page.waitForTimeout(sceneMs);
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
+  await page.evaluate(() => document.querySelector('[data-screencast-pulse]')?.remove());
   let samples;
   try {
     samples = await stopSampling(page);
@@ -208,8 +232,20 @@ async function record(page, cdp, name, note, act, options = {}) {
   console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms, top edge ${span}`);
 }
 
-/** The offer, opened. The dose row's yes is the button ticket 35 recorded. */
-const openOffer = (page) => page.locator('[data-coming-back-yes="dose"]').click();
+/** The offer, opened. The dose row's yes is the button ticket 35 recorded.
+ *
+ *  Scrolled into view and settled first, and that is not a nicety: Playwright
+ *  scrolls a control into view as part of clicking it, so a click on a button
+ *  below the fold spends 100ms scrolling the page between the recording's
+ *  first frame and the transition's - which lands in the flipbook as the page
+ *  jumping and the sheet already a third of the way up. The tap has to be the
+ *  only thing in the frame. */
+const armOffer = async (page) => {
+  const yes = page.locator('[data-coming-back-yes="dose"]');
+  await yes.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
+  return yes;
+};
 
 /** A drag released past `DISMISS_DISTANCE`, in steps, so the pointer moves
     across frames the way a finger does rather than teleporting. The grab
@@ -232,25 +268,30 @@ async function scenesFor(page, cdp, tag, notes, options = {}) {
 
   const crop = options.crop;
 
-  await record(page, cdp, `${tag}open`, notes.open, () => openOffer(page), { crop });
+  const yes = await armOffer(page);
+  await record(page, cdp, `${tag}open`, notes.open, () => yes.click(), { crop });
   await page.waitForSelector('[data-sheet]');
+  await page.waitForTimeout(500);
 
-  /* Cancel, the sheet's own second control - a close rather than an answer,
-     so nothing behind the sheet moves and the frames are the sheet alone. */
+  /* Closed by a tap on the scrim rather than on Cancel, for the same reason
+     the offer is armed first: Cancel is the last control in a sheet that
+     scrolls, so reaching it scrolls the sheet, and the frames then show the
+     contents travelling under their own steam. The scrim is under the finger
+     already and closes the same way. */
   await record(
     page,
     cdp,
     `${tag}close`,
     notes.close,
-    () => page.locator('[data-sheet] .btn-ghost').click(),
+    () => page.locator('[data-sheet-scrim]').click({ position: { x: 8, y: 8 } }),
     { crop }
   );
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 
   if (options.drag !== false) {
-    await openOffer(page);
+    await (await armOffer(page)).click();
     await page.waitForSelector('[data-sheet]');
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(700);
     await record(page, cdp, `${tag}drag-dismiss`, notes.dragDismiss, () => dragDismiss(page), {
       crop
     });
