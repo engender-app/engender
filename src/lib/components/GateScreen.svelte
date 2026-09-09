@@ -19,6 +19,21 @@
      already answers disguise with `--surface-2` and `--text`, so a gate
      needs no disguised variant of its own to get wrong.
 
+     **What the title says, once, for all six.** A gate greets you if it knows
+     your name and shows the app's own name if it does not (rule 15). Only the
+     mid-session lock can do the first: everywhere else the display name lives
+     in the encrypted journal and the screen renders before it can be read,
+     which is what the three separate greetings this replaced were each
+     working around - "Hi" with nobody to say it to, "Welcome back" on a screen
+     that cannot know whether anybody has been here before. So an unlock's
+     title is the wordmark, whichever secret it asks for, and it is the same
+     object at the same size Home paints on its own field a frame later, which
+     is what the handover closes around. Always through `appWordmark`, never
+     `m.app_name()`: under disguise the name on a lock screen is the one that
+     must not be the real one (ADR-0035). A gate that is not an unlock keeps
+     its own title, because what a conversion is about to do, and what the
+     access-mode module is asking, are the things those screens are for.
+
      What it deliberately does not own is the line under the title. Every gate
      puts different attributes on that line - a `role="status"` on the
      conversion's progress, an `aria-live` on the Android prompt's outcome, a

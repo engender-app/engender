@@ -170,15 +170,10 @@
       answer instead. */
   let wayOut = $derived(mode === 'pin' ? m.pin_forgot() : mode === 'biometric' ? m.bm_no_way_in() : m.pp_forgot());
 
-  /* A gate greets you if it knows your name, and shows the app's own name if
-     it does not (DIRECTION.md rule 15). This screen is the one gate that can
-     do the first: the journal is open behind it, so `prefs.name` has been
-     read. Where it has not been set the title is the wordmark, which is the
-     same object at the same size that Home paints on its own field - so the
-     unlock's handover closes the field around a wordmark that holds still
-     rather than swapping one title for another. Through `appWordmark`, never
-     `m.app_name()` directly, because under disguise the name on a lock screen
-     is the one that must not be the real one (ADR-0035). */
+  /* The one gate that can greet by name, and the whole of why: the journal is
+     open behind this screen, so `prefs.name` has been read. Everything else
+     about a gate's title - the wordmark where there is nobody to greet, and
+     why it goes through `appWordmark` - is argued in GateScreen.svelte. */
   let title = $derived(
     prefs.name ? m.pin_greeting_named({ name: prefs.name }) : appWordmark(prefs.disguise, m.app_name())
   );
