@@ -125,8 +125,27 @@ const pickFile = async (name) => {
   );
 };
 
+/* DIRECTION rule 14 is measured, not eyeballed: no step in setup scrolls at
+   default text size between 320 and 430 wide, nor with a keyboard up. A new
+   step owes that number, so every shot records it. */
+const scroll = {};
+
 const shoot = async (name, selector) => {
   await page.waitForTimeout(350);
+  scroll[name] = await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    if (region) region.scrollTop = 0;
+    const h = (sel) => Math.round(document.querySelector(sel)?.getBoundingClientRect().height ?? 0);
+    return {
+      overflow: region ? region.scrollHeight - region.clientHeight : 0,
+      viewport: window.innerHeight,
+      title: h('.setup-title'),
+      file: h('.setup-file'),
+      typed: h('.setup-typed'),
+      status: h('.setup-status'),
+      foot: h('.setup-foot')
+    };
+  });
   await page.locator(selector).screenshot({ path: `${outDir}/${name}.png` });
   shots.push(name);
 };
@@ -189,13 +208,33 @@ for (const [palette, theme] of [
   await shoot(`restore-${palette}-${theme}-refused`, '[data-app-root]');
 }
 
+/* ---------- the sizes rule 14 is measured at ----------
+
+   320x568 is the narrow floor and also a short one; 390x360 stands in for a
+   raised keyboard, and the control the keyboard is for has to stay on
+   screen. The numbers land in scroll.json beside the shots. */
+await dress('trans', 'light');
+for (const [key, size] of [
+  ['narrow', { width: 320, height: 568 }],
+  ['keyboard', { width: 390, height: 360 }],
+  ['wide', { width: 430, height: 932 }]
+]) {
+  await page.setViewportSize(size);
+  await firstRun();
+  await page.locator('[data-restore-start]').click();
+  await page.waitForSelector('[data-restore-pick]');
+  await pickFile('journal-2026-09-09.ttbackup');
+  await shoot(`restore-${key}`, '[data-app-root]');
+}
+await page.setViewportSize(VIEWPORT);
+
 /* ---------- the finish, on a restored first run ----------
 
    Reached with a real archive, because the finish is only shown once the
    file has been proved to open, and proving it is what the step does. */
 await dress('trans', 'light');
 await settle('/settings/export');
-await page.locator('#exp-pass').fill('gallery');
+await page.locator('#exp-pass').fill('gallery-password');
 await page.locator('[data-export]').click();
 const [archive] = await Promise.all([
   page.waitForEvent('download', { timeout: 120000 }),
@@ -208,7 +247,7 @@ await page.waitForSelector('[data-restore-pick]');
 page.once('filechooser', (chooser) => chooser.setFiles(archivePath));
 await page.locator('[data-restore-pick]').click();
 await page.waitForFunction(() => document.querySelector('[data-restore-file]'));
-await page.locator('#ob-restore-pass').fill('gallery');
+await page.locator('#ob-restore-pass').fill('gallery-password');
 await page.locator('[data-restore-check]').click();
 await page.waitForSelector('[data-next]', { timeout: 120000 });
 await strip();
@@ -268,7 +307,10 @@ async function record(name, note, act, read, cropOf) {
     await writeFile(resolve(outDir, file), Buffer.from(frame.data, 'base64'));
     written.push({ file, at: frame.at });
   }
-  scenes.push({ name, note, frames: written, samples, ...(crop ? { crop } : {}) });
+  /* `trace` rather than `samples`, which is the key panel-motion-flipbook.mjs
+     carries through to a review page: the flipbook has to be readable against
+     the numbers the same move measured, frame by frame. */
+  scenes.push({ name, note, frames: written, trace: samples, ...(crop ? { crop } : {}) });
   console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms`);
 }
 
@@ -303,8 +345,12 @@ await record(
 
 await writeFile(
   `${outDir}/manifest.json`,
-  JSON.stringify({ viewport: VIEWPORT, shots, scenes }, null, 2)
+  JSON.stringify({ viewport: VIEWPORT, shots, scroll, scenes }, null, 2)
 );
+await writeFile(`${outDir}/scroll.json`, JSON.stringify(scroll, null, 2));
+for (const [name, m] of Object.entries(scroll)) {
+  if (m.overflow > 0) console.log(`  scrolls: ${name} by ${m.overflow}px`);
+}
 await page.close();
 await context.close();
 await app.close();

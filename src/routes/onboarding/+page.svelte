@@ -823,7 +823,17 @@
               <span>{m.ob_restore_start_again()}</span>
             </button>
           {/if}
-          {#if step !== 'done'}
+          {#if step !== 'done' && step !== 'restore'}
+            <!-- Every step carries a way straight into the app, and the
+                 restore step is the one that does not, for two reasons that
+                 agree. It is an errand rather than a question about a
+                 preference, and its own out - back to the welcome as a new
+                 person - reaches the app in one more tap through the control
+                 that was already there. And the third control cost the step
+                 52px of foot, which is 20px more than a 390x844 phone has
+                 (DIRECTION rule 14, measured: `npm run gallery:restore`
+                 writes the overflow per state to scroll.json). Two controls,
+                 two meanings, and the step fits. -->
             <button class="btn btn-ghost" data-leave-setup onclick={leave}><span>{m.ob_leave()}</span></button>
           {/if}
         </div>
