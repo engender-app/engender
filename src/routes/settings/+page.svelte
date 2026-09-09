@@ -542,7 +542,7 @@
   <Sheet bind:open={disguiseSheet} title={m.disguise_row()}>
     <h3>{m.disguise_row()}</h3>
     <div class="stack-3">
-      <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.disguise_app_title()}</span>
           <span class="kit-row-sub">
@@ -559,7 +559,7 @@
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
       <DisguisePreview on={prefs.disguise} />
-      <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.lock_on_leave_title()}</span>
           <span class="kit-row-sub">
@@ -574,7 +574,7 @@
           }}
         />
       </div>
-      <div class="card spread" style="box-shadow:none;background:var(--surface-2)">
+      <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.quick_exit_title()}</span>
           <span class="kit-row-sub">
