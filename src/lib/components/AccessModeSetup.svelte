@@ -284,7 +284,7 @@
 {#if screen.screen === 'list'}
   {#if purpose !== 'recovered'}
     <div class="am-intro">
-      <p class="gate-body is-long" data-access-intro>
+      <p class="gate-body" data-access-intro>
         {purpose === 'change' ? m.am_change_body() : m.am_setup_body()}
       </p>
     </div>
@@ -312,8 +312,8 @@
        never on the screen that follows it. -->
   <div class="am-chosen" data-access-chosen={screen.mode}>
     <!-- The consequence, on the screen where the choice is actually made and
-         above the control that makes it. Left-aligned, for the reason
-         .gate-body.is-long exists: this is four or five lines of prose whose
+         above the control that makes it. Left, as everything on a gate is
+         since redesign ticket 34: this is four or five lines of prose whose
          whole job is being read once and understood, and centred prose goes
          ragged at both edges. It was centred in the first build of this
          screen, which is what the render caught.
@@ -333,7 +333,7 @@
       <!-- Said once, next to both modes it is true of, because it is the
            one sentence that turns "tied to this device" into something a
            person can act on. -->
-      <p class="am-export-note gate-body is-long is-small" data-access-export-note>{m.am_export_note()}</p>
+      <p class="am-export-note gate-body" data-access-export-note>{m.am_export_note()}</p>
     {/if}
 
     {#if needsSecret(screen.mode)}
@@ -437,11 +437,11 @@
      options" block. The options are rows now; what this carries is one
      mode's consequence.
 
-     Left-aligned, for the same reason .gate-body.is-long is: four or five
+     Left, as everything on a gate is since redesign ticket 34: four or five
      lines of prose that has to be read once and understood does not go in a
-     centred column, and the gate frame centres everything by default. The
-     first build of this screen inherited that centring, which is what
-     looking at the render caught. */
+     centred column. The gate frame used to centre everything by default and
+     the first build of this screen inherited it, which is what looking at
+     the render caught. */
   .am-notice {
     display: flex;
     gap: var(--space-3);
