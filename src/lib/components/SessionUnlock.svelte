@@ -32,13 +32,30 @@
   import { confirmWithBiometrics } from '$lib/lock/android-key';
   import { androidKeystore } from '$lib/lock/keystore-bridge';
   import { isAndroid } from '$lib/platform';
+  import { appWordmark } from '$lib/disguise/identity';
+  import { openApp } from '$lib/motion/appOpening';
+  import { ui } from '$lib/stores/ui.svelte';
   import type { JournalAccessMode } from '$lib/data/journal-access-mode';
-  import GateScreen, { gateBodyClass } from './GateScreen.svelte';
+  import GateScreen from './GateScreen.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
   let { mode }: { mode: JournalAccessMode } = $props();
+
+  /* What every one of the four ways in below ends on: the app coming back,
+     as the field opening from this screen's title onto the one Home draws
+     rather than this screen being replaced (redesign ticket 34).
+
+     Here rather than inside `markUnlocked`, which the cold-start gates reach
+     through the boot machine's own `mark-unlocked` effect: that path is
+     already inside a transition by the time the effect runs, and starting a
+     second one from under the first skips it - the app would appear in a
+     single frame, which is exactly what this exists to stop. */
+  const opened = () => {
+    ui.appOpening = true;
+    void openApp(markUnlocked).finally(() => (ui.appOpening = false));
+  };
 
   let passphrase = $state('');
   let error = $state('');
@@ -51,7 +68,7 @@
   async function submitPin(entered: string): Promise<PinAttempt> {
     try {
       await unlockJournalPin(entered);
-      markUnlocked();
+      opened();
       return 'ok';
     } catch (e) {
       return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
@@ -69,7 +86,7 @@
     try {
       await unlockJournalPassphrase(passphrase);
       passphrase = '';
-      markUnlocked();
+      opened();
     } catch (e) {
       const deviceGone = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
       error = e instanceof DeviceBindingUnavailableError ? deviceGone : m.pp_wrong();
@@ -86,7 +103,7 @@
     error = '';
     try {
       await unlockJournalBiometric();
-      markUnlocked();
+      opened();
     } catch (e) {
       console.error('the biometric unlock failed', e);
       error = m.bm_unlock_failed();
@@ -110,7 +127,7 @@
         deviceCredential: false
       });
       if (result.unlocksJournal) {
-        markUnlocked();
+        opened();
         return;
       }
       error =
@@ -157,11 +174,17 @@
       answer instead. */
   let wayOut = $derived(mode === 'pin' ? m.pin_forgot() : mode === 'biometric' ? m.bm_no_way_in() : m.pp_forgot());
 
-  let title = $derived(prefs.name ? m.pin_greeting_named({ name: prefs.name }) : m.pin_greeting());
+  /* The one gate that can greet by name, and the whole of why: the journal is
+     open behind this screen, so `prefs.name` has been read. Everything else
+     about a gate's title - the wordmark where there is nobody to greet, and
+     why it goes through `appWordmark` - is argued in GateScreen.svelte. */
+  let title = $derived(
+    prefs.name ? m.pin_greeting_named({ name: prefs.name }) : appWordmark(prefs.disguise, m.app_name())
+  );
 </script>
 
-<GateScreen icon="lock" {title} data-applock>
-  <p class={gateBodyClass(body)}>{body}</p>
+<GateScreen {title} data-applock>
+  <p class="gate-body">{body}</p>
 
   {#if mode === 'pin'}
     <PinEntry onVerify={submitPin} />
@@ -171,10 +194,11 @@
 
   {#if mode === 'passphrase'}
     <form class="gate-form" onsubmit={submitPassphrase}>
-      <div>
+      <!-- On the rule, like every other typed answer at a gate (rule 13). -->
+      <div class="typed">
         <label class="field-label" for="session-passphrase">{m.pp_label_unlock()}</label>
         <input
-          class="input"
+          class="rule-input"
           type="password"
           id="session-passphrase"
           name="passphrase"
