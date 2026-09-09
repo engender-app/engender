@@ -1,7 +1,6 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_name": "enGender",
-  "nav_home": "Home",
   "nav_calendar": "Calendar",
   "nav_settings": "Settings",
   "nav_more": "More",
@@ -3282,7 +3281,7 @@
   "margin_note_delete_q": "Delete this note? The entry stays exactly as you wrote it.",
   "margin_note_delete": "Delete",
   "coming_back_title": "Waiting for you",
-  "coming_back_intro": "The app held on to these while you were elsewhere. Take what you want and leave the rest.",
+  "coming_back_intro": "Take what you want, leave the rest.",
   "coming_back_done_action": "Done for now",
   "coming_back_empty_body": "The app is not holding anything for you right now.",
   "coming_back_letter_title": "A letter you can read",

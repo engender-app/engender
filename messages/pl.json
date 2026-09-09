@@ -1,7 +1,6 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_name": "enGender",
-  "nav_home": "Start",
   "nav_calendar": "Kalendarz",
   "nav_settings": "Ustawienia",
   "nav_more": "Więcej",
@@ -3338,7 +3337,7 @@
   "margin_note_delete_q": "Usunąć tę notatkę? Wpis zostaje bez zmian.",
   "margin_note_delete": "Usuń",
   "coming_back_title": "Czeka na ciebie",
-  "coming_back_intro": "Aplikacja to przechowała, kiedy cię tu nie było. Weź, co chcesz, resztę zostaw.",
+  "coming_back_intro": "Weź, co chcesz, resztę zostaw.",
   "coming_back_done_action": "Na razie tyle",
   "coming_back_empty_body": "Aplikacja nie trzyma teraz dla ciebie niczego.",
   "coming_back_letter_title": "List, który możesz przeczytać",

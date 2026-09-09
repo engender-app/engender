@@ -98,9 +98,13 @@
        jumping. `resize` is not needed any more: there is no card holding
        a height, only a run of rows between two hairlines, and each of
        them owns the height it gives back.
-     - **The empty state** is what the space the last row gave back turns
-       into. The line under the field is the screen's own, so it changes
-       where it stands while the list closes under it.
+     - **The empty state** arrives with the screen, because that is the
+       only way most people reach it: an arrival is a link to the screen
+       that owns it, not an offer, so a list holding one cannot be
+       answered down to nothing. Where the gap held offers alone and every
+       one of them is answered, the list does close to nothing and the
+       line changes where it stands, which is why the line is the
+       screen's own rather than a surface inside the list.
 
      Reduced motion clamps every one of these: the clip becomes a cut, the
      disclose a removal, the sheet a fade. Recorded frame by frame by
@@ -356,7 +360,15 @@
            (ADR-0062). Each row owns the height it gives back when it is
            answered, and the block on it clips open from its own left edge
            one stagger step after the row above (rule 10, ticket 19's
-           agenda). Capped at the seventh where the tiles' stagger is. -->
+           agenda). Capped at the seventh where the tiles' stagger is.
+
+           Guarded on the count rather than left to the gate: a flush list
+           is its rows between two hairlines, so a list with no rows in it
+           is two hairlines 2px apart. Found on the flipbook (ticket 35),
+           where declining the last offer left them behind under the line -
+           the gate cannot catch it, because the read still has rows and it
+           is `declined` that emptied the list. -->
+      {#if showing.length > 0}
       <ListCard>
         {#each showing as item, i (waitingItemKey(item))}
           <div
@@ -422,6 +434,7 @@
           </div>
         {/each}
       </ListCard>
+      {/if}
     {/snippet}
   </ReadGate>
 
@@ -568,8 +581,12 @@
       <button class="btn btn-primary" data-coming-back-dose-confirm disabled={!doseCanSave} onclick={confirmDose}>
         <span>{DOSE_OFFER.copy.confirm()}</span>
       </button>
+      <!-- Cancel, not the offer's own decline. The row behind this sheet now
+           shows "Leave it" as a labelled control of its own, and it answers
+           the offer: it takes the row away and the app stops asking. Closing
+           the sheet does neither, so it may not wear the same words. -->
       <button class="btn btn-ghost" onclick={() => (doseDraft = null)}>
-        <span>{DOSE_OFFER.copy.decline()}</span>
+        <span>{m.cancel()}</span>
       </button>
     </div>
   {/if}
@@ -607,8 +624,11 @@
       <button class="btn btn-primary" data-coming-back-wear-confirm disabled={!wearCanSave} onclick={confirmWear}>
         <span>{WEAR_OFFER.copy.confirm()}</span>
       </button>
+      <!-- Cancel rather than the offer's decline, for the reason the dose
+           sheet gives: the row behind this one carries "Leave it running" as
+           the answer, and closing a sheet is not answering. -->
       <button class="btn btn-ghost" onclick={() => (wearDraft = null)}>
-        <span>{WEAR_OFFER.copy.decline()}</span>
+        <span>{m.cancel()}</span>
       </button>
     </div>
   {/if}
