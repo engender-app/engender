@@ -161,11 +161,9 @@
     </div>
   </GateScreen>
 {:else}
-  <!-- The wordmark, not a greeting and not an instruction (rule 15): the
-       display name lives in the encrypted journal and this screen renders
-       before it can be read, and what to do is on the line under it. Through
-       `appWordmark`, so a disguised install shows the decoy's name on the one
-       screen a person other than its owner is most likely to be holding. -->
+  <!-- The wordmark, not a greeting and not an instruction: this screen
+       renders before the journal the name lives in can be read, and what to
+       do is on the line under it. GateScreen.svelte argues the rest. -->
   <GateScreen title={appWordmark(prefs.disguise, m.app_name())}>
     <!-- Polite rather than an alert: the prompt is Android's own dialog and
          takes the focus, so this line is what is waiting underneath when it

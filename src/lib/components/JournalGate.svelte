@@ -173,21 +173,10 @@
     unlockingPin ? m.pin_forgot() : unlockingBiometric ? m.bm_no_way_in() : m.pp_forgot()
   );
 
-  /* A gate greets you if it knows your name and shows the app's own name if
-     it does not (DIRECTION.md rule 15). This one can never do the first: the
-     display name lives in the encrypted journal and this screen renders
-     before it can be read, which is what the three separate greetings here
-     were each working around - "Hi" with nobody to say it to, and "Welcome
-     back" on a screen that cannot know whether anybody has been here before.
-
-     So an unlock's title is the wordmark, whichever secret it asks for. It is
-     the same object at the same size Home paints on its own field a frame
-     later, so the unlock's handover closes the field around a wordmark that
-     holds still. Through `appWordmark`, never `m.app_name()` directly,
-     because under disguise the name on a lock screen is the one that must
-     not be the real one (ADR-0035). The screens that are not an unlock keep
-     their own titles: what a conversion is about to do, and what the module
-     is asking, are the things those screens are for. */
+  /* The wordmark on the unlock, its own words on the four screens that are
+     not one - GateScreen.svelte argues both, for all six gates at once. This
+     gate can never greet by name: it renders before the journal the name
+     lives in can be read. */
   let gateTitle = $derived(
     converting && mode === 'setup'
       ? m.pp_convert_setup_title()
