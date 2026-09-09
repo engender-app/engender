@@ -37,6 +37,9 @@ import {
    which is why they are documented as `in:`/`out:` pairs. */
 type Direction = 'in' | 'out' | 'both';
 
+/** No curve at all, for the one primitive that shapes its own values. */
+const LINEAR = (t: number) => t;
+
 /** The substitute every tier-2 primitive falls back to under reduced
     motion: the same crossfade, none of the movement. */
 const crossfadeOnly = (): TransitionConfig => fadeOnly(crossfadeDuration());
@@ -137,14 +140,28 @@ export function fieldPart(
   const sign = options.direction === 'out' ? 1 : -1;
   const move = (u: number) =>
     params.printed ? `transform: translateY(calc(var(--part-travel, 12px) * ${sign * u}))` : '';
+  const fast = motionDuration('--dur-fast');
   return {
-    duration: motionDuration('--dur-fast'),
-    /* The incoming half waits for the outgoing one to be gone, so no frame
-       of a step change holds two questions or two sets of answers - the
-       same sequence app.css runs on the field's own pseudo elements. */
-    delay: options.direction === 'out' ? 0 : motionDuration('--dur-fast'),
-    easing: EASE_OUT,
-    css: (t, u) => `opacity: ${t}; ${move(u)}`
+    duration: fast,
+    /* Half a --dur-fast, and the arithmetic below is why. The incoming half
+       used to wait a whole one, which is the sequence app.css runs on the
+       field's own pseudo elements - and measured on this ticket's flipbooks
+       it left five frames, about 85ms, with no question on the field at
+       all. A photograph of a screen can afford that; a real element cannot,
+       and "no frame shows an element in neither place" is this ticket's
+       own acceptance.
+
+       So the two halves are a crossfade whose opacities sum to one at every
+       moment: each runs at twice its own rate and holds at full, so the
+       outgoing one is solid for the first half of its length, the incoming
+       one is solid for the last half of its, and the crossover is the 75ms
+       between. No frame is empty and no frame carries two solid ones. */
+    delay: options.direction === 'out' ? 0 : Math.round(fast / 2),
+    /* Linear, because the shape is in the css below rather than in the
+       curve: an eased opacity and a doubled rate would compound into a
+       crossover neither of them describes. */
+    easing: LINEAR,
+    css: (t, u) => `opacity: ${Math.min(1, t * 2)}; ${move(u)}`
   };
 }
 
