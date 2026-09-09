@@ -181,7 +181,7 @@
      flatten every CSS transition regardless of its token. */
   --dur-crossfade: 120ms;
   --motion-distance-sm: 10px;  /* toast */
-  --motion-distance-md: 24px;  /* sheet */
+  --motion-distance-md: 24px;  /* shared axis, between a list and its detail */
   --stagger-step: 50ms;
   /* The sun's rings, closing and opening one after another inside a door
      change (redesign ticket 28). Its own step rather than --stagger-step,

@@ -23,6 +23,7 @@
 import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
 
+import { travelSettle } from './blindSettle';
 import {
   crossfadeDuration,
   EASE_OUT,
@@ -31,6 +32,7 @@ import {
   motionDistance,
   motionDuration
 } from './tokens';
+import type { DurationToken } from './tokens';
 
 /* Svelte reports 'both' for a bare `transition:`, which cannot tell an
    entrance from an exit. Each primitive below reads it as an entrance,
@@ -50,12 +52,21 @@ const crossfadeOnly = (): TransitionConfig => fadeOnly(crossfadeDuration());
     the app hesitating before it answers. Material's fade-through is
     asymmetric for the same reason - it fades the outgoing screen out in
     roughly 90ms and the incoming one in over roughly 210ms, rather than
-    crossfading both over one duration. */
-function tier2(css: (t: number, u: number) => string, direction?: Direction): TransitionConfig {
+    crossfading both over one duration.
+
+    `timing` is for the primitive that cannot take that pair: a sheet travels
+    its own height rather than a token's worth, and both its duration and its
+    curve answer to that. It overrides rather than adds a tier, so the
+    reduced-motion substitute and the one place durations are read stay
+    shared. */
+function tier2(
+  css: (t: number, u: number) => string,
+  direction?: Direction,
+  timing?: { duration: DurationToken; easing: (t: number) => number }
+): TransitionConfig {
   if (isReducedMotion()) return crossfadeOnly();
-  const duration =
-    direction === 'out' ? motionDuration('--dur-fast') : motionDuration('--dur-med');
-  return { duration, easing: EASE_OUT, css };
+  const token = timing?.duration ?? (direction === 'out' ? '--dur-fast' : '--dur-med');
+  return { duration: motionDuration(token), easing: timing?.easing ?? EASE_OUT, css };
 }
 
 /**
@@ -99,14 +110,70 @@ export function sharedAxisX(
   );
 }
 
-/**
- * Tier 2, sheets: rise by `--motion-distance-md`. Dismissal is the
- * component's job rather than this one's - it follows the drag rather than
- * replaying this backwards.
+/** How far a sheet has to go to be off the bottom of the frame it is in:
+ *  its own height, or the distance from its top edge to that floor, whichever
+ *  is further.
+ *
+ *  Measured off the node because a sheet's height is its content's and every
+ *  one of the 36 call sites differs. The floor is the scrim rather than the
+ *  window: the scrim is `position: fixed` against `.app`, which carries a
+ *  transform, so on the phone-frame demo and in the walkthrough's own frame
+ *  the app's bottom edge and the window's are different lines and only the
+ *  first one is the one a sheet leaves by.
+ *
+ *  The two cases the max covers are the two the app has. A sheet on a phone
+ *  sits on the floor, so its own height and the distance to the floor are the
+ *  same number. On a wide window `.sheet-scrim` centres it, so its height
+ *  would leave its top edge on screen and the distance to the floor is what
+ *  carries it past. A rect read live also means a dragged sheet measures from
+ *  where the finger left it, which is what makes the handover seamless
+ *  without either half knowing about the other.
  */
-export function sheetRise(_node: Element): TransitionConfig {
-  const distance = motionDistance('--motion-distance-md');
-  return tier2((t, u) => `opacity: ${t}; transform: translateY(${distance * u}px)`);
+function sheetTravel(node: Element): number {
+  const rect = node.getBoundingClientRect();
+  const frame = node.closest('[data-sheet-scrim]')?.getBoundingClientRect();
+  return Math.max(rect.height, (frame?.bottom ?? rect.bottom) - rect.top);
+}
+
+/**
+ * Tier 2, sheets: up from below the bottom edge, and back down past it,
+ * travelling the sheet's own height. Sized off the node rather than out of a
+ * token, which is the whole of redesign ticket 38 - `--motion-distance-md` is
+ * 24px, and 24px under an opacity fade on a 717px sheet is a crossfade with a
+ * nudge in it.
+ *
+ * No opacity. ADR-0078's words are that a block never fades up from nothing,
+ * and a solid object sliding in from off screen does not also need to appear.
+ * The scrim is what announces a sheet, and it fades on the sheet's own clock
+ * (Sheet.svelte).
+ *
+ * **The field's motion, on a sheet.** The curve is the blind's settle from
+ * ticket 28 rather than a plain token: coming up it runs past its mark and
+ * comes back, going down it does not, and the two decelerations are the ones
+ * the blind already picks between (Alicja, on this ticket's first flipbooks:
+ * "the same motion as the field ... with an overshoot when coming up from
+ * below, and without one when going down"). `.sheet` carries a skirt below
+ * itself so the overshoot never lifts it off the edge it stands on.
+ *
+ * `--dur-slow` in both directions rather than tier 2's asymmetry. That
+ * asymmetry exists so a screen does not hesitate before answering and it
+ * costs a fade nothing; over a whole sheet's height it is the difference
+ * between about 40px between painted frames and about 110.
+ *
+ * Use as `in:sheetRise` and `out:sheetRise`: the two directions are two
+ * curves now, and a bare `transition:` reports 'both' and would get the
+ * entrance's overshoot on the way out.
+ */
+export function sheetRise(
+  node: Element,
+  _params: Record<string, never> = {},
+  options: { direction?: Direction } = {}
+): TransitionConfig {
+  const travel = sheetTravel(node);
+  return tier2((_t, u) => `transform: translateY(${travel * u}px)`, undefined, {
+    duration: '--dur-slow',
+    easing: travelSettle(travel, { closes: options.direction === 'out' })
+  });
 }
 
 /* svelte/transition's crossfade already is a container transform: it
