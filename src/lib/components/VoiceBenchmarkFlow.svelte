@@ -54,6 +54,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -453,11 +454,11 @@
       </label>
     </div>
 
-    <div class="editor-savebar">
+    <SaveBar>
       <button class="btn btn-primary" data-vb-save disabled={saving} onclick={save}>
         <Icon name="check" size={20} /><span>{m.vb_save()}</span>
       </button>
-    </div>
+    </SaveBar>
   {:else}
     <div class="screen-part vb-body" {...roleAttrs(role)}>
       <SectionHeading text={step === 'passage' ? m.vb_step_passage() : m.vb_step_vowel()} />
@@ -557,7 +558,7 @@
       {/if}
     </div>
 
-    <div class="editor-savebar vb-bar">
+    <SaveBar arrange="stack">
       {#if phase === 'recording'}
         <button class="btn btn-primary" data-vb-stop onclick={stop}>
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
@@ -584,7 +585,7 @@
           <span>{m.vb_vowel_skip()}</span>
         </button>
       {/if}
-    </div>
+    </SaveBar>
   {/if}
 </div>
 
@@ -681,11 +682,6 @@
 
   .vb-note {
     margin-top: var(--space-4);
-  }
-
-  .vb-bar {
-    display: grid;
-    gap: var(--space-2);
   }
 
   .vb-sheet-actions {

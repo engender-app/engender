@@ -60,6 +60,7 @@
     "gallery:restore": "VITE_DEMO=1 npm run build && node tests/restore-gallery.mjs",
     "gallery:return-motion": "VITE_DEMO=1 npm run build && node tests/return-motion-gallery.mjs",
     "gallery:cohesion": "VITE_DEMO=1 npm run build && node tests/cohesion-sweep-gallery.mjs --prove && node tests/cohesion-sweep-gallery.mjs --pin-android",
+    "gallery:savebar": "VITE_DEMO=1 npm run build && node tests/savebar-clearance-gallery.mjs --tag after",
     "gallery:cohesion-fix": "VITE_DEMO=1 npm run build && node tests/cohesion-fix-gallery.mjs --tag after",
     "sweep:yanks": "VITE_DEMO=1 npm run build && node tests/yank-sweep.mjs --prove",
     "gallery:setup-shape": "VITE_DEMO=1 npm run build && node tests/setup-shape-gallery.mjs --tag before && node tests/setup-shape-gallery.mjs --tag after --css tests/setup-shape-proposal.css",

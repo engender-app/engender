@@ -78,6 +78,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -400,11 +401,11 @@
             </ListCard>
           </div>
           {#if pair}
-            <div class="editor-savebar">
+            <SaveBar>
               <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
                 <Icon name="columns" size={20} /><span>{m.vc_compare()}</span>
               </button>
-            </div>
+            </SaveBar>
           {/if}
         {/snippet}
         {#snippet empty()}
