@@ -178,9 +178,11 @@ for (const theme of THEMES) {
     await page.mouse.up();
   }
 
-  /* 4. The save bar's button, on four screens' primary action. */
+  /* 4. The save bar's button, on four screens' primary action. Named
+        `.app-savebar` since carpet 26 moved the foot out of the column and
+        into the frame; the shot is the same button on the same screen. */
   await settle('/settings/dimension');
-  await crop(`savebar-${theme}`, '.editor-savebar', '.editor-savebar .btn - 4 screens - /settings/dimension', 18);
+  await crop(`savebar-${theme}`, '[data-app-savebar]', '.app-savebar .btn - 4 screens - /settings/dimension', 18);
 
   /* 5. Wrapped's card and its stat tiles. */
   await settle('/wrapped/year/share');

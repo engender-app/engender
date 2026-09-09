@@ -54,6 +54,10 @@ const PHONE = { width: 390, height: 844 };
 const CROP = { left: 0, width: 390, top: 500, height: 344 };
 
 const tab = (key) => `[data-segmented="voice-tab"] [data-segment="${key}"]`;
+/** The foot, under either name: `[data-app-savebar]` after carpet 26 and
+    `.editor-savebar` before it, so the same three scenes can be recorded on
+    main and read beside these. */
+const BAR = '[data-app-savebar], .editor-savebar';
 
 const SCENES = [
   {
@@ -141,7 +145,7 @@ const fire = (p, scene) => p.evaluate((sel) => document.querySelector(sel).click
     what the two of them leave between them. */
 async function trace(p, scene) {
   return p.evaluate(
-    async ({ act, ms }) => {
+    async ({ act, ms, bar }) => {
       const round = (n) => Math.round(n * 10) / 10;
       const out = [];
       const t0 = performance.now();
@@ -150,7 +154,7 @@ async function trace(p, scene) {
         const tick = () => {
           const now = performance.now() - t0;
           const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
-          const feet = [...document.querySelectorAll('[data-app-savebar]')].map((el) => {
+          const feet = [...document.querySelectorAll(bar)].map((el) => {
             const box = el.getBoundingClientRect();
             return {
               top: round(box.top),
@@ -168,23 +172,23 @@ async function trace(p, scene) {
         requestAnimationFrame(tick);
       });
     },
-    { act: scene.act, ms: TRACE_MS }
+    { act: scene.act, ms: TRACE_MS, bar: BAR }
   );
 }
 
 /** Where a foot rests on this tab, once it has: its top edge, and the
     region's bottom edge, which the reservation makes the same line. */
 const resting = (p) =>
-  p.evaluate(() => {
+  p.evaluate((bar) => {
     const round = (n) => Math.round(n * 10) / 10;
-    const foot = document.querySelector('[data-app-savebar]');
+    const foot = document.querySelector(bar);
     const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
     return {
       top: foot ? round(foot.getBoundingClientRect().top) : null,
       height: foot ? round(foot.getBoundingClientRect().height) : 0,
       region: round(region.bottom)
     };
-  });
+  }, BAR);
 
 /** Records everything the page paints for `SCENE_MS`, with `act` fired one
     frame in - so the first frame is the resting state the motion starts
