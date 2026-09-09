@@ -80,9 +80,14 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
     expect(store).toMatch(/querySelector\(COLUMN\)/);
     expect(store).toMatch(/column\.append\(node\)/);
 
-    const column = layout.slice(layout.indexOf('<div class="app-column"'), layout.indexOf('</main>'));
+    const column = layout.slice(layout.indexOf('<main class="app-column"'), layout.indexOf('</main>'));
     expect(column, 'the column wraps the scroll region').toContain('data-app-column');
-    expect(column).toContain('<main class="app-main" data-app-scroll-region');
+    expect(column).toContain('<div class="app-main" data-app-scroll-region');
+    /* The landmark is the column's, so the foot - which is outside the
+       scroll region by design - is still inside <main> rather than being a
+       group of controls in no landmark at all. */
+    expect(layout).toMatch(/<main class="app-column"/);
+    expect(layout).not.toMatch(/<main class="app-main"/);
     expect(layout, "the column knows when it is holding a foot").toContain(
       'class:has-savebar={saveBar.count > 0}'
     );
