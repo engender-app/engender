@@ -1798,7 +1798,11 @@ try {
   /* Steps, not Transition, since redesign ticket 15 renamed the group in the
      one place both surfaces read it from (`hubLabels.ts`): a group called
      Transition inside a door called Transition said nothing. */
-  const areaHeadings = (await page.locator('[data-section-heading] h2').allTextContents()).map((t) => t.trim());
+  /* A caption rather than a section heading since redesign ticket 33: a
+     step has one heading and it is the question (DIRECTION.md rule 12), so a
+     group inside a list is named by 15/600 in the secondary ink - the same
+     drawing the permissions step already used for its two groups. */
+  const areaHeadings = (await page.locator('[data-setup-caption]').allTextContents()).map((t) => t.trim());
   if (areaHeadings.join() !== ['Body', 'Health', 'Steps'].join()) {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
@@ -1904,6 +1908,139 @@ try {
   await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
+
+/* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
+   (phase 10 redesign ticket 33, DIRECTION.md rule 14).
+
+   Rule 14's own text hands this measurement to this ticket: before it, setup
+   was a plain column inside the app's one scroll region, so a step with nine
+   rows on it carried the question and the foot off the top of the window -
+   571px of overflow on the permissions step and 964 on the areas step,
+   measured on ticket 31. What holds it now is a fixed frame with one
+   scrolling region inside it, and the only way to know that is still true
+   next month is to measure it here.
+
+   Two reads per step, because they answer different questions. The app's
+   scroll region says the screen did not grow past the window. `.screen-setup`
+   says the frame inside it did not either - it is `overflow: clip`, which
+   draws nothing and still reports what it is hiding, so a step that stopped
+   fitting would clip its own foot in silence rather than scroll. The answers'
+   own region is deliberately not asserted: it is the one thing on a step that
+   may scroll, and on the long steps it does. */
+try {
+  /* The demo bar is 239px of review chrome at 390 wide and is not in the
+     build anybody installs, so it is hidden for this flow: measuring the
+     frame against two thirds of a window would be measuring the bar.
+
+     Re-injected after every navigation, because a style tag belongs to the
+     document that held it and `fresh()` replaces that document. Injected
+     once and read later, the flow measured the frame with the bar back on
+     and called a 452px clip at 320x568 a defect in the step. */
+  const hideBar = () =>
+    page.addStyleTag({
+      content:
+        '.demo-bar{display:none !important}' +
+        'body.has-demo-bar{display:block !important;height:auto !important}'
+    });
+  const STEP_SIZES = [
+    { width: 320, height: 568 },
+    { width: 360, height: 640 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    /* A raised keyboard, which is what rule 14 stands in for by shortening
+       the window rather than by opening a keyboard nothing here has. */
+    { width: 390, height: 360 }
+  ];
+  const STEP_TAPS = 8; // nine steps, eight Continues
+  for (const size of STEP_SIZES) {
+    await page.setViewportSize(size);
+    await fresh('/');
+    await hideBar();
+    await page.locator('#demo-jump').evaluate((el) => {
+      el.value = 'first-run';
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForSelector('[data-next]');
+    for (let step = 0; step <= STEP_TAPS; step++) {
+      /* The edge and the answers both settle on --dur-slow; a step measured
+         mid-travel is measuring a transform rather than a frame. */
+      await page.waitForTimeout(500);
+      const read = await page.evaluate(() => {
+        const region = document.querySelector('[data-app-scroll-region]');
+        const screen = document.querySelector('[data-setup-frame]');
+        const foot = document.querySelector('[data-setup-foot]');
+        return {
+          question: document.querySelector('[data-setup-question]')?.textContent?.trim() ?? '',
+          region: region ? region.scrollHeight - region.clientHeight : 0,
+          screen: screen ? screen.scrollHeight - screen.clientHeight : 0,
+          footBottom: Math.round(foot?.getBoundingClientRect().bottom ?? 0),
+          window: window.innerHeight
+        };
+      });
+      const where = `${size.width}x${size.height} step ${step + 1} (${read.question})`;
+      /* Every control on the step, against --touch-target. The short form
+         is where this bites: rule 14 asked for the foot's second line at
+         40px and 40 is under Android's 48dp floor, which is the stricter of
+         the two platforms this ships on. Measured rather than reasoned about
+         because the frame gives the foot whatever the field and the answers
+         leave it. */
+      const small = await page.evaluate(() => {
+        const floor = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--touch-target')
+        );
+        const inFrame = '[data-setup-frame] ';
+        return [...document.querySelectorAll(`${inFrame}button, ${inFrame}a, ${inFrame}input`)]
+          .filter((el) => el.offsetParent !== null && el.type !== 'hidden')
+          .map((el) => {
+            const box = el.getBoundingClientRect();
+            return {
+              what: el.textContent?.trim().slice(0, 20) || el.id || el.tagName,
+              w: Math.round(box.width),
+              h: Math.round(box.height)
+            };
+          })
+          .filter((c) => c.w > 0 && c.h > 0 && Math.min(c.w, c.h) < floor - 0.5);
+      });
+      if (small.length) {
+        throw new Error(`under the touch floor at ${where}: ${JSON.stringify(small)}`);
+      }
+      /* A few pixels of tolerance, and only here: the field's height is the
+         sun's reach at this step, which is `175px` times a fraction, so the
+         frame's content height is fractional and `scrollHeight` is an
+         integer. Measured at 360x640 on the areas step, that rounding is
+         2px. It cannot hide a misfit - the ones this rule exists for were
+         571px on the permissions step and 964 on the areas step. */
+      const rounding = 4;
+      if (read.region > rounding) throw new Error(`the screen scrolls at ${where}: ${read.region}px`);
+      if (read.screen > rounding) throw new Error(`the frame is clipped at ${where}: ${read.screen}px`);
+      if (read.footBottom > read.window + 1) {
+        throw new Error(`the foot is off the window at ${where}: ${read.footBottom} of ${read.window}`);
+      }
+      /* The name step with the window at 360: rule 14 asks for the control
+         the keyboard is for to be on screen, not merely for the step to
+         fit. */
+      if (step === 1) {
+        const input = await page.locator('#ob-name').evaluate((el) => {
+          const box = el.getBoundingClientRect();
+          return { top: Math.round(box.top), bottom: Math.round(box.bottom) };
+        });
+        if (input.bottom > read.window || input.top < 0) {
+          throw new Error(`the name field is off the window at ${where}: ${JSON.stringify(input)}`);
+        }
+        await page.locator('#ob-name').fill('Ola');
+      }
+      if (step < STEP_TAPS) await page.locator('[data-next]').click();
+    }
+    /* Out of setup rather than left standing in it, so the next size starts
+       from the same place this one did. */
+    await page.locator('[data-finish]').click();
+    await page.waitForSelector('[data-home-hello]');
+  }
+  /* Nothing to put back: the next flow's own `fresh()` replaces the
+     document this one styled. */
+  await page.setViewportSize({ width: 390, height: 844 });
+  ok('no step of setup scrolls and no control is under the touch floor, at 320/360/390/430 wide and with the window at 360');
+} catch (e) { fail('setup no-scroll', e); }
 
 /* 13a. every step can be left, and leaving keeps what was chosen so far
    (phase 5 ticket 26) */

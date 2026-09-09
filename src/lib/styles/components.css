@@ -404,7 +404,17 @@
   }
 }
 .btn-soft { background: var(--accent-soft); color: var(--on-accent-soft); }
-.btn-ghost { background: none; color: var(--accent); }
+/* --accent-ink, not --accent, and it is a contrast fix rather than a look
+   change: the two are the same hue and the ink is only pulled toward --text
+   until it clears the 4.5:1 small-text floor on all three surfaces in every
+   palette and theme (palettes.css, and palette-contrast.test.ts holds it
+   there). Raw --accent is sized to be sat on rather than read - on trans
+   light it is 4.38:1 against --bg, which is what setup's two ways past a
+   step measured at 16px/750 when redesign ticket 33 walked every step of
+   the flow through tests/setup-contrast.mjs. Every ghost button in the app
+   was under the floor on that pair; the token for accent-coloured text
+   already existed and this rule was not using it. */
+.btn-ghost { background: none; color: var(--accent-ink); }
 .btn-danger { background: var(--danger-soft); color: var(--danger); }
 .btn-block { width: 100%; }
 
@@ -2327,8 +2337,14 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
    2 gives the whole app one shadow and it belongs to the floating nav bar;
    twelve elevated keys on a screen with no chrome were the loudest place
    the old language survived. */
+/* 56, which is rule 13's number for a key and the same block the flag
+   picker and a row's icon are drawn at (redesign ticket 33). It was 62,
+   from before the phase had a block size; the six pixels a row are 24 off
+   the pad's height, which is what the short form below needs to give back.
+   One drawing, in setup and in every gate: this is the rule ticket 33 and
+   ticket 34 agree on rather than each keeping one. */
 .pin-key {
-  height: 62px; border-radius: var(--r-block);
+  height: 56px; border-radius: var(--r-block);
   border: 1px solid var(--outline); background: var(--surface);
   font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); font-variant-numeric: tabular-nums;
   letter-spacing: var(--display-track); color: var(--text);
@@ -2343,6 +2359,17 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 .pin-key.is-ghost:hover { background: var(--surface-2); }
 .pin-key:disabled { cursor: default; opacity: 0.45; }
 .pin-key:disabled:active { transform: none; }
+/* The short form (rule 14): under 640px tall - a raised keyboard's
+   remainder, and what a 320px phone has at rest - the keys drop to 48, the
+   touch floor, and the dots come in closer. 216px of pad rather than 260,
+   which is the 44px a pad screen needs to find on a short window. Written
+   here rather than in setup's own sheet because the pad has two addresses
+   and the short form is the pad's own composition, not the step's. */
+@media (max-height: 639px) {
+  .pin-key { height: 48px; }
+  .pin-pad { gap: var(--space-2); }
+  .pin-dots { gap: var(--space-3); margin: var(--space-3) 0 var(--space-2); }
+}
 /* Holds its line whether or not there is anything to say, so the pad does
    not jump down the screen on a wrong PIN. */
 .pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin-bottom: var(--space-3); }
