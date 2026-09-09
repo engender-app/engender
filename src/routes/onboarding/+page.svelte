@@ -45,12 +45,24 @@
     isSkippable,
     onboardingDestination,
     onboardingSteps,
+    restoreSteps,
     stepAfter,
     stepBefore,
     stepIndex,
     sunGrowth,
     type OnboardingStep
   } from '$lib/onboarding/steps';
+  import type { PickedArchive } from '$lib/data/archive/pick';
+  import type { RestoreProgress } from '$lib/data/journal/restore';
+  import {
+    pickForRestore,
+    runRestore,
+    runVerify,
+    type RestoreFailureKind
+  } from '$lib/data/journal/restoreFlow';
+  import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
+  import { createProgress } from '$lib/components/progress.svelte';
+  import { wipe } from '$lib/motion/reveal';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
   import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
@@ -184,9 +196,39 @@
      visit would otherwise "restore" the pick made on the first. */
   const paletteOnEntry = prefs.palette;
 
+  /* Somebody on a new phone who already has an archive (ticket 36). The
+     restore's own working state: which file, which password, whether it has
+     been proved to open, and what to say if it has not.
+
+     `archiveReady` is the whole safety of this path. A first run has no
+     journal to write into until the access mode step makes the key, so the
+     restore step can only *verify* - decrypt, parse and validate, writing
+     nothing - and the archive goes in at the finish, which is where setup
+     already does all of its writing in one pass. So a cancel, a wrong
+     password or a file that is not an archive all happen before a byte of
+     this device is touched, and the way out of them is the way in reversed.
+     This flag is what says the file on screen is the one that was proved:
+     picking another file or editing the password puts it back to false. */
+  let restoring = $state(false);
+  let picked = $state.raw<PickedArchive | null>(null);
+  let archivePass = $state('');
+  let archiveReady = $state(false);
+  let archiveBusy = $state(false);
+  let archiveError = $state('');
+  /* The walkthrough's handle on which refusal this is, matching the Settings
+     screen's own `data-import-error` so the suite grips a kind rather than a
+     sentence in one language. */
+  let archiveErrorKind = $state<RestoreFailureKind | ''>('');
+  let archiveLabel = $state('');
+  const archiveProgress = createProgress();
+
   /* One flow for everybody (ADR-0079): setup does not vary by disguise,
-     and steps.ts says why the shorter flow it used to offer went. */
-  const steps = onboardingSteps();
+     and steps.ts says why the shorter flow it used to offer went. It does
+     vary by whether a journal is being restored, which is a different axis
+     and the one thing an archive can actually answer for a person: the steps
+     whose answers it carries are dropped rather than asked and overwritten
+     (ticket 36, steps.ts). */
+  let steps = $derived(restoring ? restoreSteps() : onboardingSteps());
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(sunGrowth(index, steps.length));
 
@@ -224,6 +266,84 @@
     step = to;
   }
 
+  /* The welcome's second action. Quiet, and it changes the flow rather than
+     opening anything: what it settles is that this is a person with a
+     journal already, which is the fact every later step reads. */
+  function beginRestore() {
+    restoring = true;
+    archiveError = '';
+    archiveErrorKind = '';
+    go('restore');
+  }
+
+  /** Back to the welcome as a new person, with nothing written and the
+      archive untouched - the answer to a cancel, a refusal and a change of
+      mind alike. Written as a step assignment rather than through go(),
+      because the list itself is about to change under it and "is the
+      destination behind the current step" cannot be asked of two lists. */
+  function abandonRestore() {
+    back = true;
+    step = 'welcome';
+    restoring = false;
+    picked = null;
+    archivePass = '';
+    archiveReady = false;
+    archiveError = '';
+    archiveErrorKind = '';
+    archiveProgress.abandon();
+  }
+
+  /** Anything that makes the file on screen no longer the file that was
+      proved to open. */
+  function unproveArchive() {
+    archiveReady = false;
+    archiveError = '';
+    archiveErrorKind = '';
+  }
+
+  async function chooseArchive() {
+    try {
+      const chosen = await pickForRestore();
+      if (!chosen) return; // backed out of the picker, which says nothing
+      unproveArchive();
+      if ('ok' in chosen) {
+        archiveErrorKind = chosen.kind;
+        archiveError = verifyFailureMessage(chosen.kind);
+        return;
+      }
+      picked = chosen.picked;
+    } catch {
+      archiveErrorKind = 'failed';
+      archiveError = m.imp_picker_failed();
+    }
+  }
+
+  /** The restore step's own act: prove the file opens, and go on if it does.
+      Nothing is written here (restoreFlow.ts's runVerify takes no driver and
+      no file store), which is what lets this run before the access mode step
+      has made a key for anything to be written into. */
+  async function checkArchive() {
+    if (archiveBusy) return;
+    archiveBusy = true;
+    archiveError = '';
+    archiveErrorKind = '';
+    archiveLabel = m.verify_running_files();
+    archiveProgress.start();
+    const result = await runVerify(picked, archivePass, (done, total) =>
+      archiveProgress.report(done, total)
+    );
+    archiveBusy = false;
+    if (!result.ok) {
+      archiveProgress.abandon();
+      archiveErrorKind = result.kind;
+      archiveError = verifyFailureMessage(result.kind);
+      return;
+    }
+    await archiveProgress.finish();
+    archiveReady = true;
+    go(stepAfter(steps, 'restore'));
+  }
+
   function skip() {
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
@@ -246,7 +366,45 @@
      through the lock step first, the same way the old app-lock toggle used
      to route an early leave through its own PIN screen before that was one
      choice made in the security module rather than two. */
-  function complete() {
+  async function complete() {
+    /* The archive goes in here and nowhere else (ticket 36).
+
+       This is the one moment in a restored first run when the journal both
+       exists and is open: the access mode step made the key a step or two
+       ago, and until it did there was nothing on this device to write into.
+       It is also the moment setup was already writing everything else it
+       gathered, and the restore is the same kind of act - one journal
+       operation that either lands whole or leaves the journal exactly as it
+       was (ADR-0011).
+
+       Before the five writes below, because a Replace installs the archive's
+       own portable preferences (ADR-0003) and anything setup settled on this
+       device has to survive that. On this path four of the five are empty
+       anyway: their steps never ran, which is the point of restoreSteps().
+
+       A failure here says so and stays put rather than marking the first run
+       done over a journal that is still empty. */
+    if (restoring && archiveReady) {
+      if (archiveBusy) return;
+      archiveBusy = true;
+      archiveError = '';
+      archiveErrorKind = '';
+      archiveLabel = m.imp_running_files();
+      archiveProgress.start();
+      const result = await runRestore(picked, archivePass, 'replace', (progress: RestoreProgress) => {
+        archiveLabel = progress.stage === 'files' ? m.imp_running_files() : m.imp_running_rows();
+        archiveProgress.report(progress.done, progress.total);
+      });
+      archiveBusy = false;
+      if (!result.ok) {
+        archiveProgress.abandon();
+        archiveErrorKind = result.kind;
+        archiveError = importFailureMessage(result.kind);
+        return;
+      }
+      await archiveProgress.finish();
+    }
+
     /* Guarded like the other four, and for the same reason: skipping a step
        leaves the stored value alone rather than overwriting it with
        nothing. An empty field wrote an empty name, so skipping the name
@@ -273,11 +431,17 @@
      mode is chosen boot leaves this state on its own, and a second "leave
      setup" from the lock step reaches complete() directly. */
   function leave() {
+    /* Giving up on a restore that never proved a file is giving up on the
+       restore, not carrying an unopened archive into complete() for its
+       guard to refuse on a step with nowhere to say so. Once the file is
+       proved, "straight to the app" means the same as the finish does: it
+       is the journal they came back for. */
+    if (restoring && !archiveReady) restoring = false;
     if (needsOnboardingAccessMode(bootState)) {
       go('lock');
       return;
     }
-    complete();
+    void complete();
   }
 </script>
 
@@ -336,6 +500,53 @@
             <h1 class="setup-title">{m.ob_welcome_title()}</h1>
             <p class="setup-def">{m.ob_welcome_def()}</p>
             <p class="setup-body">{m.ob_welcome_body()}</p>
+          {:else if step === 'restore'}
+            <h1 class="setup-title">{m.ob_restore_title()}</h1>
+            <!-- The one thing this step owes: that a journal comes back from
+                 a file and from nothing else. Somebody who has just lost a
+                 phone will read this looking for the sentence that says
+                 their journal is somewhere else too, and it is not
+                 (ticket 36's out of scope, docs/ui-copy.md's rule for the
+                 screens that carry risk). -->
+            <p class="setup-body">{m.ob_restore_body()}</p>
+
+            <!-- The file is a block (DIRECTION rule 13): an outline while
+                 there is nothing in it, solid once there is, and the change
+                 between the two is the tap's answer. It clips open from its
+                 own left edge rather than fading up, which is what every
+                 block in this app does when it arrives (rule 10). -->
+            <button
+              class="setup-file press"
+              class:is-empty={!picked}
+              data-restore-pick
+              onclick={chooseArchive}
+            >
+              <span class="setup-file-ico"><Icon name="upload" size={20} /></span>
+              {#if picked}
+                {#key picked.name}
+                  <span class="setup-file-name" in:wipe data-restore-file>{picked.name}</span>
+                {/key}
+              {:else}
+                <span class="setup-file-name is-placeholder">{m.imp_file_placeholder()}</span>
+              {/if}
+            </button>
+
+            <!-- A typed answer sits on the rule (DIRECTION rule 13), and a
+                 password is that shape with its characters hidden. The rule
+                 draws itself in from the left on focus, which is what a 3px
+                 rule does everywhere else in the app. -->
+            <div class="setup-typed">
+              <label class="field-label" for="ob-restore-pass">{m.exp_password_label()}</label>
+              <input
+                class="setup-rule-input"
+                type="password"
+                id="ob-restore-pass"
+                name="ob-restore-pass"
+                placeholder={m.imp_password_placeholder()}
+                bind:value={archivePass}
+                oninput={unproveArchive}
+              />
+            </div>
           {:else if step === 'name'}
             <h1 class="setup-title">{m.ob_name_title()}</h1>
             <p class="setup-body">{m.ob_name_body()}</p>
@@ -485,9 +696,28 @@
                 </div>
               </div>
             </ListCard>
+          {:else if restoring && archiveReady}
+            <!-- The finish of a restored first run. It cannot say "you're all
+                 set" yet, because nothing has been put back: this screen's
+                 own button is the moment that happens, and the copy says so
+                 rather than congratulating somebody over an empty
+                 journal. -->
+            <h1 class="setup-title">{m.ob_restore_done_title()}</h1>
+            <p class="setup-body">{m.ob_restore_done_body()}</p>
           {:else}
             <h1 class="setup-title">{name.trim() ? m.ob_done_title_named({ name: name.trim() }) : m.ob_done_title()}</h1>
             <p class="setup-body">{m.ob_done_body()}</p>
+          {/if}
+
+          <!-- One line for every refusal on the restore path, holding its
+               height whether or not it has anything to say (DIRECTION rule
+               15's status line). A notice is what rule 12 keeps off a step,
+               and a box in the colour of an error over a file somebody just
+               picked would be shouting where a sentence does. -->
+          {#if restoring && step !== 'welcome'}
+            <p class="setup-status" role="alert" data-restore-error={archiveErrorKind}>
+              {archiveError}
+            </p>
           {/if}
         </div>
       {/key}
@@ -499,7 +729,40 @@
              other way past it (ticket 54, matching AccessModeSetup's own
              "no Skip anywhere" rule). -->
       {:else if step === 'done'}
-        <button class="btn btn-primary" data-finish onclick={complete}><span>{m.start_journey()}</span></button>
+        <!-- On a restored first run this button is the restore: it fills
+             left to right with the operation's own progress rather than
+             putting a second bar on a step (rule 12 keeps a step spare, and
+             rule 10 says a solid thing arrives from its own edge). The fill
+             is `null` while the operation cannot say how much is left, which
+             is the indeterminate case rather than a zero, so the button
+             simply stays as it is. -->
+        <button
+          class="btn btn-primary"
+          class:is-filling={archiveBusy && archiveProgress.fraction !== null}
+          style={`--fill:${(archiveProgress.fraction ?? 0) * 100}%`}
+          data-finish
+          disabled={archiveBusy}
+          onclick={complete}
+        >
+          <span>
+            {#if restoring && archiveReady}
+              {archiveBusy ? m.ob_restore_running() : m.ob_restore_finish()}
+            {:else}
+              {m.start_journey()}
+            {/if}
+          </span>
+        </button>
+      {:else if step === 'restore'}
+        <button
+          class="btn btn-primary"
+          class:is-filling={archiveBusy && archiveProgress.fraction !== null}
+          style={`--fill:${(archiveProgress.fraction ?? 0) * 100}%`}
+          data-restore-check
+          disabled={archiveBusy}
+          onclick={checkArchive}
+        >
+          <span>{archiveBusy ? m.verify_running() : m.ob_restore_check()}</span>
+        </button>
       {:else if step === 'welcome'}
         <button class="btn btn-primary" data-next onclick={() => go(stepAfter(steps, step))}>
           <span>{m.ob_start_setup()}</span>
@@ -516,9 +779,30 @@
 
       {#if !awaitingAccessMode}
         <div class="setup-outs">
+          {#if step === 'welcome'}
+            <!-- The second action, on the outs line where Skip and "straight
+                 to the app" already live, so it is quiet by being where the
+                 quiet controls are rather than by being a smaller version of
+                 the primary (ticket 36: it must not compete). A person with
+                 no archive reads one word of it and carries on. -->
+            <button class="btn btn-ghost" data-restore-start onclick={beginRestore}>
+              <span>{m.ob_have_backup()}</span>
+            </button>
+          {/if}
           {#if isSkippable(step)}
             <button class="btn btn-ghost" data-skip-step onclick={skip}>
               <span>{m.skip()}</span>
+            </button>
+          {/if}
+          {#if step === 'restore'}
+            <!-- The way out of the restore, and the whole of it: back to the
+                 welcome as a new person, with nothing written. -->
+            <button class="btn btn-ghost" data-restore-abandon onclick={abandonRestore}>
+              <span>{m.ob_restore_new_instead()}</span>
+            </button>
+          {:else if restoring && step === 'done'}
+            <button class="btn btn-ghost" data-restore-abandon onclick={abandonRestore}>
+              <span>{m.ob_restore_start_again()}</span>
             </button>
           {/if}
           {#if step !== 'done'}
@@ -707,6 +991,128 @@
   .setup-step .input { margin-top: var(--space-2); }
   .setup-time { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
   .setup-time .input { width: 118px; margin: 0; }
+
+  /* ---------- the restore step (ticket 36) ----------
+
+     Two answers, drawn the two ways DIRECTION rule 13 has for them: the file
+     is a block, and the password is a typed answer, which sits on a rule.
+     Both are new here rather than borrowed from Settings' import form, which
+     is a card with three labelled fields and a segmented control - the three
+     things rule 12 says a step may not contain. The flow underneath them is
+     Settings' own (restoreFlow.ts); only the drawing differs. */
+
+  /* The block. An outline while it is empty and a solid surface once it
+     holds a file, so the tap has something to answer with beyond a filename
+     appearing. Dashed while empty for the one reason a dash is worth having
+     here: it reads as a slot waiting to be filled rather than as a control
+     that has already been used. */
+  .setup-file {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    margin-top: var(--space-2);
+    padding: var(--space-4);
+    min-height: 72px;
+    text-align: left;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    /* The name clips in from the block's own left edge, so the edge has to
+       be able to clip it. */
+    overflow: hidden;
+  }
+  .setup-file.is-empty {
+    background: transparent;
+    border-style: dashed;
+  }
+  .setup-file-ico { display: flex; flex: none; color: var(--text-2); }
+  .setup-file-name {
+    font-weight: 700;
+    /* A file name is one long unbroken token and a phone is 390px wide.
+       Wrapping anywhere is what keeps a 60-character name inside the block
+       instead of pushing the block past the screen. */
+    overflow-wrap: anywhere;
+  }
+  .setup-file-name.is-placeholder { color: var(--text-2); font-weight: 400; }
+
+  /* The rule. The input is the display face on a 3px bottom rule with no box
+     and no fill (rule 13), and the rule draws itself in from the left when
+     the field takes focus - the same left-to-right draw a section rule makes
+     everywhere else in the app (rule 10). Drawn as a scaled pseudo-element
+     rather than a width animation so it is one composited transform, and the
+     transition is what the reduced-motion clamp in base.css reaches. */
+  .setup-typed { position: relative; margin-top: var(--space-5); }
+  .setup-typed .field-label { display: block; margin-bottom: var(--space-2); }
+  .setup-rule-input {
+    display: block;
+    width: 100%;
+    padding: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--display-track);
+    color: var(--text);
+    background: none;
+    border: 0;
+    border-bottom: 3px solid var(--outline);
+    border-radius: 0;
+  }
+  .setup-rule-input::placeholder {
+    font-family: var(--font-body);
+    font-size: var(--text-md);
+    font-weight: 400;
+    letter-spacing: normal;
+    color: var(--text-2);
+  }
+  /* The rule in --text, over the resting one, drawn from the left when the
+     field takes focus. A scaled pseudo-element rather than an animated width
+     so it is one composited transform; the transition is a plain CSS one, so
+     base.css's reduced-motion clamp turns it into a cut like every other. */
+  .setup-typed::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 3px;
+    background: var(--text);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-med) var(--ease-out);
+  }
+  .setup-typed:focus-within::after { transform: scaleX(1); }
+
+  /* The status line. Holds its height whether or not it has anything to say
+     (rule 15), so a refusal does not push the block and the rule up the
+     screen on its way in. */
+  .setup-status {
+    min-height: calc(var(--text-sm) * 2.6);
+    margin: var(--space-4) 0 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--danger);
+  }
+
+  /* The primary button as the restore's own meter. The fill is a solid
+     overlay clipped to how far along it is, uncovering from the left the way
+     every other block in the app arrives (rule 10) - so the step gains no
+     second element and rule 12's list of what a step may not contain is
+     untouched. `--fill` is written per frame from the run's fraction, so the
+     transition is what smooths the samples between reports.
+
+     `--accent-strong` over the gradient the button already carries, because
+     a fill has to read against it rather than beside it. */
+  .setup-foot .btn-primary { position: relative; overflow: hidden; }
+  .setup-foot .btn-primary > :global(span) { position: relative; z-index: 1; }
+  .setup-foot .btn-primary.is-filling::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent-strong, var(--on-accent));
+    opacity: 0.28;
+    clip-path: inset(0 calc(100% - var(--fill, 0%)) 0 0);
+    transition: clip-path var(--dur-med) linear;
+  }
 
   /* Tier 3, a change within the screen: the row that depends on a switch
      opens its own height rather than making the foot of the screen jump. A
