@@ -49,6 +49,15 @@
 
   let note = $state('');
   let mood = $state<number | null>(4);
+
+  // PROTOTYPE demo trigger only, not part of ticket 37.
+  function swipe(e: PointerEvent) {
+    const el = e.currentTarget as HTMLElement;
+    el.classList.remove('is-swiping');
+    void el.offsetWidth;
+    el.classList.add('is-swiping');
+    el.addEventListener('transitionend', () => el.classList.remove('is-swiping'), { once: true });
+  }
 </script>
 
 <div class="gallery-controls">
@@ -142,7 +151,7 @@
   <h2 class="gallery-head">Buttons</h2>
   <div class="card" data-case="buttons">
     <div class="btn-stack">
-      <button class="btn btn-primary"><Icon name="check" size={20} /><span>Save the entry</span></button>
+      <button class="btn btn-primary" onpointerdown={swipe}><Icon name="check" size={20} /><span>Save the entry</span></button>
       <button class="btn btn-soft"><Icon name="camera" size={18} /><span>Retake</span></button>
       <button class="btn btn-ghost"><span>Not now</span></button>
       <button class="btn btn-danger"><span>Delete this entry</span></button>
