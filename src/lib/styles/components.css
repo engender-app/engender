@@ -1478,11 +1478,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    the walkthrough's own frame, not just the true window. */
 .sheet-scrim {
   position: fixed; inset: 0; z-index: 40;
-  background: var(--scrim);
   display: flex; align-items: flex-end; justify-content: center;
-  opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
 }
-.sheet-scrim.is-open { opacity: 1; }
+/* The tint and the withdrawal it carries are a layer of the scrim's own now,
+   `.sheet-scrim-tint` in Sheet.svelte - see the note there. */
 
 /* The withdrawal's blur half, missing from whatever sits in its own
    scrolling region beside the one the scrim is inside (Sheet.svelte's own
@@ -1563,7 +1562,14 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    simply ran off the bottom (Alicja, 2026-08-26: "too long and takes the
    whole screen with no ability to scroll"). The scrim is `inset: 0` and so
    is definite; the cap belongs here, and the sheet stretches to it. */
+/* `position: relative` puts this in the same painting layer as the scrim's
+   tint, which is absolutely positioned and would otherwise paint over it
+   whatever the source order says - positioned elements paint after in-flow
+   ones. Caught on ticket 38's flipbook, where the settled sheet was blurred
+   and dimmed by the withdrawal that is supposed to be behind it. It shifts
+   nothing: a flex item with no offsets stays where the layout put it. */
 .sheet-drag {
+  position: relative;
   width: 100%; max-width: 520px;
   max-height: 85%;
   display: flex;
@@ -1588,8 +1594,21 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
 }
 
 .sheet {
+  /* The skirt the settle needs. Coming up, a sheet runs past its mark and
+     comes back, the way the field's blind does (redesign ticket 38, ticket
+     28's curve) - and a sheet standing on the bottom edge that lifts off it
+     shows a strip of the page underneath. So the box extends past the edge
+     by the most the overshoot can ever be (blindSettle's OVERSHOOT_CAP, 8px)
+     and its bottom padding grows by the same amount, which leaves the
+     content exactly where it was. The negative margin is what keeps the
+     wrapper's own box on the edge, so nothing else moves either.
+
+     Zero on a wide window, below: there the scrim centres the sheet, so it
+     stands on nothing and has nothing to uncover. */
+  --sheet-skirt: 8px;
   background: var(--surface);
   border-radius: var(--r-block) var(--r-block) 0 0;
+  margin-bottom: calc(-1 * var(--sheet-skirt));
   /* The bottom padding clears the floating bar, not just the system inset.
      Found on ticket 35's renders: a sheet's last row sat under the bar at
      every scroll position, so the end of a long sheet was a row nobody
@@ -1609,7 +1628,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
      `--nav-clearance` is the token the scroll region and the editor's save
      bar already agree on, so the three cannot drift, and it drops to the
      no-bar value on a chromeless screen by itself. */
-  padding: var(--space-3) var(--space-5) var(--nav-clearance);
+  padding: var(--space-3) var(--space-5) calc(var(--nav-clearance) + var(--sheet-skirt));
   width: 100%;
   /* The cap itself is on .sheet-drag above, against the scrim, which is the
      app frame rather than the viewport - the demo bar and the phone-frame
@@ -2328,7 +2347,7 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
     align-items: center;
     padding-left: calc(var(--rail-width) + var(--inset-left));
   }
-  .sheet { border-radius: var(--r-block); }
+  .sheet { border-radius: var(--r-block); --sheet-skirt: 0px; }
   /* As wide as the column it sits over, capped at the column's own max:
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */

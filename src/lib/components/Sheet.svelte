@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import type { Snippet } from 'svelte';
-  import { motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { sheetRise } from '$lib/motion/navigation';
 
   let {
@@ -148,6 +148,24 @@
     }
   }
 
+  /* The scrim and the withdrawal blur it carries settle with the sheet, on
+     the sheet's own clock rather than on a duration of their own: with the
+     travel now the sheet's whole height (redesign ticket 38) a scrim that
+     finished first left the sheet still visibly moving over a page that had
+     already gone dark. Under reduced motion the sheet substitutes a
+     crossfade, so the scrim takes the same one - motionDuration() answers 0
+     there, and a scrim that cuts while the sheet fades is the same mismatch
+     the other way round.
+
+     The entrance and the exit are two curves now rather than one, so the
+     sheet is `in:`/`out:` rather than a bidirectional `transition:`. What
+     that costs is the reversal: a sheet closed while it is still rising
+     lands before it leaves instead of turning round where it got to. The
+     directions had to differ - only the way up runs past its mark - and a
+     sheet closed inside 380ms is a rarer thing to see than every close. */
+  const scrimDuration = () =>
+    isReducedMotion() ? crossfadeDuration() : motionDuration('--dur-slow');
+
   function onWindowKeydown(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === 'Escape') {
@@ -162,15 +180,19 @@
 
 {#if open}
   <div
-    class="sheet-scrim scrim-withdraw is-open"
+    class="sheet-scrim"
     role="presentation"
     data-sheet-scrim
-    transition:fade={{ duration: motionDuration('--dur-med') }}
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
     }}
     {@attach lockBackground}
   >
+    <div
+      class="sheet-scrim-tint scrim-withdraw"
+      data-sheet-tint
+      transition:fade={{ duration: scrimDuration() }}
+    ></div>
     <div
       class="sheet-drag"
       role="presentation"
@@ -189,7 +211,8 @@
         aria-label={title}
         tabindex="-1"
         data-sheet
-        transition:sheetRise
+        in:sheetRise
+        out:sheetRise
         {@attach focusInitial}
       >
         <div class="sheet-handle"></div>
@@ -198,3 +221,23 @@
     </div>
   </div>
 {/if}
+
+<style>
+  /* The tint and the withdrawal ride a layer of the scrim's own rather than
+     the scrim itself, and that is redesign ticket 38 rather than tidiness:
+     an element's opacity applies to everything inside it, and the sheet is
+     inside the scrim. Fading the scrim faded the sheet with it, so a sheet
+     that had stopped fading in its own transition still arrived translucent
+     - measured on the flipbook, the list behind it legible through it
+     halfway up its travel. The fan's scrim (QuickAdd) has no such problem
+     because the fan is its sibling; a sheet's is its child.
+
+     `pointer-events: none` keeps the layer out of the way of the tap that
+     dismisses: the scrim closes on a click whose target is the scrim
+     itself, and a layer over it would be that target instead. */
+  .sheet-scrim-tint {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+</style>
