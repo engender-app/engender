@@ -26,26 +26,31 @@ const NOTHING_GRANTED: GrantStates = {
   camera: 'denied'
 };
 
-/** What `getUserMedia` is asked for to provoke the prompt for one capability.
-
-    The camera row asks for video alone rather than the constraints a video
-    note records under (`videoCaptureConstraints`), which ask for the
-    microphone in the same breath. One row, one permission: somebody who wants
-    the camera and not the microphone gets exactly that, and the microphone's
-    own row is right above it. */
-const GRANT_MEDIA: Record<'microphone' | 'camera', MediaStreamConstraints> = {
-  microphone: { audio: true },
-  camera: { video: true }
-};
-
 /** Opens the device, then closes it again.
 
     The prompt is the point; the stream is not. Anything left live keeps the
     OS recording indicator lit over an app that is not recording, which on a
-    journal is a worse lie than a missing feature. */
+    journal is a worse lie than a missing feature.
+
+    The camera asks for video alone rather than the constraints a video note
+    records under (`videoCaptureConstraints`), which ask for the microphone in
+    the same breath. One row, one permission: somebody who wants the camera
+    and not the microphone gets exactly that, and the microphone's own row is
+    directly above it.
+
+    Two calls with the constraints written out, rather than one call reading
+    them from a table. tests/permissions-policy.test.ts derives which
+    capabilities the app requires from every `getUserMedia` argument in the
+    tree, resolving a literal object or a named helper and nothing else -
+    which is what stops a capability shipping dark behind the deployed
+    Permissions-Policy header, whose allowlist denies the app's own origin for
+    anything not named in it. */
 async function askForMedia(key: 'microphone' | 'camera'): Promise<GrantState> {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(GRANT_MEDIA[key]);
+    const stream =
+      key === 'microphone'
+        ? await navigator.mediaDevices.getUserMedia({ audio: true })
+        : await navigator.mediaDevices.getUserMedia({ video: true });
     for (const track of stream.getTracks()) track.stop();
     return 'granted';
   } catch (error) {
