@@ -54,6 +54,12 @@ const opt = (name) => {
 };
 const cropArg = opt('crop');
 const motionArg = opt('motion');
+/* A recording that keeps every composited frame is three times the frames a
+   30fps one was, so a run that wants all of them can trade resolution for
+   them: the page draws these at about 280px wide however big they are.
+     --scale <0..1>   --quality <0..1> */
+const scale = Number(opt('scale')) || 1;
+const jpegQuality = Number(opt('quality')) || 0.4;
 const [cropTopArg, cropHeightArg] = (cropArg ?? '').split(',').map(Number);
 const cropTop = Number.isFinite(cropTopArg) ? cropTopArg : CROP_TOP;
 const cropHeight = Number.isFinite(cropHeightArg) ? cropHeightArg : CROP_HEIGHT;
@@ -71,20 +77,23 @@ const page = await browser.newPage();
 /** Crops and re-encodes one JPEG, in the page, and hands back a data URI.
     The box is `{ left, top, width, height }`; a null width means the frame's
     own, which is every vertical band this started out cropping. */
-async function shrink(bytes, box, quality) {
+async function shrink(bytes, box, quality, scale = 1) {
   return page.evaluate(
-    async ({ b64, box, quality }) => {
+    async ({ b64, box, quality, scale }) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${b64}`;
       await img.decode();
+      const w = Math.max(1, Math.min(box.width ?? img.width, img.width - box.left));
+      const h = Math.max(1, Math.min(box.height, img.height - box.top));
       const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.min(box.width ?? img.width, img.width - box.left));
-      canvas.height = Math.max(1, Math.min(box.height, img.height - box.top));
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
       const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
       ctx.drawImage(img, -box.left, -box.top);
       return { uri: canvas.toDataURL('image/jpeg', quality), w: canvas.width, h: canvas.height };
     },
-    { b64: bytes.toString('base64'), box, quality }
+    { b64: bytes.toString('base64'), box, quality, scale }
   );
 }
 
@@ -112,7 +121,7 @@ for (const pair of pairs) {
     const frames = [];
     let size = { w: 0, h: 0 };
     for (const frame of kept) {
-      const shrunk = await shrink(await readFile(resolve(root, frame.file)), box, 0.4);
+      const shrunk = await shrink(await readFile(resolve(root, frame.file)), box, jpegQuality, scale);
       total += shrunk.uri.length;
       size = { w: shrunk.w, h: shrunk.h };
       frames.push({ at: frame.at, uri: shrunk.uri });
