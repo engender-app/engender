@@ -76,10 +76,11 @@
    sheet held it out.
 
    `--pin-android` adds the states no web build can reach. The reminders
-   list is `isAndroid()`-gated with no demo bypass, so `.card.checkin-card`
-   counts 0 in every walk and carpet 30 has nothing to decide against. This
-   pins that screen's own `isWeb` to false, rebuilds, walks the gated routes
-   and puts the file back, which is `tests/unprompted-gallery.mjs`'s pattern:
+   list is `isAndroid()`-gated with no demo bypass, so nothing on it counts
+   in a plain walk - which is how the check-in group reached carpet 30
+   undecided, and why that leg is what finally rendered it. This pins that
+   screen's own `isWeb` to false, rebuilds, walks the gated routes and puts
+   the file back, which is `tests/unprompted-gallery.mjs`'s pattern:
    forcing `isAndroid()` itself sends boot at the Android SQLite driver and
    the app never becomes ready, and a query parameter that forced the branch
    would be a backdoor shipped to production for the sake of a reading. */
@@ -238,9 +239,9 @@ const AUDITED = ['.card', '.editor-savebar'];
 
 /* The gated leg, which is its own run of this script rather than a second
    act inside the main one. `/settings/reminders` draws its Android branch -
-   the check-in card, the switch rows, the battery notice - only where
-   `isAndroid()` is true, so on the web it has always counted 0 and carpet
-   30 has a variant it cannot decide about. Pinning that screen's own
+   the check-in group, the switch rows, the battery notice - only where
+   `isAndroid()` is true, so on the web it has always counted 0, which is
+   what carpet 30 needed a render of. Pinning that screen's own
    `isWeb` is `tests/unprompted-gallery.mjs`'s pattern, and the reason for
    it holds here too: forcing `isAndroid()` sends boot at the Android SQLite
    driver and the app never becomes ready, and a query parameter that forced
@@ -254,7 +255,9 @@ const AUDITED = ['.card', '.editor-savebar'];
    build for its whole life, and its findings merge into the report the main
    run already wrote. */
 const PIN_ANDROID = args.includes('--pin-android');
-const GATED = [{ path: '/settings/reminders', name: 'reminders', shoot: '.card.checkin-card' }];
+/* `[data-checkin]` rather than a `.card` variant: carpet 30 took the box off
+   the check-in group, and the group is what this leg exists to photograph. */
+const GATED = [{ path: '/settings/reminders', name: 'reminders', shoot: '[data-checkin]' }];
 const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
 const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/cohesion-sweep-gallery.mjs';
 let pinnedLeg = false;
@@ -568,15 +571,19 @@ const read = () =>
       /* Coverage, so an unreached variant reads as a gap rather than as a
          zero. Each audited base is counted by the whole class list of the
          elements that matched it, drawn or not: `.card.spread` and
-         `.card.checkin-card` are the two ticket 20's walk never reached,
+         `.card.checkin-card` were the two ticket 20's walk never reached,
          and a count nobody can see is what let ticket 21 size itself
-         against four variants when the source has six. */
+         against four variants when the source has six. Carpet 29 and 30
+         have since retired both, so the census should now read one base
+         and no variant but `.card.no-print`, which is a print utility
+         rather than a variant. */
       const census = {};
       for (const base of AUDITED)
         for (const el of root.querySelectorAll(base)) {
           /* Without the compiler's scope class, which is not a variant:
              `.card.breathing-card.svelte-k4blm0` was drawn on /doubt and
-             read as a gap against the source's `.card.breathing-card`,
+             read as a gap against the source's `.card.breathing-card`
+             (both retired on carpet 30),
              which is the instrument inventing the hole it exists to find. */
           const key = `.${[...el.classList].filter((c) => !c.startsWith('svelte-')).join('.')}`;
           census[key] = (census[key] ?? 0) + 1;

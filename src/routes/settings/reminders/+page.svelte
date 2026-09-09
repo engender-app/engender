@@ -14,6 +14,7 @@
   import Switch from '$lib/components/Switch.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
   import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
 
@@ -117,7 +118,13 @@
       }}
     />
   {:else}
-    <div class="card checkin-card">
+    <!-- Carpet 30: the app's own daily check-in, flush on the page. It had a
+         `.card` with a 1.5px `--accent-border` edge, which was the group
+         saying "this one is mine, not a reminder you made" - a claim rule 4
+         has no treatment for, and one the row's own title makes in words.
+         The shape is the disguise sheet's, settled on carpet 29: `.spread`
+         rows in a stack, no ground, no edge, no separators. -->
+    <div class="stack-3" data-checkin>
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title"><Icon name="sparkle" size={16} /> {m.checkin_title()}</span>
@@ -132,6 +139,12 @@
         />
       </div>
       {#if prefs.checkInEnabled}
+        <!-- What the switch above turns on, opening its own height rather
+             than arriving at full size (rule 10, and it is the group's own
+             edge that used to hold these two rows together). `disclose` is
+             tier 3's primitive for exactly this, and it substitutes a cut
+             under reduced motion rather than being deleted. -->
+        <div class="disclosed" transition:disclose>
         <!-- `Field spread`, so this row carries the same shape as the two
              switch rows around it: the name at the left edge, the control at
              the right. What was here wrote the pair by hand and capped the
@@ -164,6 +177,7 @@
               prefs.checkInAffirmationsEnabled = v;
             }}
           />
+        </div>
         </div>
       {/if}
     </div>
