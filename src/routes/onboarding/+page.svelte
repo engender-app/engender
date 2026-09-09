@@ -262,22 +262,22 @@
     return LINE[step]();
   });
 
-  /* How long the flag being left is held under the flag arriving. The sun's
-     outermost ring is the widest and is drawn first, so once its own
-     entrance is over it covers everything underneath and the one below can
-     go; --dur-authored is that entrance. Zero under reduced motion, where
-     the rings are simply there and there is nothing to cover. */
-  let sunRedraw = $derived(motionDuration('--dur-authored'));
-
   /** Which of the two suns paints on top, for as long as the redraw takes.
 
       A keyed block's outgoing element and its incoming one are both in the
       DOM together and the order they sit in is the framework's business, not
       this screen's - so the layer is stated rather than inferred. Written as
       a transition because that is the only thing here that holds a
-      declaration for exactly the length of a change and then lets go of it. */
+      declaration for exactly the length of a change and then lets go of it.
+
+      The length is the sun's own entrance: its outermost ring is the widest
+      and is drawn first, so once --dur-authored is up it covers everything
+      underneath and the flag below it can go. Read per call rather than
+      held, because the token is a stylesheet value and not state - and zero
+      under reduced motion, where the rings are simply there and there is
+      nothing to cover. */
   function layer(_node: Element, params: { z: number }) {
-    return { duration: sunRedraw, css: () => `z-index: ${params.z}` };
+    return { duration: motionDuration('--dur-authored'), css: () => `z-index: ${params.z}` };
   }
 
   function go(to: OnboardingStep) {
@@ -1020,11 +1020,21 @@
   /* No scroll of its own, ever (rule 14): what scrolls is the answers
      region inside it. `min-height: 0` undoes .screen's own `min-height:
      100%`, which would otherwise let the flex column grow past the window
-     and hand the app's scroll region something to scroll. */
+     and hand the app's scroll region something to scroll.
+
+     `clip` rather than `hidden`, and the difference is a defect this ticket
+     hit rather than a preference. `overflow: hidden` makes an element a
+     scroll container that simply draws no scrollbar, and the browser is
+     free to scroll one on its own - to bring a focused input into view, or
+     to keep an anchor still while content above it resizes. Measured on the
+     name step: `.screen-setup` came back with a scrollTop of 197, which put
+     the whole field and the question behind the demo bar with nothing on
+     screen to say the screen had moved. `clip` is not a scroll container at
+     all, so there is no scrollTop for anything to set. */
   .screen-setup {
     height: 100%;
     min-height: 0;
-    overflow: hidden;
+    overflow: clip;
     display: flex;
     flex-direction: column;
     /* How much of the sun's own scale this width and height can carry. One
