@@ -213,7 +213,7 @@
 
   .band-axis-label {
     fill: var(--text-2);
-    font-size: 10px;
+    font-size: var(--text-sm);
   }
 
   .band-result {
