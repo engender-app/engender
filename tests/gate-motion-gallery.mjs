@@ -225,7 +225,16 @@ const READ_UNLOCK = `
     titleFade: read('::view-transition-old(fp-a-0)', 'opacity'),
     arrivingRide: px(read('::view-transition-new(fp-b-0)', 'translate')),
     arrivingFade: read('::view-transition-new(fp-b-0)', 'opacity'),
-    gates: document.querySelectorAll('[data-gate-field]').length
+    gates: document.querySelectorAll('[data-gate-field]').length,
+    /* The first thing the app draws that the gate could not have known
+       about: a notice whose read answers after the journal opens. Its own
+       height per frame, because a panel that arrives by opening its height
+       is the app's grammar for a change and one that arrives whole is the
+       yank Alicja named between frames 24 and 25 of this scene's first
+       recording. */
+    notice: Math.round(
+      document.querySelector('[data-backup-notice]')?.getBoundingClientRect().height ?? 0
+    )
   };`;
 
 /* A digit typed at a gate: which dots are filled, what each is scaled to,

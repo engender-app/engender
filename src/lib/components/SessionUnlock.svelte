@@ -34,6 +34,7 @@
   import { isAndroid } from '$lib/platform';
   import { appWordmark } from '$lib/disguise/identity';
   import { openApp } from '$lib/motion/appOpening';
+  import { ui } from '$lib/stores/ui.svelte';
   import type { JournalAccessMode } from '$lib/data/journal-access-mode';
   import GateScreen from './GateScreen.svelte';
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
@@ -51,7 +52,10 @@
      already inside a transition by the time the effect runs, and starting a
      second one from under the first skips it - the app would appear in a
      single frame, which is exactly what this exists to stop. */
-  const opened = () => openApp(markUnlocked);
+  const opened = () => {
+    ui.appOpening = true;
+    void openApp(markUnlocked).finally(() => (ui.appOpening = false));
+  };
 
   let passphrase = $state('');
   let error = $state('');

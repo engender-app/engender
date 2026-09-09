@@ -749,10 +749,10 @@
                      password is that shape with its characters hidden. The
                      rule draws itself in from the left on focus, which is
                      what a 3px rule does everywhere else in the app. -->
-                <div class="setup-typed">
+                <div class="typed">
                   <label class="field-label" for="ob-restore-pass">{m.exp_password_label()}</label>
                   <input
-                    class="setup-rule-input"
+                    class="rule-input"
                     type="password"
                     id="ob-restore-pass"
                     name="ob-restore-pass"
@@ -765,9 +765,9 @@
                 <!-- The person's name is the first thing in the app set in
                      the app's own voice: the display face at 28 on a 3px
                      rule, no box and no fill (rule 13). -->
-                <div class="setup-typed is-bare">
+                <div class="typed is-bare">
                   <input
-                    class="setup-rule-input"
+                    class="rule-input"
                     id="ob-name"
                     name="ob-name"
                     placeholder={m.ob_name_placeholder()}
@@ -1437,61 +1437,10 @@
      (rule 13). The person's name is the first thing in the app set in the
      app's own voice. A passphrase is the same shape with its characters
      hidden. */
-  .setup-typed {
-    position: relative;
-  }
-  .setup-typed .field-label {
-    display: block;
-    margin-bottom: var(--space-2);
-  }
-  .setup-rule-input {
-    display: block;
-    width: 100%;
-    /* A field is a target, so it answers to `--touch-target` like every
-       other one - the kit's own `.input` carries this and a rule-shaped
-       input has no less claim on it. It matters in the short form, where
-       the display face drops to 21 and the box came out at 41px tall
-       (measured at 320x568 by the walkthrough's own floor check, which is
-       what found it). */
-    min-height: var(--touch-target);
-    padding: 0 0 var(--space-2);
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-display);
-    letter-spacing: var(--display-track);
-    line-height: var(--leading-display);
-    color: var(--text);
-    background: none;
-    border: 0;
-    border-bottom: 3px solid var(--outline);
-    border-radius: 0;
-  }
-  .setup-rule-input::placeholder {
-    font-family: var(--font-body);
-    font-size: var(--text-md);
-    font-weight: var(--weight-regular);
-    letter-spacing: normal;
-    color: var(--text-2);
-  }
-  /* The rule in --text over the resting one, drawn in from the left when
-     the field takes focus - the same left-to-right draw a section rule
-     makes everywhere else in the app (rule 10). A scaled pseudo element
-     rather than an animated width, so it is one composited transform; the
-     transition is a plain CSS one, so base.css's reduced-motion clamp turns
-     it into a cut like every other. */
-  .setup-typed::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 3px;
-    background: var(--text);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--dur-med) var(--ease-out);
-  }
-  .setup-typed:focus-within::after {
-    transform: scaleX(1);
-  }
+  /* The rule-shaped input, its label and the rule that draws itself in on
+     focus are `.typed`/`.rule-input` in components.css since redesign ticket
+     34: the gates ask for a passphrase on the same shape, and rule 13 says
+     they are one drawing. */
 
   /* ---------- the restore step (ticket 36) ---------- */
 
@@ -1634,9 +1583,6 @@
     }
     .setup-field {
       padding-bottom: var(--space-3);
-    }
-    .setup-rule-input {
-      font-size: var(--text-xl);
     }
     .setup-flags .swatch-preview {
       height: 40px;

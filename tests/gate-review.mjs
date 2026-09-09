@@ -450,30 +450,72 @@ const page = `<title>The Gates Move</title>
   </section>
 
   <section>
-    <p class="eyebrow">named rather than met</p>
-    <h2>Three things to look at</h2>
+    <p class="eyebrow">round one</p>
+    <h2>What your four notes changed</h2>
     <ul class="notes">
       <li>
-        <strong>A mode switch crossfades first and moves second.</strong> Flipbook six: the two
-        titles cross over about 83ms, and only then does the edge travel from 115 to 70. A gate's
-        edge is measured from its own field, and the outgoing title shares a grid cell with the
-        incoming one, so the field cannot know it is about to get shorter until the old title has
-        gone. Setup does not have this because its edge is computed from the step counter. It can be
-        made simultaneous by taking the leaving title out of flow - say if it reads as a hesitation
-        to you.
+        <strong>"A yank caused by the backup monit appearing between frames 24 and 25."</strong>
+        It was: the notice's own read answers while the app is opening, and a view transition
+        paints its snapshots over the page - so the notice mounted unseen and was simply there in
+        the frame the paint lifted on, with the rows below it shoved down. Its entrance could not
+        have helped, because nothing live is drawn under a transition. Home holds that notice back
+        while the app is opening now (<code>ui.appOpening</code>), and the opening says out loud
+        that the screen has stopped moving when it ends (<code>endScreenArrival</code>), so the
+        notice arrives afterwards by opening its own height. Measured on this recording: it mounts
+        at 623ms, which is the frame the transition ends, and it comes in through
+        <code>collapse</code>'s own arrival rather than around it.
+      </li>
+      <li>
+        <strong>"Can the pin pad be actually in the center of the screen?"</strong> It can. Two
+        auto gaps, one above the dots and one under the status line, so the room between the line
+        and the way out splits evenly around the pad. The foot's own auto margin is turned off
+        where there is a pad, or the space would divide three ways and the pad would sit high.
+        Where there is no free space - a short window, a long gate - every auto collapses and the
+        rule does not apply itself.
+      </li>
+      <li>
+        <strong>"'The pin is not right' and the number of retries notice must be a little bit
+        further from the numpad."</strong> 20 under the pad now (rule 1's gap between blocks)
+        rather than sitting against it. Where the wait's rail is between them the rail takes the
+        20 and the line closes up to 12 behind it, so the pair still reads as one answer.
+      </li>
+      <li>
+        <strong>"A mode picked inside the gate - yank between frame 1 and 2."</strong> The module's
+        three screens swapped in a single frame: four modes, then the chosen one's consequence,
+        with nothing in between. They cross now, on the same crossfade setup's own steps take,
+        over a grid cell that holds both so the outgoing screen does not stack above the incoming
+        one and double the page's height while they cross. Measured: the two overlap from 127ms to
+        210ms, opacities summing to one at every frame.
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <p class="eyebrow">named rather than met</p>
+    <h2>Still standing</h2>
+    <ul class="notes">
+      <li>
+        <strong>A mode switch crossfades first and moves second.</strong> Flipbook six: the titles
+        cross over about 83ms, and only then does the edge travel from 115 to 70. A gate's edge is
+        measured from its own field, and the outgoing title shares a grid cell with the incoming
+        one, so the field cannot know it is about to get shorter until the old title has gone.
+        Setup does not have this because its edge is computed from the step counter. Making the two
+        simultaneous means taking the leaving title out of flow, which is setup's mechanism too and
+        wants its own decision.
       </li>
       <li>
         <strong>A cold start holds the last frame of the gate for about 250ms before the opening
         starts.</strong> That is the journal being opened on the main thread, and it is the same
-        wait as before this ticket - what changed is that the gate is now still on screen for it
-        rather than being replaced at the end of it. The mid-session unlock has no such wait: its
-        journal is already open, and the opening starts 66ms after the submit.
+        wait as before this ticket - what changed is that the gate is now on screen for it rather
+        than being replaced at the end of it. The mid-session unlock has no such wait: its journal
+        is already open, and the opening starts 66ms after the submit.
       </li>
       <li>
-        <strong>The worst contrast on any gate is 4.5:1 against a 4.5:1 floor</strong> - "Delete
-        everything and start over", the danger-coloured way out on the two dead-end gates. It
-        passes, and it passes by nothing. It is the page's own <code>--danger</code> at 16/750
-        rather than anything this ticket drew.
+        <strong>The worst contrast on any gate is 4.41:1 against a 3:1 floor</strong> - the 48px
+        title on nonbinary's purple, which is rule 11's own known pair. The worst small-text case
+        is 4.5:1 against a 4.5:1 floor: "Delete everything and start over", the danger-coloured way
+        out on the two dead-end gates. It passes, and it passes by nothing; it is the page's own
+        <code>--danger</code> at 16/750 rather than anything this ticket drew.
       </li>
     </ul>
   </section>

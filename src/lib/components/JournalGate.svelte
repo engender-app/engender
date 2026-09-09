@@ -313,12 +313,16 @@
         <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
       {:else}
         <form class="gate-form" onsubmit={submitPassphrase}>
-          <div>
+          <!-- A typed answer sits on the rule (rule 13), and a passphrase is
+               that shape with its characters hidden. The same drawing setup's
+               name step wears; `.typed` is what draws the rule in from the
+               left on focus. -->
+          <div class="typed">
             <label class="field-label" for="journal-passphrase">
               {mode === 'setup' ? m.pp_label_setup() : m.pp_label_unlock()}
             </label>
             <input
-              class="input"
+              class="rule-input"
               type="password"
               id="journal-passphrase"
               name="passphrase"

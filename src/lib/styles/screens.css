@@ -789,6 +789,18 @@
 /* Nothing but a hairline's worth of room between the control and the way out
    on the screens where the control is the whole page. */
 .gate-foot > * + * { margin-top: var(--space-2); }
+
+/* A pad sits in the middle of the room it has (Alicja, round one on this
+   ticket: "can the pin pad be actually in the center of the screen"). Two
+   auto gaps - one above the dots, one under the status line - so the free
+   space between the line and the way out splits evenly around the pad
+   instead of piling up under it. The foot's own `margin-top: auto` is turned
+   off here, or the space would divide three ways and the pad would sit high.
+   Where there is no free space, on a short window or a long gate, every auto
+   collapses to nothing and this rule does not apply itself. */
+.gate-page:has(.pin-pad) .pin-dots { margin-top: auto; }
+.gate-page:has(.pin-pad) .pin-status { margin-bottom: auto; }
+.gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
 /* Determinate where there is a number to be determinate about. The
