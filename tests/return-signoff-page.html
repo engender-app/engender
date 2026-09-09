@@ -278,7 +278,8 @@
     <p class="lede" style="font-weight:400">
       Everything below is only this screen. Every number is read off the built app at 390&times;844
       with reduce-motion off, and the &ldquo;before&rdquo; column is <code>main</code> at
-      <code>b9e88296</code>, recorded the same way.
+      <code>b9e88296</code>, recorded the same way. Second round: the flipbooks are re-recorded after
+      the sign-off fix, so the arrivals here are the ones that carry the field&rsquo;s blind.
     </p>
   </div>
 
@@ -364,6 +365,57 @@
       held&rdquo;, and the built app did not do that.
     </p>
     <div class="books" id="books-before"></div>
+  </section>
+
+  <section>
+    <h2>The sign-off round</h2>
+    <p>
+      One defect named and one rule demanded, and both were this ticket&rsquo;s. The empty state
+      arriving had <strong>&ldquo;no animation at all, yank between frames 7 and 8&rdquo;</strong>, and
+      <strong>every screen must keep the field blind effect</strong>.
+    </p>
+    <p>
+      Making the route chromeless routed it into <code>screen-transition.ts</code>&rsquo;s first line
+      &mdash; <code>if (from === null || isChromeless) return 'none'</code> &mdash; which is written
+      for gates: the screens that render <em>instead of</em> the app, and so have no outgoing screen
+      for an edge to travel from. <code>chromelessPath</code> was the only predicate for &ldquo;this
+      route has no chrome&rdquo;, and that rule was already reading it to mean &ldquo;this route is not
+      somewhere the app walked to&rdquo;. One predicate, two questions, and the answer to the second was
+      wrong. Nothing failed: the route worked, looked right in every still, and arrived as a hard cut.
+    </p>
+    <p>
+      The two questions have two predicates now, and <strong>ADR-0080</strong> writes the rule down
+      rather than leaving it as a mechanism ticket 28 happened to build: every navigation between two
+      screens of the app runs the blind, a screen with no field is the limit case rather than an
+      exception, absence of chrome is never an exemption, and the cut list is four enumerated cases and
+      closed. A screen that cuts is not broken, so nothing fails &mdash; it just quietly stops being
+      part of the app, which is what earns it an ADR.
+    </p>
+    <div class="table-scroll">
+      <table>
+        <caption>The two arrivals, before and after the fix, off the built app.</caption>
+        <thead>
+          <tr><th scope="col">Scene</th><th scope="col">Cut (as signed off)</th><th scope="col">With the blind</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>The empty state arriving</td>
+            <td class="num"><span class="no">18 frames / 290ms</span><br>one 29KB &rarr; 10KB jump at frame 7</td>
+            <td class="num"><span class="yes">33 frames / 552ms</span><br>the edge walks down over eight frames</td>
+          </tr>
+          <tr>
+            <td>The items arriving</td>
+            <td class="num"><span class="no">cut</span><br>only the row blocks moved</td>
+            <td class="num"><span class="yes">the blind comes up</span><br>Home&rsquo;s wordmark fades where it stands, blocks clip open under the edge</td>
+          </tr>
+          <tr>
+            <td>The same two, reduce-motion</td>
+            <td class="num"><span class="no">3&ndash;4 frames</span><br>a bare cut</td>
+            <td class="num"><span class="yes">20 frames / ~409ms</span><br>the crossfade its contract asks for</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section>
