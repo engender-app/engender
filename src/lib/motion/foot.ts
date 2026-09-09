@@ -43,9 +43,12 @@ type Params = { skip?: boolean };
 /**
  * The frame's foot, rising in from under the window's bottom edge.
  *
- * Reduced motion answers 0 through `motionDuration` and the foot cuts,
- * which is tier 3's substitute: the room appears, the foot is in it, and
- * nothing is left mid-flight.
+ * Reduced motion answers 0 through `motionDuration` and the foot cuts: the
+ * room appears, the foot is in it, and nothing is left mid-flight. A cut
+ * rather than the crossfade DIRECTION.md rule 10 names, and for the reason
+ * `wipe` already gives in reveal.ts - "a change inside a screen has no
+ * journey to explain, so there is nothing a fade would be standing in for".
+ * The crossfade in that sentence is tier 2's substitute, for a navigation.
  */
 export function footRise(node: Element, params?: Params): TransitionConfig {
   return travel(node, params);

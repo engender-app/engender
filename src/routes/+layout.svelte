@@ -705,9 +705,16 @@
          up with a control under it (carpet 26, and
          $lib/stores/saveBar.svelte for what that cost before). It is also
          what puts the pair beside the rail rather than under it at desktop
-         width, where `.app` itself is a row. -->
-    <div class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
-      <main class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
+         width, where `.app` itself is a row.
+
+         The landmark is on this box rather than on the scroll region
+         inside it, because the foot moved: a screen's one commitment is
+         part of the screen, and left outside <main> it would be a group of
+         controls belonging to no landmark at all. The skip link still
+         lands on the region, which is what a person wants to be put at the
+         top of. -->
+    <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
         {#if schemaTooNew}
           <SchemaTooNew />
         {:else if needsPassphrase}
@@ -752,8 +759,8 @@
         {:else}
           {@render children()}
         {/if}
-      </main>
-    </div>
+      </div>
+    </main>
 
     <QuickAdd />
 
