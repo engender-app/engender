@@ -1423,11 +1423,10 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    the walkthrough's own frame, not just the true window. */
 .sheet-scrim {
   position: fixed; inset: 0; z-index: 40;
-  background: var(--scrim);
   display: flex; align-items: flex-end; justify-content: center;
-  opacity: 0; transition: opacity var(--dur-med) var(--ease-out);
 }
-.sheet-scrim.is-open { opacity: 1; }
+/* The tint and the withdrawal it carries are a layer of the scrim's own now,
+   `.sheet-scrim-tint` in Sheet.svelte - see the note there. */
 
 /* The withdrawal's blur half, missing from whatever sits in its own
    scrolling region beside the one the scrim is inside (Sheet.svelte's own
@@ -1508,7 +1507,14 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    simply ran off the bottom (Alicja, 2026-08-26: "too long and takes the
    whole screen with no ability to scroll"). The scrim is `inset: 0` and so
    is definite; the cap belongs here, and the sheet stretches to it. */
+/* `position: relative` puts this in the same painting layer as the scrim's
+   tint, which is absolutely positioned and would otherwise paint over it
+   whatever the source order says - positioned elements paint after in-flow
+   ones. Caught on ticket 38's flipbook, where the settled sheet was blurred
+   and dimmed by the withdrawal that is supposed to be behind it. It shifts
+   nothing: a flex item with no offsets stays where the layout put it. */
 .sheet-drag {
+  position: relative;
   width: 100%; max-width: 520px;
   max-height: 85%;
   display: flex;

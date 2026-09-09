@@ -48,6 +48,11 @@ const VIEWPORT = { width: 390, height: 844 };
 /** The tall case: 520px of window against a sheet that wants more, so
     `.sheet-drag`'s `max-height: 85%` is what decides the travel. */
 const SHORT_VIEWPORT = { width: 390, height: 520 };
+/** The band a flipbook keeps: the bottom 600px of the phone, which holds the
+    sheet at rest, the whole of its travel and the edge it leaves by. The
+    header and the flag sun above it never move in any of these scenes. */
+const BAND = { top: 244, height: 600 };
+const SHORT_BAND = { top: 0, height: SHORT_VIEWPORT.height };
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
@@ -60,9 +65,9 @@ const scenes = [];
 /** One browser context per motion setting and per window size: headless
     Chromium answers prefers-reduced-motion with `reduce` by default, and the
     app's own state lives in the context, so each one seeds its own journal. */
-async function open(reducedMotion, viewport = VIEWPORT) {
+async function open(reducedMotion, viewport = VIEWPORT, extraCss = '') {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion });
-  await context.addInitScript(() => {
+  await context.addInitScript((extra) => {
     document.addEventListener('DOMContentLoaded', () => {
       const style = document.createElement('style');
       /* The demo bar is review chrome and not in the build being signed off;
@@ -72,10 +77,11 @@ async function open(reducedMotion, viewport = VIEWPORT) {
         '[data-toast]{display:none !important}' +
         '.demo-bar{display:none !important}' +
         'body.has-demo-bar{display:block !important;height:auto !important}' +
-        '[data-app-scroll-region]{scrollbar-width:none}[data-app-scroll-region]::-webkit-scrollbar{display:none}';
+        '[data-app-scroll-region]{scrollbar-width:none}[data-app-scroll-region]::-webkit-scrollbar{display:none}' +
+        extra;
       document.head.append(style);
     });
-  });
+  }, extraCss);
   const page = await context.newPage();
   page.on('pageerror', (e) => console.error('page error:', e.message));
   const cdp = await context.newCDPSession(page);
@@ -128,6 +134,7 @@ const READ_SHEET = `
   const sheet = document.querySelector('.sheet');
   const scrim = document.querySelector('[data-sheet-scrim]');
   const drag = document.querySelector('[data-sheet-drag]');
+  const tint = document.querySelector('[data-sheet-tint]');
   const frame = scrim ? scrim.getBoundingClientRect() : null;
   const box = sheet ? sheet.getBoundingClientRect() : null;
   const matrix = (el) => {
@@ -143,8 +150,8 @@ const READ_SHEET = `
     below: box && frame ? Math.round(frame.bottom - box.top) : null,
     sheetShift: matrix(sheet),
     dragOffset: matrix(drag),
-    scrimOpacity: scrim ? Number(getComputedStyle(scrim).opacity).toFixed(3) : null,
-    withdraw: scrim ? getComputedStyle(scrim).backdropFilter : null
+    scrimOpacity: tint ? Number(getComputedStyle(tint).opacity).toFixed(3) : null,
+    withdraw: tint ? getComputedStyle(tint).backdropFilter : null
   };`;
 
 /** Records everything the page paints for SCENE_MS, with `act` fired one
@@ -188,7 +195,7 @@ async function record(page, cdp, name, note, act, options = {}) {
     await writeFile(resolve(outDir, file), Buffer.from(frame.data, 'base64'));
     written.push({ file, at: frame.at });
   }
-  scenes.push({ name, note, frames: written, samples });
+  scenes.push({ name, note, frames: written, samples, crop: options.crop ?? BAND });
   const travel = samples.filter((s) => s.top !== null).map((s) => s.top);
   const span = travel.length ? `${Math.min(...travel)} to ${Math.max(...travel)}px` : 'no sheet';
   console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms, top edge ${span}`);
@@ -216,13 +223,20 @@ async function scenesFor(page, cdp, tag, notes, options = {}) {
   await seedGap(page);
   await page.waitForSelector('[data-coming-back-yes="dose"]');
 
-  await record(page, cdp, `${tag}open`, notes.open, () => openOffer(page));
+  const crop = options.crop;
+
+  await record(page, cdp, `${tag}open`, notes.open, () => openOffer(page), { crop });
   await page.waitForSelector('[data-sheet]');
 
   /* Cancel, the sheet's own second control - a close rather than an answer,
      so nothing behind the sheet moves and the frames are the sheet alone. */
-  await record(page, cdp, `${tag}close`, notes.close, () =>
-    page.locator('[data-sheet] .btn-ghost').click()
+  await record(
+    page,
+    cdp,
+    `${tag}close`,
+    notes.close,
+    () => page.locator('[data-sheet] .btn-ghost').click(),
+    { crop }
   );
   await page.waitForTimeout(300);
 
@@ -230,7 +244,9 @@ async function scenesFor(page, cdp, tag, notes, options = {}) {
     await openOffer(page);
     await page.waitForSelector('[data-sheet]');
     await page.waitForTimeout(600);
-    await record(page, cdp, `${tag}drag-dismiss`, notes.dragDismiss, () => dragDismiss(page));
+    await record(page, cdp, `${tag}drag-dismiss`, notes.dragDismiss, () => dragDismiss(page), {
+      crop
+    });
   }
 }
 
@@ -259,7 +275,7 @@ try {
         open: 'The same sheet in a 520px window, where it is taller than the space it has: `.sheet-drag` caps it at 85% and it scrolls inside itself, so the travel is the box that is actually rendered.',
         close: 'The capped sheet leaving, still by the height it was drawn at.'
       },
-      { drag: false }
+      { drag: false, crop: SHORT_BAND }
     );
     await context.close();
   }
@@ -274,6 +290,27 @@ try {
       {
         open: 'The same opening with reduce-motion set: the substitute is a crossfade, so the sheet appears where it stands and nothing travels.',
         close: 'The same closing with reduce-motion set: a crossfade out, not a cut.'
+      },
+      { drag: false }
+    );
+    await context.close();
+  }
+  /* The one number this ticket had to pick without a reference to read it
+     off: how long a travel of a whole sheet's height should take. --dur-med
+     is what shipped, and the same two scenes at --dur-slow are recorded
+     beside it so the choice is made on frames rather than on an argument.
+     The token is overridden in the page, so this is the built app running
+     its own transition at the other duration rather than a second build. */
+  {
+    const { context, page, cdp } = await open('no-preference', VIEWPORT, ':root{--dur-med:380ms}');
+    await dress(page, 'trans', 'light');
+    await scenesFor(
+      page,
+      cdp,
+      'slow-',
+      {
+        open: 'The same rise with --dur-slow in place of --dur-med: 380ms for the same 717px, which is about 40px between frames at the peak instead of about 110.',
+        close: 'The same close at --dur-slow.'
       },
       { drag: false }
     );
