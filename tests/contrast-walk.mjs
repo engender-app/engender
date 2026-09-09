@@ -25,11 +25,39 @@
  * nothing else on the page.
  */
 export const MEASURE = (rootSelector) => {
+  /* Resolved by painting it, not by reading it (carpet 30). This matched
+     `rgba?(...)` and answered null for anything else, and `behind()` treats
+     null as "this element paints nothing" - so every ground written as a
+     `color-mix` was skipped and its text measured against whatever opaque
+     ancestor sat further back. `getComputedStyle` hands a `color-mix` back
+     unresolved, as `oklab(0.97 -0.012 -0.013)`, which is what every
+     `--role-tint`, `--role-wash` and `--accent-soft` surface in the app
+     computes to. Found on /doubt's breathing core, whose whole ground is one:
+     the walk read its 21px phase word against the page rather than against
+     the tint it is drawn on.
+
+     A 1x1 readback resolves any colour the browser can paint, in the same
+     units the old regex produced, and it is the browser's own answer rather
+     than a second implementation of the colour spec. Same numbers as before
+     for an `rgb()`/`rgba()` input. */
+  const swatch = document.createElement('canvas');
+  swatch.width = swatch.height = 1;
+  const brush = swatch.getContext('2d', { willReadFrequently: true });
   const parse = (value) => {
-    const m = /rgba?\(([^)]+)\)/.exec(value);
-    if (!m) return null;
-    const parts = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+    if (!value || value === 'transparent' || value === 'none') return null;
+    brush.clearRect(0, 0, 1, 1);
+    /* Two assignments: an unparseable value leaves fillStyle at whatever it
+       held, so a known sentinel is what tells a rejected colour from a real
+       black. */
+    brush.fillStyle = '#000000';
+    brush.fillStyle = value;
+    const accepted = brush.fillStyle;
+    brush.fillStyle = '#ffffff';
+    brush.fillStyle = value;
+    if (accepted !== brush.fillStyle) return null;
+    brush.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = brush.getImageData(0, 0, 1, 1).data;
+    return { r, g, b, a: a / 255 };
   };
   const lum = ({ r, g, b }) => {
     const chan = (v) => {

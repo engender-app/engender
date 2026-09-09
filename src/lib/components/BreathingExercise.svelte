@@ -204,8 +204,15 @@
                    was the only thing that had kept the two apart. The figure
                    sits in the slot the phase word takes once the count is
                    running, so starting changes what the core says rather than
-                   where it says it. -->
-              <span class="breathing-pattern">4 · 4 · 4 · 4</span>
+                   where it says it.
+
+                   `aria-hidden`, because this sits in the live region and four
+                   numerals with three separators are not something anybody can
+                   act on. The words it replaced were: the heading above says
+                   them, and the button's own label says what pressing it does.
+                   So at rest the region is silent, and pausing announces
+                   nothing rather than announcing digits. -->
+              <span class="breathing-pattern" aria-hidden="true">4 · 4 · 4 · 4</span>
               <div class="breathing-dots" aria-hidden="true">
                 {#each BOX_BREATHING_PHASES as _}
                   <span class="breathing-dot"></span>
@@ -272,6 +279,13 @@
   .breathing-ring {
     position: absolute;
     pointer-events: none;
+    /* The 6px fill draws its outer edge at a 135px radius, so the band is
+       exactly 270px across - which is exactly the column a 320px phone
+       leaves, and carpet 28's hit test read a 1px overrun on each side. It
+       has a viewBox, so constraining the width scales the whole drawing
+       rather than cropping it. */
+    max-width: 100%;
+    height: auto;
     /* An absolutely positioned element takes no part in its flex parent's
        centering - .breathing-stage centers the button through
        align-items/justify-content, which only ever applied to in-flow

@@ -145,39 +145,39 @@
              tier 3's primitive for exactly this, and it substitutes a cut
              under reduced motion rather than being deleted. -->
         <div class="disclosed" transition:disclose>
-        <!-- `Field spread`, so this row carries the same shape as the two
-             switch rows around it: the name at the left edge, the control at
-             the right. What was here wrote the pair by hand and capped the
-             input at `width: 110px`, which is under the min-content width of
-             a platform time control - notifications' `.quiet-window` already
-             says so about the same input - so the value was clipped and the
-             row read as a label losing an argument with a pill. The cap is
-             the 160px `/settings/reminders/[id]` gives the same field. -->
-        <Field label={m.checkin_time()} id="checkin-time" spread>
-          {#snippet children(id)}
-            <input
-              class="input"
-              style="max-width:160px"
-              type="time"
-              {id}
-              name="checkin-time"
-              bind:value={prefs.checkInTime}
+          <!-- `Field spread`, so this row carries the same shape as the two
+               switch rows around it: the name at the left edge, the control at
+               the right. What was here wrote the pair by hand and capped the
+               input at `width: 110px`, which is under the min-content width of
+               a platform time control - notifications' `.quiet-window` already
+               says so about the same input - so the value was clipped and the
+               row read as a label losing an argument with a pill. The cap is
+               the 160px `/settings/reminders/[id]` gives the same field. -->
+          <Field label={m.checkin_time()} id="checkin-time" spread>
+            {#snippet children(id)}
+              <input
+                class="input"
+                style="max-width:160px"
+                type="time"
+                {id}
+                name="checkin-time"
+                bind:value={prefs.checkInTime}
+              />
+            {/snippet}
+          </Field>
+          <div class="spread" data-checkin-affirmations>
+            <span class="kit-row-text">
+              <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
+              <span class="kit-row-sub">{m.checkin_affirmations_sub()}</span>
+            </span>
+            <Switch
+              checked={prefs.checkInAffirmationsEnabled}
+              label={m.checkin_affirmations_title()}
+              onChange={(v) => {
+                prefs.checkInAffirmationsEnabled = v;
+              }}
             />
-          {/snippet}
-        </Field>
-        <div class="spread" data-checkin-affirmations>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.checkin_affirmations_title()}</span>
-            <span class="kit-row-sub">{m.checkin_affirmations_sub()}</span>
-          </span>
-          <Switch
-            checked={prefs.checkInAffirmationsEnabled}
-            label={m.checkin_affirmations_title()}
-            onChange={(v) => {
-              prefs.checkInAffirmationsEnabled = v;
-            }}
-          />
-        </div>
+          </div>
         </div>
       {/if}
     </div>
