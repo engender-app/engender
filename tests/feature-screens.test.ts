@@ -224,6 +224,13 @@ describe('what a first-run journal sees', () => {
            empty state for the same reason the bundled directory has
            none. */
         'practice/voice/metrics',
+        /* The return moment is a step rather than a screen (DIRECTION.md
+           rule 15, redesign ticket 35), and rule 12 forbids a notice on
+           one: a step carries a title on the field and one line under it,
+           and its empty state is that line saying the true sentence. It
+           does have an empty state and draws it as a surface - the
+           surface is the field and the line, not a Notice. */
+        'coming-back',
         /* The permissions list is the same length on a first run as on a
            thousandth: it describes what the app can reach, not what anybody
            has written. There is no state in which it is empty. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { screenTransition, type NavigationFacts } from './screen-transition';
+import { chromelessPath, replacesAppNavigation } from './chromeless';
 
 const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string }): NavigationFacts => ({
   type: 'link',
@@ -29,6 +30,17 @@ describe('choosing a tier-2 pattern', () => {
        (active-tab.ts), so arriving from Stats crosses tabs even though
        neither path is a tab root. */
     expect(screenTransition(nav({ from: '/stats', to: '/doses' }))).toBe('fade-through');
+  });
+
+  it('steps into the return moment and back out of it (ticket 35)', () => {
+    /* Chromeless is about the bar; it must not also mean "no movement".
+       /coming-back lights the Today tab (active-tab.ts), so arriving from
+       Home is going deeper inside one tab - which is what carries the
+       field's blind down from the sun's height to the step's. */
+    expect(screenTransition(nav({ from: '/', to: '/coming-back' }))).toBe('shared-axis');
+    expect(
+      screenTransition(nav({ from: '/coming-back', to: '/', type: 'popstate', delta: -1 }))
+    ).toBe('shared-axis-back');
   });
 
   it('reverses the axis on the way back', () => {
@@ -171,5 +183,45 @@ describe('choosing a tier-2 pattern', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690', type: 'popstate', delta: 1 }))).toBe(
       'shared-axis'
     );
+  });
+});
+
+describe('the blind runs on every navigation the app makes (ADR-0080)', () => {
+  /* The cut list is closed. Anything not on it moves, and a route having no
+     chrome is not on it - that conflation is what made ticket 35's arrival
+     a yank. */
+  it('cuts only with nothing to come from', () => {
+    expect(screenTransition(nav({ from: null, to: '/' }))).toBe('none');
+  });
+
+  it('cuts when either side renders instead of the app', () => {
+    expect(screenTransition(nav({ from: '/', to: '/onboarding', isChromeless: true }))).toBe('none');
+    expect(screenTransition(nav({ from: '/onboarding', to: '/', isChromeless: true }))).toBe('none');
+  });
+
+  it('cuts on the same path, and between views of one screen', () => {
+    expect(screenTransition(nav({ from: '/stats', to: '/stats' }))).toBe('none');
+    expect(screenTransition(nav({ from: '/wrapped/year', to: '/wrapped/month' }))).toBe('none');
+  });
+
+  it('moves for a chromeless route the app navigated to', () => {
+    /* The invariant, stated over the predicates rather than over one route:
+       a path with no chrome that does not replace the app is a path the
+       transition must animate. `isChromeless` is the *narrower* fact, which
+       is what the layout now feeds it. */
+    for (const path of ['/coming-back']) {
+      expect(chromelessPath(path), path).toBe(true);
+      expect(replacesAppNavigation(path), path).toBe(false);
+      expect(
+        screenTransition(nav({ from: '/', to: path, isChromeless: replacesAppNavigation(path) })),
+        path
+      ).not.toBe('none');
+      expect(
+        screenTransition(
+          nav({ from: path, to: '/', type: 'popstate', delta: -1, isChromeless: replacesAppNavigation(path) })
+        ),
+        path
+      ).not.toBe('none');
+    }
   });
 });
