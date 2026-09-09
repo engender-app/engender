@@ -132,15 +132,15 @@
         />
       </div>
       {#if prefs.checkInEnabled}
-        <!-- The label above the control rather than beside it, which is
-             `Field`'s shape and what the reminder editor and quiet hours
-             already draw for the same input. Beside it, the label had to
-             share a row with a platform control whose min-content width is
-             its own (notifications' `.quiet-window` says so): the 110px this
-             was capped at is under that width, so the value was clipped and
-             the row read as a label losing an argument with a pill. 160px is
-             the cap `/settings/reminders/[id]` gives the same field. -->
-        <Field label={m.checkin_time()} id="checkin-time">
+        <!-- `Field spread`, so this row carries the same shape as the two
+             switch rows around it: the name at the left edge, the control at
+             the right. What was here wrote the pair by hand and capped the
+             input at `width: 110px`, which is under the min-content width of
+             a platform time control - notifications' `.quiet-window` already
+             says so about the same input - so the value was clipped and the
+             row read as a label losing an argument with a pill. The cap is
+             the 160px `/settings/reminders/[id]` gives the same field. -->
+        <Field label={m.checkin_time()} id="checkin-time" spread>
           {#snippet children(id)}
             <input
               class="input"
