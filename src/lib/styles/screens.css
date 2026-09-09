@@ -22,13 +22,6 @@
   border: var(--role-hairline);
 }
 /* ---------- Entry editor and friends ---------- */
-/* Still here for the settings screens that carry a form in a card - the
-   milestone editor, labs, the dimension editor and three more. The entry
-   editor stopped using either in phase 5 ticket 22: eight of these stacked
-   was one card repeated down a screen, which is what DIRECTION.md 2b exists
-   to stop, and its areas are kit section headings with the fields flush to
-   the page underneath them. */
-.editor-section { margin-bottom: var(--space-4); }
 .editor-heading { font-size: var(--text-md); font-weight: var(--weight-bold); margin: 0 0 var(--space-3); font-family: var(--font-body); }
 
 /* Sticky against the scroll port, whose bottom edge is the window's - the
