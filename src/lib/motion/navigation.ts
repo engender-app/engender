@@ -112,25 +112,39 @@ export function sharedAxisX(
  * is not here at all: it belongs to the box both sides sit in, which travels
  * once for the pair of them.
  *
- * `travel` is 0 for a thing on the page and 12 for a thing painted on the
- * field, where it goes the way the edge is going: reading it as a number
- * rather than as a side keeps the sign the caller's, since only the caller
- * knows which way its own edge moved.
+ * `printed` is what tells a thing painted on the field from a thing
+ * standing under it: the first travels 12px the way the edge is going and
+ * the second only fades, because it is already riding the edge in full.
+ *
+ * That 12px is read out of `--part-travel` rather than passed in, and the
+ * sign is the whole reason. Which way a part travels depends on which way
+ * the edge went, and the edge's own direction is not known when the
+ * transition starts - the field has not been measured yet, and forward is
+ * not the same as taller (the areas step's three-line question makes a
+ * taller field than the step after it). Written into the keyframes as a
+ * var(), the browser resolves it per frame off whatever the edge published,
+ * and the first frame - where the travel is multiplied by nothing - cannot
+ * be wrong.
  */
 export function fieldPart(
   _node: Element,
-  params: { travel?: number } = {},
+  params: { printed?: boolean } = {},
   options: { direction?: Direction } = {}
 ): TransitionConfig {
   if (isReducedMotion()) return crossfadeOnly();
-  const travel = params.travel ?? 0;
   /* Leaving goes with the edge and arriving comes from the far side of it,
      which is what stops the two reading as one element sliding through. */
   const sign = options.direction === 'out' ? 1 : -1;
+  const move = (u: number) =>
+    params.printed ? `transform: translateY(calc(var(--part-travel, 12px) * ${sign * u}))` : '';
   return {
     duration: motionDuration('--dur-fast'),
+    /* The incoming half waits for the outgoing one to be gone, so no frame
+       of a step change holds two questions or two sets of answers - the
+       same sequence app.css runs on the field's own pseudo elements. */
+    delay: options.direction === 'out' ? 0 : motionDuration('--dur-fast'),
     easing: EASE_OUT,
-    css: (t, u) => `opacity: ${t}; transform: translateY(${sign * travel * u}px)`
+    css: (t, u) => `opacity: ${t}; ${move(u)}`
   };
 }
 
