@@ -144,6 +144,15 @@
 .screen-title {
   flex: 1;
   min-width: 0;
+  /* A title breaks inside a word rather than running out of its own box,
+     which is the same rule .kit-row-title takes for the same reason
+     (redesign ticket 14): `min-width: 0` above lets the column shrink, but
+     a single word wider than what is left has nowhere to wrap. At 195px -
+     200% zoom on a 390px phone, which the accessibility floor covers - the
+     48px title clipped on every deep screen in the app, measured on
+     /coming-back and present on main. A title that already fits is
+     untouched. */
+  overflow-wrap: break-word;
   /* A door's title and a deep screen's, at 48 (phase 10, rule 2): Outfit
      at 800, tracked to -0.045em, set solid. A door that shows a title shows
      it at this size and no other. Polish titles wrap rather than shrink. */
