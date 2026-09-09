@@ -54,19 +54,45 @@
      between them. --text-2 (inherited by the plain "Notes" text) gives the
      same quieter, inactive look at a contrast the token layer already
      guarantees; the nested .muted.small line already used --text-2
-     regardless. */
+     regardless.
+
+     Off and on are a drawing and the thing drawn. Off, the block is an
+     outline on the page: nothing is filled, because nothing is in force.
+     On, it fills with --surface-2 and its tile lifts to --surface, so the
+     preview is a solid object sitting on the page rather than a proposal
+     about one - which is the difference the switch actually makes, and
+     read at a glance rather than by comparing two border hues.
+
+     The border stays dashed in both, because the block is a preview in
+     both: this is never the launcher, it is a picture of it. And the
+     colour it fills with is the disguise's own neutral pair rather than
+     the flag's accent, which is the point of the thing being previewed
+     (ADR-0035) and also what makes every property here animate - a
+     border-style swap would snap in the middle of the fade.
+
+     The whole change is background, border and text colour, all of which
+     interpolate, so the switch is answered by one move at --dur-med rather
+     than by a cut (ticket 25). Setup's own look does not respond to the
+     switch at all (DIRECTION rule 12): this is the preview answering for
+     itself, and it is the only thing on the step that does. */
   .disguise-preview {
     display: flex; align-items: center; gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border: 1.5px dashed var(--outline);
     border-radius: var(--r-block);
     color: var(--text-2);
-    transition: color var(--dur-med), border-color var(--dur-med);
+    background: transparent;
+    transition:
+      color var(--dur-med),
+      border-color var(--dur-med),
+      background-color var(--dur-med);
   }
-  .disguise-preview.is-on { color: var(--text); border-color: var(--accent-border); }
+  .disguise-preview.is-on { color: var(--text); background: var(--surface-2); }
   .disguise-icon {
     width: 44px; height: 44px; border-radius: var(--r-block);
     background: var(--surface-2); color: var(--text-2);
     display: flex; align-items: center; justify-content: center;
+    transition: background-color var(--dur-med);
   }
+  .disguise-preview.is-on .disguise-icon { background: var(--surface); }
 </style>
