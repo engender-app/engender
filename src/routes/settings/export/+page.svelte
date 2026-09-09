@@ -34,6 +34,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { isAndroid } from '$lib/platform';
@@ -724,15 +725,20 @@
 
   {#if importLog.length > 0}
     <SectionHeading text={m.imp_log_section()} />
-    {#each importLog as record, i (record.id)}
-      {#if i > 0}<div class="hr"></div>{/if}
-      <ListRow
-        static
-        data-import-log-row
-        title={importLogSourceLabel(record.source)}
-        subtitle={m.imp_log_row_sub({ counts: importLogCountsText(record.counts), when: stampText(record.importedAt) })}
-      />
-    {/each}
+    <!-- The card is gone, so the hairline a list begins and ends with
+         (DIRECTION.md rule 4) is the list card's own, and the separator
+         between two rows is `.kit-row + .kit-row`'s rather than an `.hr`
+         written out per row. -->
+    <ListCard>
+      {#each importLog as record (record.id)}
+        <ListRow
+          static
+          data-import-log-row
+          title={importLogSourceLabel(record.source)}
+          subtitle={m.imp_log_row_sub({ counts: importLogCountsText(record.counts), when: stampText(record.importedAt) })}
+        />
+      {/each}
+    </ListCard>
   {/if}
 
   <SectionHeading text={m.exp_encrypted_section()} />
