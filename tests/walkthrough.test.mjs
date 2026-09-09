@@ -5195,6 +5195,24 @@ try {
   const row = page.locator('[data-appointment]', { hasText: 'ortopeda' }); // text-under-test
   if ((await row.count()) !== 1) throw new Error('the appointment that was just written is not on the list');
 
+  /* The room's field and back control (carpet 27): a visit today puts the
+     room's row on this screen, and back has to return here rather than take
+     its fallback to the appointments list, since this walk opened it from
+     an entry it was already on. */
+  await page.locator('[data-list-row="in-the-room"]').click();
+  await page.waitForSelector('[data-in-the-room]');
+  if ((await page.locator('[data-screen-back]').count()) !== 1) {
+    throw new Error('the room has no back control');
+  }
+  const roomField = page.locator('[data-field-blind]');
+  const roomFieldBox = await roomField.boundingBox();
+  if (!roomFieldBox || roomFieldBox.width < (await page.locator('[data-app-root]').boundingBox()).width * 0.9) {
+    throw new Error('the room has no field under its header');
+  }
+  await page.click('[data-screen-back]');
+  await page.waitForURL('**/health/appointments');
+  await page.waitForSelector('[data-appointment]');
+
   /* Editing opens on what is stored, and the kind just used is offered as a
      chip - the only suggestion the app is entitled to make, since nothing
      ships in either language. Tapping one fills the field rather than

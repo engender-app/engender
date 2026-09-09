@@ -11,9 +11,11 @@
 
      WHY THE SCREEN IS CHROMELESS. The tab bar floats over every other
      screen, and here it would be four ways to leave by accident in the
-     middle of a sentence. The way out is one control at the foot of the
-     screen, and it is the only one - the header carries no back arrow,
-     because two ways out is the thing the ticket refuses.
+     middle of a sentence. That absence is the shell's own chrome
+     (chromeless.ts) and is unrelated to the screen's header, which carries
+     the ordinary field and back control every deep screen owes (rule 7,
+     carpet 27) - the foot's one control stays what carries an answer
+     forward; the header's is what leaves without one.
 
      WHY ADVANCING IS FREE. Somebody who wants nothing but their questions
      at 32px pays no tap cost at all: the field under each question is
@@ -99,11 +101,18 @@
 </script>
 
 <div class="screen room">
-  <!-- No back arrow and no actions, so the header collapses to nothing
-       visible. The title stays in the document for the outline and for a
-       screen reader, which is what a chromeless screen owes them when the
+  <!-- No actions: nothing lives beside the title. The back control returns
+       to the appointment this room was opened from (smartBack), with the
+       appointments list as the fallback for a deep link or a reload
+       (carpet 27). The title stays in the document for the outline and for
+       a screen reader, which is what a chromeless screen owes them when the
        largest text on it is a question rather than a name. -->
-  <ScreenHeader title={m.in_the_room_title()} screen="in-the-room" titleHidden />
+  <ScreenHeader
+    title={m.in_the_room_title()}
+    screen="in-the-room"
+    titleHidden
+    back="/health/appointments"
+  />
 
   <ReadGate read={checklistQuery} variant="block" count={1}>
     {#snippet rows()}
