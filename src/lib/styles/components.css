@@ -319,7 +319,57 @@
    and a tile's action button (DIRECTION.md rule 4): --text as the ground,
    --bg as the type. No box-shadow - the kit's one shadow belongs to the
    floating add button, not this control. */
-.btn-primary { background: var(--text); color: var(--bg); }
+.btn-primary { background: var(--text); color: var(--bg); position: relative; overflow: hidden; }
+/* PROTOTYPE, not part of ticket 37 - a press-triggered light-sweep in the
+   flag's own colour, left to right, no vertical travel. The band itself
+   stays skewed (a parallelogram, not a vertical bar); only its two edges
+   move, and on two clocks rather than one - the leading edge (right)
+   starts at once, the trailing edge (left) follows a beat later, the
+   same lead/trail stagger $lib/motion/indicator.ts drives the nav pill
+   and segment-pill with, so the band stretches out while travelling and
+   gives back the width as the trailing edge catches up at the end. Solid
+   fill, no gradient falloff - a soft edge read as motion blur. Paints
+   behind the button's own label and icon (the z-index pair below), not
+   over them.
+
+   --field, not --accent: --accent is adjusted for legibility as small
+   text/icon fills (trans's rose is darkened from the flag's own #C25B79
+   to #B85272 for exactly that reason, a few lines up in palettes.css) and
+   reads as a slightly different colour from the flag itself. --field is
+   the flag's own hex undisturbed - the same value activeFlag.svelte.ts
+   already paints a screen's own field with (ADR-0075).
+
+   .is-swiping is toggled by a caller on press and removed on
+   transitionend - the same one-shot pattern .nav-add.is-catching already
+   uses - since :active alone cannot guarantee the sweep finishes on a tap
+   shorter than its duration. */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: -35%;
+  bottom: -35%;
+  left: -45%;
+  right: 120%;
+  background: var(--field);
+  transform: skewX(-18deg);
+  pointer-events: none;
+  transition:
+    left 220ms linear 35ms,
+    right 220ms linear;
+}
+.btn-primary.is-swiping::after {
+  left: 145%;
+  right: -70%;
+}
+/* A positioned descendant (::after, position: absolute) paints above
+   static in-flow content by default, so without this the sweep covered
+   the icon and label instead of passing behind them. Positioning the
+   children too puts them in the same z-index-ordered bucket the pseudo
+   is in, where an explicit z-index wins over the pseudo's implicit auto. */
+.btn-primary > * {
+  position: relative;
+  z-index: 1;
+}
 /* Behind a hover query because this rule sits after .btn:active and carries
    the same specificity, so on a touch screen it wins. Chromium applies
    :hover on tap and leaves it applied until something else is tapped, which
