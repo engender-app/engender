@@ -49,6 +49,14 @@ const flag = (name, fallback) => {
 const tag = flag('tag', 'after');
 const root = resolve(flag('root', resolve(here, '..')));
 const outDir = resolve(flag('out', resolve(here, '../.claude/cohesion-shots')), tag);
+/* The ticket asks for every palette on anything that carries colour. Of the
+   six checks below only `tint` can vary with the palette at all - a corner,
+   a shadow, a font size and a stroke width are the same eight ways round -
+   so the walk runs one palette by default and `--palettes a,b` is how that
+   is *shown* rather than assumed: two palettes whose findings are identical
+   are the evidence that the dimension adds nothing to these checks. Run it
+   with the flag whenever a check is added that reads a role. */
+const PALETTES = flag('palettes', 'trans').split(',');
 
 /* Every route in src/routes, with the dynamic ones resolved to a real id by
    `resolve` below. `door` marks the four doors, which rule 7 says never show
@@ -352,36 +360,41 @@ resolved.push({ name: 'entry-new', path: `/entry/new/${Math.floor(Date.now() / 8
 
 const walk = [...ROUTES, ...resolved.filter((r) => r.path).map((r) => ({ path: r.path, name: r.name }))];
 
-for (const theme of ['light', 'dark']) {
-  await dress('trans', theme);
-  for (const route of walk) {
-    const slug = route.name ?? (route.path.replace(/^\//, '').replace(/\//g, '-') || 'today');
-    const name = `${slug}-${theme}`;
-    try {
-      await settle(route.path);
-      await strip();
-      await page.waitForTimeout(900);
-      const reading = await read(RADII, SIZES, STROKES);
-      const counts = reading.found
-        ? Object.fromEntries(Object.entries(reading.found).map(([k, v]) => [k, v.length]))
-        : {};
-      audit.push({ route: route.path, theme, name, ...reading, counts, door: !!route.door });
-    } catch (err) {
-      audit.push({ route: route.path, theme, name, error: String(err).slice(0, 200) });
+for (const palette of PALETTES) {
+  for (const theme of ['light', 'dark']) {
+    await dress(palette, theme);
+    for (const route of walk) {
+      const slug = route.name ?? (route.path.replace(/^\//, '').replace(/\//g, '-') || 'today');
+      const name = `${slug}-${palette}-${theme}`;
+      try {
+        await settle(route.path);
+        await strip();
+        await page.waitForTimeout(900);
+        const reading = await read(RADII, SIZES, STROKES);
+        const counts = reading.found
+          ? Object.fromEntries(Object.entries(reading.found).map(([k, v]) => [k, v.length]))
+          : {};
+        audit.push({ route: route.path, palette, theme, name, ...reading, counts, door: !!route.door });
+      } catch (err) {
+        audit.push({ route: route.path, palette, theme, name, error: String(err).slice(0, 200) });
+      }
     }
   }
 }
 
 await writeFile(
   `${outDir}/audit.json`,
-  JSON.stringify({ tag, routes: walk.length, resolved, audit, shots, errors }, null, 2)
+  JSON.stringify({ tag, routes: walk.length, palettes: PALETTES, resolved, audit, shots, errors }, null, 2)
 );
 await page.close();
 await browser.close();
 await app.close();
 
 const diverging = audit.filter((a) => a.found && Object.values(a.counts).some((n) => n > 0));
-console.log(`${walk.length} route(s) x 2 themes; ${diverging.length} reading(s) with a divergence`);
+console.log(
+  `${walk.length} route(s) x ${PALETTES.length} palette(s) x 2 themes; ` +
+    `${diverging.length} reading(s) with a divergence`
+);
 console.log(`audit in ${outDir}/audit.json`);
 if (errors.length) {
   console.error(`${errors.length} page error(s):`);
