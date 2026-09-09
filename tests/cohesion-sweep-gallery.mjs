@@ -142,8 +142,16 @@ const ROUTES = [
        the welcome step and wherever a step has no way back. So rule 7 does
        not reach this screen, and reading it as a deep screen with no back
        control was the instrument judging it by a rule it does not answer
-       to (carpet 25). */
-    exception: "a step machine: DIRECTION.md rules 12 to 15 own its header, and rule 12 drops the step's own back control on the welcome step"
+       to (carpet 25).
+
+       The exception is the route's because the reading is: the walk loads
+       the address and reads the welcome step, which is the one step rule 12
+       says has nothing to go back to. It excuses no step this walk has ever
+       looked at except that one, so a back control going missing deeper in
+       setup is not something this line can swallow - it is
+       tests/setup-review.mjs and the walkthrough's own setup flows that
+       read those. */
+    exception: "a step machine: DIRECTION.md rules 12 to 15 own its header, and rule 12 drops the step's own back control on the welcome step, which is the step this walk reads"
   },
   { path: '/doses' },
   { path: '/doubt' },

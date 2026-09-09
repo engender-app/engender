@@ -391,7 +391,7 @@
    a back control would point at nothing. Dropped rather than hidden, so
    the control is out of the tab order and out of the accessibility tree in
    the shell that has no answer for it - the same thing this query already
-   does to the bottom bar the rail replaces (app.css, AppNav's note). */
+   does to the bottom bar the rail replaces (`.app-nav`, app.css). */
 @container app (min-width: 1024px) {
   .screen > .screen-header > .screen-field { border-radius: var(--r-block); }
   .screen-header.is-chrome .screen-back { display: none; }
