@@ -219,7 +219,6 @@
      screen's own `data-import-error` so the suite grips a kind rather than a
      sentence in one language. */
   let archiveErrorKind = $state<RestoreFailureKind | ''>('');
-  let archiveLabel = $state('');
   const archiveProgress = createProgress();
 
   /* One flow for everybody (ADR-0079): setup does not vary by disguise,
@@ -280,14 +279,19 @@
       archive untouched - the answer to a cancel, a refusal and a change of
       mind alike. Written as a step assignment rather than through go(),
       because the list itself is about to change under it and "is the
-      destination behind the current step" cannot be asked of two lists. */
+      destination behind the current step" cannot be asked of two lists.
+
+      What it does not do is throw away the file and the password. Nothing
+      here has ever been written anywhere - the draft is two variables in
+      this component - and a person who backs out to read the welcome again,
+      or who taps the arrow out of the habit every other step has taught
+      them, should not have to find the file a second time. Coming back
+      through the same control finds the form as it was left. Only the
+      refusal is cleared, because it is about an attempt that is over. */
   function abandonRestore() {
     back = true;
     step = 'welcome';
     restoring = false;
-    picked = null;
-    archivePass = '';
-    archiveReady = false;
     archiveError = '';
     archiveErrorKind = '';
     archiveProgress.abandon();
@@ -327,7 +331,6 @@
     archiveBusy = true;
     archiveError = '';
     archiveErrorKind = '';
-    archiveLabel = m.verify_running_files();
     archiveProgress.start();
     const result = await runVerify(picked, archivePass, (done, total) =>
       archiveProgress.report(done, total)
@@ -389,12 +392,15 @@
       archiveBusy = true;
       archiveError = '';
       archiveErrorKind = '';
-      archiveLabel = m.imp_running_files();
       archiveProgress.start();
-      const result = await runRestore(picked, archivePass, 'replace', (progress: RestoreProgress) => {
-        archiveLabel = progress.stage === 'files' ? m.imp_running_files() : m.imp_running_rows();
-        archiveProgress.report(progress.done, progress.total);
-      });
+      /* The fraction only. Settings' import puts a sentence beside its bar
+         saying which half is running, because it has a bar to put one
+         beside; a step may not carry one (rule 12), so what this reports
+         goes into the button's own fill and the stage has nowhere to be
+         said. Dropping the label rather than computing one nothing reads. */
+      const result = await runRestore(picked, archivePass, 'replace', (progress: RestoreProgress) =>
+        archiveProgress.report(progress.done, progress.total)
+      );
       archiveBusy = false;
       if (!result.ok) {
         archiveProgress.abandon();

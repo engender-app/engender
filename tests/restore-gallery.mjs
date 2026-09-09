@@ -208,6 +208,46 @@ for (const [palette, theme] of [
   await shoot(`restore-${palette}-${theme}-refused`, '[data-app-root]');
 }
 
+/* ---------- Polish, and the step it sits next to ----------
+
+   Two of the new strings are about 20 characters longer in Polish, and both
+   are body prose that wraps by design; the question a character count cannot
+   answer is whether the question still sets on two lines and whether the
+   refusal still fits its own line. So it is rendered rather than estimated.
+
+   The name step beside it, at the two short viewports, because the restore
+   step overflows there and the number is only worth anything next to the
+   number an existing step posts at the same size: rule 14's short form is
+   ticket 33's work and has not landed for any step yet. */
+await dress('trans', 'light');
+await settle('/settings');
+await page.locator('[data-segment="pl"]').click();
+await page.waitForTimeout(500);
+await firstRun();
+await page.locator('[data-restore-start]').click();
+await page.waitForSelector('[data-restore-pick]');
+await shoot('restore-polish-empty', '[data-app-root]');
+await pickFile('dziennik-2026-09-09.ttbackup');
+await page.locator('#ob-restore-pass').fill('nie-to-haslo');
+await page.locator('[data-restore-check]').click();
+await page.waitForSelector('[data-restore-error="not-an-archive"]');
+await shoot('restore-polish-refused', '[data-app-root]');
+await settle('/settings');
+await page.locator('[data-segment="en"]').click();
+await page.waitForTimeout(500);
+
+for (const [key, size] of [
+  ['narrow', { width: 320, height: 568 }],
+  ['keyboard', { width: 390, height: 360 }]
+]) {
+  await page.setViewportSize(size);
+  await firstRun();
+  await page.locator('[data-next]').click(); // welcome -> name
+  await page.waitForSelector('#ob-name');
+  await shoot(`name-step-${key}`, '[data-app-root]');
+}
+await page.setViewportSize(VIEWPORT);
+
 /* ---------- the sizes rule 14 is measured at ----------
 
    320x568 is the narrow floor and also a short one; 390x360 stands in for a
