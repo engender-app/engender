@@ -103,10 +103,13 @@ const openContext = async (viewport) => {
 
 /* The demo bar is a development control over the frame's own bottom edge,
    which is exactly where the foot is: left in, it is what the hit test
-   finds. The toasts are removed for the same reason. */
-const strip = () =>
-  page.evaluate(() => {
-    for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
+   finds and what a click on a tab lands on. The toasts are removed for the
+   same reason. `keepDemo` is for the seed alone, whose own control - "fill
+   every feature" - lives in that bar, so stripping it first leaves nothing
+   to seed the journal with. */
+const strip = (keepDemo = false) =>
+  page.evaluate((keepDemo) => {
+    if (!keepDemo) for (const bar of document.querySelectorAll('.demo-bar')) bar.remove();
     for (const toast of document.querySelectorAll('.toast, [data-toast]')) toast.remove();
     if (!document.getElementById('savebar-shot-css')) {
       const style = document.createElement('style');
@@ -115,9 +118,9 @@ const strip = () =>
         '[data-app-scroll-region]{scrollbar-width:none}[data-app-scroll-region]::-webkit-scrollbar{display:none}';
       document.head.append(style);
     }
-  });
+  }, keepDemo);
 
-const settle = async (path) => {
+const settle = async (path, keepDemo = false) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
   if (await page.locator('[data-leave-setup]').count()) {
@@ -130,13 +133,13 @@ const settle = async (path) => {
      toast both sit over the frame's bottom edge, which is where every tab
      and every control this walk has to click lives. They intercepted the
      click on the practise tab and timed the whole run out. */
-  await strip();
+  await strip(keepDemo);
 };
 
 /** Seed the demo persona, which is what gives the photo and voice screens
     something to draw. It ends on /more (the demo control's own last step). */
 const seed = async () => {
-  await settle('/');
+  await settle('/', true);
   await page.locator('[data-fill-every-feature]').click();
   await page.waitForURL('**/more', { timeout: 240000 });
   await page.waitForTimeout(2000);
