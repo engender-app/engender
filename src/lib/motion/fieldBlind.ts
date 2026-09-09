@@ -62,6 +62,21 @@ const PART_TRAVEL = 12;
    published them may remove them. */
 let current: BlindCarry | null = null;
 
+export interface CarryOptions {
+  /** The one navigation where the sun is the same object at the same size on
+      both sides, and so must not be drawn twice.
+
+      Setup's finish (redesign ticket 33): the sun has grown one step's worth
+      per step and arrives at exactly the scale Home draws it at, which is
+      what rule 12 means by "one object at one size rather than two suns".
+      Named per side, its rings would close outermost-first and open again
+      outermost-first, which is the app's own mark flickering at the moment
+      the app opens. Left unnamed they stay inside each screen's snapshot and
+      crossfade with it, and two identical images crossfading is a sun
+      standing still while the field closes around it. */
+  holdSun?: boolean;
+}
+
 export interface BlindCarry {
   /** After the incoming screen has mounted, before it is captured. */
   swap(): void;
@@ -83,15 +98,15 @@ interface Side {
  * settles. Never returns null: a screen with no field is the blind's limit
  * case - closed to nothing - and the other side still has an edge to move.
  */
-export function carryBlind(doc: Document = document): BlindCarry {
+export function carryBlind(doc: Document = document, options: CarryOptions = {}): BlindCarry {
   const root = doc.documentElement;
-  const before = name(doc, 'a');
+  const before = name(doc, 'a', undefined, options);
   let after: Side | null = null;
 
   const carry: BlindCarry = {
     swap() {
       release(before);
-      after = name(doc, 'b', before);
+      after = name(doc, 'b', before, options);
       for (const [property, value] of Object.entries(
         blindVariables({ from: before.height, to: after.height })
       )) {
@@ -153,7 +168,7 @@ export function blindVariables({
 /** Names one side's field and measures it. `skip` is the side already
     named, which can still be in the DOM when the incoming one is looked
     for. */
-function name(doc: Document, side: 'a' | 'b', skip?: Side): Side {
+function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions = {}): Side {
   const fields = [...doc.querySelectorAll<HTMLElement>(FIELD)];
   const field = skip ? fields.find((el) => !skip.named.includes(el)) : fields[0];
   if (!field) return { height: 0, named: [] };
@@ -190,7 +205,9 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side): Side {
      the one that moves, and it closes to nothing. */
   if (height > 0) take(field.querySelector<HTMLElement>(BLIND), BLIND_NAME);
   field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`));
-  field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
+  if (!options.holdSun) {
+    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
+  }
 
   return { height, named };
 }

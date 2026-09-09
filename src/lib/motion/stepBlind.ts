@@ -43,6 +43,9 @@ import { blindVariables } from './fieldBlind';
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
 
+/** What is printed on the field and has to ride with its edge. */
+const ASK = '.setup-ask';
+
 /**
  * Moves one field's bottom edge whenever the field's height changes, and
  * hands the stylesheet what everything riding that edge needs.
@@ -54,30 +57,46 @@ const HOLD = 'blindHold';
 export const blindEdge: Action<HTMLElement> = (node) => {
   const host = node.parentElement ?? node;
   let edge = 0;
+  let ask = 0;
   let frame = 0;
 
-  const publish = (from: number, to: number) => {
-    for (const [property, value] of Object.entries(blindVariables({ from, to }))) {
-      host.style.setProperty(property, value);
-    }
-  };
+  /* Where the question's own box sits inside the field, in layout terms.
+     `offsetTop` rather than a client rect, because the ride is a translate
+     and a rect would read the ride back in: two changes in quick
+     succession would then measure a box that had not finished moving.
+     Relative to the field, whose own top never moves. */
+  const askTop = () => (node.querySelector<HTMLElement>(ASK)?.offsetTop ?? 0);
 
   const observer = new ResizeObserver((entries) => {
     const box = entries[0]?.borderBoxSize?.[0];
     const to = Math.round(box ? box.blockSize : node.getBoundingClientRect().height);
     if (to === edge) return;
     const from = edge;
+    const askFrom = ask;
     edge = to;
+    ask = askTop();
+
+    for (const [property, value] of Object.entries(blindVariables({ from, to }))) {
+      host.style.setProperty(property, value);
+    }
+    /* What the question rides, which is not what the page under the field
+       rides. The page moves by the whole of what the field gained; the
+       question moves by the part of it that is above the question - the
+       sun's reserve growing - because the rest of the gain is the question
+       itself getting taller, and a box does not move because it grew
+       downwards. Measured on the flipbook: riding the field's own delta
+       sent the question 91px past where it had been, which is a teleport
+       in one frame and the one thing this ticket may not ship. */
+    host.style.setProperty('--part-delta', `${askFrom - ask}px`);
 
     /* The first measurement is where the field starts, not a move: there is
        no earlier frame for the edge to have travelled from. */
     if (from === 0) {
-      publish(to, to);
       host.style.setProperty('--blind-edge', `${to}px`);
+      host.style.setProperty('--part-delta', '0px');
       return;
     }
 
-    publish(from, to);
     /* Painted this frame: the edge where it was, everything that rides it
        back where it was, and no transitions to interrupt. */
     host.style.setProperty('--blind-edge', `${from}px`);

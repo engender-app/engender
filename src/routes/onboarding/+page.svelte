@@ -262,6 +262,32 @@
     return LINE[step]();
   });
 
+  /* The flag being left, as a colour. `--field` is published on <html> the
+     instant the tap lands, so the only way the old colour can still be on
+     screen is for something to have written it down. Kept in a plain
+     variable rather than in state, and never read by the effect that sets
+     the two that are: an effect that reads what it writes is how
+     refreshActiveFlag once looped at boot. */
+  let shownField: string | undefined;
+  let leavingField = $state<string | null>(null);
+  /** Bumped per pick, so the wipe is a fresh element and plays once per tap
+      rather than once per mount. */
+  let leavingPass = $state(0);
+
+  $effect(() => {
+    const hex = activeFlag.field?.hex;
+    if (hex === shownField) return;
+    const was = shownField;
+    shownField = hex;
+    /* Nothing to wipe away on the first paint, and nothing to wipe under
+       disguise, where the field is `--surface-2` and there is no flag. */
+    if (!was || !hex) return;
+    leavingField = was;
+    leavingPass++;
+    const done = setTimeout(() => (leavingField = null), motionDuration('--dur-authored') + 80);
+    return () => clearTimeout(done);
+  });
+
   /** Which of the two suns paints on top, for as long as the redraw takes.
 
       A keyed block's outgoing element and its incoming one are both in the
@@ -546,6 +572,22 @@
            too - at every step the sun's reach is under the field's own
            edge, so the clip never cuts it. -->
       <div class="setup-paint">
+        <!-- The flag being left, on top of the flag arriving and under the
+             sun, wiping off towards the far corner: the new colour is
+             uncovered from the sun's own corner outwards, which is where
+             the answer to the tap is coming from. A hard edge rather than a
+             crossfade, and the first flipbook is why - two flag colours
+             mixed in sRGB spend 200ms as the muddy tan between them, on the
+             one step whose whole subject is the colour. -->
+        {#if leavingField}
+          {#key leavingPass}
+            <div
+              class="setup-paint-was"
+              style={`background-color:${leavingField}`}
+              aria-hidden="true"
+            ></div>
+          {/key}
+        {/if}
         {#if !prefs.disguise}
           <!-- The sun is the only progress meter (rule 12): it grows one
                step's worth per step, and the step count that used to be a
@@ -1122,10 +1164,40 @@
     height: 100vh;
     z-index: 0;
     pointer-events: none;
-    background: var(--field);
+    background-color: var(--field);
     clip-path: inset(
       0 0 calc(100% - var(--blind-edge)) 0 round 0 0 var(--r-block) var(--r-block)
     );
+  }
+
+  /* Picking a flag changes what colour the field is, and a state change
+     moves (ADR-0078). Measured on the first flipbook: the whole field went
+     from trans pink to agender green between two frames while the sun was
+     still redrawing ring by ring underneath, so the loudest surface on the
+     screen was the one thing that teleported.
+
+     What moves is the flag being left: it lies over the flag arriving and
+     wipes off towards the far corner, so the new colour is uncovered from
+     the sun's corner outwards on the sun's own clock. First in the paint's
+     DOM order and so under the sun, which keeps drawing over both.
+
+     The rest of the palette still arrives in one frame - the accent under
+     Skip, a tick's fill, a row's icon block - because `--accent` and the
+     role colours are published on <html> and nothing in the app transitions
+     them. That is the cohesion sweep's to answer (ticket 20) rather than a
+     step's; what this rule owns is the surface this step is about. */
+  .setup-paint-was {
+    position: absolute;
+    inset: 0;
+    animation: setup-field-wipe var(--dur-authored) var(--ease-out) both;
+  }
+  @keyframes setup-field-wipe {
+    from {
+      clip-path: inset(0);
+    }
+    to {
+      clip-path: inset(0 100% 0 0);
+    }
   }
 
   /* The sun, in the field's top right corner, inside the clip because it is
@@ -1196,7 +1268,11 @@
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--blind-ease, var(--ease-out));
   }
-  .setup:global([data-blind-hold]) .setup-ask,
+  .setup:global([data-blind-hold]) .setup-ask {
+    /* Its own delta, not the field's: see stepBlind.ts. */
+    translate: 0 var(--part-delta, 0px);
+    transition: none;
+  }
   .setup:global([data-blind-hold]) .setup-below {
     translate: 0 var(--blind-delta, 0px);
     transition: none;

@@ -219,3 +219,24 @@ describe('the five properties one moving edge is worth', () => {
     expect(blindVariables({ from: 82, to: 183 })['--blind-ease']).toMatch(/^linear\(/);
   });
 });
+
+describe("the sun across setup's handover", () => {
+  it('names every ring per side by default, so they close and open', () => {
+    const rings = [el(), el()];
+    const { as } = fakeDocument([field({ height: 100, rings })]);
+    carryBlind(as);
+    expect(rings.map((r) => r.style.viewTransitionName)).toEqual(['sun-a-0', 'sun-a-1']);
+  });
+
+  it('leaves them unnamed where the sun is the same object at the same size', () => {
+    /* Redesign ticket 33: setup's sun has grown to exactly the scale Home
+       draws it at, so naming it would close and reopen the app's own mark
+       at the moment the app opens. Unnamed, it stays inside each screen's
+       snapshot, and two identical images crossfading is a sun standing
+       still. */
+    const rings = [el(), el()];
+    const { as } = fakeDocument([field({ height: 100, rings })]);
+    carryBlind(as, { holdSun: true });
+    expect(rings.map((r) => r.style.viewTransitionName)).toEqual([undefined, undefined]);
+  });
+});
