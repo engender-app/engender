@@ -94,29 +94,27 @@
     />
   {/if}
 
-  <div class="card editor-section">
-    <Field label={m.rem_type_label()} legend>
-      {#snippet children()}
-        <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
-      {/snippet}
-    </Field>
-    <Field label={m.rem_name_label()} id="r-name">
-      {#snippet children(id)}
-        <input class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
-      {/snippet}
-    </Field>
-    <Field label={m.rem_time_label()} id="r-time">
-      {#snippet children(id)}
-        <input class="input" {id} name="r-time" type="time" style="max-width:160px" bind:value={draft.time} />
-      {/snippet}
-    </Field>
-    <Field label={m.rem_repeats_label()} legend>
-      {#snippet children()}
-        <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v as RecurrenceChoice)} />
-      {/snippet}
-    </Field>
-    <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
-  </div>
+  <Field label={m.rem_type_label()} legend>
+    {#snippet children()}
+      <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
+    {/snippet}
+  </Field>
+  <Field label={m.rem_name_label()} id="r-name">
+    {#snippet children(id)}
+      <input class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
+    {/snippet}
+  </Field>
+  <Field label={m.rem_time_label()} id="r-time">
+    {#snippet children(id)}
+      <input class="input" {id} name="r-time" type="time" style="max-width:160px" bind:value={draft.time} />
+    {/snippet}
+  </Field>
+  <Field label={m.rem_repeats_label()} legend>
+    {#snippet children()}
+      <Segmented name={m.rem_repeats_label()} options={RECURRENCES} value={draft.choice} onChange={(v) => (draft.choice = v as RecurrenceChoice)} />
+    {/snippet}
+  </Field>
+  <p class="next-preview"><Icon name="clock" size={14} /> {m.rem_next({ when: nextPreview })}</p>
 
   <div class="notice notice-info">
     <Icon name="info" size={20} />
