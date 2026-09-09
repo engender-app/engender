@@ -102,11 +102,12 @@
 
 <div class="screen room">
   <!-- No actions: nothing lives beside the title. The back control returns
-       to the appointment this room was opened from (smartBack), with the
-       appointments list as the fallback for a deep link or a reload
-       (carpet 27). The title stays in the document for the outline and for
-       a screen reader, which is what a chromeless screen owes them when the
-       largest text on it is a question rather than a name. -->
+       to whichever screen led here - the appointments list or the
+       appointment-prep list, both of which offer this row (smartBack) -
+       falling back to the appointments list only for a deep link or a
+       reload (carpet 27). The title stays in the document for the outline
+       and for a screen reader, which is what a chromeless screen owes them
+       when the largest text on it is a question rather than a name. -->
   <ScreenHeader
     title={m.in_the_room_title()}
     screen="in-the-room"
