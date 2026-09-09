@@ -1904,19 +1904,48 @@ try {
    already have a backup, hand over the file and its password, and get the
    journal back without being asked to invent a life you already have.
 
-   The archive is a real one, exported from this demo journal a moment
-   earlier through the export screen, because a fixture would prove the
-   screen wires up and not that a journal survives the round trip. */
+   The archive is a real one, exported through the export screen a moment
+   earlier, because a fixture would prove the screen wires up and not that a
+   journal survives the round trip. It is a small one on purpose: what a
+   whole demo journal survives is flow 11b's question, and asking it twice
+   costs this suite a second full export and restore of every photo the
+   earlier flows imported. Here the journal is emptied first and given one
+   entry and one flag, so what has to come back is nameable - the note, and
+   the palette, which is a portable preference (ADR-0003) and therefore also
+   the proof that the flag step was rightly not asked. */
 try {
   await page.setViewportSize({ width: 390, height: 844 });
   await fresh('/');
-  const dayEntries = async () => {
-    await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
+
+  /* An empty journal is what a new phone is, and the jump is what makes
+     one. Out of setup first, so the entry can be written. */
+  const emptyFirstRun = async () => {
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
     await booted();
-    await page.waitForSelector('[data-entry-card]');
-    return page.locator('[data-entry-card]').count();
+    await page.selectOption('#demo-jump', 'first-run');
+    await page.waitForSelector('[data-restore-start]');
   };
-  const before = await dayEntries();
+  await emptyFirstRun();
+  await page.locator('[data-leave-setup]').click();
+  await page.waitForSelector('[data-home-hello]');
+
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-palette-pick="lesbian"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian');
+
+  /* Through the FAB, whose fan seeds the mood, so this needs no mood control
+     of its own - the editor's and Home's log strip both answer to
+     `[data-mood]` and picking between them is flow 2's problem, not this
+     flow's. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-nav-fab]').click();
+  await page.locator('[data-fan-target="mood-3"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('#ed-note').fill('The entry that came back.');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
 
   await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
   await booted();
@@ -1926,13 +1955,16 @@ try {
     page.waitForEvent('download', { timeout: 120000 }),
     page.locator('[data-confirm-export]').click()
   ]);
-  const archiveBytes = await readFile(await archive.path());
+  const archivePath = await archive.path();
 
-  /* The jump empties the journal, which is what a new phone is. */
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  /* Emptied again, and the flag put back to something the archive will have
+     to overwrite, so a palette reading lesbian at the end can only have come
+     out of the file. */
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
-  await page.selectOption('#demo-jump', 'first-run');
-  await page.waitForSelector('[data-restore-start]');
+  await page.locator('[data-palette-pick="trans"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.palette === 'trans');
+  await emptyFirstRun();
 
   await page.locator('[data-restore-start]').click();
   await page.waitForSelector('[data-restore-pick]');
@@ -1963,13 +1995,7 @@ try {
 
   /* And the real one over the top of it, which is also the check that a
      second pick clears the first one's refusal. */
-  page.once('filechooser', (chooser) =>
-    chooser.setFiles({
-      name: archive.suggestedFilename(),
-      mimeType: 'application/octet-stream',
-      buffer: archiveBytes
-    })
-  );
+  page.once('filechooser', (chooser) => chooser.setFiles(archivePath));
   await page.locator('[data-restore-pick]').click();
   await page.waitForFunction(
     (name) => document.querySelector('[data-restore-file]')?.textContent.includes(name),
@@ -1993,11 +2019,22 @@ try {
   await page.waitForSelector('[data-home-hello]', { timeout: 120000 });
   await heldOnHome('the restore was undone by a late navigation');
 
-  const after = await dayEntries();
-  if (after !== before) {
-    throw new Error(`the journal came back as ${after} entries, not the ${before} that were exported`);
+  /* The entry is back, in the journal, and the flag is back with it - which
+     is the settings half of ADR-0003 and the reason the flag step was never
+     asked. Nothing from setup overwrote either: on this flow the steps that
+     would have are the ones restoreSteps() dropped. */
+  await page.goto(BASE + '/day/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-entry-note]', { timeout: 30000 });
+  const notes = await page.locator('[data-entry-card] [data-entry-note]').allTextContents();
+  if (!notes.some((note) => note.includes('The entry that came back'))) {
+    throw new Error(`the restored journal has no entry from the archive: ${JSON.stringify(notes)}`);
   }
-  ok(`a first run restores its own backup, ${before} entries, and refuses one that is not an archive`);
+  const palette = await page.evaluate(() => document.documentElement.dataset.palette);
+  if (palette !== 'lesbian') {
+    throw new Error(`the archive's own flag did not come back with it: ${palette}`);
+  }
+  ok('a first run restores its own backup, entry and flag, and refuses one that is not an archive');
 } catch (e) { fail('onboarding restore', e); }
 
 /* 13d. and the way back out of it: a restore that is given up on leaves the
