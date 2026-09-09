@@ -323,6 +323,29 @@ describe('rule 4: two line strengths', () => {
     }
   });
 
+  /* The six surfaces that gave up an elevation take a block's own edge, not
+     a separator's. Added because `.card` was left behind at --hairline when
+     the other five moved - the comment above it and the commit that made
+     the change both said --outline, and nothing read the declaration. A
+     rationale in a comment is not a contract. */
+  it('draws every unelevated surface edge at --outline', () => {
+    const surfaces = [
+      ['components', '.card'],
+      ['components', '.entry-card'],
+      ['components', '.skeleton-card'],
+      ['components', '.skeleton-block'],
+      ['screens', '.wrapped-card'],
+      ['screens', '.wrapped-stat']
+    ] as const;
+    for (const [name, selector] of surfaces) {
+      const rule = ruleFor(sheet(name), selector);
+      expect(rule, `${SHEETS[name]}: no rule for ${selector}`).toBeTruthy();
+      const border = declarations(rule!.body).find(([prop]) => prop === 'border');
+      expect(border, `${selector} should draw its own edge`).toBeTruthy();
+      expect(border![1], `${selector}`).toBe('1px solid var(--outline)');
+    }
+  });
+
   it('keeps the legibility boost, on the two lines that are left', () => {
     const boost = ruleFor(sheet('base'), "html[data-palette][data-theme][data-a11y-legibility='boost']");
     expect(boost).toBeTruthy();

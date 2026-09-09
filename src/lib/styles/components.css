@@ -449,7 +449,7 @@
    what this is. */
 .card {
   background: var(--surface);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--outline);
   border-radius: var(--r-block);
   padding: var(--space-4);
 }
