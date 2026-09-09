@@ -11,9 +11,16 @@
    Deliberately rune-free and DOM-free, so it runs in the Node tier next to
    the rest of the pure model (ADR-0017). */
 
-/** In order. The route renders one of these at a time and nothing else. */
+import { PORTABLE_KEYS, type PreferenceKey } from '../data/prefs/catalogue';
+
+/** In order. The route renders one of these at a time and nothing else.
+
+    `restore` is not in the ordinary flow and never appears in it: it is the
+    one step a person reaches by saying on the welcome that they already have
+    a journal (ticket 36), and the flow it belongs to is `restoreSteps()`. */
 export type OnboardingStep =
   | 'welcome'
+  | 'restore'
   | 'name'
   | 'flag'
   | 'scales'
@@ -102,6 +109,81 @@ export function onboardingSteps(): readonly OnboardingStep[] {
   return ALL_STEPS;
 }
 
+/** What each step settles, named as the preferences it writes.
+
+    Written down because ticket 36 needs to answer "does the archive already
+    know this?" per step, and the honest way to answer it is to say what the
+    step stores and ask the portable set (ADR-0003). The alternative was a
+    second list of steps to skip after a restore, which would be a copy of
+    this one kept by hand and wrong the first time a preference moved between
+    PORTABLE_KEYS and DEVICE_LOCAL_KEYS.
+
+    The welcome, the restore step and the finish store nothing, so they are
+    empty rather than absent: `stepAnswers` has to be total, or a step added
+    later is unclassified rather than a compile error.
+
+    `lock` is listed by the one preference it stores. The access mode itself
+    is not a preference at all - it is a keystore made on this device - which
+    is the deeper reason that step survives a restore, and `lockOnLeave`
+    being device-local says the same thing in the shape this map can check. */
+const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
+  welcome: [],
+  restore: [],
+  name: ['name'],
+  flag: ['palette'],
+  scales: ['activeScales'],
+  areas: ['onboardingAreas'],
+  lock: ['lockOnLeave'],
+  /* Nothing, and not because it was forgotten: the permissions step's
+     answers live in the OS rather than in a preference (ticket 31), so
+     there is nothing here for an archive to have carried. That is the same
+     reason it survives a restore - device state is not journal state. */
+  permissions: [],
+  /* `disguise` is a preference, and a device-local one (ticket 32,
+     ADR-0079): what a person is hiding on this phone is not a fact about
+     their journal, so it does not travel and this step runs after a restore
+     like any other. Listed rather than left empty, because the honest entry
+     is the key it writes - if `disguise` ever became portable this map is
+     where that would show up, and the step would stop being asked. */
+  disguise: ['disguise'],
+  done: []
+};
+
+export function stepAnswers(step: OnboardingStep): readonly PreferenceKey[] {
+  return STEP_ANSWERS[step];
+}
+
+/** Whether a restored archive already holds everything this step asks for.
+
+    A step qualifies when it stores something and every last thing it stores
+    travels. Partly-portable would be the dangerous case - half the answer
+    restored and half of it left at the default, with nothing on screen to
+    say so - so it counts as not carried and the step runs. Nothing is
+    partly-portable today; this is what keeps that true. */
+export function archiveAnswers(step: OnboardingStep): boolean {
+  const answers = stepAnswers(step);
+  return (
+    answers.length > 0 && answers.every((key) => (PORTABLE_KEYS as readonly string[]).includes(key))
+  );
+}
+
+/** The flow for somebody who said on the welcome that they already have a
+    journal (ticket 36).
+
+    Everything the archive answers is dropped, because asking and then
+    overwriting the answer a moment later is the behaviour this ticket exists
+    to remove. What is left is the welcome, the restore itself, and the steps
+    that are about this device rather than about the journal: the access mode
+    above all, since an archive password is not an access mode (ADR-0041) and
+    the key has to be made here. The permissions step joined it when ticket
+    31 landed, on this same test and with no edit needed: it stores no
+    preference, so it can never qualify as carried. Disguise will join it the
+    same way when ticket 32 lands - device state is not journal state. */
+export function restoreSteps(): readonly OnboardingStep[] {
+  const rest = ALL_STEPS.filter((step) => step !== 'welcome' && !archiveAnswers(step));
+  return ['welcome', 'restore', ...rest];
+}
+
 export function stepIndex(steps: readonly OnboardingStep[], step: OnboardingStep): number {
   return steps.indexOf(step);
 }
@@ -130,9 +212,15 @@ export function stepBefore(
     default for a Skip to protect there - the welcome's own primary button
     already moves past it without setting anything, and the finish is the
     end of the flow rather than a thing to get past. Both still carry the
-    leave-now action, which every step has. */
+    leave-now action, which every step has.
+
+    The restore step has none either, and for a third reason: it stores no
+    preference, and skipping past the thing the person came here to do would
+    leave them mid-setup with the journal still missing. Its way out is back
+    to the welcome as a new person, which is the leave-now control every step
+    already carries doing what it always does. */
 export function isSkippable(step: OnboardingStep): boolean {
-  return step !== 'welcome' && step !== 'done';
+  return step !== 'welcome' && step !== 'restore' && step !== 'done';
 }
 
 /** Where the flow hands over.

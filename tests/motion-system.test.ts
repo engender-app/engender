@@ -296,6 +296,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
       'a bar row is the width of its card and fills with a wash instead; the compact depth walked a 306px row 9.2px inward on every tap (carpet ticket 10)'
   },
   {
+    file: 'src/routes/onboarding/+page.svelte',
+    count: 1,
+    reason:
+      "the restore step's file block is the width of the step and fills with a wash instead; the compact depth walked a 358px block 10.7px inward with the question and the rule holding still (redesign ticket 36)"
+  },
+  {
     file: 'src/lib/components/kit/DayEntry.svelte',
     count: 1,
     reason: 'an entry row in a day card is list content being read, not a control - the row press read as text jumping (ticket 99 item 10)'

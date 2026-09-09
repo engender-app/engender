@@ -4,14 +4,17 @@
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
   import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
-  import { applyPortablePreferences, prefs } from '$lib/data/prefs/store.svelte';
-  import { openArchive } from '$lib/data/archive/pack';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { archiveFailureKind, type ArchiveFailureKind } from '$lib/data/archive/failure';
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
-  import { EmptyArchiveFileError, pickArchive, type PickedArchive } from '$lib/data/archive/pick';
-  import { verifyArchive } from '$lib/data/journal/restore';
+  import type { PickedArchive } from '$lib/data/archive/pick';
+  import {
+    pickForRestore,
+    runRestore,
+    runVerify,
+    type RestoreFailureKind
+  } from '$lib/data/journal/restoreFlow';
   import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
@@ -50,16 +53,11 @@
   let impError = $state('');
   /* Walkthrough handle for which catalogued sentence impError holds, so the
      suite can tell import failures apart without matching on the wording
-     itself (ADR: the walkthrough grips handles, never wording). The
-     archive's own four kinds come from archive/failure.ts, which classifies
-     what the container, the codec and the crypto throw; the three below are
-     this screen's own guards ahead of that: 'pick-first' and
-     'password-needed' never reach a file, and 'empty-file' reaches one but
-     refuses it (EmptyArchiveFileError, pick.ts) before a byte is
-     decrypted - still this screen's guard, not the container's, because
-     nothing archive-shaped was ever opened. */
-  type ImportGuardKind = '' | 'pick-first' | 'password-needed' | 'empty-file';
-  let impErrorKind = $state<ArchiveFailureKind | ImportGuardKind>('');
+     itself (ADR: the walkthrough grips handles, never wording). The kinds
+     are restoreFlow.ts's, which is where the guards and the archive's own
+     five now sit in one union; '' is this screen's "nothing has gone wrong
+     yet" and belongs to the field rather than to the flow. */
+  let impErrorKind = $state<RestoreFailureKind | ''>('');
   let plainSheet = $state<'csv' | 'json' | null>(null);
   let daylioSheet = $state(false);
   let daylioName = $state('');
@@ -421,37 +419,25 @@
 
   async function choose() {
     try {
-      const chosen = await pickArchive();
+      const chosen = await pickForRestore();
       if (!chosen) return; // backed out
-      picked = chosen;
+      if ('ok' in chosen) {
+        impErrorKind = chosen.kind;
+        impError = importFailureMessage(chosen.kind);
+        return;
+      }
+      picked = chosen.picked;
       impError = '';
       impErrorKind = '';
-    } catch (error) {
-      console.error('the archive picker failed', error);
-      if (error instanceof EmptyArchiveFileError) {
-        impErrorKind = 'empty-file';
-        impError = m.imp_file_empty();
-      } else {
-        toast(m.imp_picker_failed());
-      }
+    } catch {
+      toast(m.imp_picker_failed());
     }
   }
 
-  /* The import. Every step before the last one is reversible, and the last
-     one is a single journal operation that either lands whole or leaves the
-     journal exactly as it was (ADR-0011) - which is why this screen does no
-     sequencing of its own beyond picking a mode. */
+  /* The import, run by restoreFlow.ts so the welcome step's restore and this
+     one are the same act (ticket 36). What is left here is what this screen
+     says about it. */
   async function doImport() {
-    if (!picked) {
-      impError = m.imp_pick_first();
-      impErrorKind = 'pick-first';
-      return;
-    }
-    if (!impPass) {
-      impError = m.imp_password_needed();
-      impErrorKind = 'password-needed';
-      return;
-    }
     impError = '';
     impErrorKind = '';
     importing = true;
@@ -463,70 +449,41 @@
     importLabel = m.imp_running_files();
     importProgress.start();
     const onProgress = restoreWatcher(importProgress, (label) => (importLabel = label), m.imp_running_files);
-    try {
-      const { payload, files } = await openArchive(picked.bytes(), impPass);
-      // The manifest is what the stream is about to deliver, so the bar
-      // has a denominator for its first half (restore.ts).
-      const contents = { journal: payload.journal, files, fileCount: payload.files.length };
-
-      if (impMode === 'replace') {
-        await journal.archive.replace(contents, onProgress);
-        await importProgress.finish();
-        /* The settings that describe the journal travel with it (ADR-0003);
-           the ones that describe this installation - the PIN, the lock flags,
-           the disguise - are not in the archive at all, so restoring cannot
-           lock anybody out of an app with no recovery path. */
-        applyPortablePreferences(payload.preferences);
-        toast(m.imp_replaced_toast());
-      } else {
-        // A merge writes no settings, for the same reason it leaves rows
-        // alone: what is already on this device wins.
-        await journal.archive.merge(contents, onProgress);
-        await importProgress.finish();
-        toast(m.imp_merged_toast());
-      }
-    } catch (error) {
+    const result = await runRestore(picked, impPass, impMode as 'merge' | 'replace', onProgress);
+    if (result.ok) {
+      await importProgress.finish();
+      toast(impMode === 'replace' ? m.imp_replaced_toast() : m.imp_merged_toast());
+    } else {
       importProgress.abandon();
-      console.error('the import failed', error);
-      impErrorKind = archiveFailureKind(error);
-      impError = importFailureMessage(impErrorKind);
-    } finally {
-      importing = false;
+      impErrorKind = result.kind;
+      impError = importFailureMessage(result.kind);
     }
+    importing = false;
   }
 
   /* The backup health drill (ticket 28): the same picked file and password
-     as import, but only decrypting, parsing and validating it - restore.ts's
-     verifyArchive never takes a driver or a file store, so there is nothing
-     here for it to write to. */
+     as import, but only decrypting, parsing and validating it - nothing here
+     is written to. */
   async function doVerify() {
-    if (!picked) {
-      impError = m.imp_pick_first();
-      return;
-    }
-    if (!impPass) {
-      impError = m.imp_password_needed();
-      return;
-    }
     impError = '';
+    impErrorKind = '';
     verifying = true;
     // Not cancellable either, though nothing is written: a half-drained
     // archive proves nothing, and a drill that can be stopped early is a
     // drill somebody can believe they passed (ADR-0070).
     importLabel = m.verify_running_files();
     importProgress.start();
-    try {
-      await verifyArchive(picked.bytes(), impPass, (done, total) => importProgress.report(done, total));
+    const result = await runVerify(picked, impPass, (done, total) => importProgress.report(done, total));
+    if (result.ok) {
       await importProgress.finish();
       prefs.lastVerifiedAt = Date.now();
       toast(m.verify_ok_toast());
-    } catch (error) {
+    } else {
       importProgress.abandon();
-      console.error('the verify drill failed', error);
-      impError = verifyFailureMessage(archiveFailureKind(error));
-    } finally {
-      verifying = false;
+      impErrorKind = result.kind;
+      impError = verifyFailureMessage(result.kind);
     }
+    verifying = false;
   }
 
   function openDaylio() {
