@@ -554,7 +554,7 @@
      (ticket 31). Now the screen is exactly the window, the answers have
      their own region, and the question and the foot cannot move at all. -->
 <div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`}>
-  <div class="setup">
+  <div class="setup step-field-host">
     <!-- The field. Its height is the sun's reach at this step plus the
          question, so it comes down one step's worth per step with the
          question riding on it, and that edge is rule 10's blind on this
@@ -563,7 +563,7 @@
          access-mode step walks to its pad, when a question re-wraps and
          when a raised keyboard drops the flow into its short form, and
          each of those has to travel rather than jump. -->
-    <div class="setup-field" data-setup-field use:blindEdge>
+    <div class="setup-field step-field" data-setup-field use:blindEdge>
       <!-- The paint, split from the box that measures it (ticket 28's
            mechanism, and the same reason): what draws the field's colour is
            a block a window tall whose bottom edge is a clip, so the edge
@@ -577,7 +577,7 @@
            travels to Home's rather than fading out while another field
            appears. The attribute is what $lib/motion/fieldBlind looks for;
            the shape is this file's own. -->
-      <div class="setup-paint" data-field-blind>
+      <div class="setup-paint step-field-paint" data-field-blind>
         <!-- The flag being left, on top of the flag arriving and under the
              sun, wiping off towards the far corner: the new colour is
              uncovered from the sun's own corner outwards, which is where
@@ -654,7 +654,7 @@
            own as it walks from its list to its pad, and a heading that
            changed its text in place would be the one thing on the field
            that did not move. -->
-      <div class="setup-ask">
+      <div class="step-field-ask">
         {#key question}
           <!-- `data-field-part` for the same reason the paint carries
                `data-field-blind`: on a navigation the question is printed on
@@ -679,7 +679,7 @@
          line and the answers travel together, so the pair reads as one
          sheet of page being uncovered rather than as two blocks each
          finding its own way down. -->
-    <div class="setup-below">
+    <div class="step-field-below">
       <div class="setup-stage">
         {#key step}
           <div
@@ -749,10 +749,10 @@
                      password is that shape with its characters hidden. The
                      rule draws itself in from the left on focus, which is
                      what a 3px rule does everywhere else in the app. -->
-                <div class="setup-typed">
+                <div class="typed">
                   <label class="field-label" for="ob-restore-pass">{m.exp_password_label()}</label>
                   <input
-                    class="setup-rule-input"
+                    class="rule-input"
                     type="password"
                     id="ob-restore-pass"
                     name="ob-restore-pass"
@@ -765,9 +765,9 @@
                 <!-- The person's name is the first thing in the app set in
                      the app's own voice: the display face at 28 on a 3px
                      rule, no box and no fill (rule 13). -->
-                <div class="setup-typed is-bare">
+                <div class="typed is-bare">
                   <input
-                    class="setup-rule-input"
+                    class="rule-input"
                     id="ob-name"
                     name="ob-name"
                     placeholder={m.ob_name_placeholder()}
@@ -1067,26 +1067,6 @@
      property has no type, so it cannot be interpolated, and a transition
      naming it would jump. Registered as a length, it animates, and the
      clip below reads it per frame. */
-  @property --blind-edge {
-    syntax: '<length>';
-    inherits: true;
-    initial-value: 0px;
-  }
-
-  /* No scroll of its own, ever (rule 14): what scrolls is the answers
-     region inside it. `min-height: 0` undoes .screen's own `min-height:
-     100%`, which would otherwise let the flex column grow past the window
-     and hand the app's scroll region something to scroll.
-
-     `clip` rather than `hidden`, and the difference is a defect this ticket
-     hit rather than a preference. `overflow: hidden` makes an element a
-     scroll container that simply draws no scrollbar, and the browser is
-     free to scroll one on its own - to bring a focused input into view, or
-     to keep an anchor still while content above it resizes. Measured on the
-     name step: `.screen-setup` came back with a scrollTop of 197, which put
-     the whole field and the question behind the demo bar with nothing on
-     screen to say the screen had moved. `clip` is not a scroll container at
-     all, so there is no scrollTop for anything to set. */
   .screen-setup {
     height: 100%;
     min-height: 0;
@@ -1124,88 +1104,8 @@
     --blind-edge: calc(
       var(--inset-top) + var(--space-2) + 175px * var(--step-grow, 1) * var(--sun-mult, 1) + 78px
     );
-    /* The edge's own clock. Longhands rather than the shorthand because
-       --blind-ease is sampled per move and arrives as a linear(): an
-       unparseable one takes a whole shorthand with it on an old WebView,
-       and taking the transition with it is what would strand the edge. */
-    transition-property: --blind-edge;
-    transition-duration: var(--dur-slow);
-    transition-timing-function: var(--blind-ease, var(--ease-out));
   }
-  /* The frame the old geometry is painted on, written by stepBlind before
-     the browser paints and taken off on the frame after: the edge where it
-     was, everything that rides it back where it was, and nothing
-     transitioning. It is deliberately identical to the frame before it -
-     that is the whole of how a step change avoids a single-frame jump. */
-  /* `:global()` on the attribute, because the attribute is written by
-     stepBlind rather than by this template: Svelte prunes a selector whose
-     hooks it cannot see in the markup, and a state flag in the markup
-     instead would land on the framework's own schedule rather than inside
-     the frame the height changed in, which is the one thing this has to
-     do. */
-  .setup:global([data-blind-hold]) {
-    transition: none;
-  }
-
   /* ---------- the field ---------- */
-
-  /* The box that measures the field, and paints none of it. Bleeds up
-     through the inset the scroll region pads every screen by and out
-     through .screen's own 20, then pads back in by both, so the question
-     starts where the content under it does and sits as clear of the status
-     bar as any other first line. Decoration crosses the inset; nothing
-     readable does. */
-  .setup-field {
-    position: relative;
-    flex: 0 0 auto;
-    margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
-    padding: calc(var(--inset-top) + var(--space-2)) var(--space-5) var(--space-4);
-    color: var(--field-ink);
-    /* The paint below is a window tall and absolutely positioned in this
-       box, and an absolutely positioned child contributes its overflow to
-       its containing block's - which propagated all the way up and made the
-       frame report exactly `--nav-clearance` of content it was hiding, on
-       every step at every size. `clip` stops the propagation without making
-       anything a scroll container, and the margin is what stops it also
-       clipping the paint, which has to be able to stand taller than this box
-       for the length of a close: the edge starts at the height the field
-       had and this box is already at the height it is going to.
-
-       120px, and the number is the point. A clip container's clip box is
-       what its ancestors see, so a margin big enough to reach past the frame
-       propagates again - `50vh` did, and put 20px back on the disguise step
-       at 360x640, where the field is 323 and half a window is 320. The
-       largest close inside the flow is the areas step's 285 down to the lock
-       step's 252, and the settle runs 8px past its mark, so 41px is what the
-       paint actually needs; 120 is room to spare and still well inside the
-       shortest frame the flow is measured at. The handover is not
-       constrained by this at all - a named element escapes its ancestors'
-       clipping for the length of a navigation, which is the whole mechanism
-       ticket 28 relies on. */
-    overflow: clip;
-    overflow-clip-margin: 120px;
-  }
-
-  /* The paint, split from the box above (ticket 28's mechanism, and the
-     same reason it exists there): a flat block a window tall whose bottom
-     edge is a clip, so the edge moves without the block ever being resized
-     and no frame can deform the two bottom corners. A sibling of the box
-     rather than a child of it, because the box may not clip: the field's
-     own overflow would cut the paint back to the new height on the frame
-     the height changed, which is the jump the clip is here to prevent. */
-  .setup-paint {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 100vh;
-    z-index: 0;
-    pointer-events: none;
-    background-color: var(--field);
-    clip-path: inset(
-      0 0 calc(100% - var(--blind-edge)) 0 round 0 0 var(--r-block) var(--r-block)
-    );
-  }
 
   /* Picking a flag changes what colour the field is, and a state change
      moves (ADR-0078). Measured on the first flipbook: the whole field went
@@ -1285,36 +1185,6 @@
     margin-left: calc(-1 * var(--space-3));
   }
 
-  /* The question, and the box it rides in. One grid cell holds the outgoing
-     question and the incoming one, so the two overlap rather than stacking
-     and doubling the field's height mid-change. */
-  .setup-ask {
-    position: relative;
-    z-index: 1;
-    display: grid;
-  }
-  .setup-ask > * {
-    grid-area: 1 / 1;
-  }
-  /* Rides the edge (rule 10): what is painted on the field is printed on it
-     and travels with it, on the edge's own curve rather than the content's. */
-  .setup-ask,
-  .setup-below {
-    translate: 0 0;
-    transition-property: translate;
-    transition-duration: var(--dur-slow);
-    transition-timing-function: var(--blind-ease, var(--ease-out));
-  }
-  .setup:global([data-blind-hold]) .setup-ask {
-    /* Its own delta, not the field's: see stepBlind.ts. */
-    translate: 0 var(--part-delta, 0px);
-    transition: none;
-  }
-  .setup:global([data-blind-hold]) .setup-below {
-    translate: 0 var(--blind-delta, 0px);
-    transition: none;
-  }
-
   /* 48 in the display face at 800, tracked one step tighter than the scale's
      own -0.04em and set solid: the door title's treatment (rule 2), which is
      what a question is here. The one heading a step has. */
@@ -1334,12 +1204,6 @@
 
   /* ---------- under the edge ---------- */
 
-  .setup-below {
-    flex: 1 1 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
   /* One grid cell again, for the same reason: the step leaving and the step
      arriving overlap instead of stacking. */
   .setup-stage {
@@ -1573,61 +1437,10 @@
      (rule 13). The person's name is the first thing in the app set in the
      app's own voice. A passphrase is the same shape with its characters
      hidden. */
-  .setup-typed {
-    position: relative;
-  }
-  .setup-typed .field-label {
-    display: block;
-    margin-bottom: var(--space-2);
-  }
-  .setup-rule-input {
-    display: block;
-    width: 100%;
-    /* A field is a target, so it answers to `--touch-target` like every
-       other one - the kit's own `.input` carries this and a rule-shaped
-       input has no less claim on it. It matters in the short form, where
-       the display face drops to 21 and the box came out at 41px tall
-       (measured at 320x568 by the walkthrough's own floor check, which is
-       what found it). */
-    min-height: var(--touch-target);
-    padding: 0 0 var(--space-2);
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-display);
-    letter-spacing: var(--display-track);
-    line-height: var(--leading-display);
-    color: var(--text);
-    background: none;
-    border: 0;
-    border-bottom: 3px solid var(--outline);
-    border-radius: 0;
-  }
-  .setup-rule-input::placeholder {
-    font-family: var(--font-body);
-    font-size: var(--text-md);
-    font-weight: var(--weight-regular);
-    letter-spacing: normal;
-    color: var(--text-2);
-  }
-  /* The rule in --text over the resting one, drawn in from the left when
-     the field takes focus - the same left-to-right draw a section rule
-     makes everywhere else in the app (rule 10). A scaled pseudo element
-     rather than an animated width, so it is one composited transform; the
-     transition is a plain CSS one, so base.css's reduced-motion clamp turns
-     it into a cut like every other. */
-  .setup-typed::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 3px;
-    background: var(--text);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--dur-med) var(--ease-out);
-  }
-  .setup-typed:focus-within::after {
-    transform: scaleX(1);
-  }
+  /* The rule-shaped input, its label and the rule that draws itself in on
+     focus are `.typed`/`.rule-input` in components.css since redesign ticket
+     34: the gates ask for a passphrase on the same shape, and rule 13 says
+     they are one drawing. */
 
   /* ---------- the restore step (ticket 36) ---------- */
 
@@ -1718,7 +1531,7 @@
 
   /* Three controls, two lines, above a hairline, on the window's bottom
      edge: the one way on at full width, then the two ways past the step
-     side by side under it. Outside .setup-below, so it does not ride the
+     side by side under it. Outside .step-field-below, so it does not ride the
      edge and cannot move between steps (rule 12). */
   .setup-foot {
     flex: 0 0 auto;
@@ -1770,9 +1583,6 @@
     }
     .setup-field {
       padding-bottom: var(--space-3);
-    }
-    .setup-rule-input {
-      font-size: var(--text-xl);
     }
     .setup-flags .swatch-preview {
       height: 40px;
