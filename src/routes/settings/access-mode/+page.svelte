@@ -161,7 +161,7 @@
   {#if offering !== null}
     <RecoveryKeyOffer variant={offering} onDismiss={() => goto('/settings/security')} />
   {:else if changingPin}
-    <div class="card">
+    <div class="kit-panel" data-kit-surface>
       <p class="ob-text">{pinPrompt}</p>
       {#if currentPin === ''}
         <PinEntry onVerify={verifyCurrentPin} />
@@ -184,7 +184,7 @@
       </button>
     </div>
   {:else}
-    <div class="card">
+    <div class="kit-panel" data-kit-surface>
       <AccessModeSetup purpose="change" {current} {busy} {error} onChoose={choose} />
       {#if recoveryKeyPresence.exists}
         <!-- The fact every mode's description depends on and this screen

@@ -144,18 +144,21 @@
 
   <div class="no-print">
     <SectionTitle text={m.journal_book_include_title()} />
-    <div class="card" data-book-inclusion style="margin-bottom:var(--space-4)">
+    <div data-book-inclusion style="margin-bottom:var(--space-4)">
       <p class="muted small" style="margin-bottom:var(--space-3)">{m.journal_book_include_note()}</p>
-      {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
-        <div class="spread inclusion-row" data-inclusion={key}>
-          <span>{journalBookPartName(key)}</span>
-          <Switch
-            checked={inclusion[key]}
-            label={journalBookPartName(key)}
-            onChange={(v) => include(key, v)}
-          />
-        </div>
-      {/each}
+      <ListCard>
+        {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
+          <ListRow static key={key} data-inclusion={key} title={journalBookPartName(key)}>
+            {#snippet trailing()}
+              <Switch
+                checked={inclusion[key]}
+                label={journalBookPartName(key)}
+                onChange={(v) => include(key, v)}
+              />
+            {/snippet}
+          </ListRow>
+        {/each}
+      </ListCard>
     </div>
   </div>
 
@@ -228,10 +231,6 @@
 </div>
 
 <style>
-  .inclusion-row {
-    padding: var(--space-2) 0;
-  }
-
   .section-block {
     margin-bottom: var(--space-4);
   }

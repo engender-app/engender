@@ -8,6 +8,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import type { Affirmation } from '$lib/data/types';
@@ -31,31 +32,28 @@
 <div class="screen">
   <ScreenHeader title={m.affirmations_row_title()} back="/settings" subtitle={m.affirmations_intro()} />
 
-  <section class="card" style="margin-bottom:var(--space-4)">
-    <h2 class="editor-heading" style="margin-bottom:var(--space-3)">{m.affirmations_builtin_heading()}</h2>
-    <div class="managed-tags">
-      {#each builtIns as a (a.id)}
-        <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
-          <span class="managed-label">{a.text}</span>
-          {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
-          <span class="managed-actions">
-            <button
-              class="icon-btn"
-              data-affirmation-hide={a.id}
-              aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
-              onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
-            >
-              <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
-            </button>
-          </span>
-        </div>
-      {/each}
-    </div>
-  </section>
+  <SectionHeading text={m.affirmations_builtin_heading()} />
+  <div class="managed-tags">
+    {#each builtIns as a (a.id)}
+      <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
+        <span class="managed-label">{a.text}</span>
+        {#if a.hidden}<span class="muted small">{m.affirmations_hidden()}</span>{/if}
+        <span class="managed-actions">
+          <button
+            class="icon-btn"
+            data-affirmation-hide={a.id}
+            aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
+            onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
+          >
+            <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
+          </button>
+        </span>
+      </div>
+    {/each}
+  </div>
 
-  <section class="card" style="margin-bottom:var(--space-4)">
-    <div class="spread" style="margin-bottom:var(--space-3)">
-      <h2 class="editor-heading">{m.affirmations_custom_heading()}</h2>
+  <SectionHeading text={m.affirmations_custom_heading()}>
+    {#snippet action()}
       <Segmented
         name={m.language()}
         options={[
@@ -65,38 +63,38 @@
         value={language}
         onChange={(v) => (language = v as 'en' | 'pl')}
       />
-    </div>
-    {#if customs.length === 0}
-      <p class="muted small">{m.affirmations_custom_empty()}</p>
-    {/if}
-    <div class="managed-tags">
-      {#each customs as a (a.id)}
-        <div class="rows-divide managed-tag">
-          <span class="managed-label">{a.text}</span>
-          <span class="managed-actions">
-            <button
-              class="icon-btn"
-              aria-label={m.affirmations_edit_aria({ line: a.text })}
-              onclick={() => {
-                editTarget = a;
-                editText = a.text;
-              }}
-            >
-              <Icon name="pencil" size={16} />
-            </button>
-            <button
-              class="icon-btn"
-              data-del
-              aria-label={m.affirmations_delete_aria({ line: a.text })}
-              onclick={() => record.askToDelete(a)}
-            >
-              <Icon name="trash" size={16} />
-            </button>
-          </span>
-        </div>
-      {/each}
-    </div>
-  </section>
+    {/snippet}
+  </SectionHeading>
+  {#if customs.length === 0}
+    <p class="muted small">{m.affirmations_custom_empty()}</p>
+  {/if}
+  <div class="managed-tags">
+    {#each customs as a (a.id)}
+      <div class="rows-divide managed-tag">
+        <span class="managed-label">{a.text}</span>
+        <span class="managed-actions">
+          <button
+            class="icon-btn"
+            aria-label={m.affirmations_edit_aria({ line: a.text })}
+            onclick={() => {
+              editTarget = a;
+              editText = a.text;
+            }}
+          >
+            <Icon name="pencil" size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            data-del
+            aria-label={m.affirmations_delete_aria({ line: a.text })}
+            onclick={() => record.askToDelete(a)}
+          >
+            <Icon name="trash" size={16} />
+          </button>
+        </span>
+      </div>
+    {/each}
+  </div>
 
   <button
     class="btn btn-soft"
