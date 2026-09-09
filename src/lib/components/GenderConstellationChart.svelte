@@ -427,7 +427,7 @@
      system on a plot that already carries one. */
   .cn-trail line {
     stroke: var(--text-2);
-    stroke-width: 1.25;
+    stroke-width: 1;
     stroke-linecap: round;
   }
 
