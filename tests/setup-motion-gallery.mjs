@@ -229,12 +229,12 @@ const READ_HANDOVER = `
     getComputedStyle(document.documentElement, pseudo)?.getPropertyValue(prop) ?? '';
   const edgeOf = (side) => {
     const clip = read('::view-transition-' + side + '(blind)', 'clip-path');
-    const cut = /inset\(0px 0px (-?[\d.]+)px/.exec(clip)?.[1];
+    const cut = /inset\\(0px 0px (-?[\\d.]+)px/.exec(clip)?.[1];
     return cut === undefined ? null : Math.round(innerHeight - Number(cut));
   };
   const px = (value) => {
-    const parts = String(value).split(/\s+/);
-    const found = /(-?[\d.]+)px/.exec(parts[1] ?? '');
+    const parts = String(value).split(/\\s+/);
+    const found = /(-?[\\d.]+)px/.exec(parts[1] ?? '');
     return found ? Math.round(Number(found[1])) : null;
   };
   return {
