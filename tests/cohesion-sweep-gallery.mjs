@@ -60,14 +60,16 @@
    .svelte-kit/output relative to the cwd whatever root it is given, so
    --root on its own silently sweeps this build twice under two tags.
 
-   `--prove` runs one extra route first with four marks built to be wrong -
-   an undersized button, a covered button, a tonal ground, and a big heading
-   inside a `display: none` parent that must *not* be reported - and exits
-   non-zero unless the first three are found and the fourth is not. A sweep
-   that reports nothing is worth nothing until it has been seen to find
-   something, and the fourth mark is the phantom ticket 20's triage pass
-   found: `display` is not inherited, so `getComputedStyle` on a hidden
-   element's child still answers `display: block`.
+   `--prove` runs one extra route first with five marks - an undersized
+   button, a covered button and a tonal ground, which have to be found, and
+   two that have to be left alone: a big heading inside a `display: none`
+   parent, and a round button. It exits non-zero if any of the five
+   misbehaves. A sweep that reports nothing is worth nothing until it has
+   been seen to find something, and the two negative marks are both
+   phantoms this instrument has actually produced - `display` is not
+   inherited, so `getComputedStyle` on a hidden element's child still
+   answers `display: block`; and hit testing respects `border-radius`, so a
+   circle falls through to its ancestor at the four corners of its box.
 
    `--pin-android` adds the states no web build can reach. The reminders
    list is `isAndroid()`-gated with no demo bypass, so `.card.checkin-card`
@@ -598,6 +600,7 @@ const read = () =>
       const targets = new Map();
       const occlusion = found.occlusion;
       const region = root.querySelector('[data-app-scroll-region]') ?? root;
+      const scrim = root.querySelector('.sheet-scrim');
 
       /* Pinned: anything that stays put while the column moves, which is
          either something outside the scroll region altogether - the
@@ -635,6 +638,9 @@ const read = () =>
           last = y;
         }
         const height = Math.round(box.height);
+        /* The scan is inclusive at both ends, so a box read pixel by pixel
+           answers one more than its own height. */
+        dead = Math.min(dead, height);
         if (!dead) return `an edge of ${height}`;
         const end = first - box.top < box.bottom - last ? 'top' : 'bottom';
         return `the ${end} ${dead}px of ${height}`;
@@ -692,6 +698,17 @@ const read = () =>
               if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
               const hit = document.elementFromPoint(x, y);
               if (!hit || hit === el || el.contains(hit)) continue;
+              /* A control that falls through to its own ancestor at one of
+                 the four corners of its bounding box is round, not clipped:
+                 hit testing respects `border-radius`, and `.kit-notice-x`
+                 is a 48px circle whose box corners were never part of it.
+                 Real clipping takes an edge with it, so the corners are not
+                 evidence of it. A sibling covering a corner still is. */
+              if (hit.contains(el) && (i === 0 || i === 4) && (j === 0 || j === 4)) continue;
+              /* A scrim covering the page is the scrim working. Everything
+                 behind an open sheet is inert on purpose, so the reading is
+                 of the sheet and not of what it is over. */
+              if (scrim && (hit === scrim || hit.contains(scrim))) continue;
               if (where === 'mid-column' && pinned(hit)) continue;
               if (where === 'at rest' && hit.closest('[data-app-nav], [data-app-rail]')) continue;
               if (
@@ -708,7 +725,7 @@ const read = () =>
               occlusion.push({
                 where: chain(el),
                 detail: clipped
-                  ? `clipped out of ${by}, or under its pointer-events, ${where}`
+                  ? `clipped out of ${by}, ${where}`
                   : `${band(el, over, x, box)} covered by ${by}, ${where}`
               });
             }
@@ -837,14 +854,18 @@ const walkRoutes = async (list, extra = {}) => {
   }
 };
 
-/* The proof. Four marks built to be wrong go onto one real screen, the
-   audit runs over them, and the run fails unless the three checks carpet 28
-   added each catch their own and the fourth is left alone. A check nobody
+/* The proof. Five marks go onto one real screen, the audit runs over them,
+   and the run fails unless the three checks carpet 28 added each catch
+   their own and the two that are meant to be ignored are ignored. A check nobody
    has watched fail is a check that reports zero for the wrong reason, which
    is what the 48px floor and the surface treatments had been doing all
    along; and the fourth mark is the phantom ticket 20's triage found, where
    `display: none` on a parent leaves `getComputedStyle` on its child still
-   answering `display: block`. */
+   answering `display: block`. The fifth is the other one: a round button
+   falls through to its ancestor at the four corners of its bounding box,
+   because hit testing respects `border-radius`, and reading that as a
+   clipped control filed eight findings against `.kit-notice-x` before this
+   mark existed. */
 const proof = [];
 if (args.includes('--prove')) {
   await settle('/settings');
@@ -859,6 +880,7 @@ if (args.includes('--prove')) {
         <button class="prove-covered" style="display:flex;width:60px;height:60px;font-size:16px">y</button>
         <span class="prove-cover" style="position:absolute;left:0;bottom:0;width:60px;height:20px;z-index:9;background:#f0f"></span>
       </span>
+      <button class="prove-round" style="display:flex;width:48px;height:48px;border-radius:50%;border:0;font-size:16px">o</button>
       <div class="prove-tonal" style="width:100px;height:40px;background:var(--surface-2)"></div>
       <div class="prove-hidden" style="display:none"><h1 style="font-size:32px">not on screen</h1></div>`;
     document.querySelector('[data-app-scroll-region]')?.prepend(host);
@@ -868,6 +890,12 @@ if (args.includes('--prove')) {
   proof.push({ check: 'target', mark: '.prove-small at 24x24', want: true, got: hit('target', 'prove-small') });
   proof.push({ check: 'occlusion', mark: '.prove-covered under .prove-cover', want: true, got: hit('occlusion', 'prove-covered') });
   proof.push({ check: 'ground', mark: '.prove-tonal on --surface-2', want: true, got: hit('ground', 'prove-tonal') });
+  proof.push({
+    check: 'occlusion',
+    mark: 'a 48px round button, whose box corners are not the button',
+    want: false,
+    got: hit('occlusion', 'prove-round')
+  });
   proof.push({ check: 'type', mark: '32px inside a display:none parent', want: false, got: hit('type', 'prove-hidden') });
   await page.evaluate(() => document.querySelector('.prove-fixture')?.remove());
 }
