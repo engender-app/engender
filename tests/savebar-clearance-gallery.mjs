@@ -36,6 +36,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './browser-harness.mjs';
+import { readFile } from 'node:fs/promises';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -78,6 +79,14 @@ const readings = [];
 const shots = [];
 const errors = [];
 
+/* The oscillator voice every voice gallery uses, read as text and injected:
+   two of the ten feet only exist once a take has been recorded, and a
+   headless microphone is silence (tests/fake-microphone.mjs). */
+const fakeMicrophoneSource = (await readFile(resolve(here, 'fake-microphone.mjs'), 'utf8')).replace(
+  /^export /gm,
+  ''
+);
+
 let page;
 const openContext = async (viewport) => {
   if (page) await page.close();
@@ -85,18 +94,11 @@ const openContext = async (viewport) => {
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: 2
   });
+  await page.addInitScript(`
+    ${fakeMicrophoneSource}
+    window.__fakeMicrophone = installFakeMicrophone('steady');
+  `);
   page.on('pageerror', (err) => errors.push(String(err)));
-};
-
-const settle = async (path) => {
-  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
-  if (await page.locator('[data-leave-setup]').count()) {
-    await page.locator('[data-leave-setup]').click();
-    await page.waitForSelector('[data-home-hello]');
-    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-app-root][data-boot="ready"]');
-  }
 };
 
 /* The demo bar is a development control over the frame's own bottom edge,
@@ -114,6 +116,22 @@ const strip = () =>
       document.head.append(style);
     }
   });
+
+const settle = async (path) => {
+  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
+  if (await page.locator('[data-leave-setup]').count()) {
+    await page.locator('[data-leave-setup]').click();
+    await page.waitForSelector('[data-home-hello]');
+    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  }
+  /* Here rather than only before a reading: the demo bar and the boot
+     toast both sit over the frame's bottom edge, which is where every tab
+     and every control this walk has to click lives. They intercepted the
+     click on the practise tab and timed the whole run out. */
+  await strip();
+};
 
 /** Seed the demo persona, which is what gives the photo and voice screens
     something to draw. It ends on /more (the demo control's own last step). */
@@ -355,6 +373,79 @@ const scenes = [
       if (await tab.count()) await tab.click().catch(() => {});
       await page.waitForTimeout(600);
     }
+  },
+  {
+    name: 'voice-review',
+    /* The `row` arrangement, and the one foot carpet 28's coverage census
+       could not reach: two controls of equal weight, because declining to
+       keep a take is as ordinary an outcome as keeping it. It exists only
+       after a take, which is what the fake microphone is for. */
+    note: '/practice/voice, a recorded take under review - two controls side by side',
+    go: async () => {
+      await settle('/practice/voice');
+      const tab = page.locator('[data-segment="practise"]').first();
+      if (!(await tab.count())) return false;
+      await tab.click();
+      await page.waitForTimeout(500);
+      if (!(await page.locator('[data-vp-start]').count())) return false;
+      await page.locator('[data-vp-start]').click();
+      await page.waitForTimeout(2400);
+      await page.locator('[data-vp-stop]').click();
+      await page.waitForSelector('[data-vp-save]', { timeout: 20000 });
+      await page.waitForTimeout(400);
+    }
+  },
+  {
+    name: 'voice-compare',
+    /* The tenth foot: `/practice/voice`'s own, which appears when two takes
+       are picked. Two benchmarks recorded through the real flow, the way
+       tests/voice-compare-gallery.mjs does it - the passage, the first held
+       vowel, the other two skipped. */
+    note: '/practice/voice, two takes picked - the compare foot',
+    go: async () => {
+      for (let i = 0; i < 2; i++) {
+        await settle('/practice/voice?tab=record');
+        if (!(await page.locator('[data-vb-record]').count())) return false;
+        await page.locator('[data-vb-record]').click();
+        await page.waitForTimeout(2600);
+        await page.locator('[data-vb-stop]').click();
+        await page.waitForSelector('[data-vb-skip]', { timeout: 20000 });
+        await page.locator('[data-vb-record]').click();
+        await page.waitForSelector('[data-vb-skip]', { timeout: 25000 });
+        await page.locator('[data-vb-skip]').click();
+        await page.waitForSelector('[data-vb-skip]', { timeout: 25000 });
+        await page.locator('[data-vb-skip]').click();
+        await page.waitForSelector('[data-vb-save]', { timeout: 25000 });
+        await page.waitForTimeout(300);
+        await page.locator('[data-vb-save]').click();
+        await page.waitForTimeout(1200);
+      }
+      await settle('/practice/voice');
+      const tab = page.locator('[data-segment="compare"]').first();
+      if (!(await tab.count())) return false;
+      await tab.click();
+      await page.waitForTimeout(600);
+      const cells = page.locator('[data-voice-cell]');
+      if ((await cells.count()) < 2) return false;
+      await cells.nth(0).click();
+      await cells.nth(1).click();
+      await page.waitForTimeout(400);
+    }
+  },
+  {
+    name: 'coming-back',
+    /* The chromeless screen, and the acceptance criterion that named it.
+       Its foot is its own (`.return-foot`, rule 12's foot with rule 15's
+       one control) and this ticket left it there deliberately: it is opaque,
+       it hugs the window's edge where there is no bar to sit on, and carpet
+       28 reads the screen clean. What is measured here is that it still
+       does, under a shell whose column is now split in two. */
+    note: '/coming-back - the chromeless screen keeps its own foot',
+    bar: '.return-foot',
+    go: async () => {
+      await settle('/coming-back');
+      await page.waitForTimeout(800);
+    }
   }
 ];
 
@@ -368,7 +459,7 @@ for (const viewport of VIEWPORTS) {
       continue;
     }
     await strip();
-    const reading = await read(BAR, INTERACTIVE);
+    const reading = await read(scene.bar ?? BAR, INTERACTIVE);
     if (!reading.bar) {
       errors.push(`${scene.name} at ${viewport.name}: no foot on screen`);
       continue;

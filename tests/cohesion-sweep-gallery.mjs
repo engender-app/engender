@@ -61,19 +61,23 @@
    .svelte-kit/output relative to the cwd whatever root it is given, so
    --root on its own silently sweeps this build twice under two tags.
 
-   `--prove` runs one extra route first with six marks - an undersized
+   `--prove` runs one extra route first with seven marks - an undersized
    button, a covered button and a tonal ground, which have to be found, and
-   three that have to be left alone: a big heading inside a `display: none`
-   parent, a round button, and a small button inside an `inert` subtree. It
-   exits non-zero if any of the six misbehaves. A sweep that reports nothing
-   is worth nothing until it has been seen to find something, and all three
-   negative marks are phantoms this instrument has actually produced -
+   four that have to be left alone: a big heading inside a `display: none`
+   parent, a round button, a small button inside an `inert` subtree, and a
+   control that runs past the region's own fold with something painted
+   beyond it (carpet 26). It exits non-zero if any of the seven misbehaves.
+   A sweep that reports nothing is worth nothing until it has been seen to
+   find something, and all four negative marks are phantoms this instrument
+   has actually produced -
    `display` is not inherited, so `getComputedStyle` on a hidden element's
    child still answers `display: block`; hit testing respects
    `border-radius`, so a circle falls through to its ancestor at the four
-   corners of its box; and an inert control is not a control, which is how
-   the floating bar came to report itself as covered by the screen while a
-   sheet held it out.
+   corners of its box; a control past the fold is one scroll away rather
+   than lost, which had every long column filing its last control as
+   covered by the app's foot; and an inert control is not a control, which
+   is how the floating bar came to report itself as covered by the screen
+   while a sheet held it out.
 
    `--pin-android` adds the states no web build can reach. The reminders
    list is `isAndroid()`-gated with no demo bypass, so `.card.checkin-card`
@@ -660,12 +664,30 @@ const read = () =>
          bottom of the back control while the two boxes do not intersect at
          all. Hit testing is the only thing that knows that, so hit testing
          is what measures it. */
+      /* Where the region actually paints. A control that runs past the fold
+         is clipped there rather than covered, whatever is painted beyond it,
+         and reading those points as coverage is a phantom of exactly the
+         kind this sweep found twelve of: after carpet 26 put the app's foot
+         *outside* the region, every long column filed its last control as
+         covered by the foot at rest, on five routes, when a scroll of the
+         column brings the whole control clear of it. The allowance the
+         `clipped` branch below already makes for a control scrolled out of
+         a scroller it lives in is the same allowance, read off the point
+         instead of off the tree. Both edges, since the region's top is a
+         fold too. */
+      const outsidePort = (el, x, y) => {
+        if (!region.contains(el) || region === root) return false;
+        const port = region.getBoundingClientRect();
+        return y < port.top || y >= port.bottom || x < port.left || x >= port.right;
+      };
+
       const band = (el, over, x, box) => {
         let dead = 0;
         let first = null;
         let last = null;
         for (let y = Math.ceil(box.top); y <= Math.floor(box.bottom); y++) {
           if (y < 0 || y >= innerHeight) continue;
+          if (outsidePort(el, x, y)) continue;
           const at = document.elementFromPoint(x, y);
           if (!at || !over.contains(at)) continue;
           dead += 1;
@@ -731,6 +753,7 @@ const read = () =>
               const x = box.left + ((i + 0.5) / 5) * box.width;
               const y = box.top + ((j + 0.5) / 5) * box.height;
               if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+              if (outsidePort(el, x, y)) continue;
               const hit = document.elementFromPoint(x, y);
               if (!hit || hit === el || el.contains(hit)) continue;
               /* A control that falls through to its own ancestor at one of
@@ -947,6 +970,36 @@ if (args.includes('--prove')) {
   });
   proof.push({ check: 'type', mark: '32px inside a display:none parent', want: false, got: hit('type', 'prove-hidden') });
   await page.evaluate(() => document.querySelector('.prove-fixture')?.remove());
+
+  /* The seventh mark, and the one carpet 26 needed: a control that runs
+     past a fold with the app's foot painted beyond it. It has to be planted
+     on a screen that has a foot, because that is the only shell where any
+     strip of window lies outside the scroll region's own box at all - on
+     every other screen the region reaches the window's bottom edge and
+     there is nothing beyond the fold to paint. `.screen` is the region's
+     own height there, so a box at `bottom: -30px` straddles the region's
+     bottom edge with its lower half over the foot. A control clipped by its
+     own scroller is one scroll away rather than lost, so this must be left
+     alone - it is the exact shape five routes filed at rest when the foot
+     moved out of the column. */
+  await settle('/settings/dimension');
+  await strip();
+  await page.evaluate(() => {
+    const fold = document.createElement('span');
+    fold.className = 'prove-fold-wrap';
+    fold.style.cssText = 'position:absolute;left:0;bottom:-30px;display:block;width:60px;height:60px';
+    fold.innerHTML =
+      '<button class="prove-fold" style="display:flex;width:60px;height:60px;font-size:16px">f</button>';
+    document.querySelector('.screen')?.append(fold);
+  });
+  const folded = await read();
+  proof.push({
+    check: 'occlusion',
+    mark: "a control past the region's fold, under the foot painted beyond it",
+    want: false,
+    got: (folded?.found?.occlusion ?? []).some((f) => f.where.includes('prove-fold'))
+  });
+  await page.evaluate(() => document.querySelector('.prove-fold-wrap')?.remove());
 }
 
 /* Resolve the dynamic routes to real addresses before the walk, so the

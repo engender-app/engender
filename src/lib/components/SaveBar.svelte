@@ -32,9 +32,22 @@
      finishes, which made a tab keep its old content for 380ms and then cut
      ($lib/motion/foot has the note and the flipbook frames). `cuts` is
      asked at the moment each end runs, so a navigation gets a cut and an
-     in-screen change gets the travel. -->
+     in-screen change gets the travel.
+
+     The arrangement is written as three `class:` directives rather than
+     interpolated into the class attribute, so the class names are literals
+     in the source: carpet 28's coverage census counts the audited variants
+     in `src/` as well as in the walk, and an interpolated name reaches it
+     as `.app-savebar.savebar-` - one variant, never drawn. Literals let it
+     say which arrangement no render reached. `one` carries no class of its
+     own for the same reason: it is the resting rule, so a foot with one
+     control renders exactly the `.app-savebar` the source names, and the
+     only gap left in the census is `.savebar-row`, which needs a recorded
+     take and is measured by tests/savebar-clearance-gallery.mjs instead. -->
 <div
-  class="app-savebar savebar-{arrange}"
+  class="app-savebar"
+  class:savebar-row={arrange === 'row'}
+  class:savebar-stack={arrange === 'stack'}
   data-app-savebar
   use:hostSaveBar={{ cuts: () => !!navigating.to }}
 >
