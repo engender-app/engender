@@ -3936,7 +3936,7 @@ try {
 
   /* Closing the running wear session: the end day is picked, never assumed,
      so the confirm is refused until the field has one. */
-  await page.locator('[data-coming-back-item="wear-session"] [data-notice-action]').click();
+  await page.locator('[data-coming-back-yes="wear-session"]').click();
   await page.waitForSelector('[data-coming-back-wear-confirm]');
   if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
     throw new Error('the wear session could be closed without naming the day it ended');
@@ -3961,7 +3961,7 @@ try {
   }
 
   // And a no takes the row away without writing anything.
-  await page.locator('[data-coming-back-item="dose"] [data-notice-dismiss]').click();
+  await page.locator('[data-coming-back-no="dose"]').click();
   await page.waitForSelector('[data-coming-back-item="dose"]', { state: 'detached' });
 
   /* The moment is over. Home is where a return is noticed, so this is the
