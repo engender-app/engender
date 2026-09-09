@@ -17,6 +17,10 @@
      bites and the sheet scrolls inside itself;
    - reduce-open and reduce-close, the substitute, which is a crossfade.
 
+   Seven scenes, then, all of them the same sheet. The duration and the curve
+   are the field's (ticket 28's settle, --dur-slow), which is what Alicja
+   picked off the first round of these recordings.
+
    Frames land as JPEGs plus a manifest.json in the shape
    tests/panel-motion-flipbook.mjs reads, and every scene samples the sheet's
    own geometry per animation frame beside them: a recording shows the sheet
@@ -134,7 +138,10 @@ const READ_SHEET = `
   const sheet = document.querySelector('.sheet');
   const scrim = document.querySelector('[data-sheet-scrim]');
   const drag = document.querySelector('[data-sheet-drag]');
-  const tint = document.querySelector('[data-sheet-tint]');
+  /* Falls back to the scrim itself, which is where the tint was painted
+     before this ticket moved it onto a layer of its own - so a before
+     recording off main reports the same number. */
+  const tint = document.querySelector('[data-sheet-tint]') ?? scrim;
   const frame = scrim ? scrim.getBoundingClientRect() : null;
   const box = sheet ? sheet.getBoundingClientRect() : null;
   const matrix = (el) => {
@@ -290,27 +297,6 @@ try {
       {
         open: 'The same opening with reduce-motion set: the substitute is a crossfade, so the sheet appears where it stands and nothing travels.',
         close: 'The same closing with reduce-motion set: a crossfade out, not a cut.'
-      },
-      { drag: false }
-    );
-    await context.close();
-  }
-  /* The one number this ticket had to pick without a reference to read it
-     off: how long a travel of a whole sheet's height should take. --dur-med
-     is what shipped, and the same two scenes at --dur-slow are recorded
-     beside it so the choice is made on frames rather than on an argument.
-     The token is overridden in the page, so this is the built app running
-     its own transition at the other duration rather than a second build. */
-  {
-    const { context, page, cdp } = await open('no-preference', VIEWPORT, ':root{--dur-med:380ms}');
-    await dress(page, 'trans', 'light');
-    await scenesFor(
-      page,
-      cdp,
-      'slow-',
-      {
-        open: 'The same rise with --dur-slow in place of --dur-med: 380ms for the same 717px, which is about 40px between frames at the peak instead of about 110.',
-        close: 'The same close at --dur-slow.'
       },
       { drag: false }
     );

@@ -155,9 +155,16 @@
      already gone dark. Under reduced motion the sheet substitutes a
      crossfade, so the scrim takes the same one - motionDuration() answers 0
      there, and a scrim that cuts while the sheet fades is the same mismatch
-     the other way round. */
+     the other way round.
+
+     The entrance and the exit are two curves now rather than one, so the
+     sheet is `in:`/`out:` rather than a bidirectional `transition:`. What
+     that costs is the reversal: a sheet closed while it is still rising
+     lands before it leaves instead of turning round where it got to. The
+     directions had to differ - only the way up runs past its mark - and a
+     sheet closed inside 380ms is a rarer thing to see than every close. */
   const scrimDuration = () =>
-    isReducedMotion() ? crossfadeDuration() : motionDuration('--dur-med');
+    isReducedMotion() ? crossfadeDuration() : motionDuration('--dur-slow');
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (!open) return;
@@ -204,7 +211,8 @@
         aria-label={title}
         tabindex="-1"
         data-sheet
-        transition:sheetRise
+        in:sheetRise
+        out:sheetRise
         {@attach focusInitial}
       >
         <div class="sheet-handle"></div>

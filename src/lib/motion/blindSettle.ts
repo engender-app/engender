@@ -109,7 +109,27 @@ export function blindSettle({ from, to }: { from: number; to: number }): Settle 
  * short of where it rests.
  */
 function settleEasing(peak: number, base: Bezier): string {
+  const sum = settleCurve(peak, base);
+  const stops = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    stops.push(i === SAMPLES ? 1 : Math.round(sum(t) * 1000) / 1000);
+  }
+  return `linear(${stops.join(', ')})`;
+}
+
+/**
+ * The same curve as a function of time rather than as a `linear()`.
+ *
+ * A Svelte transition takes an easing function and has nowhere to put a
+ * string, so a sheet reads the settle through this while the blind reads it
+ * through the stylesheet (redesign ticket 38, where a sheet took the field's
+ * motion). One curve, two ways of handing it over, the way EASE_OUT and
+ * EASE_OUT_CSS already are one easing.
+ */
+export function settleCurve(peak: number, base: Bezier): (t: number) => number {
   const curve = bezier(base);
+  if (peak <= 0) return curve;
   const sum = (height: number, t: number) => curve(t) + height * Math.sin(Math.PI * t);
   const highest = (height: number) =>
     Math.max(...Array.from({ length: 201 }, (_, i) => sum(height, i / 200)));
@@ -122,13 +142,32 @@ function settleEasing(peak: number, base: Bezier): string {
     else low = mid;
   }
   const height = (low + high) / 2;
+  /* Ending on the mark itself, for the reason the sampled stops do: nothing
+     may be left a fraction short of where it rests. */
+  return (t) => (t >= 1 ? 1 : sum(height, t));
+}
 
-  const stops = [];
-  for (let i = 0; i <= SAMPLES; i++) {
-    const t = i / SAMPLES;
-    stops.push(i === SAMPLES ? 1 : Math.round(sum(height, t) * 1000) / 1000);
-  }
-  return `linear(${stops.join(', ')})`;
+/**
+ * The settle for a thing travelling `travel` px, ready to hand to a Svelte
+ * transition. `closes` is the direction that does not run past its mark -
+ * the blind's edge rising, and a sheet going back down past the bottom edge
+ * it sits on - and it takes the gentler deceleration for the same reason
+ * the blind's close does.
+ */
+export function travelSettle(
+  travel: number,
+  { closes }: { closes: boolean }
+): (t: number) => number {
+  const base = closes ? EASE_OUT_SOFT_POINTS : EASE_OUT_POINTS;
+  const overshoot = closes ? 0 : travelOvershoot(travel);
+  return settleCurve(travel > 0 ? overshoot / travel : 0, base);
+}
+
+/** How far past its mark a travel of this length runs, in px. A caller has
+    to leave room for it: a sheet that runs past the bottom edge it stands on
+    would show the page underneath itself for as long as it was up there. */
+export function travelOvershoot(travel: number): number {
+  return travel >= SETTLE_FLOOR ? Math.min(travel * OVERSHOOT_SHARE, OVERSHOOT_CAP) : 0;
 }
 
 /** The two decelerations this reaches for, as their control points.

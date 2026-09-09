@@ -23,9 +23,9 @@
 import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
 
+import { travelSettle } from './blindSettle';
 import {
   crossfadeDuration,
-  EASE_IN_OUT,
   EASE_OUT,
   fadeOnly,
   isReducedMotion,
@@ -139,7 +139,7 @@ function sheetTravel(node: Element): number {
  * Tier 2, sheets: up from below the bottom edge, and back down past it,
  * travelling the sheet's own height. Sized off the node rather than out of a
  * token, which is the whole of redesign ticket 38 - `--motion-distance-md` is
- * 24px, and 24px under an opacity fade on a 500px sheet is a crossfade with a
+ * 24px, and 24px under an opacity fade on a 717px sheet is a crossfade with a
  * nudge in it.
  *
  * No opacity. ADR-0078's words are that a block never fades up from nothing,
@@ -147,18 +147,32 @@ function sheetTravel(node: Element): number {
  * The scrim is what announces a sheet, and it fades on the sheet's own clock
  * (Sheet.svelte).
  *
- * `--dur-med` in both directions, rather than tier 2's asymmetry. That
- * asymmetry exists so a screen does not hesitate before answering, and it
- * costs nothing to a fade; here it would make the exit cover 500px in 150ms.
- * One duration also keeps this a bidirectional `transition:`, so a sheet
- * closed while it is still opening reverses out of where it has got to
- * instead of jumping to rest first.
+ * **The field's motion, on a sheet.** The curve is the blind's settle from
+ * ticket 28 rather than a plain token: coming up it runs past its mark and
+ * comes back, going down it does not, and the two decelerations are the ones
+ * the blind already picks between (Alicja, on this ticket's first flipbooks:
+ * "the same motion as the field ... with an overshoot when coming up from
+ * below, and without one when going down"). `.sheet` carries a skirt below
+ * itself so the overshoot never lifts it off the edge it stands on.
+ *
+ * `--dur-slow` in both directions rather than tier 2's asymmetry. That
+ * asymmetry exists so a screen does not hesitate before answering and it
+ * costs a fade nothing; over a whole sheet's height it is the difference
+ * between about 40px between painted frames and about 110.
+ *
+ * Use as `in:sheetRise` and `out:sheetRise`: the two directions are two
+ * curves now, and a bare `transition:` reports 'both' and would get the
+ * entrance's overshoot on the way out.
  */
-export function sheetRise(node: Element): TransitionConfig {
+export function sheetRise(
+  node: Element,
+  _params: Record<string, never> = {},
+  options: { direction?: Direction } = {}
+): TransitionConfig {
   const travel = sheetTravel(node);
   return tier2((_t, u) => `transform: translateY(${travel * u}px)`, undefined, {
-    duration: '--dur-med',
-    easing: EASE_IN_OUT
+    duration: '--dur-slow',
+    easing: travelSettle(travel, { closes: options.direction === 'out' })
   });
 }
 
