@@ -347,7 +347,7 @@
     height: 56px;
     border: none;
     border-radius: 50%;
-    background: var(--grad-accent);
+    background: var(--accent);
     color: var(--on-accent);
     display: grid;
     place-items: center;

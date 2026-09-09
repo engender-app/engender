@@ -226,9 +226,6 @@
   --chart-fill-2: color-mix(in oklab, var(--accent-2) 16%, transparent);
   --chart-grid: var(--hairline);
 
-  /* The two-accent gradient: FAB, primary buttons, hero underline. */
-  --grad-accent: linear-gradient(120deg, var(--accent-2), var(--accent) 65%);
-
   --focus-ring: color-mix(in oklab, var(--accent) 70%, var(--text));
 
   /* Accent as small text. --accent is sized to be sat on (it is heat-4, and
