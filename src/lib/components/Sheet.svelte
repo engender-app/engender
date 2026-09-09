@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import type { Snippet } from 'svelte';
-  import { motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { sheetRise } from '$lib/motion/navigation';
 
   let {
@@ -148,6 +148,17 @@
     }
   }
 
+  /* The scrim and the withdrawal blur it carries settle with the sheet, on
+     the sheet's own clock rather than on a duration of their own: with the
+     travel now the sheet's whole height (redesign ticket 38) a scrim that
+     finished first left the sheet still visibly moving over a page that had
+     already gone dark. Under reduced motion the sheet substitutes a
+     crossfade, so the scrim takes the same one - motionDuration() answers 0
+     there, and a scrim that cuts while the sheet fades is the same mismatch
+     the other way round. */
+  const scrimDuration = () =>
+    isReducedMotion() ? crossfadeDuration() : motionDuration('--dur-med');
+
   function onWindowKeydown(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === 'Escape') {
@@ -165,7 +176,7 @@
     class="sheet-scrim scrim-withdraw is-open"
     role="presentation"
     data-sheet-scrim
-    transition:fade={{ duration: motionDuration('--dur-med') }}
+    transition:fade={{ duration: scrimDuration() }}
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
     }}

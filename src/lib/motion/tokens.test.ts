@@ -3,7 +3,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { DISTANCE_FALLBACK, DURATION_FALLBACK, isReducedMotion, motionDistance, motionDuration } from './tokens';
+import {
+  DISTANCE_FALLBACK,
+  DURATION_FALLBACK,
+  EASE_IN_OUT,
+  EASE_IN_OUT_POINTS,
+  isReducedMotion,
+  motionDistance,
+  motionDuration
+} from './tokens';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -50,5 +58,14 @@ describe('the fallback table agrees with what base.css authors', () => {
       expect(match, `${token} should be authored in px in base.css`).not.toBeNull();
       expect(Number(match![1]), token).toBe(fallback);
     }
+  });
+
+  /* The same rule for the one curve this module hands to a Svelte
+     transition: a stylesheet that retuned --ease-in-out without this would
+     leave the sheet leaving on the old one (redesign ticket 38). */
+  it('the ease-in-out control points', () => {
+    expect(base).toContain(`--ease-in-out: cubic-bezier(${EASE_IN_OUT_POINTS.join(', ')})`);
+    expect(EASE_IN_OUT(0)).toBeCloseTo(0, 5);
+    expect(EASE_IN_OUT(1)).toBeCloseTo(1, 5);
   });
 });

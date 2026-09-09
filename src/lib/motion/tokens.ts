@@ -12,6 +12,8 @@
 import { quintOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
 
+import { bezier } from './blindSettle';
+
 /** --ease-out, for the transitions that cannot read a CSS token.
 
     --ease-out is cubic-bezier(0.22, 1, 0.36, 1). quintOut tracks it to within
@@ -26,6 +28,19 @@ export const EASE_OUT = quintOut;
     curve by hand (phase 5 ticket 32.17's `resize`, the first primitive that
     animates via WAAPI rather than a Svelte transition). */
 export const EASE_OUT_CSS = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+/** --ease-in-out, as the control points the stylesheet publishes and as the
+    function a Svelte transition takes. `bezier` is blindSettle's, which is
+    where the app's curves are already evaluated in JS rather than in CSS.
+
+    It exists here for the one transition that has to be as good at leaving as
+    at arriving. Svelte runs an exit as `1 - easing(p)`, so a decelerating
+    curve leaves at its steepest: --ease-out spends 29% of the travel before
+    the second frame is painted, which is invisible over 24px and a lurch over
+    a sheet's own height (redesign ticket 38). This one departs at about a
+    tenth of that and gathers speed, which is what an object leaving does. */
+export const EASE_IN_OUT_POINTS = [0.45, 0.18, 0.3, 1] as const;
+export const EASE_IN_OUT = bezier(EASE_IN_OUT_POINTS);
 
 /** Opacity alone over `duration`, which two different jobs both need: tier
     2's reduced-motion substitute, and tier 3's fallback where the runtime has
@@ -54,7 +69,7 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored';
+export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored';
 type DistanceToken = '--motion-distance-sm' | '--motion-distance-md';
 
 /** The values base.css authors each token at, for the no-DOM path -
