@@ -35,6 +35,12 @@ describe('the routes that render without chrome', () => {
     expect(chromelessPath('/health/appointment-prep')).toBe(false);
   });
 
+  it('is the return moment, which is a step and has nowhere to go (ticket 35)', () => {
+    /* DIRECTION.md rule 15: one purpose, no navigation. A tab bar over it
+       is four ways off a screen whose foot already carries the one. */
+    expect(chromelessPath('/coming-back')).toBe(true);
+  });
+
   it('is not an ordinary screen', () => {
     expect(chromelessPath('/')).toBe(false);
     expect(chromelessPath('/calendar')).toBe(false);

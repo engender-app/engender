@@ -191,7 +191,14 @@ describe('what a first-run journal sees', () => {
            compiled into the bundle (data/voice/metrics.ts), so it has no
            empty state for the same reason the bundled directory has
            none. */
-        'practice/voice/metrics'
+        'practice/voice/metrics',
+        /* The return moment is a step rather than a screen (DIRECTION.md
+           rule 15, redesign ticket 35), and rule 12 forbids a notice on
+           one: a step carries a title on the field and one line under it,
+           and its empty state is that line saying the true sentence. It
+           does have an empty state and draws it as a surface - the
+           surface is the field and the line, not a Notice. */
+        'coming-back'
       ].includes(route)
   );
 
