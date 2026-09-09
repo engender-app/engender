@@ -201,23 +201,38 @@ describe('the first run', () => {
   it('counts its steps for a screen reader on the sun, not on a rail', () => {
     /* Ticket 29: the sun is the only progress meter. The step count is its
        accessible name rather than visible text, so the growing circle still
-       says which step this is. */
+       says which step this is. Ticket 33 moved the sun inside the field's
+       own paint, where the moving edge clips it. */
     expect(onboardingMarkup).not.toContain('role="progressbar"');
-    expect(onboardingMarkup).toMatch(/class="setup-sky"[\s\S]*?role="img"[\s\S]*?aria-label=\{m\.ob_step_of/);
+    expect(onboardingMarkup).toMatch(
+      /class="setup-sun"[\s\S]*?role="img"[\s\S]*?aria-label=\{m\.ob_step_of/
+    );
   });
 
-  it('crosses its steps on the tier-2 axis rather than inventing a transition', () => {
-    /* The entrance is the same primitive with a delay on it, not a second
-       transition: Svelte starts an `in:` and an `out:` together and tier 2's
-       exit is shorter than its entrance, so without the wait two
-       full-screen steps were on top of each other for the length of the
-       exit. What is checked is that the geometry still comes from
-       navigation.ts rather than from a curve written here. */
+  it('moves a step change on the field\'s own edge, not on a shared axis', () => {
+    /* Ticket 33, DIRECTION.md rules 10 and 12. A step change is the field's
+       bottom edge being pulled to the height the next step needs, with the
+       question printed on it and the answers standing under it riding down
+       with it - the same movement a door change makes, and the reason both
+       read their numbers out of one place. The shared-axis slide this
+       replaces predated every rule in DIRECTION.md.
+
+       What is checked is that the geometry is still borrowed rather than
+       invented here: the parts come from navigation.ts, the edge from
+       stepBlind, and neither the axis nor a curve of this screen's own is
+       left behind. */
     expect(onboarding).toContain("from '$lib/motion/navigation'");
-    expect(onboarding).toMatch(/const config = sharedAxisX\(node, params, options\)/);
-    expect(onboarding).toMatch(/delay: motionDuration\('--dur-fast'/);
-    expect(onboardingMarkup).toContain('in:stepIn');
-    expect(onboardingMarkup).toContain('out:sharedAxisX');
+    expect(onboarding).toContain("from '$lib/motion/stepBlind'");
+    expect(onboardingMarkup).toContain('use:blindEdge');
+    expect(onboardingMarkup).toMatch(/in:fieldPart=\{\{ printed: true \}\}/);
+    expect(onboardingMarkup).toMatch(/out:fieldPart=\{\{ printed: true \}\}/);
+    expect(onboarding).not.toContain('sharedAxisX');
+    /* The edge, and everything riding it, is one clock: --dur-slow on the
+       settle sampled per move. A second duration written here is how the
+       question and the page it sits on would come apart. */
+    const styles = onboarding.slice(onboarding.indexOf('<style>'));
+    expect(styles).toMatch(/transition-property:\s*--blind-edge/);
+    expect(styles).not.toMatch(/cubic-bezier/);
   });
 
   it('takes its surfaces from the kit and draws no card of its own', () => {
