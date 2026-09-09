@@ -266,6 +266,17 @@ const read = (radii, sizes, strokes) =>
           shown *= Number(getComputedStyle(up).opacity);
         if (!shown) continue;
 
+        /* And no box at all, which `display` alone does not catch: the check
+           above skips a hidden element but `getComputedStyle` on its
+           *children* still answers `display: block`, because display is not
+           inherited and is never recomputed to none for a descendant. So a
+           paper-only heading - `.print-heading` is `display: none` until
+           `@media print` turns it on - reported its 32px h1 as live type on
+           two screens, in both themes, and `DIRECTION.md` governs screens.
+           A zero-size box is the honest test for "on screen at all". */
+        const box = el.getBoundingClientRect();
+        if (!box.width || !box.height) continue;
+
         if (cs.boxShadow && cs.boxShadow !== 'none' && !shadowAllowed(el, cs.boxShadow))
           note('elevation', el, cs.boxShadow.replace(/\s+/g, ' ').slice(0, 60));
 
