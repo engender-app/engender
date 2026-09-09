@@ -23,12 +23,18 @@
      one object being resized.
 
      Direct manipulation is not animation: while a finger holds a handle the
-     handle follows it with no transition, and the transitions run only on
-     the moves that are not the finger's - a tap on an era, a tap on a
-     milestone, a key press - and on the settle after a release, when the
-     day snaps to its grain. Reduced motion clamps every one of those to the
-     1ms base.css already imposes on transitions; nothing here animates by
-     script.
+     handle follows it exactly, to the day under the finger with no snap
+     and no transition, and the transitions run only on the moves that are
+     not the finger's - a tap on an era, a tap on a milestone, a key press -
+     and on the settle after a release, when the day snaps to its grain or
+     to a magnet and the handle, the clip and the frame travel there on
+     --dur-med (redesign ticket 19; ticket 11 snapped on every move, so the
+     handle stepped under the finger and the release had nothing left to
+     settle). A video trimmer's bracket works the same way (Mobbin: the
+     Shopee and Google Photos trimmers), and it is the movement that tells a
+     person the span they let go of is a whole number of weeks. Reduced
+     motion clamps every one of those to the 1ms base.css already imposes on
+     transitions; nothing here animates by script.
 
      The span is committed on release, not on every move: the charts under
      the door re-read on commit, and re-reading six queries per pointer
@@ -183,6 +189,13 @@
     if (!active) return;
     const lower = (event: PointerEvent) => {
       if (root && event.target instanceof Node && root.contains(event.target)) return;
+      /* A control that leaves the screen with the span - the way into its
+         retrospective - keeps the rail raised, so the stretch the person
+         chose is the last thing standing while the door goes rather than
+         a thing folding away under a finger that just used it (redesign
+         ticket 19). The host marks it; the rail knows nothing about
+         routes. */
+      if (event.target instanceof Element && event.target.closest('[data-span-keep]')) return;
       active = false;
     };
     document.addEventListener('pointerdown', lower);
@@ -200,12 +213,18 @@
      end handle's day, so a one-day span is still a visible stretch. */
   let clipRight = $derived(Math.max(0, railWidth - Math.min(railWidth, endX + Math.max(2, pxPerDayAt(live.end)))));
 
-  const dayAtClientX = (clientX: number): number => {
+  /* The day under a point on the rail, to the day: what a held handle
+     follows. */
+  const rawDayAtClientX = (clientX: number): number => {
     const box = rail?.getBoundingClientRect();
     if (!box || box.width === 0) return today;
-    const raw = dayAtPosition((clientX - box.left) / box.width, railStart, today);
-    return snapDay(raw, { start: railStart, today, grain: grainFor(raw), magnets, toleranceDays: toleranceAt(raw) });
+    return dayAtPosition((clientX - box.left) / box.width, railStart, today);
   };
+  /* Where a pointed-at day lands once the finger is off it: the grain where
+     it stands, or a magnet within reach. */
+  const snapTo = (raw: number): number =>
+    snapDay(raw, { start: railStart, today, grain: grainFor(raw), magnets, toleranceDays: toleranceAt(raw) });
+  const dayAtClientX = (clientX: number): number => snapTo(rawDayAtClientX(clientX));
 
   const settle = (next: Span) => {
     live = next;
@@ -216,8 +235,10 @@
     onChange(next);
   };
 
-  /* Handles: pointer capture so the drag survives leaving the rail, and a
-     commit on release. `touch-action: none` on the rail is what keeps the
+  /* Handles: pointer capture so the drag survives leaving the rail, the
+     raw day while held, and the snap plus the commit on release - in the
+     same tick the drag class comes off, so the settle is the first move the
+     transitions see. `touch-action: none` on the rail is what keeps the
      page from scrolling under a finger that is dragging sideways. */
   function onHandleDown(event: PointerEvent, handle: SpanHandle) {
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -226,13 +247,13 @@
   function onHandleMove(event: PointerEvent, handle: SpanHandle) {
     if (dragging !== handle) return;
     moving = true;
-    settle(moveHandle(live, handle, dayAtClientX(event.clientX)));
+    settle(moveHandle(live, handle, rawDayAtClientX(event.clientX)));
   }
   function onHandleUp(handle: SpanHandle) {
     if (dragging !== handle) return;
     dragging = null;
     moving = false;
-    commit(live);
+    commit(moveHandle(live, handle, snapTo(handle === 'start' ? live.start : live.end)));
   }
 
   /* A key moves a handle by one step of the grain, ten with Shift, to the
