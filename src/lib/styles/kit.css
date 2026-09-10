@@ -311,6 +311,8 @@
    heavier line than the same separator one card over; phase 10 retired
    --border altogether. */
 .kit-row + .kit-row::before,
+.kit-row + .rows-divide::before,
+.rows-divide + .kit-row::before,
 .rows-divide + .rows-divide::before {
   content: '';
   position: absolute;

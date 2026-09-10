@@ -340,11 +340,21 @@ describe('what spec 08 took off Home', () => {
        area state, off the same two reads the Transition door makes; the
        words are the hub's own, so a pinned row and its hub row agree. */
     expect(home).toContain("from '$lib/data/pinnedRows'");
-    expect(home).toContain('pinnedRows(prefs, { todayEpochDay: today, lastWrites: lastWritesQuery.value, states: areaStatesQuery.value })');
+    expect(home).toContain('lastWrites: lastWritesQuery.value, states: areaStatesQuery.value');
+    expect(home).toContain('pinnedRows(prefs, reading)');
     expect(home).toContain('j.lastWrite.getLastWrites(today)');
     expect(home).toContain('j.areaStates.getAreaStates()');
     expect(markup).toMatch(/<ListRow[\s\S]*?title=\{hubRowTitle\(row\.spec\.key\)\}[\s\S]*?subtitle=\{hubRowLine\(row\.spec\.key, row\.line, today\)\}[\s\S]*?data-pinned-row=\{row\.spec\.key\}/);
     expect(home).not.toMatch(/pinned[\s\S]{0,200}\.sort\(/);
+  });
+
+  it('ticket 106: prevents hydration layout shift by rendering fallback rows immediately and disclosing transitions', () => {
+    /* Pinned rows must not fall back to an empty array while queries resolve,
+       which would collapse the card and snap content down 300px on resolution.
+       Rows animate changes with disclose. */
+    expect(home).not.toMatch(/\?\s*pinnedRows\([^)]+\)\s*:\s*\[\]/);
+    expect(home).toContain('fallbackReading(today)');
+    expect(markup).toContain('class="rows-divide" transition:disclose={panel}');
   });
 
   it('keeps every write shape the centre fan offers, together, and touches the fan itself not at all', () => {
