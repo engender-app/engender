@@ -209,6 +209,16 @@ test('android reaches each of its four gates', () => {
   });
 });
 
+test('android reaches auto-unlock when native device key requires no auth', () => {
+  const { machine, effects } = walk(
+    started('android'),
+    surveyedAndroid({ nativeDeviceKeyExists: true, nativeDeviceKeyAuthRequired: false })
+  );
+  expect(machine.boot.status).toBe('booting');
+  expect(machine.boot.accessMode).toBe('unlocked');
+  expect(effects).toEqual([{ type: 'auto-unlock-android' }]);
+});
+
 test('a refused android key leaves the gate the refusal to render', () => {
   const refusal = {
     kind: 'refused' as const,

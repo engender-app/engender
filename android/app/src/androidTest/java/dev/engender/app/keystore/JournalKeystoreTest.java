@@ -262,6 +262,19 @@ public class JournalKeystoreTest {
         assertEquals("the wrap is not RSA-2048 ciphertext", 256, onDisk.length);
     }
 
+    /** The unlocked blob is also wrapped and has no plaintext data key in it. */
+    @Test
+    public void theUnlockedWrappedBlobOnDiskIsNotTheDataKey() throws Exception {
+        byte[] dataKey = keystore.create(JournalKeystore.Variant.UNLOCKED);
+
+        File blob = keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED);
+        assertTrue("nothing was written", blob.exists());
+        byte[] onDisk = Files.readAllBytes(blob.toPath());
+
+        assertFalse("the data key is sitting in the unlocked wrapped file", indexOf(onDisk, dataKey) >= 0);
+        assertEquals("the wrap is not RSA-2048 ciphertext", 256, onDisk.length);
+    }
+
     /**
      * Removing the lock screen destroys the key, and the app reports that as
      * its own state rather than as a finger that did not match - a retry loop
@@ -340,6 +353,72 @@ public class JournalKeystoreTest {
         byte[] onDisk = Files.readAllBytes(keystore.wrappedKeyFile().toPath());
         assertFalse(indexOf(onDisk, first) >= 0);
         assertFalse(indexOf(onDisk, second) >= 0);
+    }
+
+    /** The unlocked mode creates an unauthenticated key and unwraps without prompt. */
+    @Test
+    public void unlockedKeyCanBeCreatedAndUnwrappedWithoutAuthentication() throws Exception {
+        byte[] dataKey = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        assertEquals("the data key is 32 bytes", 32, dataKey.length);
+        assertTrue(keystore.hasKey());
+        assertTrue(keystore.hasVariant(JournalKeystore.Variant.UNLOCKED));
+        assertEquals(JournalKeystore.Variant.UNLOCKED, keystore.activeVariant());
+
+        byte[] unwrapped = keystore.unwrapUnlocked();
+        assertArrayEquals("the unlocked key unwraps to the original data key", dataKey, unwrapped);
+
+        KeyStore androidKeystore = KeyStore.getInstance("AndroidKeyStore");
+        androidKeystore.load(null);
+        assertTrue(androidKeystore.containsAlias(JournalKeystore.UNLOCKED_ALIAS));
+        PrivateKey wrappingKey = (PrivateKey) androidKeystore.getKey(JournalKeystore.UNLOCKED_ALIAS, null);
+        assertNotNull(wrappingKey);
+        assertNull("the wrapping key handed out its own material", wrappingKey.getEncoded());
+    }
+
+    /** Mode switching wraps an existing data key without re-encrypting. */
+    @Test
+    public void wrappingExistingDataKeyWithoutReencrypting() throws Exception {
+        byte[] originalKey = new byte[32];
+        new SecureRandom().nextBytes(originalKey);
+
+        keystore.wrap(JournalKeystore.Variant.UNLOCKED, originalKey);
+        assertTrue(keystore.hasVariant(JournalKeystore.Variant.UNLOCKED));
+        byte[] unwrapped = keystore.unwrapUnlocked();
+        assertArrayEquals(originalKey, unwrapped);
+
+        keystore.wrap(JournalKeystore.Variant.GATED, originalKey);
+        assertTrue(keystore.hasVariant(JournalKeystore.Variant.GATED));
+        assertEquals(JournalKeystore.Variant.GATED, keystore.activeVariant());
+    }
+
+    /** Erase removes both gated and unlocked aliases and files. */
+    @Test
+    public void eraseTakesBothVariants() throws Exception {
+        keystore.create(JournalKeystore.Variant.GATED);
+        keystore.create(JournalKeystore.Variant.UNLOCKED);
+
+        keystore.erase();
+        assertFalse(keystore.hasKey());
+        assertFalse(keystore.hasVariant(JournalKeystore.Variant.GATED));
+        assertFalse(keystore.hasVariant(JournalKeystore.Variant.UNLOCKED));
+
+        KeyStore androidKeystore = KeyStore.getInstance("AndroidKeyStore");
+        androidKeystore.load(null);
+        assertFalse(androidKeystore.containsAlias(JournalKeystore.ALIAS));
+        assertFalse(androidKeystore.containsAlias(JournalKeystore.UNLOCKED_ALIAS));
+    }
+
+    /** Gated takes precedence when an interrupted change leaves both files. */
+    @Test
+    public void gatedTakesPrecedenceWhenBothVariantsExist() throws Exception {
+        keystore.create(JournalKeystore.Variant.UNLOCKED);
+        byte[] dataKey = new byte[32];
+        new SecureRandom().nextBytes(dataKey);
+        keystore.wrap(JournalKeystore.Variant.GATED, dataKey);
+
+        assertTrue(keystore.hasVariant(JournalKeystore.Variant.GATED));
+        assertTrue(keystore.hasVariant(JournalKeystore.Variant.UNLOCKED));
+        assertEquals(JournalKeystore.Variant.GATED, keystore.activeVariant());
     }
 
     private static int indexOf(byte[] haystack, byte[] needle) {

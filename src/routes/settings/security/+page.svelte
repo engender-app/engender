@@ -24,6 +24,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import { accessModeTitle } from '$lib/components/AccessModeSetup.svelte';
 
   let android = $derived(isAndroid());
   /** Whether there is a secret to ask for again mid-session. False for
@@ -32,17 +33,7 @@
       somebody to discover. */
   let hasSecret = $derived(accessModeHasSecret(bootState.accessMode, android));
 
-  let modeName = $derived(
-    bootState.accessMode === 'passphrase'
-      ? m.am_mode_passphrase()
-      : bootState.accessMode === 'pin'
-        ? m.am_mode_pin({ digits: '4' })
-        : bootState.accessMode === 'biometric'
-          ? m.am_mode_biometric()
-          : android
-            ? m.am_mode_device_android()
-            : m.am_mode_device_web()
-  );
+  let modeName = $derived(bootState.accessMode ? accessModeTitle(bootState.accessMode) : '');
 
   /* The prompt this toggle affects only exists where device-bound mode is the
      one in use: it is Keystore's, and Keystore is what device-bound mode

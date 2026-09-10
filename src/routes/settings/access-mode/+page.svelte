@@ -71,10 +71,10 @@
     try {
       await changeAccessMode(mode, secret);
       toast(m.am_changed_toast());
-      /* Device-bound mode is the choice that creates the unrecoverable
-         state, so it is the one that gets the offer rather than the
-         navigation - and only where there is nothing already covering it. */
-      if (mode === 'device-bound' && !recoveryKeyPresence.exists) {
+      /* Device-bound and unlocked modes create an unrecoverable state,
+         so they get the offer rather than the navigation - and only where
+         there is nothing already covering it. */
+      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.exists) {
         offering = 'device-bound';
         return;
       }
