@@ -271,7 +271,6 @@
       to: navigation.to.url.pathname,
       type: navigation.type,
       delta: navigation.delta,
-      isAndroid: isAndroid(),
       /* `cutsInsteadOfMoving`, not `chromelessPath`: a route with no bar is
          not therefore a route the app did not walk to. The return moment is
          on neither list, so stepping into it and back out both move
@@ -282,14 +281,14 @@
          leaving is the app opening. The table says which is which. */
       isChromeless:
         replacesApp || cutsInsteadOfMoving(navigation.from?.url.pathname ?? null, navigation.to.url.pathname),
-      /* Gathered here for the same reason `isAndroid` is: whether a sheet is
-         open over the outgoing screen is not something the two URLs can
-         answer, and screen-transition.ts stays a pure table by being told
-         rather than by looking. Read off the shell rather than plumbed down
-         from Sheet, because a navigation out of a sheet is started by
-         whatever is inside it and none of those callers know they are in
-         one. Still open at this point - the sheet unmounts with the screen
-         it belongs to, which happens inside the capture below.
+      /* Gathered here: whether a sheet is open over the outgoing screen is
+         not something the two URLs can answer, and screen-transition.ts
+         stays a pure table by being told rather than by looking. Read off the
+         shell rather than plumbed down from Sheet, because a navigation out
+         of a sheet is started by whatever is inside it and none of those
+         callers know they are in one. Still open at this point - the sheet
+         unmounts with the screen it belongs to, which happens inside the
+         capture below.
 
          The selector is the dialog's ARIA, not `[data-sheet]`, which is a
          walkthrough handle: ADR-0029 grants those on the terms that they

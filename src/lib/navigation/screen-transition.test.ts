@@ -5,7 +5,6 @@ import { chromelessPath, replacesAppNavigation } from './chromeless';
 
 const nav = (over: Partial<NavigationFacts> & { from: string | null; to: string }): NavigationFacts => ({
   type: 'link',
-  isAndroid: false,
   isChromeless: false,
   fromSheet: false,
   ...over
@@ -69,18 +68,17 @@ describe('choosing a tier-2 pattern', () => {
     );
   });
 
-  it('leaves back to Android, whose gesture has already started drawing it', () => {
+  it('animates back within a tab as shared-axis-back, avoiding abrupt cuts (ticket 102)', () => {
     expect(
       screenTransition(
-        nav({ from: '/day/20690', to: '/calendar', type: 'popstate', delta: -1, isAndroid: true })
+        nav({ from: '/day/20690', to: '/calendar', type: 'popstate', delta: -1 })
       )
-    ).toBe('none');
-  });
-
-  it('still animates forward on Android, which the gesture says nothing about', () => {
-    expect(screenTransition(nav({ from: '/calendar', to: '/day/20690', isAndroid: true }))).toBe(
-      'shared-axis'
-    );
+    ).toBe('shared-axis-back');
+    expect(
+      screenTransition(
+        nav({ from: '/settings/tags', to: '/settings', type: 'popstate', delta: -1 })
+      )
+    ).toBe('shared-axis-back');
   });
 
   it('animates nothing on a cold start, on a gate, or in place', () => {
@@ -168,15 +166,12 @@ describe('choosing a tier-2 pattern', () => {
     );
   });
 
-  it('leaves the container transform to Android going back, like every other pattern', () => {
-    /* The predictive back gesture has already started drawing where the
-       person is going, and a fixed animation on top of it is worse than
-       none. */
+  it('animates the container transform going back (ticket 102)', () => {
     expect(
       screenTransition(
-        nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1, isAndroid: true })
+        nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1 })
       )
-    ).toBe('none');
+    ).toBe('container');
   });
 
   it('treats a forward popstate as forward', () => {
