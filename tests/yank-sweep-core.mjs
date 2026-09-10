@@ -315,9 +315,11 @@ export function samplerExpression(act, ms, names) {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
       const scope =
+        el.getAttribute?.('data-tile') ??
         el.getAttribute?.('data-segment') ??
         el.getAttribute?.('data-goal') ??
         el.getAttribute?.('data-list-row') ??
+        el.closest?.('[data-tile]')?.getAttribute('data-tile') ??
         el.closest?.('[data-segmented]')?.getAttribute('data-segmented') ??
         el.closest?.('[data-goal]')?.getAttribute('data-goal') ??
         el.closest?.('[data-track]')?.getAttribute('data-track') ??
@@ -743,7 +745,7 @@ export function regions(mask, w, h, minArea) {
 export function findPixelYanks(grays, w, h, ats) {
   const dts = [];
   for (let i = 1; i < grays.length; i++) dts.push(ats[i] - ats[i - 1]);
-  const median = dts.slice().sort((a, b) => a - b)[Math.floor(dts.length / 2)] || 16;
+  const median = Math.max(16, dts.slice().sort((a, b) => a - b)[Math.floor(dts.length / 2)] || 16);
   const findings = [];
   const motion = [];
   for (let i = 1; i < grays.length - 1; i++) {
@@ -889,7 +891,10 @@ const HYDRATION_SCENES = [
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
-  { name: 'live-tiles', at: '/settings/live-tiles', is: 'the live-tiles half of the registry' },
+  /* No live-tiles scene: deepening ticket 09 merged that screen into
+     /settings/notifications, and the route now client-replaces to it, so
+     a scene pinned to the old path can only ever time out - the
+     notifications scene below already covers the merged surface. */
   { name: 'notifications', at: '/settings/notifications', is: 'the notifications half of the registry' },
   { name: 'permissions', at: '/settings/permissions', is: 'what the app asks the device for' },
   { name: 'trash', at: '/settings/trash', is: 'the 30-day window' },
@@ -988,7 +993,11 @@ export const JUMP_FIRST_RUN_EXPRESSION = `(() => {
 
 export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  for (let i = 0; i < 60 && !document.querySelector('[data-next]'); i++) await sleep(250);
+  /* Generous, because the jump that opens this walks markFirstRun first:
+     emptying the demo journal's 150 days of deletes runs through the
+     worker, which a phone serves an order of magnitude slower than the
+     desktop the 15 s this used to be was tuned on. */
+  for (let i = 0; i < 180 && !document.querySelector('[data-next]'); i++) await sleep(250);
   if (!document.querySelector('[data-next]')) throw new Error('the first run did not open');
   for (const step of ${JSON.stringify(SETUP_STEPS)}) {
     await sleep(500);
@@ -996,6 +1005,20 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
       const name = document.querySelector('#ob-name');
       Object.getOwnPropertyDescriptor(Object.getPrototypeOf(name), 'value').set.call(name, 'Ola');
       name.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    /* The lock step has no foot of its own on an install that has not
+       chosen an access mode yet: the AccessModeSetup module replaces
+       [data-next] with its own two screens, so the walk picks the
+       unlocked mode (the one with no secret to type) and confirms it,
+       which is the choice a sweep journal wants anyway - nothing it
+       later does should sit behind a keystore. */
+    if (step === 'lock' && !document.querySelector('[data-next]') && document.querySelector('[data-access-modes]')) {
+      document.querySelector('[data-list-row="unlocked"]').click();
+      for (let i = 0; i < 40 && !document.querySelector('[data-access-submit]'); i++) await sleep(250);
+      const submit = document.querySelector('[data-access-submit]');
+      if (!submit) throw new Error('the access-mode module never offered its confirm');
+      submit.click();
+      for (let i = 0; i < 80 && !document.querySelector('[data-next]'); i++) await sleep(250);
     }
     if (step === 'done') break;
     document.querySelector('[data-next]').click();
@@ -1047,7 +1070,19 @@ export const LOCK_SETUP_EXPRESSION = (pin) => `(async () => {
     }
     await sleep(800);
   }
-  await wait('a[href="/settings/security"], [data-screen-back]');
+  /* Settled is either control the settings screen offers, or the
+     confirmation's own navigation: after the second PIN entry the module
+     can land on /settings/security itself, where the link this used to
+     wait for is not on the page - the page IS it. */
+  let settled = false;
+  for (let i = 0; i < 50; i++) {
+    if (q('a[href="/settings/security"], [data-screen-back]') || location.pathname === '/settings/security') {
+      settled = true;
+      break;
+    }
+    await sleep(200);
+  }
+  if (!settled) throw new Error('the PIN setup never settled on security or a way back');
   return true;
 })()`;
 
