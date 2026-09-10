@@ -151,6 +151,18 @@ function pinKeys(prefs: PinPreferences, rows: readonly HubRow[]): readonly strin
     `pinnedRows.test.ts` can drive this same function over a registry one row
     short and watch the rule actually fail - the discipline `unregisteredKinds`
     holds itself to next door. */
+/** A quiet reading for initial render before SQLite queries settle.
+    Every row reports its standing line ('not-yet' or 'no-stream'),
+    so screens can render their pinned list without a cold-mount pop
+    (phase 10 UX carpet ticket 106). */
+export function fallbackReading(todayEpochDay: number): HubReading {
+  return {
+    todayEpochDay,
+    lastWrites: {},
+    states: {}
+  };
+}
+
 export function pinnedRows(
   prefs: PinPreferences,
   reading: HubReading,
