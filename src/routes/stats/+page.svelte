@@ -108,6 +108,7 @@
   import type { CorrelationCard } from '$lib/data/correlationCards';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Donut from '$lib/components/kit/Donut.svelte';
+  import { crossfade } from '$lib/motion/reveal';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { highestMetricKey, rankHighestDays } from '$lib/data/highestDays';
   import type { Part } from '$lib/charts/parts';
@@ -877,7 +878,7 @@
       />
     {/snippet}
     {#if seriesQuery.loading}
-      <Skeleton variant="block" />
+      <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else}
       <AreaChart
         points={aligned ? aligned.map((row) => ({ x: row.x, y: row.a })) : plotted.points}
@@ -970,7 +971,7 @@
     role={roleAt(activeFlag.roles, AREA_ROLE.charts)}
   >
     {#if seriesQuery.loading || recapQuery.loading}
-      <Skeleton variant="line" count={3} />
+      <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries}
       <BarRows rows={scaleRows} measure="track" />
     {:else}
@@ -990,7 +991,7 @@
   {#if hasConstellation}
     <ChartCard heading={m.stats_constellation()} kind="constellation">
       {#if canPlot && xScale && yScale}
-        <ReadGate read={constellationQuery} variant="block">
+        <ReadGate read={constellationQuery} variant="block" count={1}>
           {#snippet rows()}
             <GenderConstellationChart
               points={constellationPoints}
@@ -1042,7 +1043,7 @@
 
   <ChartCard heading={m.stats_mood_days()} kind="mood-days">
     {#if seriesQuery.loading || recapQuery.loading}
-      <Skeleton variant="block" />
+      <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if enoughEntries}
       <OrderedStrip steps={moodSteps} />
     {:else}
@@ -1057,7 +1058,7 @@
        would be a colour the arcs are already spending. -->
   <ChartCard heading={m.stats_tag_share()} kind="tag-share" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
     {#if recapQuery.loading || tagShareQuery.loading}
-      <Skeleton variant="block" />
+      <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if enoughEntries && tagParts.length}
       <Donut
         parts={tagParts}
@@ -1161,7 +1162,7 @@
       />
     {/snippet}
     {#if seriesQuery.loading || recapQuery.loading}
-      <Skeleton variant="line" count={3} />
+      <div out:crossfade><Skeleton variant="line" count={3} /></div>
     {:else if enoughEntries && highestRows.length}
       <BarRows
         rows={highestRows}
@@ -1180,7 +1181,7 @@
     kind="interval-mood"
     role={roleAt(activeFlag.roles, AREA_ROLE.patterns)}
   >
-    <ReadGate read={intervalMoodQuery} variant="block" count={3}>
+    <ReadGate read={intervalMoodQuery} variant="block" count={1}>
       {#snippet rows()}
         {#if foldDrawable(intervalMoodPattern)}
           <!-- Inside the card and above the plot, which is the point
@@ -1244,7 +1245,7 @@
         />
       </span>
     {/snippet}
-    <ReadGate read={customIntervalQuery} variant="block" count={3}>
+    <ReadGate read={customIntervalQuery} variant="block" count={1}>
       {#snippet rows(customIntervalPattern)}
         {#if foldDrawable(customIntervalPattern)}
           <p class="stats-inline-note">{m.stats_all_history()}</p>
