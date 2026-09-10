@@ -24,8 +24,6 @@ export interface NavigationFacts {
   type: string;
   /** SvelteKit's history delta, negative when the navigation goes back. */
   delta?: number;
-  /** Android draws its own back animation, and it starts before we would. */
-  isAndroid: boolean;
   /** The gates and onboarding, which have no chrome and no peers. */
   isChromeless: boolean;
   /** Whether a sheet was open over the screen the navigation left from, so
@@ -39,12 +37,10 @@ export interface NavigationFacts {
  * The four tabs are peers, so crossing them is a fade-through and never a
  * slide: a slide implies an order the tabs do not have. Going deeper inside
  * one tab is a sequence, so that is the shared axis. Coming back up reverses
- * it - except on Android, where the system's predictive back gesture has
- * already started showing the person where they are going, and a fixed
- * animation played on top of that is worse than no animation at all.
+ * it.
  */
 export function screenTransition(facts: NavigationFacts): ScreenTransition {
-  const { from, to, type, delta, isAndroid, isChromeless, fromSheet } = facts;
+  const { from, to, type, delta, isChromeless, fromSheet } = facts;
 
   /* A cold start has nothing to come from, and the gates are not part of
      the app's navigation - they render instead of it. */
@@ -52,7 +48,6 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
   if (from === to) return 'none';
 
   if (isBack(from, to, type, delta)) {
-    if (isAndroid) return 'none';
     /* Out of the editor the transform runs backwards, which is the pattern
        being symmetric rather than a second decision: the same two boxes
        swap which one is arriving. Symmetric in the carve-out too: a screen
