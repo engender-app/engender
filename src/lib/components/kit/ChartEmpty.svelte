@@ -12,8 +12,9 @@
      state through two separate reactive computations, which is a timing
      risk this ticket is not to take (ticket 16: no visual change). */
   import type { Snippet } from 'svelte';
+  import { slideMonit } from '$lib/motion/reveal';
 
   let { children }: { children: Snippet } = $props();
 </script>
 
-<p class="kit-chart-empty">{@render children()}</p>
+<p class="kit-chart-empty" transition:slideMonit>{@render children()}</p>

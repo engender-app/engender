@@ -1026,3 +1026,42 @@ export function maskHeight(node: HTMLElement, from: number, duration: number): v
     })
     .finished.then(settle, settle);
 }
+
+/**
+ * Tier 3, change within a screen: an empty-state monit or notice slides into view
+ * with a smooth ease-out transition and soft opacity fade.
+ *
+ * Sized to the element's laid-out height with `min-height: 0`, so a floor on the
+ * component (.kit-chart-empty carries min-height 88px) does not hold it open.
+ * Unfolds height, fades opacity, and slides down slightly into resting position.
+ */
+export function slideMonit(
+  node: Element,
+  params?: { duration?: number; skip?: boolean }
+): TransitionConfig {
+  if (isReducedMotion() || params?.skip || typeof getComputedStyle === 'undefined') return { duration: 0 };
+
+  const style = getComputedStyle(node);
+  const height = parseFloat(style.height) || 0;
+  const paddingTop = parseFloat(style.paddingTop) || 0;
+  const paddingBottom = parseFloat(style.paddingBottom) || 0;
+  const marginTop = parseFloat(style.marginTop) || 0;
+  const marginBottom = parseFloat(style.marginBottom) || 0;
+  const duration = params?.duration ?? motionDuration('--dur-slow');
+
+  return {
+    duration,
+    easing: EASE_OUT,
+    css: (t, u) =>
+      `overflow: hidden;` +
+      `min-height: 0;` +
+      `height: ${t * height}px;` +
+      `padding-top: ${t * paddingTop}px;` +
+      `padding-bottom: ${t * paddingBottom}px;` +
+      `margin-top: ${t * marginTop}px;` +
+      `margin-bottom: ${t * marginBottom}px;` +
+      `opacity: ${t};` +
+      `transform: translateY(${u * -10}px);`
+  };
+}
+
