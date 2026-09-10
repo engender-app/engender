@@ -8,6 +8,7 @@
    to share. `fillDate` joined the same way (redesign ticket 17), once the
    walkthrough and a gallery script both needed it. */
 import { chromium } from 'playwright-core';
+import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
 
@@ -47,6 +48,28 @@ export async function fillDate(page, selector, iso) {
     if (!fp) throw new Error(`no flatpickr instance on ${sel}`);
     fp.setDate(v, true);
   }, [selector, iso]);
+}
+
+/** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
+ *  the hydration sweep, ticket 108, needed the same one for its sheet
+ *  scenes and profile prologues): the page navigated, boot waited ready,
+ *  a first run left if it was in the way, and the page-side settle
+ *  stamped - toasts gone, demo bar hidden, theme on <html> the way
+ *  +layout.svelte stamps it. */
+export async function settlePage(page, base, path, theme) {
+  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
+  if (await page.locator('[data-leave-setup]').count()) {
+    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
+    await page.waitForSelector('[data-home-hello]');
+    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  }
+  /* The demo bar is hidden rather than removed since redesign ticket 33:
+     setup's own scenes reach the flow through the demo's first-run control,
+     and a removed bar takes the control with it. Nothing measures the bar
+     either way - it is out of the frame and out of the flow. */
+  await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 }
 
 /** Collects PASS/FAIL lines in the format all three scripts already
