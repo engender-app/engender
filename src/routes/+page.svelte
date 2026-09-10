@@ -1560,6 +1560,8 @@
      by its own edges, which is what makes the drum a drum. */
   .home-log-ico {
     position: relative;
+    display: grid;
+    place-items: center;
     width: var(--touch-target);
     height: var(--touch-target);
     overflow: hidden;
