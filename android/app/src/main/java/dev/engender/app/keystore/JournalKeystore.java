@@ -70,11 +70,28 @@ import javax.crypto.spec.PSource;
  */
 public final class JournalKeystore {
 
-    /** The Keystore entry. Named for the app, since the keystore is shared. */
-    private static final String ALIAS = "engender-journal-key";
+    public enum Variant {
+        GATED("engender-journal-key", "journal-key.wrapped", true),
+        UNLOCKED("engender-unlocked-key", "journal-unlocked-key.wrapped", false);
+
+        public final String alias;
+        public final String filename;
+        public final boolean authRequired;
+
+        Variant(String alias, String filename, boolean authRequired) {
+            this.alias = alias;
+            this.filename = filename;
+            this.authRequired = authRequired;
+        }
+    }
+
+    /** The legacy / gated alias, preserved for existing installations and tests. */
+    public static final String ALIAS = Variant.GATED.alias;
+    public static final String UNLOCKED_ALIAS = Variant.UNLOCKED.alias;
 
     /** The wrapped data key, in app-private storage beside the database. */
-    private static final String WRAPPED_KEY_FILE = "journal-key.wrapped";
+    public static final String WRAPPED_KEY_FILE = Variant.GATED.filename;
+    public static final String UNLOCKED_WRAPPED_KEY_FILE = Variant.UNLOCKED.filename;
 
     /** The data key: 32 bytes, handed to SQLCipher raw. */
     private static final int DATA_KEY_BYTES = 32;
@@ -101,37 +118,60 @@ public final class JournalKeystore {
         return keyguard != null && keyguard.isDeviceSecure();
     }
 
-    /** True when this device already holds a Journal key. Both halves are
-        required: a keystore entry with no wrapped blob opens nothing, and a
-        blob with no entry is what a removed lock screen leaves behind. */
+    /** True when this device holds a key for the given variant. */
+    public boolean hasVariant(Variant variant) throws Exception {
+        return keystoreEntryExists(variant) && wrappedKeyFile(variant).exists();
+    }
+
+    /** True when this device already holds a Journal key in either variant. */
     public boolean hasKey() throws Exception {
-        return keystoreEntryExists() && wrappedKeyFile().exists();
+        return activeVariant() != null;
+    }
+
+    /** Returns the active variant. Gated wins over unlocked if both exist
+        (for instance, after an interrupted mode switch), maintaining the
+        property that a crash never downgrades to a weaker mode. */
+    public Variant activeVariant() throws Exception {
+        if (hasVariant(Variant.GATED)) return Variant.GATED;
+        if (hasVariant(Variant.UNLOCKED)) return Variant.UNLOCKED;
+        return null;
+    }
+
+    /** First run: mints a data key and wraps it under the gated variant. */
+    public byte[] create() throws Exception {
+        return create(Variant.GATED);
+    }
+
+    /** First run with explicit variant choice. */
+    public byte[] create(Variant variant) throws Exception {
+        byte[] dataKey = new byte[DATA_KEY_BYTES];
+        new SecureRandom().nextBytes(dataKey);
+        wrap(variant, dataKey);
+        return dataKey;
     }
 
     /**
-     * First run: mints a data key, wraps it under a freshly generated
-     * Keystore pair and writes the blob. Returns the data key, which is the
-     * only time it exists outside the wrap - the caller hands it to SQLCipher
-     * and keeps it in memory.
-     *
-     * <p>No authentication: the public half needs none, and the person is
-     * already here.
+     * Wraps an existing data key under the chosen Keystore variant.
+     * Rewraps without re-encrypting the database.
      */
-    public byte[] create() throws Exception {
-        /* Any half-made state from an interrupted earlier attempt goes first.
-           A pair without a blob, or a blob under a pair that was replaced,
-           would both read as "hasKey" later and unwrap to nothing. */
-        erase();
+    public void wrap(Variant variant, byte[] dataKey) throws Exception {
+        erase(variant);
 
-        PublicKey wrappingKey = generateKeyPair();
-        byte[] dataKey = new byte[DATA_KEY_BYTES];
-        new SecureRandom().nextBytes(dataKey);
+        PublicKey wrappingKey = generateKeyPair(variant);
 
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(Cipher.ENCRYPT_MODE, wrappingKey, oaepParameters());
-        writeWrappedKey(cipher.doFinal(dataKey));
+        writeWrappedKey(variant, cipher.doFinal(dataKey));
+    }
 
-        return dataKey;
+    /**
+     * Directly unwrap an unlocked key without requiring any authentication
+     * prompt.
+     */
+    public byte[] unwrapUnlocked() throws Exception {
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        cipher.init(Cipher.DECRYPT_MODE, privateKey(Variant.UNLOCKED), oaepParameters());
+        return cipher.doFinal(readWrappedKey(Variant.UNLOCKED));
     }
 
     /**
@@ -146,14 +186,26 @@ public final class JournalKeystore {
      * #authorizesTheCipherItself()} distinguishes.
      */
     public Cipher unwrapCipher() throws Exception {
+        Variant active = activeVariant();
+        if (active == null) throw new IllegalStateException("there is no Journal key in the keystore");
+        return unwrapCipher(active);
+    }
+
+    public Cipher unwrapCipher(Variant variant) throws Exception {
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.DECRYPT_MODE, privateKey(), oaepParameters());
+        cipher.init(Cipher.DECRYPT_MODE, privateKey(variant), oaepParameters());
         return cipher;
     }
 
     /** Runs the unwrap, once the cipher is authorized. */
     public byte[] unwrap(Cipher cipher) throws Exception {
-        return cipher.doFinal(readWrappedKey());
+        Variant active = activeVariant();
+        if (active == null) throw new IllegalStateException("there is no Journal key in the keystore");
+        return unwrap(active, cipher);
+    }
+
+    public byte[] unwrap(Variant variant, Cipher cipher) throws Exception {
+        return cipher.doFinal(readWrappedKey(variant));
     }
 
     /**
@@ -170,32 +222,26 @@ public final class JournalKeystore {
      * How long an authentication keeps the key usable, where the platform
      * measures that in seconds at all. Zero from API 30, where authorization
      * belongs to one operation and expires with it.
-     *
-     * <p>Exposed for {@code JournalKeystoreTest}, which cannot assert that the
-     * key is unusable without knowing when a window it did not open has shut:
-     * setting a lock screen is itself an authentication, so a test that makes
-     * a device secure and immediately reaches for the key is inside a window
-     * it created.
      */
     public static int authorizationWindowSeconds() {
         return authorizesTheCipherItself() ? 0 : AUTH_VALIDITY_SECONDS;
     }
 
     /**
-     * The reset path: the wrapped key goes with the Journal.
-     *
-     * <p>Both halves, and the blob first. A blob left behind after the entry
-     * went is the one order that could survive as an unopenable Journal key;
-     * an entry left behind without a blob is inert and the next {@link
-     * #create()} replaces it.
+     * The reset path: both wrapped keys go with the Journal.
      */
     public void erase() throws Exception {
-        File wrapped = wrappedKeyFile();
+        erase(Variant.GATED);
+        erase(Variant.UNLOCKED);
+    }
+
+    public void erase(Variant variant) throws Exception {
+        File wrapped = wrappedKeyFile(variant);
         if (wrapped.exists() && !wrapped.delete()) {
             throw new IOException("could not delete " + wrapped);
         }
         KeyStore keystore = loadKeystore();
-        if (keystore.containsAlias(ALIAS)) keystore.deleteEntry(ALIAS);
+        if (keystore.containsAlias(variant.alias)) keystore.deleteEntry(variant.alias);
     }
 
     /* --- the parts above, in Keystore terms -------------------------------- */
@@ -205,13 +251,13 @@ public final class JournalKeystore {
        deprecated call is the only one there is below 30, and the branch that
        chooses between them is right here. */
     @SuppressWarnings("deprecation")
-    private PublicKey generateKeyPair() throws Exception {
+    private PublicKey generateKeyPair(Variant variant) throws Exception {
         KeyGenParameterSpec.Builder spec =
-            new KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+            new KeyGenParameterSpec.Builder(variant.alias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setKeySize(2048)
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
-                .setUserAuthenticationRequired(true);
+                .setUserAuthenticationRequired(variant.authRequired);
 
         /* From API 35 the MGF1 digest has to be declared on the key itself
            rather than left to inherit SHA-1; the platform has been moving
@@ -234,13 +280,15 @@ public final class JournalKeystore {
            it buys nothing here and costs a Journal. */
         spec.setInvalidatedByBiometricEnrollment(false);
 
-        if (authorizesTheCipherItself()) {
-            // 0 seconds: authorization does not outlive the operation it was
-            // granted for, and the operation is the one in the CryptoObject.
-            spec.setUserAuthenticationParameters(
-                0, KeyProperties.AUTH_BIOMETRIC_STRONG | KeyProperties.AUTH_DEVICE_CREDENTIAL);
-        } else {
-            spec.setUserAuthenticationValidityDurationSeconds(AUTH_VALIDITY_SECONDS);
+        if (variant.authRequired) {
+            if (authorizesTheCipherItself()) {
+                // 0 seconds: authorization does not outlive the operation it was
+                // granted for, and the operation is the one in the CryptoObject.
+                spec.setUserAuthenticationParameters(
+                    0, KeyProperties.AUTH_BIOMETRIC_STRONG | KeyProperties.AUTH_DEVICE_CREDENTIAL);
+            } else {
+                spec.setUserAuthenticationValidityDurationSeconds(AUTH_VALIDITY_SECONDS);
+            }
         }
 
         KeyPairGenerator generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, KEYSTORE);
@@ -248,9 +296,9 @@ public final class JournalKeystore {
         return generator.generateKeyPair().getPublic();
     }
 
-    private PrivateKey privateKey() throws Exception {
-        PrivateKey key = (PrivateKey) loadKeystore().getKey(ALIAS, null);
-        if (key == null) throw new IllegalStateException("there is no Journal key in the keystore");
+    private PrivateKey privateKey(Variant variant) throws Exception {
+        PrivateKey key = (PrivateKey) loadKeystore().getKey(variant.alias, null);
+        if (key == null) throw new IllegalStateException("there is no Journal key in the keystore for " + variant.alias);
         return key;
     }
 
@@ -269,8 +317,8 @@ public final class JournalKeystore {
             "SHA-256", "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT);
     }
 
-    private boolean keystoreEntryExists() throws Exception {
-        return loadKeystore().containsAlias(ALIAS);
+    private boolean keystoreEntryExists(Variant variant) throws Exception {
+        return loadKeystore().containsAlias(variant.alias);
     }
 
     private static KeyStore loadKeystore() throws Exception {
@@ -283,11 +331,15 @@ public final class JournalKeystore {
 
     /** Exposed so the claim test can read the bytes a thief would read. */
     public File wrappedKeyFile() {
-        return new File(context.getFilesDir(), WRAPPED_KEY_FILE);
+        return wrappedKeyFile(Variant.GATED);
     }
 
-    private void writeWrappedKey(byte[] wrapped) throws IOException {
-        File file = wrappedKeyFile();
+    public File wrappedKeyFile(Variant variant) {
+        return new File(context.getFilesDir(), variant.filename);
+    }
+
+    private void writeWrappedKey(Variant variant, byte[] wrapped) throws IOException {
+        File file = wrappedKeyFile(variant);
         File parent = file.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
             throw new IOException("could not create " + parent);
@@ -302,7 +354,7 @@ public final class JournalKeystore {
         }
     }
 
-    private byte[] readWrappedKey() throws IOException {
-        return Files.readAllBytes(wrappedKeyFile().toPath());
+    private byte[] readWrappedKey(Variant variant) throws IOException {
+        return Files.readAllBytes(wrappedKeyFile(variant).toPath());
     }
 }

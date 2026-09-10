@@ -23,6 +23,7 @@ function bridge(answers: Partial<KeystoreBridge>): KeystoreBridge {
   return {
     status: answers.status ?? (missing('status') as KeystoreBridge['status']),
     create: answers.create ?? (missing('create') as KeystoreBridge['create']),
+    wrap: answers.wrap ?? (missing('wrap') as KeystoreBridge['wrap']),
     unlock: answers.unlock ?? (missing('unlock') as KeystoreBridge['unlock']),
     confirm: answers.confirm ?? (missing('confirm') as KeystoreBridge['confirm']),
     erase: answers.erase ?? (missing('erase') as KeystoreBridge['erase'])
@@ -175,4 +176,22 @@ test('a device with no lock screen cannot be given a key, and is told so', async
 
   assert.equal(result.kind, 'refused');
   assert.equal(result.kind === 'refused' && result.authentication.wayForward, 'setDeviceLock');
+});
+
+test('first run passes the requested authRequired option to create', async () => {
+  let passedOptions: { authRequired?: boolean } | undefined;
+  const result = await openAndroidDataKey(
+    bridge({
+      status: async () => ({ hasKey: false }),
+      create: async (options) => {
+        passedOptions = options;
+        return { outcome: 'created', hexKey: HEX };
+      }
+    }),
+    COPY,
+    { authRequired: false }
+  );
+
+  assert.equal(result.kind, 'key');
+  assert.deepEqual(passedOptions, { authRequired: false });
 });

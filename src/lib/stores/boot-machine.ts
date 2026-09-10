@@ -62,6 +62,7 @@ export type BootEvent =
       type: 'android-surveyed';
       keystoreSecretSource: JournalSecretSource | null;
       nativeDeviceKeyExists: boolean;
+      nativeDeviceKeyAuthRequired?: boolean;
       plaintextJournalPresent: boolean;
     }
   | { type: 'demo-journal-wiped' }
@@ -99,6 +100,7 @@ export type BootEffect =
   | { type: 'demo-unlock' }
   | { type: 'precheck-conversion' }
   | { type: 'auto-unlock-device-bound' }
+  | { type: 'auto-unlock-android' }
   | { type: 'run-conversion'; dataKey: DataKey; accessMode: JournalAccessMode }
   | { type: 'open-journal'; dataKey: DataKey; accessMode: JournalAccessMode }
   | { type: 'restore-previous-journal' }
@@ -236,17 +238,24 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
     }
 
     case 'android-surveyed': {
-      const { keystoreSecretSource, nativeDeviceKeyExists, plaintextJournalPresent } = event;
+      const {
+        keystoreSecretSource,
+        nativeDeviceKeyExists,
+        nativeDeviceKeyAuthRequired,
+        plaintextJournalPresent
+      } = event;
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
         chooseJournalAccessMode({
           keystoreSecretSource,
-          deviceBoundKeystoreExists: nativeDeviceKeyExists
+          deviceBoundKeystoreExists: nativeDeviceKeyExists,
+          nativeDeviceKeyAuthRequired
         })
       );
       const plan = describeAndroidBootPlan({
         keystoreSecretSource,
         nativeDeviceKeyExists,
+        nativeDeviceKeyAuthRequired,
         plaintextJournalPresent
       });
 
@@ -259,6 +268,8 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
           return step(machine, bootTransitions.toNeedsUnlock(surveyed));
         case 'needs-authentication':
           return step(machine, bootTransitions.toNeedsAuthentication(surveyed));
+        case 'auto-unlock':
+          return step(machine, surveyed, [{ type: 'auto-unlock-android' }]);
         case 'needs-setup':
           return step(machine, bootTransitions.toNeedsSetup(surveyed));
       }
@@ -291,7 +302,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
        strong case the spec allows app lock to stand down for. */
     case 'android-key-answered':
       return event.result.kind === 'key'
-        ? withDataKey(machine, event.result.dataKey, 'device-bound', true)
+        ? withDataKey(machine, event.result.dataKey, machine.boot.accessMode ?? 'device-bound', true)
         : step(machine, bootTransitions.toNeedsAuthentication(machine.boot, event.result));
 
     case 'key-obtained':
