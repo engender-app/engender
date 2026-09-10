@@ -6,6 +6,7 @@ import {
   addablePins,
   DEFAULT_ONBOARDING_AREAS,
   defaultPins,
+  fallbackReading,
   movedPin,
   pinArrangement,
   pinnedRows,
@@ -361,5 +362,29 @@ test('switching a kind back on keeps the ADR order rather than the order it was 
 
 test('switching the last kind off leaves an empty list, not a null', () => {
   assert.deepEqual(withAgendaKind({ agendaKinds: ['surgery'] }, 'surgery', false), []);
+});
+
+// --- fallback reading for hydration (ticket 106) ----------------------------
+
+test('fallbackReading supplies an empty reading for synchronous initial render', () => {
+  assert.deepEqual(fallbackReading(TODAY), {
+    todayEpochDay: TODAY,
+    lastWrites: {},
+    states: {}
+  });
+});
+
+test('pinnedRows with fallbackReading renders all default pins with quiet lines', () => {
+  const rows = pinnedRows({ pinnedRows: null, onboardingAreas: null }, fallbackReading(TODAY));
+
+  assert.deepEqual(keysOf(rows), ['measurements', 'care', 'milestones', 'tryouts']);
+  assert.deepEqual(rows.find((r) => r.spec.key === 'care')?.line, { kind: 'no-stream' });
+  assert.deepEqual(rows.find((r) => r.spec.key === 'measurements')?.line, { kind: 'not-yet' });
+});
+
+test('pinnedRows with fallbackReading respects an explicitly unpinned empty list', () => {
+  const rows = pinnedRows(arranged([]), fallbackReading(TODAY));
+
+  assert.deepEqual(rows, []);
 });
 
