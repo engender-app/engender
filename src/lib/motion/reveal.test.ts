@@ -9,6 +9,7 @@ import {
   markSlotReplacement,
   maskHeight,
   resize,
+  slideMonit,
   wipe
 } from './reveal';
 
@@ -746,3 +747,44 @@ describe('tier 3, a panel uncovering its new height', () => {
     expect(style.overflow).toBe('auto');
   });
 });
+
+describe('tier 3, the slideMonit transition', () => {
+  it('unfolds height, resets min-height, fades opacity, and slides into place', () => {
+    stubDocument(false, true, {
+      height: '88px',
+      paddingTop: '16px',
+      paddingBottom: '16px',
+      marginTop: '0px',
+      marginBottom: '0px'
+    });
+    const config = slideMonit(node);
+    expect(config.duration).toBe(380);
+    const css0 = frame(config.css!, 0);
+    expect(css0).toContain('min-height: 0');
+    expect(css0).toContain('height: 0px');
+    expect(css0).toContain('padding-top: 0px');
+    expect(css0).toContain('opacity: 0');
+    expect(css0).toContain('transform: translateY(-10px)');
+
+    const css1 = frame(config.css!, 1);
+    expect(css1).toContain('height: 88px');
+    expect(css1).toContain('padding-top: 16px');
+    expect(css1).toContain('opacity: 1');
+    expect(css1).toContain('transform: translateY(0px)');
+  });
+
+  it('cuts instantly under reduced motion', () => {
+    stubDocument(true);
+    const config = slideMonit(node);
+    expect(config.duration).toBe(0);
+    expect(config.css).toBeUndefined();
+  });
+
+  it('cuts instantly when skip is passed', () => {
+    stubDocument();
+    const config = slideMonit(node, { skip: true });
+    expect(config.duration).toBe(0);
+    expect(config.css).toBeUndefined();
+  });
+});
+

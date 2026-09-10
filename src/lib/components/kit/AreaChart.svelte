@@ -58,6 +58,7 @@
     type ChartAnnotation
   } from '$lib/charts/annotations';
   import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
+  import ChartEmpty from './ChartEmpty.svelte';
   import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
   import { wipe } from '$lib/motion/reveal';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
@@ -695,7 +696,7 @@
     </ul>
   {/if}
 {:else}
-  <p class="kit-chart-empty">{m.not_enough_data()}</p>
+  <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
 {/if}
 
 <style>
