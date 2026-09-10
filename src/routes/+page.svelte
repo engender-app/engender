@@ -58,7 +58,7 @@
   import { roleAttrs } from '$lib/components/kit/role';
   import { readAgenda } from '$lib/data/agendaReads';
   import { passedSlotSentence } from '$lib/data/agenda';
-  import { pinnedRows, shownAgendaKinds } from '$lib/data/pinnedRows';
+  import { fallbackReading, pinnedRows, shownAgendaKinds } from '$lib/data/pinnedRows';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
@@ -273,14 +273,19 @@
      its hub row say the same thing about a quiet area. Both reads or
      neither, for the hub's own reason: a finished row drawn with a reading
      under it for a frame is a wrong state, not a partial one. The order is
-     the person's and nothing here sorts it. */
+     the person's and nothing here sorts it.
+
+     Ticket 106: while queries are resolving, render with quiet standing
+     lines rather than an empty list, so the section does not expand by
+     ~300px and snap content below downward on hydration. */
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  let pinned = $derived(
+  let reading = $derived(
     lastWritesQuery.value !== undefined && areaStatesQuery.value !== undefined
-      ? pinnedRows(prefs, { todayEpochDay: today, lastWrites: lastWritesQuery.value, states: areaStatesQuery.value })
-      : []
+      ? { todayEpochDay: today, lastWrites: lastWritesQuery.value, states: areaStatesQuery.value }
+      : fallbackReading(today)
   );
+  let pinned = $derived(pinnedRows(prefs, reading));
 
   /* Edit mode (ticket 14), which is a state of this block rather than a
      screen of its own: the rows being arranged are these rows, so the
@@ -985,7 +990,7 @@
       <div transition:collapse={panel} data-home-editing>
         <TodayEditor
           {pinned}
-          reading={{ todayEpochDay: today, lastWrites: lastWritesQuery.value ?? {}, states: areaStatesQuery.value ?? {} }}
+          {reading}
           role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
           onDone={() => (editing = false)}
         />
@@ -995,15 +1000,17 @@
         <SectionHeading text={m.home_pinned_heading()} />
         <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
           {#each pinned as row (row.spec.key)}
-            <ListRow
-              key={row.spec.key}
-              icon={row.spec.icon}
-              title={hubRowTitle(row.spec.key)}
-              subtitle={hubRowLine(row.spec.key, row.line, today)}
-              href={row.spec.href}
-              data-pinned-row={row.spec.key}
-              data-hub-line={row.line.kind}
-            />
+            <div class="rows-divide" transition:disclose={panel}>
+              <ListRow
+                key={row.spec.key}
+                icon={row.spec.icon}
+                title={hubRowTitle(row.spec.key)}
+                subtitle={hubRowLine(row.spec.key, row.line, today)}
+                href={row.spec.href}
+                data-pinned-row={row.spec.key}
+                data-hub-line={row.line.kind}
+              />
+            </div>
           {/each}
           <!-- The way in, as the last row of the block (ticket 14). It is a
                row rather than a control on the heading because it is the
