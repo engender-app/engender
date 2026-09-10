@@ -486,22 +486,30 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
     if (present.length < 2) continue;
 
     /* The per-frame movement of this mark, over the frames where it is in
-       the tree on both sides. The median is what "the rest of the run" is. */
+       the tree on both sides. Normalized to nominal 16ms frames so a dropped
+       frame on hardware does not inflate apparent velocity. */
     const deltas = [];
     for (let i = 1; i < run.length; i++) {
       const a = run[i - 1].row;
       const b = run[i].row;
       if (!a || !b) continue;
-      deltas.push({ i, d: Math.hypot(b.x - a.x, b.y - a.y), at: run[i].at });
+      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const steps = Math.max(1, dt / 16);
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      deltas.push({ i, d, dNorm: d / steps, steps, at: run[i].at });
     }
 
     for (let n = 0; deltas.length && n < deltas.length; n++) {
-      const { i, d, at } = deltas[n];
-      if (d < teleportPx) continue;
-      /* The fastest of the frames either side. A slide's neighbours are
-         moving too; a teleport's are not. */
-      const around = Math.max(deltas[n - 1]?.d ?? 0, deltas[n + 1]?.d ?? 0);
-      if (d < Math.max(around, 0.25) * TELEPORT_RATIO) continue;
+      const { i, d, dNorm, steps, at } = deltas[n];
+      if (d < teleportPx * steps) continue;
+      /* The fastest of the frames either side, normalized to 16ms steps.
+         A slide's neighbours are moving too; a teleport's are not.
+         Across dropped frames on hardware, scale the ratio by the square root
+         of steps to absorb normal ease-out deceleration across the multi-frame
+         window while catching true teleport spikes. */
+      const around = Math.max(deltas[n - 1]?.dNorm ?? 0, deltas[n + 1]?.dNorm ?? 0);
+      const ratio = TELEPORT_RATIO * Math.max(1, Math.sqrt(steps));
+      if (dNorm < Math.max(around, 0.25) * ratio) continue;
       yanks.push({
         kind: 'teleport',
         mark: k,
@@ -512,12 +520,17 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
     }
 
     /* Vanishing: full opacity to nothing, or out of the tree from full
-       opacity, with no frame in between. */
+       opacity, with no frame in between. Normalized by time delta so a
+       smooth fade across a dropped frame (peak slope ~0.27/frame on a
+       150ms ease-out) is not flagged as an instantaneous cut (>= 0.35/frame). */
     for (let i = 1; i < run.length; i++) {
       const a = run[i - 1].row;
       const b = run[i].row;
       if (!a || a.o < VISIBLE) continue;
-      if (b && b.o <= GONE)
+      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const steps = Math.max(1, dt / 16);
+      const dropPerFrame = (a.o - (b ? b.o : 0)) / steps;
+      if (b && b.o <= GONE && dropPerFrame >= 0.35)
         yanks.push({
           kind: 'vanish',
           mark: k,
