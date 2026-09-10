@@ -101,6 +101,27 @@ test('android journals already using the native device key keep their current co
   ).toBe('needs-authentication');
 });
 
+test('android journals using unlocked native device key cold-boot into auto-unlock', () => {
+  expect(
+    describeAndroidBootPlan({
+      keystoreSecretSource: null,
+      nativeDeviceKeyExists: true,
+      nativeDeviceKeyAuthRequired: false,
+      plaintextJournalPresent: false
+    })
+  ).toBe('auto-unlock');
+});
+
+test('android unlocked mode is chosen when native device key requires no auth', () => {
+  expect(
+    chooseJournalAccessMode({
+      keystoreSecretSource: null,
+      deviceBoundKeystoreExists: true,
+      nativeDeviceKeyAuthRequired: false
+    })
+  ).toBe('unlocked');
+});
+
 test('android passphrase mode cold-boots into the passphrase gate', () => {
   expect(
     describeAndroidBootPlan({
@@ -139,5 +160,7 @@ test('a mode has a secret to re-ask for only where one exists', () => {
   expect(accessModeHasSecret('pin', false)).toBe(true);
   expect(accessModeHasSecret('device-bound', true)).toBe(true);
   expect(accessModeHasSecret('device-bound', false)).toBe(false);
+  expect(accessModeHasSecret('unlocked', true)).toBe(false);
+  expect(accessModeHasSecret('unlocked', false)).toBe(false);
   expect(accessModeHasSecret(null, true)).toBe(false);
 });

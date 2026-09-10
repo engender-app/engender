@@ -32,6 +32,7 @@
      for the other a completed secret change, and both had somewhere they
      were already going. */
   import { m } from '$lib/paraglide/messages';
+  import { isAndroid } from '$lib/platform';
   import Notice from './kit/Notice.svelte';
   import ListCard from './kit/ListCard.svelte';
   import ListRow from './kit/ListRow.svelte';
@@ -39,7 +40,9 @@
   let { variant, onDismiss }: { variant: 'device-bound' | 'secret-changed'; onDismiss: () => void } =
     $props();
 
-  let body = $derived(variant === 'secret-changed' ? m.rkn_offer() : m.rko_body_web());
+  let body = $derived(
+    variant === 'secret-changed' ? m.rkn_offer() : isAndroid() ? m.rko_body_android() : m.rko_body_web()
+  );
 </script>
 
 <Notice data-recovery-offer={variant} icon="key" title={m.rko_title()} text={body} />

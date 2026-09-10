@@ -34,6 +34,7 @@ import {
 import { LATEST_SCHEMA_VERSION } from '../data/sqlite/schema-version';
 import { localStorageCache } from '../data/prefs/boot-cache';
 import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
+import { openAndroidDataKey } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import type { BootEffect, BootEvent } from './boot-machine';
@@ -53,6 +54,7 @@ type PlatformEffect = Extract<
       | 'demo-unlock'
       | 'precheck-conversion'
       | 'auto-unlock-device-bound'
+      | 'auto-unlock-android'
       | 'run-conversion';
   }
 >;
@@ -77,11 +79,12 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
        and a phone has neither - this is the first build that runs on one. */
     case 'survey-android': {
       const keystoreSecretSource = await readKeystoreSource();
-      const { hasKey } = await androidKeystore.status();
+      const { hasKey, authRequired } = await androidKeystore.status();
       dispatch({
         type: 'android-surveyed',
         keystoreSecretSource,
         nativeDeviceKeyExists: hasKey,
+        nativeDeviceKeyAuthRequired: authRequired ?? true,
         plaintextJournalPresent: await androidJournalIsPlaintext(JOURNAL_DATABASE)
       });
       return;
@@ -118,6 +121,21 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
          because the device is the device. App lock still has its question to
          ask (ADR-0014). */
       dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: false });
+      return;
+    }
+
+    case 'auto-unlock-android': {
+      const result = await openAndroidDataKey(androidKeystore, {
+        title: '',
+        subtitle: '',
+        cancel: '',
+        deviceCredential: false
+      });
+      if (result.kind === 'key') {
+        dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode: 'unlocked', unlocked: false });
+      } else {
+        dispatch({ type: 'android-key-answered', result });
+      }
       return;
     }
 

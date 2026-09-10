@@ -15,9 +15,10 @@ describe('needsSecret', () => {
     expect(needsSecret('passphrase')).toBe(true);
   });
 
-  it('is false for the two modes with nothing to type', () => {
+  it('is false for the modes with nothing to type', () => {
     expect(needsSecret('device-bound')).toBe(false);
     expect(needsSecret('biometric')).toBe(false);
+    expect(needsSecret('unlocked')).toBe(false);
   });
 });
 
@@ -27,6 +28,7 @@ describe('chooseMode', () => {
     expect(chooseMode('passphrase')).toEqual({ screen: 'detail', mode: 'passphrase' });
     expect(chooseMode('device-bound')).toEqual({ screen: 'detail', mode: 'device-bound' });
     expect(chooseMode('biometric')).toEqual({ screen: 'detail', mode: 'biometric' });
+    expect(chooseMode('unlocked')).toEqual({ screen: 'detail', mode: 'unlocked' });
   });
 });
 
@@ -42,6 +44,8 @@ describe('continueToSecret', () => {
   it('does nothing for a mode with no secret to type - there is no screen to show', () => {
     const detail: AccessModeScreen = { screen: 'detail', mode: 'device-bound' };
     expect(continueToSecret(detail)).toBe(detail);
+    const unlocked: AccessModeScreen = { screen: 'detail', mode: 'unlocked' };
+    expect(continueToSecret(unlocked)).toBe(unlocked);
   });
 
   it('does nothing off the bare list', () => {
