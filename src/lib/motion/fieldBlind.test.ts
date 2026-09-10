@@ -2,8 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import { blindVariables, carryBlind } from './fieldBlind';
 
-type Styled = { style: Record<string, string> };
-const el = (): Styled => ({ style: {} });
+/** A live style object's own two methods, alongside `view-transition-name`
+    and `clip-path` set as plain properties the same way real code does -
+    `view-transition-group` is set/cleared through these instead, since
+    TypeScript's DOM lib does not know that property by name yet. */
+type Style = Record<string, string> & { setProperty: (name: string, value: string) => void; removeProperty: (name: string) => void };
+function makeStyle(): Style {
+  const store = {} as Style;
+  store.setProperty = (name: string, value: string) => {
+    store[name] = value;
+  };
+  store.removeProperty = (name: string) => {
+    delete store[name];
+  };
+  return store;
+}
+
+type Styled = { style: Style };
+const el = (): Styled => ({ style: makeStyle() });
 
 /** A field, as the four things the primitive asks it for: how tall it is,
     its blind, the elements painted on it, and the sun's rings. */
@@ -14,7 +30,7 @@ function field({
   rings = [] as Styled[]
 } = {}) {
   return {
-    style: {} as Record<string, string>,
+    style: makeStyle(),
     getBoundingClientRect: () => ({ height }),
     querySelector: () => blind,
     querySelectorAll: (selector: string) => (selector.includes('field-part') ? parts : rings)

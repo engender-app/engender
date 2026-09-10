@@ -1,6 +1,7 @@
 package dev.engender.app;
 
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.view.WindowManager;
 
@@ -30,7 +31,16 @@ public class MainActivity extends BridgeActivity {
         // flipped at lock time is a race against whatever the system
         // snapshots the moment this app backgrounds.
         // Before super.onCreate, so the window never has a frame without it.
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        //
+        // Skipped on a debuggable build only (ticket 99 item 7 round 2:
+        // screencap/screen-record coming back black blocked capturing the
+        // nav glitch report). isDebuggable reads the signing/build config
+        // Gradle already sets on the debug build type, not anything this
+        // file has to keep in step with a release/debug source split -
+        // FLAG_SECURE stays unconditional on every signed release build.
+        if (!isDebuggable()) {
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        }
         // Before super.onCreate: the bridge is built there, and a plugin
         // registered afterwards is not in the bridge the WebView gets.
         AndroidPluginRegistry.assertRequiredPluginClassesExposeExpectedIds();
@@ -73,5 +83,9 @@ public class MainActivity extends BridgeActivity {
     private void captureReminderRoute(Intent intent) {
         if (intent == null) return;
         ReminderScheduler.storeLaunchRoute(this, intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE));
+    }
+
+    private boolean isDebuggable() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
     }
 }

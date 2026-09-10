@@ -900,6 +900,19 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    ring passing behind a title that is on its way out reads as the drawing
    being interrupted (Alicja, 2026-09-09, on Transition to Today). */
 ::view-transition-group(*.sun-ring) { z-index: 5; }
+/* The field, named only so the blind, its parts and the sun - all nested
+   under it via view-transition-group: nearest (fieldBlind.ts) - inherit an
+   ancestor to be clipped by. A promoted element's capture ignores ancestor
+   overflow: hidden by design (confirmed against the W3C spec and Chrome's
+   own docs, which describe this exact symptom by name); nesting the
+   children's groups under the field's own and clipping THAT is Chrome's
+   shipped answer, stable since 140. The field's own capture is hidden
+   rather than left to crossfade - a second whole-field photograph is
+   exactly the smear ticket 25 split this file apart to stop, and nothing
+   here needs the field to be seen, only to contain. */
+::view-transition-old(field),
+::view-transition-new(field) { opacity: 0; animation: none; }
+::view-transition-group-children(field) { overflow: clip; }
 ::view-transition-old(blind),
 ::view-transition-new(blind) {
   animation: blind-slide var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
@@ -965,15 +978,28 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    element cannot read a custom property off the element it was taken from.
    Both sides in one rule: the outgoing ring closes on the same beat the
    incoming one opens on. */
+/* Closing rides with the blind - the sun is one of the things printed on
+   the field, and as the field hides, what's on it goes with it. Opening
+   does not (Alicja, 2026-09-10, ticket 99 round 2 - a fourth motion note
+   on top of the glitch this round already fixed): "make the sun appearing
+   NOT move with the blind - we don't want it to overshoot like the blind
+   - we just want it to appear independently. but when the blind HIDES,
+   the sun SHOULD follow it". The arriving sun draws where it will rest
+   and only scales there; nothing about a blind's own settle (the
+   overshoot --blind-ease can carry) touches it. */
 ::view-transition-old(*.sun-ring) {
   animation:
     sun-ring-close var(--dur-fast) var(--ease-in-out) both,
     blind-lead var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
 }
 ::view-transition-new(*.sun-ring) {
-  animation:
-    sun-ring-open var(--dur-fast) var(--ease-out) both,
-    blind-follow var(--dur-slow) var(--blind-ease, var(--ease-out)) both;
+  /* Much slower than the fast tier it drew on before (Alicja, 2026-09-10:
+     "the sun appearing should be much slower", then "even slower", then
+     "let's go for 900ms") - --dur-sun-open (theme/base.css), its own
+     token rather than reusing --dur-slow or --dur-authored, since
+     neither of those numbers is this one and changing either would move
+     something else that asked for nothing. */
+  animation: sun-ring-open var(--dur-sun-open) var(--ease-out) both;
 }
 @keyframes sun-ring-close { to { scale: 0; } }
 @keyframes sun-ring-open { from { scale: 0; } }
