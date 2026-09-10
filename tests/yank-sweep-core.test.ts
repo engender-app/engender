@@ -53,11 +53,49 @@ describe('findYanks', () => {
     expect(findYanks(frames, 'rows')).toEqual([]);
   });
 
+  it('does not report teleport when movement matches neighbour velocity across dropped frames', () => {
+    /* Moving 3px per 16ms frame, then an 80ms gap (5 frames) where it moves 15px,
+       then continues at 3px per 16ms frame. Same velocity throughout. */
+    const frames = [
+      frame(mark({ y: 0 }), 0),
+      frame(mark({ y: 3 }), 16),
+      frame(mark({ y: 6 }), 32),
+      frame(mark({ y: 21 }), 112),
+      frame(mark({ y: 24 }), 128),
+      frame(mark({ y: 27 }), 144)
+    ];
+    expect(findYanks(frames, 'rows')).toEqual([]);
+  });
+
+  it('still reports teleport across dropped frames if jump exceeds expected distance', () => {
+    /* Resting, then an 80ms gap with a 200px jump, then resting. */
+    const frames = [
+      frame(mark({ y: 0 }), 0),
+      frame(mark({ y: 0 }), 32),
+      frame(mark({ y: 200 }), 112),
+      frame(mark({ y: 200 }), 144)
+    ];
+    expect(findYanks(frames, 'rows')).toContainEqual(
+      expect.objectContaining({ kind: 'teleport', mark: 'mark' })
+    );
+  });
+
   it('reports a mark cut from full opacity to nothing in one frame', () => {
     const frames = [...still(6), frame(mark({ o: 0 }), 96), ...still(4)];
     expect(findYanks(frames, 'rows')).toContainEqual(
       expect.objectContaining({ kind: 'vanish', mark: 'mark' })
     );
+  });
+
+  it('does not report vanish when opacity fades smoothly across dropped frames', () => {
+    /* Fade from 0.76 to 0.01 over an 80ms gap (5 frames, ~0.15 drop/frame). */
+    const frames = [
+      frame(mark({ o: 1 }), 0),
+      frame(mark({ o: 0.76 }), 32),
+      frame(mark({ o: 0.01 }), 112),
+      frame(mark({ o: 0 }), 128)
+    ];
+    expect(findYanks(frames, 'rows')).toEqual([]);
   });
 
   it('reports a mark absent for two mid-gesture frames and back', () => {
