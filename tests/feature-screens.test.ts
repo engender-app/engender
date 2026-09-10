@@ -371,6 +371,13 @@ describe('the two print surfaces', () => {
     const book = read('src/routes/settings/journal-book/+page.svelte');
     expect(book).toMatch(/@media print/);
   });
+
+  it('prevents hydration layout snap on cold mount of journal book (ticket 110)', () => {
+    const book = read('src/routes/settings/journal-book/+page.svelte');
+    expect(book).toMatch(/<div out:crossfade><Skeleton/);
+    expect(book).toMatch(/visibleEntries/);
+    expect(book).toMatch(/beforeprint/);
+  });
 });
 
 describe('no medical framing and no interpreted values', () => {
