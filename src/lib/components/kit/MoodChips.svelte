@@ -2,10 +2,14 @@
   /* The mood row: five moods, flush to the page with no container around it
      at all.
 
-     Each one is a circle in its own step of the ramp with the face drawn in
-     it, and the label underneath (Alicja, 2026-08-25: "the mood icon should
-     always be a circle. no chips."). What it replaced was a filled tile with
-     the label inside it and the face drawn without its disc.
+     Each one is a step of the ramp with the face drawn in it, and the label
+     underneath. What it replaced was a filled tile with the label inside it
+     and the face drawn without its disc.
+
+     The face was a circle from 2026-08-25 ("the mood icon should always be
+     a circle. no chips.") until phase 10 carpet ticket 99 round 2 reversed
+     that (Alicja, 2026-09-09): it is now the same rounded square the entry
+     editor's picker uses (.mood-btn .mood-face).
 
      The tile existed for a real reason, worth writing down because it is the
      thing this now has to carry another way. ADR-0025's five steps are
@@ -22,7 +26,7 @@
      The colour is no longer the only thing telling the five apart, which is
      what the tile was compensating for.
 
-     Selection is a ring outside the circle, which is the same answer the
+     Selection is a ring outside the shape, which is the same answer the
      editor's picker gives (DIRECTION.md, tier 3: a picked mood lifts and
      takes its ring). It used to be the accent taking the tile's edge.
 

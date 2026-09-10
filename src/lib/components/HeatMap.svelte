@@ -461,14 +461,24 @@
          inside the halves, because the later half is a pixel proud on three
          sides and a face hung inside it would be a pixel off the one beside
          it; both of these are the whole cell, cut. -->
-    {#if isMood && c.step > 0}
+    {#if isMood}
+      <!-- Mounted whenever mood is on screen, empty day or not (ticket 99
+           item 7, "the faces... should fade in, not appear in 1 frame"): a
+           day gated behind `c.step > 0` had no face element to fade at all
+           while its average was still loading, so the element Svelte
+           inserted the instant the read resolved had no earlier frame to
+           transition from and simply appeared drawn. Opacity carries "no
+           reading yet" the same way it already carries "no room in the
+           strip" below, on an element that was there all along. -->
       {#if c.shape?.kind === 'split'}
         <span class="cal-face is-earlier" data-hm-cell-face
           ><MoodFace step={c.shape.first} size="100%" disc={false} /></span
         >
         <span class="cal-face is-later"><MoodFace step={c.shape.last} size="100%" disc={false} /></span>
       {:else}
-        <span class="cal-face" data-hm-cell-face><MoodFace step={c.step} size="100%" disc={false} /></span>
+        <span class="cal-face" class:is-empty={c.step === 0} data-hm-cell-face
+          ><MoodFace step={c.step || 1} size="100%" disc={false} /></span
+        >
       {/if}
     {/if}
     <!-- The presentation chip's mark (ticket 17, ADR-0048): a small dot of
@@ -596,12 +606,22 @@
     --half-low: var(--r-block) 0 0 var(--r-block) / var(--r-block) 0 0 var(--r-block);
     --half-high: 0 var(--r-block) var(--r-block) 0 / 0 var(--r-block) var(--r-block) 0;
   }
-  /* Mood is round, because a mood is a face and a face is a disc
-     (MoodFace.svelte). A gender dimension is not and stays square. */
+  /* Mood is the same rounded square every other mood face in the app draws
+     (ticket 99 item 7: "the same rounded square shape as the rest of the
+     screens"), not the circle this drew before MoodChips and MoodPicker's
+     own faces were carried back to that shape - 26.7% is moodFace.ts's
+     MOOD_BLOCK, the same fraction `.mood-btn .mood-face` and `.kit-mood
+     .mood-face` use. A gender dimension takes no share of a face's shape at
+     all and stays var(--r-block).
+     A split halves the cell's width, so its own radius has to double on the
+     axis that halving shrank: the corner is still 26.7% of the *whole*
+     cell's side, which on a box half as wide reads as 53.4% of that box's
+     own width (the same doubling the old circle case made from 50% to
+     100%) while the vertical axis, unchanged, keeps 26.7%. */
   .cal-stack.is-round {
-    --r: 50%;
-    --half-low: 100% 0 0 100% / 50% 0 0 50%;
-    --half-high: 0 100% 100% 0 / 0 50% 50% 0;
+    --r: 26.7%;
+    --half-low: 53.4% 0 0 53.4% / 26.7% 0 0 26.7%;
+    --half-high: 0 53.4% 53.4% 0 / 0 26.7% 26.7% 0;
   }
   .cal-card,
   .cal-swatch {
@@ -650,12 +670,18 @@
      ellipse and every face into an egg - debris in the middle of a
      choreography whose whole premise is that nothing is unaccounted for. So
      they sit the travel out: gone in the frame of the tap, and back over a
-     beat once the cells have landed. Delay plus duration is --dur-med +
-     --dur-fast, which is the travel's own --dur-slow. */
+     beat once the cells have landed.
+
+     The delay is the travel's own --dur-slow, not --dur-med (ticket 99 item
+     7 round 2, Alicja: "for me they still appear suddenly"). --dur-med was
+     140ms short of it, so the fade used to start while the cell was still
+     mid-flight - riding the tail of the same ease-out curve that is still
+     visibly moving a cell that size, which reads as the face popping in
+     rather than fading, even though the opacity itself ramps smoothly. */
   .cal-face,
   .cal-mark,
   .cal-highlight {
-    transition: opacity var(--dur-fast) var(--ease-out) var(--dur-med);
+    transition: opacity var(--dur-fast) var(--ease-out) var(--dur-slow);
   }
   .cal-grid.is-compact .cal-face,
   .cal-grid.is-compact .cal-mark,
@@ -698,6 +724,13 @@
     inset: 0;
     z-index: 1;
     pointer-events: none;
+  }
+  /* No reading yet, drawn or still loading (ticket 99 item 7) - opacity
+     rather than absence, so the element is already there to fade in once
+     one arrives. `step || 1` above draws a real face underneath this, never
+     read. */
+  .cal-face.is-empty {
+    opacity: 0;
   }
   /* Cut on the colour's own seam, which sits a pixel left of centre because
      the later half is a pixel proud over the middle. Off by that pixel and

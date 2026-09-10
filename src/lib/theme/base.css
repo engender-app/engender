@@ -168,6 +168,14 @@
   --dur-breathe: 7s;
   --sun-breathe-scale: 1.035;
 
+  /* The sun's own arrival during a navigation (fieldBlind.ts/app.css),
+     slower again than --dur-authored's cold-boot entrance (Alicja,
+     2026-09-10, ticket 99 round 2: "even slower" than --dur-slow, then
+     "let's go for 900ms") - its own token rather than reusing
+     --dur-authored, since that number is the cold-start entrance's and
+     changing it would also slow that down, which nothing asked for. */
+  --dur-sun-open: 900ms;
+
   /* One pass of the progress bar's indeterminate sweep (Progress.svelte,
      ADR-0070). Its own token rather than a tier duration, because it is
      the only loop in the app besides the sun and it is not tier 0's: it
@@ -305,6 +313,7 @@ html[data-a11y-motion='reduce'] {
   --dur-slow: 1ms;
   --dur-press: 1ms;
   --dur-authored: 1ms;
+  --dur-sun-open: 1ms;
   --stagger-step: 0ms;
   --stagger-ring: 0ms;
 }
@@ -323,6 +332,7 @@ html[data-a11y-motion='reduce'] *::after {
     --dur-slow: 1ms;
     --dur-press: 1ms;
     --dur-authored: 1ms;
+    --dur-sun-open: 1ms;
     --stagger-step: 0ms;
     --stagger-ring: 0ms;
   }
