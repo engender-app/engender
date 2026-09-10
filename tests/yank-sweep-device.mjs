@@ -38,17 +38,28 @@
        android/gradlew -p android :app:assembleDebug
      node tests/yank-sweep-device.mjs <serial> [path/to/app-debug.apk]
 
-   `--scenes a,b` narrows the run, `--passes N` sets the repeats,
-   `--themes light,dark` (both, by default), `--out <dir>` names the report
-   directory, `--compare <report.json>` reads a desktop sweep report and
-   prints the two side by side, `--prove` injects the three wrong marks and
-   fails unless the style arithmetic and the camera both catch them, and
-   `--dump` writes every scene's style frames as JSON alongside the report.
+    `--scenes a,b` narrows the run, `--passes N` sets the repeats,
+    `--themes light,dark` (both, by default), `--out <dir>` names the report
+    directory, `--compare <report.json>` reads a desktop sweep report and
+    prints the two side by side, `--prove` injects the three wrong marks and
+    fails unless the style arithmetic and the camera both catch them, and
+    `--dump` writes every scene's style frames as JSON alongside the report.
 
-   The frames of any pixel finding are written as PNGs next to the report,
-   named <scene>-<theme>-p<pass>-<index>{a,b,c}.png - the frame before, the
-   finding, and the frame after. That triple is the evidence a person
-   actually looks at; the detector exists to say which triples exist. */
+    `--hydration` (ticket 108) swaps the gesture scene table for the full
+    screen inventory and walks it cold in both database profiles: the
+    camera rolls from the navigation itself and the DOM sampler starts
+    the moment boot reports ready, each for three seconds, because the
+    cold-mount pops live inside the settle this script's gesture half
+    deliberately waits out. `--profiles persona,empty` (both, by default)
+    picks the journal states; one pass per scene by default here, three
+    being a gesture-scene cost the inventory does not need. The scene
+    table, thresholds and profile expressions are the shared core's, so
+    the phone and the desktop cannot drift.
+
+    The frames of any pixel finding are written as PNGs next to the report,
+    named <scene>-<theme>-p<pass>-<index>{a,b,c}.png - the frame before, the
+    finding, and the frame after. That triple is the evidence a person
+    actually looks at; the detector exists to say which triples exist. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -57,16 +68,38 @@ import { fileURLToPath } from 'node:url';
 
 import { SETUP_STEPS } from './setup-flow.mjs';
 import {
+  DEMO_THEME_EXPRESSION,
+  DIFF_EPS,
+  EVIDENCE_CAP,
   EXEMPT,
+  HYDRATION_MS,
+  HYDRATION_NEEDS,
+  HYDRATION_PX,
+  HYDRATION_SETTLE_MS,
   INIT_HIDE_DEMO_SCRIPT,
   INJECT_PROOF_EXPRESSION,
+  JUMP_FIRST_RUN_EXPRESSION,
+  LOCK_SETUP_EXPRESSION,
+  OUTLIER_MIN,
   PROOF,
+  RESET_PERSONA_EXPRESSION,
   SCENE_MS,
   SETTLE_PAGE_EXPRESSION,
+  TRANSIENT_MIN,
+  GAP_RATIO,
+  UNLOCK_PIN_EXPRESSION,
   VT_NAMES,
+  WALK_FIRST_RUN_FINISH_EXPRESSION,
+  fillTokens,
+  findPixelYanks,
   findYanks,
+  hydrationScreensFor,
+  missingProofYanks,
+  pushHydrationRun,
   scenesFor,
-  samplerExpression
+  samplerExpression,
+  scrapeHrefExpression,
+  yesterdayEpochDay
 } from './yank-sweep-core.mjs';
 import { decodePng, grayFrame } from './png-decode.mjs';
 
@@ -90,27 +123,20 @@ const only = flag('scenes', '')
 const themes = flag('themes', 'light,dark')
   .split(',')
   .filter(Boolean);
-const passes = Number(flag('passes', '3'));
-const comparePath = flag('compare', resolve(outDir, '../yank-sweep/report.json'));
+/** The hydration mode (ticket 108): the full screen inventory walked cold
+ *  in both database profiles, rather than the gesture scenes. */
+const hydration = args.includes('--hydration');
+const profiles = flag('profiles', 'persona,empty')
+  .split(',')
+  .filter(Boolean);
+const passes = Number(flag('passes', hydration ? '1' : '3'));
+const comparePath = flag(
+  'compare',
+  resolve(outDir, '../', hydration ? 'hydration-sweep' : 'yank-sweep', 'report.json')
+);
 const prove = args.includes('--prove');
 const dump = args.includes('--dump');
-const SCENES = scenesFor({ prove, only });
-
-/** Two renders of the same pixel differing by less than this are the same
- *  render: PNG is lossless, so what moves under this is jpeg-less dither
- *  and text antialiasing settling. */
-const DIFF_EPS = 12;
-/** A transient has to cover this share of the frame before it is a yank
- *  and not a highlight blinking. */
-const TRANSIENT_MIN = 0.03;
-/** And the neighbours have to agree with each other this much better than
- *  either agrees with the finding, or the frame is just motion - a slide
- *  changes every frame, a flash changes one. */
-const OUTLIER_MIN = 0.03;
-/** A screencast frame arriving much later than its neighbours saw a
- *  different slice of time than the styles did; motion aliased across a
- *  gap reads as a teleport. Guard rather than chase. */
-const GAP_RATIO = 2.5;
+const SCENES = hydration ? hydrationScreensFor({ prove, only }) : scenesFor({ prove, only });
 
 const adb = (...a) => execFileSync('adb', ['-s', serial, ...a], { encoding: 'utf8' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -341,103 +367,11 @@ async function screencast(fn) {
 
 /* ---------- the render detector ---------- */
 
-const diffMask = (a, b) => {
-  const mask = new Uint8Array(a.length);
-  let changed = 0;
-  for (let i = 0; i < a.length; i++)
-    if (Math.abs(a[i] - b[i]) > DIFF_EPS) {
-      mask[i] = 1;
-      changed++;
-    }
-  return { mask, frac: changed / a.length };
-};
-
-/** Connected regions of a mask, 4-neighbour flood fill. Returned largest
- *  first, regions under `minArea` px dropped. */
-function regions(mask, w, h, minArea) {
-  const seen = new Uint8Array(mask.length);
-  const out = [];
-  for (let i = 0; i < mask.length; i++) {
-    if (!mask[i] || seen[i]) continue;
-    let stack = [i];
-    seen[i] = 1;
-    let area = 0;
-    let x0 = w;
-    let x1 = 0;
-    let y0 = h;
-    let y1 = 0;
-    while (stack.length) {
-      const p = stack.pop();
-      const x = p % w;
-      const y = (p / w) | 0;
-      area++;
-      x0 = Math.min(x0, x);
-      x1 = Math.max(x1, x);
-      y0 = Math.min(y0, y);
-      y1 = Math.max(y1, y);
-      for (const q of [p - 1, p + 1, p - w, p + w]) {
-        if (q < 0 || q >= mask.length || Math.abs((q % w) - x) > 1) continue;
-        if (mask[q] && !seen[q]) {
-          seen[q] = 1;
-          stack.push(q);
-        }
-      }
-    }
-    if (area >= minArea)
-      out.push({ area, box: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } });
-  }
-  return out.sort((a, b) => b.area - a.area);
-}
-
-/** A frame whose content differs from both its neighbours while the
- *  neighbours agree with each other: something painted that was never
- *  meant to be on screen. The style trace can be right and the render
- *  wrong - this reads the render. */
-function findPixelYanks(grays, w, h, ats) {
-  const dts = [];
-  for (let i = 1; i < grays.length; i++) dts.push(ats[i] - ats[i - 1]);
-  const median = dts.slice().sort((a, b) => a - b)[Math.floor(dts.length / 2)] || 16;
-  const findings = [];
-  const motion = [];
-  for (let i = 1; i < grays.length - 1; i++) {
-    const prev = diffMask(grays[i - 1], grays[i]);
-    const next = diffMask(grays[i + 1], grays[i]);
-    const skip = diffMask(grays[i + 1], grays[i - 1]);
-    motion.push({ at: ats[i], prev: round4(prev.frac), next: round4(next.frac), skip: round4(skip.frac) });
-    if (
-      dts[i - 1] > median * GAP_RATIO ||
-      dts[i] > median * GAP_RATIO
-    )
-      continue;
-    /* Transient: changed against both neighbours, stable across them. */
-    let transient = 0;
-    const tmask = new Uint8Array(prev.mask.length);
-    for (let p = 0; p < tmask.length; p++)
-      if (prev.mask[p] && next.mask[p] && !skip.mask[p]) {
-        tmask[p] = 1;
-        transient++;
-      }
-    const frac = transient / tmask.length;
-    const outlier = (prev.frac + next.frac) / 2 - 2 * skip.frac;
-    if (frac < TRANSIENT_MIN || outlier < OUTLIER_MIN) continue;
-    const found = regions(tmask, w, h, Math.round(0.002 * w * h));
-    if (!found.length) continue;
-    const top = found[0];
-    const wide = top.box.w >= 0.5 * w && top.box.h >= 0.4 * h;
-    findings.push({
-      kind: wide || top.area >= 0.12 * w * h ? 'bloat' : 'flash',
-      frame: i,
-      at: Math.round(ats[i]),
-      box: top.box,
-      areaPct: round4(top.area / (w * h)),
-      outlier: round4(outlier),
-      regions: found.slice(0, 5).map((r) => ({ box: r.box, areaPct: round4(r.area / (w * h)) }))
-    });
-  }
-  return { findings, motion };
-}
-
-const round4 = (n) => Math.round(n * 10000) / 10000;
+/* The arithmetic itself lives in the shared core now (the hydration
+   sweep, ticket 108, points the same camera at a desktop cold load), so
+   the thresholds and the flood fill cannot drift between the phone and
+   the preview server; what stays here is everything that is this
+   transport's alone - the run, the evidence triples, the report. */
 
 /* ---------- the run ---------- */
 
@@ -488,8 +422,173 @@ console.log(`boot: ${boot}`);
 
 const report = [];
 let evidenceCount = 0;
-const EVIDENCE_CAP = 60;
 
+/* ---------- the hydration run (ticket 108) ---------- */
+
+/** One cold scene: the camera rolls before the navigation, the sampler
+ *  starts the moment boot reports ready, both stop three seconds later.
+ *  Nothing is stamped on the page - the theme is already in the
+ *  preferences boot stamps, and the cold window is meant to be
+ *  untouched. */
+async function hydrationCold(href) {
+  const pathname = href.split('?')[0].split('#')[0];
+  return screencast(async (cast) => {
+    await ev(`location.assign(${JSON.stringify(href)}); true;`);
+    await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
+    const frames = await ev(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+    return { cast: [...cast], frames };
+  });
+}
+
+/** One sheet scene: settled screen, then the opening and its hydration
+ *  recorded together. */
+async function hydrationSheet(scene, theme) {
+  await settle(scene.at, theme);
+  await sleep(HYDRATION_SETTLE_MS);
+  return screencast(async (cast) => {
+    const frames = await ev(samplerExpression(scene.act, HYDRATION_MS, VT_NAMES));
+    return { cast: [...cast], frames };
+  });
+}
+
+/** The tokens the scene routes carry, resolved from the profile's own
+ *  journal by scraping the list screens that link the detail records. */
+async function hydrationTokens(profile, theme) {
+  const tokens = { yesterday: String(yesterdayEpochDay()) };
+  const skipped = [];
+  if (profile !== 'persona') {
+    for (const key of Object.keys(HYDRATION_NEEDS)) skipped.push(key);
+    return { tokens, skipped };
+  }
+  for (const [key, { list, prefix }] of Object.entries(HYDRATION_NEEDS)) {
+    await settle(list, theme);
+    const href = await ev(scrapeHrefExpression(prefix));
+    if (href) tokens[key] = href.split('/').pop();
+    else skipped.push(key);
+  }
+  return { tokens, skipped };
+}
+
+async function hydrationRunScene(scene, profile, theme, tokens) {
+  const needsToken = /\{(\w+)\}/.exec(scene.at)?.[1];
+  if (scene.needs && needsToken && !tokens[scene.needs]) {
+    report.push({ scene: scene.name, profile, theme, skipped: `no ${scene.needs} in this journal` });
+    console.log(`[${profile}-${theme}] ${scene.name}: skipped, no ${scene.needs}`);
+    return;
+  }
+  const href = fillTokens(scene.at, tokens);
+  try {
+    const result = scene.act ? await hydrationSheet(scene, theme) : await hydrationCold(href);
+    await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
+  } catch (err) {
+    report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });
+    console.log(`[${profile}-${theme}] ${scene.name}: ERROR ${String(err).slice(0, 200)}`);
+  }
+}
+
+async function hydrationScenes() {
+  for (const profile of profiles) {
+    await settle('/', themes[0]);
+    if (profile === 'persona') {
+      if (!(await ev(RESET_PERSONA_EXPRESSION))) {
+        console.error('the persona reset never reached Home; stopping this profile');
+        continue;
+      }
+    } else {
+      /* The onboarding mount exists only here, between the jump and the
+         walk that finishes the first run. */
+      if (SCENES.some((s) => s.name === 'onboarding-mount')) {
+        try {
+          const mounted = await screencast(async (cast) => {
+            await ev(JUMP_FIRST_RUN_EXPRESSION);
+            await ev(waitForExpression('[data-next]', 30000, '/onboarding'));
+            const frames = await ev(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+            return { cast: [...cast], frames };
+          });
+          await pushHydrationRun(report, outDir, {
+            name: 'onboarding-mount',
+            is: 'the first run opening over an empty journal',
+            profile,
+            theme: themes[0],
+            result: mounted
+          });
+        } catch (err) {
+          report.push({ scene: 'onboarding-mount', profile, theme: themes[0], error: String(err).slice(0, 300) });
+          console.log(`[${profile}-${themes[0]}] onboarding-mount: ERROR ${String(err).slice(0, 200)}`);
+        }
+      }
+      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION))) {
+        console.error('the first run never finished; stopping this profile');
+        continue;
+      }
+    }
+
+    for (const theme of themes) {
+      /* The theme is written through the demo bar once per profile so a
+         cold load reads it out of the preferences boot stamps. */
+      await settle('/', theme);
+      await ev(DEMO_THEME_EXPRESSION(theme));
+      const { tokens, skipped } = await hydrationTokens(profile, theme);
+      for (const note of skipped)
+        console.log(`[${profile}] no ${note} to resolve in this journal; its detail scenes will skip`);
+      for (const scene of SCENES) {
+        if (scene.setup) continue; /* the prologues run outside the loop */
+        if (scene.when && scene.when !== profile) continue;
+        if (scene.name === PROOF.scene) {
+          /* The proof, hydration-style: a settled screen, three wrong
+             marks, the camera rolling over the same window - the file-end
+             check demands both instruments saw them. */
+          await settle('/', theme);
+          await sleep(HYDRATION_SETTLE_MS);
+          const result = await screencast(async (cast) => {
+            await ev(`(${INJECT_PROOF_EXPRESSION})()`);
+            const frames = await ev(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
+            return { cast: [...cast], frames };
+          });
+          await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result });
+          continue;
+        }
+        await hydrationRunScene(scene, profile, theme, tokens);
+      }
+    }
+  }
+
+  /* The lock-gate epilogue, last because a locked journal gates every
+     cold load after it; under the run's first theme, written into the
+     preferences first so the cold load actually boots with it. */
+  const lockScene = SCENES.find((s) => s.setup === 'pin');
+  if (lockScene && profiles.includes('persona')) {
+    try {
+      await settle('/', themes[0]);
+      await ev(DEMO_THEME_EXPRESSION(themes[0]));
+      await settle('/settings/access-mode', themes[0]);
+      await ev(LOCK_SETUP_EXPRESSION(PIN));
+      const result = await screencast(async (cast) => {
+        await ev(`location.assign('/'); true;`);
+        await ev(waitForExpression('[data-pin-pad]', 40000, '/'));
+        const frames = await ev(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+        return { cast: [...cast], frames };
+      });
+      await pushHydrationRun(report, outDir, {
+        name: 'lock-gate',
+        is: lockScene.is,
+        profile: 'persona',
+        theme: themes[0],
+        result
+      });
+      await ev(UNLOCK_PIN_EXPRESSION(PIN));
+    } catch (err) {
+      report.push({ scene: 'lock-gate', profile: 'persona', theme: themes[0], error: String(err).slice(0, 300) });
+      console.log(`[persona-${themes[0]}] lock-gate: ERROR ${String(err).slice(0, 200)}`);
+    }
+  }
+}
+
+/* ---------- the gesture run (ticket 100) ---------- */
+
+if (hydration) {
+  await hydrationScenes();
+} else
 for (const theme of themes) {
   for (const scene of SCENES) {
     for (let pass = 1; pass <= passes; pass++) {
@@ -588,7 +687,14 @@ await writeFile(
     {
       target: 'device',
       serial,
-      thresholds: { DIFF_EPS, TRANSIENT_MIN, OUTLIER_MIN, GAP_RATIO },
+      ...(hydration ? { mode: 'hydration', profiles } : {}),
+      thresholds: {
+        DIFF_EPS,
+        TRANSIENT_MIN,
+        OUTLIER_MIN,
+        GAP_RATIO,
+        ...(hydration ? { HYDRATION_MS, HYDRATION_PX } : {})
+      },
       themes,
       passes,
       report,
@@ -603,23 +709,31 @@ adb('forward', '--remove', 'tcp:9333');
 
 const styleTotal = report.reduce((n, r) => n + (r.styleYanks?.length ?? 0), 0);
 const renderTotal = report.reduce((n, r) => n + (r.pixelFindings?.length ?? 0), 0);
+const skippedTotal = report.filter((r) => r.skipped).length;
+const erroredTotal = report.filter((r) => r.error).length;
 console.log(
-  `\n${report.length} run(s), ${styleTotal} style / ${renderTotal} render yank(s); report in ${outDir}/report.json`
+  `\n${report.length} run(s), ${styleTotal} style / ${renderTotal} render yank(s), ${skippedTotal} skipped, ${erroredTotal} errored; report in ${outDir}/report.json`
 );
 
 /* ---------- side by side with the desktop ---------- */
 
 if (existsSync(comparePath)) {
   const desktop = JSON.parse(await readFile(comparePath, 'utf8'));
-  const key = (scene, theme) => `${scene}@${theme}`;
-  const desktopMap = new Map(desktop.report.map((r) => [key(r.scene, r.theme ?? 'light'), r]));
+  /* Hydration reports carry a profile as well as a theme, and the gesture
+     reports do not; the key takes whichever of the two it finds, so a
+     persona run is never compared against an empty journal's numbers. */
+  const key = (r) => `${r.scene}@${r.theme ?? 'light'}${r.profile ? `:${r.profile}` : ''}`;
+  const desktopMap = new Map(desktop.report.map((r) => [key(r), r]));
   const deviceOnly = [];
   for (const r of report) {
-    const d = desktopMap.get(key(r.scene, r.theme));
-    const dn = d?.yanks?.length ?? 0;
-    const vn = (r.styleYanks?.length ?? 0) + (r.pixelFindings?.length ?? 0);
+    const d = desktopMap.get(key(r));
+    /* Whichever shape the desktop report is in - the gesture half's
+       `yanks`, or the hydration half's style-and-render pair. */
+    const dn =
+      (d?.yanks?.length ?? 0) + (d?.styleYanks?.length ?? 0) + (d?.pixelFindings?.length ?? 0);
+    const vn = (r.styleYanks?.length ?? 0) + (r.pixelFindings?.length ?? 0) + (r.yanks?.length ?? 0);
     if (!d) continue;
-    if (vn > dn) deviceOnly.push(`${key(r.scene, r.theme)}: desktop ${dn}, device ${vn}`);
+    if (vn > dn) deviceOnly.push(`${key(r)}: desktop ${dn}, device ${vn}`);
   }
   console.log('\nside by side (desktop report: ' + comparePath + ')');
   if (deviceOnly.length) {
@@ -634,14 +748,7 @@ if (existsSync(comparePath)) {
 
 if (prove) {
   const proofRuns = report.filter((r) => r.scene === PROOF.scene);
-  const scene = proofRuns[0];
-  const got = (mark, kind) =>
-    scene?.styleYanks?.some((y) => y.mark.startsWith(mark) && y.kind === kind);
-  const missing = [
-    got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
-    got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
-    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`
-  ].filter(Boolean);
+  const missing = missingProofYanks(report);
   const cameraSaw = proofRuns.some((r) =>
     (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05)
   );
