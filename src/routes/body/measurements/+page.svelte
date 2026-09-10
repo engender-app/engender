@@ -229,6 +229,7 @@
           {/each}
         </ListCard>
       </div>
+      <AreaFinish group="measurements" />
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">
@@ -241,6 +242,7 @@
           action={{ label: m.measurement_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
+      <AreaFinish group="measurements" />
     {/snippet}
   </ReadGate>
 
@@ -292,9 +294,6 @@
       </div>
     {/snippet}
   </RecordSheet>
-
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="measurements" />
 
   <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>

@@ -535,10 +535,10 @@
         {/if}
       </ChartCard>
     </div>
-  {/if}
 
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="wear" />
+    <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+    <AreaFinish group="wear" />
+  {/if}
 
   <RecordSheet
     {record}

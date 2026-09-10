@@ -152,6 +152,7 @@
           </ListCard>
         {/if}
       </div>
+      <AreaFinish group="sizes" />
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">
@@ -164,11 +165,9 @@
           action={{ label: m.size_log_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
+      <AreaFinish group="sizes" />
     {/snippet}
   </ReadGate>
-
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="sizes" />
 
   <RecordSheet
     {record}
