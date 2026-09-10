@@ -55,6 +55,7 @@ import { launchChromium, settlePage } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
   DIFF_EPS,
+  FILL_EVERY_FEATURE_EXPRESSION,
   HYDRATION_MS,
   HYDRATION_NEEDS,
   HYDRATION_PX,
@@ -147,10 +148,14 @@ async function screencast(fn) {
 const settle = (path, theme) => settlePage(page, base, path, theme);
 
 const waitFor = (selector, path = null, timeout = 40000) => {
-  const want = path ? `location.pathname === ${JSON.stringify(path)} && ` : '';
-  return page.waitForFunction(`!!(${want}document.querySelector(${JSON.stringify(selector)}))`, undefined, {
-    timeout
-  });
+  return page.waitForFunction(
+    ([sel, p]) => {
+      const want = p ? location.pathname === p : true;
+      return !!(want && document.querySelector(sel));
+    },
+    [selector, path],
+    { timeout }
+  );
 };
 
 /** One cold scene: the camera starts rolling before the navigation, the
@@ -229,6 +234,8 @@ for (const profile of profiles) {
       console.error('the persona reset never reached Home; stopping this profile');
       continue;
     }
+    await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
+    await page.waitForTimeout(1500);
   } else {
     const mounted = await screencast(async (cast) => {
       await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
@@ -254,6 +261,7 @@ for (const profile of profiles) {
       console.error('the first run never finished; stopping this profile');
       continue;
     }
+    await page.waitForTimeout(1500);
   }
 
   for (const theme of themes) {

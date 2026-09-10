@@ -72,6 +72,7 @@ import {
   DIFF_EPS,
   EVIDENCE_CAP,
   EXEMPT,
+  FILL_EVERY_FEATURE_EXPRESSION,
   HYDRATION_MS,
   HYDRATION_NEEDS,
   HYDRATION_PX,
@@ -175,9 +176,23 @@ function connect(url) {
   const pending = new Map();
   const listeners = new Set();
   let id = 0;
+  /* The open itself goes on a clock, like every send below: a forward
+     left pointing at a socket whose renderer has just been swapped
+     answers devtools' HTTP listing but never finishes the WebSocket
+     handshake, and an unbounded `ready` turned that into a silent
+     forever-await the first time the WebView reloaded under the sweep.
+     A timeout here is what lets attach()'s retry loop re-read the socket
+     name and forward again instead of hanging the whole run. */
   const ready = new Promise((res, rej) => {
-    ws.addEventListener('open', () => res());
-    ws.addEventListener('error', rej);
+    const timer = setTimeout(() => rej(new Error('WS_NEVER_OPENED')), 8000);
+    ws.addEventListener('open', () => {
+      clearTimeout(timer);
+      res();
+    });
+    ws.addEventListener('error', () => {
+      clearTimeout(timer);
+      rej(new Error('WS_ERROR'));
+    });
   });
   ws.addEventListener('message', (event) => {
     const msg = JSON.parse(event.data);
@@ -185,7 +200,21 @@ function connect(url) {
       const waiter = pending.get(msg.id);
       if (!waiter) return;
       pending.delete(msg.id);
-      if (msg.error) waiter.reject(new Error(JSON.stringify(msg.error)));
+      if (msg.error)
+        /* "Inspected target navigated or closed" is the same event the
+           no-answer timeout guards - the WebView tore the execution
+           context down mid-evaluate - but answered as an error reply
+           instead of silence. Routed through the SOCKET_GONE retry so a
+           first-run boot's own redirects cannot end the run; the retry
+           re-attaches and re-evaluates against whatever document is
+           live by then. */
+        waiter.reject(
+          new Error(
+            msg.error.code === -32000
+              ? 'SOCKET_GONE (inspected target navigated or closed)'
+              : JSON.stringify(msg.error)
+          )
+        );
       else waiter.resolve(msg.result);
     } else {
       for (const fn of listeners) fn(msg);
@@ -241,7 +270,13 @@ async function initClient(c) {
 /** Evaluate in the page, re-attaching when the WebView swaps its renderer
  *  under us. Throws what the page threw, not a bare "evaluation failed". */
 async function ev(expression, ms = 45000) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let lastError = null;
+  /* Five attempts, not three: a first-run boot redirects the page two or
+     three times in quick succession, and each redirect can eat exactly
+     one in-flight evaluate. Each attempt re-attaches and lands on
+     whatever document is live, so the count only has to outlast the
+     app's own settling. */
+  for (let attempt = 0; attempt < 5; attempt++) {
     if (!client) {
       client = await attach();
       await initClient(client);
@@ -258,9 +293,13 @@ async function ev(expression, ms = 45000) {
     } catch (error) {
       if (!String(error.message).includes('SOCKET_GONE')) throw error;
       client = null;
+      lastError = error;
     }
   }
-  throw new Error('the WebView kept dropping the devtools socket');
+  /* The last underlying rejection rides along: a bare "kept dropping"
+     says nothing about whether the socket closed, the WebView never
+     answered, or the forward went stale - three different next steps. */
+  throw new Error('the WebView kept dropping the devtools socket: ' + (lastError?.message ?? 'unknown'));
 }
 
 const onEvent = (msg) => {
@@ -494,6 +533,8 @@ async function hydrationScenes() {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
       }
+      await ev(FILL_EVERY_FEATURE_EXPRESSION);
+      await sleep(1500);
     } else {
       /* The onboarding mount exists only here, between the jump and the
          walk that finishes the first run. */
@@ -588,94 +629,117 @@ async function hydrationScenes() {
 
 if (hydration) {
   await hydrationScenes();
-} else
-for (const theme of themes) {
-  for (const scene of SCENES) {
-    for (let pass = 1; pass <= passes; pass++) {
-      const label = `[${theme}] ${scene.name} p${pass}`;
-      try {
-        await settle(scene.at, theme);
-        if (scene.firstRun) await ev(firstRunExpression(scene.firstRun));
-        await sleep(1400);
-        if (scene.act === 'inject') await ev(`(${INJECT_PROOF_EXPRESSION})()`);
-        const result = await screencast(async (cast) => {
-          const frames = await ev(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
-          return { cast: [...cast], frames };
-        });
-        if (result.cast.length < 4) throw new Error(`only ${result.cast.length} screencast frames`);
+} else {
+  for (const profile of profiles) {
+    if (profile === 'persona') {
+      await settle('/', themes[0]);
+      if (!(await ev(RESET_PERSONA_EXPRESSION))) {
+        console.error('the persona reset never reached Home; stopping this profile');
+        continue;
+      }
+      await ev(FILL_EVERY_FEATURE_EXPRESSION);
+      await sleep(1500);
+    } else {
+      await settle('/', themes[0]);
+      await ev(JUMP_FIRST_RUN_EXPRESSION);
+      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION))) {
+        console.error('the first run never finished; stopping this profile');
+        continue;
+      }
+      await sleep(1500);
+    }
 
-        /* The style half, exactly as the desktop sweep reads it. */
-        const transitioned = result.frames.some((f) => f.active);
-        const instrument = transitioned ? 'vt' : 'rows';
-        const styleFrames = transitioned ? result.frames.filter((f) => f.active) : result.frames;
-        const all = findYanks(styleFrames, instrument, styleFrames.length - 1);
-        const styleYanks = all.filter((y) => !EXEMPT.test(y.mark));
+    for (const theme of themes) {
+      for (const scene of SCENES) {
+        if (scene.when && scene.when !== profile) continue;
+        for (let pass = 1; pass <= passes; pass++) {
+          const label = `[${profile}-${theme}] ${scene.name} p${pass}`;
+          try {
+            await settle(scene.at, theme);
+            if (scene.firstRun) await ev(firstRunExpression(scene.firstRun));
+            await sleep(1400);
+            if (scene.act === 'inject') await ev(`(${INJECT_PROOF_EXPRESSION})()`);
+            const result = await screencast(async (cast) => {
+              const frames = await ev(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+              return { cast: [...cast], frames };
+            });
+            if (result.cast.length < 4) throw new Error(`only ${result.cast.length} screencast frames`);
 
-        /* The render half. Frames are decoded per pass; the grays are what
-           the arithmetic reads, the PNGs are kept around only for evidence. */
-        const decoded = result.cast.map((f) => {
-          const png = decodePng(Buffer.from(f.data, 'base64'));
-          return { png, gray: grayFrame(png), at: f.at };
-        });
-        const { width, height } = decoded[0].png;
-        if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
-          throw new Error('screencast frames arrived in more than one size');
-        const { findings, motion } = findPixelYanks(
-          decoded.map((d) => d.gray),
-          width,
-          height,
-          decoded.map((d) => d.at)
-        );
+            /* The style half, exactly as the desktop sweep reads it. */
+            const transitioned = result.frames.some((f) => f.active);
+            const instrument = transitioned ? 'vt' : 'rows';
+            const styleFrames = transitioned ? result.frames.filter((f) => f.active) : result.frames;
+            const all = findYanks(styleFrames, instrument, styleFrames.length - 1);
+            const styleYanks = all.filter((y) => !EXEMPT.test(y.mark));
 
-        for (const finding of findings) {
-          if (evidenceCount >= EVIDENCE_CAP) break;
-          evidenceCount++;
-          const i = finding.frame;
-          /* The evidence triple: the frame before, the finding, the frame
-             after. That is the pair-by-pair story a person checks the
-             detector's arithmetic against. */
-          for (const [suffix, index] of [
-            ['a', i - 1],
-            ['b', i],
-            ['c', i + 1]
-          ])
-            await writeFile(
-              `${outDir}/${scene.name}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
-              Buffer.from(result.cast[index].data, 'base64')
+            /* The render half. Frames are decoded per pass; the grays are what
+               the arithmetic reads, the PNGs are kept around only for evidence. */
+            const decoded = result.cast.map((f) => {
+              const png = decodePng(Buffer.from(f.data, 'base64'));
+              return { png, gray: grayFrame(png), at: f.at };
+            });
+            const { width, height } = decoded[0].png;
+            if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
+              throw new Error('screencast frames arrived in more than one size');
+            const { findings, motion } = findPixelYanks(
+              decoded.map((d) => d.gray),
+              width,
+              height,
+              decoded.map((d) => d.at)
             );
-        }
 
-        if (dump)
-          await writeFile(
-            `${outDir}/${scene.name}-${theme}-p${pass}.frames.json`,
-            JSON.stringify(result.frames, null, 1)
-          );
-        report.push({
-          scene: scene.name,
-          theme,
-          pass,
-          is: scene.is,
-          instrument,
-          styleFrames: styleFrames.length,
-          sampled: result.frames.length,
-          cast: result.cast.length,
-          styleYanks,
-          suppressed: all.length - styleYanks.length,
-          pixelFindings: findings,
-          motion
-        });
-        console.log(
-          `${label}: ${result.cast.length} cast / ${styleFrames.length} style frames as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${styleYanks.length} style / ${findings.length} render yank(s)` +
-            (styleYanks.length || findings.length
-              ? `\n  ${[
-                  ...styleYanks.map((y) => `style ${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`),
-                  ...findings.map((f) => `render ${f.kind} @${f.at} box ${f.box.w}x${f.box.h} area ${(f.areaPct * 100).toFixed(1)}%`)
-                ].join('\n  ')}`
-              : '')
-        );
-      } catch (err) {
-        report.push({ scene: scene.name, theme, pass, error: String(err).slice(0, 300) });
-        console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
+            for (const finding of findings) {
+              if (evidenceCount >= EVIDENCE_CAP) break;
+              evidenceCount++;
+              const i = finding.frame;
+              /* The evidence triple: the frame before, the finding, the frame
+                 after. That is the pair-by-pair story a person checks the
+                 detector's arithmetic against. */
+              for (const [suffix, index] of [
+                ['a', i - 1],
+                ['b', i],
+                ['c', i + 1]
+              ])
+                await writeFile(
+                  `${outDir}/${scene.name}-${profile}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
+                  Buffer.from(result.cast[index].data, 'base64')
+                );
+            }
+
+            if (dump)
+              await writeFile(
+                `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
+                JSON.stringify(result.frames, null, 1)
+              );
+            report.push({
+              scene: scene.name,
+              profile,
+              theme,
+              pass,
+              is: scene.is,
+              instrument,
+              styleFrames: styleFrames.length,
+              sampled: result.frames.length,
+              cast: result.cast.length,
+              styleYanks,
+              suppressed: all.length - styleYanks.length,
+              pixelFindings: findings,
+              motion
+            });
+            console.log(
+              `${label}: ${result.cast.length} cast / ${styleFrames.length} style frames as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${styleYanks.length} style / ${findings.length} render yank(s)` +
+                (styleYanks.length || findings.length
+                  ? `\n  ${[
+                      ...styleYanks.map((y) => `style ${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`),
+                      ...findings.map((f) => `render ${f.kind} @${f.at} box ${f.box.w}x${f.box.h} area ${(f.areaPct * 100).toFixed(1)}%`)
+                    ].join('\n  ')}`
+                  : '')
+            );
+          } catch (err) {
+            report.push({ scene: scene.name, profile, theme, pass, error: String(err).slice(0, 300) });
+            console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
+          }
+        }
       }
     }
   }
