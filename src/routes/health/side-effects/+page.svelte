@@ -120,6 +120,7 @@
           {/each}
         </ListCard>
       </div>
+      <AreaFinish group="side-effects" />
     {/snippet}
     {#snippet empty()}
       <div class="screen-part">
@@ -132,6 +133,7 @@
           action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
+      <AreaFinish group="side-effects" />
     {/snippet}
   </ReadGate>
 
@@ -165,9 +167,6 @@
       </ListCard>
     </div>
   {/if}
-
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
-  <AreaFinish group="side-effects" />
 
   <RecordSheet
     {record}
