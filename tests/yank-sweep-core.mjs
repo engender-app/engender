@@ -8,7 +8,13 @@
    instruments rather than two copies drifting apart.
 
    Nothing here imports anything app-side: this module stays reachable
-   from the Node tier (ADR-0016) and loadable without a build. */
+   from the Node tier (ADR-0016) and loadable without a build. The
+   imports are node:fs/promises and plain data and plain decoding from
+   the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
+
+import { writeFile } from 'node:fs/promises';
+import { SETUP_STEPS } from './setup-flow.mjs';
+import { decodePng, grayFrame } from './png-decode.mjs';
 
 /** A jump under this many pixels is not a teleport however sharp it is: at
     390px wide, a mark moving 12px in a frame is still inside its own glyph. */
@@ -35,6 +41,24 @@ export const BLOAT_RATIO = 1.4;
     stagger runs a few frames past it; what is left is the stillness that
     says it landed rather than stopped. */
 export const SCENE_MS = 760;
+/** The hydration sweep's own two clocks (ticket 108). Its blind spot was
+ *  never the arithmetic - it was the window: the gesture sweep's settle
+ *  waits 1400ms before recording, and the cold-mount pops (SQLite
+ *  liveQuery resolving at 500ms-1500ms, tickets 106 and 107) happen
+ *  entirely inside that wait. So the hydration window records from the
+ *  navigation itself and holds for three seconds, with nothing settled
+ *  on the page first. */
+export const HYDRATION_MS = 3000;
+/** Scenes that open a sheet after mount are the one exception: the sheet's
+ *  own hydration is the question there, so the screen underneath is
+ *  allowed to finish first - the same settle the gesture sweep uses, and
+ *  for the same reason. */
+export const HYDRATION_SETTLE_MS = 1600;
+/** The ticket's own floor: a bounding box moving under this in one frame
+ *  is layout breathing, not a yank. The gesture sweep's 14px floor stays
+ *  what it is; this is a wider net over a calmer window, where the
+ *  neighbours of a genuine hydration pop are still rather than sliding. */
+export const HYDRATION_PX = 24;
 
 /** The names the app hands to a view transition: the blind, the field that
     contains it (ticket 99 round 2 named it so its clip survives
@@ -63,7 +87,7 @@ export const PROOF = {
 };
 
 /* Each scene is a rest, a gesture, and what the gesture is supposed to be.
-   The four door changes, then the state changes ADR-0078 flipped the default
+    The four door changes, then the state changes ADR-0078 flipped the default
    for: a sheet, a fold, a notice, a row leaving, a segment, a save.
 
    `firstRun`, where present, names the setup step the scene needs the walk
@@ -300,6 +324,7 @@ export function samplerExpression(act, ms, names) {
        --prove went unreported. It also gives the teleport test real
        neighbours at the start of a run instead of a missing one. */
     const go = () => {
+      if (act === 'none') return;
       if (act === 'inject') window.__yankProof();
       else if (act.startsWith('goto:')) location.assign(act.slice(5));
       else if (act === 'back') {
@@ -410,7 +435,7 @@ export function samplerExpression(act, ms, names) {
  * last frame for a DOM run, where a mark still on screen at the end is
  * exactly what should be there.
  */
-export function findYanks(frames, instrument, settles = frames.length - 1) {
+export function findYanks(frames, instrument, settles = frames.length - 1, teleportPx = TELEPORT_PX) {
   const keys = new Set();
   for (const f of frames) for (const k of Object.keys(f[instrument])) keys.add(k);
   const yanks = [];
@@ -432,7 +457,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1) {
 
     for (let n = 0; deltas.length && n < deltas.length; n++) {
       const { i, d, at } = deltas[n];
-      if (d < TELEPORT_PX) continue;
+      if (d < teleportPx) continue;
       /* The fastest of the frames either side. A slide's neighbours are
          moving too; a teleport's are not. */
       const around = Math.max(deltas[n - 1]?.d ?? 0, deltas[n + 1]?.d ?? 0);
@@ -579,4 +604,529 @@ function resting(values) {
     }
   }
   return best;
+}
+
+/* ---------- the render detector (ticket 100's camera half) ----------
+ *
+ * Moved here from yank-sweep-device.mjs when the hydration sweep (ticket
+ * 108) needed the same instrument on the desktop: a cold mount is the one
+ * moment the DOM sampler cannot watch, because the navigation destroys the
+ * page that was sampling - but a CDP screencast keeps arriving from the
+ * compositor across the load, on the desktop exactly as on the phone. The
+ * thresholds and the arithmetic are shared so the two cameras cannot drift;
+ * what each transport does with a finding (evidence triples, the report)
+ * stays with the transport. */
+
+/** Two renders of the same pixel differing by less than this are the same
+ *  render: PNG is lossless, so what moves under this is jpeg-less dither
+ *  and text antialiasing settling. */
+export const DIFF_EPS = 12;
+/** A transient has to cover this share of the frame before it is a yank
+ *  and not a highlight blinking. */
+export const TRANSIENT_MIN = 0.03;
+/** And the neighbours have to agree with each other this much better than
+ *  either agrees with the finding, or the frame is just motion - a slide
+ *  changes every frame, a flash changes one. */
+export const OUTLIER_MIN = 0.03;
+/** A screencast frame arriving much later than its neighbours saw a
+ *  different slice of time than the styles did; motion aliased across a
+ *  gap reads as a teleport. Guard rather than chase. */
+export const GAP_RATIO = 2.5;
+
+const round4 = (n) => Math.round(n * 10000) / 10000;
+
+const diffMask = (a, b) => {
+  const mask = new Uint8Array(a.length);
+  let changed = 0;
+  for (let i = 0; i < a.length; i++)
+    if (Math.abs(a[i] - b[i]) > DIFF_EPS) {
+      mask[i] = 1;
+      changed++;
+    }
+  return { mask, frac: changed / a.length };
+};
+
+/** Connected regions of a mask, 4-neighbour flood fill. Returned largest
+ *  first, regions under `minArea` px dropped. */
+export function regions(mask, w, h, minArea) {
+  const seen = new Uint8Array(mask.length);
+  const out = [];
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i] || seen[i]) continue;
+    let stack = [i];
+    seen[i] = 1;
+    let area = 0;
+    let x0 = w;
+    let x1 = 0;
+    let y0 = h;
+    let y1 = 0;
+    while (stack.length) {
+      const p = stack.pop();
+      const x = p % w;
+      const y = (p / w) | 0;
+      area++;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+      for (const q of [p - 1, p + 1, p - w, p + w]) {
+        if (q < 0 || q >= mask.length || Math.abs((q % w) - x) > 1) continue;
+        if (mask[q] && !seen[q]) {
+          seen[q] = 1;
+          stack.push(q);
+        }
+      }
+    }
+    if (area >= minArea)
+      out.push({ area, box: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } });
+  }
+  return out.sort((a, b) => b.area - a.area);
+}
+
+/** A frame whose content differs from both its neighbours while the
+ *  neighbours agree with each other: something painted that was never
+ *  meant to be on screen. The style trace can be right and the render
+ *  wrong - this reads the render. */
+export function findPixelYanks(grays, w, h, ats) {
+  const dts = [];
+  for (let i = 1; i < grays.length; i++) dts.push(ats[i] - ats[i - 1]);
+  const median = dts.slice().sort((a, b) => a - b)[Math.floor(dts.length / 2)] || 16;
+  const findings = [];
+  const motion = [];
+  for (let i = 1; i < grays.length - 1; i++) {
+    const prev = diffMask(grays[i - 1], grays[i]);
+    const next = diffMask(grays[i + 1], grays[i]);
+    const skip = diffMask(grays[i + 1], grays[i - 1]);
+    motion.push({ at: ats[i], prev: round4(prev.frac), next: round4(next.frac), skip: round4(skip.frac) });
+    if (
+      dts[i - 1] > median * GAP_RATIO ||
+      dts[i] > median * GAP_RATIO
+    )
+      continue;
+    /* Transient: changed against both neighbours, stable across them. */
+    let transient = 0;
+    const tmask = new Uint8Array(prev.mask.length);
+    for (let p = 0; p < tmask.length; p++)
+      if (prev.mask[p] && next.mask[p] && !skip.mask[p]) {
+        tmask[p] = 1;
+        transient++;
+      }
+    const frac = transient / tmask.length;
+    const outlier = (prev.frac + next.frac) / 2 - 2 * skip.frac;
+    if (frac < TRANSIENT_MIN || outlier < OUTLIER_MIN) continue;
+    const found = regions(tmask, w, h, Math.round(0.002 * w * h));
+    if (!found.length) continue;
+    const top = found[0];
+    const wide = top.box.w >= 0.5 * w && top.box.h >= 0.4 * h;
+    findings.push({
+      kind: wide || top.area >= 0.12 * w * h ? 'bloat' : 'flash',
+      frame: i,
+      at: Math.round(ats[i]),
+      box: top.box,
+      areaPct: round4(top.area / (w * h)),
+      outlier: round4(outlier),
+      regions: found.slice(0, 5).map((r) => ({ box: r.box, areaPct: round4(r.area / (w * h)) }))
+    });
+  }
+  return { findings, motion };
+}
+
+/* ---------- the hydration sweep's shared half (ticket 108) ---------- */
+
+/** Every screen the app has, as one cold mount each - the full inventory
+ *  the gesture sweep never aimed at. `at` is a route (with `{yesterday}`
+ *  and `{<needs>}` tokens the transports fill in: the epoch day of
+ *  yesterday, and the href of a record the profile's journal actually
+ *  holds); `act`, where present, is a control whose sheet is the surface
+ *  under test, opened after the screen has settled; `when` names the one
+ *  profile a scene can exist in (`persona` needs data the empty journal
+ *  does not have, `empty` the other way round); `setup` names a
+ *  transport-side prologue no plain route visit can produce. */
+const HYDRATION_SCENES = [
+  /* Home tab */
+  { name: 'home', at: '/', is: 'the whole of Home landing cold' },
+  { name: 'home-celebrate', at: '/?celebrate=1', when: 'persona', is: 'the celebration card variant of Home' },
+  { name: 'coming-back', at: '/coming-back', is: 'the return surface, reached by hand' },
+  { name: 'doubt', at: '/doubt', is: 'the counterevidence check' },
+  { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
+  /* Calendar tab */
+  { name: 'calendar', at: '/calendar', is: 'the heat map month' },
+  { name: 'day-today', at: '/day/today', is: "today's day view" },
+  { name: 'day-yesterday', at: '/day/{yesterday}', when: 'persona', is: "a full day view from the journal's past" },
+  /* The editor's scale, text and tag surfaces are one EntryEditor
+     component; a blank editor, a mood-seeded one and an existing entry
+     opened for editing are the three mount paths it has. */
+  { name: 'entry-new', at: '/entry/new/today', is: 'a fresh entry editor' },
+  { name: 'entry-new-seeded', at: '/entry/new/today?seedMood=3', is: 'the editor with a mood already seeded' },
+  { name: 'entry-edit', at: '/entry/{entry}', needs: 'entry', when: 'persona', is: 'an existing entry opened for editing' },
+  { name: 'search', at: '/search', is: 'search and its filter sheet' },
+  { name: 'search-starred', at: '/search/starred', is: 'the starred shelf' },
+  { name: 'search-questions', at: '/search/questions', is: 'the saved-question shelf' },
+  { name: 'search-question', at: '/search/questions/{question}', needs: 'question', when: 'persona', is: 'one saved question answered' },
+  /* Stats tab */
+  { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
+  { name: 'timeline', at: '/timeline', is: 'the milestone timeline' },
+  { name: 'body-map', at: '/body-map', is: 'the body map over its range' },
+  { name: 'tally', at: '/tally', is: 'the tally chart' },
+  { name: 'compare', at: '/compare', is: 'then versus now' },
+  { name: 'wrapped-week', at: '/wrapped/week', when: 'persona', is: 'a wrapped week' },
+  { name: 'wrapped-month', at: '/wrapped/month', when: 'persona', is: 'a wrapped month' },
+  { name: 'wrapped-year', at: '/wrapped/year', when: 'persona', is: 'a wrapped year' },
+  { name: 'wrapped-range', at: '/wrapped/range', is: 'the wrapped range picker' },
+  { name: 'wrapped-share', at: '/wrapped/month/share', needs: 'entry', when: 'persona', is: 'the share card builder' },
+  /* More hub and the Body group */
+  { name: 'more', at: '/more', is: 'the hub itself' },
+  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
+  { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
+  { name: 'measurements', at: '/body/measurements', is: 'measurements over time' },
+  { name: 'sizes', at: '/body/sizes', is: 'sizes and how they fit' },
+  /* Health group */
+  { name: 'care', at: '/care', is: 'the care dashboard' },
+  { name: 'appointment-prep', at: '/health/appointment-prep', is: 'appointment prep questions' },
+  { name: 'appointments', at: '/health/appointments', is: 'the appointment list' },
+  { name: 'in-the-room', at: '/health/appointments/in-the-room', is: 'the in-the-room card' },
+  { name: 'clinician-summary', at: '/health/clinician-summary', is: 'the printable summary' },
+  { name: 'cycle-events', at: '/health/cycle-events', is: 'cycle events' },
+  { name: 'dilation', at: '/health/dilation', is: 'the dilation taper' },
+  { name: 'side-effects', at: '/health/side-effects', is: 'side effects logged plainly' },
+  { name: 'surgery', at: '/health/surgery', is: 'the surgery journal' },
+  { name: 'hormone-curve', at: '/settings/hormone-curve', is: 'the hormone curve' },
+  { name: 'doses', at: '/doses', is: 'the dose log' },
+  { name: 'labs', at: '/settings/labs', is: 'lab results' },
+  { name: 'regimen', at: '/settings/regimen', is: 'the regimen editor' },
+  { name: 'stock', at: '/settings/stock', is: 'stock and the run-out day' },
+  { name: 'exposure', at: '/settings/exposure', is: 'cumulative exposure' },
+  /* Transition group */
+  { name: 'milestones', at: '/transition/milestones', is: 'the milestone list' },
+  { name: 'roadmap', at: '/transition/roadmap', is: 'the roadmap checklist' },
+  { name: 'letters', at: '/transition/letters', is: 'letters written to be read later' },
+  { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
+  { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
+  { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
+  { name: 'presentations', at: '/transition/presentations', is: 'the presentation catalogue' },
+  { name: 'eras', at: '/transition/eras', is: 'named spans of a life' },
+  { name: 'words', at: '/transition/words', is: "the notes' own words" },
+  /* Practice group */
+  { name: 'entry-templates', at: '/practice/entry-templates', is: 'editable entry templates' },
+  { name: 'personal-effects', at: '/practice/personal-effects', is: 'the changes-first-noticed timeline' },
+  { name: 'resources', at: '/practice/resources', is: 'organisations and helplines' },
+  { name: 'voice', at: '/practice/voice', is: 'the voice benchmark' },
+  { name: 'voice-record', at: '/practice/voice?tab=record', is: 'the benchmark record tab' },
+  { name: 'voice-metrics', at: '/practice/voice/metrics', is: 'the metric reference' },
+  { name: 'voice-memos', at: '/media/voice/memos', is: 'the memo browser' },
+  { name: 'wear', at: '/practice/wear', is: 'wear time tracked plainly' },
+  /* Media */
+  { name: 'photos', at: '/media/photos', is: 'progress photos, then and now' },
+  { name: 'photos-export', at: '/media/photos/export', is: 'the photo journey export' },
+  { name: 'documents', at: '/media/documents', is: 'documents held by the journal' },
+  { name: 'document-detail', at: '/media/documents/{document}', needs: 'document', when: 'persona', is: 'one document' },
+  /* Settings */
+  { name: 'settings', at: '/settings', is: 'preferences, three sections of them' },
+  { name: 'tags', at: '/settings/tags', is: 'the tag manager' },
+  { name: 'reminders', at: '/settings/reminders', is: 'the reminder list' },
+  { name: 'reminders-new', at: '/settings/reminders/new', is: 'a reminder being written' },
+  { name: 'reminder-detail', at: '/settings/reminders/{reminder}', needs: 'reminder', when: 'persona', is: 'one reminder, open for editing' },
+  { name: 'access-mode', at: '/settings/access-mode', is: 'the access-mode chooser' },
+  { name: 'passphrase', at: '/settings/passphrase', is: 'the passphrase change screen' },
+  { name: 'recovery-key', at: '/settings/recovery-key', is: 'the recovery key mint and revoke' },
+  { name: 'security', at: '/settings/security', is: 'the security module' },
+  { name: 'affirmations', at: '/settings/affirmations', is: 'affirmations' },
+  { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
+  { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
+  { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
+  { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
+  { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
+  { name: 'live-tiles', at: '/settings/live-tiles', is: 'the live-tiles half of the registry' },
+  { name: 'notifications', at: '/settings/notifications', is: 'the notifications half of the registry' },
+  { name: 'permissions', at: '/settings/permissions', is: 'what the app asks the device for' },
+  { name: 'trash', at: '/settings/trash', is: 'the 30-day window' },
+  /* Sheets over settled screens: the sheet's own hydration is the question,
+     so these wait the screen out first and then record the opening. The
+     palette chooser is not among them because it is not a sheet any more:
+     the eight swatches render inline on the settings screen itself, so
+     that scene's cold mount is the whole of the surface, and picking one
+     re-themes in place with no layout consequence, which both detectors
+     are right to ignore. The quick-log dims sheet is a query param, so it
+     opens over Home's own cold mount - the after-save state a real quick
+     log lands in. */
+  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
+  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-add]', is: 'the quick add fan opening' },
+  { name: 'doses-sheet', at: '/doses', act: '[data-add]', is: 'the dose editor sheet' },
+  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet' },
+  /* The two prologue scenes. Onboarding only exists before the profile
+     finishes it, so the empty profile records its cold mount between the
+     jump and the walk. The lock gate is a boot state no route produces:
+     the persona epilogue wraps a PIN around the journal and cold-loads
+     into the gate, then unwraps it again so the phone is left usable. */
+  { name: 'onboarding-mount', at: '/onboarding', when: 'empty', setup: 'first-run', is: 'the first run opening over an empty journal' },
+  { name: 'lock-gate', at: '/', when: 'persona', setup: 'pin', is: 'the PIN gate drawn on a cold load' }
+];
+
+/** Where each `needs` token is scraped from: the list screen that links
+ *  the detail records, and the href prefix that identifies them. One
+ *  place, so the desktop and device crawlers resolve the same ids. */
+export const HYDRATION_NEEDS = {
+  entry: { list: '/day/today', prefix: '/entry/' },
+  letter: { list: '/transition/letters', prefix: '/transition/letters/' },
+  tryout: { list: '/transition/tryouts', prefix: '/transition/tryouts/' },
+  question: { list: '/search/questions', prefix: '/search/questions/' },
+  reminder: { list: '/settings/reminders', prefix: '/settings/reminders/' },
+  document: { list: '/media/documents', prefix: '/media/documents/' }
+};
+
+/** The hydration scenes a run covers: the table above, with the proof
+ *  scene prepended when the run is out to show the sweep can fail,
+ *  narrowed to `only`. */
+export function hydrationScreensFor({ prove = false, only = [] } = {}) {
+  const scenes = prove
+    ? [{ name: PROOF.scene, at: '/', is: 'three marks built to be wrong, so the arithmetic can be seen to catch them' }, ...HYDRATION_SCENES]
+    : HYDRATION_SCENES;
+  return only.length ? scenes.filter((s) => only.includes(s.name)) : scenes;
+}
+
+/** The first href into a detail route on the page the transport has
+ *  already settled: exactly one segment beyond the prefix, and not the
+ *  "new" editor, so a list's own add-controls cannot pose as a record. */
+export const scrapeHrefExpression = (prefix) => `(async () => {
+  for (const a of document.querySelectorAll('a[href^=${JSON.stringify(prefix)}]')) {
+    const href = a.getAttribute('href');
+    if (href.split('/').length !== ${JSON.stringify(prefix)}.split('/').length + 1) continue;
+    if (href.split('/').pop() === 'new') continue;
+    return href;
+  }
+  return null;
+})()`;
+
+/** The demo bar's persona reset, as an expression so the desktop crawler
+ *  and the device crawler drive the same control. Seeding 150 days is a
+ *  second or more of writes; the expression waits for the Home the reset
+ *  navigates to. */
+export const RESET_PERSONA_EXPRESSION = `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const btn = [...document.querySelectorAll('.demo-bar button')].find((b) =>
+    (b.textContent ?? '').trim() === 'Reset demo state'
+  );
+  if (!btn) throw new Error('no Reset demo state button on the demo bar');
+  btn.click();
+  for (let i = 0; i < 120 && !document.querySelector('[data-home-hello]'); i++) await sleep(500);
+  return !!document.querySelector('[data-home-hello]');
+})()`;
+
+/** The empty profile, split where the onboarding-mount scene needs the
+ *  seam: the jump itself (after which the first-run gate owns the page),
+ *  and the walk that finishes the flow and leaves an onboarded journal
+ *  with nothing in it. */
+export const JUMP_FIRST_RUN_EXPRESSION = `(() => {
+  const jump = document.querySelector('#demo-jump');
+  if (!jump) throw new Error('no demo jump control');
+  jump.value = 'first-run';
+  jump.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+})()`;
+
+export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 60 && !document.querySelector('[data-next]'); i++) await sleep(250);
+  if (!document.querySelector('[data-next]')) throw new Error('the first run did not open');
+  for (const step of ${JSON.stringify(SETUP_STEPS)}) {
+    await sleep(500);
+    if (step === 'name') {
+      const name = document.querySelector('#ob-name');
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(name), 'value').set.call(name, 'Ola');
+      name.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (step === 'done') break;
+    document.querySelector('[data-next]').click();
+    await sleep(350);
+  }
+  const finish = document.querySelector('[data-finish]');
+  if (!finish) throw new Error('no finish control on the done step');
+  finish.click();
+  for (let i = 0; i < 60 && !document.querySelector('[data-home-hello]'); i++) await sleep(500);
+  return !!document.querySelector('[data-home-hello]');
+})()`;
+
+/** The demo bar's theme buttons, so a cold load reads the run's theme out
+ *  of the preferences the boot stamps rather than out of a stylesheet
+ *  patched after the fact. */
+export const DEMO_THEME_EXPRESSION = (theme) => `(() => {
+  const btn = [...document.querySelectorAll('.demo-bar button')].find((b) =>
+    (b.textContent ?? '').trim() === ${JSON.stringify(theme === 'dark' ? 'Dark' : 'Light')}
+  );
+  if (!btn) throw new Error('no ${theme} button on the demo bar');
+  btn.click();
+  return true;
+})()`;
+
+/** The lock-gate epilogue: walk the access-mode screen into a PIN, so the
+ *  next cold load has a gate to draw. The pad completes and submits itself
+ *  at four digits (PinPad.svelte), so the digits are clicked and the
+ *  navigation away is waited for; a mismatch surfaces as the final wait
+ *  failing rather than as a silent skip. */
+export const LOCK_SETUP_EXPRESSION = (pin) => `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const q = (s) => document.querySelector(s);
+  const wait = async (s, ms = 10000) => {
+    for (let i = 0; i < ms / 200 && !q(s); i++) await sleep(200);
+    if (!q(s)) throw new Error('never appeared: ' + s);
+  };
+  const row = q('[data-list-row="pin"]');
+  if (!row) throw new Error('no pin row on the access-mode screen');
+  row.click();
+  await wait('[data-access-continue]');
+  q('[data-access-continue]').click();
+  await wait('[data-pin-pad]');
+  for (let entry = 0; entry < 2; entry++) {
+    for (const digit of ${JSON.stringify(pin)}) {
+      const key = q('[data-pin-pad] [data-key="' + digit + '"]');
+      if (!key) throw new Error('no ' + digit + ' key on the pad');
+      key.click();
+      await sleep(140);
+    }
+    await sleep(800);
+  }
+  await wait('a[href="/settings/security"], [data-screen-back]');
+  return true;
+})()`;
+
+/** And out again, so the epilogue leaves the phone or profile usable. */
+export const UNLOCK_PIN_EXPRESSION = (pin) => `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (const digit of ${JSON.stringify(pin)}) {
+    const key = document.querySelector('[data-pin-pad] [data-key="' + digit + '"]');
+    if (!key) throw new Error('no pad to unlock with');
+    key.click();
+    await sleep(140);
+  }
+  for (let i = 0; i < 40 && !document.querySelector('[data-home-hello]'); i++) await sleep(250);
+  return !!document.querySelector('[data-home-hello]');
+})()`;
+
+/* ---------- the hydration sweep's node-side helpers ----------
+ *
+ * The analysis over a recorded scene is transport-independent - frames
+ * are frames whether Playwright or the devtools socket gathered them -
+ * so it lives here once rather than as a near-verbatim twin in each
+ * crawler. What each transport keeps for itself is the driving: how a
+ * navigation happens, how a sampler is started, what settling means. */
+
+/** How many evidence triples a single run will write before the disk
+ *  comes before the report. */
+export const EVIDENCE_CAP = 60;
+
+/** The style half over a hydration window: the DOM sampler's frames,
+ *  read with the ticket's 24px floor rather than the gesture floor. A
+ *  stray view transition (none of these scenes gesture, but a route may)
+ *  is sliced off the front exactly as the gesture sweep slices its runs,
+ *  so what is read is the tree that was painted. */
+export function findHydrationYanks(frames) {
+  const active = frames.map((f, i) => (f.active ? i : -1)).filter((i) => i >= 0);
+  const sliced = active.length ? frames.slice(active.at(-1) + 1) : frames;
+  if (sliced.length < 2) return { yanks: [], frames: sliced.length, sampled: frames.length };
+  const all = findYanks(sliced, 'rows', sliced.length - 1, HYDRATION_PX);
+  return {
+    yanks: all.filter((y) => !EXEMPT.test(y.mark)),
+    frames: sliced.length,
+    sampled: frames.length
+  };
+}
+
+/** The render half over the same scene's cast, with the timestamped
+ *  evidence triples its findings name. The timestamp in the filename is
+ *  the cast's own clock, so a PNG and the finding it belongs to cannot
+ *  come apart - and both transports name them identically. */
+export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP) {
+  if (cast.length < 4) throw new Error(`only ${cast.length} screencast frames`);
+  const decoded = cast.map((f) => {
+    const png = decodePng(Buffer.from(f.data, 'base64'));
+    return { png, gray: grayFrame(png), at: f.at };
+  });
+  const { width, height } = decoded[0].png;
+  if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
+    throw new Error('screencast frames arrived in more than one size');
+  const { findings } = findPixelYanks(
+    decoded.map((d) => d.gray),
+    width,
+    height,
+    decoded.map((d) => d.at)
+  );
+  let written = 0;
+  for (const finding of findings) {
+    if (written >= cap) break;
+    const i = finding.frame;
+    for (const [suffix, index] of [
+      ['a', i - 1],
+      ['b', i],
+      ['c', i + 1]
+    ])
+      if (cast[index])
+        await writeFile(`${outDir}/${name}-${label}-${Math.round(finding.at)}ms${suffix}.png`, Buffer.from(cast[index].data, 'base64'));
+    written++;
+  }
+  return { findings, cast: cast.length };
+}
+
+/** The tokens a scene's route may carry, filled in from the calendar and
+ *  the profile's journal. An unresolved token stays visible as itself so
+ *  a skip reads as a skip in the report, not as a wrong route. */
+export const fillTokens = (at, tokens) =>
+  at.replace(/\{(\w+)\}/g, (_, key) => tokens[key] ?? `{${key}:unresolved}`);
+
+/** The day the journal's "yesterday" is, in the app's own units. */
+export const yesterdayEpochDay = () => Math.floor(Date.now() / 86400000) - 1;
+
+/** One scene's console line, shaped the same on both transports so a
+ *  desktop log and a device log can be read side by side. */
+export function describeHydrationRun(name, dom, render) {
+  return `${name}: ${dom.frames} style / ${render.cast} render frames, ${dom.yanks.length} style / ${render.findings.length} render yank(s)` +
+    (dom.yanks.length || render.findings.length
+      ? `\n  ${[
+          ...dom.yanks.map((y) => `style ${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`),
+          ...render.findings.map(
+            (f) => `render ${f.kind} @${f.at}ms box ${f.box.w}x${f.box.h} area ${(f.areaPct * 100).toFixed(1)}%`
+          )
+        ].join('\n  ')}`
+      : '');
+}
+
+/** A recorded scene, analysed and reported: both detectors, the frames
+ *  written whenever there is a style finding to read them against, one
+ *  report entry, one console line. `result` is whatever the transport's
+ *  recorder gathered - `{ cast, frames }` on both ends, by construction
+ *  rather than by type. */
+export async function pushHydrationRun(report, outDir, { name, is, profile, theme, result, href = null, dump = false }) {
+  const dom = findHydrationYanks(result.frames);
+  const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`);
+  if (dump || dom.yanks.length)
+    await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
+  const entry = {
+    scene: name,
+    profile,
+    theme,
+    is,
+    instrument: 'rows',
+    styleFrames: dom.frames,
+    sampled: dom.sampled,
+    cast: render.cast,
+    styleYanks: dom.yanks,
+    pixelFindings: render.findings
+  };
+  if (href) entry.href = href;
+  report.push(entry);
+  console.log(`[${profile}-${theme}] ${describeHydrationRun(name, dom, render)}`);
+  return entry;
+}
+
+/** What the proof scene owes but did not deliver, read off whichever
+ *  yank field the calling report shape carries (`styleYanks` for the
+ *  device and hydration reports, `yanks` for the gesture desktop). */
+export function missingProofYanks(report) {
+  const scene = report.find((r) => r.scene === PROOF.scene);
+  const yanks = scene?.styleYanks ?? scene?.yanks ?? [];
+  const got = (mark, kind) => yanks.some((y) => y.mark.startsWith(mark) && y.kind === kind);
+  return [
+    got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
+    got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
+    got(PROOF.bloat, 'bloat') ? null : `a one-frame bloat on ${PROOF.bloat}`
+  ].filter(Boolean);
 }
