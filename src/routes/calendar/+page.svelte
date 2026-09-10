@@ -71,7 +71,7 @@
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { entryDayGroups, entryMarks } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
-  import { selectMetric } from '$lib/data/prefs/store.svelte';
+  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
   import {
     EASE_OUT,
     EASE_OUT_CSS,
@@ -99,10 +99,41 @@
   /* Whether this journal has anything in it at all, which decides whether
      the month and the week draw (phase 8 UX ticket 01, and Home's own rule):
      a strip of empty bars over an empty grid is day one's placeholder, and
-     the one thing that screen owes is somewhere to start. Null until the
-     count lands rather than treating not-yet-known as none. */
+     the one thing that screen owes is somewhere to start.
+
+     Ticket 109: determine presence from cached journal state on initial mount
+     so hasEntries does not flip from false/null to true after mount, snapping
+     month controls and heatmap into layout. */
+  const HAS_ENTRIES_KEY = 'engender-has-entries';
+
+  function readCachedHasEntries(): boolean | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(HAS_ENTRIES_KEY);
+      if (raw === '1') return true;
+      if (raw === '0') return false;
+    } catch {}
+    return null;
+  }
+
   let entryCountQuery = liveQuery((j) => j.entries.countAll());
-  let hasEntries = $derived(entryCountQuery.value == null ? null : entryCountQuery.value > 0);
+  let cachedHasEntries = $state<boolean | null>(readCachedHasEntries());
+
+  $effect(() => {
+    if (entryCountQuery.value != null) {
+      const has = entryCountQuery.value > 0;
+      cachedHasEntries = has;
+      try {
+        localStorage.setItem(HAS_ENTRIES_KEY, has ? '1' : '0');
+      } catch {}
+    }
+  });
+
+  let hasEntries = $derived(
+    entryCountQuery.value != null
+      ? entryCountQuery.value > 0
+      : (cachedHasEntries ?? (prefs.onboarded ? true : false))
+  );
 
   /* Five days, not five entries: every entry of each shown day draws, so a
      day with more than one holds its own timeline rather than a bare count
@@ -494,7 +525,7 @@
        above: it always ends today and it never pages. It shades on the same
        ramp and the same choice, so the control for it is the one on the
        month's line. -->
-  {#if hasEntries}
+  {#if hasEntries && !recent.loading}
     <SectionHeading text={m.recent_days()} />
     <WeekStrip metric={vocabulary.activeMetric} role={roleAt(activeFlag.roles, HOME_AREA_ROLE.week)} />
   {/if}
