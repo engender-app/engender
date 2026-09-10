@@ -54,7 +54,11 @@ public class KeystorePlugin extends Plugin {
     public void status(PluginCall call) {
         try {
             JSObject result = new JSObject();
-            result.put("hasKey", keystore.hasKey());
+            JournalKeystore.Variant active = keystore.activeVariant();
+            result.put("hasKey", active != null);
+            if (active != null) {
+                result.put("authRequired", active.authRequired);
+            }
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -69,22 +73,48 @@ public class KeystorePlugin extends Plugin {
      */
     @PluginMethod
     public void create(PluginCall call) {
-        if (!keystore.deviceIsSecure()) {
-            /* Asked rather than caught: the platform's own refusal to bind a
-               key to a lock screen that is not there arrives as an
-               IllegalStateException, which says nothing a person can act on. */
-            call.resolve(outcome(BiometricOutcomes.NO_DEVICE_CREDENTIAL, null));
-            return;
-        }
+        boolean authRequired = Boolean.TRUE.equals(call.getBoolean("authRequired", true));
+        if (!checkDeviceSecure(call, authRequired)) return;
         try {
-            call.resolve(outcome("created", keystore.create()));
+            JournalKeystore.Variant variant =
+                authRequired ? JournalKeystore.Variant.GATED : JournalKeystore.Variant.UNLOCKED;
+            call.resolve(outcome("created", keystore.create(variant)));
         } catch (Exception e) {
             call.reject(message(e), e);
         }
     }
 
     /**
-     * Prompts, then unwraps behind it.
+     * Wraps an existing data key under the chosen Keystore variant without
+     * re-encrypting the database. Erases the opposite variant once the new
+     * wrap succeeds.
+     */
+    @PluginMethod
+    public void wrap(PluginCall call) {
+        String hexKey = call.getString("hexKey");
+        if (hexKey == null || hexKey.length() != 64) {
+            call.reject("hexKey must be a 64-character hex string");
+            return;
+        }
+        boolean authRequired = Boolean.TRUE.equals(call.getBoolean("authRequired", true));
+        if (!checkDeviceSecure(call, authRequired)) return;
+        try {
+            byte[] dataKey = fromHex(hexKey);
+            JournalKeystore.Variant variant =
+                authRequired ? JournalKeystore.Variant.GATED : JournalKeystore.Variant.UNLOCKED;
+            keystore.wrap(variant, dataKey);
+            JournalKeystore.Variant opposite =
+                authRequired ? JournalKeystore.Variant.UNLOCKED : JournalKeystore.Variant.GATED;
+            keystore.erase(opposite);
+            call.resolve(outcome("wrapped", null));
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    /**
+     * Prompts, then unwraps behind it (for gated keys), or unwraps directly
+     * with no prompt (for unlocked keys).
      *
      * <p>{@code deviceCredential} is the way forward the screen offers after
      * an unavailable or unenrolled sensor: the same unwrap, authorized by the
@@ -92,6 +122,23 @@ public class KeystorePlugin extends Plugin {
      */
     @PluginMethod
     public void unlock(PluginCall call) {
+        try {
+            JournalKeystore.Variant active = keystore.activeVariant();
+            if (active == JournalKeystore.Variant.UNLOCKED) {
+                try {
+                    byte[] dataKey = keystore.unwrapUnlocked();
+                    call.resolve(outcome(BiometricOutcomes.AUTHENTICATED, dataKey));
+                } catch (Exception e) {
+                    Log.e(TAG, "unlocked unwrap failed", e);
+                    call.resolve(outcome(BiometricOutcomes.FAILED, null));
+                }
+                return;
+            }
+        } catch (Exception e) {
+            call.reject(message(e), e);
+            return;
+        }
+
         FragmentActivity activity = activityOrReject(call);
         if (activity == null) return;
 
@@ -257,6 +304,17 @@ public class KeystorePlugin extends Plugin {
         return activity;
     }
 
+    private boolean checkDeviceSecure(PluginCall call, boolean authRequired) {
+        if (authRequired && !keystore.deviceIsSecure()) {
+            /* Asked rather than caught: the platform's own refusal to bind a
+               key to a lock screen that is not there arrives as an
+               IllegalStateException, which says nothing a person can act on. */
+            call.resolve(outcome(BiometricOutcomes.NO_DEVICE_CREDENTIAL, null));
+            return false;
+        }
+        return true;
+    }
+
     /* --- answers ----------------------------------------------------------- */
 
     /** One answer shape for every path: an outcome, and a key only with a
@@ -273,6 +331,14 @@ public class KeystorePlugin extends Plugin {
         StringBuilder out = new StringBuilder(bytes.length * 2);
         for (byte b : bytes) out.append(String.format("%02x", b));
         return out.toString();
+    }
+
+    private static byte[] fromHex(String hex) {
+        byte[] bytes = new byte[hex.length() / 2];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        }
+        return bytes;
     }
 
     /** Prompt copy comes from the catalogue through the bridge, so the dialog

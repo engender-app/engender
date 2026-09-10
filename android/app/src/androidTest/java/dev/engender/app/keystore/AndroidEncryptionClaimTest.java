@@ -151,6 +151,24 @@ public class AndroidEncryptionClaimTest {
         assertTrue("protected content is readable on disk: " + leaks, leaks.isEmpty());
     }
 
+    /** The unlocked wrapped key file contains only RSA ciphertext, never the plaintext data key. */
+    @Test
+    public void unlockedWrappedKeyContainsNoPlaintextDataKey() throws Exception {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        JournalKeystore keystore = new JournalKeystore(app);
+        keystore.erase();
+        try {
+            byte[] dataKey = keystore.create(JournalKeystore.Variant.UNLOCKED);
+            File wrapped = keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED);
+            assertTrue("unlocked wrapped key file was not created", wrapped.exists());
+            byte[] onDisk = Files.readAllBytes(wrapped.toPath());
+            assertEquals("the wrap is not RSA-2048 ciphertext", 256, onDisk.length);
+            assertTrue("the data key is sitting in the unlocked wrapped file", indexOf(onDisk, dataKey) < 0);
+        } finally {
+            keystore.erase();
+        }
+    }
+
     /** Walks everything under the app's data directory, skipping only what is
         named here, and records any file holding protected content. */
     private static void scan(File file, File probeDir, List<String> scanned, List<String> leaks)
