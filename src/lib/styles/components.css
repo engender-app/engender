@@ -2427,6 +2427,17 @@ html[data-a11y-motion='reduce'] .bloom-core {
   box-sizing: border-box;
   border: 3px solid #000;
   transform: translate(-50%, -50%);
+  /* The ring's own copy of .home-field's overflow: hidden clip (Alicja,
+     2026-09-10: "the sun overlaps on web"). A view transition promotes a
+     named element into its own top-layer group, which is no longer a
+     descendant of the field that clips it the rest of the time - so the
+     full disc, up to 350px (flagSun.ts's SUN_OUTER) against the quarter
+     normally visible, painted over whatever screen it was leaving or
+     arriving on. The centre is the field's corner point (.sun's own
+     top:0;right:0), so the quarter closest to the field's content is
+     exactly the box this keeps - the same shape the ancestor clip already
+     produces, carried on the ring itself so it survives being promoted. */
+  clip-path: inset(50% 50% 0 0);
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
     breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;

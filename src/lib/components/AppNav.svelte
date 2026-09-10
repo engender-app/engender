@@ -29,6 +29,7 @@
     travel,
     type Axis,
     type Box,
+    type Host,
     type Insets,
     type Schedule
   } from '$lib/motion/indicator';
@@ -148,10 +149,11 @@
     y: { near: 'center top', far: 'center bottom' }
   } as const;
 
-  type Pill = { box: Box; at: Insets; shown: boolean; near: Schedule; far: Schedule };
+  type Pill = { box: Box; host: Host; at: Insets; shown: boolean; near: Schedule; far: Schedule };
 
   const HIDDEN: Pill = {
     box: { x: 0, y: 0, w: 0, h: 0 },
+    host: { w: 0, h: 0 },
     at: { left: 0, right: 0, top: 0, bottom: 0 },
     shown: false,
     near: LEAD,
@@ -193,8 +195,22 @@
   ): { next: Pill; dir: -1 | 0 | 1; anchor?: string } {
     if (!laidOut(el) || !nav) return { next: prev.shown ? { ...prev, shown: false } : prev, dir: 0 };
     const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
-    if (prev.shown && boxesMatch(prev.box, box)) return { next: prev, dir: 0 };
-    const at = insets(box, { w: nav.clientWidth, h: nav.clientHeight });
+    const host: Host = { w: nav.clientWidth, h: nav.clientHeight };
+    /* Both have to match, not just the tab's own box (Alicja, 2026-09-10:
+       "when i f5 on web, the nav bar gets no selection at all"). A hard
+       reload can measure the rail before its content has settled the nav's
+       own height - one bad clientHeight baked into `at` forever, because a
+       later ResizeObserver tick finds the *tab* sitting exactly where it
+       already was and short-circuits here without ever recomputing insets
+       against the container's now-correct size. The pill still opened
+       (`shown: true`), just pinned by a `bottom` inset left over from a
+       nav a few hundred pixels short of its real height - a sliver rather
+       than a missing pill, which is why it read as no selection at all
+       rather than as an error. */
+    if (prev.shown && boxesMatch(prev.box, box) && prev.host.w === host.w && prev.host.h === host.h) {
+      return { next: prev, dir: 0 };
+    }
+    const at = insets(box, host);
     /* Two placements that are not slides. The first one, because the app does
        not slide the pill into the tab you opened it on - it starts there. And
        a re-measure after a nav changed size, because a rotation is not a
@@ -204,12 +220,12 @@
        Both edges on the leading schedule there, so the shape moves as one
        piece and never opens. */
     if (!prev.shown || !animate) {
-      return { next: { box, at, shown: true, near: LEAD, far: LEAD }, dir: 0 };
+      return { next: { box, host, at, shown: true, near: LEAD, far: LEAD }, dir: 0 };
     }
     const dir = travel(prev.box, box, axis);
     const lead = leadingEdge(dir);
     return {
-      next: { box, at, shown: true, ...schedules(dir) },
+      next: { box, host, at, shown: true, ...schedules(dir) },
       dir,
       anchor: lead ? ANCHOR[axis][lead] : ANCHOR[axis].far
     };

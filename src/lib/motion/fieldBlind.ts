@@ -61,6 +61,28 @@ const RING = '[data-flag-sun] > i';
 /** The blind itself, which is one object on both sides of a navigation. */
 const BLIND_NAME = 'blind';
 
+/** The field, named only to contain what is painted on it (ticket 99 round
+    2's real fix, not the cap below it): `view-transition-group: contain`
+    plus `overflow: clip` on `::view-transition-group-children(field)`
+    (components.css) is Chrome's own answer to a promoted child ignoring
+    its ancestor's overflow: hidden - confirmed against the W3C spec and
+    Chrome's own docs, which name this exact symptom ("becomes unbounded
+    and can freely move across the entire viewport"), shipped stable since
+    Chrome 140. The field's own capture is hidden rather than left to
+    crossfade (components.css again): naming it for containment must not
+    reintroduce the whole-field photograph ticket 25 split this file apart
+    to stop ("the smear"). */
+const FIELD_NAME = 'field';
+
+/** A capture bound generous enough for every real field's height, not a
+    measurement of any one of them - see the comment where it is used.
+    Home's is the tallest measured (239px, ticket 99's own traces); 260
+    leaves a 21px margin rather than the 161px the first attempt at this
+    left, which at this phone's 2.625 device pixel ratio was itself most
+    of the glitch's visible height (Alicja, round four: "now about 50%",
+    a match for 400px's own footprint, not a smaller residual bug). */
+const BLIND_CAPTURE_MAX = 260;
+
 /** How far a thing painted on the field travels as it leaves or arrives, on
     top of the ride it takes with the blind. Under the field's own 16px of
     bottom padding, so an element travelling towards the edge cannot reach
@@ -120,6 +142,23 @@ interface Side {
 export function carryBlind(doc: Document = document, options: CarryOptions = {}): BlindCarry {
   const root = doc.documentElement;
   const before = name(doc, 'a', undefined, options);
+  /* Published here, not only in swap() (Alicja, 2026-09-10, on a phone
+     recording, two rounds: "the field completely glitches out ... for 1-2
+     frames", then "the field teleporting up at the end of the
+     transition"). The browser captures the outgoing side, and the
+     blind-slide animation attaches to it, the instant startViewTransition
+     is called - which is before swap() ever runs, since that only fires
+     once the incoming screen has mounted. Until now that left
+     --blind-from unset for that whole window, so blind-slide's own
+     fallback (var(--blind-from, 0px)) played the outgoing side's "from"
+     keyframe as fully clipped away rather than as its real height - the
+     glitch - until swap() corrected it a moment later, which is the
+     teleport: the animation's start suddenly moving out from under it.
+     --blind-to is set to the same value rather than left unset for the
+     same reason; swap() overwrites both the instant it knows the real
+     pair. */
+  root.style.setProperty('--blind-from', `${before.height}px`);
+  root.style.setProperty('--blind-to', `${before.height}px`);
   let after: Side | null = null;
 
   const carry: BlindCarry = {
@@ -213,14 +252,34 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
      after the scroll is restored, which is why swap() runs last. */
   const scrolled = (doc.querySelector(REGION)?.scrollTop ?? 0) > 1;
   const height = scrolled ? 0 : field.getBoundingClientRect().height;
-  const take = (el: HTMLElement | null, as: string) => {
+  /* Nested under the field's own group (`contain`, set below) rather than
+     becoming an independent root-level group, only where that is what the
+     name is FOR: the blind and the sun's rings are each larger than what
+     is ever visible of them at rest, so their capture needs a clipping
+     ancestor or it escapes it (`FIELD_NAME`'s own comment). A field-part
+     has no such excess - it is exactly its own visible text or icon, named
+     only so it can fade on its own clock apart from its neighbour - and
+     nesting it added a second ancestor between it and the root for no
+     reason this bug ever needed, which is what carried the ghost: Home's
+     wordmark still fading out, visible through the incoming screen,
+     reported straight after this fix on a recording of Home to a new
+     entry (Alicja, 2026-09-10, round five). `nearest` finds whichever
+     named ancestor is closest, so callers that do want it never have to
+     know the field's own name or that it changed hands mid-navigation. */
+  const take = (el: HTMLElement | null, as: string, nest = false) => {
     if (!el) return;
     el.style.viewTransitionName = as;
+    if (nest) el.style.setProperty('view-transition-group', 'nearest');
     named.push(el);
   };
 
-  /* The field itself is not named - only what is painted on it. Its box is
-     the measurement, and the blind is what stands in for its paint.
+  /* The field's own paint is still not named - only what is painted on it,
+     for the same reason as ever: its box is the measurement, and the blind
+     is what stands in for its paint. What IS named now is the field as a
+     bare container, solely so its overflow: hidden survives its children
+     being promoted (see FIELD_NAME's own comment) - `components.css` hides
+     its own crossfade so this never becomes a second whole-field
+     photograph.
 
      A collapsed header's blind is left out, along with a scrolled screen's
      above, and that is what keeps the
@@ -231,15 +290,40 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
      of the navigation (Alicja, round one). A screen with no field has
      nothing to contribute to the blind anyway - the other side's blind is
      the one that moves, and it closes to nothing. */
-  if (height > 0) take(field.querySelector<HTMLElement>(BLIND), BLIND_NAME);
+  if (height > 0) {
+    field.style.viewTransitionName = FIELD_NAME;
+    field.style.setProperty('view-transition-group', 'contain');
+    const blind = field.querySelector<HTMLElement>(BLIND);
+    /* Capped, not clipped to this side's own height (Alicja, 2026-09-10, a
+       third round, on a fresh recording: "it first yanks and takes up the
+       whole screen, then it yanks back to its target state"). The capture
+       is a screenshot of the element alone, ancestor overflow: hidden not
+       included, and the blind is a window tall so the slide has real pixel
+       data to reveal as it grows - which a first attempt at this fix broke
+       by clipping each side to its own rest height, starving the reveal on
+       whichever side turns out to be the shorter of the two. Which side
+       that is is not yet known here: `before` is measured and captured
+       long before `after` ever is, so there is no max(before, after) to
+       clip to at this point, only a bound generous enough for every real
+       field in the app - the tallest measured (Home's, ticket 99's own
+       traces) is 239px, and reduced-height clamps below 360px scale it
+       down further, never up. Nowhere near "the whole screen" is the only
+       property this needs. */
+    if (blind) blind.style.clipPath = `inset(0 0 calc(100vh - ${BLIND_CAPTURE_MAX}px) 0 round 0 0 var(--r-block) var(--r-block))`;
+    take(blind, BLIND_NAME, true);
+  }
   field.querySelectorAll<HTMLElement>(PART).forEach((el, i) => take(el, `fp-${side}-${i}`));
   if (!options.holdSun) {
-    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`));
+    field.querySelectorAll<HTMLElement>(RING).forEach((el, i) => take(el, `sun-${side}-${i}`, true));
   }
 
   return { height, named };
 }
 
 function release(side: Side) {
-  for (const el of side.named) el.style.viewTransitionName = '';
+  for (const el of side.named) {
+    el.style.viewTransitionName = '';
+    el.style.removeProperty('view-transition-group');
+    if (el.style.clipPath) el.style.clipPath = '';
+  }
 }
