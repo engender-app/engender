@@ -52,6 +52,11 @@
   import { carryBlind } from '$lib/motion/fieldBlind';
   import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
   import { markScreenArrival } from '$lib/motion/reveal';
+
+  /* Mark screen arrival at layout script execution time so initial cold-mount
+     components rendering during boot treat their mount as part of screen
+     arrival rather than as a panel change on a settled screen (ticket 111). */
+  markScreenArrival();
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { rememberScroll, restoreScroll } from '$lib/navigation/scroll-region';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
