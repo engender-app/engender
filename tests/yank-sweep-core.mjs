@@ -104,6 +104,35 @@ const SCENES = [
   { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
+
+  /* Transition screens (ticket 108): buttons, switchers and modals */
+  { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
+  { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
+  { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
+  { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
+  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
+  { name: 'letters-read', at: '/transition/letters', act: '[data-letter]', when: 'persona', is: 'a letter opened to read' },
+  { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
+  { name: 'presentations-add', at: '/transition/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
+  { name: 'eras-add', at: '/transition/eras', act: '[data-add]', is: 'the add era sheet opening' },
+
+  /* Settings screens (ticket 108): swatches, switchers, switches and modals */
+  { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },
+  { name: 'settings-mood-preset', at: '/settings', act: '[data-mood-preset-pick="teal"]', is: 'picking a mood preset swatch' },
+  { name: 'settings-theme-switcher', at: '/settings', act: '.pref-row [data-segment="dark"]', is: 'switching theme segmented control' },
+  { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', is: 'toggling a settings switch' },
+  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', is: 'switching measurement unit segmented control' },
+  { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', is: 'the gender scales checklist sheet opening' },
+  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', is: 'the calendar colour metric sheet opening' },
+  { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', is: 'the disguise preview sheet opening' },
+  { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', is: 'the about sheet opening' },
+  { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
+  { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
+  { name: 'regimen-add', at: '/settings/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
+  { name: 'regimen-edit', at: '/settings/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
+  { name: 'stock-add', at: '/settings/stock', act: '[data-add]', is: 'opening stock editor sheet' },
+  { name: 'stock-edit', at: '/settings/stock', act: '[data-stock]', when: 'persona', is: 'opening existing stock row for editing' },
   /* Setup's four movements (redesign ticket 33). `firstRun` is what these
      need that no other scene does: the flow is reached through the demo's
      first-run control and then walked, and the settle deliberately leaves
@@ -281,12 +310,23 @@ export function samplerExpression(act, ms, names) {
         ...(cut === undefined ? {} : { edge: Math.round((innerHeight - Number(cut)) * 10) / 10 })
       };
     };
+    const STATE_CLS = /^(is-active|is-selected|is-open|is-checked|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
     const key = (el) => {
-      const cls = el.classList.length ? `.${[...el.classList].join('.')}` : el.tagName.toLowerCase();
+      const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
+      const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
+      const scope =
+        el.getAttribute?.('data-segment') ??
+        el.getAttribute?.('data-goal') ??
+        el.getAttribute?.('data-list-row') ??
+        el.closest?.('[data-segmented]')?.getAttribute('data-segmented') ??
+        el.closest?.('[data-goal]')?.getAttribute('data-goal') ??
+        el.closest?.('[data-track]')?.getAttribute('data-track') ??
+        el.closest?.('[data-list-row]')?.getAttribute('data-list-row') ??
+        '';
       /* The text is what tells one row of a list from the next, trimmed
          so a count ticking up does not make a mark into a new mark. */
       const text = (el.textContent ?? '').trim().slice(0, 24).replace(/\d+/g, '#');
-      return `${cls}|${text}`;
+      return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
     /* The browser's own answer to "is a transition running", for the
        length of this sample only; restored before the promise resolves. */
@@ -910,6 +950,15 @@ export const RESET_PERSONA_EXPRESSION = `(async () => {
   btn.click();
   for (let i = 0; i < 120 && !document.querySelector('[data-home-hello]'); i++) await sleep(500);
   return !!document.querySelector('[data-home-hello]');
+})()`;
+
+export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const btn = document.querySelector('[data-fill-every-feature]');
+  if (!btn) return false;
+  btn.click();
+  for (let i = 0; i < 120 && !location.pathname.includes('/more'); i++) await sleep(500);
+  return true;
 })()`;
 
 /** The empty profile, split where the onboarding-mount scene needs the
