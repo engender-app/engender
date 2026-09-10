@@ -13,7 +13,7 @@
    with nothing to type is confirmed from its own detail screen, and this
    machine never puts anything on a screen with nothing on it. */
 
-export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase' | 'biometric';
+export type AccessSetupMode = 'device-bound' | 'pin' | 'passphrase' | 'biometric' | 'unlocked';
 
 export type SecretMode = 'pin' | 'passphrase';
 

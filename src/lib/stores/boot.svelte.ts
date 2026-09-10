@@ -361,20 +361,26 @@ export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
     This was `submitSkipSetup` until ticket 53. Device-bound is one of the
     module's equal choices now rather than the way past a wall, and the name
     was the last place the old framing survived. */
-async function submitDeviceBoundSetup(): Promise<DeviceBoundSetupResult> {
+async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
-    const result = await openAndroidDataKey(androidKeystore, {
-      title: '',
-      subtitle: '',
-      cancel: '',
-      deviceCredential: false
-    });
+    const authRequired = options?.authRequired ?? true;
+    const result = await openAndroidDataKey(
+      androidKeystore,
+      {
+        title: '',
+        subtitle: '',
+        cancel: '',
+        deviceCredential: false
+      },
+      { authRequired }
+    );
     const outcome = deviceBoundSetupOutcome(result);
     /* The one place a refusal is not dispatched: this is an offer on the
        setup module, and turning it down leaves the module exactly where it
        was with an answer for the screen. */
     if (result.kind !== 'key') return outcome;
-    dispatch({ type: 'android-key-answered', result });
+    const accessMode = authRequired ? 'device-bound' : 'unlocked';
+    dispatch({ type: 'key-obtained', dataKey: result.dataKey, accessMode, unlocked: true });
     return outcome;
   }
 
@@ -400,7 +406,11 @@ export async function submitAccessModeSetup(
   chosen: NonNullable<JournalAccessMode>,
   secret: string
 ): Promise<AccessModeSetupResult> {
-  if (chosen === 'device-bound') return submitDeviceBoundSetup();
+  if (chosen === 'device-bound') return submitDeviceBoundSetup({ authRequired: true });
+  if (chosen === 'unlocked') {
+    if (isAndroid()) return submitDeviceBoundSetup({ authRequired: false });
+    return submitDeviceBoundSetup();
+  }
   try {
     if (chosen === 'pin') await submitPinSetup(secret);
     else if (chosen === 'biometric') await submitBiometricSetup();
@@ -425,11 +435,25 @@ export async function submitAccessModeSetup(
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
-  if (target === 'device-bound') {
-    /* Android's Keystore bridge mints its own data key and cannot be asked
-       to wrap this one, so this direction is web-only and the settings
-       screen does not offer it on a phone. */
-    if (isAndroid()) throw new Error('changing to device-bound mode is not available on Android');
+  if (target === 'device-bound' || target === 'unlocked') {
+    if (isAndroid()) {
+      const authRequired = target === 'device-bound';
+      const hexKey = Array.from(sessionDataKey)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      const wrapped = await androidKeystore.wrap({ hexKey, authRequired });
+      if (wrapped.outcome === 'noDeviceCredential') {
+        throw new Error('device has no lock screen credentials');
+      }
+      await removeKeystoreFile();
+      dispatch({ type: 'access-mode-changed', accessMode: target });
+      recoveryUnlock.used = false;
+      await removeEveryPinBinding().catch((error) => {
+        console.warn('could not remove the PIN binding key after moving to ' + target + ' mode', error);
+      });
+      return;
+    }
+
     await addDeviceBoundJournal(sessionDataKey);
     /* The removal is awaited before the change is reported, and a failure is
        allowed to throw. Reporting first would have said "changed" while the
@@ -465,7 +489,7 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
   }
   if (isAndroid()) {
     await androidKeystore.erase().catch((error) => {
-      console.warn('could not erase the Android device-bound key after changing access mode', error);
+      console.warn('could not erase the Android keystore keys after changing access mode', error);
     });
     return;
   }

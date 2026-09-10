@@ -15,6 +15,7 @@
     if (mode === 'passphrase') return messages.am_mode_passphrase();
     if (mode === 'pin') return messages.am_mode_pin({ digits: String(PIN_DIGITS) });
     if (mode === 'biometric') return messages.am_mode_biometric();
+    if (mode === 'unlocked') return messages.am_mode_unlocked();
     return onAndroid() ? messages.am_mode_device_android() : messages.am_mode_device_web();
   }
 
@@ -152,16 +153,22 @@
     biometricOffered = !isAndroid() && (await prfAvailable());
   });
 
-  /* Android's Keystore bridge mints its own data key and cannot be asked to
-     wrap one that already exists, so moving an open journal to device-bound
-     mode there would mean re-encrypting the whole thing. Out of scope, and
-     named rather than silently missing: the row is absent on a change, and
-     ticket 53's notes carry it as the follow-up. */
+  /* On Android, the native Keystore bridge wraps an existing data key for
+     both 'device-bound' (gated by lock screen) and 'unlocked' (hardware key,
+     no prompt), so both can be selected on setup and on change without
+     re-encrypting the journal (ticket 101). On the web, 'device-bound' is
+     the ungated mode. */
+  let candidateModes: Mode[] = $derived(
+    android
+      ? ['device-bound', 'unlocked', 'pin', 'passphrase']
+      : ['device-bound', 'biometric', 'pin', 'passphrase']
+  );
+
   let modes = $derived(
-    (['device-bound', 'biometric', 'pin', 'passphrase'] as Mode[]).filter((mode) => {
+    candidateModes.filter((mode) => {
       if (mode === current) return false;
       if (mode === 'biometric' && !biometricOffered) return false;
-      return !(mode === 'device-bound' && purpose !== 'setup' && android);
+      return true;
     })
   );
 
@@ -171,6 +178,7 @@
     if (mode === 'passphrase') return m.am_mode_passphrase_sub();
     if (mode === 'pin') return m.am_mode_pin_sub();
     if (mode === 'biometric') return m.am_mode_biometric_sub();
+    if (mode === 'unlocked') return m.am_mode_unlocked_sub();
     return android ? m.am_mode_device_sub_android() : m.am_mode_device_sub_web();
   }
 
@@ -186,6 +194,7 @@
        platform's own check, and only one of them ever is on a given
        platform: device-bound on Android, biometric on the web. */
     if (mode === 'biometric') return 'fingerprint';
+    if (mode === 'unlocked') return 'key';
     return android ? 'fingerprint' : 'key';
   }
 
@@ -199,6 +208,7 @@
        the first draft of this copy did not say so. */
     if (mode === 'pin') return android ? m.am_pin_detail_android() : m.am_pin_detail_web();
     if (mode === 'biometric') return m.am_biometric_detail();
+    if (mode === 'unlocked') return m.am_unlocked_detail();
     return android ? m.am_device_detail_android() : m.am_device_detail_web();
   }
 
@@ -367,6 +377,13 @@
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('biometric', '')}>
           <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
+        </button>
+      </div>
+      <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
+    {:else if screen.mode === 'unlocked'}
+      <div class="gate-actions">
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('unlocked', '')}>
+          <span>{busy ? m.pp_encrypting() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
