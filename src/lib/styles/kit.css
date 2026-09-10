@@ -1867,22 +1867,6 @@ a.kit-entry:active {
   margin-top: var(--space-3);
 }
 
-/* Nothing logged in this range. It sits in the space the marks would have
-   taken rather than as a line where a chart's top edge would be, so a card
-   with no data is the same height as a card with some and a screen of them
-   does not concertina as the range changes. */
-.kit-chart-empty {
-  display: grid;
-  place-items: center;
-  min-height: 88px;
-  margin: 0;
-  padding: var(--space-4) var(--space-2);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  text-align: center;
-  text-wrap: balance;
-}
-
 /* Anything that is not a surface, sitting above one: a control, a caption, a
    note, a chip row. They all used to meet the surface below them at a
    hairline, because the adjacency rule under this one only knows about two
