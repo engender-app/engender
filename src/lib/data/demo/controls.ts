@@ -23,6 +23,7 @@ export async function resetDemo(): Promise<void> {
   // disguise toggle a reviewer flipped would survive "Reset demo state",
   // which is not what reset means.
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
+  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
   await clearJournal(journal);
   await seedPersonaJournal(journal);
 }
@@ -33,6 +34,7 @@ export async function resetDemo(): Promise<void> {
     state for a reviewer who wants to see that instead. */
 export async function resetDemoFull(): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
+  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
   await clearJournal(journal);
   await seedPersonaJournal(journal);
   await seedFullFixture(journal);
@@ -45,6 +47,7 @@ export async function resetDemoFull(): Promise<void> {
     is empty in it. returnGap.ts says what it adds and why. */
 export async function resetDemoComingBack(): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
+  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
   await clearJournal(journal);
   await seedReturnGap(journal);
 }
@@ -57,5 +60,6 @@ export async function markFirstRun(): Promise<void> {
   prefs.name = PREFERENCE_DEFAULTS.name;
   prefs.lastBackupAt = PREFERENCE_DEFAULTS.lastBackupAt;
   prefs.activeScales = [...PREFERENCE_DEFAULTS.activeScales];
+  try { localStorage.setItem('engender-has-entries', '0'); } catch {}
   await clearJournal(journal);
 }

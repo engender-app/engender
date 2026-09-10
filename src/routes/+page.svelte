@@ -235,6 +235,14 @@
   let journalBoundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let entryCount = $derived(entryCountQuery.value);
 
+  $effect(() => {
+    if (entryCountQuery.value != null && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('engender-has-entries', entryCountQuery.value > 0 ? '1' : '0');
+      } catch {}
+    }
+  });
+
   /* The agenda (ticket 04, ADR-0074): one live read over the two fetches
      `readAgenda` makes, absent rather than empty, and absent for every
      input while disguise is on - which the read checks before it asks the

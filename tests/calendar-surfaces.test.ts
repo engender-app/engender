@@ -522,4 +522,12 @@ describe('loading states, since all six read entry data', () => {
     // honest loading state is the grid itself plus aria-busy.
     expect(heatMap).toContain('aria-busy={loading}');
   });
+
+  it('the calendar avoids hydration layout shifts on cold mount (ticket 109)', () => {
+    const calendar = read(SCREENS.calendar);
+    // Cached entry presence prevents month controls and heatmap popping in after mount
+    expect(calendar).toContain('engender-has-entries');
+    // Week strip waits on recent entries query to prevent downward teleport
+    expect(calendar).toMatch(/\{#if hasEntries && !recent\.loading\}/);
+  });
 });
