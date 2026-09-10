@@ -327,7 +327,7 @@ export function samplerExpression(act, ms, names) {
         '';
       /* The text is what tells one row of a list from the next, trimmed
          so a count ticking up does not make a mark into a new mark. */
-      const text = (el.textContent ?? '').trim().slice(0, 24).replace(/\d+/g, '#');
+      const text = (el.textContent ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
       return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
     /* The browser's own answer to "is a transition running", for the
