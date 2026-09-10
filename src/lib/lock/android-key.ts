@@ -38,19 +38,23 @@ export interface UnlockRequest {
 
 export interface KeystoreBridge {
   /** Whether this device already holds a wrapped data key - a first run
-      against every later one. */
-  status(): Promise<{ hasKey: boolean }>;
-  /** First run. Mints a random data key, wraps it, and hands the key over
-      without a prompt: the person is already here, and there is nothing yet
-      to protect it from. `noDeviceCredential` when the device has no lock
-      screen for the Keystore key to be bound to. */
-  create(): Promise<{ outcome: 'created' | 'noDeviceCredential'; hexKey?: string }>;
-  /** Every later run: the prompt, then the unwrap behind it. */
+      against every later one. `authRequired` is whether the active key
+      demands user authentication (true for screen lock gated, false for unlocked). */
+  status(): Promise<{ hasKey: boolean; authRequired?: boolean }>;
+  /** First run. Mints a random data key, wraps it under the chosen variant,
+      and hands the key over without a prompt: the person is already here.
+      `noDeviceCredential` when the gated variant is asked for on a device
+      without a lock screen. */
+  create(options?: { authRequired?: boolean }): Promise<{ outcome: 'created' | 'noDeviceCredential'; hexKey?: string }>;
+  /** Wraps an existing 32-byte data key (as 64-char hex) under the chosen
+      variant without re-encrypting the journal. */
+  wrap(options: { hexKey: string; authRequired?: boolean }): Promise<{ outcome: 'wrapped' | 'noDeviceCredential' }>;
+  /** Every later run: the prompt (or direct unwrap if unlocked), then the unwrap behind it. */
   unlock(request: UnlockRequest): Promise<{ outcome: string; hexKey?: string }>;
   /** The same prompt with no key behind it, for the app-lock screen reached
       mid-session, where the key is already in memory (ADR-0014). */
   confirm(request: UnlockRequest): Promise<{ outcome: string }>;
-  /** The reset path (ADR-0014): the wrapped key goes with the Journal. */
+  /** The reset path (ADR-0014): both wrapped keys go with the Journal. */
   erase(): Promise<void>;
 }
 
@@ -74,12 +78,13 @@ const KEY_HEX = /^[0-9a-f]{64}$/i;
 
 export async function openAndroidDataKey(
   bridge: KeystoreBridge,
-  request: UnlockRequest
+  request: UnlockRequest,
+  options?: { authRequired?: boolean }
 ): Promise<AndroidKeyResult> {
   const { hasKey } = await bridge.status();
 
   if (!hasKey) {
-    const created = await bridge.create();
+    const created = await bridge.create(options);
     return created.outcome === 'created'
       ? keyOrRefusal(created.hexKey)
       : { kind: 'refused', authentication: interpretAuthentication('noDeviceCredential') };
