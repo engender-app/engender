@@ -95,16 +95,20 @@ import {
   BLOAT_PX,
   BLOAT_RATIO,
   EXEMPT,
+  FILL_EVERY_FEATURE_EXPRESSION,
   GONE,
   INIT_HIDE_DEMO_SCRIPT,
   INJECT_PROOF_EXPRESSION,
+  JUMP_FIRST_RUN_EXPRESSION,
   PROOF,
+  RESET_PERSONA_EXPRESSION,
   SCENE_MS,
   SETTLE_PAGE_EXPRESSION,
   TELEPORT_PX,
   TELEPORT_RATIO,
   VISIBLE,
   VT_NAMES,
+  WALK_FIRST_RUN_FINISH_EXPRESSION,
   findYanks,
   scenesFor,
   samplerExpression
@@ -122,6 +126,9 @@ const only = flag('scenes', '')
   .split(',')
   .filter(Boolean);
 const themes = flag('themes', 'light')
+  .split(',')
+  .filter(Boolean);
+const profiles = flag('profiles', 'persona,empty')
   .split(',')
   .filter(Boolean);
 /** Injects three defects, so the detector can be seen to find them. */
@@ -161,7 +168,6 @@ const settle = async (path, theme) => {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
-    await page.waitForSelector('[data-home-hello]');
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
@@ -172,43 +178,73 @@ const settle = async (path, theme) => {
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 };
 
-for (const theme of themes) {
-  for (const scene of SCENES) {
-    try {
-      await settle(scene.at, theme);
-      if (scene.firstRun) await firstRunTo(page, scene.firstRun);
-      await page.waitForTimeout(1400);
-      if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
-      const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
-      /* A transition ran, so the pseudos are what the person saw, and only the
-         frames it was running on are the gesture. */
-      const transitioned = all_frames.some((f) => f.active);
-      const instrument = transitioned ? 'vt' : 'rows';
-      const frames = transitioned ? all_frames.filter((f) => f.active) : all_frames;
-      if (!frames.length) throw new Error('no frames to read');
-      const all = findYanks(frames, instrument, frames.length - 1);
-      const yanks = all.filter((y) => !EXEMPT.test(y.mark));
-      if (args.includes('--dump'))
-        await writeFile(`${outDir}/${scene.name}.frames.json`, JSON.stringify(all_frames, null, 1));
-      report.push({
-        scene: scene.name,
-        theme,
-        is: scene.is,
-        instrument,
-        frames: frames.length,
-        sampled: all_frames.length,
-        from: frames[0]?.at ?? 0,
-        span: frames.at(-1)?.at ?? 0,
-        yanks,
-        suppressed: all.length - yanks.length
-      });
-      console.log(
-        `[${theme}] ${scene.name}: ${frames.length} frames read as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${yanks.length} yank(s)` +
-          (yanks.length ? `\n  ${yanks.map((y) => `${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`).join('\n  ')}` : '')
-      );
-    } catch (err) {
-      report.push({ scene: scene.name, theme, error: String(err).slice(0, 300) });
-      console.log(`[${theme}] ${scene.name}: ERROR ${String(err).slice(0, 160)}`);
+for (const profile of profiles) {
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
+  if (await page.locator('[data-leave-setup]').count()) {
+    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
+    await page.waitForSelector('[data-home-hello]');
+  }
+
+  if (profile === 'persona') {
+    const reset = await page.evaluate(RESET_PERSONA_EXPRESSION);
+    if (!reset) {
+      console.error('the persona reset never reached Home; stopping this profile');
+      continue;
+    }
+    await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
+    await page.waitForTimeout(1500);
+  } else {
+    await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
+    await page.waitForSelector('[data-next]');
+    const finished = await page.evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION);
+    if (!finished) {
+      console.error('the first run never finished; stopping this profile');
+      continue;
+    }
+    await page.waitForTimeout(1500);
+  }
+
+  for (const theme of themes) {
+    for (const scene of SCENES) {
+      if (scene.when && scene.when !== profile) continue;
+      try {
+        await settle(scene.at, theme);
+        if (scene.firstRun) await firstRunTo(page, scene.firstRun);
+        await page.waitForTimeout(1400);
+        if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
+        const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+        /* A transition ran, so the pseudos are what the person saw, and only the
+           frames it was running on are the gesture. */
+        const transitioned = all_frames.some((f) => f.active);
+        const instrument = transitioned ? 'vt' : 'rows';
+        const frames = transitioned ? all_frames.filter((f) => f.active) : all_frames;
+        if (!frames.length) throw new Error('no frames to read');
+        const all = findYanks(frames, instrument, frames.length - 1);
+        const yanks = all.filter((y) => !EXEMPT.test(y.mark));
+        if (args.includes('--dump'))
+          await writeFile(`${outDir}/${scene.name}-${profile}.frames.json`, JSON.stringify(all_frames, null, 1));
+        report.push({
+          scene: scene.name,
+          profile,
+          theme,
+          is: scene.is,
+          instrument,
+          frames: frames.length,
+          sampled: all_frames.length,
+          from: frames[0]?.at ?? 0,
+          span: frames.at(-1)?.at ?? 0,
+          yanks,
+          suppressed: all.length - yanks.length
+        });
+        console.log(
+          `[${profile}-${theme}] ${scene.name}: ${frames.length} frames read as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${yanks.length} yank(s)` +
+            (yanks.length ? `\n  ${yanks.map((y) => `${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`).join('\n  ')}` : '')
+        );
+      } catch (err) {
+        report.push({ scene: scene.name, profile, theme, error: String(err).slice(0, 300) });
+        console.log(`[${profile}-${theme}] ${scene.name}: ERROR ${String(err).slice(0, 160)}`);
+      }
     }
   }
 }

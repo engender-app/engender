@@ -72,6 +72,7 @@ import {
   DIFF_EPS,
   EVIDENCE_CAP,
   EXEMPT,
+  FILL_EVERY_FEATURE_EXPRESSION,
   HYDRATION_MS,
   HYDRATION_NEEDS,
   HYDRATION_PX,
@@ -175,9 +176,23 @@ function connect(url) {
   const pending = new Map();
   const listeners = new Set();
   let id = 0;
+  /* The open itself goes on a clock, like every send below: a forward
+     left pointing at a socket whose renderer has just been swapped
+     answers devtools' HTTP listing but never finishes the WebSocket
+     handshake, and an unbounded `ready` turned that into a silent
+     forever-await the first time the WebView reloaded under the sweep.
+     A timeout here is what lets attach()'s retry loop re-read the socket
+     name and forward again instead of hanging the whole run. */
   const ready = new Promise((res, rej) => {
-    ws.addEventListener('open', () => res());
-    ws.addEventListener('error', rej);
+    const timer = setTimeout(() => rej(new Error('WS_NEVER_OPENED')), 8000);
+    ws.addEventListener('open', () => {
+      clearTimeout(timer);
+      res();
+    });
+    ws.addEventListener('error', () => {
+      clearTimeout(timer);
+      rej(new Error('WS_ERROR'));
+    });
   });
   ws.addEventListener('message', (event) => {
     const msg = JSON.parse(event.data);
@@ -185,8 +200,22 @@ function connect(url) {
       const waiter = pending.get(msg.id);
       if (!waiter) return;
       pending.delete(msg.id);
-      if (msg.error) waiter.reject(new Error(JSON.stringify(msg.error)));
-      else waiter.resolve(msg.result);
+      if (msg.error) {
+        /* "Inspected target navigated or closed" is the same event the
+           no-answer timeout guards - the WebView tore the execution
+           context down mid-evaluate - but answered as an error reply
+           instead of silence. Routed through the SOCKET_GONE retry so a
+           first-run boot's own redirects cannot end the run; the retry
+           re-attaches and re-evaluates against whatever document is
+           live by then. */
+        waiter.reject(
+          new Error(
+            msg.error.code === -32000
+              ? 'SOCKET_GONE (inspected target navigated or closed)'
+              : JSON.stringify(msg.error)
+          )
+        );
+      } else waiter.resolve(msg.result);
     } else {
       for (const fn of listeners) fn(msg);
     }
@@ -239,9 +268,25 @@ async function initClient(c) {
 }
 
 /** Evaluate in the page, re-attaching when the WebView swaps its renderer
- *  under us. Throws what the page threw, not a bare "evaluation failed". */
-async function ev(expression, ms = 45000) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+ *  under us. Throws what the page threw, not a bare "evaluation failed".
+ *
+ *  The clock has to outlive every expression it carries: the page-side
+ *  polls run to 60 s (the boot wait, the persona reset, the fill), and a
+ *  transport clock shorter than the expression it is asking about turns
+ *  a slow-but-healthy poll into SOCKET_GONE - which the retry then
+ *  re-sends, to time out again, five times, presenting the whole run as
+ *  a transport hang that never was one. An expression whose condition
+ *  genuinely never comes true answers at its own deadline, as a named
+ *  "timed out waiting" error, and that is the failure the operator
+ *  should see. */
+async function ev(expression, ms = 90000) {
+  let lastError = null;
+  /* Five attempts, not three: a first-run boot redirects the page two or
+     three times in quick succession, and each redirect can eat exactly
+     one in-flight evaluate. Each attempt re-attaches and lands on
+     whatever document is live, so the count only has to outlast the
+     app's own settling. */
+  for (let attempt = 0; attempt < 5; attempt++) {
     if (!client) {
       client = await attach();
       await initClient(client);
@@ -257,10 +302,19 @@ async function ev(expression, ms = 45000) {
       return result.result.value;
     } catch (error) {
       if (!String(error.message).includes('SOCKET_GONE')) throw error;
+      /* Close before dropping the reference: a socket left open keeps
+         its session alive on the WebView's devtools backend for as long
+         as this process runs, and a retry path that leaks one per
+         attempt leaves the phone carrying the corpses. */
+      client.close();
       client = null;
+      lastError = error;
     }
   }
-  throw new Error('the WebView kept dropping the devtools socket');
+  /* The last underlying rejection rides along: a bare "kept dropping"
+      says nothing about whether the socket closed, the WebView never
+      answered, or the forward went stale - three different next steps. */
+  throw new Error('the WebView kept dropping the devtools socket: ' + (lastError?.message ?? 'unknown'));
 }
 
 const onEvent = (msg) => {
@@ -288,13 +342,22 @@ const waitForExpression = (selector, ms = 30000, expectedPath = null) => `(async
   while (Date.now() < until) {
     if ((!${JSON.stringify(expectedPath)} || location.pathname === ${JSON.stringify(expectedPath)}) && document.querySelector(${JSON.stringify(selector)})) return true;
     const err = document.querySelector('[data-app-root][data-boot="error"]');
-    if (err) throw new Error('boot failed: ' + (err.querySelector('.notice-body')?.innerText ?? 'unknown'));
+    if (err) {
+      const text = err.querySelector('.notice-body')?.innerText ?? '';
+      if (text.includes('database is locked')) {
+        await new Promise((r) => setTimeout(r, 800));
+        location.reload();
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+      throw new Error('boot failed: ' + (err.querySelector('.notice-body')?.innerText ?? 'unknown'));
+    }
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error('timed out waiting for ' + ${JSON.stringify(selector)} + (${JSON.stringify(expectedPath)} ? ' on ' + ${JSON.stringify(expectedPath)} : ''));
 })()`;
 
-/** Walk the first run to `target`, stopping on it - the device twin of the
+/** Walk the first run to \`target\`, stopping on it - the device twin of the
  *  desktop sweep's firstRunTo, over evaluate instead of locators. */
 const firstRunExpression = (target) => `(async () => {
   const jump = document.querySelector('#demo-jump');
@@ -314,25 +377,32 @@ const firstRunExpression = (target) => `(async () => {
     document.querySelector('[data-next]').click();
     await new Promise((r) => setTimeout(r, 350));
   }
-  throw new Error('never reached the ${target} step');
+  throw new Error('never reached the \${target} step');
 })()`;
 
 async function settle(path, theme) {
+  await sleep(400);
   if (await ev(`!!document.querySelector('[data-leave-setup]')`)) {
     await ev(`document.querySelector('[data-leave-setup]').click(); true;`);
     await ev(waitForExpression('[data-home-hello]', 30000, '/'));
     await sleep(800);
   }
   if (await ev(`location.pathname !== ${JSON.stringify(path)}`)) {
-    await ev(
-      `(async () => {
-        location.assign(${JSON.stringify(path)});
-        return true;
-      })()`
-    );
-    await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, path));
+    await ev(`location.assign(${JSON.stringify(path)}); true;`);
+    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path));
   } else {
+    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000));
+  }
+  if (await ev(`!!document.querySelector('[data-pin-pad]')`)) {
+    await ev(`(async () => {
+      for (const d of ${JSON.stringify(PIN)}) {
+        const key = document.querySelector('[data-pin-pad] [data-key="' + d + '"]');
+        if (key) key.click();
+        await new Promise((r) => setTimeout(r, 140));
+      }
+    })()`);
     await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000));
+    await sleep(400);
   }
   await ev(SETTLE_PAGE_EXPRESSION(theme));
 }
@@ -344,15 +414,27 @@ async function settle(path, theme) {
  *  names are ever decoded twice (as PNG files, for the evidence triple). */
 async function screencast(fn) {
   const frames = [];
+  /* A cast belongs to the connection it starts on: acks and teardown must
+     not chase the global through a re-attach, because a frame the old
+     session sent can arrive while ev()'s retry has already closed it -
+     reading `client` there was a null deref that cascaded, ending every
+     scene after one swallowed evaluate until the next prologue. And a
+     cast cannot start from null at all: if the previous scene died with
+     the socket down, the camera re-attaches here rather than throwing. */
+  if (!client) {
+    client = await attach();
+    await initClient(client);
+  }
+  const c = client;
   const handler = (msg) => {
     if (msg.method !== 'Page.screencastFrame') return;
     const { data, metadata, sessionId } = msg.params;
     frames.push({ data, at: metadata.timestamp * 1000 });
-    client.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+    c.send('Page.screencastFrameAck', { sessionId }, 5000).catch(() => {});
   };
-  client.onEvent(handler);
+  c.onEvent(handler);
   try {
-    await client.send('Page.startScreencast', {
+    await c.send('Page.startScreencast', {
       format: 'png',
       maxWidth: 390,
       maxHeight: 844,
@@ -360,8 +442,11 @@ async function screencast(fn) {
     });
     return await fn(frames);
   } finally {
-    await client.send('Page.stopScreencast').catch(() => {});
-    client.offEvent(handler);
+    /* Short clock: this socket may already be dead if fn() triggered a
+       re-attach, and a teardown that waits the full send default on a
+       corpse only stacks dead time onto a scene that is over. */
+    await c.send('Page.stopScreencast', {}, 2000).catch(() => {});
+    c.offEvent(handler);
   }
 }
 
@@ -395,8 +480,33 @@ console.log(`attached to pid ${pid()} on ${serial}`);
    once, here. The pad completes and submits itself at four digits
    (PinPad.svelte), so four clicks and a wait is the whole unlock. */
 const PIN = flag('pin', '1111');
+/* Let the app finish its own boot before the reload below: attaching
+   during a cold start can land while the first journal open is still in
+   flight, and reloading then makes two openers collide on the SQLite
+   lock - "Couldn't open your journal", database is locked - which ends
+   the run as a boot error that has nothing to do with the sweep. Any
+   terminal surface (pad, setup, home, a first-run step) counts. */
+const preBoot = await ev(`(async () => {
+  const until = Date.now() + 30000;
+  while (Date.now() < until) {
+    if (document.querySelector('[data-pin-pad], [data-home-hello], [data-leave-setup], [data-next]')) return 'open';
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return 'still-booting';
+})()`);
+if (preBoot !== 'open') console.log('boot: the app was still starting; reloading anyway');
 await ev(`try { localStorage.clear(); } catch {} location.assign('/'); true;`);
-await ev(waitForExpression('[data-app-root][data-boot="ready"]', 60000, '/'));
+/* No pathname pin here: after the clear the first-run gate can send the
+   fresh load straight to /onboarding, and boot's business is only that
+   the app reached a terminal state - the scenes below pin their own
+   paths, where it matters. A gate document reports needs-setup rather
+   than ready, and a locked journal needs-unlock; both are terminal: the
+   setup walk below takes the first, and the PIN branch of the boot loop
+   the second. */
+await ev(waitForExpression(
+  '[data-app-root][data-boot="ready"], [data-app-root][data-boot="needs-setup"], [data-app-root][data-boot="needs-unlock"]',
+  60000
+));
 const boot = await ev(`(async () => {
   const until = Date.now() + 20000;
   while (Date.now() < until) {
@@ -408,15 +518,39 @@ const boot = await ev(`(async () => {
       await new Promise((r) => setTimeout(r, 800));
       return document.querySelector('[data-pin-pad]') ? 'pin did not open' : 'pin';
     }
-    if (document.querySelector('[data-leave-setup]') || document.querySelector('[data-home-hello]'))
-      return 'open';
+    /* Home alone means open: [data-leave-setup] also renders inside the
+       onboarding flow, and reading it as "open" made the settle below
+       click it - leaving setup midway on an install that has not chosen
+       an access mode, which parks the app on the access chooser with no
+       Home to come back to. The gate is the walk's to finish. */
+    if (document.querySelector('[data-home-hello]')) return 'open';
     await new Promise((r) => setTimeout(r, 250));
   }
-  return 'neither pad nor setup nor home';
+  return document.querySelector('[data-next]') || document.querySelector('[data-access-modes]')
+    ? 'setup'
+    : 'neither pad nor setup nor home';
 })()`);
+/* A journal that has not been onboarded yet (a fresh install, or a data
+   wipe) is walked to Home here, once, before any profile runs: the
+   profiles below assume a journal exists - the persona reset writes one,
+   and every settle pins a path the gate would redirect away from. */
 if (boot !== 'open' && boot !== 'pin') {
-  console.error(`boot: ${boot}`);
-  process.exit(1);
+  if (boot !== 'setup') {
+    console.error(`boot: ${boot}`);
+    process.exit(1);
+  }
+  console.log('boot: setup; walking the first run once');
+  let walked = false;
+  try {
+    walked = await ev(WALK_FIRST_RUN_FINISH_EXPRESSION, 150000);
+  } catch (err) {
+    console.error(`the first run walk failed: ${String(err).slice(0, 200)}`);
+    process.exit(1);
+  }
+  if (!walked) {
+    console.error('the first run walk never reached Home');
+    process.exit(1);
+  }
 }
 console.log(`boot: ${boot}`);
 
@@ -494,9 +628,17 @@ async function hydrationScenes() {
         console.error('the persona reset never reached Home; stopping this profile');
         continue;
       }
+      await ev(FILL_EVERY_FEATURE_EXPRESSION);
+      await sleep(1500);
     } else {
       /* The onboarding mount exists only here, between the jump and the
-         walk that finishes the first run. */
+          walk that finishes the first run. The jump happens inside the
+          scene's cast when the scene runs, and here when a --scenes
+          filter has narrowed it away - the walk below assumes the first
+          run is open, and without a jump it would wait on a screen the
+          app never showed. */
+      if (!SCENES.some((s) => s.name === 'onboarding-mount'))
+        await ev(JUMP_FIRST_RUN_EXPRESSION);
       if (SCENES.some((s) => s.name === 'onboarding-mount')) {
         try {
           const mounted = await screencast(async (cast) => {
@@ -517,7 +659,7 @@ async function hydrationScenes() {
           console.log(`[${profile}-${themes[0]}] onboarding-mount: ERROR ${String(err).slice(0, 200)}`);
         }
       }
-      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION))) {
+      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION, 150000))) {
         console.error('the first run never finished; stopping this profile');
         continue;
       }
@@ -588,94 +730,123 @@ async function hydrationScenes() {
 
 if (hydration) {
   await hydrationScenes();
-} else
-for (const theme of themes) {
-  for (const scene of SCENES) {
-    for (let pass = 1; pass <= passes; pass++) {
-      const label = `[${theme}] ${scene.name} p${pass}`;
-      try {
-        await settle(scene.at, theme);
-        if (scene.firstRun) await ev(firstRunExpression(scene.firstRun));
-        await sleep(1400);
-        if (scene.act === 'inject') await ev(`(${INJECT_PROOF_EXPRESSION})()`);
-        const result = await screencast(async (cast) => {
-          const frames = await ev(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
-          return { cast: [...cast], frames };
-        });
-        if (result.cast.length < 4) throw new Error(`only ${result.cast.length} screencast frames`);
+} else {
+  for (const profile of profiles) {
+    if (profile === 'persona') {
+      await settle('/', themes[0]);
+      if (!(await ev(RESET_PERSONA_EXPRESSION))) {
+        console.error('the persona reset never reached Home; stopping this profile');
+        continue;
+      }
+      await ev(FILL_EVERY_FEATURE_EXPRESSION);
+      await sleep(1500);
+    } else {
+      await settle('/', themes[0]);
+      await ev(JUMP_FIRST_RUN_EXPRESSION);
+      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION, 150000))) {
+        console.error('the first run never finished; stopping this profile');
+        continue;
+      }
+      await sleep(1500);
+    }
 
-        /* The style half, exactly as the desktop sweep reads it. */
-        const transitioned = result.frames.some((f) => f.active);
-        const instrument = transitioned ? 'vt' : 'rows';
-        const styleFrames = transitioned ? result.frames.filter((f) => f.active) : result.frames;
-        const all = findYanks(styleFrames, instrument, styleFrames.length - 1);
-        const styleYanks = all.filter((y) => !EXEMPT.test(y.mark));
+    for (const theme of themes) {
+      for (const scene of SCENES) {
+        if (scene.when && scene.when !== profile) continue;
+        for (let pass = 1; pass <= passes; pass++) {
+          const label = `[${profile}-${theme}] ${scene.name} p${pass}`;
+          try {
+            await settle(scene.at, theme);
+            if (scene.firstRun) await ev(firstRunExpression(scene.firstRun));
+            await sleep(1400);
+            if (scene.act === 'inject') await ev(`(${INJECT_PROOF_EXPRESSION})()`);
+            const result = await screencast(async (cast) => {
+              const frames = await ev(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+              return { cast: [...cast], frames };
+            });
+            await sleep(600);
+            /* The style half, exactly as the desktop sweep reads it. */
+            const transitioned = result.frames.some((f) => f.active);
+            const instrument = transitioned ? 'vt' : 'rows';
+            const styleFrames = transitioned ? result.frames.filter((f) => f.active) : result.frames;
+            const all = findYanks(styleFrames, instrument, styleFrames.length - 1);
+            const styleYanks = all.filter((y) => !EXEMPT.test(y.mark));
 
-        /* The render half. Frames are decoded per pass; the grays are what
-           the arithmetic reads, the PNGs are kept around only for evidence. */
-        const decoded = result.cast.map((f) => {
-          const png = decodePng(Buffer.from(f.data, 'base64'));
-          return { png, gray: grayFrame(png), at: f.at };
-        });
-        const { width, height } = decoded[0].png;
-        if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
-          throw new Error('screencast frames arrived in more than one size');
-        const { findings, motion } = findPixelYanks(
-          decoded.map((d) => d.gray),
-          width,
-          height,
-          decoded.map((d) => d.at)
-        );
+            /* The render half. Instantaneous interactions with no ongoing
+               animation render in 1 frame and emit no further compositor frames;
+               these have no pixel yanks to analyze. */
+            let findings = [];
+            let motion = [];
+            if (result.cast.length >= 3) {
+              const decoded = result.cast.map((f) => {
+                const png = decodePng(Buffer.from(f.data, 'base64'));
+                return { png, gray: grayFrame(png), at: f.at };
+              });
+              const { width, height } = decoded[0].png;
+              if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
+                throw new Error('screencast frames arrived in more than one size');
+              const res = findPixelYanks(
+                decoded.map((d) => d.gray),
+                width,
+                height,
+                decoded.map((d) => d.at)
+              );
+              findings = res.findings;
+              motion = res.motion;
+            }
 
-        for (const finding of findings) {
-          if (evidenceCount >= EVIDENCE_CAP) break;
-          evidenceCount++;
-          const i = finding.frame;
-          /* The evidence triple: the frame before, the finding, the frame
-             after. That is the pair-by-pair story a person checks the
-             detector's arithmetic against. */
-          for (const [suffix, index] of [
-            ['a', i - 1],
-            ['b', i],
-            ['c', i + 1]
-          ])
-            await writeFile(
-              `${outDir}/${scene.name}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
-              Buffer.from(result.cast[index].data, 'base64')
+            for (const finding of findings) {
+              if (evidenceCount >= EVIDENCE_CAP) break;
+              evidenceCount++;
+              const i = finding.frame;
+              /* The evidence triple: the frame before, the finding, the frame
+                 after. That is the pair-by-pair story a person checks the
+                 detector's arithmetic against. */
+              for (const [suffix, index] of [
+                ['a', i - 1],
+                ['b', i],
+                ['c', i + 1]
+              ])
+                await writeFile(
+                  `${outDir}/${scene.name}-${profile}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
+                  Buffer.from(result.cast[index].data, 'base64')
+                );
+            }
+
+            if (dump)
+              await writeFile(
+                `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
+                JSON.stringify(result.frames, null, 1)
+              );
+            report.push({
+              scene: scene.name,
+              profile,
+              theme,
+              pass,
+              is: scene.is,
+              instrument,
+              styleFrames: styleFrames.length,
+              sampled: result.frames.length,
+              cast: result.cast.length,
+              styleYanks,
+              suppressed: all.length - styleYanks.length,
+              pixelFindings: findings,
+              motion
+            });
+            console.log(
+              `${label}: ${result.cast.length} cast / ${styleFrames.length} style frames as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${styleYanks.length} style / ${findings.length} render yank(s)` +
+                (styleYanks.length || findings.length
+                  ? `\n  ${[
+                      ...styleYanks.map((y) => `style ${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`),
+                      ...findings.map((f) => `render ${f.kind} @${f.at} box ${f.box.w}x${f.box.h} area ${(f.areaPct * 100).toFixed(1)}%`)
+                    ].join('\n  ')}`
+                  : '')
             );
+          } catch (err) {
+            report.push({ scene: scene.name, profile, theme, pass, error: String(err).slice(0, 300) });
+            console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
+          }
         }
-
-        if (dump)
-          await writeFile(
-            `${outDir}/${scene.name}-${theme}-p${pass}.frames.json`,
-            JSON.stringify(result.frames, null, 1)
-          );
-        report.push({
-          scene: scene.name,
-          theme,
-          pass,
-          is: scene.is,
-          instrument,
-          styleFrames: styleFrames.length,
-          sampled: result.frames.length,
-          cast: result.cast.length,
-          styleYanks,
-          suppressed: all.length - styleYanks.length,
-          pixelFindings: findings,
-          motion
-        });
-        console.log(
-          `${label}: ${result.cast.length} cast / ${styleFrames.length} style frames as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${styleYanks.length} style / ${findings.length} render yank(s)` +
-            (styleYanks.length || findings.length
-              ? `\n  ${[
-                  ...styleYanks.map((y) => `style ${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`),
-                  ...findings.map((f) => `render ${f.kind} @${f.at} box ${f.box.w}x${f.box.h} area ${(f.areaPct * 100).toFixed(1)}%`)
-                ].join('\n  ')}`
-              : '')
-        );
-      } catch (err) {
-        report.push({ scene: scene.name, theme, pass, error: String(err).slice(0, 300) });
-        console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
       }
     }
   }
