@@ -104,6 +104,35 @@ const SCENES = [
   { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
+
+  /* Transition screens (ticket 108): buttons, switchers and modals */
+  { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
+  { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
+  { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
+  { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
+  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
+  { name: 'letters-read', at: '/transition/letters', act: '[data-letter]', when: 'persona', is: 'a letter opened to read' },
+  { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
+  { name: 'presentations-add', at: '/transition/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
+  { name: 'eras-add', at: '/transition/eras', act: '[data-add]', is: 'the add era sheet opening' },
+
+  /* Settings screens (ticket 108): swatches, switchers, switches and modals */
+  { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },
+  { name: 'settings-mood-preset', at: '/settings', act: '[data-mood-preset-pick="teal"]', is: 'picking a mood preset swatch' },
+  { name: 'settings-theme-switcher', at: '/settings', act: '.pref-row [data-segment="dark"]', is: 'switching theme segmented control' },
+  { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', is: 'toggling a settings switch' },
+  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', is: 'switching measurement unit segmented control' },
+  { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', is: 'the gender scales checklist sheet opening' },
+  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', is: 'the calendar colour metric sheet opening' },
+  { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', is: 'the disguise preview sheet opening' },
+  { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', is: 'the about sheet opening' },
+  { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
+  { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
+  { name: 'regimen-add', at: '/settings/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
+  { name: 'regimen-edit', at: '/settings/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
+  { name: 'stock-add', at: '/settings/stock', act: '[data-add]', is: 'opening stock editor sheet' },
+  { name: 'stock-edit', at: '/settings/stock', act: '[data-stock]', when: 'persona', is: 'opening existing stock row for editing' },
   /* Setup's four movements (redesign ticket 33). `firstRun` is what these
      need that no other scene does: the flow is reached through the demo's
      first-run control and then walked, and the settle deliberately leaves
@@ -281,12 +310,25 @@ export function samplerExpression(act, ms, names) {
         ...(cut === undefined ? {} : { edge: Math.round((innerHeight - Number(cut)) * 10) / 10 })
       };
     };
+    const STATE_CLS = /^(is-active|is-selected|is-open|is-checked|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
     const key = (el) => {
-      const cls = el.classList.length ? `.${[...el.classList].join('.')}` : el.tagName.toLowerCase();
+      const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
+      const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
+      const scope =
+        el.getAttribute?.('data-tile') ??
+        el.getAttribute?.('data-segment') ??
+        el.getAttribute?.('data-goal') ??
+        el.getAttribute?.('data-list-row') ??
+        el.closest?.('[data-tile]')?.getAttribute('data-tile') ??
+        el.closest?.('[data-segmented]')?.getAttribute('data-segmented') ??
+        el.closest?.('[data-goal]')?.getAttribute('data-goal') ??
+        el.closest?.('[data-track]')?.getAttribute('data-track') ??
+        el.closest?.('[data-list-row]')?.getAttribute('data-list-row') ??
+        '';
       /* The text is what tells one row of a list from the next, trimmed
          so a count ticking up does not make a mark into a new mark. */
       const text = (el.textContent ?? '').trim().slice(0, 24).replace(/\d+/g, '#');
-      return `${cls}|${text}`;
+      return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
     /* The browser's own answer to "is a transition running", for the
        length of this sample only; restored before the promise resolves. */
@@ -703,7 +745,7 @@ export function regions(mask, w, h, minArea) {
 export function findPixelYanks(grays, w, h, ats) {
   const dts = [];
   for (let i = 1; i < grays.length; i++) dts.push(ats[i] - ats[i - 1]);
-  const median = dts.slice().sort((a, b) => a - b)[Math.floor(dts.length / 2)] || 16;
+  const median = Math.max(16, dts.slice().sort((a, b) => a - b)[Math.floor(dts.length / 2)] || 16);
   const findings = [];
   const motion = [];
   for (let i = 1; i < grays.length - 1; i++) {
@@ -849,7 +891,10 @@ const HYDRATION_SCENES = [
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
-  { name: 'live-tiles', at: '/settings/live-tiles', is: 'the live-tiles half of the registry' },
+  /* No live-tiles scene: deepening ticket 09 merged that screen into
+     /settings/notifications, and the route now client-replaces to it, so
+     a scene pinned to the old path can only ever time out - the
+     notifications scene below already covers the merged surface. */
   { name: 'notifications', at: '/settings/notifications', is: 'the notifications half of the registry' },
   { name: 'permissions', at: '/settings/permissions', is: 'what the app asks the device for' },
   { name: 'trash', at: '/settings/trash', is: 'the 30-day window' },
@@ -925,6 +970,15 @@ export const RESET_PERSONA_EXPRESSION = `(async () => {
   return !!document.querySelector('[data-home-hello]');
 })()`;
 
+export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const btn = document.querySelector('[data-fill-every-feature]');
+  if (!btn) return false;
+  btn.click();
+  for (let i = 0; i < 120 && !location.pathname.includes('/more'); i++) await sleep(500);
+  return true;
+})()`;
+
 /** The empty profile, split where the onboarding-mount scene needs the
  *  seam: the jump itself (after which the first-run gate owns the page),
  *  and the walk that finishes the flow and leaves an onboarded journal
@@ -939,7 +993,11 @@ export const JUMP_FIRST_RUN_EXPRESSION = `(() => {
 
 export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  for (let i = 0; i < 60 && !document.querySelector('[data-next]'); i++) await sleep(250);
+  /* Generous, because the jump that opens this walks markFirstRun first:
+     emptying the demo journal's 150 days of deletes runs through the
+     worker, which a phone serves an order of magnitude slower than the
+     desktop the 15 s this used to be was tuned on. */
+  for (let i = 0; i < 180 && !document.querySelector('[data-next]'); i++) await sleep(250);
   if (!document.querySelector('[data-next]')) throw new Error('the first run did not open');
   for (const step of ${JSON.stringify(SETUP_STEPS)}) {
     await sleep(500);
@@ -947,6 +1005,20 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
       const name = document.querySelector('#ob-name');
       Object.getOwnPropertyDescriptor(Object.getPrototypeOf(name), 'value').set.call(name, 'Ola');
       name.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    /* The lock step has no foot of its own on an install that has not
+       chosen an access mode yet: the AccessModeSetup module replaces
+       [data-next] with its own two screens, so the walk picks the
+       unlocked mode (the one with no secret to type) and confirms it,
+       which is the choice a sweep journal wants anyway - nothing it
+       later does should sit behind a keystore. */
+    if (step === 'lock' && !document.querySelector('[data-next]') && document.querySelector('[data-access-modes]')) {
+      document.querySelector('[data-list-row="unlocked"]').click();
+      for (let i = 0; i < 40 && !document.querySelector('[data-access-submit]'); i++) await sleep(250);
+      const submit = document.querySelector('[data-access-submit]');
+      if (!submit) throw new Error('the access-mode module never offered its confirm');
+      submit.click();
+      for (let i = 0; i < 80 && !document.querySelector('[data-next]'); i++) await sleep(250);
     }
     if (step === 'done') break;
     document.querySelector('[data-next]').click();
@@ -998,7 +1070,19 @@ export const LOCK_SETUP_EXPRESSION = (pin) => `(async () => {
     }
     await sleep(800);
   }
-  await wait('a[href="/settings/security"], [data-screen-back]');
+  /* Settled is either control the settings screen offers, or the
+     confirmation's own navigation: after the second PIN entry the module
+     can land on /settings/security itself, where the link this used to
+     wait for is not on the page - the page IS it. */
+  let settled = false;
+  for (let i = 0; i < 50; i++) {
+    if (q('a[href="/settings/security"], [data-screen-back]') || location.pathname === '/settings/security') {
+      settled = true;
+      break;
+    }
+    await sleep(200);
+  }
+  if (!settled) throw new Error('the PIN setup never settled on security or a way back');
   return true;
 })()`;
 
