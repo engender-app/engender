@@ -14,6 +14,7 @@
    the field does both. */
 .screen-header {
   position: relative;
+  min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
 /* The field. `--field` and `--field-ink` are published on <html> by
    activeFlag (the flag's second colour and black or white, whichever
@@ -26,6 +27,8 @@
   color: var(--field-ink);
   padding: var(--space-8) 0 var(--space-4);
   border-radius: 0 0 var(--r-block) var(--r-block);
+  min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
+  box-sizing: border-box;
   /* The paint is a child now, not this element's background (redesign
      ticket 28): the field's box is the measurement and the blind is what
      stands in for its colour, so the two can move on different clocks
@@ -226,6 +229,7 @@
 .screen > .screen-header > .screen-field {
   margin: calc(-1 * var(--inset-top)) calc(-1 * var(--space-5)) 0;
   padding: calc(var(--space-8) + var(--inset-top)) var(--space-5) var(--space-4);
+  min-height: calc(var(--space-8) + var(--inset-top) + var(--touch-target) + var(--space-4));
 }
 /* The controls on the field take its ink, not the page's text colour. */
 .screen-field .icon-btn { color: inherit; }
@@ -250,11 +254,16 @@
    component's own reason for hiding rather than dropping it), and a
    display: none ancestor would take it out of the accessibility tree; the
    walkthrough's hub characterisation reads that heading. */
+.screen-header.is-collapsed,
+.screen > .screen-header.is-collapsed {
+  min-height: 0;
+}
 .screen-header.is-collapsed .screen-field,
 .screen > .screen-header.is-collapsed > .screen-field {
   color: inherit;
   padding: 0;
   margin: 0;
+  min-height: 0;
 }
 /* Two rows: the back control on its own, then the title with whatever actions
    the screen carries. A grid rather than the flex row this was, so the title
@@ -265,6 +274,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-1) var(--space-3);
+  min-height: var(--touch-target);
 }
 /* A deep screen's actions go on the back control's line rather than the
    title's. A title at 48 that wraps overflows its own column - "Body
