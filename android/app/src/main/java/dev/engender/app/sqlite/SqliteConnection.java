@@ -69,6 +69,7 @@ final class SqliteConnection {
         if (parent != null) parent.mkdirs();
         password = rawKeyPassword(hexKey);
         database = SQLiteDatabase.openOrCreateDatabase(databaseFile, password, null, null, null);
+        database.execSQL("PRAGMA busy_timeout = 5000;");
     }
 
     /**
