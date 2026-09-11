@@ -257,6 +257,43 @@ export function disclose(
   };
 }
 
+/**
+ * Tier 3, change within a screen: an inline element or pill opening its own
+ * width rather than cutting into or out of a row.
+ *
+ * Horizontal sibling to `disclose`. Where `disclose` animates height for
+ * block containers, `discloseWidth` animates width for inline and flex items
+ * (such as the "Hidden" tag indicator on settings rows), so their appearance
+ * or departure fades and collapses smoothly without dropping abruptly from
+ * full opacity or causing adjacent row contents to jump.
+ *
+ * Reduced motion is an instant cut, which is tier 3's substitute.
+ */
+export function discloseWidth(node: Element): TransitionConfig {
+  if (isReducedMotion() || typeof getComputedStyle === 'undefined') return { duration: 0 };
+
+  const style = getComputedStyle(node);
+  const rect = typeof node.getBoundingClientRect === 'function' ? node.getBoundingClientRect() : null;
+  const width = rect?.width || parseFloat(style.width) || 0;
+
+  const parent = node.parentElement;
+  const parentStyle = parent && typeof getComputedStyle === 'function' ? getComputedStyle(parent) : null;
+  const gap = node.previousElementSibling && parentStyle ? parseFloat(parentStyle.columnGap) || 0 : 0;
+
+  return {
+    duration: motionDuration('--dur-fast'),
+    easing: EASE_OUT,
+    css: (t, u) =>
+      `overflow: hidden;` +
+      `white-space: nowrap;` +
+      `opacity: ${t};` +
+      `min-width: 0;` +
+      `max-width: ${t * width}px;` +
+      `width: ${t * width}px;` +
+      (gap ? `margin-inline-start: ${-u * gap}px;` : '')
+  };
+}
+
 /** The last share of a closing panel's travel over which it fades, hairlines
     and all: with the edges kept for the travel, this is what takes the last
     device pixel of a line away without a frame in which it vanishes. */

@@ -8,6 +8,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
 
@@ -50,7 +51,7 @@
         <div class="rows-divide managed-tag" class:is-hidden={tg.hidden}>
           <span class="drag-dots" aria-hidden="true"><Icon name="dots" size={14} /></span>
           <span class="managed-label">{tg.label}</span>
-          {#if tg.hidden}<span class="muted small">{m.tags_hidden()}</span>{/if}
+          {#if tg.hidden}<span class="muted small" transition:discloseWidth>{m.tags_hidden()}</span>{/if}
           <span class="managed-actions">
             <button class="icon-btn" data-up aria-label={m.tags_move_up({ label: tg.label })} disabled={i === 0}
               onclick={() => moveUp(g, i)}>

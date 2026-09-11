@@ -5,6 +5,7 @@ import {
   collapse,
   crossfade,
   disclose,
+  discloseWidth,
   markScreenArrival,
   markSlotReplacement,
   maskHeight,
@@ -211,6 +212,48 @@ describe('tier 3, a group opening its own height', () => {
     stubDocument(false, true, { height: '100px', paddingTop: '16px', paddingBottom: '0px', marginTop: '0px', overflow: 'hidden', display: 'block' });
     const wrapper = { parentElement: {}, firstElementChild: {} } as unknown as Element;
     expect(frame(disclose(wrapper).css!, 1)).toContain('height: 100px');
+  });
+});
+
+describe('tier 3, an inline element opening its own width', () => {
+  it('grows from zero width to the element width, fading opacity', () => {
+    stubDocument(false, true, { width: '48px' });
+    const { css, duration } = discloseWidth(node);
+    expect(duration).toBe(150);
+    expect(frame(css!, 0)).toContain('width: 0px');
+    expect(frame(css!, 0)).toContain('opacity: 0');
+    expect(frame(css!, 1)).toContain('width: 48px');
+    expect(frame(css!, 1)).toContain('opacity: 1');
+  });
+
+  it('clips overflow and prevents wrapping while running', () => {
+    stubDocument(false, true, { width: '48px' });
+    const { css } = discloseWidth(node);
+    expect(frame(css!, 0.5)).toContain('overflow: hidden');
+    expect(frame(css!, 0.5)).toContain('white-space: nowrap');
+    expect(frame(css!, 0.5)).toContain('min-width: 0');
+  });
+
+  it('absorbs the parent column gap on the leading margin when preceded by a sibling', () => {
+    stubDocument(false, true, { width: '48px', columnGap: '8px' });
+    const parent = {};
+    const child = { parentElement: parent, previousElementSibling: {} } as unknown as Element;
+    const { css } = discloseWidth(child);
+    expect(frame(css!, 1)).toContain('margin-inline-start: 0px');
+    expect(frame(css!, 0)).toContain('margin-inline-start: -8px');
+  });
+
+  it('leaves leading margin alone when it is the first child', () => {
+    stubDocument(false, true, { width: '48px', columnGap: '8px' });
+    const parent = {};
+    const firstChild = { parentElement: parent, previousElementSibling: null } as unknown as Element;
+    const { css } = discloseWidth(firstChild);
+    expect(frame(css!, 0)).not.toContain('margin-inline-start');
+  });
+
+  it('cuts instantly under reduced motion', () => {
+    stubDocument(true, true, { width: '48px' });
+    expect(discloseWidth(node).duration).toBe(0);
   });
 });
 
