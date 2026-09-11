@@ -100,7 +100,7 @@ const SCENES = [
   { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"]', nav: true, is: 'the blind back to the tallest field' },
   { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', nav: true, is: 'a door into a deep screen' },
   { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, is: 'a deep screen back to its door' },
-  { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-add]', is: 'the sheet rising' },
+  { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the sheet rising' },
   { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
@@ -375,7 +375,8 @@ export function samplerExpression(act, ms, names) {
         else history.back();
       }
       else {
-        const hit = document.querySelector(act);
+        const hits = document.querySelectorAll(act);
+        const hit = [...hits].find((el) => el.offsetParent !== null) || hits[0];
         if (hit) hit.click();
       }
     };
@@ -908,7 +909,7 @@ const HYDRATION_SCENES = [
      opens over Home's own cold mount - the after-save state a real quick
      log lands in. */
   { name: 'quick-log-dims', at: '/?quickLogDims={entry}', needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
-  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-add]', is: 'the quick add fan opening' },
+  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the quick add fan opening' },
   { name: 'doses-sheet', at: '/doses', act: '[data-add]', is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet' },
   /* The two prologue scenes. Onboarding only exists before the profile
