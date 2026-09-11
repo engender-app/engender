@@ -86,12 +86,25 @@
      and Tab walks in from the top. Never the first button: on the sheets
      that ask something irreversible that button is "yes", and a sheet that
      opens with "yes" under the cursor is one stray Enter from doing the
-     thing it opened to warn about (ticket 15, F22). */
+     thing it opened to warn about (ticket 15, F22).
+
+     Ticket 115: calling .focus() synchronously upon DOM attachment forces
+     layout flushes on Android Chromium before CSS transition keyframes attach,
+     teleporting the sheet from translateY(0) to translateY(travel). Defer
+     initial focus until the entrance transition settles (`introend`), with
+     preventScroll: true. */
   function focusInitial(node: HTMLElement) {
     sheetEl = node;
-    const field = node.querySelector<HTMLElement>('input, select, textarea');
-    (field ?? node).focus();
+    const applyFocus = () => {
+      if (!sheetEl || !sheetEl.isConnected) return;
+      if (sheetEl.contains(document.activeElement)) return;
+      const field = node.querySelector<HTMLElement>('input, select, textarea');
+      (field ?? node).focus({ preventScroll: true });
+    };
+
+    node.addEventListener('introend', applyFocus, { once: true });
     return () => {
+      node.removeEventListener('introend', applyFocus);
       sheetEl = null;
     };
   }
@@ -139,12 +152,17 @@
     if (!focusables.length) return;
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
+    let target: HTMLElement | null = null;
+    if (!sheetEl.contains(document.activeElement)) {
+      target = e.shiftKey ? last : first;
+    } else if (e.shiftKey && document.activeElement === first) {
+      target = last;
     } else if (!e.shiftKey && document.activeElement === last) {
+      target = first;
+    }
+    if (target) {
       e.preventDefault();
-      first.focus();
+      target.focus({ preventScroll: true });
     }
   }
 
