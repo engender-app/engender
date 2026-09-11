@@ -249,6 +249,24 @@ export function sheetRise(
   });
 }
 
+/**
+ * Tier 2, sheet backdrop scrim: fade over `--dur-slow` matching sheet entrance/exit.
+ *
+ * Svelte's built-in `fade` reads `getComputedStyle(node).opacity`, which locks the
+ * transition ceiling to intermediate values if triggered while layout or classes are in flux.
+ * Using an explicit `opacity: ${t}` curve guarantees a smooth 0-to-1 / 1-to-0 transition.
+ */
+export function scrimFade(
+  _node: Element,
+  _params: Record<string, never> = {},
+  _options: { direction?: Direction } = {}
+): TransitionConfig {
+  return tier2((t) => `opacity: ${t}`, undefined, {
+    duration: '--dur-slow',
+    easing: EASE_OUT
+  });
+}
+
 /* svelte/transition's crossfade already is a container transform: it
    measures both boxes and tweens position and size between them. Handing
    it the token duration is all this needs to speak the same language as

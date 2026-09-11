@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
   import type { Snippet } from 'svelte';
-  import { crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
-  import { sheetRise } from '$lib/motion/navigation';
+  import { sheetRise, scrimFade } from '$lib/motion/navigation';
 
   let {
     open = $bindable(false),
@@ -181,8 +179,6 @@
      lands before it leaves instead of turning round where it got to. The
      directions had to differ - only the way up runs past its mark - and a
      sheet closed inside 380ms is a rarer thing to see than every close. */
-  const scrimDuration = () =>
-    isReducedMotion() ? crossfadeDuration() : motionDuration('--dur-slow');
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (!open) return;
@@ -209,7 +205,7 @@
     <div
       class="sheet-scrim-tint scrim-withdraw"
       data-sheet-tint
-      transition:fade={{ duration: scrimDuration() }}
+      transition:scrimFade
     ></div>
     <div
       class="sheet-drag"
@@ -257,5 +253,8 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
+    /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+       scrimFade WAAPI animation controls opacity without CSS transition interference. */
+    transition: none;
   }
 </style>
