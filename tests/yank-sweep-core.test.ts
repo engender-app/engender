@@ -233,6 +233,22 @@ describe('findPixelYanks', () => {
     const grays = [slide(3), slide(4), slide(5), slide(6), slide(7)];
     expect(findPixelYanks(grays, W, H, ats(5)).findings).toEqual([]);
   });
+
+  it('reports a block absent for multiple frames and back (multi-frame dropout)', () => {
+    const grays = [
+      withBlock(100, 4, 4, 6, 6),
+      withBlock(100, 4, 4, 6, 6),
+      flat(100),
+      flat(100),
+      flat(100),
+      withBlock(100, 4, 4, 6, 6),
+      withBlock(100, 4, 4, 6, 6)
+    ];
+    const { findings } = findPixelYanks(grays, W, H, ats(7));
+    expect(findings).toContainEqual(
+      expect.objectContaining({ kind: 'dropout', frame: 2, toFrame: 4, span: 3 })
+    );
+  });
 });
 
 describe('hydrationScreensFor (ticket 108)', () => {
