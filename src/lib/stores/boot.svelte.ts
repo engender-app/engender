@@ -30,7 +30,7 @@ import { createAndroidSqlite, deleteAndroidDatabase } from '../data/sqlite/andro
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
-import { openJournal, type PhotoFileStore } from '../data/journal/journal';
+import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
@@ -264,6 +264,27 @@ export async function restorePreviousJournal(): Promise<void> {
      (ADR-0020's one connection per origin). */
   await openDriver?.close();
   location.reload();
+}
+
+/** Retries the boot sequence from a failed state. If a session key is already
+    held in memory, reconnection attempts using the key directly; otherwise
+    it restarts the boot survey. */
+export async function retryBoot(): Promise<void> {
+  if (openDriver) {
+    await openDriver.close().catch(() => {});
+    openDriver = null;
+    openFileOps = null;
+  }
+  if (sessionDataKey) {
+    dispatch({
+      type: 'key-obtained',
+      dataKey: sessionDataKey,
+      accessMode: bootState.accessMode ?? 'device-bound',
+      unlocked: true
+    });
+  } else {
+    dispatch({ type: 'started', platform: isAndroid() ? 'android' : 'web', demo: __DEMO__ });
+  }
 }
 
 export function startBoot() {
@@ -597,15 +618,7 @@ function journalPorts(dataKey: Uint8Array<ArrayBuffer>): { sqlite: WebSqlite; ph
 async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   sessionDataKey = dataKey;
   announceDataKey(dataKey);
-  const { sqlite, photoFiles } = journalPorts(dataKey);
-
-  // The PRD asks for navigator.storage.persist() on first save, not on
-  // boot - but persist() is safe to call more than once and asking here
-  // covers every save path at once. Worth revisiting when the PWA ticket
-  // lands, not by adding a second call.
-  const { driver, fileOps, requestPersistentStorage } = sqlite;
-  openDriver = driver;
-  openFileOps = fileOps;
+  const { photoFiles } = journalPorts(dataKey);
 
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
@@ -617,22 +630,34 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   setVoiceFiles(photoFiles);
   setVideoFiles(photoFiles);
 
-  /* Attached before the migrations run, so the writes step 3 makes below -
-     reconciling built-ins - announce themselves like any other. Queries stay
-     parked until journalIsOpen(). */
-  const journal = attachJournal(openJournal(driver, photoFiles));
+  let activeSqlite: WebSqlite | null = null;
+  let journal: Journal | null = null;
 
   const result = await boot({
-    createDriver: () => driver,
-    fileOps,
-    requestPersistentStorage,
+    createDriver: () => {
+      activeSqlite = journalPorts(dataKey).sqlite;
+      openDriver = activeSqlite.driver;
+      openFileOps = activeSqlite.fileOps;
+      journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
+      return activeSqlite.driver;
+    },
+    fileOps: {
+      preMigrationCopyIsUsable: () => activeSqlite!.fileOps.preMigrationCopyIsUsable(),
+      copyDatabaseFile: () => activeSqlite!.fileOps.copyDatabaseFile(),
+      restorePreMigrationCopy: () => activeSqlite!.fileOps.restorePreMigrationCopy(),
+      cleanupPreMigrationCopy: () => activeSqlite!.fileOps.cleanupPreMigrationCopy()
+    },
+    requestPersistentStorage: () =>
+      activeSqlite?.requestPersistentStorage
+        ? activeSqlite.requestPersistentStorage()
+        : Promise.resolve(true),
     // Step 3: built-ins reconcile on every boot, by key - not seed-if-empty,
     // so a journal can never end up short of one (ADR-0002; ticket 14's
     // Replace calls the same operation before an import applies). Then the
     // mirror is filled from what that left behind (ADR-0004).
     loadReferenceData: async () => {
-      await journal.reconcileBuiltIns();
-      await hydrateReference(journal);
+      await journal!.reconcileBuiltIns();
+      await hydrateReference(journal!);
     },
     /* Step 4: after the database is open and migrated, so the rows it
        compares against are the current ones (ADR-0008), and behind an idle
@@ -674,8 +699,8 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
        say it had been done, while the journal held only the oldest entries -
        the persona writes 150 days oldest-first, so what goes missing is
        exactly the recent data every screen shows. */
-    await clearJournal(journal);
-    await seedPersonaJournal(journal);
+    await clearJournal(journal!);
+    await seedPersonaJournal(journal!);
     for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
       await preferences.set(key, value);
     }
@@ -688,5 +713,5 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
      seeded entry. */
   journalIsOpen();
 
-  dispatch({ type: 'journal-opened', journal, persistDenied: result.persistDenied });
+  dispatch({ type: 'journal-opened', journal: journal!, persistDenied: result.persistDenied });
 }

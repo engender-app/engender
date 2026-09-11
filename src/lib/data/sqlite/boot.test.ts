@@ -260,3 +260,93 @@ test('a failing trash purge still boots: housekeeping must not cost the app its 
   if (result.phase === 'ready') await assert.doesNotReject(() => result.housekeeping);
   assert.ok(sweptAnyway, 'and the pass behind it still runs: one failing does not cancel the other');
 });
+
+test('retries transient database lock errors during boot with exponential backoff and succeeds', async () => {
+  let attempts = 0;
+  const sleepCalls: number[] = [];
+  const fakeDriver = makeFakeDriver();
+
+  const flakyDriver = (): SqliteDriver => {
+    attempts++;
+    if (attempts < 3) {
+      return {
+        ...fakeDriver,
+        getUserVersion: async () => {
+          throw new Error('database is locked (code 5): , while compiling: SELECT COUNT(*) FROM sqlite_schema;');
+        }
+      };
+    }
+    return fakeDriver;
+  };
+
+  const result = await boot({
+    createDriver: flakyDriver,
+    fileOps: noopFileOps(),
+    sleep: async (ms) => {
+      sleepCalls.push(ms);
+    }
+  });
+
+  assert.equal(result.phase, 'ready');
+  assert.equal(attempts, 3);
+  assert.deepEqual(sleepCalls, [50, 100]);
+});
+
+test('surfaces error after exhausting database lock retries', async () => {
+  let attempts = 0;
+  const sleepCalls: number[] = [];
+  const fakeDriver = makeFakeDriver();
+
+  const lockedDriver = (): SqliteDriver => {
+    attempts++;
+    return {
+      ...fakeDriver,
+      getUserVersion: async () => {
+        throw new Error('database is locked (code 5): , while compiling: SELECT COUNT(*) FROM sqlite_schema;');
+      }
+    };
+  };
+
+  const result = await boot({
+    createDriver: lockedDriver,
+    fileOps: noopFileOps(),
+    sleep: async (ms) => {
+      sleepCalls.push(ms);
+    }
+  });
+
+  assert.equal(result.phase, 'error');
+  assert.equal(attempts, 5);
+  assert.deepEqual(sleepCalls, [50, 100, 200, 400]);
+  if (result.phase === 'error') {
+    assert.match(String(result.error), /database is locked/);
+  }
+});
+
+test('does not retry non-lock errors (fails immediately without calling sleep)', async () => {
+  let attempts = 0;
+  const sleepCalls: number[] = [];
+  const fakeDriver = makeFakeDriver();
+
+  const brokenDriver = (): SqliteDriver => {
+    attempts++;
+    return {
+      ...fakeDriver,
+      getUserVersion: async () => {
+        throw new Error('disk full');
+      }
+    };
+  };
+
+  const result = await boot({
+    createDriver: brokenDriver,
+    fileOps: noopFileOps(),
+    sleep: async (ms) => {
+      sleepCalls.push(ms);
+    }
+  });
+
+  assert.equal(result.phase, 'error');
+  assert.equal(attempts, 1);
+  assert.equal(sleepCalls.length, 0);
+});

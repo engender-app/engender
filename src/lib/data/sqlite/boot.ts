@@ -38,6 +38,20 @@ interface BootDeps {
       start as soon as ready is reported, which is what the probes want - the
       point is only that nothing waits for them. */
   scheduleHousekeeping?: (run: () => void) => void;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+export function isDatabaseLockedError(error: unknown): boolean {
+  if (!error) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  const pattern =
+    /database is locked|\bcode 5\b|sqlite_busy|database table is locked|SQLiteDatabaseLockedException|SQLiteBusyException|\bbusy\b/i;
+  if (pattern.test(message)) return true;
+  if (error instanceof Error && error.cause) {
+    const causeMsg = error.cause instanceof Error ? error.cause.message : String(error.cause);
+    if (pattern.test(causeMsg)) return true;
+  }
+  return false;
 }
 
 type BootResult =
@@ -56,41 +70,56 @@ type BootResult =
 export async function boot(deps: BootDeps): Promise<BootResult> {
   deps.applyBootPreferences?.();
 
-  let driver: SqliteDriver;
-  /* No service worker may activate over a migration in progress (ticket 04):
-     the transaction covers a failed step, but nothing covers the code being
-     replaced between two of them. Taken before createDriver() so the window
-     starts where the file is first touched. */
-  const migrating = markJournalBusy();
-  try {
-    // createDriver() itself isn't expected to be where a failure surfaces
-    // (SQLocal defers real I/O to its worker, so constructing it doesn't
-    // throw) - the try/catch is here for runMigrations()'s exec/
-    // getUserVersion calls, which are where opening the database and
-    // applying schema changes actually happen.
-    driver = deps.createDriver();
-    /* The list itself only where it is needed (phase 5 audit ticket 02): 27KB
-       of SQL text across the full schema history, which a journal already on
-       the current version has no use for. The dynamic import is what keeps it
-       out of the first-load graph, so it has to stay inside this call. */
-    await runMigrations(driver, deps.fileOps, {
-      latestVersion: LATEST_SCHEMA_VERSION,
-      load: async () => (await import('./migrations.ts')).migrations
-    });
-  } catch (error) {
-    // Migrations run before anything reads or writes app data, so a
-    // failure here means the caller must show a handled error state
-    // instead of going on to render screens over a database that isn't
-    // there (ticket 04's acceptance: not a blank screen).
-    return { phase: 'error', error };
-  } finally {
-    /* The guard ends with the migrations, not with boot(). What follows is
-       reconcileBuiltIns, which takes the guard itself on the way through the
-       journal wrapper, and the photo sweep, which only ever deletes files no
-       row references - so an update landing mid-sweep leaves orphans for the
-       next boot to reclaim, which is what its own failure path already
-       does. */
-    migrating();
+  const sleep = deps.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const maxRetries = 4;
+
+  let driver!: SqliteDriver;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    /* No service worker may activate over a migration in progress (ticket 04):
+       the transaction covers a failed step, but nothing covers the code being
+       replaced between two of them. Taken before createDriver() so the window
+       starts where the file is first touched. */
+    const migrating = markJournalBusy();
+    try {
+      // createDriver() itself isn't expected to be where a failure surfaces
+      // (SQLocal defers real I/O to its worker, so constructing it doesn't
+      // throw) - the try/catch is here for runMigrations()'s exec/
+      // getUserVersion calls, which are where opening the database and
+      // applying schema changes actually happen.
+      driver = deps.createDriver();
+      /* The list itself only where it is needed (phase 5 audit ticket 02): 27KB
+         of SQL text across the full schema history, which a journal already on
+         the current version has no use for. The dynamic import is what keeps it
+         out of the first-load graph, so it has to stay inside this call. */
+      await runMigrations(driver, deps.fileOps, {
+        latestVersion: LATEST_SCHEMA_VERSION,
+        load: async () => (await import('./migrations.ts')).migrations
+      });
+      break;
+    } catch (error) {
+      if (driver) {
+        await driver.close().catch(() => {});
+      }
+      if (attempt < maxRetries && isDatabaseLockedError(error)) {
+        const delay = Math.min(1000, 50 * Math.pow(2, attempt));
+        await sleep(delay);
+        continue;
+      }
+      // Migrations run before anything reads or writes app data, so a
+      // failure here means the caller must show a handled error state
+      // instead of going on to render screens over a database that isn't
+      // there (ticket 04's acceptance: not a blank screen).
+      return { phase: 'error', error };
+    } finally {
+      /* The guard ends with the migrations, not with boot(). What follows is
+         reconcileBuiltIns, which takes the guard itself on the way through the
+         journal wrapper, and the photo sweep, which only ever deletes files no
+         row references - so an update landing mid-sweep leaves orphans for the
+         next boot to reclaim, which is what its own failure path already
+         does. */
+      migrating();
+    }
   }
 
   const persistDenied = deps.requestPersistentStorage ? !(await deps.requestPersistentStorage()) : false;
