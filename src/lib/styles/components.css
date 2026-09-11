@@ -1964,6 +1964,9 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
    used; the toast goes under the scrim with everything else. */
 .fan-scrim {
   position: absolute; inset: 0; z-index: 54;
+  /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+     transition controls opacity without CSS transition interference (ticket 105, 116). */
+  transition: none;
 }
 .app-nav.is-fan-open { z-index: 56; }
 
@@ -2000,6 +2003,7 @@ html[data-a11y-motion='reduce'] [data-app-root] > [inert] {
   border-radius: var(--r-block);
   box-shadow: var(--shadow-float);
   overflow: hidden;
+  will-change: transform, opacity;
 }
 /* One question asked twice: two halves of a row, split by the same hairline
    that separates rows elsewhere. */
