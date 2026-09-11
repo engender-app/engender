@@ -25,3 +25,14 @@ describe('Sheet initial focus contract', () => {
     expect(sheetFile).toContain('!sheetEl.contains(document.activeElement)');
   });
 });
+
+describe('Sheet backdrop scrim contract', () => {
+  it('uses dedicated scrimFade transition without unconstrained dynamic fade', () => {
+    expect(sheetFile).toContain('transition:scrimFade');
+    expect(sheetFile).not.toMatch(/transition:fade/);
+  });
+
+  it('disables CSS transitions on sheet-scrim-tint to prevent WAAPI conflict', () => {
+    expect(sheetFile).toMatch(/\.sheet-scrim-tint\s*\{[^}]*transition:\s*none;/);
+  });
+});

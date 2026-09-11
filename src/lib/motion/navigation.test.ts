@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 
-import { containerReceive, containerSend, fadeThrough, sharedAxisX, sheetRise } from './navigation';
+import { containerReceive, containerSend, fadeThrough, scrimFade, sharedAxisX, sheetRise } from './navigation';
 import { EASE_OUT } from './tokens';
 
 /* The node tier has no DOM, and these read their durations and distances
@@ -196,6 +196,24 @@ describe('sheet rise', () => {
     expect(duration).toBe(120);
     expect(frame(css!, 0.5)).not.toContain('transform');
     expect(frame(css!, 0.5)).toMatch(/opacity: 0\.5/);
+  });
+});
+
+describe('scrim fade', () => {
+  it('runs on --dur-slow with EASE_OUT', () => {
+    stubDocument(TOKENS);
+    const { duration, easing, css } = scrimFade(node);
+    expect(duration).toBe(380);
+    expect(easing).toBe(EASE_OUT);
+    expect(frame(css!, 0)).toBe('opacity: 0');
+    expect(frame(css!, 1)).toBe('opacity: 1');
+  });
+
+  it('crossfades under reduced motion', () => {
+    stubDocument(TOKENS, true);
+    const { duration, css } = scrimFade(node);
+    expect(duration).toBe(120);
+    expect(frame(css!, 0.5)).toBe('opacity: 0.5');
   });
 });
 
