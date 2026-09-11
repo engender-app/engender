@@ -350,3 +350,81 @@ test('does not retry non-lock errors (fails immediately without calling sleep)',
   assert.equal(attempts, 1);
   assert.equal(sleepCalls.length, 0);
 });
+
+test('tears down failed driver before creating a new one on boot retry', async () => {
+  let attempts = 0;
+  const closedDrivers: number[] = [];
+  const createdDrivers: number[] = [];
+
+  const flakyDriver = (): SqliteDriver => {
+    const driverId = ++attempts;
+    createdDrivers.push(driverId);
+    const fake = makeFakeDriver();
+    return {
+      ...fake,
+      async getUserVersion() {
+        if (driverId < 3) {
+          throw new Error('database is locked (code 5): , while compiling: SELECT COUNT(*) FROM sqlite_schema;');
+        }
+        return LATEST_SCHEMA_VERSION;
+      },
+      async close() {
+        closedDrivers.push(driverId);
+      }
+    };
+  };
+
+  const result = await boot({
+    createDriver: flakyDriver,
+    fileOps: noopFileOps(),
+    sleep: async () => {}
+  });
+
+  assert.equal(result.phase, 'ready');
+  assert.equal(attempts, 3);
+  assert.deepEqual(createdDrivers, [1, 2, 3]);
+  assert.deepEqual(closedDrivers, [1, 2]);
+});
+
+test('tears down the active driver when all lock retries are exhausted', async () => {
+  let attempts = 0;
+  const closedDrivers: number[] = [];
+  const lockedDriver = (): SqliteDriver => {
+    const driverId = ++attempts;
+    const fake = makeFakeDriver();
+    return {
+      ...fake,
+      getUserVersion: async () => {
+        throw new Error('database is locked (code 5)');
+      },
+      close: async () => {
+        closedDrivers.push(driverId);
+      }
+    };
+  };
+
+  const result = await boot({
+    createDriver: lockedDriver,
+    fileOps: noopFileOps(),
+    sleep: async () => {}
+  });
+
+  assert.equal(result.phase, 'error');
+  assert.equal(attempts, 5);
+  assert.deepEqual(closedDrivers, [1, 2, 3, 4, 5]);
+});
+
+test('opens at most one driver per clean boot attempt', async () => {
+  let driverCreations = 0;
+  const result = await boot({
+    createDriver: () => {
+      driverCreations++;
+      return makeFakeDriver();
+    },
+    fileOps: noopFileOps()
+  });
+
+  assert.equal(result.phase, 'ready');
+  assert.equal(driverCreations, 1);
+});
+

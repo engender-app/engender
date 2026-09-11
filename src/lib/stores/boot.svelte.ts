@@ -25,8 +25,7 @@
 import { boot } from '../data/sqlite/boot';
 import type { SqliteDriver } from '../data/sqlite/driver';
 import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
-import { createEncryptedWebSqlite } from '../data/sqlite/mc-driver';
-import { createAndroidSqlite, deleteAndroidDatabase } from '../data/sqlite/android-driver';
+import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
@@ -37,9 +36,14 @@ import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
 import { hydrateReference } from '../data/live/reference.svelte';
-import { opfsPhotoFiles, type ListableDirectory } from '../data/photos/opfs-file-store';
-import { appPrivatePhotoFiles } from '../data/photos/android-file-store';
-import { encryptedFileStore } from '../data/photos/encrypted-file-store';
+import type { ListableDirectory } from '../data/photos/opfs-file-store';
+import {
+  closeActiveDriver,
+  createJournalSqlite,
+  journalPhotoFiles,
+  setActiveDriver
+} from './journal-ports';
+
 import {
   addJournalPassphrase,
   setupJournalPassphrase,
@@ -58,7 +62,6 @@ import {
 import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import type { JournalAccessMode } from '../data/journal-access-mode';
-import { JOURNAL_DATABASE } from '../data/conversion/web-ports';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles } from './videoFiles';
 import { setVoiceFiles } from './voiceFiles';
@@ -263,6 +266,7 @@ export async function restorePreviousJournal(): Promise<void> {
      lets go of its access handles so the next boot's worker can acquire them
      (ADR-0020's one connection per origin). */
   await openDriver?.close();
+  await closeActiveDriver();
   location.reload();
 }
 
@@ -275,6 +279,7 @@ export async function retryBoot(): Promise<void> {
     openDriver = null;
     openFileOps = null;
   }
+  await closeActiveDriver();
   if (sessionDataKey) {
     dispatch({
       type: 'key-obtained',
@@ -593,32 +598,20 @@ async function perform(effect: BootEffect): Promise<void> {
   }
 }
 
-/** The driver and the file store this platform opens a journal with. The last
-    place either platform is named: everything past it is ADR-0017's seam,
-    where nothing knows which one it is on. */
-function journalPorts(dataKey: Uint8Array<ArrayBuffer>): { sqlite: WebSqlite; photoFiles: PhotoFileStore } {
-  if (isAndroid()) {
-    return {
-      sqlite: createAndroidSqlite(JOURNAL_DATABASE, dataKey),
-      photoFiles: encryptedFileStore(appPrivatePhotoFiles(), dataKey)
-    };
-  }
-  return {
-    sqlite: createEncryptedWebSqlite(JOURNAL_DATABASE, dataKey),
-    // Encrypted per file under the same data key as the database (ticket
-    // 09): whole-database encryption never reaches files outside SQLite
-    // (ADR-0020).
-    photoFiles: encryptedFileStore(opfsPhotoFiles(), dataKey)
-  };
-}
-
 /** Everything both platforms do once they have a data key: the journal is
     constructed over a driver, boot() runs its sequence, and how it ended goes
     back to the reducer as an event. */
 async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  if (openDriver) {
+    await openDriver.close().catch(() => {});
+    openDriver = null;
+    openFileOps = null;
+  }
+  await closeActiveDriver();
+
   sessionDataKey = dataKey;
   announceDataKey(dataKey);
-  const { photoFiles } = journalPorts(dataKey);
+  const photoFiles = journalPhotoFiles(dataKey);
 
   // Set before boot() rather than after, so the first screen to render a
   // photo already has somewhere to read it from.
@@ -635,9 +628,10 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
 
   const result = await boot({
     createDriver: () => {
-      activeSqlite = journalPorts(dataKey).sqlite;
+      activeSqlite = createJournalSqlite(dataKey);
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
+      setActiveDriver(activeSqlite.driver, activeSqlite.fileOps);
       journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
       return activeSqlite.driver;
     },
@@ -679,6 +673,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   });
 
   if (result.phase === 'error') {
+    await closeActiveDriver();
     dispatch({ type: 'journal-open-failed', error: result.error });
     return;
   }
