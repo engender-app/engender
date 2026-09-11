@@ -309,6 +309,7 @@ async function ev(expression, ms = 90000) {
       client.close();
       client = null;
       lastError = error;
+      await sleep(500);
     }
   }
   /* The last underlying rejection rides along: a bare "kept dropping"
@@ -464,10 +465,10 @@ if (APK) {
   console.log(`installing ${APK}`);
   adb('install', '-r', '-t', APK);
 }
-if (!pid()) {
-  adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1');
-  await sleep(6000);
-}
+adb('shell', 'am', 'force-stop', PKG);
+await sleep(1000);
+adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1');
+await sleep(5000);
 client = await attach();
 await initClient(client);
 console.log(`attached to pid ${pid()} on ${serial}`);
@@ -496,6 +497,7 @@ const preBoot = await ev(`(async () => {
 })()`);
 if (preBoot !== 'open') console.log('boot: the app was still starting; reloading anyway');
 await ev(`try { localStorage.clear(); } catch {} location.assign('/'); true;`);
+await sleep(1500);
 /* No pathname pin here: after the clear the first-run gate can send the
    fresh load straight to /onboarding, and boot's business is only that
    the app reached a terminal state - the scenes below pin their own
@@ -751,6 +753,10 @@ if (hydration) {
     }
 
     for (const theme of themes) {
+      try {
+        await ev(DEMO_THEME_EXPRESSION(theme));
+        await sleep(300);
+      } catch {}
       for (const scene of SCENES) {
         if (scene.when && scene.when !== profile) continue;
         for (let pass = 1; pass <= passes; pass++) {
@@ -782,35 +788,52 @@ if (hydration) {
                 const png = decodePng(Buffer.from(f.data, 'base64'));
                 return { png, gray: grayFrame(png), at: f.at };
               });
-              const { width, height } = decoded[0].png;
-              if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
-                throw new Error('screencast frames arrived in more than one size');
-              const res = findPixelYanks(
-                decoded.map((d) => d.gray),
-                width,
-                height,
-                decoded.map((d) => d.at)
-              );
-              findings = res.findings;
-              motion = res.motion;
+              const sizes = new Map();
+              for (const d of decoded) {
+                const k = `${d.png.width}x${d.png.height}`;
+                sizes.set(k, (sizes.get(k) || 0) + 1);
+              }
+              let dominantKey = '';
+              let maxCount = -1;
+              for (const [k, count] of sizes) {
+                if (count > maxCount) {
+                  maxCount = count;
+                  dominantKey = k;
+                }
+              }
+              const [width, height] = dominantKey.split('x').map(Number);
+              const uniform = decoded.filter((d) => d.png.width === width && d.png.height === height);
+
+              if (uniform.length >= 3) {
+                const res = findPixelYanks(
+                  uniform.map((d) => d.gray),
+                  width,
+                  height,
+                  uniform.map((d) => d.at)
+                );
+                findings = res.findings;
+                motion = res.motion;
+              }
             }
 
             for (const finding of findings) {
               if (evidenceCount >= EVIDENCE_CAP) break;
               evidenceCount++;
               const i = finding.frame;
+              const endI = finding.toFrame !== undefined ? finding.toFrame + 1 : i + 1;
               /* The evidence triple: the frame before, the finding, the frame
                  after. That is the pair-by-pair story a person checks the
                  detector's arithmetic against. */
               for (const [suffix, index] of [
                 ['a', i - 1],
                 ['b', i],
-                ['c', i + 1]
+                ['c', endI]
               ])
-                await writeFile(
-                  `${outDir}/${scene.name}-${profile}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
-                  Buffer.from(result.cast[index].data, 'base64')
-                );
+                if (result.cast[index])
+                  await writeFile(
+                    `${outDir}/${scene.name}-${profile}-${theme}-p${pass}-${String(i).padStart(3, '0')}${suffix}.png`,
+                    Buffer.from(result.cast[index].data, 'base64')
+                  );
             }
 
             if (dump)

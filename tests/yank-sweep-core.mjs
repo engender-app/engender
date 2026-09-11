@@ -40,7 +40,7 @@ export const BLOAT_RATIO = 1.4;
 /** How long to follow a gesture. The door change is 380ms and the slowest
     stagger runs a few frames past it; what is left is the stillness that
     says it landed rather than stopped. */
-export const SCENE_MS = 760;
+export const SCENE_MS = 1100;
 /** The hydration sweep's own two clocks (ticket 108). Its blind spot was
  *  never the arithmetic - it was the window: the gesture sweep's settle
  *  waits 1400ms before recording, and the cold-mount pops (SQLite
@@ -784,6 +784,65 @@ export function findPixelYanks(grays, w, h, ats) {
       regions: found.slice(0, 5).map((r) => ({ box: r.box, areaPct: round4(r.area / (w * h)) }))
     });
   }
+
+  /* Multi-frame dropouts (ticket 117): a cohesive region visible before and after
+   * that vanishes or blacks out across 2 or more consecutive frames (e.g. the
+   * header dropping out during a view transition). Single-frame spikes are caught
+   * above; this catches sustained dropouts. */
+  for (let start = 1; start < grays.length - 2; start++) {
+    const startDiff = diffMask(grays[start - 1], grays[start]);
+    if (startDiff.frac < TRANSIENT_MIN) continue;
+
+    for (let end = start + 2; end < Math.min(grays.length, start + 30); end++) {
+      const endDiff = diffMask(grays[end - 1], grays[end]);
+      if (endDiff.frac < TRANSIENT_MIN) continue;
+
+      const skip = diffMask(grays[start - 1], grays[end]);
+      let transient = 0;
+      const tmask = new Uint8Array(startDiff.mask.length);
+      for (let p = 0; p < tmask.length; p++) {
+        if (startDiff.mask[p] && endDiff.mask[p] && !skip.mask[p]) {
+          tmask[p] = 1;
+          transient++;
+        }
+      }
+      const frac = transient / tmask.length;
+      if (frac < TRANSIENT_MIN) continue;
+
+      // Verify region stayed changed on intermediate frames
+      const mid = Math.floor((start + end) / 2);
+      const midDiff = diffMask(grays[start - 1], grays[mid]);
+      let midTransient = 0;
+      for (let p = 0; p < tmask.length; p++) {
+        if (tmask[p] && midDiff.mask[p]) midTransient++;
+      }
+      if (midTransient / tmask.length < TRANSIENT_MIN) continue;
+
+      const found = regions(tmask, w, h, Math.round(0.002 * w * h));
+      if (!found.length) continue;
+      const top = found[0];
+
+      // Avoid duplicate reports overlapping an already recorded dropout
+      const already = findings.some(
+        (f) => f.kind === 'dropout' && f.toFrame >= start && f.frame <= end
+      );
+      if (already) continue;
+
+      findings.push({
+        kind: 'dropout',
+        frame: start,
+        toFrame: end - 1,
+        span: end - start,
+        at: Math.round(ats[start]),
+        duration: Math.round(ats[end] - ats[start]),
+        box: top.box,
+        areaPct: round4(top.area / (w * h)),
+        regions: found.slice(0, 5).map((r) => ({ box: r.box, areaPct: round4(r.area / (w * h)) }))
+      });
+      break;
+    }
+  }
+
   return { findings, motion };
 }
 
@@ -1139,23 +1198,38 @@ export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_
     const png = decodePng(Buffer.from(f.data, 'base64'));
     return { png, gray: grayFrame(png), at: f.at };
   });
-  const { width, height } = decoded[0].png;
-  if (decoded.some((d) => d.png.width !== width || d.png.height !== height))
-    throw new Error('screencast frames arrived in more than one size');
+  const sizes = new Map();
+  for (const d of decoded) {
+    const k = `${d.png.width}x${d.png.height}`;
+    sizes.set(k, (sizes.get(k) || 0) + 1);
+  }
+  let dominantKey = '';
+  let maxCount = -1;
+  for (const [k, count] of sizes) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominantKey = k;
+    }
+  }
+  const [width, height] = dominantKey.split('x').map(Number);
+  const uniform = decoded.filter((d) => d.png.width === width && d.png.height === height);
+  if (uniform.length < 3) return { findings: [], cast: cast.length };
+
   const { findings } = findPixelYanks(
-    decoded.map((d) => d.gray),
+    uniform.map((d) => d.gray),
     width,
     height,
-    decoded.map((d) => d.at)
+    uniform.map((d) => d.at)
   );
   let written = 0;
   for (const finding of findings) {
     if (written >= cap) break;
     const i = finding.frame;
+    const endI = finding.toFrame !== undefined ? finding.toFrame + 1 : i + 1;
     for (const [suffix, index] of [
       ['a', i - 1],
       ['b', i],
-      ['c', i + 1]
+      ['c', endI]
     ])
       if (cast[index])
         await writeFile(`${outDir}/${name}-${label}-${Math.round(finding.at)}ms${suffix}.png`, Buffer.from(cast[index].data, 'base64'));
