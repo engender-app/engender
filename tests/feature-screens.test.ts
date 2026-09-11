@@ -405,3 +405,24 @@ describe('no medical framing and no interpreted values', () => {
     }
   });
 });
+
+describe('transient frame render flashes and bloat prevention (ticket 114)', () => {
+  it('guarantees intrinsic minimum geometry on screen headers', () => {
+    const componentsCss = read('src/lib/styles/components.css');
+    expect(componentsCss).toMatch(/\.screen-header\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    expect(componentsCss).toMatch(/\.screen > \.screen-header > \.screen-field\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--inset-top\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    expect(componentsCss).toMatch(/\.screen-header\.is-collapsed,\s*\.screen > \.screen-header\.is-collapsed\s*\{[^}]*min-height:\s*0/);
+  });
+
+  it('stabilizes container query roots and screen column dimensions against render bloat', () => {
+    const appCss = read('src/lib/styles/app.css');
+    expect(appCss).toMatch(/\.app-viewport\s*\{[^}]*max-width:\s*100%/);
+    expect(appCss).toMatch(/\.screen\s*\{[^}]*max-width:\s*100%;[^}]*min-width:\s*0/);
+  });
+
+  it('keeps skeleton placeholders free of delayed entrance animations', () => {
+    const skeleton = read('src/lib/components/Skeleton.svelte');
+    expect(skeleton).not.toContain('stagger-in');
+  });
+});
+
