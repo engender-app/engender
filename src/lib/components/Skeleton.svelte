@@ -23,7 +23,7 @@
 
 <div class="skeleton-stack" data-skeleton aria-hidden="true">
   {#each Array.from({ length: count }) as _, i (i)}
-    <div class="skeleton-{variant} stagger-in" style="--stagger-i:{i}">
+    <div class="skeleton-{variant}">
       {#if variant === 'card'}
         <span class="skeleton skeleton-dot"></span>
         <span class="skeleton-lines">
