@@ -792,6 +792,7 @@
   "boot_restore_action": "Przywróć poprzedni dziennik",
   "boot_restore_running": "Przywracanie…",
   "boot_restore_failed": "Nie udało się. Kopia nadal jest na urządzeniu.",
+  "boot_retry_action": "Spróbuj otworzyć ponownie",
   "quick_exit_back": "Powrót do aplikacji",
   "nav_main": "Główna",
   "skip_to_content": "Przejdź do treści",

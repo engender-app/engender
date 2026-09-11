@@ -30,7 +30,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { ui } from '$lib/stores/ui.svelte';
   import { saveBar } from '$lib/stores/saveBar.svelte';
-  import { bootState, recoveryUnlock, restorePreviousJournal, startBoot } from '$lib/stores/boot.svelte';
+  import { bootState, recoveryUnlock, restorePreviousJournal, retryBoot, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
@@ -538,6 +538,16 @@
     }
   }
 
+  let retrying = $state(false);
+  async function retry() {
+    retrying = true;
+    try {
+      await retryBoot();
+    } finally {
+      retrying = false;
+    }
+  }
+
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
@@ -679,6 +689,11 @@
               <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
             {/if}
           {/if}
+          <div style="margin-top:var(--space-2)">
+            <button class="btn btn-soft" data-retry-boot disabled={retrying} onclick={retry}>
+              <span>{m.boot_retry_action()}</span>
+            </button>
+          </div>
         </div>
       </div>
     {/if}

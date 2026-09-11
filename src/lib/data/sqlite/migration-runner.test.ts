@@ -276,6 +276,31 @@ test('runMigrations fails loudly on missing FTS5 before touching versions or fil
   assert.equal(fileOps.copyCalls, 0);
 });
 
+test('assertFts5Available does not misclassify a locked database as missing FTS5', async () => {
+  const lockError = new Error('database is locked (code 5): , while compiling: SELECT COUNT(*) FROM sqlite_schema;');
+  const lockedDb: MigrationDb = {
+    exec() {
+      throw lockError;
+    },
+    getUserVersion() {
+      throw new Error('should not be called');
+    },
+    setUserVersion() {},
+    transaction(fn) {
+      return fn();
+    }
+  };
+
+  await assert.rejects(
+    () => assertFts5Available(lockedDb),
+    (err: unknown) => {
+      assert.equal(err, lockError);
+      assert.ok(!(err instanceof Fts5UnavailableError));
+      return true;
+    }
+  );
+});
+
 test('a journal already on the current schema never loads the migration list', async () => {
   /* Phase 5 audit ticket 02: the list is 27KB of SQL text and every boot
      used to parse it to decide it had nothing to do. A journal at the latest
