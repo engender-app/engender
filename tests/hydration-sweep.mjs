@@ -95,7 +95,7 @@ const only = flag('scenes', '')
 const profiles = flag('profiles', 'persona,empty')
   .split(',')
   .filter(Boolean);
-const themes = flag('themes', 'light')
+const themes = flag('themes', 'light,dark')
   .split(',')
   .filter(Boolean);
 const PIN = flag('pin', '1111');

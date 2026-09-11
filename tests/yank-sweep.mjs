@@ -125,12 +125,13 @@ const outDir = resolve(flag('out', resolve(here, '../.claude/yank-sweep')));
 const only = flag('scenes', '')
   .split(',')
   .filter(Boolean);
-const themes = flag('themes', 'light')
+const themes = flag('themes', 'light,dark')
   .split(',')
   .filter(Boolean);
 const profiles = flag('profiles', 'persona,empty')
   .split(',')
   .filter(Boolean);
+const passes = Number(flag('passes', '3'));
 /** Injects three defects, so the detector can be seen to find them. */
 const prove = args.includes('--prove');
 
@@ -208,42 +209,48 @@ for (const profile of profiles) {
   for (const theme of themes) {
     for (const scene of SCENES) {
       if (scene.when && scene.when !== profile) continue;
-      try {
-        await settle(scene.at, theme);
-        if (scene.firstRun) await firstRunTo(page, scene.firstRun);
-        await page.waitForTimeout(1400);
-        if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
-        const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
-        /* A transition ran, so the pseudos are what the person saw, and only the
-           frames it was running on are the gesture. */
-        const transitioned = all_frames.some((f) => f.active);
-        const instrument = transitioned ? 'vt' : 'rows';
-        const frames = transitioned ? all_frames.filter((f) => f.active) : all_frames;
-        if (!frames.length) throw new Error('no frames to read');
-        const all = findYanks(frames, instrument, frames.length - 1);
-        const yanks = all.filter((y) => !EXEMPT.test(y.mark));
-        if (args.includes('--dump'))
-          await writeFile(`${outDir}/${scene.name}-${profile}.frames.json`, JSON.stringify(all_frames, null, 1));
-        report.push({
-          scene: scene.name,
-          profile,
-          theme,
-          is: scene.is,
-          instrument,
-          frames: frames.length,
-          sampled: all_frames.length,
-          from: frames[0]?.at ?? 0,
-          span: frames.at(-1)?.at ?? 0,
-          yanks,
-          suppressed: all.length - yanks.length
-        });
-        console.log(
-          `[${profile}-${theme}] ${scene.name}: ${frames.length} frames read as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${yanks.length} yank(s)` +
-            (yanks.length ? `\n  ${yanks.map((y) => `${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`).join('\n  ')}` : '')
-        );
-      } catch (err) {
-        report.push({ scene: scene.name, profile, theme, error: String(err).slice(0, 300) });
-        console.log(`[${profile}-${theme}] ${scene.name}: ERROR ${String(err).slice(0, 160)}`);
+      for (let pass = 1; pass <= passes; pass++) {
+        try {
+          await settle(scene.at, theme);
+          if (scene.firstRun) await firstRunTo(page, scene.firstRun);
+          await page.waitForTimeout(1400);
+          if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
+          const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+          /* A transition ran, so the pseudos are what the person saw, and only the
+             frames it was running on are the gesture. */
+          const transitioned = all_frames.some((f) => f.active);
+          const instrument = transitioned ? 'vt' : 'rows';
+          const frames = transitioned ? all_frames.filter((f) => f.active) : all_frames;
+          if (!frames.length) throw new Error('no frames to read');
+          const all = findYanks(frames, instrument, frames.length - 1);
+          const yanks = all.filter((y) => !EXEMPT.test(y.mark));
+          if (args.includes('--dump'))
+            await writeFile(
+              `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
+              JSON.stringify(all_frames, null, 1)
+            );
+          report.push({
+            scene: scene.name,
+            profile,
+            theme,
+            pass,
+            is: scene.is,
+            instrument,
+            frames: frames.length,
+            sampled: all_frames.length,
+            from: frames[0]?.at ?? 0,
+            span: frames.at(-1)?.at ?? 0,
+            yanks,
+            suppressed: all.length - yanks.length
+          });
+          console.log(
+            `[${profile}-${theme}] ${scene.name} p${pass}: ${frames.length} frames read as ${instrument === 'vt' ? 'a transition' : 'a state change'}, ${yanks.length} yank(s)` +
+              (yanks.length ? `\n  ${yanks.map((y) => `${y.kind} ${y.mark} @${y.at}ms - ${y.detail}`).join('\n  ')}` : '')
+          );
+        } catch (err) {
+          report.push({ scene: scene.name, profile, theme, pass, error: String(err).slice(0, 300) });
+          console.log(`[${profile}-${theme}] ${scene.name} p${pass}: ERROR ${String(err).slice(0, 160)}`);
+        }
       }
     }
   }
@@ -255,6 +262,7 @@ await writeFile(
     {
       target: 'desktop',
       themes,
+      passes,
       thresholds: { TELEPORT_PX, TELEPORT_RATIO, VISIBLE, GONE, BLOAT_PX, BLOAT_RATIO },
       report,
       errors
@@ -270,8 +278,8 @@ const total = report.reduce((n, r) => n + (r.yanks?.length ?? 0), 0);
 console.log(`\n${report.length} run(s), ${total} yank(s); report in ${outDir}/report.json`);
 
 if (prove) {
-  const scene = report.find((r) => r.scene === PROOF.scene);
-  const got = (mark, kind) => scene?.yanks?.some((y) => y.mark.startsWith(mark) && y.kind === kind);
+  const scenes = report.filter((r) => r.scene === PROOF.scene);
+  const got = (mark, kind) => scenes.some((s) => s.yanks?.some((y) => y.mark.startsWith(mark) && y.kind === kind));
   const missing = [
     got(PROOF.teleport, 'teleport') ? null : `a 200px jump on ${PROOF.teleport}`,
     got(PROOF.vanish, 'vanish') ? null : `a one-frame cut on ${PROOF.vanish}`,
