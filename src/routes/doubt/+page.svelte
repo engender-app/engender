@@ -40,6 +40,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import EntryCard from '$lib/components/EntryCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -51,6 +52,7 @@
   import BarRows from '$lib/components/kit/BarRows.svelte';
   import type { BarRow } from '$lib/components/kit/barRow';
   import { atGrain } from '$lib/charts/grain';
+  import { crossfade } from '$lib/motion/reveal';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import LookBackLetterCard from '$lib/components/LookBackLetterCard.svelte';
@@ -203,6 +205,21 @@
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
     journal.comfortItems.reorder(ids);
   }
+
+  /* All live queries for the retrospective and journal reflection sections.
+     Held whole behind a coordinated gate rather than mounting sequentially:
+     otherwise SQLite query resolution cascades across ~350ms, popping cards
+     in one by one and displacing footer sections by thousands of pixels
+     (ticket 113). */
+  let loading = $derived(
+    counterevidenceQuery.loading ||
+      entryCountQuery.loading ||
+      dayAveragesQuery.loading ||
+      lettersQuery.loading ||
+      starredPhotosQuery.loading ||
+      snapshotsQuery.loading ||
+      comfortItemsQuery.loading
+  );
 </script>
 
 <div class="screen">
@@ -226,7 +243,10 @@
     />
   </ListCard>
 
-  <SectionHeading text={m.safe_space_stats_title()} />
+  {#if loading}
+    <div out:crossfade><Skeleton variant="card" count={2} /></div>
+  {:else}
+    <SectionHeading text={m.safe_space_stats_title()} />
   <!-- `tileRoleAt` rather than `roleAt`: a tile is a block of the stripe
        undiluted, and index 1 on agender is its near-black band, which as a
        whole block is the page (phase 10 rule 3). -->
@@ -419,6 +439,7 @@
       action={{ label: m.comfort_list_add(), primary: true, onclick: () => comfortRecord.openEditor(null) }}
     />
   {/if}
+{/if}
 
   <RecordSheet
     record={comfortRecord}
