@@ -6,6 +6,7 @@ import android.database.Cursor;
 import com.getcapacitor.JSObject;
 
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
+import net.zetetic.database.sqlcipher.SQLiteDatabaseHook;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -62,16 +63,31 @@ final class SqliteConnection {
         System.loadLibrary("sqlcipher");
     }
 
+    private static final SQLiteDatabaseHook BUSY_TIMEOUT_HOOK = new SQLiteDatabaseHook() {
+        @Override
+        public void preKey(net.zetetic.database.sqlcipher.SQLiteConnection connection) {}
+
+        @Override
+        public void postKey(net.zetetic.database.sqlcipher.SQLiteConnection connection) {
+            connection.executeForLong("PRAGMA busy_timeout = 5000;", null, null);
+        }
+    };
+
     void open(Context context, String name, String hexKey) {
+        File targetFile = context.getDatabasePath(name);
+        String targetPassword = rawKeyPassword(hexKey);
+        if (database != null && database.isOpen() && targetFile.equals(databaseFile) && targetPassword.equals(password)) {
+            try {
+                database.execSQL("ROLLBACK;");
+            } catch (Exception ignored) {}
+            return;
+        }
         close();
-        databaseFile = context.getDatabasePath(name);
+        databaseFile = targetFile;
         File parent = databaseFile.getParentFile();
         if (parent != null) parent.mkdirs();
-        password = rawKeyPassword(hexKey);
-        database = SQLiteDatabase.openOrCreateDatabase(databaseFile, password, null, null, null);
-        try (Cursor cursor = database.rawQuery("PRAGMA busy_timeout = 5000", null)) {
-            cursor.moveToFirst();
-        }
+        password = targetPassword;
+        database = SQLiteDatabase.openOrCreateDatabase(databaseFile, password, null, null, BUSY_TIMEOUT_HOOK);
     }
 
     /**
@@ -192,7 +208,7 @@ final class SqliteConnection {
         if (!copy.exists() || copy.length() == 0) return false;
         try (SQLiteDatabase check =
                 SQLiteDatabase.openDatabase(
-                    copy.getPath(), password, null, SQLiteDatabase.OPEN_READONLY, null, null);
+                    copy.getPath(), password, null, SQLiteDatabase.OPEN_READONLY, null, BUSY_TIMEOUT_HOOK);
              Cursor cursor =
                 check.rawQuery("SELECT count(*) FROM sqlite_master WHERE type = 'table'", null)) {
             cursor.moveToFirst();
@@ -239,6 +255,9 @@ final class SqliteConnection {
 
     void close() {
         if (database != null) {
+            try {
+                database.execSQL("ROLLBACK;");
+            } catch (Exception ignored) {}
             database.close();
             database = null;
         }
