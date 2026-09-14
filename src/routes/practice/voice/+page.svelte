@@ -52,7 +52,9 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
-  import { bandsFor, comfortBand } from '$lib/audio/bands';
+  import { bandsFor, comfortBand, pitchAxis } from '$lib/audio/bands';
+  import { decodePitchTrack } from '$lib/audio/track';
+  import { pitchDensity } from '$lib/audio/density';
   import { metricHref } from '$lib/data/voice/metrics';
   import { metricName } from '$lib/data/voice/metricLabels';
   import { acousticDelta } from '$lib/audio/benchmarkDelta';
@@ -69,7 +71,8 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
   import VoicePracticeTakes from '$lib/components/VoicePracticeTakes.svelte';
-  import VoiceTake from '$lib/components/VoiceTake.svelte';
+  import PitchFigure from '$lib/components/PitchFigure.svelte';
+  import { hzLabel } from '$lib/components/pitchBandCopy';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -139,6 +142,44 @@
      caption renders inside `{#if comparing && pair}`) but is still
      evaluated, so it has to be something rather than an index into null. */
   let pairBands = $derived(bandsFor(pair ? anchors[pair.left].passageKey : '', getLocale()));
+
+  /* The pair as one picture (redesign ticket 42). Two stacked time plots is
+     what this view was, and two forty-second scribbles is not what somebody
+     comparing two months of work is reading: the question is where the
+     voice sat, which is one axis with both takes' shapes on it, back to
+     back, inside the same cited bands.
+
+     One axis over both takes rather than one each. Two shapes placed
+     against private axes would read as comparable while putting the same
+     frequency at two heights, which is the whole failure the absolute axis
+     exists to prevent (audio/bands.ts). */
+  let pairFigure = $derived.by(() => {
+    if (!pair) return null;
+    const takes = [anchors[pair.left], anchors[pair.right]].map((benchmark) => ({
+      benchmark,
+      trace: decodePitchTrack(benchmark.pitchTrack)
+    }));
+    const [earlier, later] = takes;
+    if (!earlier.trace || !later.trace) return null;
+
+    const axis = pitchAxis({
+      hz: takes.flatMap((take) => [
+        ...take.trace!.map((frame) => frame.hz),
+        take.benchmark.f0MedianHz
+      ]),
+      comfort
+    });
+    const side = (take: (typeof takes)[number]) => {
+      const density = pitchDensity(take.trace!, axis);
+      return density && { density, medianHz: take.benchmark.f0MedianHz };
+    };
+    const sides = [side(earlier), side(later)];
+    /* Both or neither: a figure with one shape on a shared spine says the
+       other take had no voice in it, which is a worse claim than the
+       sentence a trackless take already carries. */
+    if (!sides[0] || !sides[1]) return null;
+    return { axis, earlier: sides[0], later: sides[1] };
+  });
 
   /* F0 median over every benchmark, oldest first - independent of which two
      are picked to compare. The trend and the pair compare are two different
@@ -210,6 +251,36 @@
   {#if comparing && pair}
     <ScreenHeader title={m.vc_compare()} back={() => (comparing = false)} />
     <p class="compare-gap">{gapLabel}</p>
+
+    <!-- Where each read sat, on one axis, inside the same bands. The
+         earlier take reads leftward from the spine and the later one
+         rightward; which is which is said in words under it, because
+         nothing on this screen may read as a direction of travel
+         (ADR-0012). -->
+    <div class="screen-part vc-pair" data-vc-pair {...roleAttrs(roleAt(activeFlag.roles, SECTION_ROLE.trend))}>
+      {#if pairFigure}
+        <PitchFigure
+          axis={pairFigure.axis}
+          trace={[]}
+          pair={{ earlier: pairFigure.earlier, later: pairFigure.later }}
+          tickLabel={hzLabel}
+          language={pairBands.language}
+          languageGuessed={pairBands.guessed}
+          captionShared
+          role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
+        />
+        <p class="vc-sides">
+          <span>{fmtDay(anchors[pair.left].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <span>{fmtDay(anchors[pair.right].epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </p>
+      {:else}
+        <!-- One of the two was recorded before the app kept pitch over
+             time, so there is no shape to draw for it. The figures below
+             are all either take has. -->
+        <p class="muted small" data-vc-no-track>{m.vb_take_no_track()}</p>
+      {/if}
+    </div>
+
     <div class="vc-stack">
       {#each [{ i: pair.left, which: 'left' as const, canPrev: pair.left > 0, canNext: pair.left < pair.right - 1 }, { i: pair.right, which: 'right' as const, canPrev: pair.right > pair.left + 1, canNext: pair.right < anchors.length - 1 }] as side (side.which)}
         {@const benchmark = anchors[side.i]}
@@ -222,20 +293,6 @@
             <button class="icon-btn" disabled={!side.canNext}
               aria-label={m.vc_later()} onclick={() => step(side.which, 1)}><Icon name="chevronRight" size={18} /></button>
           </div>
-          <!-- Each side's own take, on the same axis and behind the same
-               bands, which is what makes two of them readable side by side
-               at all (ticket 09). -->
-          <VoiceTake
-            data-vc-take={benchmark.id}
-            {comfort}
-            captionShared
-            language={bandsFor(benchmark.passageKey, getLocale()).language}
-            role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
-            pitchTrack={benchmark.pitchTrack}
-            medianHz={benchmark.f0MedianHz}
-            p10Hz={benchmark.f0P10Hz}
-            p90Hz={benchmark.f0P90Hz}
-          />
         </div>
       {/each}
     </div>
@@ -352,6 +409,7 @@
                  list is where a pair gets chosen. -->
             <VoiceOwnSeries
               benchmarks={anchors}
+              marked={pair ? [pair.left, pair.right] : []}
               role={roleAt(activeFlag.roles, SECTION_ROLE.own)}
               pairedRole={roleAt(activeFlag.roles, SECTION_ROLE.ownPaired)}
             />
@@ -379,7 +437,18 @@
                     })}
                     onclick={() => toggle(b.id)}
                   >
-                    <span class="kit-row-ico"><Icon name="mic" size={20} /></span>
+                    <!-- The take's own pitch, as the block rule 3 allows
+                         behind a value: choosing two benchmarks was a date,
+                         a mic glyph and a tick, which is blind. With the
+                         figure on every row the list is itself a coarse
+                         reading of the series, and the glyph - the same one
+                         on every row of a list of benchmarks - was saying
+                         nothing the screen had not already said.
+
+                         19px bold, which is large text, because rule 11
+                         holds small text on a stripe to 4.5:1 and this list
+                         takes whichever role the areas hand it. -->
+                    <span class="vc-row-pitch" data-voice-row-pitch>{m.vb_hz({ value: String(Math.round(b.f0MedianHz)) })}</span>
                     <span class="kit-row-text">
                       <span class="kit-row-title">{fmtDay(b.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </span>
@@ -464,6 +533,38 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  /* The pitch on a picking row. A block of the section's stripe with its
+     own ink, 6px corners and the edge drawn inside, which is rule 3's block
+     behind a value; the row keeps its 48px because the block is 36 of it. */
+  .vc-row-pitch {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    height: 36px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    background: var(--role-draw);
+    color: var(--role-fill-ink);
+    font-size: 19px;
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Which side is which, under the figure rather than on it: a label
+     inside the box would sit on the bands, and the two dates are the only
+     thing that says which shape is the earlier read. */
+  .vc-sides {
+    display: flex;
+    justify-content: space-between;
+    margin: var(--space-2) 0 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
   }
 
   /* VoicePlayer's own `flex: 1` is sized for .recording-row, a row-direction

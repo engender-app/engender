@@ -402,6 +402,67 @@ describe('the field and the fills (phase 10)', () => {
      every flag has to carry that ink at 4.5:1 on both themes - not only the
      two indices Home happens to use. The ink is the one roles.ts computes
      for the heat ramp's deepest step, which is the stripe undiluted. */
+  /* The voice figure's own two claims (redesign ticket 42).
+
+     The pitch value sits on a block of the stripe at 19px bold, which is
+     large text and answers to 3:1 - the floor rule 11 states, and the one
+     every flag clears with nonbinary's 4.41 as the worst of the eight. It
+     is the same ink and the same block the picking rows carry.
+
+     The density is a chart mark, so it takes the stripe undiluted and owes
+     no ratio at all: `kit.css`'s own note records why, in Alicja's words
+     from 2026-08-25 about what a contrast floor did to nonbinary's yellow.
+     What is asserted here instead is that it cannot quietly become a second,
+     floored colour - the shape is the trace's colour exactly - and the
+     measured worst case is pinned so that a change to either the wash or
+     the stripe list shows up as a number rather than as nothing.
+
+     Measured, both themes, every chromatic role of every flag: the outline
+     against the 18 per cent band wash, against the 9 per cent middle band,
+     and against the bare surface between them. The worst of all three is
+     nonbinary's yellow on the light theme at 1.13:1 against its own band -
+     the same 1.16:1 the pitch trace has always had against the surface, and
+     the flag-colour rule working rather than a regression. */
+  it('draws the density in the flag colour itself, never a floored one', () => {
+    let worst = { ratio: 99, where: '' };
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        const roles = flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']]);
+        for (const role of roles.filter((r) => chromaOf(r.stripe) >= 0.04)) {
+          for (const [what, ground] of [
+            ['the band wash', colorMixOklab(role.stripe, 18, t.surface)],
+            ['the middle band', colorMixOklab(role.stripe, 9, t.surface)],
+            ['the bare surface', t.surface]
+          ] as const) {
+            const ratio = contrast(role.stripe, ground);
+            if (ratio < worst.ratio) {
+              worst = { ratio, where: `${palette}/${theme}: ${role.stripe} on ${what} (${ground})` };
+            }
+          }
+        }
+      }
+    }
+    expect(Number(worst.ratio.toFixed(2)), worst.where).toBe(1.13);
+    expect(worst.where).toContain('nonbinary/light');
+  });
+
+  it('inks the pitch value block to rule 11\'s large-text floor on every flag', () => {
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        for (const role of flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']])) {
+          const ink = role.heat[role.heat.length - 1].ink;
+          const ratio = contrast(ink, role.stripe);
+          expect(
+            ratio,
+            `${palette}/${theme}: the pitch value ${ink} on ${role.stripe} has ${ratio.toFixed(2)}:1`
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
   it('keeps small text in the fill ink readable on every stripe of every flag, both themes', () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {

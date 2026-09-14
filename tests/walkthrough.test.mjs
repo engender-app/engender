@@ -3933,7 +3933,21 @@ try {
   const interrupted = errors.slice(before).filter((e) => /unknown presentation/.test(e));
   if (interrupted.length) throw new Error(`the seed was interrupted: ${interrupted[0]}`);
 
-  ok('the demo bar refuses a second state jump while one is still writing');
+  /* And the third kind of hub line, walked here because this is where the
+     journal is the persona alone: a reading row with nothing written in it
+     says so. It used to be walked further down, on "Fill every feature",
+     while that seed left the voice benchmark empty; redesign ticket 42 gave
+     the fixture six benchmarks, because every reading on the compare tab is
+     a reading against the person's own earlier takes and one take shows
+     none of it. The two lines it is told apart from are still walked under
+     that seed, where a row with writes in it can have them. */
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-list-row="voice-benchmark"][data-hub-line="not-yet"]', {
+    timeout: 8000
+  });
+
+  ok('the demo bar refuses a second state jump while one is still writing, and a reading row with nothing in it says so');
 } catch (e) {
   fail('demo bar state jump overlap', e);
 }
@@ -3969,12 +3983,12 @@ try {
     ['/transition/milestones', 'milestones-empty'],
     ['/transition/letters', 'letters-empty'],
     ['/transition/tryouts', 'tryouts-empty'],
-    /* `/practice/voice` was on this list for its memo picker's own
-       `voice-empty` notice. Phase 8 features ticket 09 moved memos off the
-       screen (ticket 11 gives them their own) and nothing in either demo
-       seed writes a benchmark, so the notice this asserted the absence of
-       no longer exists anywhere - which would have made the check pass for
-       free rather than fail. The voice screen's own walk is below. */
+    /* `/practice/voice` is not on this list, and still is not now that the
+       fixture writes benchmarks (redesign ticket 42): its remaining empty
+       notice belongs to the compare tab, and the route opens on the record
+       tab, so a check here would pass without ever reaching the thing it is
+       about. The voice screen's own walk is below and asks the compare tab
+       directly. */
     ['/practice/wear', 'wear-empty'],
     ['/settings/stock', 'stock-empty'],
     ['/settings/reminders', 'reminders-empty']
@@ -4004,10 +4018,45 @@ try {
     throw new Error('the practise tab offers no way to start');
   }
   await page.locator('[data-segment="compare"]').click();
-  await page.waitForSelector('[data-notice="voice-benchmark-empty"]');
-  if ((await page.locator('[data-comfort-band]').count()) !== 0) {
-    throw new Error('the compare tab still shows the practise tab\'s comfort row');
+  await page.waitForSelector('[data-voice-cell]');
+  /* Waited on rather than counted: the tab swap is a state change and rule
+     10 makes it move, so the row on its way out is in the tree for a frame
+     or two after the incoming tab's first row is. What the walk is about is
+     that it goes, not which frame it goes on. */
+  await page.locator('[data-comfort-band]').waitFor({ state: 'detached', timeout: 5000 });
+
+  /* Redesign ticket 42. The fixture writes six benchmarks now, so what this
+     tab shows is the list rather than its empty notice - and the two things
+     that ticket changed here are only true of a built app with a history in
+     it: every picking row states that take's pitch, and two picked takes
+     draw one figure with both reads on it rather than two stacked plots.
+
+     The pair is picked by clicking two rows, which is what a person does;
+     the step buttons and the delta list underneath are unchanged and
+     covered where they were. */
+  const picking = page.locator('[data-voice-cell]');
+  const cells = await picking.count();
+  if (cells < 2) {
+    throw new Error(`the compare tab lists ${cells} benchmarks, too few to pick a pair from`);
   }
+  if ((await page.locator('[data-voice-cell] [data-voice-row-pitch]').count()) !== cells) {
+    throw new Error('a picking row states no pitch, so the list is not a reading of the series');
+  }
+  await picking.nth(0).locator('[aria-pressed]').click();
+  await picking.nth(cells - 1).locator('[aria-pressed]').click();
+  await page.locator('[data-compare]').click();
+  await page.waitForSelector('[data-vc-pair]');
+  if ((await page.locator('[data-pitch-pair] [data-pair-outline]').count()) !== 2) {
+    throw new Error('the pair view does not draw both reads on one axis');
+  }
+  /* Gripped on a handle that is still alive in src - the trace polyline the
+     record summary draws - rather than on the one the removed component
+     carried, which would make this absence check pass for having nothing to
+     find (tests/walkthrough-handles-exist.test.ts). */
+  if ((await page.locator('[data-pitch-trace]').count()) !== 0) {
+    throw new Error('the pair view still draws each take its own time plot');
+  }
+  await page.locator('[data-benchmark-delta]').waitFor();
 
   /* The metric reference (phase 8 features ticket 27). Reached from a
      figure in the app, and there is no figure to press here: a benchmark
@@ -4286,12 +4335,13 @@ try {
    to read on the persona alone.
 
    Three kinds of line, and the third is the one only a real journal can show.
-   A row whose areas hold a write states when. A row that fronts no dated
-   stream states what is behind it instead, whatever the journal holds. And a
-   reading row with nothing written yet states the same thing - walked on the
-   voice benchmark, since neither demo seed writes one (the note above this
-   block's own voice step says so) while "Fill every feature" writes something
-   in every other reading row.
+   A row whose areas hold a write states when, and a row that fronts no dated
+   stream states what is behind it instead, whatever the journal holds. Both
+   are walked here. The third kind - a reading row with nothing written yet -
+   is walked further up, on the persona alone: "Fill every feature" now
+   writes into every reading row there is, the voice benchmark included
+   (redesign ticket 42), so there is no longer an empty one to point at under
+   this seed.
 
    Handles, never wording or structure (ADR-0029). Each row carries
    `data-hub-line` naming which kind it drew, so the three are told apart by
@@ -4304,10 +4354,6 @@ try {
   if ((await page.locator('[data-list-row="care"][data-hub-line="no-stream"]').count()) === 0) {
     throw new Error('the care row states nothing about what is behind it');
   }
-  if ((await page.locator('[data-list-row="voice-benchmark"][data-hub-line="not-yet"]').count()) === 0) {
-    throw new Error('a reading row with nothing written in it does not say what is behind it');
-  }
-
   // Photos, voice memos and documents live together now, and Body keeps the
   // rest. Documents joined in phase 8 features ticket 52.
   const mediaRows = await page.locator('[data-hub-section="media"]').evaluateAll((rows) =>
