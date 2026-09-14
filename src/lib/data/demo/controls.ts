@@ -24,10 +24,10 @@ import { seedReturnGap } from './returnGap';
 
    The catch is ticket 135's answer to a seed that stops half way through -
    which is what a second jump starting inside this one causes, and what the
-   journal's own invariants cause when it does. A journal left with the
-   persona's first sixty days looks exactly like a journal with the
-   persona in it, so a sweep photographs it and says nothing; an empty one
-   is visibly wrong on the first screen. Clearing is the honest half-state,
+   journal's own invariants cause when it does. A journal left holding the
+   days the seed got through looks exactly like a journal with the persona
+   in it, so a sweep photographs it and says nothing; an empty one is
+   visibly wrong on the first screen. Clearing is the honest half-state,
    and the error still reaches the page so nobody has to infer it. */
 async function reseed(seed: () => Promise<void>): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());

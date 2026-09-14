@@ -49,8 +49,10 @@
      something that was already true. The disabled state is the same answer
      for a person with a mouse.
 
-     The five-weeks jump never clears it, because it reloads instead of
-     navigating: the document it was set on stops existing. */
+     The two jumps that `goto` hold it until the navigation lands, so the
+     screen a harness reads is the one the jump meant. The five-weeks jump
+     reloads instead, and `location.assign` returns before it does, so its
+     window ends at the call and the document goes away a moment later. */
   let busy = $state(false);
   async function stateJump(run: () => Promise<void>) {
     if (busy) return;

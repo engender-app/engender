@@ -1028,11 +1028,12 @@ export const scrapeHrefExpression = (prefix) => `(async () => {
  *
  *  `data-demo-busy` (DemoBar.svelte) is on the bar for the length of a
  *  jump and gone when it is over, navigation included, which is the only
- *  thing here that means what the wait wants. The bar disables its own
- *  controls for the same length, so the idle wait before a click is what
- *  keeps a click from being swallowed rather than queued. The 50ms is the
- *  state flush after the click, not the jump - the jump is a worker round
- *  trip and cannot finish inside it. */
+ *  thing here that means what the wait wants. The bar also disables its own
+ *  controls for that length and drops a click that arrives anyway, so a
+ *  click is refused rather than queued - which is why these wait for an
+ *  idle bar before clicking as well as after. The 50ms is the state flush
+ *  after the click, not the jump: the jump is a worker round trip and
+ *  cannot finish inside it. */
 const DEMO_BAR_IDLE = `for (let i = 0; i < 120 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
 const AWAIT_DEMO_JUMP = `
   await sleep(50);
