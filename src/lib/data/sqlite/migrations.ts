@@ -52,8 +52,40 @@ ALTER TABLE procedure ADD COLUMN kind TEXT NOT NULL DEFAULT 'custom';
 ALTER TABLE procedure ADD COLUMN dilation_opt_in INTEGER NOT NULL DEFAULT 0;
 `;
 
+/* v81 (ticket 39, ADR-0081): entry_body_region's two independent
+   dysphoria/euphoria intensities collapse to one value on the shared
+   0-100 scale, the shape entry_dimension_value.value already has. A
+   both-axes row (from before ticket 99's single slider) takes the side
+   with the larger intensity, the same rule feelingToSliderValue used to
+   apply when it read one - pre-release data needs no more care than that
+   (Alicja, 2026-09-14). */
+const SCHEMA_V81 = `
+ALTER TABLE entry_body_region RENAME TO entry_body_region_v80;
+CREATE TABLE entry_body_region (
+  entry_id INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  region   TEXT NOT NULL,
+  value    INTEGER NOT NULL,
+  PRIMARY KEY (entry_id, region),
+  CHECK (value BETWEEN 0 AND 100 AND value <> 50)
+);
+INSERT INTO entry_body_region (entry_id, region, value)
+SELECT entry_id, region,
+       CAST(ROUND(
+         CASE
+           WHEN dysphoria IS NOT NULL AND euphoria IS NOT NULL THEN
+             CASE WHEN dysphoria >= euphoria THEN 50 - dysphoria / 2.0 ELSE 50 + euphoria / 2.0 END
+           WHEN dysphoria IS NOT NULL THEN 50 - dysphoria / 2.0
+           ELSE 50 + euphoria / 2.0
+         END
+       ) AS INTEGER)
+FROM entry_body_region_v80;
+DROP TABLE entry_body_region_v80;
+CREATE INDEX idx_ebr_region ON entry_body_region(region);
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA },
   { version: 79, sql: SCHEMA_V79 },
-  { version: 80, sql: SCHEMA_V80 }
+  { version: 80, sql: SCHEMA_V80 },
+  { version: 81, sql: SCHEMA_V81 }
 ];

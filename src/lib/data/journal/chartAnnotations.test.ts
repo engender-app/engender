@@ -493,13 +493,13 @@ test('a region reading above that region\'s own spread goes to the entry it was 
     await journal.entries.upsertEntry({
       epochDay: daysAgo(20 + i),
       mood: 3,
-      bodyRegions: { chest: { dysphoria: 20, euphoria: 20 } }
+      bodyRegions: { chest: 40 } // dysphoria intensity 20
     });
   }
   const stoodOut = await journal.entries.upsertEntry({
     epochDay: daysAgo(4),
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 95, euphoria: null } }
+    bodyRegions: { chest: 5 } // dysphoria intensity 90
   });
 
   const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
@@ -510,20 +510,20 @@ test('a region reading above that region\'s own spread goes to the entry it was 
   );
 });
 
-test('euphoria is marked on its own terms and not against dysphoria', async () => {
+test('euphoria is marked on its own terms', async () => {
   const journal = await journalWithRegions();
 
   for (let i = 0; i < 10; i++) {
     await journal.entries.upsertEntry({
       epochDay: daysAgo(20 + i),
       mood: 3,
-      bodyRegions: { chest: { dysphoria: 80, euphoria: 10 } }
+      bodyRegions: { chest: 60 } // euphoria intensity 20
     });
   }
   await journal.entries.upsertEntry({
     epochDay: daysAgo(4),
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 80, euphoria: 90 } }
+    bodyRegions: { chest: 95 } // euphoria intensity 90
   });
 
   const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
@@ -540,26 +540,28 @@ test('euphoria is marked on its own terms and not against dysphoria', async () =
 test('each region is judged against itself', async () => {
   const journal = await journalWithRegions();
 
-  // Chest sits high and moves about; hands sit low and barely move.
-  const chestRun = [60, 65, 70, 75, 80, 60, 65, 70, 75, 80];
-  const handsRun = [2, 4, 6, 8, 10, 2, 4, 6, 8, 10];
+  // Chest sits far from the midpoint and moves about; hands sit close to
+  // it and barely move (dysphoria intensities 60-80 and 2-10, as slider
+  // positions on the dysphoria side: 50 - intensity / 2).
+  const chestRun = [20, 18, 15, 13, 10, 20, 18, 15, 13, 10];
+  const handsRun = [49, 48, 47, 46, 45, 49, 48, 47, 46, 45];
   for (let i = 0; i < chestRun.length; i++) {
     await journal.entries.upsertEntry({
       epochDay: daysAgo(20 + i),
       mood: 3,
       bodyRegions: {
-        chest: { dysphoria: chestRun[i], euphoria: null },
-        hands_feet: { dysphoria: handsRun[i], euphoria: null }
+        chest: chestRun[i],
+        hands_feet: handsRun[i]
       }
     });
   }
-  // 78 is an ordinary day for this chest and 60 is nothing this hand has ever
+  // 11 is an ordinary day for this chest and 20 is nothing this hand has ever
   // been. Pooled into one sample the fence sits between the two runs, which
   // would mark the chest reading and miss the hand one entirely.
   await journal.entries.upsertEntry({
     epochDay: daysAgo(4),
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 78, euphoria: null }, hands_feet: { dysphoria: 60, euphoria: null } }
+    bodyRegions: { chest: 11, hands_feet: 20 }
   });
 
   const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);

@@ -32,7 +32,7 @@ const existingEntry = (): Entry => ({
     { id: 'n1', fileName: 'n1.webm' },
     { id: 'n2', fileName: 'n2.webm' }
   ],
-  bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
+  bodyRegions: { chest: 20 },
   starred: false,
   presentationId: null
 });
@@ -118,7 +118,7 @@ test('applying a persisted draft overlays mood, note, dims, tags, body regions a
     note: 'restored',
     dims: { femininity: 70 },
     tags: ['e-happy'],
-    bodyRegions: { chest: { dysphoria: 30, euphoria: null } },
+    bodyRegions: { chest: 40 },
     removedPhotoIds: [],
     removedRecordingIds: [],
     removedVideoIds: [],
@@ -136,7 +136,7 @@ test('applying a persisted draft overlays mood, note, dims, tags, body regions a
   assert.equal(draft.note, 'restored');
   assert.deepEqual(draft.dims, { femininity: 70 });
   assert.deepEqual(draft.tags, ['e-happy']);
-  assert.deepEqual(draft.bodyRegions, { chest: { dysphoria: 30, euphoria: null } });
+  assert.deepEqual(draft.bodyRegions, { chest: 40 });
   assert.deepEqual(draft.tryoutFeltSense, { tryoutId: 't1', mood: 4, note: 'nice' });
   assert.deepEqual(draft.doseLog, { dose: 100, doseUnit: 'mg', route: 'im' });
   assert.deepEqual(draft.procedureRecovery, { procedureId: 'proc-1', notes: 'day 1' });
@@ -157,7 +157,7 @@ test('applying a persisted draft drops stored photos the user had already remove
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
+    bodyRegions: { chest: 20 },
     removedPhotoIds: ['p1'],
     removedRecordingIds: [],
     removedVideoIds: []
@@ -184,7 +184,7 @@ test('applying a persisted draft drops stored recordings the user had already re
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
+    bodyRegions: { chest: 20 },
     removedPhotoIds: [],
     removedRecordingIds: ['r1'],
     removedVideoIds: []
@@ -211,7 +211,7 @@ test('applying a persisted draft drops stored video notes the user had already r
     note: 'ok day',
     dims: { masculinity: 40 },
     tags: ['e-happy'],
-    bodyRegions: { chest: { dysphoria: 60, euphoria: null } },
+    bodyRegions: { chest: 20 },
     removedPhotoIds: [],
     removedRecordingIds: [],
     removedVideoIds: ['n1']

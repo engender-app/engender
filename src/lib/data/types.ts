@@ -105,28 +105,12 @@ export interface VideoNote {
   fileName: string;
 }
 
-/** What one entry says about one body region (phase 5 ticket 31, CONTEXT:
-    "Entry" - amended). Two independent optional intensities on the shared
-    0-100 scale (bodyMap.ts): how much the region hurt, and how good it
-    felt. Independent because both can be true of the same part on the same
-    day, and optional because saying nothing about one axis is not the same
-    as scoring it 0 - a region someone is at peace with carries a euphoria
-    and no dysphoria, which a single unsigned intensity could not express.
-
-    Never combined. There is no net, balance or score across the two, here
-    or anywhere downstream: that would be derived state (ADR-0010) and it
-    would rank one axis against the other, which is the judgment
-    docs/ui-copy.md forbids. */
-export interface BodyRegionFeeling {
-  dysphoria: number | null;
-  euphoria: number | null;
-}
-
-/** Which of a body region's two intensities something is asking for.
-    Neither is the default and neither is derived from the other; there is
-    deliberately no third value meaning "both combined", because a net
-    figure across the two would rank one axis against the other. */
-export type BodyRegionAxis = keyof BodyRegionFeeling;
+/** Which side of a body region's shared 0-100 scale (bodyMap.ts) something
+    is asking for - dysphoria below the midpoint, euphoria above it. Reads
+    stay split by side (ADR-0081) rather than netting the two into one
+    signed number: that would rank one side against the other, which is the
+    judgment docs/ui-copy.md forbids. */
+export type BodyRegionAxis = 'dysphoria' | 'euphoria';
 
 export interface Entry {
   id: number;
@@ -141,10 +125,12 @@ export interface Entry {
   videos: VideoNote[];
   /** By body-region domain id (journal/bodyRegions.ts), independent of
       dims and tags - ticket 09 does not require ticket 02's "physical"
-      dysphoria tag to be present to log a region. A region is present here
-      only when it has something to say: a feeling with both axes null is
-      dropped on save rather than stored blank. */
-  bodyRegions: Record<string, BodyRegionFeeling>;
+      dysphoria tag to be present to log a region. A region's value is one
+      position on the shared 0-100 scale (bodyMap.ts), dysphoria below the
+      midpoint and euphoria above it (ticket 39, ADR-0081); a region is
+      present here only when it has something to say, so one left at the
+      midpoint is dropped on save rather than stored blank. */
+  bodyRegions: Record<string, number>;
   /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Sits
       outside the seven-field content closure above - the same category
       the uuid/day/timestamp identity fields already are - so it never

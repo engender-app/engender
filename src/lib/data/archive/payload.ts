@@ -96,7 +96,7 @@ export interface ArchiveEntry {
       against a built-in table, so restore.ts writes it back unvalidated -
       the same forward-compatible treatment lab_result.analyte already
       gets. */
-  bodyRegions: Record<string, ArchiveBodyRegionFeeling>;
+  bodyRegions: Record<string, number>;
   /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Same
       no-format-version-step reasoning as ArchivePhoto.starred. */
   starred: boolean;
@@ -154,20 +154,6 @@ export interface ArchiveAffirmation {
   text: string;
   builtIn: boolean;
   hidden: boolean;
-}
-
-/** A region's two independent intensities on one entry (phase 5 ticket
-    31). Was a bare number, meaning distress only, and is now a pair so a
-    region that felt good can travel at all. No format version step, the
-    same reasoning ArchivePhoto.starred gives: no release has shipped, so
-    no archive in existence carries the old shape.
-
-    Written out here rather than aliased to BodyRegionFeeling for this
-    file's standing reason - a rename in the app must not silently change
-    what a backup looks like. */
-interface ArchiveBodyRegionFeeling {
-  dysphoria: number | null;
-  euphoria: number | null;
 }
 
 export interface ArchiveBodyRegion {
