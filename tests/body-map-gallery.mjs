@@ -178,19 +178,17 @@ const MIXED = `(() => {
   ${COLOUR}
 
   const out = [];
-  /* The figure is an SVG now: a region is a <g> carrying the ramp's fill
-     and ink as custom properties, with its rects taking them. Read the
-     group for the colours and one of its rects for the stroke. */
-  for (const el of document.querySelectorAll('[data-region-art], .region-elsewhere-item')) {
+  /* The figure is an SVG: a region is a <g> carrying the ramp's fill and
+     ink as custom properties, with its rects taking them. Read the group
+     for the colours and one of its rects for the stroke. */
+  for (const el of document.querySelectorAll('[data-region-art], .region-pill')) {
     const s = getComputedStyle(el);
     const scene = el.closest('[data-scene]').dataset.scene;
     const card = getComputedStyle(el.closest('[data-scene-figure]')).backgroundColor;
     const declared = s.getPropertyValue('--region-fill').trim();
     const fill = declared || card;
     const onFigure = el.hasAttribute('data-region-art');
-    /* rect or path: the head's two halves are paths, because a dome and a
-       jaw are shapes a rounded rectangle cannot be. */
-    const drawn = onFigure ? el.querySelector('.region-dot') : el.querySelector('.region-chip');
+    const drawn = onFigure ? el.querySelector('rect') : el.querySelector('.region-swatch');
     const drawnStyle = getComputedStyle(drawn);
     const edge = onFigure ? drawnStyle.stroke : drawnStyle.borderTopColor;
     out.push({
@@ -209,7 +207,14 @@ const MIXED = `(() => {
           paint(fill)
         ).toFixed(2)
       ),
-      edgeVsGround: Number(ratio(paint(edge), paint(card)).toFixed(2))
+      /* What has to be perceivable is the boundary of a region that has
+         nothing logged, since that is the shape standing for "never" - a
+         ramp step is a chart mark and answers to no ratio (ADR-0012, and
+         roles.ts's own note on the fill). So an unfilled shape is measured
+         by its outline against the card and a filled one by its fill. */
+      shapeVsCard: Number(
+        ratio(paint(Number(el.dataset.regionLevel) === 0 ? edge : fill), paint(card)).toFixed(2)
+      )
     });
   }
   return out;
@@ -256,8 +261,19 @@ if (worst) {
 }
 const strayMarks = mixed.filter((row) => !row.mixed && row.marked);
 console.log(`unmixed shapes wrongly marked: ${strayMarks.length}`);
-const weakEdges = mixed.filter((row) => row.edgeVsGround < 3);
-console.log(`shape edges under 3:1 against the card: ${weakEdges.length}`);
+const weakEdges = mixed.filter((row) => row.level === 0 && row.shapeVsCard < 3);
+console.log(`unfilled shapes under 3:1 against the card: ${weakEdges.length}`);
+for (const row of weakEdges) {
+  console.log(`  FAIL ${row.theme}/${row.scene} ${row.region} at ${row.shapeVsCard}:1`);
+}
+const faintest = mixed
+  .filter((row) => row.level === 1)
+  .reduce((low, row) => (low && low.shapeVsCard < row.shapeVsCard ? low : row), null);
+if (faintest) {
+  console.log(
+    `faintest fill: ${faintest.theme}/${faintest.scene} ${faintest.region} at ${faintest.shapeVsCard}:1 against the card, against an unfilled shape's outline at 3:1 or better`
+  );
+}
 if (errors.length) console.log('page errors:', errors);
 
 await browser.close();
