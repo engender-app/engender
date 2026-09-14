@@ -15,9 +15,12 @@
    The kinds:
      steady  in range, steady, below the rails - clears the gate
      loud    the same note at full scale - fails on clipping
-     wobble  sliding by three semitones - fails on steadiness */
+     wobble  sliding by three semitones - fails on steadiness
+     read    a passage-shaped read: the same note wandering the way speech
+             does, which is the only kind with a distribution to draw
+             (redesign ticket 42) */
 
-/** @typedef {'steady' | 'loud' | 'wobble'} FakeTake */
+/** @typedef {'steady' | 'loud' | 'wobble' | 'read'} FakeTake */
 
 /** A stream carrying a synthesized voice-like tone: a sawtooth at 185 Hz,
     which is inside the tracker's range and away from either end of it.
@@ -35,6 +38,32 @@ export function fakeMicrophone(kind = 'steady') {
   const source = context.createOscillator();
   source.type = 'sawtooth';
   source.frequency.value = 185;
+
+  if (kind === 'read') {
+    /* A read, not a note. Every other kind here is one frequency, which is
+       exactly the take whose pitch density is a single spike - so a figure
+       whose whole content is the distribution could never be looked at.
+       This wanders instead: a step every 120ms on a mean-reverting walk
+       about a semitone and a half wide, with a drop at the end of every
+       sentence-length stretch, which is the shape a read passage has.
+
+       Deterministic, off a fixed seed, for the reason the rest of this file
+       is: two runs of the gallery have to produce the same picture. */
+    let seed = 20260914;
+    const random = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    let semitones = 0;
+    for (let step = 0; step < 500; step++) {
+      semitones = semitones * 0.85 + (random() - 0.5) * 2.2;
+      const ending = step % 19 === 18 ? -2.5 : 0;
+      source.frequency.setValueAtTime(
+        185 * 2 ** ((semitones + ending) / 12),
+        context.currentTime + step * 0.12
+      );
+    }
+  }
 
   if (kind === 'wobble') {
     // Three semitones either way, slowly, which is well past the gate's 8%.

@@ -3047,6 +3047,26 @@
   "vb_room": "Głos nad tłem",
   "vb_scale": "Skala formantów",
   "vb_not_measured": "Nie zmierzono",
+  "vb_history_run": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Twoje ostatnie podejście.",
+        "countPlural=few": "Twoje ostatnie {count} podejścia.",
+        "countPlural=many": "Twoje ostatnie {count} podejść.",
+        "countPlural=other": "Twoje ostatnie {count} podejść."
+      }
+    }
+  ],
+  "vb_history_first": "Twoje pierwsze podejście, więc nie ma jeszcze nic za nim.",
+  "vb_history_other_passage": "Pierwszy odczyt z tego tekstu.",
+  "vb_history_other_setup": "Pierwszy odczyt na tym sprzęcie.",
   "vb_hz": "{value} Hz",
   "vb_hz_range": "{low} do {high} Hz",
   "vb_semitones": "{value} półtonu",
