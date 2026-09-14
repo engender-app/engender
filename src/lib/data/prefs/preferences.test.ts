@@ -66,6 +66,7 @@ test('round-trips every value shape a preference can hold', async () => {
   await written.set('a11yTextSizeBoost', true);
   await written.set('a11yLegibilityBoost', true);
   await written.set('a11yMotionReduce', true);
+  await written.set('allowScreenCapture', true);
   await written.set('preferredLabUnits', { estradiol: 'pmol/L', testosterone: 'nmol/L' });
 
   const reread = await openPreferences(driver);
@@ -78,6 +79,7 @@ test('round-trips every value shape a preference can hold', async () => {
   expect(reread.get('a11yTextSizeBoost')).toBe(true);
   expect(reread.get('a11yLegibilityBoost')).toBe(true);
   expect(reread.get('a11yMotionReduce')).toBe(true);
+  expect(reread.get('allowScreenCapture')).toBe(true);
   expect(reread.get('preferredLabUnits')).toEqual({ estradiol: 'pmol/L', testosterone: 'nmol/L' });
 });
 

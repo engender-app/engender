@@ -353,7 +353,8 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
       disguise: false,
-      quickExit: false
+      quickExit: false,
+      allowScreenCapture: false
     },
     journal: {
       reminders: { getReminders: vi.fn().mockResolvedValue([REMINDER]) },
@@ -369,6 +370,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
     },
     androidDisguise: { setDisguised: vi.fn().mockResolvedValue(undefined) },
     androidQuickExit: { setEnabled: vi.fn().mockResolvedValue(undefined) },
+    androidScreenCapture: { setAllowed: vi.fn().mockResolvedValue(undefined) },
     androidBackButton: {
       addListener: vi.fn().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) }),
       minimizeApp: vi.fn().mockResolvedValue(undefined)
@@ -428,7 +430,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     vi.unstubAllGlobals();
   });
 
-  test('runs the initial reminder sync, stock reconciliation, disguise and quick-exit sync on start', async () => {
+  test('runs the initial reminder sync, stock reconciliation, disguise, quick-exit and screen-capture sync on start', async () => {
     const deps = makeDeps();
     platformSync.startAndroidPlatformSync(deps);
     await flush();
@@ -437,6 +439,15 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setDisguised).toHaveBeenCalledWith({ disguised: false });
     expect(deps.androidQuickExit.setEnabled).toHaveBeenCalledWith({ enabled: false });
+    expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
+  });
+
+  test('re-syncs screen-capture when the preference changes', async () => {
+    const deps = makeDeps({ prefs: { ...makeDeps().prefs, allowScreenCapture: true } });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+
+    expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: true });
   });
 
   test('subscribes to reminder/entry and dose/stock writes exactly once, ever', async () => {

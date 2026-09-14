@@ -22,6 +22,7 @@ import dev.engender.app.quickexit.QuickExitPlugin;
 import dev.engender.app.reminders.RemindersPlugin;
 import dev.engender.app.reset.DeviceResetPlugin;
 import dev.engender.app.retrospective.RetrospectiveNotificationsPlugin;
+import dev.engender.app.screencapture.ScreenCapturePlugin;
 import dev.engender.app.sqlite.SqlitePlugin;
 
 /**
@@ -41,6 +42,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
         new PluginEntry("QuickExit", QuickExitPlugin.class),
+        new PluginEntry("ScreenCapture", ScreenCapturePlugin.class),
         new PluginEntry("DeviceReset", DeviceResetPlugin.class),
         new PluginEntry("Print", PrintPlugin.class),
         new PluginEntry("Permissions", PermissionsPlugin.class),
