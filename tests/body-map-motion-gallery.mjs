@@ -179,9 +179,13 @@ async function record(name, note, act, options = {}) {
 }
 
 try {
+  /* The default palette crossed with the two themes, and nothing else: a
+     sign-off page is trans light and trans dark, and the full palette cross
+     product is a test's concern rather than something to look through by
+     eye (Alicja, 2026-09-14). */
   for (const [palette, theme] of [
     ['trans', 'light'],
-    ['nonbinary', 'dark']
+    ['trans', 'dark']
   ]) {
     await dress(palette, theme);
 

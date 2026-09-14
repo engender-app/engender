@@ -188,7 +188,7 @@ const MIXED = `(() => {
     const declared = s.getPropertyValue('--region-fill').trim();
     const fill = declared || card;
     const onFigure = el.hasAttribute('data-region-art');
-    const drawn = onFigure ? el.querySelector('rect') : el.querySelector('.region-swatch');
+    const drawn = onFigure ? el.querySelector('.region-tile rect') : el.querySelector('.region-swatch');
     const drawnStyle = getComputedStyle(drawn);
     const edge = onFigure ? drawnStyle.stroke : drawnStyle.borderTopColor;
     out.push({
