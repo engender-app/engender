@@ -437,6 +437,51 @@
       }
     }
   ],
+  "unit_years": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "year",
+        "nPlural=other": "years"
+      }
+    }
+  ],
+  "unit_months": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "month",
+        "nPlural=other": "months"
+      }
+    }
+  ],
+  "unit_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "day",
+        "nPlural=other": "days"
+      }
+    }
+  ],
   "n_entries": [
     {
       "declarations": [
@@ -2280,13 +2325,19 @@
   "tryout_adopt_confirm_add": "Add milestone and adopt",
   "tryout_adopt_without_milestone": "Adopt without milestone",
   "letters_title": "Time-capsule letters",
-  "letters_intro": "Write to your future self and pick a milestone or date to open it on. Nothing unlocks early, not even for you.",
+  "letters_intro": "Nothing unlocks early, not even for you.",
   "letters_compose_title": "Write a letter",
   "letters_compose_placeholder": "Dear future me...",
   "letters_unlock_label": "Unlock on",
   "letters_save": "Seal it away",
   "letters_yours_title": "Your letters",
+  "letters_waiting_title": "Waiting",
+  "letters_opened_title": "Opened",
   "letters_sealed_title": "Sealed",
+  "letters_ready_title": "Ready to open",
+  "letters_arrival_title": "A letter opens today",
+  "letters_arrival_open": "Open it",
+  "letters_close": "Close the letter",
   "letters_sealed_until": "Opens {date}",
   "letters_empty_title": "No letters yet",
   "letters_empty_body": "Write one above, and it will wait here until its unlock day.",
