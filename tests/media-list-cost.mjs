@@ -73,10 +73,8 @@ const importFile = async (trigger, file, mimeType) => {
   });
 };
 
-/** Waits until every row on the memo browser has drawn its waveform, and
-    returns how long that took from the moment the screen was asked for.
-    A row that has bars has been decoded; a row still on the plain track has
-    not. */
+/** Waits until `rows` waveforms have been drawn. A row that has bars has
+    been decoded; a row still on the plain track has not. */
 const waveformsDrawn = async (rows) => {
   await page.waitForFunction(
     (want) => document.querySelectorAll('.transport-wave').length >= want,
@@ -84,6 +82,11 @@ const waveformsDrawn = async (rows) => {
     { timeout: 120000 }
   );
 };
+
+/** How many rows are near enough to the screen to have asked for their
+    bars: the decode waits for that, so this is what the first screenful
+    actually costs. */
+const drawnNow = () => page.evaluate(() => document.querySelectorAll('.transport-wave').length);
 
 try {
   await settle('/entry/new/today');
@@ -102,29 +105,69 @@ try {
   await page.locator('[data-save]').click();
   await page.waitForTimeout(2500);
 
-  /* Cold: the first time this tab has seen any of these files. */
+  /* Everything from here is one page. Every navigation is a link the app
+     itself draws, never `page.goto`, which loads a new document and so
+     throws away both the peaks cache and the counters installed above - a
+     run that navigated that way would measure a first visit twice and
+     report no leak because nothing was left to leak. */
+  await settle('/more');
+  const intoList = 'a[href="/media/voice/memos"]';
+  await page.waitForSelector(intoList);
+
+  /* Cold: this tab has read none of these files yet. The decode waits for a
+     row to come near the screen, so what is timed is the screenful somebody
+     actually lands on, and then the whole list once it has been scrolled
+     through. */
   const coldFrom = Date.now();
-  await settle('/media/voice/memos');
+  await page.locator(intoList).click();
+  await page.waitForSelector('[data-memo-row]');
+  await waveformsDrawn(1);
+  await page.waitForTimeout(1200);
+  const firstScreenful = await drawnNow();
+  const firstScreenMs = Date.now() - coldFrom;
+
+  /* Scrolled in steps rather than jumped to the end: a jump never brings
+     the rows in the middle near the screen at all, so their bars are never
+     asked for - which is the deferral working, and would read here as a
+     hang. */
+  for (let step = 0; step < 24; step++) {
+    await page.evaluate(() => {
+      const region = document.querySelector('[data-app-scroll-region]') ?? document.scrollingElement;
+      region.scrollBy({ top: 400 });
+    });
+    await page.waitForTimeout(120);
+    if ((await drawnNow()) >= ROWS) break;
+  }
   await waveformsDrawn(ROWS);
   const cold = Date.now() - coldFrom;
 
   const afterList = await page.evaluate(() => ({ ...window.__blobs }));
 
-  /* Away, and back: the rows are rebuilt, the peaks are not. */
-  await settle('/more');
-  await page.waitForTimeout(600);
+  /* Away: every row unmounts, and every object URL it made has to come
+     back. */
+  await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]') ?? document.scrollingElement;
+    region.scrollTo({ top: 0 });
+  });
+  await page.waitForTimeout(300);
+  await page.locator('.screen a[href="/more"]').first().click();
+  await page.waitForSelector('[data-memo-row]', { state: 'detached', timeout: 20000 });
+  await page.waitForTimeout(900);
   const leftList = await page.evaluate(() => ({ ...window.__blobs }));
 
+  /* And back: the rows are rebuilt, the peaks are not. */
   const warmFrom = Date.now();
-  await settle('/media/voice/memos');
+  await page.locator(intoList).click();
+  await page.waitForSelector('[data-memo-row]');
   await waveformsDrawn(ROWS);
   const warm = Date.now() - warmFrom;
 
   const end = await page.evaluate(() => ({ ...window.__blobs }));
 
   console.log('');
-  console.log(`a list of ${ROWS}, cold: ${cold}ms to every waveform drawn`);
-  console.log(`the same list, second visit: ${warm}ms`);
+  console.log(`the screenful somebody lands on: ${firstScreenful} waveforms, ${firstScreenMs}ms from the tap`);
+  console.log(`all ${ROWS}, cold, after scrolling to the end: ${cold}ms from the tap`);
+  console.log(`the same list, tapped into a second time: ${warm}ms`);
   console.log(`per recording, cold: ${(cold / ROWS).toFixed(0)}ms`);
   console.log('');
   console.log(`object URLs made ${end.made}, revoked ${end.revoked}`);
@@ -139,6 +182,10 @@ try {
       : `LEAK: ${leaked} object URLs outstanding after leaving a ${ROWS}-row list`
   );
   if (leaked > 1) process.exitCode = 1;
+  if (afterList.made < ROWS) {
+    console.log(`(only ${afterList.made} object URLs were made for ${ROWS} rows - the counters missed something)`);
+    process.exitCode = 1;
+  }
 } finally {
   await page.close();
   await browser.close();

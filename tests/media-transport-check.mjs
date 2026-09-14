@@ -69,8 +69,18 @@ const importFile = async (trigger, file, mimeType) => {
 
 /** Puts the keyboard on `selector` the way a person would - by tabbing
     until it lands there - rather than by calling focus(), which proves
-    nothing about whether the control is reachable at all. */
-const tabTo = async (selector, limit = 40) => {
+    nothing about whether the control is reachable at all.
+
+    `from` is where the walk starts: tabbing forward from wherever the last
+    click left the focus can mean walking the whole rest of the screen and
+    round again, so a walk that is about one control starts at the top of
+    the document. */
+const tabTo = async (selector, limit = 160, from = 'top') => {
+  if (from === 'top') {
+    await page.evaluate(() => {
+      document.activeElement instanceof HTMLElement && document.activeElement.blur();
+    });
+  }
   for (let press = 0; press < limit; press++) {
     if (await page.locator(selector).evaluate((el) => el === document.activeElement).catch(() => false)) {
       return press;
@@ -87,7 +97,7 @@ const pausedIn = (within) =>
   page.evaluate((sel) => document.querySelector(`${sel} audio, ${sel} video`)?.paused ?? true, within);
 
 async function drive(label, row, toggle, scrub) {
-  const reached = await tabTo(toggle);
+  const reached = await tabTo(toggle, 160, 'top');
   if (reached === null) {
     fail(`${label}: the play control is reachable by Tab`);
     return;
@@ -112,7 +122,9 @@ async function drive(label, row, toggle, scrub) {
   check(`${label}: Enter stops it again`, await pausedIn(row));
 
   /* The scrub: reachable, and a slider rather than a div that moves. */
-  const toScrub = await tabTo(scrub);
+  /* Continuing from the play control rather than from the top, which is
+     what makes "the next tab stop" mean anything. */
+  const toScrub = await tabTo(scrub, 4, 'here');
   if (toScrub === null) {
     fail(`${label}: the scrub is reachable by Tab`);
     return;
@@ -205,8 +217,10 @@ try {
   );
 
   /* Full screen: it takes the whole player rather than the picture alone,
-     so the transport goes with it, and the system's own way out has to
-     leave it cleanly. */
+     so the transport goes with it, and leaving has to put everything back. */
+  const named0 = {
+    full: await page.locator('.video-row [data-video-full]').getAttribute('aria-label')
+  };
   await page.locator('.video-row [data-video-full]').click();
   await page.waitForTimeout(600);
   const inFull = await page.evaluate(() => ({
@@ -215,13 +229,20 @@ try {
   }));
   check('full screen takes the player, transport and all', inFull.element && inFull.hasTransport);
 
-  await page.keyboard.press('Escape');
+  /* Left through the app's own control. Escape is the other way out and it
+     is the browser's rather than the app's - headless Chromium does not
+     answer it, so what is checked here is the path this ticket owns, and
+     the `fullscreenchange` listener behind the label is the same one either
+     way out goes through. */
+  const fullLabel = await page.locator('.video-row [data-video-full]').getAttribute('aria-label');
+  check('the control renames itself while full screen', fullLabel !== named0.full);
+  await page.locator('.video-row [data-video-full]').click();
   await page.waitForTimeout(600);
   const left = await page.evaluate(() => ({
     element: !!document.fullscreenElement,
     label: document.querySelector('.video-row [data-video-full]')?.getAttribute('aria-label')
   }));
-  check('Escape leaves it, and the control goes back to saying "full screen"', !left.element && !!left.label);
+  check('the same control leaves it again, and goes back to saying "full screen"', !left.element && left.label === named0.full);
 
   const stillThere = await page.locator('.video-row [data-transport-scrub]').count();
   check('and the player is still on the page afterwards', stillThere === 1);

@@ -37,6 +37,9 @@
   let url = $state<string | null>(null);
   let peaks = $state<Float32Array | null>(null);
   let media = $state<HTMLAudioElement>();
+  let box = $state<HTMLDivElement>();
+  /** Whether this player has been near the screen yet. */
+  let seen = $state(false);
 
   $effect(() => {
     const given = bytes;
@@ -65,6 +68,34 @@
     };
   });
 
+  /* Decoding is the expensive half - 206ms for a seven-second recording on
+     a desktop, measured by tests/media-list-cost.mjs - so it waits until the
+     player is somewhere near the screen. A journal with three hundred memos
+     in it mounts three hundred of these at once, and decoding all of them to
+     draw bars nobody has scrolled to yet is a minute of work for a screenful
+     of waveforms. Once seen, always seen: peaks are cached for the tab
+     anyway, and a row that scrolls away has nothing to give back. */
+  $effect(() => {
+    if (seen || !box) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      seen = true;
+      return;
+    }
+    const watch = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          seen = true;
+          watch.disconnect();
+        }
+      },
+      /* A screenful ahead, so a row has usually drawn its bars by the time
+         a scroll brings it into view. */
+      { rootMargin: '600px' }
+    );
+    watch.observe(box);
+    return () => watch.disconnect();
+  });
+
   /* The bars, on their own clock. Separate from the object URL above because
      a decode is the slow half and the row should be playable before it
      finishes - the transport is complete without a waveform. */
@@ -72,7 +103,7 @@
     const given = bytes;
     const name = fileName ?? null;
     peaks = null;
-    if (!given && !name) return;
+    if (!seen || (!given && !name)) return;
 
     let stale = false;
     waveformFor(name, given).then((bars) => {
@@ -93,7 +124,7 @@
      nothing (DIRECTION rule 10: blocks clip in). `|global` because the {#if}
      is what flips, and a transition on a child of something that is itself
      appearing would otherwise never play. -->
-<div class="voice-player">
+<div class="voice-player" bind:this={box}>
   {#if url}
     <audio bind:this={media} src={url} preload="metadata"></audio>
     <div class="voice-player-in" in:wipe|global>
