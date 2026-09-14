@@ -42,6 +42,7 @@
   import { m } from '$lib/paraglide/messages';
   import { areaPath } from '$lib/charts/areaPath';
   import {
+    PLOT_HEIGHT,
     bridgeGaps,
     lerpSamples,
     readoutCorner,
@@ -187,7 +188,7 @@
      which is the question the value gutter is really asking. */
   let oneScale = $derived(!overlaid || overlay!.sharedScale === true);
 
-  const HEIGHT = 132;
+  const HEIGHT = PLOT_HEIGHT;
   /* Room for the ring on the latest reading and for the stroke at the top
      and bottom of the scale. */
   const PAD = 7;
