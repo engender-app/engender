@@ -60,23 +60,9 @@ export function isPersistedEntryDraft(value: unknown): value is PersistedEntryDr
     typeof d.bodyRegions === 'object' &&
     d.bodyRegions !== null &&
     !Array.isArray(d.bodyRegions) &&
-    Object.values(d.bodyRegions).every(isBodyRegionFeeling) &&
+    Object.values(d.bodyRegions).every(Number.isFinite) &&
     Array.isArray(d.removedPhotoIds)
   );
-}
-
-/* A draft saved before ticket 31 holds a bare number per region, not a pair.
-   Checked rather than assumed: without this the old shape passes, and the
-   editor then reads `values[id][axis]` off a number, writes an axis onto a
-   spread of it and sends `undefined` down to the INSERT. A stale draft is
-   cheap to throw away - it is one unsaved screen, and the read() around this
-   already discards anything that fails - and there is no shape to migrate
-   from, since the two are not the same kind of thing. */
-function isBodyRegionFeeling(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false;
-  const f = value as { dysphoria?: unknown; euphoria?: unknown };
-  const axis = (v: unknown) => v === null || Number.isFinite(v);
-  return axis(f.dysphoria) && axis(f.euphoria);
 }
 
 /* Chunked rather than `btoa(String.fromCharCode(...bytes))`, the spelling

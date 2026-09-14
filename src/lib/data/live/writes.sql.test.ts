@@ -246,9 +246,9 @@ beforeAll(async () => {
 
   // --- entries --------------------------------------------------------
   // One call touching every table 'entry' covers at once: dims, tags,
-  // body regions (all three shapes), a note (so entry_fts's insert has
-  // real text), an attached photo, recording and video note - which is
-  // also what makes photo/voiceRecording/videoNote's announcement real.
+  // body regions (three of them), a note (so entry_fts's insert has real
+  // text), an attached photo, recording and video note - which is also
+  // what makes photo/voiceRecording/videoNote's announcement real.
   const entryId = (await drive('entries', 'upsertEntry', () =>
     journal.entries.upsertEntry({
       epochDay: 20000,
@@ -258,9 +258,9 @@ beforeAll(async () => {
       dims: { [voice.key]: 7, femininity: 60 },
       tags: [tag2.id, tag3.id, 'e-happy'],
       bodyRegions: {
-        chest: { dysphoria: 45, euphoria: null },
-        [region.id]: { dysphoria: 30, euphoria: 55 },
-        voice_throat: { dysphoria: null, euphoria: 70 }
+        chest: 25,
+        [region.id]: 80,
+        voice_throat: 60
       },
       presentationId: femme.id,
       attachPhotos: [photo('entry')],

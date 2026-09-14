@@ -93,7 +93,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 80);
+  assert.equal(db.getUserVersion(), 81);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -394,35 +394,45 @@ test('side_effect carries no episode reference, takes a blank severity and rejec
   );
 });
 
-test('a body region says dysphoria, euphoria or both, and the two are independent', async () => {
+test('a body region holds one value on the shared 0-100 scale (ticket 39)', async () => {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
 
-  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', 70, NULL)");
-  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'hair', NULL, 40)");
-  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'hips', 20, 60)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'chest', 15)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'hair', 90)");
+  db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'hips', 0)");
 
   const rows = db.raw
-    .prepare('SELECT region, dysphoria, euphoria FROM entry_body_region ORDER BY region')
+    .prepare('SELECT region, value FROM entry_body_region ORDER BY region')
     .all()
     // node:sqlite hands back null-prototype rows, which deepEqual will not
     // match against a plain object literal.
-    .map((r) => ({ ...(r as { region: string; dysphoria: number | null; euphoria: number | null }) }));
-  // An axis left out reads null rather than 0 - a 0 would claim they said
-  // something about it.
+    .map((r) => ({ ...(r as { region: string; value: number }) }));
   assert.deepEqual(rows, [
-    { region: 'chest', dysphoria: 70, euphoria: null },
-    { region: 'hair', dysphoria: null, euphoria: 40 },
-    { region: 'hips', dysphoria: 20, euphoria: 60 }
+    { region: 'chest', value: 15 },
+    { region: 'hair', value: 90 },
+    { region: 'hips', value: 0 }
   ]);
 });
 
-test('a body region that says nothing on either axis is refused', async () => {
+test('a body region at the midpoint is refused - that is "picked but not answered", not a stored answer', async () => {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
 
   assert.throws(() =>
-    db.raw.exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', NULL, NULL)")
+    db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'chest', 50)")
+  );
+});
+
+test('a body region outside the 0-100 scale is refused', async () => {
+  const db = await migratedDb();
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
+
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'chest', -1)")
+  );
+  assert.throws(() =>
+    db.raw.exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'chest', 101)")
   );
 });
 
@@ -563,7 +573,7 @@ test('deleting an entry cascades to its photos, dimension values, tag links and 
   exec("INSERT INTO tag (group_id, label, updated_at) VALUES (1, 'joy', 1000)");
   exec('INSERT INTO entry_tag (entry_id, tag_id) VALUES (1, 1)');
   exec("INSERT INTO photo (uuid, entry_id, file_path, updated_at) VALUES ('p1', 1, 'a.jpg', 1000)");
-  exec("INSERT INTO entry_body_region (entry_id, region, dysphoria, euphoria) VALUES (1, 'chest', 40, 65)");
+  exec("INSERT INTO entry_body_region (entry_id, region, value) VALUES (1, 'chest', 80)");
   exec("INSERT INTO voice_recording (uuid, entry_id, file_path, updated_at) VALUES ('v1', 1, 'v1.webm', 1000)");
   exec("INSERT INTO video_note (uuid, entry_id, file_path, updated_at) VALUES ('n1', 1, 'n1.webm', 1000)");
 

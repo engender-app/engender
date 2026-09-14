@@ -32,7 +32,7 @@ async function populated() {
     note: 'a good day',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    bodyRegions: { chest: { dysphoria: 40, euphoria: null } }
+    bodyRegions: { chest: 30 }
   });
   const photo = await journal.photos.attach({ entryId: entry }, { full: bytes('full-photo'), thumb: bytes('thumb') });
   await journal.entries.upsertEntry({ id: entry, attachRecordings: [bytes('a recording')] });
@@ -206,7 +206,7 @@ test('entries travel by uuid, with their dimension values, tags, photos, recordi
     photos: [{ id: photo, fileName: `${photo}.jpg`, starred: false, epochDayOverride: null }],
     recordings: [{ id: recording, fileName: `${recording}.webm` }],
     videos: [{ id: videoNote, fileName: `${videoNote}.webm` }],
-    bodyRegions: { chest: { dysphoria: 40, euphoria: null } },
+    bodyRegions: { chest: 30 },
     starred: false,
     presentationId: null
   });
@@ -802,7 +802,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   entry_tag: ['entry_id', 'tag_id'],
   // Child of entry. `region` stores bodyRegions' own domain key directly,
   // not a rowid, so this needs no `after` even though it is a child.
-  entry_body_region: ['entry_id', 'region', 'dysphoria', 'euphoria'],
+  entry_body_region: ['entry_id', 'region', 'value'],
   // Built-in rows are updated in place, not just inserted, and the two
   // children below are its own (applyEntryTemplates).
   entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_id', 'hidden'],

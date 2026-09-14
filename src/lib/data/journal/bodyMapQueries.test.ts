@@ -42,20 +42,23 @@ test('empty somatic breakdown when nothing is logged for a region', async () => 
 test('feelings trajectory aggregates for a region and excludes trashed entries', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
+  // A region is one value on the shared scale now (ticket 39, ADR-0081), so
+  // one entry is dysphoria-only and the other euphoria-only rather than
+  // both at once.
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 60, euphoria: 10 } }
+    bodyRegions: { chest: 20 } // dysphoria intensity 60
   });
   await journal.entries.upsertEntry({
     epochDay: 105,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: 40, euphoria: 30 } }
+    bodyRegions: { chest: 65 } // euphoria intensity 30
   });
   const trashed = await journal.entries.upsertEntry({
     epochDay: 110,
     mood: 2,
-    bodyRegions: { chest: { dysphoria: 90, euphoria: 0 } }
+    bodyRegions: { chest: 5 } // dysphoria intensity 90
   });
   await journal.entries.deleteEntry(trashed);
 
@@ -63,14 +66,14 @@ test('feelings trajectory aggregates for a region and excludes trashed entries',
   assert.equal(breakdown.isEmpty, false);
   assert.equal(breakdown.trajectory.length, 2);
   assert.equal(breakdown.trajectory[0].epochDay, 105);
-  assert.equal(breakdown.trajectory[0].dysphoria, 40);
+  assert.equal(breakdown.trajectory[0].dysphoria, null);
   assert.equal(breakdown.trajectory[0].euphoria, 30);
   assert.equal(breakdown.trajectory[1].epochDay, 100);
   assert.equal(breakdown.trajectory[1].dysphoria, 60);
-  assert.equal(breakdown.trajectory[1].euphoria, 10);
-  assert.equal(breakdown.averageDysphoria, 50);
-  assert.equal(breakdown.averageEuphoria, 20);
-  assert.equal(breakdown.latestDysphoria, 40);
+  assert.equal(breakdown.trajectory[1].euphoria, null);
+  assert.equal(breakdown.averageDysphoria, 60);
+  assert.equal(breakdown.averageEuphoria, 30);
+  assert.equal(breakdown.latestDysphoria, 60);
   assert.equal(breakdown.latestEuphoria, 30);
 });
 
@@ -112,21 +115,21 @@ test('progress photos filter by region and exclude trashed entries', async () =>
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { face_jaw: { dysphoria: 50, euphoria: null } },
+    bodyRegions: { face_jaw: 25 },
     attachPhotos: [photoShot('full1', 'thumb1')]
   });
 
   await journal.entries.upsertEntry({
     epochDay: 105,
     mood: 4,
-    bodyRegions: { chest: { dysphoria: 20, euphoria: null } },
+    bodyRegions: { chest: 40 },
     attachPhotos: [photoShot('full2', 'thumb2')]
   });
 
   const trashed = await journal.entries.upsertEntry({
     epochDay: 110,
     mood: 1,
-    bodyRegions: { face_jaw: { dysphoria: 70, euphoria: null } },
+    bodyRegions: { face_jaw: 15 },
     attachPhotos: [photoShot('full3', 'thumb3')]
   });
   await journal.entries.deleteEntry(trashed);
@@ -145,21 +148,21 @@ test('the trajectory and its photos filter by presentation (ADR-0048, ticket 18)
   await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 20, euphoria: 80 } },
+    bodyRegions: { chest: 90 },
     presentationId: girl.id,
     attachPhotos: [photoShot('girl1', 'girl1t')]
   });
   await journal.entries.upsertEntry({
     epochDay: 101,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 90, euphoria: 5 } },
+    bodyRegions: { chest: 10 },
     presentationId: boy.id,
     attachPhotos: [photoShot('boy1', 'boy1t')]
   });
   await journal.entries.upsertEntry({
     epochDay: 102,
     mood: 3,
-    bodyRegions: { chest: { dysphoria: 50, euphoria: 50 } }
+    bodyRegions: { chest: 30 }
   });
 
   const girlBreakdown = await getRegionSomaticBreakdown(db, 'chest', girl.id);
