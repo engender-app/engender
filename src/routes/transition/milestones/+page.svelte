@@ -164,16 +164,20 @@
   }
 
   /* The timeline screen's deep link (ticket 99 item 4): a milestone card
-     there opens straight into this same editor rather than a detail page
-     of its own. The one-shot-param shape /doses' `add` uses, with one
-     difference that matters: `add` needs no data, and this needs a
-     milestone to open.
+     there opened straight into this same editor rather than a detail page
+     of its own. Redesign ticket 43 merged that screen into this one, so
+     nothing in the app writes this param any more - a mark on the rail
+     calls `openEditor` directly. It stays for the same reason /timeline
+     stays as a redirect (ADR-0036): the address was handed out, and a link
+     somebody saved has to keep opening what it opened.
+
+     The one-shot-param shape /doses' `add` uses, with one difference that
+     matters: `add` needs no data, and this needs a milestone to open.
 
      So the param comes off only once the milestone has actually been
-     found, never on the way past. Reached from the timeline the mirror is
-     long since filled and the two happen in the same tick; opened cold, on
-     a link pasted into a fresh tab, this effect can run before boot has
-     filled `vocabulary.milestones` - and stripping the param there threw
+     found, never on the way past. Opened cold, on a link pasted into a
+     fresh tab, this effect can run before boot has filled
+     `vocabulary.milestones` - and stripping the param there threw
      the id away before anything could be done with it, so the editor never
      opened at all and the URL kept a param nothing would look at again
      (found by the ticket's own code review, reproduced by loading the deep
