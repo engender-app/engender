@@ -956,6 +956,8 @@
   "bio_ask_boot_body": "Your device's own lock opens your journal every time the app starts, whichever lock that is for you. Saying yes opens it the moment you arrive. Saying no leaves the same lock behind a button you tap first.",
   "bio_ask_boot_yes": "Open automatically",
   "bio_ask_boot_no": "Ask me each time",
+  "screen_capture_title": "Screen capture",
+  "screen_capture_sub": "lets this device screenshot or record the app",
   "settings_disguise_on": "disguised as “Notes”",
   "settings_backup_age": "last backup {days} ago",
   "settings_backup_none": "no backup yet",

@@ -990,6 +990,8 @@
   "bio_ask_boot_body": "Blokada telefonu, jaka akurat jest ustawiona, otwiera dziennik przy każdym starcie aplikacji. Zgoda: otwiera się od razu. Odmowa: to samo, ale najpierw trzeba nacisnąć przycisk.",
   "bio_ask_boot_yes": "Otwieraj automatycznie",
   "bio_ask_boot_no": "Pytaj za każdym razem",
+  "screen_capture_title": "Przechwytywanie ekranu",
+  "screen_capture_sub": "pozwala temu urządzeniu robić zrzuty ekranu i nagrywać aplikację",
   "settings_disguise_on": "przebrana za „Notes”",
   "settings_backup_age": "ostatnia kopia {days} temu",
   "settings_backup_none": "jeszcze bez kopii",
