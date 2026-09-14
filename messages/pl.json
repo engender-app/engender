@@ -470,6 +470,57 @@
       }
     }
   ],
+  "unit_years": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "rok",
+        "nPlural=few": "lata",
+        "nPlural=many": "lat",
+        "nPlural=other": "lat"
+      }
+    }
+  ],
+  "unit_months": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "miesiąc",
+        "nPlural=few": "miesiące",
+        "nPlural=many": "miesięcy",
+        "nPlural=other": "miesięcy"
+      }
+    }
+  ],
+  "unit_days": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "dzień",
+        "nPlural=few": "dni",
+        "nPlural=many": "dni",
+        "nPlural=other": "dni"
+      }
+    }
+  ],
   "n_entries": [
     {
       "declarations": [
@@ -2325,13 +2376,18 @@
   "tryout_adopt_confirm_add": "Dodaj kamień milowy i przyjmij",
   "tryout_adopt_without_milestone": "Przyjmij bez kamienia milowego",
   "letters_title": "Listy w kapsule czasu",
-  "letters_intro": "Napisz do siebie z przyszłości i wybierz kamień milowy albo datę otwarcia. Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
+  "letters_intro": "Nic nie odblokuje się wcześniej, nawet dla Ciebie.",
   "letters_compose_title": "Napisz list",
   "letters_compose_placeholder": "Do mnie z przyszłości...",
   "letters_unlock_label": "Odblokuj w dniu",
   "letters_save": "Zapieczętuj list",
-  "letters_yours_title": "Twoje listy",
+  "letters_waiting_title": "Czekają",
+  "letters_opened_title": "Otwarte",
   "letters_sealed_title": "Zapieczętowany",
+  "letters_ready_title": "Gotowy",
+  "letters_arrival_title": "Dziś otwiera się list",
+  "letters_arrival_open": "Otwórz go",
+  "letters_close": "Zamknij list",
   "letters_sealed_until": "Otwiera się {date}",
   "letters_empty_title": "Nie masz jeszcze żadnych listów",
   "letters_empty_body": "Napisz jeden powyżej, a poczeka tutaj do dnia odblokowania.",

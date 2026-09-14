@@ -312,6 +312,12 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it (ticket 99 item 10)'
   },
   {
+    file: 'src/lib/components/LetterCard.svelte',
+    count: 1,
+    reason:
+      "a letter's card is the width of the screen and is mostly the letter's own prose; the compact depth walks the text sideways on the tap that is about to unfold it, which is ListRow's and DayEntry's reason at a card's size (redesign ticket 45)"
+  },
+  {
     file: 'src/lib/components/TodayEditor.svelte',
     count: 1,
     reason:

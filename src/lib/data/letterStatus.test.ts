@@ -5,9 +5,12 @@ import { beforeEach, describe, it } from 'vitest';
 import type { Letter } from './types.ts';
 import {
   clearLetterSnooze,
+  getGreetedLetterIds,
   getReadLetterIds,
   isLetterSealed,
   isLetterSnoozed,
+  letterToGreet,
+  markLetterGreeted,
   markLetterRead,
   snoozeLetterTile,
   unreadUnlockedLetters
@@ -74,6 +77,46 @@ describe('letterStatus', () => {
     markLetterRead('let-1', storage);
     markLetterRead('let-2', storage);
     assert.deepEqual(Array.from(getReadLetterIds(storage)), ['let-1', 'let-2']);
+  });
+
+  /* Ticket 45: a letter whose unlock day is today takes the whole screen
+     once, and only once. "Once" is a per-letter fact that has to survive a
+     reload, so it lives beside the read set rather than in component state,
+     and the arrival is refused for a letter already met either way. */
+  describe('the arrival', () => {
+    const seal = (id: string, epochDay: number, unlockEpochDay: number) => ({
+      id,
+      epochDay,
+      unlockEpochDay
+    });
+
+    it('greets a letter whose unlock day is today', () => {
+      const letters = [seal('let-1', 100, 500)];
+      assert.equal(letterToGreet(letters, 500, new Set())?.id, 'let-1');
+    });
+
+    it('refuses a letter still sealed and one that unlocked on an earlier day', () => {
+      const letters = [seal('sealed', 100, 501), seal('yesterday', 100, 499)];
+      assert.equal(letterToGreet(letters, 500, new Set()), null);
+    });
+
+    it('refuses a letter already met, whether greeted or read', () => {
+      const letters = [seal('let-1', 100, 500)];
+      assert.equal(letterToGreet(letters, 500, new Set(['let-1'])), null);
+    });
+
+    it('takes the oldest written first where two letters unlock on one day', () => {
+      const letters = [seal('newer', 200, 500), seal('older', 100, 500)];
+      assert.equal(letterToGreet(letters, 500, new Set())?.id, 'older');
+      assert.equal(letterToGreet(letters, 500, new Set(['older']))?.id, 'newer');
+    });
+
+    it('tracks greeted letters in storage, apart from the read ones', () => {
+      assert.equal(getGreetedLetterIds(storage).size, 0);
+      markLetterGreeted('let-1', storage);
+      assert.deepEqual(Array.from(getGreetedLetterIds(storage)), ['let-1']);
+      assert.equal(getReadLetterIds(storage).size, 0);
+    });
   });
 
   it('handles 24h snooze in storage with virtual time', () => {
