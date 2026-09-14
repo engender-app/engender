@@ -33,7 +33,7 @@
    animation frame are the screen's (audio/capture.ts). */
 
 import { frameGeometry, pitchAt, rms, type PitchFrame } from './pitch';
-import { assessQuality, runningQualitySignals, type QualityCheck, type QualityReport } from './quality';
+import { assessQuality, runningQualitySignals, type QualityGate, type QualityReport } from './quality';
 
 /** How much of the pitch trace is kept: exactly what the recording screens
     draw, which is two seconds of it (VoiceGauge's TRACE_FRAMES). Beyond that
@@ -54,7 +54,7 @@ export interface LiveGauge {
   secondsCaptured(): number;
 }
 
-export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[]): LiveGauge {
+export function makeLiveGauge(sampleRate: number, gate: QualityGate): LiveGauge {
   const geometry = frameGeometry(sampleRate);
   const { windowLength, maxTau, hop, hopSeconds } = geometry;
   // pitchAt's own scratch, held here rather than allocated per frame - the
@@ -117,7 +117,7 @@ export function makeLiveGauge(sampleRate: number, checks: readonly QualityCheck[
     },
 
     read() {
-      return assessQuality(measuring.signals(), checks);
+      return assessQuality(measuring.signals(), gate);
     },
 
     recentFrames(count) {
