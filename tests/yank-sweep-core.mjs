@@ -1015,28 +1015,51 @@ export const scrapeHrefExpression = (prefix) => `(async () => {
   return null;
 })()`;
 
+/** Waiting for a demo-bar state jump to be *finished* (ticket 135).
+ *
+ *  Both expressions below used to wait for a screen: the reset for
+ *  `[data-home-hello]`, the fill for `/more`. Neither means finished. Home
+ *  is already on screen when the reset is clicked from Home, so that wait
+ *  returned on its first read, the harness clicked the next jump, and the
+ *  second jump's journal clear landed between the first seed's
+ *  presentations and the entries that name them - `unknown presentation`
+ *  in the page, and a persona missing its later days in every scene the
+ *  sweep then photographed.
+ *
+ *  `data-demo-busy` (DemoBar.svelte) is on the bar for the length of a
+ *  jump and gone when it is over, navigation included, which is the only
+ *  thing here that means what the wait wants. The bar disables its own
+ *  controls for the same length, so the idle wait before a click is what
+ *  keeps a click from being swallowed rather than queued. The 50ms is the
+ *  state flush after the click, not the jump - the jump is a worker round
+ *  trip and cannot finish inside it. */
+const DEMO_BAR_IDLE = `for (let i = 0; i < 120 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
+const AWAIT_DEMO_JUMP = `
+  await sleep(50);
+  ${DEMO_BAR_IDLE}
+  if (document.querySelector('[data-demo-busy]')) throw new Error('the demo jump never finished');`;
+
 /** The demo bar's persona reset, as an expression so the desktop crawler
  *  and the device crawler drive the same control. Seeding 150 days is a
- *  second or more of writes; the expression waits for the Home the reset
- *  navigates to. */
+ *  second or more of writes. */
 export const RESET_PERSONA_EXPRESSION = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const btn = [...document.querySelectorAll('.demo-bar button')].find((b) =>
-    (b.textContent ?? '').trim() === 'Reset demo state'
-  );
+  ${DEMO_BAR_IDLE}
+  const btn = document.querySelector('[data-reset-demo]');
   if (!btn) throw new Error('no Reset demo state button on the demo bar');
   btn.click();
-  for (let i = 0; i < 120 && !document.querySelector('[data-home-hello]'); i++) await sleep(500);
+  ${AWAIT_DEMO_JUMP}
   return !!document.querySelector('[data-home-hello]');
 })()`;
 
 export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  ${DEMO_BAR_IDLE}
   const btn = document.querySelector('[data-fill-every-feature]');
   if (!btn) return false;
   btn.click();
-  for (let i = 0; i < 120 && !location.pathname.includes('/more'); i++) await sleep(500);
-  return true;
+  ${AWAIT_DEMO_JUMP}
+  return location.pathname.includes('/more');
 })()`;
 
 /** The empty profile, split where the onboarding-mount scene needs the

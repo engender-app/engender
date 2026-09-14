@@ -18,14 +18,31 @@ import { demoPreferences } from './persona';
 import { seedFullFixture } from './fullFixture';
 import { seedReturnGap } from './returnGap';
 
-export async function resetDemo(): Promise<void> {
-  // Defaults first, then the persona: without the defaults a palette or a
-  // disguise toggle a reviewer flipped would survive "Reset demo state",
-  // which is not what reset means.
+/* The shape all three jumps share. Defaults first, then the seed: without
+   the defaults a palette or a disguise toggle a reviewer flipped would
+   survive "Reset demo state", which is not what reset means.
+
+   The catch is ticket 135's answer to a seed that stops half way through -
+   which is what a second jump starting inside this one causes, and what the
+   journal's own invariants cause when it does. A journal left with the
+   persona's first sixty days looks exactly like a journal with the
+   persona in it, so a sweep photographs it and says nothing; an empty one
+   is visibly wrong on the first screen. Clearing is the honest half-state,
+   and the error still reaches the page so nobody has to infer it. */
+async function reseed(seed: () => Promise<void>): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
   try { localStorage.setItem('engender-has-entries', '1'); } catch {}
   await clearJournal(journal);
-  await seedPersonaJournal(journal);
+  try {
+    await seed();
+  } catch (err) {
+    await clearJournal(journal);
+    throw err;
+  }
+}
+
+export async function resetDemo(): Promise<void> {
+  await reseed(() => seedPersonaJournal(journal));
 }
 
 /** The persona plus every other More-hub area (phase 5 ticket 36) - a
@@ -33,11 +50,10 @@ export async function resetDemo(): Promise<void> {
     state" still leaves every one of those areas in its designed empty
     state for a reviewer who wants to see that instead. */
 export async function resetDemoFull(): Promise<void> {
-  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
-  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
-  await clearJournal(journal);
-  await seedPersonaJournal(journal);
-  await seedFullFixture(journal);
+  await reseed(async () => {
+    await seedPersonaJournal(journal);
+    await seedFullFixture(journal);
+  });
 }
 
 /** The persona and every area, five weeks stale - the state the return
@@ -46,10 +62,7 @@ export async function resetDemoFull(): Promise<void> {
     is the wrong state for reviewing anything else: every screen's "recent"
     is empty in it. returnGap.ts says what it adds and why. */
 export async function resetDemoComingBack(): Promise<void> {
-  Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
-  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
-  await clearJournal(journal);
-  await seedReturnGap(journal);
+  await reseed(() => seedReturnGap(journal));
 }
 
 /** True first-run state, for the demo bar's "Onboarding (first run)". Only

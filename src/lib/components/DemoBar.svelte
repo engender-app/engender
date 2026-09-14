@@ -34,6 +34,34 @@
     prefs.theme = t;
   }
 
+  /* One state jump at a time (ticket 135). A jump is a journal clear and a
+     reseed through the worker, a second or more of writes, and the seed
+     writes presentations before the entries that name them. A second jump
+     starting inside the first deletes those presentations between the two
+     steps, `assertKnownPresentation` throws, and what is left is a journal
+     missing whatever the persona had not written yet - with nothing on
+     screen to say so.
+
+     `data-demo-busy` on the bar is the signal that means finished, and the
+     reason it has to exist: `[data-home-hello]` is already on screen when
+     the button is clicked, and `/more` is reached by the goto that runs
+     after the seed, so a harness waiting on either was waiting on
+     something that was already true. The disabled state is the same answer
+     for a person with a mouse.
+
+     The five-weeks jump never clears it, because it reloads instead of
+     navigating: the document it was set on stops existing. */
+  let busy = $state(false);
+  async function stateJump(run: () => Promise<void>) {
+    if (busy) return;
+    busy = true;
+    try {
+      await run();
+    } finally {
+      busy = false;
+    }
+  }
+
   /* The first-run jump does not navigate. Emptying the demo journal is 150
      days of deletes through the worker and takes a second or more, and a
      goto after that await is aimed at wherever the app was when the jump
@@ -51,7 +79,7 @@
     const v = (e.currentTarget as HTMLSelectElement).value;
     (e.currentTarget as HTMLSelectElement).value = '';
     if (!v) return;
-    if (v === 'first-run') await markFirstRun();
+    if (v === 'first-run') await stateJump(markFirstRun);
     else goto(v);
   }
 
@@ -92,7 +120,7 @@
   });
 </script>
 
-<div class="demo-bar">
+<div class="demo-bar" data-demo-busy={busy ? '' : null}>
   <span class="demo-title">Demo controls · R7</span>
   <div class="demo-group" role="group" aria-label="Theme">
     <button class="demo-btn" class:is-active={prefs.theme === 'light'} onclick={() => setTheme('light')}>
@@ -126,12 +154,17 @@
       onclick={() => (frame.insets = !frame.insets)}>Simulate cutout</button
     >
   </div>
+  <!-- A handle like its two neighbours below, so a harness grips this the
+       way it grips them rather than by matching the label (ticket 135). -->
   <button
     class="demo-btn"
-    onclick={async () => {
-      await resetDemo();
-      goto('/');
-    }}>Reset demo state</button
+    data-reset-demo
+    disabled={busy}
+    onclick={() =>
+      stateJump(async () => {
+        await resetDemo();
+        await goto('/');
+      })}>Reset demo state</button
   >
   <!-- Ticket 36: the persona alone leaves most of the More hub empty, which
        is the state "Reset demo state" above still gives on purpose - this is
@@ -140,10 +173,12 @@
   <button
     class="demo-btn"
     data-fill-every-feature
-    onclick={async () => {
-      await resetDemoFull();
-      goto('/more');
-    }}>Fill every feature</button
+    disabled={busy}
+    onclick={() =>
+      stateJump(async () => {
+        await resetDemoFull();
+        await goto('/more');
+      })}>Fill every feature</button
   >
   <!-- Ticket 05: the one state neither jump above can produce, because both
        stop on today and the return surface only exists after three weeks of
@@ -162,14 +197,16 @@
   <button
     class="demo-btn"
     data-fill-coming-back
-    onclick={async () => {
-      await resetDemoComingBack();
-      location.assign('/');
-    }}>Five weeks away</button
+    disabled={busy}
+    onclick={() =>
+      stateJump(async () => {
+        await resetDemoComingBack();
+        location.assign('/');
+      })}>Five weeks away</button
   >
   <div class="demo-jump">
     <label class="visually-hidden" for="demo-jump">Jump to screen</label>
-    <select id="demo-jump" onchange={jump}>
+    <select id="demo-jump" disabled={busy} onchange={jump}>
       <option value="">Jump to screen…</option>
       {#each JUMPS as [href, label] (href)}<option value={href}>{label}</option>{/each}
     </select>
@@ -201,6 +238,11 @@
   display: inline-flex; align-items: center; gap: 6px;
   }
   :global(.demo-btn:hover) { background: light-dark(#e8e4df, #45403a); }
+  /* A state jump is a second or more of writes and nothing else may start
+     one while it runs (ticket 135), so say so rather than swallowing the
+     click in silence. */
+  :global(.demo-btn:disabled), :global(.demo-jump select:disabled) { opacity: 0.45; cursor: progress; }
+  :global(.demo-btn:disabled:hover) { background: none; }
   :global(.demo-btn.is-active) { background: light-dark(#fdfcfb, #57504a); font-weight: var(--weight-bold); }
   :global(.demo-jump) { margin-left: auto; }
   :global(.demo-jump select) {
