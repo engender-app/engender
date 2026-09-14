@@ -1564,9 +1564,11 @@
   .photo-star :global(.icon) { position: relative; }
   .photo-star.is-starred { color: var(--accent); }
 
-  /* A recording plays back at native <audio> width, not a 72px tile, so it
-     gets its own row rather than photo-row/photo-wrap's fixed square
-     (screens.css). */
+  /* A player is a row of its own rather than photo-row/photo-wrap's fixed
+     72px square (screens.css): it is a transport across the width, not a
+     tile. Both media are laid out here since ticket 46 gave them one
+     transport - a recording is that row, a video note is a frame with the
+     same row under it. */
   .recording-list { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
   .recording-row { display: flex; align-items: center; gap: var(--space-2); }
   .recording-remove {
@@ -1577,10 +1579,13 @@
     display: flex; align-items: center; justify-content: center;
   }
 
-  /* A video note is taller than an <audio> transport, so its remove button sits
-     at the top of the row rather than centred against a 36px strip (ticket 22).
-     The list wrapper is .recording-list either way - the gap and the column are
-     the same, and a second class with the same rules would only drift. */
+  /* A video note is its picture plus the transport under it, so it is taller
+     than a recording's row and its remove button sits at the top rather than
+     centred against the player (ticket 22, remeasured on ticket 46 - the
+     "36px strip" that comment named was the native <audio> element's box and
+     is gone). The list wrapper is .recording-list either way - the gap and
+     the column are the same, and a second class with the same rules would
+     only drift. */
   .video-row { display: flex; align-items: flex-start; gap: var(--space-2); }
   .video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }
   .video-preview { position: relative; margin-bottom: var(--space-3); }

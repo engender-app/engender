@@ -69,6 +69,7 @@ test('two recordings are two answers', async () => {
   await peaksFor('a.webm', () => read(0.5));
   await peaksFor('b.webm', () => read(0.25));
   const again = await peaksFor('a.webm', () => read(0.9));
+  assert.ok(again, 'the first answer is still there');
   assert.deepEqual([...again], new Array(PEAK_BUCKETS).fill(1));
 });
 

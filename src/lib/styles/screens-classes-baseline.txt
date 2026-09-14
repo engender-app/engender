@@ -55,9 +55,7 @@ stats-interval
 stats-interval-input
 stats-open
 value-row
-video-note-player
 video-preview
-voice-player
 wrapped-card
 wrapped-card-art
 wrapped-cover
