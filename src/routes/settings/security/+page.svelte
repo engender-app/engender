@@ -114,7 +114,7 @@
         <ListRow
           static
           key="screen-capture"
-          icon="shield"
+          icon="eyeOff"
           title={m.screen_capture_title()}
           subtitle={m.screen_capture_sub()}
         >
