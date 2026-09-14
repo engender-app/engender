@@ -2000,6 +2000,70 @@ await block('ticket 27 browser tier', 7, async () => {
   else fail('the whole table carries one reviewed-on date', JSON.stringify(reviewed));
 });
 
+/* --- Redesign ticket 42: the pitch density, and the figure blocks that
+       replaced the definition list. --- */
+await block('redesign ticket 42 browser tier', 8, async () => {
+  const r = await load('/voice-density.html', 'voice-density-probe');
+  if (r.error) throw new Error(r.error);
+  const { drawn, trackless, first, joined, broken } = r;
+
+  if (drawn.densities === 1 && drawn.outlinePoints > 40 && drawn.marks.median === 1 && drawn.marks.span === 2)
+    ok(`a take draws its own distribution, with the three marks on it (${drawn.outlinePoints} points)`);
+  else fail('a take draws its own distribution, with the three marks on it', JSON.stringify(drawn));
+
+  /* The whole reason the shape is drawn: the median is a percentile of it,
+     so its mark has to end on the outline and not at some width of its
+     own. Read off the rendered SVG, in the box's own units. */
+  const on = drawn.onOutline;
+  if (on && Math.abs(on.markEndsAt - on.outlineAt) < 2)
+    ok(`the median mark ends on the outline, not across the box (${on.markEndsAt.toFixed(1)} against ${on.outlineAt.toFixed(1)})`);
+  else fail('the median mark ends on the outline, not across the box', JSON.stringify(on));
+
+  /* Rule 9's ink, and ADR-0083's "never a fill": a filled region in the
+     hue, beside two washes that are citations, would read as a third band. */
+  const outline = drawn.outlineInk;
+  const spine = drawn.spineInk;
+  if (
+    outline?.width === '2px' &&
+    outline.cap === 'square' &&
+    outline.join === 'miter' &&
+    outline.fill === 'none' &&
+    outline.stroke === drawn.traceInk?.stroke &&
+    spine?.width === '1px' &&
+    spine.stroke !== outline.stroke
+  )
+    ok(`the shape is a 2px square-capped series with no fill, on a 1px guide spine (${outline.stroke})`);
+  else fail('the shape is a 2px square-capped series with no fill, on a 1px guide spine', JSON.stringify({ outline, spine }));
+
+  if (drawn.bandsBehindShape >= 2)
+    ok(`the cited bands run behind the shape as well as the plot (${drawn.bandsBehindShape})`);
+  else fail('the cited bands run behind the shape as well as the plot', JSON.stringify(drawn.bandsBehindShape));
+
+  /* Every benchmark from before schema v58 kept no frames, and a shape
+     with bands and nothing on it looks like a take with no voice in it. */
+  if (trackless.densities === 0 && trackless.traces === 0 && trackless.said.length > 20)
+    ok('a take with no stored track draws its sentence and no empty shape');
+  else fail('a take with no stored track draws its sentence and no empty shape', JSON.stringify(trackless));
+
+  if (first.blocks === 6 && first.stated === 6 && first.lines === 0 && first.pitchBlocks === 1)
+    ok('a first benchmark draws six figures and no empty plot anywhere');
+  else fail('a first benchmark draws six figures and no empty plot anywhere', JSON.stringify(first));
+
+  /* And no history plot carries a band: ADR-0059 allows the cited ranges
+     on the pitch figure and nowhere else, so a wash behind one of these
+     lines would be a published range for a figure that has none. */
+  if (joined.lines >= 6 && joined.rings >= 6 && joined.stated === 6 && joined.bands === 0 && first.bands === 0)
+    ok(`four joined takes draw a bandless history under every figure, ringed on this one (${joined.lines} lines)`);
+  else fail('four joined takes draw a bandless history under every figure, ringed on this one', JSON.stringify(joined));
+
+  /* ADR-0061, asserted where it is drawn rather than only where it is
+     computed: one take on another chain and every figure loses its line at
+     once, with a sentence in place of each. */
+  if (broken.lines === 0 && broken.stated === 6 && broken.against.length === 6)
+    ok('a change of capture chain takes the history off every figure at once');
+  else fail('a change of capture chain takes the history off every figure at once', JSON.stringify(broken));
+});
+
 /* --- Ticket 29 (phase 8 features): the own-series trends, and that a
        change of capture chain arrives as a break with a reason in it. --- */
 await block('ticket 29 browser tier', 6, async () => {
