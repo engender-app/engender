@@ -22,15 +22,20 @@
      is the reading ADR-0062 gives the return surface. It covers what it
      arrived on and uncovers it again on the way out, and nothing navigates.
 
-     **It is drawn as a step** (rule 12): the sentence on the field, the
-     answers on the page under it. Not a gate, because a gate is a step with
-     nothing to skip (rule 15) and the whole point of this one is that there
-     is something to skip - a letter is nobody's to force open, least of all
-     the app's.
+     **It wears the field, and it is not a step.** The sentence sits on the
+     field and the answers on the page under it, which is a step's shape
+     (rule 12) borrowed rather than met: rule 12 enumerates what a step's
+     field holds - the back control, the sun, the question - and says nothing
+     else, and this carries only the sentence. It is not a gate either, since
+     a gate is a step with nothing to skip (rule 15) and the whole point of
+     this one is that there is something to skip; a letter is nobody's to
+     force open, least of all the app's. What it is is a moment, which is the
+     third case ADR-0062 already reads the return surface as, and a moment
+     answers to neither rule.
 
-     **The whole surface is the blind** (rule 10, ADR-0080). The field is
-     static here, so there is no edge to walk: what arrives is the arrival
-     itself, uncovered from the top edge down over --dur-slow, field and page
+     **The whole surface is the blind** (rule 10). The field is static here,
+     so there is no edge to walk: what arrives is the arrival itself,
+     uncovered from the top edge down over --dur-slow, field and page
      together as one sheet. It leaves the same way in reverse, which is what
      puts the letters screen back exactly as it was. Reduced motion
      substitutes the crossfade its contract asks for rather than cutting. */
@@ -106,10 +111,13 @@
     {...roleAttrs(roleAt(activeFlag.roles, 0))}
   >
     <!-- The field: the flag's own second colour from the window's top edge
-         with the sentence on it, rule 12's shape with nothing on it a moment
-         cannot have. `--field` and `--field-ink` are published on <html> by
-         activeFlag, which already answers disguise with --surface-2 and
-         --text, so this needs no disguised variant of its own to get wrong. -->
+         with the sentence on it. Its shape is written out here rather than
+         taken from `.screen-field`, which is wired into the field-blind's
+         navigation machinery this surface deliberately does not join - the
+         edge never walks, because there is only ever one state to be in.
+         `--field` and `--field-ink` are published on <html> by activeFlag,
+         which already answers disguise with --surface-2 and --text, so this
+         needs no disguised variant of its own to get wrong. -->
     <div class="letter-arrival-field">
       <h1 class="letter-arrival-title" id="letter-arrival-title">{m.letters_arrival_title()}</h1>
     </div>
