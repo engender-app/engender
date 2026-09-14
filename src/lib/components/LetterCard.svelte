@@ -1,14 +1,12 @@
 <script lang="ts">
-  /* One time-capsule letter, in whichever of its three states it is in
-     (phase 10 redesign ticket 45).
+  /* One time-capsule letter, in whichever of its states it is in (phase 10
+     redesign ticket 45).
 
-     The screen used to draw all three as the same list row: a lock glyph,
-     the word "Sealed" and `Opens 19 Aug 2031` in secondary grey - five
-     years of waiting set in the same shape and the same weights as a size
-     record saying `XS - H&M`. This is the only feature in the app with a
-     refusal built into it, and the row said nothing about it.
-
-     So the states are drawn apart rather than tinted apart:
+     The screen used to draw all of them as the same list row: a lock glyph,
+     the word "Sealed" and `Opens 19 Aug 2031` in secondary grey - five years
+     of waiting set in the same shape and the same weights as a size record
+     saying `XS - H&M`. This is the only feature in the app with a refusal
+     built into it, and the row said nothing about it.
 
      **Sealed.** The wait is the card's own number, on blocks of the area's
      stripe at display size (rule 2's "a number on a block, 40px", rule 3's
@@ -22,28 +20,37 @@
      the feature (spec: sealed contents are out of scope under any
      circumstance) and this is what it looks like.
 
-     **Ready.** Unlocked and not yet read. The loud one, because it is the
-     one with something to do: an ink bar saying so, which is rule 4's third
-     treatment and the only card here that takes it. It does not show the
-     first line - the first thing a person reads of their own letter should
-     be in the letter.
+     **Open.** Its first line and the day it was written, which is what
+     somebody with ten of them scans for, and a mark beside the date while it
+     has not been read - the "ready" reading, which Today's live tile already
+     carries and which this screen only has to not lose.
 
-     **Opened.** Read already. Its first line and the day it was written,
-     which is what somebody with ten of them scans for. No block, no bar,
-     no stripe: prose on the page.
+     **The unfold is a blind, and that is why the folded card and the open
+     one are the same paragraph in the same type.** Folded is the whole
+     letter clamped to two lines; open is the clamp taken off. So the first
+     frame of an opening is pixel-for-pixel the frame before it - the box is
+     still its old height and the two lines under the date are the two lines
+     that were already there - and everything after it is the box being
+     uncovered downwards. Nothing is swapped, nothing appears at its
+     destination, and no frame has anything in neither place.
 
-     Opening is the card unfolding rather than a sheet arriving over it
-     (rule 10, ADR-0078). The body is uncovered by `disclose`, which grows
-     the height while pinning what is inside it, so the letter reads as a
-     blind drawn down a page that was already written - one object becoming
-     an open one, and never a card crossfading into a screen of text. */
+     `maskHeight` rather than `resize`, and that is the whole of the
+     difference: `resize` watches for a change and starts its animation from
+     a ResizeObserver, which is delivered after the frame that laid the new
+     height out has already painted. Measured on this card it cost one frame
+     at 149px before the travel from 105px began - the destination painted
+     first, then the journey. `maskHeight` is called at a known moment with a
+     height its caller measured before the layout changed, which is exactly
+     what an opening is. */
+  import { tick } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from './Icon.svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { calendarDuration, durationParts } from '$lib/data/epochDay';
   import type { DurationUnit } from '$lib/data/epochDay';
-  import { collapse, resize } from '$lib/motion/reveal';
+  import { collapse, maskHeight } from '$lib/motion/reveal';
+  import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Letter } from '$lib/data/types';
 
   let {
@@ -58,12 +65,11 @@
   }: {
     letter: Letter;
     today: number;
-    /** Whether this letter's text has been shown before - the difference
-        between the ready state and the opened one. */
+    /** Whether this letter's text has been shown before. It changes the mark
+        beside the date and nothing else about the drawing. */
     read: boolean;
     open?: boolean;
-    /** Pressed the card, or its ink bar. Absent on a sealed card, which
-        never opens. */
+    /** Pressed the card. Absent on a sealed card, which never opens. */
     onopen?: () => void;
     onclose?: () => void;
     /** Marking the unlock day on a real calendar - a sealed card's own
@@ -74,15 +80,8 @@
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 
-  let state = $derived(
-    letter.unlockEpochDay > today ? 'sealed' : read ? 'opened' : 'ready'
-  );
-
+  let sealed = $derived(letter.unlockEpochDay > today);
   let parts = $derived(durationParts(calendarDuration(today, letter.unlockEpochDay)));
-
-  /** Whether this card folds at all. A caller that handed over neither an
-      open nor a close does not have a second state to put the card in. */
-  let folds = $derived(onopen !== undefined || onclose !== undefined);
 
   const UNIT_WORD: Record<DurationUnit, (n: number) => string> = {
     years: (n) => m.unit_years({ n }),
@@ -90,16 +89,25 @@
     days: (n) => m.unit_days({ n })
   };
 
-  /* The first line, and only the first: a letter's opening line is what
-     identifies it in a list, and the rest of it is behind the card. A blank
-     first line falls through to the first line that is not blank rather
-     than drawing an empty card. */
-  let firstLine = $derived(
-    letter.text
-      .split('\n')
-      .map((line) => line.trim())
-      .find((line) => line.length > 0) ?? ''
-  );
+  /** Whether this card folds at all. A caller that handed over neither an
+      open nor a close does not have a second state to put the card in - the
+      letter's own route draws one card, already unfolded. */
+  let folds = $derived(onopen !== undefined || onclose !== undefined);
+
+  let card: HTMLElement | null = $state(null);
+
+  /* Measure, flip, then mask from what was measured. The measurement has to
+     happen before the state changes and the mask has to be started before
+     the browser paints the new layout, which is what `tick()` buys: it
+     resolves once Svelte has written the DOM and before the frame ends. */
+  async function toggle() {
+    const from = card?.getBoundingClientRect().height ?? 0;
+    if (open) onclose?.();
+    else onopen?.();
+    if (isReducedMotion() || !card) return;
+    await tick();
+    if (card) maskHeight(card, from, motionDuration('--dur-med'));
+  }
 
   /* Tile's panel contract, and the same reasoning: `|global` because what
      creates and destroys a card is the caller's `{#each}`, a parent block a
@@ -107,29 +115,6 @@
      spend --dur-slow folding its letters up on the way out. */
   let panel = $derived({ skip: navigating.to !== null });
 </script>
-
-{#snippet face()}
-  <p class="letter-eyebrow">{m.look_back_letter_written({ date: dayLabel(letter.epochDay) })}</p>
-  {#if state === 'ready' && !open}
-    <!-- Rule 4's ink, and the only card here that takes it: the one with
-         something to do says so in the loudest treatment the direction has.
-         It shows no first line - the first thing a person reads of their own
-         letter should be in the letter. -->
-    <span class="letter-ready" out:collapse>
-      <Icon name="book" size={18} />
-      <span>{m.letters_ready_title()}</span>
-    </span>
-  {:else}
-    <!-- One element in both states, clamped to two lines when the card is
-         folded and unclamped when it is open, so opening a letter is the
-         letter unrolling rather than a first line being swapped for a copy
-         of itself with more of it. `resize` animates the height the change
-         makes ($lib/motion/reveal), which is the whole of the movement. -->
-    <p class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined}>
-      {open ? letter.text : firstLine}
-    </p>
-  {/if}
-{/snippet}
 
 {#snippet trailing()}
   <div class="letter-acts">
@@ -158,14 +143,34 @@
   </div>
 {/snippet}
 
+{#snippet face()}
+  <p class="letter-mark">
+    <span class="letter-when">{m.look_back_letter_written({ date: dayLabel(letter.epochDay) })}</span>
+    <!-- Opening the letter is what marks it read, so this mark goes in the
+         same frame the card opens - on a line the mask leaves visible. It
+         leaves by giving its width back (`collapse` reads which axis from
+         the layout) rather than by being gone. -->
+    {#if !read}
+      <span class="letter-ready" out:collapse>
+        <Icon name="book" size={14} />
+        <span>{m.letters_ready_title()}</span>
+      </span>
+    {/if}
+  </p>
+  <!-- The whole letter, clamped to two lines while the card is folded. One
+       element in both states and the same type in both, so opening it is the
+       box being uncovered rather than anything being replaced. -->
+  <p class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined}>{letter.text}</p>
+{/snippet}
+
 <div
   class="letter-card"
   data-letter={letter.id}
-  data-letter-state={state}
+  data-letter-state={sealed ? 'sealed' : open ? 'reading' : read ? 'opened' : 'ready'}
+  bind:this={card}
   transition:collapse|global={panel}
-  use:resize
 >
-  {#if state === 'sealed'}
+  {#if sealed}
     <!-- No button anywhere in this branch. A sealed card is a closed object
          and the only things on it that answer a press are the two controls
          that act on the letter without opening it. -->
@@ -174,10 +179,6 @@
         <Icon name="lock" size={16} />
         <span>{m.letters_sealed_title()}</span>
       </p>
-      <!-- The wait and the day it ends, side by side: the blocks are the
-           number and the line beside them is the date, so the card is three
-           lines tall rather than four and ten of them are a scroll rather
-           than a journey. -->
       <div class="letter-wait">
         <div class="letter-count">
           {#each parts as part (part.unit)}
@@ -196,9 +197,7 @@
          <svelte:element>, which is ListRow's rule and its reason: a button
          and a plain container carry different keyboard behaviour and
          different announcements, and the tag has to be legible to the
-         compiler for it to check either. A card the caller gave no handler
-         is not a control - the letter's own route draws one card, already
-         unfolded, with nowhere to fold it to. -->
+         compiler for it to check either. -->
     {#if folds}
       <button
         type="button"
@@ -206,7 +205,7 @@
         data-letter-open={letter.id}
         data-no-press
         aria-expanded={open}
-        onclick={() => (open ? onclose?.() : onopen?.())}
+        onclick={toggle}
       >
         {@render face()}
       </button>
@@ -214,9 +213,13 @@
       <div class="letter-main">{@render face()}</div>
     {/if}
     {@render trailing()}
+    <!-- Under the mask rather than under a transition of its own: at the
+         first frame of an opening the box is still its folded height and
+         this sits below that edge, so it is uncovered by the same travel
+         that uncovers the rest of the letter. -->
     {#if open && onclose}
-      <div class="letter-shut" transition:collapse>
-        <button type="button" class="btn btn-soft press" data-letter-close onclick={onclose}>
+      <div class="letter-shut">
+        <button type="button" class="btn btn-soft press" data-letter-close onclick={toggle}>
           <span>{m.letters_close()}</span>
         </button>
       </div>
@@ -257,27 +260,34 @@
     cursor: pointer;
   }
 
-  .letter-mark,
-  .letter-eyebrow {
+  .letter-mark {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
     margin: 0;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
   }
 
-  .letter-mark {
+  /* The state marks - SEALED, and READY while a letter is unlocked and
+     unread - take the role's own mark colour, which is the one held to a
+     ratio against the page. */
+  .letter-mark > :global(svg),
+  .letter-mark > span:not(.letter-when),
+  .letter-ready {
     color: var(--role-mark);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
 
-  /* The wait, as blocks of the area's stripe. One per unit, so a five-year
-     letter is two blocks and a twelve-day one is a single block; they are
-     sized by their content rather than stretched to the card, because a
-     stretched block is a bar and a bar means a proportion. */
+  .letter-ready {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
   /* Blocks, then the day under them. Beside them fits a one-block card and
      not a two-block one at 390px, and a list whose short cards read one way
      and whose long ones read another is two drawings. */
@@ -339,20 +349,30 @@
     color: var(--text);
   }
 
-  /* Rule 4's ink: --text as a ground with --bg as the ink, the inverse of
-     the page. */
-  .letter-ready {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    align-self: start;
-    padding: var(--space-2) var(--space-3);
-    background: var(--text);
-    color: var(--bg);
-    border-radius: var(--r-block);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+  /* A letter is prose, so it keeps prose's measure and its own line height
+     rather than inheriting a card's. The class name travels with it
+     deliberately - app.css's user-select opt-in list matches `.letter-text`
+     by name, so renaming it here would silently take the letter's text back
+     out of selectable copy.
+
+     Folded and open differ by the clamp and by nothing else. Any difference
+     in size, weight or colour between the two would reflow the first two
+     lines in the frame the card opened, which is the one frame that has to
+     be identical to the one before it. */
+  .letter-text {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: var(--leading-body);
+    max-width: 65ch;
+    color: var(--text);
+  }
+
+  .letter-text.is-folded {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
 
   .letter-acts {
@@ -370,35 +390,6 @@
     border-radius: var(--r-block);
     color: var(--text-2);
     cursor: pointer;
-  }
-
-  /* A letter is prose, so it keeps prose's measure and its own line height
-     rather than inheriting a card's. The class name travels with it
-     deliberately - app.css's user-select opt-in list matches `.letter-text`
-     by name, so renaming it here would silently take the letter's text back
-     out of selectable copy.
-
-     Folded, it is the first two lines at a content title's weight, which is
-     what a person with ten letters scans; open, it is the whole thing at
-     body weight. Same element either way, so opening one is the letter
-     unrolling and not a swap. */
-  .letter-text {
-    margin: 0;
-    white-space: pre-wrap;
-    line-height: var(--leading-body);
-    max-width: 65ch;
-    color: var(--text);
-  }
-
-  .letter-text.is-folded {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-    white-space: normal;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
   }
 
   /* Both columns, so the way out sits under the letter rather than beside
