@@ -497,28 +497,18 @@ test('journal-open-failed with database lock preserves the lock error and allows
   ]);
 });
 
-test('a cached PIN access mode starts in needs-unlock and survives survey', () => {
-  const machine = initialBoot('pin');
-  expect(machine.boot.status).toBe('needs-unlock');
-  expect(machine.boot.accessMode).toBe('pin');
+test.each(['pin', 'passphrase'] as const)(
+  'a cached %s access mode starts in needs-unlock and survives survey',
+  (mode) => {
+    const machine = initialBoot(mode);
+    expect(machine.boot.status).toBe('needs-unlock');
+    expect(machine.boot.accessMode).toBe(mode);
 
-  const afterStart = reduce(machine, started('web'));
-  expect(afterStart.machine.boot.status).toBe('needs-unlock');
+    const afterStart = reduce(machine, started('web'));
+    expect(afterStart.machine.boot.status).toBe('needs-unlock');
 
-  const afterSurvey = reduce(afterStart.machine, surveyedWeb({ keystoreSecretSource: 'pin' }));
-  expect(afterSurvey.machine.boot.status).toBe('needs-unlock');
-  expect(afterSurvey.machine.boot.accessMode).toBe('pin');
-});
-
-test('a cached passphrase access mode starts in needs-unlock and survives survey', () => {
-  const machine = initialBoot('passphrase');
-  expect(machine.boot.status).toBe('needs-unlock');
-  expect(machine.boot.accessMode).toBe('passphrase');
-
-  const afterStart = reduce(machine, started('web'));
-  expect(afterStart.machine.boot.status).toBe('needs-unlock');
-
-  const afterSurvey = reduce(afterStart.machine, surveyedWeb({ keystoreSecretSource: 'passphrase' }));
-  expect(afterSurvey.machine.boot.status).toBe('needs-unlock');
-  expect(afterSurvey.machine.boot.accessMode).toBe('passphrase');
-});
+    const afterSurvey = reduce(afterStart.machine, surveyedWeb({ keystoreSecretSource: mode }));
+    expect(afterSurvey.machine.boot.status).toBe('needs-unlock');
+    expect(afterSurvey.machine.boot.accessMode).toBe(mode);
+  }
+);
