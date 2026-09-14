@@ -977,6 +977,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       wearTimeTrend: ['wearSession'],
       tallyTrend: ['tally'],
       bodyRegionReadings: ['entry'],
+      bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],
       // Filters entry.presentation_id directly, the same reason
       // bodyRegionTrend above depends on 'entry' alone: which days match
