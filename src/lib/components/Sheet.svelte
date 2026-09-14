@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { sheetRise, scrimFade } from '$lib/motion/navigation';
+  import { lockBackground, trapFocus } from './overlayLock';
 
   let {
     open = $bindable(false),
@@ -107,62 +108,10 @@
     };
   }
 
-  /* SF-001: every confirmation in the app is a sheet, and without this the
-     background stayed reachable behind an open dialog - Tab walked straight
-     out of it, and closing dropped focus to the document. `inert` on the app
-     shell's other children keeps assistive tech and Tab out of the
-     background regardless of how deep in that subtree the sheet itself
-     lives (the `.contains` check below skips whichever child holds it); the
-     scroll lock stops the scroll region moving underneath a sheet that does
-     not cover it edge to edge; focus returns to whatever opened the sheet on
-     close. Queries `data-app-root`/`data-app-scroll-region` rather than
-     `.app`/`.app-main` so this stays wired to the shell even if those
-     presentational class names ever change. */
-  function lockBackground(scrimNode: HTMLElement) {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const root = document.querySelector('[data-app-root]');
-    const restoreInert: HTMLElement[] = [];
-    if (root) {
-      for (const child of Array.from(root.children) as HTMLElement[]) {
-        if (child.contains(scrimNode) || child.hasAttribute('inert')) continue;
-        child.setAttribute('inert', '');
-        restoreInert.push(child);
-      }
-    }
-    const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
-    const previousOverflow = mainEl?.style.overflow ?? '';
-    if (mainEl) mainEl.style.overflow = 'hidden';
-
-    return () => {
-      restoreInert.forEach((el) => el.removeAttribute('inert'));
-      if (mainEl) mainEl.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
-    };
-  }
-
-  function trapFocus(e: KeyboardEvent) {
-    if (!sheetEl) return;
-    const focusables = Array.from(
-      sheetEl.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
-    );
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    let target: HTMLElement | null = null;
-    if (!sheetEl.contains(document.activeElement)) {
-      target = e.shiftKey ? last : first;
-    } else if (e.shiftKey && document.activeElement === first) {
-      target = last;
-    } else if (!e.shiftKey && document.activeElement === last) {
-      target = first;
-    }
-    if (target) {
-      e.preventDefault();
-      target.focus({ preventScroll: true });
-    }
-  }
+  /* SF-001's background lock and focus trap live in overlayLock.ts now: the
+     letter arrival (redesign ticket 45) is the app's second surface that
+     covers the whole shell, and it owes the screen behind it exactly what a
+     sheet does. Their reasoning travelled with them. */
 
   /* The scrim and the withdrawal blur it carries settle with the sheet, on
      the sheet's own clock rather than on a duration of their own: with the
@@ -185,7 +134,7 @@
     if (e.key === 'Escape') {
       close();
     } else if (e.key === 'Tab') {
-      trapFocus(e);
+      trapFocus(sheetEl, e);
     }
   }
 </script>
