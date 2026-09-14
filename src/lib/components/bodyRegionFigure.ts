@@ -76,25 +76,26 @@ export const GROUND_REGION = 'whole_body';
    The arms hang clear of the trunk below a short joint at the shoulder,
    which is the one thing the old drawing had no room for: without that
    notch the shoulders, the upper arms and the chest are a single slab
-   fifty-five units wide and the figure stops reading as a body. */
+   fifty-five units wide and the figure stops reading as a body.
+
+   A limb is one width the whole way down - no elbow, no knee, no ankle
+   (Alicja, 2026-09-14: "make the hands and legs the same width throughout
+   the whole limb"). The taper this replaces was doing the opposite of what
+   the drawing is for: an arm that narrows at the forearm and swells again
+   at the hand is anatomy, and anatomy is what the neutrality rule spends
+   its budget avoiding. So an arm is one block from the shoulder to the
+   fingertips and a leg is one block from the hip to the sole; the hand and
+   the foot are panels drawn on them rather than shapes of their own. */
 export const GROUND_SHAPES: Shape[] = [
   { left: 40, top: 8, width: 20, height: 25, r: 5 }, // head
   { left: 44, top: 29, width: 12, height: 13, r: 2 }, // neck
   { left: 28, top: 40, width: 44, height: 56, r: 3 }, // trunk, collar to crotch
   { left: 25.5, top: 40, width: 6, height: 9, r: 2 }, // shoulder joints
   { left: 68.5, top: 40, width: 6, height: 9, r: 2 },
-  { left: 14.5, top: 40, width: 12, height: 34, r: 3 }, // upper arms
-  { left: 73.5, top: 40, width: 12, height: 34, r: 3 },
-  { left: 15.5, top: 70, width: 10, height: 28, r: 3 }, // forearms
-  { left: 74.5, top: 70, width: 10, height: 28, r: 3 },
-  { left: 14, top: 94, width: 12, height: 12, r: 3 }, // hands
-  { left: 74, top: 94, width: 12, height: 12, r: 3 },
-  { left: 30, top: 92, width: 17, height: 48, r: 3 }, // thighs
-  { left: 53, top: 92, width: 17, height: 48, r: 3 },
-  { left: 32, top: 136, width: 13, height: 34, r: 3 }, // shins
-  { left: 55, top: 136, width: 13, height: 34, r: 3 },
-  { left: 30, top: 164, width: 18, height: 10, r: 3 }, // feet
-  { left: 52, top: 164, width: 18, height: 10, r: 3 }
+  { left: 14.5, top: 40, width: 12, height: 66, r: 3 }, // arms, shoulder to fingertip
+  { left: 73.5, top: 40, width: 12, height: 66, r: 3 },
+  { left: 30, top: 92, width: 17, height: 82, r: 3 }, // legs, hip to sole
+  { left: 53, top: 92, width: 17, height: 82, r: 3 }
 ];
 
 /** The trunk: the one piece the neutrality rule is actually about, named
@@ -189,8 +190,8 @@ export const REGION_PANELS: RegionPanel[] = [
     shapes: [
       { left: 14.75, top: 94.75, width: 10.5, height: 10.5, r: 2 },
       { left: 74.75, top: 94.75, width: 10.5, height: 10.5, r: 2 },
-      { left: 30.75, top: 164.75, width: 16.5, height: 8.5, r: 2 },
-      { left: 52.75, top: 164.75, width: 16.5, height: 8.5, r: 2 }
+      { left: 30.75, top: 164.75, width: 15.5, height: 8.5, r: 2 },
+      { left: 53.75, top: 164.75, width: 15.5, height: 8.5, r: 2 }
     ],
     boxes: [
       { left: 0, top: 88, width: 28, height: 22 },
