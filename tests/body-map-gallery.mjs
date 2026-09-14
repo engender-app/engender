@@ -56,7 +56,7 @@ const errors = [];
 page.on('pageerror', (err) => errors.push(String(err)));
 
 await page.goto(`http://localhost:${port}/body-map.html`, { waitUntil: 'networkidle' });
-await page.waitForSelector('[data-scene-figure="empty"] .region-stage', { state: 'attached', timeout: 20000 });
+await page.waitForSelector('[data-scene-figure="empty"] .region-art', { state: 'attached', timeout: 20000 });
 
 const dress = async (theme) => {
   await page.evaluate(
@@ -187,31 +187,36 @@ const MIXED = `(() => {
     return (a + 0.05) / (b + 0.05);
   };
   const out = [];
-  for (const el of document.querySelectorAll('[data-region]')) {
-    /* An elsewhere item carries the state on its button and draws the shape
-       in a child; on the figure the button is the shape. Read whichever
-       element actually has the border, or the cluster reports none. */
-    const shape = el.classList.contains('region-shape') ? el : el.querySelector('.region-shape');
-    const s = getComputedStyle(shape);
+  /* The figure is an SVG now: a region is a <g> carrying the ramp's fill
+     and ink as custom properties, with its rects taking them. Read the
+     group for the colours and one of its rects for the stroke. */
+  for (const el of document.querySelectorAll('[data-region-art], .region-elsewhere-item')) {
+    const s = getComputedStyle(el);
+    const scene = el.closest('[data-scene]').dataset.scene;
     const card = getComputedStyle(el.closest('[data-scene-figure]')).backgroundColor;
-    /* --region-fill, not backgroundColor: the shape paints its fill as a
-       gradient layer over an opaque base (so a fill is the colour it was
-       computed to be whatever whole_body is doing underneath), and a
-       gradient reads back as transparent. An unfilled shape has no
-       --region-fill at all, and its ground is the card. */
     const declared = s.getPropertyValue('--region-fill').trim();
     const fill = declared || card;
-    const mark = getComputedStyle(shape, '::after');
+    const onFigure = el.hasAttribute('data-region-art');
+    const drawn = onFigure ? el.querySelector('rect') : el.querySelector('.region-chip');
+    const drawnStyle = getComputedStyle(drawn);
+    const edge = onFigure ? drawnStyle.stroke : drawnStyle.borderTopColor;
     out.push({
-      scene: el.closest('[data-scene]').dataset.scene,
-      region: el.dataset.region,
+      scene,
+      region: onFigure ? el.dataset.regionArt : el.dataset.region,
       level: Number(el.dataset.regionLevel),
-      mixed: el.hasAttribute('data-region-mixed'),
-      marked: mark.content !== 'none',
+      mixed: onFigure
+        ? el.querySelector('[data-region-mixed]') !== null
+        : drawn.classList.contains('is-mixed'),
+      marked: onFigure
+        ? el.querySelector('[data-region-mixed]') !== null
+        : getComputedStyle(drawn, '::after').content !== 'none',
       markVsFill: Number(
-        ratio(paint(s.getPropertyValue('--region-ink').trim() || getComputedStyle(document.body).color), paint(fill)).toFixed(2)
+        ratio(
+          paint(s.getPropertyValue('--region-ink').trim() || getComputedStyle(document.body).color),
+          paint(fill)
+        ).toFixed(2)
       ),
-      edgeVsGround: Number(ratio(paint(s.borderTopColor), paint(card)).toFixed(2))
+      edgeVsGround: Number(ratio(paint(edge), paint(card)).toFixed(2))
     });
   }
   return out;
