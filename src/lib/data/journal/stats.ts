@@ -334,24 +334,36 @@ function metricValues(metric: string): { sql: string; params: (string | number)[
    (bodyMap.ts), so this needs no dimension-style key resolution - just the
    entry_body_region rows for one region key.
 
-   The axis names a column rather than binding a parameter, so it is a
-   closed union and not a caller's string: nothing user-supplied reaches
-   the SQL. `IS NOT NULL` is what keeps an unlogged axis out of the average
-   entirely instead of dragging it towards zero.
+   The axis picks a range and a projection over the shared 0-100 column
+   rather than a column of its own (ticket 39, ADR-0081): the two sides no
+   longer live in separate columns, so "which axis" is a WHERE clause and a
+   SELECT expression, not a name. `axis` is still a closed union rather than
+   a caller's string, so nothing user-supplied reaches the SQL - only the
+   two literal fragments `axisFilter` hands back. The projection is
+   `sliderToFeeling`'s own arithmetic (bodyMap.ts, retired by this ticket)
+   run the same way it always was, so a value already on one side of the
+   midpoint reads back the identical intensity it did before this ticket.
 
    `presentationId` is entryPresentationFilter's three-state filter
    (ADR-0048, ticket 18), appended after the region's own parameter. */
+function axisFilter(axis: BodyRegionAxis): { where: string; select: string } {
+  return axis === 'dysphoria'
+    ? { where: 'ebr.value < 50', select: '(50 - ebr.value) * 2' }
+    : { where: 'ebr.value > 50', select: '(ebr.value - 50) * 2' };
+}
+
 function bodyRegionValues(
   region: string,
   axis: BodyRegionAxis,
   presentationId?: string | null
 ): { sql: string; params: (string | number)[] } {
   const presFilter = entryPresentationFilter(presentationId);
+  const { where, select } = axisFilter(axis);
   return {
-    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
+    sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, ${select} AS value
           FROM entry e
           JOIN entry_body_region ebr ON ebr.entry_id = e.id
-          WHERE ebr.region = ? AND ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL${presFilter.sql}`,
+          WHERE ebr.region = ? AND ${where} AND e.trashed_at IS NULL${presFilter.sql}`,
     params: [region, ...presFilter.params]
   };
 }
@@ -518,14 +530,15 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     },
 
     async bodyRegionReadings(axis, fromEpochDay, toEpochDay) {
-      // The axis names a column rather than binding a parameter, the same
-      // closed-union trick bodyRegionValues uses above: nothing a caller
+      // The axis picks a range and a projection, the same closed-union
+      // trick bodyRegionValues' axisFilter uses above: nothing a caller
       // supplies reaches the SQL.
+      const { where, select } = axisFilter(axis);
       const rows = await driver.query<{ region: string; entry_id: number; epoch_day: number; value: number }>(
-        `SELECT ebr.region AS region, e.id AS entry_id, e.epoch_day AS epoch_day, ebr.${axis} AS value
+        `SELECT ebr.region AS region, e.id AS entry_id, e.epoch_day AS epoch_day, ${select} AS value
          FROM entry e
          JOIN entry_body_region ebr ON ebr.entry_id = e.id
-         WHERE ebr.${axis} IS NOT NULL AND e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
+         WHERE ${where} AND e.trashed_at IS NULL AND e.epoch_day BETWEEN ? AND ?
          ORDER BY e.epoch_day, e.id`,
         [fromEpochDay, toEpochDay]
       );
@@ -789,7 +802,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
            OR EXISTS (
              SELECT 1 FROM entry e
              JOIN entry_body_region ebr ON ebr.entry_id = e.id
-             WHERE e.epoch_day = ? AND ebr.euphoria >= ? AND e.trashed_at IS NULL
+             WHERE e.epoch_day = ? AND ebr.value >= 50 + ? / 2 AND e.trashed_at IS NULL
            ) AS good`,
         [
           epochDay,
