@@ -14,22 +14,23 @@ const TAB_ROUTES: TabRoute[] = [
      from nowhere else (ticket 10, ADR-0062, ADR-0045). */
   { key: 'home', prefixes: ['/doubt', '/coming-back'] },
   { key: 'calendar', prefixes: ['/calendar', '/day', '/search', '/entry'] },
-  /* SH-001: Timeline used to light no tab at all, which read as having left
-     the app's structure. It groups with Stats as a look-back view over the
-     same journal, rather than getting IA a new tab. A wrapped joins that
-     group for the same reason, even though Home is where it is offered
-     from. Body map, tally and compare are the same kind of look-back,
-     linked from Stats' own list. On-this-day joins for the same reason as
-     wrapped - it too is offered from Home (OnThisDayHomeCard) rather than
-     from Stats (ticket 09).
+  /* SH-001: a look-back view used to light no tab at all, which read as
+     having left the app's structure. They group with Stats rather than
+     getting IA a new tab. A wrapped joins that group even though Home is
+     where it is offered from. Body map, tally and compare are the same
+     kind of look-back, linked from Stats' own list. On-this-day joins for
+     the same reason as wrapped - it too is offered from Home
+     (OnThisDayHomeCard) rather than from Stats (ticket 09).
 
      `/recap` was in this list until phase 5 UX ticket 23 deleted the route
      (spec 07). Its period picker is a wrapped now, so every URL that used
      to land here still lights this tab - under /wrapped rather than under
-     a prefix of its own. */
+     a prefix of its own. `/timeline` was in it until redesign ticket 43
+     merged the rail into the milestones screen; it is below, with the
+     screen it redirects to. */
   {
     key: 'stats',
-    prefixes: ['/stats', '/timeline', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
+    prefixes: ['/stats', '/wrapped', '/body-map', '/tally', '/compare', '/on-this-day']
   },
   /* Doses sits outside /settings, but it is reached from More's health
      group (regimen, hormone-curve) and joins that group's tab too
@@ -41,11 +42,18 @@ const TAB_ROUTES: TabRoute[] = [
      hub rows still living at /settings/<slug> moved to their own
      HubGroupKey-named address - /settings itself stays, since the
      redirects, /settings/reminders[/...] and the hand-written
-     Appearance/Tracking/Privacy sections all remain there. */
+     Appearance/Tracking/Privacy sections all remain there.
+
+     `/timeline` is a stub redirecting to /transition/milestones (redesign
+     ticket 43), and it is listed here rather than left to the fallback so
+     that the tab the old address lights is the tab it lands on. Left with
+     Look back, where the rail used to live, the indicator would have
+     travelled one tab and back while the redirect resolved. */
   {
     key: 'settings',
     prefixes: [
       '/settings',
+      '/timeline',
       '/more',
       '/doses',
       '/care',

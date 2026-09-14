@@ -5,6 +5,12 @@
    with the wrong target, or a missing stub, fails a assertion here rather
    than only showing up as a 404 someone hits by accident.
 
+   Redesign ticket 43 adds one that never lived under /settings at all:
+   `/timeline` stopped being a screen when its rail moved onto the
+   milestones screen, and the address it was linked from keeps working the
+   same way. Same rule, same shape of stub, so it is checked here rather
+   than in a file of its own.
+
    Node tier, no driver: `redirect()` throws rather than returning, so a
    stub's `load()` is called directly and the thrown redirect is read
    apart - no browser, no server, the same discipline liveTiles.ts's tests
@@ -58,7 +64,8 @@ const REDIRECTS: [string, () => unknown, string][] = [
   ['settings/resources', () => import('../src/routes/settings/resources/+page.ts'), '/practice/resources'],
   ['settings/photos', () => import('../src/routes/settings/photos/+page.ts'), '/media/photos'],
   ['settings/voice/memos', () => import('../src/routes/settings/voice/memos/+page.ts'), '/media/voice/memos'],
-  ['settings/voice/metrics', () => import('../src/routes/settings/voice/metrics/+page.ts'), '/practice/voice/metrics']
+  ['settings/voice/metrics', () => import('../src/routes/settings/voice/metrics/+page.ts'), '/practice/voice/metrics'],
+  ['timeline', () => import('../src/routes/timeline/+page.ts'), '/transition/milestones']
 ];
 
 describe('every moved route keeps a 307 redirect at its old address', () => {

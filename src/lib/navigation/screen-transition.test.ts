@@ -20,7 +20,7 @@ describe('choosing a tier-2 pattern', () => {
 
   it('shares an axis going deeper inside one tab, because that is a sequence', () => {
     expect(screenTransition(nav({ from: '/calendar', to: '/day/20690' }))).toBe('shared-axis');
-    expect(screenTransition(nav({ from: '/stats', to: '/timeline' }))).toBe('shared-axis');
+    expect(screenTransition(nav({ from: '/stats', to: '/body-map' }))).toBe('shared-axis');
     expect(screenTransition(nav({ from: '/more', to: '/settings/labs' }))).toBe('shared-axis');
   });
 
