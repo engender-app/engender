@@ -33,14 +33,22 @@ describe('BodyRegionInspectorSheet component contract', () => {
 });
 
 describe('/body-map page inspector wiring', () => {
-  it('includes 2D anatomical map with interactive hotspots and region chips', () => {
+  /* Redesign ticket 40: the figure is the only region control on this
+     screen. The hotspots, the chips row and the picker in the first chart
+     card's header were four ways to make one choice, and all four opened
+     the sheet, so the map could not be browsed at all. */
+  it('has exactly one region control, which is the figure', () => {
     expect(pageFile).toContain('data-body-map-figure');
-    expect(pageFile).toContain('data-region-hotspot');
-    expect(pageFile).toContain('data-region-chip');
+    expect(pageFile).toContain('<BodyRegionMap');
+    expect(pageFile).not.toContain('data-region-hotspot');
+    expect(pageFile).not.toContain('data-region-chip');
+    expect(pageFile).not.toContain('HOTSPOTS');
+    expect(pageFile).not.toContain("key=\"body-region\"");
   });
 
-  it('includes open inspector trigger button and renders BodyRegionInspectorSheet', () => {
-    expect(pageFile).toContain('data-open-inspector');
+  it('reaches the inspector sheet by one explicit row rather than by every tap', () => {
+    expect(pageFile).not.toContain('data-open-inspector');
+    expect(pageFile).toContain("key=\"body-region-inspector\"");
     expect(pageFile).toContain('<BodyRegionInspectorSheet');
     expect(pageFile).toContain('bind:open={inspectorOpen}');
     expect(pageFile).toContain('{region}');
