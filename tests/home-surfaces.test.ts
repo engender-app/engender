@@ -389,9 +389,13 @@ describe('what spec 08 took off Home', () => {
   it('draws no entries, no week strip and no milestones list, and each is on its own door (redesign ticket 13)', () => {
     /* The four departures, proven route by route rather than by absence
        alone: the week strip and the recent entries on the Journal door, the
-       two teasers on the Look back door (the test above), the milestone
-       timeline as a row on the Look back door, and the milestones list as a
-       registered row of the Transition door. */
+       two teasers on the Look back door (the test above), and the
+       milestones - list and rail both - on the Transition door.
+
+       The rail was a row on the Look back door between ticket 13 and
+       redesign ticket 43, which merged it into the milestones screen. So
+       the route it used to be linked at is gone from both screens, and
+       what carries it is the registered Transition row. */
     expect(markup).not.toContain('<WeekStrip');
     expect(markup).not.toContain('<DayCard');
     expect(markup).not.toContain('<MilestoneCard');
@@ -400,7 +404,8 @@ describe('what spec 08 took off Home', () => {
     const calendar = read('src/routes/calendar/+page.svelte');
     expect(calendar).toContain('<WeekStrip');
     expect(calendar).toContain('recentDays(');
-    expect(read('src/routes/stats/+page.svelte')).toContain('href="/timeline"');
+    expect(read('src/routes/stats/+page.svelte')).not.toContain('href="/timeline"');
+    expect(read('src/routes/transition/milestones/+page.svelte')).toContain('<MilestoneRail');
     expect(HUB_ROWS.map((row) => row.href)).toContain('/transition/milestones');
   });
 

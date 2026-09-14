@@ -223,7 +223,6 @@ const ROUTES = [
   { path: '/settings/tags' },
   { path: '/settings/trash' },
   { path: '/tally' },
-  { path: '/timeline' },
   { path: '/compare' },
   { path: '/transition/eras' },
   { path: '/transition/letters' },
@@ -240,7 +239,7 @@ const ROUTES = [
    seed time. Resolved by reading a link off the list screen that owns them,
    so the walk covers them without a fixture of its own. */
 const RESOLVED = [
-  { name: 'entry', prefix: '/entry/', look: ['/day/today', '/calendar', '/timeline'] },
+  { name: 'entry', prefix: '/entry/', look: ['/day/today', '/calendar'] },
   { name: 'document', prefix: '/media/documents/', look: ['/media/documents'] },
   { name: 'question', prefix: '/search/questions/', look: ['/search/questions', '/search'] },
   { name: 'reminder', prefix: '/settings/reminders/', look: ['/settings/reminders'] },

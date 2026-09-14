@@ -1,7 +1,18 @@
 <script lang="ts">
-  /* The milestone timeline (phase 5 UX ticket 23's rebuild of ticket 18's
-     screen). Past and future on one rail, the long empty stretches
-     compressed, and a marker for where today falls among them.
+  /* The milestone rail (phase 5 UX ticket 23, moved off its own screen by
+     phase 10 redesign ticket 43). Past and future on one line, the long
+     empty stretches compressed, and a marker for where today falls among
+     them.
+
+     It was a screen of its own at /timeline until this ticket, reached from
+     Look back while the list of the same milestones sat one door away on
+     Transition. One dataset drawn twice, and the drawing that said which
+     side of today a milestone fell on was the one behind the other tab. The
+     rail opens the milestones screen now and the list runs under it
+     (DIRECTION.md rule 16), which is why this is a component rather than
+     markup inside that screen: the arithmetic, the markup and the classes
+     that draw a rail are one thing, and the screen that carries it is
+     already 500 lines of editor, picker and photo prompt.
 
      What the rail is built from is $lib/data/timelineItems - the ordering,
      the gap rule and today's place are calendar arithmetic and belong in a
@@ -10,34 +21,33 @@
      journal whose milestones were all still ahead drew a timeline of the
      future with no present on it.
 
-     Milestones are mirrored (ADR-0004), so this screen needs no loading
-     state: they arrive with boot, bounded at tens of rows and already in
-     date order from the journal.
+     Milestones are mirrored (ADR-0004), so this needs no loading state:
+     they arrive with boot, bounded at tens of rows and already in date
+     order from the journal.
 
      The rail takes the flag rather than the accent, the same rule every
      other area of the app follows (DIRECTION.md). A future milestone is the
-     same mark drawn hollow, which is the one place on this screen where
-     colour carries a meaning - and it is a fact about time, not a judgement,
-     so ADR-0012 has nothing to say about it. */
+     same mark drawn hollow, which is the one place here where colour
+     carries a meaning - and it is a fact about time, not a judgement, so
+     ADR-0012 has nothing to say about it. */
   import { m } from '$lib/paraglide/messages';
-  import { goto } from '$app/navigation';
   import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { timelineItems } from '$lib/data/timelineItems';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Milestone } from '$lib/data/types';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { collapse } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { roleAttrs } from '$lib/components/kit/role';
-  import Icon from '$lib/components/Icon.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
-  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { roleAttrs } from './kit/role';
+  import PhotoThumb from './PhotoThumb.svelte';
+
+  let { milestones, onOpen }: { milestones: Milestone[]; onOpen: (milestone: Milestone) => void } =
+    $props();
 
   let today = $derived(todayEpochDay());
-  let items = $derived(timelineItems(vocabulary.milestones, today));
+  let items = $derived(timelineItems(milestones, today));
 
   const statusOf = (milestone: Milestone) => {
     const s = milestoneStatus(milestone, today);
@@ -50,76 +60,74 @@
     fmtDuration(calendarDuration(fromEpochDay, toEpochDay));
 </script>
 
-<div class="screen">
-  <ScreenHeader title={m.timeline()} subtitle={m.tl_intro()} screen="timeline" back="/">
-    {#snippet actions()}
-      <a class="icon-btn press" href="/transition/milestones" aria-label={m.tl_add_aria()}>
-        <Icon name="plus" size={22} />
-      </a>
-    {/snippet}
-  </ScreenHeader>
-
-  {#if items.length}
-    <!-- One role for the whole rail rather than one per item: the rail is a
-         single area of the screen, and a colour per milestone would make the
-         palette a sequence of unrelated marks. -->
-    <div class="timeline" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-      {#each items as item (item.id)}
-        {#if item.kind === 'today'}
-          <div class="tl-item tl-today" data-tl-today>
-            <span class="tl-dot is-today"></span>
-            <p class="tl-here">{m.tl_you_are_here()}</p>
-          </div>
-        {:else if item.kind === 'gap'}
-          {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
-          <!-- The axis runs behind this rather than being interrupted by it,
-               so the label is the only thing here: two dashed rules either
-               side of it were what broke the line into pieces. -->
-          <div class="tl-gap" data-tl-gap aria-label={m.tl_gap_aria({ duration: label })}>
-            <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
-          </div>
-        {:else}
-          {@const origin = resolveMilestoneOrigin(item.milestone)}
-          <div class="tl-item" class:is-future={item.future} data-tl-item={item.milestone.id}>
-            <span class="tl-dot"></span>
-            <div class="tl-body">
-              <button
-                type="button"
-                class="tl-body-link"
-                data-tl-open
-                onclick={() => goto(`/transition/milestones?edit=${item.milestone.id}`)}
-              >
-                <div class="tl-head">
-                  <span class="tl-name" data-tl-name>{item.milestone.name}</span>
-                  {#if item.future}<span class="tl-count">{statusOf(item.milestone)}</span>{/if}
-                </div>
-                <span class="tl-date">
-                  {fmtDay(item.milestone.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{item.future
-                    ? ''
-                    : ` · ${statusOf(item.milestone)}`}
-                </span>
-                {#if item.milestone.photo}
-                  <div class="tl-photo"><PhotoThumb photo={item.milestone.photo} size={88} /></div>
-                {/if}
-              </button>
-              {#if origin}
-                <p class="tl-provenance muted small">
-                  {origin.text}
-                  {#if origin.href}<a href={origin.href}>{m.prov_open_source()}</a>{/if}
-                </p>
-              {/if}
+<!-- One role for the whole rail rather than one per item: the rail is a
+     single area of the screen, and a colour per milestone would make the
+     palette a sequence of unrelated marks. -->
+<div class="timeline" data-milestone-rail {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+  {#each items as item (item.id)}
+    <!-- Adding or deleting a milestone changes the rail under the person's
+         hands, and a mark that cuts in or out in one frame is the yank the
+         standing clause forbids. `collapse` gives the height back over the
+         same curve everywhere else does, and stands down while the screen
+         is still arriving (`stillArriving` in motion/reveal.ts) - the
+         arrival is the field blind's, not twenty marks each playing their
+         own over the top of it. -->
+    {#if item.kind === 'today'}
+      <div class="tl-item tl-today" data-tl-today transition:collapse|global>
+        <span class="tl-dot is-today"></span>
+        <p class="tl-here">{m.tl_you_are_here()}</p>
+      </div>
+    {:else if item.kind === 'gap'}
+      {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
+      <!-- The axis runs behind this rather than being interrupted by it,
+           so the label is the only thing here: two dashed rules either
+           side of it were what broke the line into pieces. -->
+      <div
+        class="tl-gap"
+        data-tl-gap
+        aria-label={m.tl_gap_aria({ duration: label })}
+        transition:collapse|global
+      >
+        <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
+      </div>
+    {:else}
+      {@const origin = resolveMilestoneOrigin(item.milestone)}
+      <div
+        class="tl-item"
+        class:is-future={item.future}
+        data-tl-item={item.milestone.id}
+        transition:collapse|global
+      >
+        <span class="tl-dot"></span>
+        <div class="tl-body">
+          <!-- Straight into the editor the list below opens (ticket 99
+               item 4, kept by ticket 43): the two drawings of a milestone
+               are on one screen now, so this is a call rather than the
+               `?edit=` deep link it used to be from the other tab. -->
+          <button type="button" class="tl-body-link" data-tl-open onclick={() => onOpen(item.milestone)}>
+            <div class="tl-head">
+              <span class="tl-name" data-tl-name>{item.milestone.name}</span>
+              {#if item.future}<span class="tl-count">{statusOf(item.milestone)}</span>{/if}
             </div>
-          </div>
-        {/if}
-      {/each}
-    </div>
-  {:else}
-    <EmptyState title={m.tl_empty_title()} text={m.tl_empty_body()}>
-      {#snippet action()}
-        <a class="btn btn-primary" href="/transition/milestones"><span>{m.tl_empty_action()}</span></a>
-      {/snippet}
-    </EmptyState>
-  {/if}
+            <span class="tl-date">
+              {fmtDay(item.milestone.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{item.future
+                ? ''
+                : ` · ${statusOf(item.milestone)}`}
+            </span>
+            {#if item.milestone.photo}
+              <div class="tl-photo"><PhotoThumb photo={item.milestone.photo} size={88} /></div>
+            {/if}
+          </button>
+          {#if origin}
+            <p class="tl-provenance muted small">
+              {origin.text}
+              {#if origin.href}<a href={origin.href}>{m.prov_open_source()}</a>{/if}
+            </p>
+          {/if}
+        </div>
+      </div>
+    {/if}
+  {/each}
 </div>
 
 <style>
@@ -128,7 +136,7 @@
      just like before"). The axis is a continuous line down the left, every
      milestone is a point on it, and the description sits beside the point.
 
-     What this ticket's own rebuild had got wrong: it kept the same parts and
+     What ticket 23's own rebuild had got wrong: it kept the same parts and
      loosened all of them. The rail was 32% of a stripe on a dark ground, so it
      read as a suggestion; the dots sat outside a card with no card edge to
      measure against; and the axis stopped and restarted around the gap and the
