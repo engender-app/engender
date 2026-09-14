@@ -68,6 +68,7 @@
   import { affirmationLines } from '$lib/reminders/affirmations';
   import { androidDisguise } from '$lib/disguise/android-bridge';
   import { androidQuickExit } from '$lib/lock/quick-exit-bridge';
+  import { androidScreenCapture } from '$lib/lock/screen-capture-bridge';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DecoyNotes from '$lib/components/DecoyNotes.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -579,6 +580,7 @@
     const quietHoursEnd = prefs.quietHoursEnd;
     const disguise = prefs.disguise;
     const quickExit = prefs.quickExit;
+    const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready) return;
 
     return startAndroidPlatformSync({
@@ -596,7 +598,8 @@
         quietHoursStart,
         quietHoursEnd,
         disguise,
-        quickExit
+        quickExit,
+        allowScreenCapture
       },
       journal: {
         reminders: journal.reminders,
@@ -609,6 +612,7 @@
       androidReminders,
       androidDisguise,
       androidQuickExit,
+      androidScreenCapture,
       androidBackButton: AndroidAppPlugin,
       // Hidden built-ins and this language's custom lines are read fresh on
       // every call (phase 5 ticket 15) rather than captured once here, so a

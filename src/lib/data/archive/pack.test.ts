@@ -80,6 +80,7 @@ function everyPreferenceSet(): PreferenceValues {
     lockOnLeave: true,
     disguise: true,
     quickExit: true,
+    allowScreenCapture: true,
     checkInEnabled: true,
     checkInTime: '07:30',
     checkInAffirmationsEnabled: false,

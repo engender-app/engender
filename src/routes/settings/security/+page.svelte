@@ -107,6 +107,27 @@
             />
           {/snippet}
         </ListRow>
+        <!-- Android only: FLAG_SECURE has no web equivalent, and a toggle
+             that did nothing on this platform would be worse than none
+             (screen-capture-guard/01). Replaces the isDebuggable() carve-out
+             that used to hand this to any debug build. -->
+        <ListRow
+          static
+          key="screen-capture"
+          icon="shield"
+          title={m.screen_capture_title()}
+          subtitle={m.screen_capture_sub()}
+        >
+          {#snippet trailing()}
+            <Switch
+              checked={prefs.allowScreenCapture}
+              label={m.screen_capture_title()}
+              onChange={(v) => {
+                prefs.allowScreenCapture = v;
+              }}
+            />
+          {/snippet}
+        </ListRow>
       {/if}
     </ListCard>
   </div>

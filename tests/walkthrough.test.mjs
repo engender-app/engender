@@ -6461,6 +6461,13 @@ try {
     throw new Error('a biometrics toggle rendered on a build with no Android platform behind it');
   }
 
+  /* Screen capture (screen-capture-guard/01) is Android-only for the same
+     reason: FLAG_SECURE has no web equivalent, so the row must not exist
+     here rather than offer a toggle that does nothing. */
+  if (await page.getByRole('switch', { name: 'Screen capture' }).count()) {
+    throw new Error('a screen-capture toggle rendered on a build with no Android platform behind it');
+  }
+
   /* Changing access mode (ticket 53). The demo journal opens under a
      passphrase, so the module offers the other two and marks this one as
      current - which is also the assertion that it reads the mode off the
