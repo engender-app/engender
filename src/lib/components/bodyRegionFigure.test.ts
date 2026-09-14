@@ -112,3 +112,15 @@ test('no shape is drawn shorter than the touch target', () => {
     );
   }
 });
+
+/* Each shape wears a 5px ring of card surface to lift it off whole_body's
+   own fill, so two neighbours' rings must not touch: 10px, which is 3.125
+   box units at the stage's size. */
+test('no two shapes are closer than their separator rings', () => {
+  for (let i = 1; i < FIGURE_SLOTS.length; i += 1) {
+    const above = FIGURE_SLOTS[i - 1];
+    const below = FIGURE_SLOTS[i];
+    const gapPx = ((below.top - (above.top + above.height)) * STAGE_HEIGHT) / FIGURE_BOX.height;
+    assert.ok(gapPx >= 10, `${above.region} to ${below.region} is ${gapPx}px, under the two rings' 10px`);
+  }
+});

@@ -27,10 +27,17 @@
        "never".
      - The **stroke colour** is selection: which region the charts below
        describe.
-     - The **stroke style** is mixed: a region whose readings in this range
-       fell on both sides of the midpoint is dashed. Its own channel rather
-       than a third colour, and on the edge rather than on the fill, so it
-       is legible at the palest step as well as the deepest.
+     - The **mark** is mixed: a region whose readings in this range fell on
+       both sides of the midpoint carries two short bars in its corner. Its
+       own channel rather than a third colour, and it takes the ink the
+       role's ramp already computes for that exact step - held to 4.5:1
+       against its own fill by tests/kit-roles.test.ts - so it is legible at
+       the palest step and at the deepest alike.
+
+       A dashed edge was the first attempt and measured 1.1:1 against its
+       own fill at the deepest step in dark: a dash pattern is read by
+       seeing its gaps, and at level 4 there were no gaps to see. The
+       stroke was also already spoken for by selection.
 
      No text is set on a fill. A ramp would put every step through rule 11
      against its own colour across every palette and theme, which is what
@@ -42,6 +49,7 @@
   import type { RegionSideReading } from '$lib/data/bodyMap';
   import type { BodyRegion } from '$lib/data/types';
   import { GROUND_SLOT, fillLevel, placeRegions, slotStyle } from './bodyRegionFigure';
+  import { roleAttrs } from './kit/role';
   import type { Role } from '$lib/theme/roles';
 
   let {
@@ -69,8 +77,16 @@
       standing for absence. The ramp's steps are `roles.ts`'s, so a region
       here and a calendar cell shade one reading the same way and only the
       hue differs. */
-  const fillStyle = (level: number) =>
-    level === 0 || !role ? '' : `--region-fill:${role.heat[level].fill}`;
+  const fillStyle = (level: number) => {
+    if (level === 0 || !role) return '';
+    const step = role.heat[level];
+    /* The ink beside the fill, always, because the mixed mark sits on the
+       fill and has to be read off it. roles.ts computes one per step and
+       kit-roles.test.ts holds every one of them to 4.5:1 against that
+       step's own fill, so the mark is legible by construction rather than
+       by a colour somebody eyeballed. */
+    return `--region-fill:${step.fill};--region-ink:${step.ink}`;
+  };
 
   /** What a screen reader is told, which is the whole of what the colour
       says: a shape's fill and its dashes are not readable, so the name
@@ -112,7 +128,11 @@
      charts below describe, and it neither commits anything nor excludes the
      others from view - every shape keeps showing its own reading whichever
      is picked. Toggle buttons say that; radios say "one of these applies". -->
-<div class="region-figure" role="group" aria-label={m.body_regions_group()}>
+<!-- roleAttrs, or --role-mark is undefined and selection falls back to
+     --accent: the shapes would then be filled in the flag's first colour
+     and ringed in the palette's accent, which on trans is blue fills with a
+     pink ring. Two colours for one area is exactly what rule 3 forbids. -->
+<div class="region-figure" role="group" aria-label={m.body_regions_group()} {...roleAttrs(role)}>
   <div class="region-stage">
     {#if placement.ground}
       <!-- The ground is a region, not a backdrop: it carries whole_body's
@@ -179,7 +199,7 @@
     position: relative;
     width: 100%;
     max-width: 320px;
-    aspect-ratio: 100 / 160;
+    aspect-ratio: 100 / 166;
     margin: 0 auto;
   }
 
@@ -192,7 +212,16 @@
   .region-shape {
     border: 2px solid var(--outline);
     border-radius: var(--r-block);
-    background: var(--region-fill, transparent);
+    /* Two layers, and the lower one is opaque on purpose. A shape's fill is
+       a mix of the stripe into the card's own surface (roles.ts), so it is
+       only the colour it was computed to be when it is painted over that
+       surface - and on the figure a shape is painted over whole_body's
+       fill, not over the card. Without the base, a chest at level 2 on a
+       whole_body at level 4 came out darker than a chest at level 2 on an
+       empty one, which is a fill saying something about its neighbour. */
+    background:
+      linear-gradient(var(--region-fill, transparent), var(--region-fill, transparent)),
+      var(--region-base, transparent);
     padding: 0;
     cursor: pointer;
     touch-action: manipulation;
@@ -207,6 +236,29 @@
 
   .region-stage .region-shape {
     position: absolute;
+    /* The eight sit on whole_body, and whole_body carries a reading of its
+       own, so at the deep end of the ramp the ground was the same colour as
+       everything on it and the figure read as one slab. A ring of the card's
+       own surface, just outside each shape's edge, lifts them off it -
+       every shape then meets the ground across a line of page rather than
+       across its own colour. Inside the 2-unit floor on the gaps, so two
+       neighbours' rings never touch. */
+    --region-base: var(--surface);
+  }
+
+  .region-stage .region-shape::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 2px solid var(--surface);
+    border-radius: var(--r-block);
+    pointer-events: none;
+  }
+
+  /* The ground is under them, so it takes no ring - it has nothing to be
+     lifted off. */
+  .region-stage .region-shape.is-ground::before {
+    content: none;
   }
 
   /* The ground sits behind the eight and reads as the thing they are on:
@@ -215,15 +267,38 @@
      line weight alone, one step down. It is still a full control. */
   .region-shape.is-ground {
     border-width: 1px;
+    --region-base: var(--surface);
   }
 
-  /* Mixed: the region went both ways in this range. On the edge rather
-     than in the fill, so it survives the palest step; a dash pattern
-     rather than a colour, so it is a separate channel from selection and
-     the two can be read at once. */
+  /* Mixed: the region went both ways in this range. Two short bars in the
+     corner rather than a change to the edge, because the edge is spoken for
+     by selection and neither may erase the other - the same reason the
+     injection map draws its second and third channels as rings around the
+     dot rather than as changes to it.
+
+     Two bars rather than one dot: the thing being said is "both ways", and
+     two of something says that where one of anything does not. The ink is
+     the ramp's own for this step, so it holds against the fill it sits on
+     at every level; at level 0 there is no fill and it falls to --text. */
   .region-shape[data-region-mixed],
   [data-region-mixed] > .region-shape {
-    border-style: dashed;
+    position: relative;
+  }
+
+  .region-stage .region-shape[data-region-mixed] {
+    position: absolute;
+  }
+
+  .region-shape[data-region-mixed]::after,
+  [data-region-mixed] > .region-shape::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 11px;
+    height: 7px;
+    background:
+      linear-gradient(var(--region-ink, var(--text)) 0 2px, transparent 2px 5px, var(--region-ink, var(--text)) 5px 7px);
   }
 
   .region-shape:hover,
@@ -246,6 +321,7 @@
     display: block;
     width: 44px;
     height: 28px;
+    --region-base: var(--surface);
   }
 
   /* The arrival, top to bottom. Opacity and transform only, and the shape
