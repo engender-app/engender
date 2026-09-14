@@ -16,9 +16,8 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/search')).toBe('calendar');
   });
 
-  it('lights stats for stats, timeline and every wrapped view', () => {
+  it('lights stats for stats and every wrapped view', () => {
     expect(activeTabKey('/stats')).toBe('stats');
-    expect(activeTabKey('/timeline')).toBe('stats');
     expect(activeTabKey('/wrapped')).toBe('stats');
     /* The arbitrary range recap used to own is a wrapped now (phase 5 UX
        ticket 23, spec 07), so the tab it lights comes from the /wrapped
@@ -33,6 +32,17 @@ describe('activeTabKey', () => {
      stop. What it must do is fall back the way any unknown route does. */
   it('leaves the deleted recap route to the fallback, like any unknown URL', () => {
     expect(activeTabKey('/recap')).toBe(activeTabKey('/nothing-here'));
+  });
+
+  /* Redesign ticket 43: /timeline is a redirect to /transition/milestones
+     now, and the two have to light the same tab. They did not - the rail
+     was Look back's and the list is the Transition door's - so a person
+     opening an old link would have watched the tab indicator travel from
+     Look back to Transition while the redirect landed. The old address
+     keeps working and lights where it now leads. */
+  it('lights the same tab for the old timeline address as for the screen it redirects to', () => {
+    expect(activeTabKey('/timeline')).toBe('settings');
+    expect(activeTabKey('/timeline')).toBe(activeTabKey('/transition/milestones'));
   });
 
   it('lights settings for settings and more', () => {

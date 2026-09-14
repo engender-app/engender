@@ -13,7 +13,18 @@
      And each row carried two icon buttons, an edit and a delete, on top of
      a photo, a name and a status line. Tapping the row is the edit, which
      is what a row with an editor behind it means everywhere else in the
-     app; the delete stays as the row's own one control. */
+     app; the delete stays as the row's own one control.
+
+     Phase 10 redesign ticket 43 put the rail on top of it. The same
+     milestones were drawn twice, a door apart: a rail at /timeline that
+     said which side of today each one fell on, and this list, where
+     "Coming out to my parents, 2 years ago" and "Name-change hearing, in
+     16 days" sat in the same row shape and the same grey. The rail opens
+     the screen (DIRECTION.md rule 16, an area screen opens by saying what
+     is true now) and the list runs under it, because a compressed rail
+     cannot be the place you edit or delete one specific milestone - the
+     editor, the photo prompt and the delete all live on the list. /timeline
+     is a redirect to here now. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { replaceState } from '$app/navigation';
@@ -34,6 +45,7 @@
   import type { EditorPhoto } from '$lib/stores/photoPicking';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
+  import MilestoneRail from '$lib/components/MilestoneRail.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
   import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
@@ -46,6 +58,7 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
@@ -151,16 +164,20 @@
   }
 
   /* The timeline screen's deep link (ticket 99 item 4): a milestone card
-     there opens straight into this same editor rather than a detail page
-     of its own. The one-shot-param shape /doses' `add` uses, with one
-     difference that matters: `add` needs no data, and this needs a
-     milestone to open.
+     there opened straight into this same editor rather than a detail page
+     of its own. Redesign ticket 43 merged that screen into this one, so
+     nothing in the app writes this param any more - a mark on the rail
+     calls `openEditor` directly. It stays for the same reason /timeline
+     stays as a redirect (ADR-0036): the address was handed out, and a link
+     somebody saved has to keep opening what it opened.
+
+     The one-shot-param shape /doses' `add` uses, with one difference that
+     matters: `add` needs no data, and this needs a milestone to open.
 
      So the param comes off only once the milestone has actually been
-     found, never on the way past. Reached from the timeline the mirror is
-     long since filled and the two happen in the same tick; opened cold, on
-     a link pasted into a fresh tab, this effect can run before boot has
-     filled `vocabulary.milestones` - and stripping the param there threw
+     found, never on the way past. Opened cold, on a link pasted into a
+     fresh tab, this effect can run before boot has filled
+     `vocabulary.milestones` - and stripping the param there threw
      the id away before anything could be done with it, so the editor never
      opened at all and the URL kept a param nothing would look at again
      (found by the ticket's own code review, reproduced by loading the deep
@@ -270,6 +287,12 @@
   </ScreenHeader>
 
   {#if sorted.length}
+    <!-- What is true now, before what was true before (DIRECTION.md rule
+         16). The rail carries today's place among the milestones and the
+         hollow marks ahead of it; the list under it is the same set as
+         rows, which is where a milestone is opened, edited or deleted. -->
+    <MilestoneRail milestones={sorted} onOpen={(mi) => openEditor(mi, null)} />
+    <SectionHeading text={m.ms_log_heading()} />
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       {#each sorted as mi (mi.id)}
         {@const origin = resolveMilestoneOrigin(mi)}
