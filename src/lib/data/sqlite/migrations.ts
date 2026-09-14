@@ -54,11 +54,15 @@ ALTER TABLE procedure ADD COLUMN dilation_opt_in INTEGER NOT NULL DEFAULT 0;
 
 /* v81 (ticket 39, ADR-0081): entry_body_region's two independent
    dysphoria/euphoria intensities collapse to one value on the shared
-   0-100 scale, the shape entry_dimension_value.value already has. A
-   both-axes row (from before ticket 99's single slider) takes the side
-   with the larger intensity, the same rule feelingToSliderValue used to
-   apply when it read one - pre-release data needs no more care than that
-   (Alicja, 2026-09-14). */
+   0-100 scale, the shape entry_dimension_value.value already has. The
+   CHECK still excludes 50, unlike entry_dimension_value's: for a region
+   the midpoint means "nothing said" (phase 5 ticket 31), which ticket
+   99's midpoint-clears-both already preserved, so a row at 50 would be a
+   picked-then-unanswered region rather than a real reading - that case is
+   an absent row, not a stored one. A both-axes row (from before ticket
+   99's single slider) takes the side with the larger intensity, the same
+   rule feelingToSliderValue used to apply when it read one - pre-release
+   data needs no more care than that (Alicja, 2026-09-14). */
 const SCHEMA_V81 = `
 ALTER TABLE entry_body_region RENAME TO entry_body_region_v80;
 CREATE TABLE entry_body_region (
