@@ -190,7 +190,7 @@ const MIXED = `(() => {
     const onFigure = el.hasAttribute('data-region-art');
     /* rect or path: the head's two halves are paths, because a dome and a
        jaw are shapes a rounded rectangle cannot be. */
-    const drawn = onFigure ? el.querySelector('rect, path') : el.querySelector('.region-chip');
+    const drawn = onFigure ? el.querySelector('.region-dot') : el.querySelector('.region-chip');
     const drawnStyle = getComputedStyle(drawn);
     const edge = onFigure ? drawnStyle.stroke : drawnStyle.borderTopColor;
     out.push({

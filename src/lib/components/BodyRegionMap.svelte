@@ -1,63 +1,52 @@
 <!-- The body map's figure (phase 10 redesign ticket 40).
 
-     The body this screen has always drawn - a head, a torso, two arms, a
-     pelvis, two thighs, two shins - with each region an area of it that
-     carries its own reading. `whole_body` is that figure: not decoration
-     under the regions but a region, filled by its own reading, and tapped
-     wherever the eight are not.
+     The body this screen has always drawn, with a point on each region and
+     the reading in the point. Points rather than areas (Alicja, 2026-09-14:
+     "no areas, just points to click"), and the same arrangement the app's
+     other body map has always had - InjectionSiteMap draws twelve dots on a
+     silhouette and shades each by how long ago its site was used - so the
+     two maps differ only in the drawing under them, which is what the ticket
+     asked for when it said to share the ramp and leave the artwork apart.
 
-     Alicja picked this silhouette back out of the before/after on
-     2026-09-14, after a column of blocks and after a wooden mannequin. Her
-     rule for it, in her own words, is that the outline has to be neutral
-     rather than absent - so the drawing keeps its own proportions and
-     bodyRegionFigure.ts holds three things by test: the torso is one width,
-     the pelvis is never wider than it, and every piece is mirrored.
+     What changed from the old figure is not the shape of it. It is that the
+     dots carry the data, that every region has somewhere to be, that they
+     land on the part of the body they name, and that a tap selects instead
+     of leaving the screen:
 
-     **Neutral is about how the body is drawn, not about whether it is.**
-     The first build took the ticket at its word - "there is no body
-     outline" - and came out as eight rounded rectangles stacked in a
-     column, which read as a form (Alicja, 2026-09-14: "why is there no
-     body?", and then: the outline has to be neutral, not gendered). So the
-     torso is a constant-width column with no waist, no bust and no hip
-     flare, and bodyRegionFigure.ts holds that by test.
-
-     This replaces a rect-and-circle silhouette with eight dots floating on
-     top of it. The dots were the problem: the drawing under them had no
-     matching parts - the dot for the shoulders sat on the left arm - two of
-     the ten regions had nowhere to go, a region somebody added themselves
-     could never have a place, and the figure carried no data at all.
+     - The old `HOTSPOTS` table put `shoulders` on the left arm and
+       `hands_feet` between the ankles, so the figure pointed at one thing
+       and answered with another. Every point is checked against the piece of
+       the silhouette it belongs to now (bodyRegionFigure.ts), so a
+       coordinate cannot drift off its own body part unnoticed.
+     - Two of the ten regions had no place at all, and a region somebody
+       added themselves could never have one. `whole_body` is the body -
+       literally what it means - and `body_facial_hair` and every custom
+       region sit in the elsewhere cluster, in the same shape language.
+     - The figure carried no data whatsoever; every intensity on the screen
+       was in the two charts below.
 
      Real buttons over the drawing, never tappable SVG paths - the rule
      InjectionSiteMap.svelte already follows, for the same three reasons: a
      <button> gets the focus ring, the touch target and the accessible name
      for free. The SVG is the picture and the buttons are transparent boxes
-     over it, so the drawing is free to be anatomical while every target
-     stays a rectangle a finger can find. bodyRegionFigure.ts holds the join
-     between the two: every drawn shape sits inside a zone that selects its
-     own region, so the figure can never show one thing and answer with
-     another.
+     over it.
 
      Three channels, one each, the way the injection map's dots carry three:
 
-     - The **fill** is the region's dominant-side mean on the role's own
-       heat ramp. A region with no readings in the range has no fill at all,
-       only its outline, because neither a large number nor zero reads as
-       "never".
-     - The **stroke** is selection: which region the charts below describe.
+     - The **fill** is the region's dominant-side mean on the role's own heat
+       ramp. A region with no readings in the range is a hollow dot, because
+       neither a large number nor zero reads as "never".
+     - The **ring** is selection: which region the charts below describe.
      - The **mark** is mixed: a region whose readings in this range fell on
-       both sides of the midpoint carries two short bars inside its corner,
-       in the ink the role's ramp already computes for that exact step - held
-       to 4.5:1 against its own fill by tests/kit-roles.test.ts - so it is
-       legible at the palest step and the deepest alike. A dashed edge was
-       the first attempt and measured 1.1:1 against its own fill at the
-       deepest step in dark: a dash is read by seeing its gaps, and at level
-       4 there were none. The stroke was also already spoken for.
+       both sides of the midpoint carries two short bars beside its dot, in
+       the ink the role's ramp computes for that step. Beside rather than on,
+       because a 22px dot has nowhere to put them and its own fill runs the
+       whole ramp underneath; on the body the colour does not move, so the
+       mark reads the same at every step.
 
-     No text is set on a fill. A ramp would put every step through rule 11
-     against its own colour across every palette and theme, which is what
-     turned nonbinary's yellow to olive on ticket 07. Names live in the
-     accessible name, in the elsewhere cluster where they sit beside a shape
-     rather than on it, and in the heading under the figure. -->
+     No text is set on a fill. Names live in the accessible name, in the
+     elsewhere cluster where they sit beside a shape rather than on it, and
+     in the heading under the figure. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import type { RegionSideReading } from '$lib/data/bodyMap';
@@ -65,14 +54,14 @@
   import {
     FIGURE_BOX,
     GROUND_SHAPES,
-    GROUND_ZONES,
+    GROUND_ZONE,
     MIN_STAGE_HEIGHT,
     MIN_STAGE_WIDTH,
     boxStyle,
     fillLevel,
+    hitBox,
     markAt,
-    placeRegions,
-    type RegionDrawing
+    placeRegions
   } from './bodyRegionFigure';
   import { rampStyle } from './mapChannels';
   import { roleAttrs } from './kit/role';
@@ -149,8 +138,8 @@
 
 <!-- A group rather than a radiogroup: picking a region says which one the
      charts below describe, and it neither commits anything nor excludes the
-     others from view - every shape keeps showing its own reading whichever
-     is picked. Toggle buttons say that; radios say "one of these applies". -->
+     others from view - every dot keeps showing its own reading whichever is
+     picked. Toggle buttons say that; radios say "one of these applies". -->
 <div class="region-figure" role="group" aria-label={m.body_regions_group()} {...roleAttrs(role)}>
   <div class="region-stage" style={stageStyle}>
     <!-- Decorative: every region's name is on its button, so the drawing
@@ -162,11 +151,10 @@
       aria-hidden="true"
       focusable="false"
     >
-      <!-- The silhouette, which is whole_body: seven overlapping pieces
-           with no stroke, so they union into one body rather than reading
-           as parts. Its fill is its own reading, and with none it is the
-           card's own second surface - which is what "nothing logged for the
-           whole body" should look like. -->
+      <!-- The body, which is whole_body: nine overlapping pieces with one
+           fill, so they union into one figure. That fill is its own reading,
+           and with none it is the card's second surface - which is what
+           "nothing logged for the whole body" should look like. -->
       <g
         class="region-body"
         class:is-picked={selected === placement.ground?.id}
@@ -184,33 +172,24 @@
         {/each}
       </g>
 
-      {#each placement.drawn as { drawing, region }, i (region.id)}
+      {#each placement.drawn as { point, region }, i (region.id)}
         <!-- Arriving top to bottom, one --stagger-step apart, which is the
-             order the body reads in (rule 10, ticket 19's staggered
-             blocks). -->
+             order the body reads in (rule 10, ticket 19's staggered blocks). -->
         <g
-          class="region-part region-arrive"
+          class="region-point region-arrive"
           class:is-picked={selected === region.id}
           class:is-empty={levelOf(region.id) === 0}
           style="{paint(levelOf(region.id))};--region-i:{i + 1}"
           data-region-art={region.id}
           data-region-level={levelOf(region.id)}
         >
-          {#each drawing.shapes as shape, n (n)}
-            <rect
-              x={shape.left}
-              y={shape.top}
-              width={shape.width}
-              height={shape.height}
-              rx={shape.r}
-              ry={shape.ry ?? shape.r}
-            />
+          {#each point.points as at, n (n)}
+            <!-- The ring first, so the dot is drawn over it. -->
+            <circle class="region-ring" cx={at.x} cy={at.y} r="6.2" />
+            <circle class="region-dot" cx={at.x} cy={at.y} r="3.6" />
           {/each}
           {#if isMixed(region.id)}
-            {@const at = markAt(drawing)}
-            <!-- Mixed: two short bars, not one dot, because the thing being
-                 said is "both ways" and two of something says that where
-                 one of anything does not. -->
+            {@const at = markAt(point.points[0])}
             <g class="region-mark" data-region-mixed={region.id}>
               <rect x={at.x} y={at.y} width="4.4" height="1.1" rx="0.5" />
               <rect x={at.x} y={at.y + 2.2} width="4.4" height="1.1" rx="0.5" />
@@ -220,26 +199,27 @@
       {/each}
     </svg>
 
-    <!-- The buttons, over the drawing. Transparent: there is nothing to see
-         here, only somewhere to press. -->
+    <!-- The body's own button, under the dots: whole_body is reached
+         wherever none of them is. -->
     {#if placement.ground}
-      {#each GROUND_ZONES as zone, i (i)}
-        <button
-          type="button"
-          class="region-hit"
-          style={boxStyle(zone)}
-          {...hitAttrs(placement.ground, i)}
-          onclick={() => onSelect(placement.ground!.id)}
-        ></button>
-      {/each}
+      <button
+        type="button"
+        class="region-hit is-ground"
+        style={boxStyle(GROUND_ZONE)}
+        aria-pressed={selected === placement.ground.id}
+        aria-label={regionLabel(placement.ground)}
+        data-region={placement.ground.id}
+        data-region-level={levelOf(placement.ground.id)}
+        onclick={() => onSelect(placement.ground!.id)}
+      ></button>
     {/if}
 
-    {#each placement.drawn as { drawing, region } (region.id)}
-      {#each drawing.zones as zone, i (i)}
+    {#each placement.drawn as { point, region } (region.id)}
+      {#each point.points as at, i (i)}
         <button
           type="button"
           class="region-hit"
-          style={boxStyle(zone)}
+          style={boxStyle(hitBox(at, point.points.length))}
           {...hitAttrs(region, i)}
           onclick={() => onSelect(region.id)}
         ></button>
@@ -250,13 +230,10 @@
   {#if placement.elsewhere.length}
     <!-- Docked to the figure and sharing its card, in the same shape
          language, because a region somebody added themselves is a region: it
-         gets the shape chest gets, filled by the same ramp, from the first
-         time they add one. It sat on bare page under an ordinary section
-         label to begin with, which is the app's own list convention and so
-         read as an appendix rather than as part of the figure.
-
-         The name sits under the shape rather than on it - the one place
-         this screen writes a region's name beside its fill. -->
+         gets the affordance chest gets, filled by the same ramp, from the
+         first time they add one. The name sits under the shape rather than
+         on it - the one place this screen writes a region's name beside its
+         fill. -->
     <div class="region-elsewhere">
       <p class="region-elsewhere-head">{m.body_map_elsewhere()}</p>
       <div class="region-elsewhere-shapes">
@@ -334,47 +311,54 @@
       stroke var(--dur-med) var(--ease-out);
   }
 
-  /* A region of the body. The fill is its reading; the stroke is
-     selection. --region-base is opaque under the fill because a step of the
-     ramp is a mix of the stripe into the card's surface, so painted over
-     the body's own fill it would come out a colour that was partly its
-     neighbour's. */
-  .region-part > rect {
-    fill: var(--region-fill, transparent);
+  /* A dot. The fill is the region's reading and the edge holds it against
+     whatever the body is doing underneath - a dot's fill is a mix of the
+     stripe into the card's surface, so it needs a line of its own rather
+     than meeting the body across its own colour. */
+  .region-dot {
+    fill: var(--region-fill, var(--surface));
     stroke: var(--outline);
-    stroke-width: 1.2;
+    stroke-width: 1.1;
     transition:
       fill var(--dur-med) var(--ease-out),
       stroke var(--dur-med) var(--ease-out),
-      stroke-width var(--dur-med) var(--ease-out);
+      r var(--dur-med) var(--ease-out);
   }
 
-  /* Nothing logged in this range: the outline alone, firmer, the way the
-     injection map draws a never-used site as a hollow dot rather than as
-     the pale end of its ramp. */
-  .region-part.is-empty > rect {
-    fill: var(--surface);
-    fill-opacity: 0.55;
+  /* Nothing logged in this range: hollow, and a firmer edge, at the same
+     size as the rest. Hollow against filled is the whole difference, and it
+     has to hold against the faintest step of the ramp rather than against
+     nothing - a smaller dot would also read as a region the map thinks less
+     of (InjectionSiteMap's own note, and the same rule). */
+  .region-point.is-empty .region-dot {
+    fill: none;
     stroke-width: 1.6;
   }
 
-  /* Selection: the stroke takes the role's mark colour and thickens. Never
-     a travelling indicator - two regions are not adjacent the way tabs are,
-     and a pill flying across a torso is motion for its own sake. */
-  .region-part.is-picked > rect {
+  /* Selection is a ring around the dot rather than a change to it, because
+     the dot itself is spoken for: picking a region may not erase what the
+     map says about it. Drawn on every dot and revealed, so the ring has
+     something to ease from. Never a travelling indicator between regions -
+     two regions are not adjacent the way tabs are, and a pill flying across
+     a torso is motion for its own sake. */
+  .region-ring {
+    fill: none;
     stroke: var(--role-mark, var(--accent));
-    stroke-width: 2.6;
+    stroke-width: 1.6;
+    opacity: 0;
+    transition: opacity var(--dur-med) var(--ease-out);
   }
 
-  .region-body.is-picked > rect {
-    stroke: var(--role-mark, var(--accent));
-    stroke-width: 1.8;
+  .region-point.is-picked .region-ring {
+    opacity: 1;
   }
 
-  /* The mark's own bars, which are rects inside the region's group and so
-     have to be held out of every rule that paints the region's shapes -
-     selection set a 2.6px stroke on them and turned two thin bars into one
-     blob. Hence `>` on the three rules above rather than a descendant. */
+  .region-point.is-picked .region-dot {
+    stroke: var(--role-mark, var(--accent));
+  }
+
+  /* The mark's own bars. Held out of the dot's rules by class rather than
+     by position, since both live in the region's group. */
   .region-mark > rect {
     fill: var(--region-ink, var(--text));
     stroke: none;

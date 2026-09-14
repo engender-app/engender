@@ -118,7 +118,7 @@ const READ_SHAPES = `
       o: Math.round(Number(s.opacity) * 1000) / 1000,
       t: s.transform,
       clip: s.clipPath,
-      border: getComputedStyle(el.querySelector('rect, path')).strokeWidth,
+      border: getComputedStyle(el.querySelector('.region-dot') ?? el.querySelector('rect')).strokeWidth,
       fill: s.getPropertyValue('--region-fill').trim() || 'none',
       picked: pickedOf(region)
     };
