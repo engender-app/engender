@@ -112,7 +112,11 @@ const SCENES = [
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
   { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
-  { name: 'letters-read', at: '/transition/letters', act: '[data-letter]', when: 'persona', is: 'a letter opened to read' },
+  /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
+     45: a sealed letter's card answers no press at all now, and it is the
+     first card on the screen, so the old selector picked the one letter that
+     cannot open. This handle is on the two states that can. */
+  { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', is: 'a letter unfolded to read' },
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
   { name: 'presentations-add', at: '/transition/presentations', act: '[data-add]', is: 'the add presentation sheet opening' },
   { name: 'eras-add', at: '/transition/eras', act: '[data-add]', is: 'the add era sheet opening' },
