@@ -169,12 +169,16 @@
       ]),
       comfort
     });
-    const side = (take: (typeof takes)[number]) => ({
-      density: pitchDensity(take.trace!, axis)!,
-      medianHz: take.benchmark.f0MedianHz
-    });
-    if (!pitchDensity(earlier.trace, axis) || !pitchDensity(later.trace, axis)) return null;
-    return { axis, earlier: side(earlier), later: side(later) };
+    const side = (take: (typeof takes)[number]) => {
+      const density = pitchDensity(take.trace!, axis);
+      return density && { density, medianHz: take.benchmark.f0MedianHz };
+    };
+    const sides = [side(earlier), side(later)];
+    /* Both or neither: a figure with one shape on a shared spine says the
+       other take had no voice in it, which is a worse claim than the
+       sentence a trackless take already carries. */
+    if (!sides[0] || !sides[1]) return null;
+    return { axis, earlier: sides[0], later: sides[1] };
   });
 
   /* F0 median over every benchmark, oldest first - independent of which two
