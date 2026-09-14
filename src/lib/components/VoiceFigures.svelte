@@ -139,7 +139,7 @@
       which of the two reasons there is not: no earlier take at all, or none
       this one may be joined to (ADR-0061). The two are different sentences
       because they are different facts, and an empty plot would be neither. */
-  type History = Line | { none: 'first' | 'passage' | 'setup' };
+  type History = Line | { none: 'first' | 'passage' | 'setup' | 'unread' };
 
   /** This figure's history: the run the current take belongs to, placed on
       the scale every run of it shares.
@@ -156,18 +156,37 @@
        change of equipment are the app's two reasons for refusing to join
        two takes, and they are not the same sentence as having no earlier
        take at all. */
-    const nothing = (): History => ({
-      none: computed.breaks.length === 0 ? 'first' : lastBreak === 'passage' ? 'passage' : 'setup'
+    const nothing = (joinable: boolean): History => ({
+      none: joinable
+        ? 'unread'
+        : computed.breaks.length === 0
+          ? 'first'
+          : lastBreak === 'passage'
+            ? 'passage'
+            : 'setup'
     });
-    if (scale === null || computed.runs.length === 0) return nothing();
-
     const run = computed.runs[computed.runs.length - 1];
-    const readings = run.points.filter((point) => point.y !== null).length;
-    if (readings < 2) return nothing();
+    /* Takes this one may be joined to, but not readings of this figure in
+       them: a vowel step skipped every time, or a rate no reader could have
+       reached and which `ownSeries` drops rather than draws (ticket 41).
+       That is a different sentence from having no earlier take. */
+    if (scale === null || computed.runs.length === 0) {
+      return nothing(series.length > 1 && computed.breaks.length === 0);
+    }
 
+    const readings = run.points.filter((point) => point.y !== null).length;
+    if (readings < 2) return nothing(run.points.length > 1);
+
+    /* Placed by the day each take was recorded, so two months apart and two
+       days apart do not look the same - except where every take in the run
+       landed on one day, which is two benchmarks in one sitting and would
+       otherwise collapse the whole line onto one x. */
     const first = run.points[0].x;
     const last = run.points[run.points.length - 1].x;
-    const at = (x: number) => (last === first ? 100 : ((x - first) / (last - first)) * 100);
+    const at =
+      last === first
+        ? (_x: number, index: number) => (index / (run.points.length - 1)) * 100
+        : (x: number, _index: number) => ((x - first) / (last - first)) * 100;
     const height = (value: number) =>
       scale.max === scale.min
         ? SPARK_HEIGHT / 2
@@ -182,7 +201,7 @@
           current = [];
           return;
         }
-        current.push(`${at(run.points[index].x).toFixed(1)},${height(value).toFixed(1)}`);
+        current.push(`${at(run.points[index].x, index).toFixed(1)},${height(value).toFixed(1)}`);
       });
       if (current.length > 1) segments.push(current.join(' '));
       return segments;
@@ -195,7 +214,10 @@
          the same test `ownSeries` applies before it will put two lines on
          one plot. */
       second: computed.secondScaleShared && run.second ? draw(run.second) : null,
-      ring: here === null ? null : { x: at(last), y: (height(here) / SPARK_HEIGHT) * 100 },
+      ring:
+        here === null
+          ? null
+          : { x: at(last, run.points.length - 1), y: (height(here) / SPARK_HEIGHT) * 100 },
       readings
     };
   }
@@ -221,7 +243,8 @@
   const NOTHING = {
     first: m.vb_history_first,
     passage: m.vb_history_other_passage,
-    setup: m.vb_history_other_setup
+    setup: m.vb_history_other_setup,
+    unread: m.vb_history_unread
   };
 </script>
 
@@ -312,9 +335,9 @@
   .vf-pitch-value {
     margin: var(--space-1) 0 0;
     font-family: var(--font-display);
-    font-size: 2.5rem;
-    font-weight: 800;
-    letter-spacing: -0.045em;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--display-track);
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
@@ -352,9 +375,9 @@
   .vf-value {
     margin: var(--space-1) 0 0;
     font-family: var(--font-display);
-    font-size: 1.75rem;
-    font-weight: 800;
-    letter-spacing: -0.04em;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--display-track);
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
   }
@@ -367,10 +390,14 @@
     color: var(--muted);
   }
 
+  /* The ring sits on the last reading, which is the right edge of the plot,
+     so the box carries its own radius as padding either side - otherwise
+     half the ring is outside the block and the crop cuts it. */
   .vf-line {
     position: relative;
     margin-top: var(--space-2);
     height: 30px;
+    padding: 0 7px;
   }
 
   .vf-line svg {
