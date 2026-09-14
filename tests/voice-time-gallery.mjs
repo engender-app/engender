@@ -36,7 +36,10 @@ const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 
 async function openPage() {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  /* Taller than a phone on purpose: the figure group is about 900px and an
+     element screenshot of something taller than the viewport is stitched
+     through whatever is fixed over it - the save bar, in this flow. */
+  const page = await browser.newPage({ viewport: { width: 390, height: 1400 }, deviceScaleFactor: 2 });
   await page.addInitScript(`
     ${fakeMicrophoneSource}
     window.__fakeMicrophone = installFakeMicrophone('read');
@@ -67,6 +70,15 @@ async function clearToasts(page) {
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
   });
 }
+
+/* The demo bar is review chrome and not in the build being signed off, and
+   at 390px it sits over the top of whatever is being cropped. Removed after
+   the seeding, which clicks one of its controls. */
+const strip = (page) =>
+  page.evaluate(() => {
+    document.querySelector('.demo-bar')?.remove();
+    document.body.classList.remove('has-demo-bar');
+  });
 
 /** The benchmarks the fixture seeds, which every crop below reads. */
 async function seed(page) {
@@ -108,6 +120,7 @@ for (const theme of THEMES) {
         capture chain this browser is not (ADR-0061), which is the rule
         working rather than a fixture problem. */
   await settle(page, '/practice/voice?tab=record');
+  await strip(page);
   await clearToasts(page);
   await read(page);
   await page.locator('[data-vb-figures]').screenshot({ path: `${outDir}/figures-first-trans-${theme}.png` });
@@ -115,6 +128,7 @@ for (const theme of THEMES) {
   await page.waitForTimeout(1500);
 
   await settle(page, '/practice/voice?tab=record');
+  await strip(page);
   await clearToasts(page);
   await read(page);
   await page.locator('[data-vb-take]').screenshot({ path: `${outDir}/take-trans-${theme}.png` });
@@ -130,6 +144,7 @@ for (const theme of THEMES) {
   /* 2. The picking list, whose rows now carry each take's pitch, and 3. the
         pair view, whose two densities share one axis. */
   await settle(page, '/practice/voice?tab=compare');
+  await strip(page);
   await page.waitForSelector('[data-voice-cell]');
   await clearToasts(page);
   await page.locator('[data-voice-cell]').first().screenshot({ path: `${outDir}/row-trans-${theme}.png` });

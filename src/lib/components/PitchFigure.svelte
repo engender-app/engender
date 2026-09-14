@@ -83,7 +83,9 @@
   import type { Role } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
   import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
-  import { wipe } from '$lib/motion/reveal';
+  import { spread, wipe } from '$lib/motion/reveal';
+  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { untrack } from 'svelte';
 
   let {
     axis,
@@ -281,6 +283,59 @@
       crossing it at a length of their own. */
   const markWidth = (hz: number) => densityAt(density ?? [], hz) * DENSITY_MODE;
 
+  /* Changing which two takes are compared moves the shapes rather than
+     cutting to the new pair (rule 10: every state change moves, and a chart
+     re-ranging is named in it). Both sides always carry the same number of
+     samples - `pitchDensity` draws every shape on one bin count - so the
+     topology is identical and each bin can simply travel: its frequency, as
+     the shared axis re-ranges under it, and how wide the shape is there.
+
+     The same shape as kit/AreaChart's own re-tween, and for the same reason
+     it is here rather than in the caller: the figure owns its geometry, so
+     it owns the journey between two of them. */
+  let shownPair = $state<typeof pair>(null);
+
+  $effect(() => {
+    const next = pair;
+    const previous = untrack(() => shownPair);
+    const duration = motionDuration('--dur-slow');
+
+    /* Nothing to travel from on a first draw, nothing to travel with under
+       reduced motion, and nothing to interpolate between two shapes drawn at
+       different bin counts. The first draw's own arrival is the clip in the
+       markup, not this. */
+    const sameShape =
+      previous !== null &&
+      next !== null &&
+      previous.earlier.density.length === next.earlier.density.length &&
+      previous.later.density.length === next.later.density.length;
+    if (duration === 0 || !sameShape || next === null) {
+      shownPair = next;
+      return;
+    }
+
+    const from = previous;
+    const between = (a: DensitySample, b: DensitySample, t: number): DensitySample => ({
+      hz: a.hz + (b.hz - a.hz) * t,
+      weight: a.weight + (b.weight - a.weight) * t
+    });
+    const side = (which: 'earlier' | 'later', t: number) => ({
+      density: next[which].density.map((sample, at) => between(from[which].density[at], sample, t)),
+      medianHz:
+        from[which].medianHz + (next[which].medianHz - from[which].medianHz) * t
+    });
+
+    let frame = 0;
+    const began = performance.now();
+    const step = (now: number) => {
+      const t = EASE_OUT(Math.min(1, (now - began) / duration));
+      shownPair = { earlier: side('earlier', t), later: side('later', t) };
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  });
+
   /* The paired box: the spine down its middle, one shape's width either
      side of it. Both sides take the same 82 units, so the two shapes are
      read against each other rather than against the edges they end near. */
@@ -346,7 +401,7 @@
     {/snippet}
 
     <div class="pf-field">
-      {#if pair}
+      {#if shownPair}
         <!-- Two reads on one axis. The bands are behind both, so "where I
              sat then, where I sit now, against the published figures" is
              one reading rather than two charts and a subtraction. -->
@@ -356,13 +411,13 @@
           viewBox="0 0 {PAIR_UNITS} {HEIGHT}"
           preserveAspectRatio="none"
           aria-hidden="true"
-          in:wipe|global
+          in:spread|global
         >
           {@render ground(PAIR_UNITS)}
 
           <line class="pf-spine" x1={SPINE_X} y1="0" x2={SPINE_X} y2={HEIGHT} vector-effect="non-scaling-stroke" />
 
-          {#each [{ side: pair.earlier, direction: -1 as const, which: 'earlier' }, { side: pair.later, direction: 1 as const, which: 'later' }] as read (read.which)}
+          {#each [{ side: shownPair.earlier, direction: -1 as const, which: 'earlier' }, { side: shownPair.later, direction: 1 as const, which: 'later' }] as read (read.which)}
             <line
               class="pf-median"
               data-pair-median={read.which}

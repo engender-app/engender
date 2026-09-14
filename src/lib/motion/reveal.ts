@@ -86,6 +86,42 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
 }
 
 /**
+ * Tier 3, change within a screen: a shape opening from its own axis, both
+ * ways at once.
+ *
+ * The wipe above uncovers from one edge, which is what a plot that runs left
+ * to right wants. A mirrored figure does not: the paired pitch density is two
+ * shapes measured outward from a spine down the middle
+ * (PitchFigure.svelte, redesign ticket 42, ADR-0083), and uncovering that
+ * from the left would draw the earlier read arriving before the later one -
+ * a sequence the picture does not have. This opens from the middle instead,
+ * so both shapes grow off the axis they were measured from.
+ *
+ * Same contract as the wipe otherwise: `clip-path` where there is one, a fade
+ * of the same length where there is not, an instant cut under reduced motion.
+ */
+export function spread(_node: Element, params?: { authored?: boolean }): TransitionConfig {
+  if (isReducedMotion()) return { duration: 0 };
+
+  const duration = params?.authored
+    ? motionDuration('--dur-authored')
+    : motionDuration('--dur-slow');
+  if (!canClip()) return fadeOnly(duration);
+
+  return {
+    duration,
+    easing: EASE_OUT,
+    /* Half the remaining distance off each side, so the two edges travel
+       apart at the same rate and meet the element's own geometry together.
+       Plain 0 at the end, for the reason the wipe gives. */
+    css: (_t, u) => {
+      const inset = u === 0 ? '0' : `${Number((u * 50).toFixed(2))}%`;
+      return `clip-path: inset(0 ${inset} 0 ${inset})`;
+    }
+  };
+}
+
+/**
  * Tier 3, change within a screen: a group opening its own height.
  *
  * DIRECTION.md names this case by itself - "a list insertion opens its own

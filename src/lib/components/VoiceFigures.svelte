@@ -270,7 +270,7 @@
         <p class="vf-value" class:is-absent={value === null}>{value ?? m.vb_not_measured()}</p>
 
         {#if 'runs' in line}
-          <div class="vf-line" in:wipe|global>
+          <div class="vf-line" in:wipe|global={{ authored: true }}>
             <svg viewBox="0 0 100 {SPARK_HEIGHT}" preserveAspectRatio="none" aria-hidden="true">
               {#each line.runs as points, at (at)}
                 <polyline class="vf-run" {points} vector-effect="non-scaling-stroke" />
@@ -364,6 +364,22 @@
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: var(--space-5) var(--space-4);
   }
+
+  /* Rule 10: a block arrives by uncovering rather than by fading from
+     nothing, and the six take their turn in order. The same clip and the
+     same step the kit's tiles use (kit.css's `kit-block-in`), so a figure
+     block and a live tile arrive the same way; the duration clamp turns
+     both into a cut under reduced motion. */
+  .vf-block {
+    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(var(--figure-index, 0) * var(--stagger-step));
+  }
+
+  .vf-grid > :nth-child(2) { --figure-index: 1; }
+  .vf-grid > :nth-child(3) { --figure-index: 2; }
+  .vf-grid > :nth-child(4) { --figure-index: 3; }
+  .vf-grid > :nth-child(5) { --figure-index: 4; }
+  .vf-grid > :nth-child(6) { --figure-index: 5; }
 
   .vf-name {
     margin: 0;
