@@ -57,7 +57,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { effectCategoryName } from '$lib/data/vocabulary/labels';
 
@@ -1133,7 +1133,10 @@
       {#if entryDraft.recordings.length > 0}
         <div class="recording-list">
           {#each entryDraft.recordings as r, i (r)}
-            <div class="recording-row">
+            <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
+                 so adding or removing one moves the rows under it rather
+                 than jumping them. -->
+            <div class="recording-row" transition:collapse|global>
               {#if r.kind === 'stored'}
                 <VoicePlayer fileName={r.recording.fileName} />
               {:else}
@@ -1162,7 +1165,7 @@
       {#if entryDraft.videos.length > 0}
         <div class="recording-list">
           {#each entryDraft.videos as v, i (v)}
-            <div class="video-row">
+            <div class="video-row" transition:collapse|global>
               {#if v.kind === 'stored'}
                 <VideoNotePlayer fileName={v.video.fileName} />
               {:else}

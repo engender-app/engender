@@ -96,11 +96,17 @@ const importFile = async (trigger, file, mimeType) => {
     frame the app thought it drew and did not shows up as a flat sample. */
 const startSampler = async (which) => {
   await page.evaluate((index) => {
-    const transport = document.querySelectorAll('[data-transport]')[index];
     window.__samples = [];
-    const head = transport.querySelector('.transport-head');
-    const scrub = transport.querySelector('[data-transport-scrub]');
     const read = () => {
+      /* Looked up per frame rather than once: the arrival scene starts
+         before the player exists, which is the whole thing it records. */
+      const transport = document.querySelectorAll('[data-transport]')[index];
+      const head = transport?.querySelector('.transport-head');
+      const scrub = transport?.querySelector('[data-transport-scrub]');
+      if (!head || !scrub) {
+        window.__samplerFrame = requestAnimationFrame(read);
+        return;
+      }
       const box = scrub.getBoundingClientRect();
       const headBox = head.getBoundingClientRect();
       window.__samples.push({

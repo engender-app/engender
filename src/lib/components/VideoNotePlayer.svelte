@@ -88,53 +88,62 @@
   }
 </script>
 
-{#if url}
-  <!-- Uncovered from its own edge (DIRECTION rule 10), `|global` because the
-       {#if} above is the thing that flips. -->
-  <div class="video-note" class:is-full={full} bind:this={player} in:wipe|global>
-    <div class="video-note-frame">
-      <!-- No caption track: a video note is the person's own recording of
-           themselves, with nothing to transcribe that they did not just say.
-           The same call media/photos/export makes for its timelapse. -->
-      <!-- svelte-ignore a11y_media_has_caption -->
-      <video
-        bind:this={media}
-        class="video-note-player"
-        preload="metadata"
-        playsinline
-        src={url}
-        onclick={() => (media?.paused ? media.play() : media?.pause())}
-      ></video>
-      <!-- The gesture everyone already has for a video. It is the transport's
-           own play control drawn larger, in the same ink, and it withdraws
-           while the picture is playing rather than being taken away. -->
-      <button
-        type="button"
-        class="video-note-key"
-        class:is-away={playing}
-        tabindex={-1}
-        aria-hidden="true"
-        onclick={() => media?.play()}
-      >
-        <Icon name="play" size={22} />
-      </button>
-    </div>
-
-    <MediaTransport {media} bind:playing>
-      {#snippet trailing()}
+<!-- The frame and the transport row are there from the first frame, at the
+     size they will be, and the picture is uncovered inside them once the
+     file has been read: a player that appeared at full height would move
+     everything under it in one frame, which is the standing motion clause's
+     own definition of a yank. -->
+<div class="video-note" class:is-full={full} bind:this={player}>
+  <div class="video-note-frame">
+    {#if url}
+      <!-- Uncovered from its own edge (DIRECTION rule 10), `|global` because
+           the {#if} is the thing that flips. -->
+      <div class="video-note-picture" in:wipe|global>
+        <!-- No caption track: a video note is the person's own recording of
+             themselves, with nothing to transcribe that they did not just
+             say. The same call media/photos/export makes for its
+             timelapse. -->
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video
+          bind:this={media}
+          class="video-note-player"
+          preload="metadata"
+          playsinline
+          src={url}
+          onclick={() => (media?.paused ? media.play() : media?.pause())}
+        ></video>
+        <!-- The gesture everyone already has for a video. It is the
+             transport's own play control drawn larger, in the same ink, and
+             it withdraws while the picture is playing rather than being
+             taken away. -->
         <button
           type="button"
-          class="icon-btn"
-          data-video-full
-          aria-label={full ? m.mt_leave_full() : m.mt_full()}
-          onclick={toggleFull}
+          class="video-note-key"
+          class:is-away={playing}
+          tabindex={-1}
+          aria-hidden="true"
+          onclick={() => media?.play()}
         >
-          <Icon name={full ? 'collapse' : 'expand'} size={20} />
+          <Icon name="play" size={22} />
         </button>
-      {/snippet}
-    </MediaTransport>
+      </div>
+    {/if}
   </div>
-{/if}
+
+  <MediaTransport {media} bind:playing>
+    {#snippet trailing()}
+      <button
+        type="button"
+        class="icon-btn"
+        data-video-full
+        aria-label={full ? m.mt_leave_full() : m.mt_full()}
+        onclick={toggleFull}
+      >
+        <Icon name={full ? 'collapse' : 'expand'} size={20} />
+      </button>
+    {/snippet}
+  </MediaTransport>
+</div>
 
 <style>
   .video-note {
@@ -145,9 +154,15 @@
     flex: 1;
   }
 
+  /* A fixed shape, held before the file is read and kept after it: a frame
+     that resized itself to each note's own aspect would move the row - and
+     everything under it - on the frame the metadata landed. A portrait note
+     sits inside it rather than reshaping it. */
   .video-note-frame {
     position: relative;
     display: flex;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
     border-radius: var(--r-block);
     /* Clip rather than hidden: an overflow of `hidden` is a scroll container
        the browser will scroll, and the centre control is absolutely
@@ -156,12 +171,17 @@
     background: #000;
   }
 
-  /* A portrait note and a landscape note both fit the row: the frame is as
-     wide as the row and never taller than 40vh, and `contain` is what keeps
-     a portrait note from being cropped to a letterbox. */
+  .video-note-picture {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* A portrait note and a landscape note both fit the same frame: `contain`
+     is what keeps a portrait note whole rather than cropping it to a
+     letterbox. */
   .video-note-player {
     width: 100%;
-    max-height: 40vh;
+    height: 100%;
     object-fit: contain;
     cursor: pointer;
   }
@@ -204,7 +224,7 @@
     padding: var(--space-4);
     background: var(--bg);
   }
-  .video-note:fullscreen .video-note-player {
+  .video-note:fullscreen .video-note-frame {
     max-height: 85vh;
   }
 </style>
