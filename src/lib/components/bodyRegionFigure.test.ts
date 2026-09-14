@@ -48,20 +48,22 @@ test('the regions run down the body, which is the order they arrive in', () => {
 
 /* The neutrality rule, in the one place it lives.
 
-   A contour is allowed - the figure is a wooden artist's mannequin, which
-   is a body everybody reads as a body and nobody reads as a particular one.
-   What is not allowed is a trunk that pulls in at a waist, swells at a bust
-   or flares at a hip, because those are the three that say which body this
-   is, and they are exactly the three regions the ticket names as costing
-   most to get wrong. Two rects of one width each is what guarantees it. */
+   A contour is allowed - the figure is a body, and Alicja's own statement of
+   the rule is that the outline has to be neutral rather than absent. What is
+   not allowed is a trunk that pulls in at a waist, swells at a bust or
+   flares at a hip, because those are the three that say which body this is,
+   and they are exactly the three regions the ticket names as costing most to
+   get wrong. Two rects of one width each is what guarantees the first two;
+   the third needs saying separately, because the drawing this figure came
+   from had its pelvis 2 units wider than its torso. */
 test('the trunk is two constant-width blocks, which is what makes the figure neutral', () => {
   for (const block of [TORSO, PELVIS]) {
-    // One width: a rect cannot taper, so no waist, no bust and no hip flare.
+    // One width: a rect cannot taper, so no waist and no bust.
     assert.ok(block.width > 0);
     // Mirrored about the midline, so it cannot lean either.
     assert.equal(block.left + block.width / 2, FIGURE_BOX.width / 2);
   }
-  assert.ok(TORSO.width > PELVIS.width, 'a ribcage is wider than a pelvis on a mannequin');
+  assert.ok(PELVIS.width <= TORSO.width, 'the pelvis may never be the wider of the two');
 
   // And every piece of the connective mannequin is centred or mirrored too.
   const centres = GROUND_SHAPES.map((s) => s.left + s.width / 2);

@@ -1,17 +1,17 @@
 <!-- The body map's figure (phase 10 redesign ticket 40).
 
-     A wooden artist's mannequin, with each region one of its own parts,
-     carrying that part's reading. `whole_body` is the connective mannequin
-     - the limbs and the ball joints - not decoration under the regions but
-     a region, filled by its own reading, and tapped wherever the eight are
-     not.
+     The body this screen has always drawn - a head, a torso, two arms, a
+     pelvis, two thighs, two shins - with each region an area of it that
+     carries its own reading. `whole_body` is that figure: not decoration
+     under the regions but a region, filled by its own reading, and tapped
+     wherever the eight are not.
 
-     The mannequin is the reference Alicja gave (2026-09-14) and it is the
-     right answer to "neutral but still a body" because it is already the
-     answer the world uses: a body everybody reads as a body and nobody
-     reads as a particular one, with no face, no hair, no skin and no sex
-     characteristics - not as an omission somebody has to notice and
-     approve, but because that is what the object is for.
+     Alicja picked this silhouette back out of the before/after on
+     2026-09-14, after a column of blocks and after a wooden mannequin. Her
+     rule for it, in her own words, is that the outline has to be neutral
+     rather than absent - so the drawing keeps its own proportions and
+     bodyRegionFigure.ts holds three things by test: the torso is one width,
+     the pelvis is never wider than it, and every piece is mirrored.
 
      **Neutral is about how the body is drawn, not about whether it is.**
      The first build took the ticket at its word - "there is no body
@@ -197,18 +197,14 @@
           data-region-level={levelOf(region.id)}
         >
           {#each drawing.shapes as shape, n (n)}
-            {#if shape.d}
-              <path d={shape.d} />
-            {:else}
-              <rect
-                x={shape.left}
-                y={shape.top}
-                width={shape.width}
-                height={shape.height}
-                rx={shape.r}
-                ry={shape.ry ?? shape.r}
-              />
-            {/if}
+            <rect
+              x={shape.left}
+              y={shape.top}
+              width={shape.width}
+              height={shape.height}
+              rx={shape.r}
+              ry={shape.ry ?? shape.r}
+            />
           {/each}
           {#if isMixed(region.id)}
             {@const at = markAt(drawing)}
@@ -321,18 +317,18 @@
     inset: 0;
   }
 
-  /* The connective mannequin: the limbs and the ball joints. A lighter
-     edge than a region's, so the figure reads as one jointed object
-     throughout while the named parts stay the things being looked at - with
-     no edge at all the limbs were a ghost beside them whenever nothing was
-     logged against the whole body.
+  /* The body. The old figure's own two values - a `--surface-2` fill and an
+     `--outline` stroke - so it looks like the drawing it came from; the
+     stroke is 1.2 rather than 1.5 because this box is 164 units tall where
+     that one was 200.
 
-     --region-fill is absent in exactly that case, and it falls to the
-     card's second surface, which is what an unlogged body should be. */
+     --region-fill replaces the fill when the whole body has a reading of
+     its own, and is absent when it does not, which is what an unlogged body
+     should be. */
   .region-body > rect {
     fill: var(--region-fill, var(--surface-2));
     stroke: var(--outline);
-    stroke-width: 0.7;
+    stroke-width: 1.2;
     transition:
       fill var(--dur-med) var(--ease-out),
       stroke var(--dur-med) var(--ease-out);
@@ -343,8 +339,7 @@
      ramp is a mix of the stripe into the card's surface, so painted over
      the body's own fill it would come out a colour that was partly its
      neighbour's. */
-  .region-part > rect,
-  .region-part > path {
+  .region-part > rect {
     fill: var(--region-fill, transparent);
     stroke: var(--outline);
     stroke-width: 1.2;
@@ -357,8 +352,7 @@
   /* Nothing logged in this range: the outline alone, firmer, the way the
      injection map draws a never-used site as a hollow dot rather than as
      the pale end of its ramp. */
-  .region-part.is-empty > rect,
-  .region-part.is-empty > path {
+  .region-part.is-empty > rect {
     fill: var(--surface);
     fill-opacity: 0.55;
     stroke-width: 1.6;
@@ -367,8 +361,7 @@
   /* Selection: the stroke takes the role's mark colour and thickens. Never
      a travelling indicator - two regions are not adjacent the way tabs are,
      and a pill flying across a torso is motion for its own sake. */
-  .region-part.is-picked > rect,
-  .region-part.is-picked > path {
+  .region-part.is-picked > rect {
     stroke: var(--role-mark, var(--accent));
     stroke-width: 2.6;
   }
