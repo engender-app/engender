@@ -95,7 +95,7 @@ await block('ticket 03 browser tier', 5, async () => {
 });
 
 // --- Ticket 04: the real driver + boot() against the real schema -----------
-await block('ticket 04 browser tier', 7, async () => {
+await block('ticket 04 browser tier', 8, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
@@ -126,6 +126,16 @@ await block('ticket 04 browser tier', 7, async () => {
   if (rc.lastInsertRowid === rc.rowidByUuid && typeof rc.lastInsertRowid === 'number')
     ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
   else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
+
+  /* Ticket 134: two transactions started at once, over the driver the app
+     ships. Before the fix the second BEGIN failed with "cannot start a
+     transaction within a transaction" and its ROLLBACK discarded the first
+     one's insert, so both halves of this - nothing rejected, both rows
+     committed - are what the regression would break. */
+  const ct = first.concurrentTransactions;
+  if (ct.rejected.length === 0 && ct.committed === 2)
+    ok('two transactions started at once both commit, one after the other');
+  else fail('two transactions started at once both commit, one after the other', JSON.stringify(ct));
 
   // Ticket 10: the recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.
