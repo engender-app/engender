@@ -24,6 +24,7 @@
    accumulator behind both, so the bar somebody watched and the verdict on
    the take that got stored cannot disagree. */
 
+import type { BandLanguage } from './bands';
 import { frameGeometry, rms, type PitchTrack } from './pitch';
 
 /** Full scale is 1.0, so a peak this close to it means samples were very
@@ -33,8 +34,13 @@ export const PEAK_CEILING = 0.98;
     describing the room. */
 const MIN_SNR_DB = 15;
 /** Continuous voicing, in seconds. Continuous, not total: three seconds in
-    five bursts is not a sustained vowel, and a passage read in fragments
-    shorter than this was not read. */
+    five bursts is not a sustained vowel. Asked only of the held vowel - the
+    sentence that used to follow, that "a passage read in fragments shorter
+    than this was not read", was the mistake redesign ticket 41 fixed. A
+    read passage is fragments by nature: every voiceless stop and fricative
+    breaks voicing, so an honest read's longest unbroken run is a few
+    hundred milliseconds and could never clear this. What the passage
+    answers to instead is `readingFloorSeconds`. */
 const MIN_VOICED_SECONDS = 1.5;
 /** Coefficient of variation of F0 across the voiced frames. Asked only of
     the sustained vowel - a read passage moves in pitch by design, which is
@@ -58,12 +64,99 @@ const MIN_ROOM_FRAMES = 10;
     of the unvoiced frames is usually breath, a chair, or the edge of a word. */
 const ROOM_PERCENTILE = 0.25;
 
-export type QualityCheck = 'clipping' | 'noise' | 'tooShort' | 'unsteady';
+export type QualityCheck = 'clipping' | 'noise' | 'tooShort' | 'underRead' | 'unsteady';
 
-/** The passage is read aloud, so its pitch moves. Everything else applies. */
-export const PASSAGE_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort'];
-/** The vowel is held, so all four apply. */
-export const VOWEL_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort', 'unsteady'];
+/** The passage is read aloud, so its pitch moves and steadiness is not asked
+    of it, and its length is how much voice it carried rather than how long
+    one stretch of it ran (`underRead`). */
+const PASSAGE_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'underRead'];
+/** The vowel is held, so all four of its checks apply. */
+const VOWEL_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort', 'unsteady'];
+/** Free speech with no passage behind it, which is the practise tab. The
+    recording checks and nothing else: a short stretch of speech is a short
+    stretch of speech, not a take that came up short. */
+const SPEECH_CHECKS: readonly QualityCheck[] = ['clipping', 'noise'];
+
+/** **Seconds of voiced audio per word, per language: the passage's floor.**
+
+    A read is mostly pauses, so how long somebody read for says very little
+    and how much voice arrived says a lot. The floor is the passage's own
+    word count times this, which is what makes a short custom passage and
+    the bundled one answer to the same rule rather than to the same number.
+
+    Measured, not derived - see ADR-0082 for the takes and the arithmetic.
+    Both languages have their own because they really do differ: 98 English
+    words at 1.32 syllables each against 82 Polish words at 1.74 came out as
+    a 1.35 ratio in seconds of voice per word, which is the syllable
+    difference and not a rounding.
+
+    Each number is 0.70 of what a brisk honest read measured, so an unhurried
+    read clears it with room to spare and half the passage at the same pace
+    does not. A language with no measured figure of its own reads English's,
+    the same fallback `bandsFor` makes. */
+const VOICED_SECONDS_PER_WORD: Record<BandLanguage, number> = { en: 0.083, pl: 0.112 };
+
+/** How much voiced audio a passage of `wordCount` words has to carry before
+    the app will say it was read. */
+export function readingFloorSeconds(wordCount: number, language: BandLanguage): number {
+  return wordCount * (VOICED_SECONDS_PER_WORD[language] ?? VOICED_SECONDS_PER_WORD.en);
+}
+
+/** What a take is being judged as: the checks its task calls for, and the
+    floor `underRead` measures against.
+
+    One value rather than two arguments, because the live gauge and the
+    stored verdict both take it and the module's whole contract is that
+    those two cannot disagree (see the header). Two arguments are two
+    chances to pass a different pair. */
+export interface QualityGate {
+  checks: readonly QualityCheck[];
+  /** Seconds of voiced audio. Zero on a task with no passage behind it,
+      where `underRead` is not among the checks and nothing reads it. */
+  readingFloorSeconds: number;
+}
+
+export const VOWEL_GATE: QualityGate = { checks: VOWEL_CHECKS, readingFloorSeconds: 0 };
+export const SPEECH_GATE: QualityGate = { checks: SPEECH_CHECKS, readingFloorSeconds: 0 };
+
+/** The gate a read of this passage answers to. `wordCount` is the passage's
+    own, so a person's own passage takes the identical rule - the floor reads
+    how many words there are and never which text they are. */
+export function passageGate(wordCount: number, language: BandLanguage): QualityGate {
+  return { checks: PASSAGE_CHECKS, readingFloorSeconds: readingFloorSeconds(wordCount, language) };
+}
+
+/** **The rate a stored benchmark cannot honestly have been read at.**
+
+    Until redesign ticket 41 the passage had no working length gate, so a
+    take abandoned a few words in was stored with the whole passage's word
+    count over the seconds it actually ran: roughly double the true speaking
+    rate, and no stored field proves it (no benchmark records how much of the
+    passage was read). What is left is the number itself, and twice an
+    unhurried read is the signature of the bug rather than of a fast reader.
+
+    Each is about 1.3 times the fastest read its language was measured at,
+    which is high enough that no honest read reaches it and low enough to
+    catch a half-read of the same passage at the slowest pace measured -
+    the one case the length floor above deliberately lets through. ADR-0082
+    has both measurements and the gap between them. */
+const MAX_PLAUSIBLE_WPM: Record<BandLanguage, number> = { en: 300, pl: 200 };
+
+/** Whether a stored speaking rate is one a person could have read at.
+
+    Takes the passage key rather than a language because the caller is a
+    stored row and the row carries the key. A custom passage names no
+    language, and rather than guess one it gets the most permissive
+    threshold there is: suppressing an honest figure is the worse mistake of
+    the two. */
+export function plausibleRate(wordsPerMinute: number, passageKey: string): boolean {
+  const language = passageKey.slice('builtin-'.length);
+  const ceiling =
+    language in MAX_PLAUSIBLE_WPM && passageKey.startsWith('builtin-')
+      ? MAX_PLAUSIBLE_WPM[language as BandLanguage]
+      : Math.max(...Object.values(MAX_PLAUSIBLE_WPM));
+  return wordsPerMinute <= ceiling;
+}
 
 /** What the gate decides on: the measurements, without the verdict. */
 interface QualitySignals {
@@ -283,19 +376,21 @@ export function takeSignals(
   return running.signals();
 }
 
-export function assessQuality(
-  signals: QualitySignals,
-  checks: readonly QualityCheck[]
-): QualityReport {
+export function assessQuality(signals: QualitySignals, gate: QualityGate): QualityReport {
   const failing: Record<QualityCheck, boolean> = {
     clipping: signals.peak >= PEAK_CEILING,
     noise: signals.snrDb < MIN_SNR_DB,
+    // The held note, measured on one unbroken stretch, and the read passage,
+    // measured on how much voice it carried altogether. Two checks rather
+    // than one constant read twice, so the name says which task it belongs
+    // to and neither task can be judged by the other's shape.
     tooShort: signals.longestVoicedSeconds < MIN_VOICED_SECONDS,
+    underRead: signals.voicedSeconds < gate.readingFloorSeconds,
     // A take with no pitch at all fails the length check, so steadiness has
     // nothing to add to it and stays quiet rather than piling on.
     unsteady: signals.f0Cv !== null && signals.f0Cv > MAX_F0_CV
   };
 
-  const failed = checks.filter((check) => failing[check]);
+  const failed = gate.checks.filter((check) => failing[check]);
   return { ...signals, failed, passed: failed.length === 0 };
 }
