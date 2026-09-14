@@ -26,7 +26,17 @@
    lands inside it, on every platform, because there is one connection and
    the callback's own statements have to reach it. That exposure is the
    same as it was; what is removed is the collision that made two
-   transactions fight over the same BEGIN. */
+   transactions fight over the same BEGIN.
+
+   The constraint that comes with a queue, and the reason to read it before
+   writing a transaction body: a callback must not open a transaction of
+   its own. Nothing does today - reconcile.ts and restore.ts both carry a
+   second entry point rather than nest, and say so - but where nesting used
+   to fail loudly on SQLite's own "within a transaction", it would now wait
+   behind the very call it is inside, forever and without an error. Nothing
+   here can tell that apart from an ordinary second caller, which is the
+   whole reason it cannot be caught: the queue sees two calls, not who made
+   them. So the rule is the caller's to keep. */
 
 export interface TransactionSteps {
   begin(): Promise<void>;
