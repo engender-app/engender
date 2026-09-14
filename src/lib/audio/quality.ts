@@ -24,7 +24,7 @@
    accumulator behind both, so the bar somebody watched and the verdict on
    the take that got stored cannot disagree. */
 
-import type { BandLanguage } from './bands';
+import { passageLanguage, type BandLanguage } from './bands';
 import { frameGeometry, rms, type PitchTrack } from './pitch';
 
 /** Full scale is 1.0, so a peak this close to it means samples were very
@@ -150,11 +150,9 @@ const MAX_PLAUSIBLE_WPM: Record<BandLanguage, number> = { en: 300, pl: 200 };
     threshold there is: suppressing an honest figure is the worse mistake of
     the two. */
 export function plausibleRate(wordsPerMinute: number, passageKey: string): boolean {
-  const language = passageKey.slice('builtin-'.length);
+  const language = passageLanguage(passageKey);
   const ceiling =
-    language in MAX_PLAUSIBLE_WPM && passageKey.startsWith('builtin-')
-      ? MAX_PLAUSIBLE_WPM[language as BandLanguage]
-      : Math.max(...Object.values(MAX_PLAUSIBLE_WPM));
+    language === null ? Math.max(...Object.values(MAX_PLAUSIBLE_WPM)) : MAX_PLAUSIBLE_WPM[language];
   return wordsPerMinute <= ceiling;
 }
 
