@@ -185,7 +185,12 @@
              so a panel is held apart from the ground and from its neighbours
              whatever the two are filled with - two readings a step apart on
              the ramp are close enough to merge across a shared edge. -->
-        <g class="region-panel region-arrive" style="--region-i:{i + 1}">
+        <g
+          class="region-panel region-arrive"
+          style="{paint(levelOf(region.id))};--region-i:{i + 1}"
+          data-region-art={region.id}
+          data-region-level={levelOf(region.id)}
+        >
           <g class="region-seam">
             {#each panel.shapes as shape, n (n)}
               {@const mat = matShape(shape)}
@@ -196,9 +201,6 @@
             class="region-tile"
             class:is-picked={selected === region.id}
             class:is-empty={levelOf(region.id) === 0}
-            style={paint(levelOf(region.id))}
-            data-region-art={region.id}
-            data-region-level={levelOf(region.id)}
           >
             {#each panel.shapes as shape, n (n)}
               <rect x={shape.left} y={shape.top} width={shape.width} height={shape.height} rx={shape.r} />
