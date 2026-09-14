@@ -61,11 +61,20 @@
 
   let {
     benchmarks,
+    marked = [],
     role,
     pairedRole
   }: {
     /** Oldest first, the order the journal reads them in. */
     benchmarks: BenchmarkForSeries[];
+    /** Which of `benchmarks`, by position, are the two picked for
+        comparison (redesign ticket 42). Ringed on whichever run they fall
+        in, so choosing a pair reads on every figure this card can draw and
+        not only on the pitch trend beside it. Positions rather than ids
+        because that is what this card is handed: a benchmark arrives here
+        as figures and a comparability, and giving it an id so one mark
+        could be placed would be a field six other callers never use. */
+    marked?: readonly number[];
     /** The section's own stripe. */
     role?: Role;
     /** A second stripe, for the second line of a two-line figure. Passed in
@@ -118,6 +127,21 @@
     unrecorded: m.vc_own_break_unrecorded,
     passage: m.vc_own_break_passage
   };
+
+  /** Where each run starts in `benchmarks`. Every benchmark lands in
+      exactly one run, in order (charts/ownSeries.ts's `splitRuns`), so a
+      run's own first position is the count of everything before it - which
+      is what turns a picked pair's positions into a mark on the right
+      plot. */
+  let runStarts = $derived.by(() => {
+    const starts: number[] = [];
+    let at = 0;
+    for (const run of series.runs) {
+      starts.push(at);
+      at += run.points.length;
+    }
+    return starts;
+  });
 
   let format = $derived(FORMAT[figure]);
   let lines = $derived(LINES[figure]);
@@ -215,6 +239,7 @@
         <p class="vos-break" data-own-break={drawn.breaks[i - 1]}>{BREAK[drawn.breaks[i - 1]]()}</p>
       {/if}
       {@const ends = fmtRangeEnds(run.points[0].x, run.points[run.points.length - 1].x)}
+      {@const picked = run.points.map((_, at) => marked.includes(runStarts[i] + at))}
       {#if !run.points.some((point) => point.y !== null)}
         <!-- A run whose takes all skipped the held vowel: the resonances
              and the room reading come off it, so the run has positions and
@@ -240,6 +265,9 @@
             name={plot.name}
             ariaLabel={plot.ariaLabel}
             overlay={plot.overlay}
+            highlight={picked.some(Boolean) && pairedRole
+              ? { at: picked, role: pairedRole }
+              : undefined}
           />
         {/each}
       {/if}

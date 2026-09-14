@@ -28,6 +28,8 @@ import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
+import { encodePitchTrack } from '../../audio/track';
+import { percentileOfSorted } from '../../audio/series';
 
 function rng(seed: number) {
   return function () {
@@ -362,6 +364,27 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     inUseEndEpochDay: today + 60
   });
 
+  /* Voice benchmarks. Six takes across ten months, because every reading
+     on the compare tab is a reading against the person's own earlier takes
+     and one benchmark shows none of it: the pitch density, the six
+     own-history lines, the pair comparison and the break a change of phone
+     puts in a series all need a history behind them (redesign ticket 42).
+     Without these the whole tab renders empty and nothing on it can be
+     reviewed.
+
+     The figures are computed from the generated track rather than written
+     down beside it, so the median and the p10-p90 span land where the
+     drawn shape actually puts them - a fixture whose numbers and picture
+     disagree would make every figure on this screen unreviewable. */
+  for (const take of demoBenchmarks(r, today)) {
+    await journal.voiceBenchmarks.saveBenchmark({
+      ...take,
+      passageKey: 'builtin-en',
+      passageAudio: demoAudioBytes(r),
+      vowelAudio: take.f1Hz === null ? null : demoAudioBytes(r)
+    });
+  }
+
   // Voice: two new mood-only entries carrying a recording, so the compare
   // picker has a pair to work with.
   await journal.entries.upsertEntry({
@@ -384,4 +407,67 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     bodyRegions: {},
     attachRecordings: [demoAudioBytes(r)]
   });
+}
+
+/** The six benchmarks above, as figures.
+
+    One phone for the first four and another for the last two, so the
+    compare tab shows what a change of equipment does to a series: the pitch
+    figures carry on and the resonance ones stop, which is ADR-0061's rule
+    and the one thing about this screen that cannot be seen without a break
+    in the data.
+
+    The oldest take held no vowel, so its resonance, room and scale figures
+    are absent - the "not measured" arm every one of those blocks has and
+    which otherwise never renders. */
+function demoBenchmarks(r: () => number, today: number) {
+  const CHAINS = [
+    'Pixel 7|Microphone|ec=off ns=off agc=off',
+    'Pixel 10a|Microphone|ec=off ns=off agc=off'
+  ];
+  // Ten months of work, oldest first, with the median drifting up through
+  // it the way a year of practice does.
+  const days = [today - 302, today - 244, today - 171, today - 118, today - 57, today - 9];
+  const medians = [148, 154, 163, 172, 181, 189];
+
+  return days.map((epochDay, at) => {
+    const frames = demoPitchFrames(r, medians[at]);
+    const sorted = [...frames].sort((a, b) => a - b);
+    const medianHz = percentileOfSorted(sorted, 0.5);
+    let squared = 0;
+    for (const hz of frames) squared += (12 * Math.log2(hz / medianHz)) ** 2;
+    const vowel = at > 0;
+
+    return {
+      epochDay,
+      f0MedianHz: medianHz,
+      f0P10Hz: percentileOfSorted(sorted, 0.1),
+      f0P90Hz: percentileOfSorted(sorted, 0.9),
+      semitoneSd: Math.sqrt(squared / frames.length),
+      wordsPerMinute: 132 + Math.round(r() * 16),
+      f1Hz: vowel ? 604 + Math.round(r() * 40) : null,
+      f2Hz: vowel ? 1712 + Math.round(r() * 90) : null,
+      snrDb: vowel ? 21 + Math.round(r() * 8) : null,
+      resonanceScale: vowel ? 1.02 + r() * 0.1 : null,
+      pitchTrack: encodePitchTrack(frames),
+      captureChain: CHAINS[at < 4 ? 0 : 1]
+    };
+  });
+}
+
+/** One take's stored track: thirty seconds at the stored four points a
+    second, wandering around a median the way read speech does, with the
+    occasional dip a sentence ends on. Deterministic, off the fixture's own
+    generator. */
+function demoPitchFrames(r: () => number, medianHz: number): number[] {
+  const points: number[] = [];
+  let semitones = 0;
+  for (let at = 0; at < 120; at++) {
+    // A slow wander with a pull back to the middle, so the read has shape
+    // without drifting off the axis over thirty seconds.
+    semitones = semitones * 0.82 + (r() - 0.5) * 2.4;
+    const ending = at % 17 === 16 ? -2.5 : 0;
+    points.push(medianHz * 2 ** ((semitones + ending) / 12));
+  }
+  return points;
 }
