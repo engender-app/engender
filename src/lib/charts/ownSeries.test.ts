@@ -210,3 +210,34 @@ test('only a two-ended figure says its second line shares the scale', () => {
   assert.equal(ownSeries(takes, 'rate').secondScaleShared, false);
   assert.equal(ownSeries([take(1, PIXEL)], 'span').secondScaleShared, false);
 });
+
+test('a rate nobody could have read at is a gap in the trend, not a reading', () => {
+  /* Redesign ticket 41. Before the passage had a working length gate, a
+     take abandoned part-way through was stored with the whole passage's
+     word count over the seconds it ran, so it reports roughly twice the
+     true speaking rate. No stored field proves it either way, so the
+     impossible ones are dropped from the line rather than drawn beside the
+     honest ones. */
+  const rows = [
+    take(1, PIXEL, { passageKey: 'builtin-en', wordsPerMinute: 148 }),
+    take(2, PIXEL, { passageKey: 'builtin-en', wordsPerMinute: 372 }),
+    take(3, PIXEL, { passageKey: 'builtin-en', wordsPerMinute: 151 })
+  ];
+  const series = ownSeries(rows, 'rate');
+
+  // One run, because the take is still comparable - it is the figure that
+  // is missing, which is a gap in the line and not a break in the series.
+  assert.equal(series.runs.length, 1);
+  assert.deepEqual(series.runs[0].points, [
+    { x: 1, y: 148 },
+    { x: 2, y: null },
+    { x: 3, y: 151 }
+  ]);
+  assert.equal(series.readings, 2);
+  // And the scale is built on the two honest readings, so the trend is not
+  // squashed against the bottom of a card by a number that never happened.
+  assert.ok(series.scale!.max < 160, String(series.scale?.max));
+
+  // Only the rate was wrong on that take. Its other figures are readings.
+  assert.equal(ownSeries(rows, 'spread').runs[0].points[1].y, 2.02);
+});
