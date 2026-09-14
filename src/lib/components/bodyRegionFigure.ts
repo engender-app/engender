@@ -27,7 +27,7 @@ import type { BodyRegion } from '../data/types';
 /** The figure's own coordinate space. Percentages are taken against these,
     so the arrangement is written in round numbers and scales with whatever
     width the screen gives it. Taller than wide, because a body is. */
-export const FIGURE_BOX = { width: 100, height: 160 } as const;
+export const FIGURE_BOX = { width: 100, height: 166 } as const;
 
 /** The stage's width in CSS px (`max-width` on `.region-stage`) and the
     height its aspect ratio gives that width. The height is what every slot
@@ -58,25 +58,33 @@ export const GROUND_REGION = 'whole_body';
 
 /** The ground's own shape, inset from the box so the eight never touch its
     edge. */
-export const GROUND_SLOT: FigureSlot = { region: GROUND_REGION, left: 5, top: 1, width: 90, height: 158 };
+export const GROUND_SLOT: FigureSlot = { region: GROUND_REGION, left: 4, top: 0, width: 92, height: 166 };
 
 /* Down the body, which is both the reading order and the order the shapes
    arrive in. Widths vary so the arrangement reads as a figure rather than
    as a ladder - a throat is narrow and a set of shoulders is wide, which is
    true of every body and says nothing about any one of them.
 
-   The gaps are deliberate and even: adjacent shapes never share an edge, so
-   a tap that lands between two of them lands on the ground (whole_body)
-   rather than on whichever neighbour happened to win. */
+   The gaps are deliberate and uneven. Adjacent shapes never share an edge,
+   so a tap that lands between two of them lands on the ground (whole_body)
+   rather than on whichever neighbour happened to win - but the sizes of
+   those gaps are doing a second job: an even rhythm reads as a ladder, and
+   the head group sitting close together with more air before the shoulders
+   is most of what makes this read as a body at all. The floor on a gap is
+   3 units - 9.6px at the stage's size - because each shape wears a 5px ring
+   of card surface to lift it off the ground, and two neighbours' rings may
+   not touch. Every height is at or
+   above the touch floor, which leaves less room for variation than a
+   drawing would want, so the widths carry the silhouette. */
 export const FIGURE_SLOTS: FigureSlot[] = [
-  { region: 'hairline', left: 35, top: 4, width: 30, height: 15 },
-  { region: 'face_jaw', left: 32, top: 22, width: 36, height: 17 },
-  { region: 'voice_throat', left: 41, top: 42, width: 18, height: 15 },
-  { region: 'shoulders', left: 11, top: 60, width: 78, height: 15 },
-  { region: 'chest', left: 25, top: 78, width: 50, height: 20 },
-  { region: 'hips_waist', left: 27, top: 101, width: 46, height: 17 },
-  { region: 'genitals', left: 39, top: 121, width: 22, height: 15 },
-  { region: 'hands_feet', left: 19, top: 139, width: 62, height: 16 }
+  { region: 'hairline', left: 39, top: 2, width: 22, height: 15 },
+  { region: 'face_jaw', left: 35, top: 21, width: 30, height: 17 },
+  { region: 'voice_throat', left: 43.5, top: 43, width: 13, height: 15 },
+  { region: 'shoulders', left: 9, top: 63, width: 82, height: 15 },
+  { region: 'chest', left: 24, top: 82, width: 52, height: 21 },
+  { region: 'hips_waist', left: 28, top: 107, width: 44, height: 18 },
+  { region: 'genitals', left: 40, top: 129, width: 20, height: 15 },
+  { region: 'hands_feet', left: 17, top: 148, width: 66, height: 15 }
 ];
 
 const SLOT_BY_REGION = new Map(FIGURE_SLOTS.map((slot) => [slot.region, slot]));
