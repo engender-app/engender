@@ -22,7 +22,7 @@
   import { m } from '$lib/paraglide/messages';
   import { FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { plotDaySeriesGroup, type DayAxis } from '$lib/charts/dayAxis';
+  import { plotDaySeriesGroup, type AxisPlot, type DayAxis } from '$lib/charts/dayAxis';
   import { PLOT_HEIGHT } from '$lib/charts/geometry';
   import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import {
@@ -225,6 +225,31 @@
       </h2>
     {/key}
 
+    <!-- One card's series. The two cards differ in which of the two axes
+         they draw and in which order the accessible name names them, and in
+         nothing else - the crossfade on a region change, the shared ends and
+         the annotations are one behaviour and belong in one place, not
+         transcribed twice.
+
+         Keyed on the region, so a pick crossfades the series rather than
+         re-mounting the chart. -->
+    {#snippet series(plottedSeries: AxisPlot, first: string, second: string)}
+      {#key region}
+        <div in:crossfade>
+          <AreaChart
+            scrubLabel={dayAxisScrubLabel(plottedSeries)}
+            points={plottedSeries.points}
+            min={BODY_REGION_INTENSITY_MIN}
+            max={BODY_REGION_INTENSITY_MAX}
+            from={rangeEnds.from}
+            to={rangeEnds.to}
+            annotations={annotationsQuery.rows}
+            ariaLabel={withAxis(m.body_map_chart_aria({ region: regionName, first, second }))}
+          />
+        </div>
+      {/key}
+    {/snippet}
+
     <!-- The block reserves its height, so picking a region with less data
          cannot shorten the page under the figure and pull the shapes up
          from under the finger that just tapped one. Two cards, each a
@@ -234,49 +259,19 @@
       <Skeleton variant="block" count={2} />
     {:else}
       <ChartCard heading={m.body_region_axis_dysphoria()} kind="body-dysphoria" role={figureRole}>
-        {#key region}
-        <div in:crossfade>
-        <AreaChart
-          scrubLabel={dayAxisScrubLabel(plottedDysphoria)}
-          points={plottedDysphoria.points}
-          min={BODY_REGION_INTENSITY_MIN}
-          max={BODY_REGION_INTENSITY_MAX}
-          from={rangeEnds.from}
-          to={rangeEnds.to}
-          annotations={annotationsQuery.rows}
-          ariaLabel={withAxis(
-            m.body_map_chart_aria({
-              region: regionName,
-              first: m.body_region_axis_dysphoria(),
-              second: m.body_region_axis_euphoria()
-            })
-          )}
-        />
-        </div>
-        {/key}
+        {@render series(
+          plottedDysphoria,
+          m.body_region_axis_dysphoria(),
+          m.body_region_axis_euphoria()
+        )}
       </ChartCard>
 
       <ChartCard heading={m.body_region_axis_euphoria()} kind="body-euphoria" role={figureRole}>
-        {#key region}
-        <div in:crossfade>
-        <AreaChart
-          scrubLabel={dayAxisScrubLabel(plottedEuphoria)}
-          points={plottedEuphoria.points}
-          min={BODY_REGION_INTENSITY_MIN}
-          max={BODY_REGION_INTENSITY_MAX}
-          from={rangeEnds.from}
-          to={rangeEnds.to}
-          annotations={annotationsQuery.rows}
-          ariaLabel={withAxis(
-            m.body_map_chart_aria({
-              region: regionName,
-              first: m.body_region_axis_euphoria(),
-              second: m.body_region_axis_dysphoria()
-            })
-          )}
-        />
-        </div>
-        {/key}
+        {@render series(
+          plottedEuphoria,
+          m.body_region_axis_euphoria(),
+          m.body_region_axis_dysphoria()
+        )}
       </ChartCard>
     {/if}
     </div>
