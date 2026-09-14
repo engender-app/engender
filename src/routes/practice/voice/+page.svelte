@@ -567,13 +567,13 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* .voice-player's own `flex: 1` (components.css) is sized for
-     .recording-row, a row-direction flex parent, where flex-basis 0% grows
-     its width. This is column-direction, so the same flex-basis lands on
-     height instead and collapses the player to 0px tall - which is exactly
-     what happened when these rows stopped being `.compare-side`, where
-     screens.css had carried this rule for the photo comparison. It was in
-     the render as a missing player, not in any test. */
+  /* VoicePlayer's own `flex: 1` is sized for .recording-row, a row-direction
+     flex parent, where flex-basis 0% grows its width. This is
+     column-direction, so the same flex-basis lands on height instead and
+     collapses the player to 0px tall - which is exactly what happened when
+     these rows stopped being `.compare-side`, where screens.css had carried
+     this rule for the photo comparison. It was in the render as a missing
+     player, not in any test. */
   .vc-take :global(.voice-player) {
     flex: none;
     width: 100%;

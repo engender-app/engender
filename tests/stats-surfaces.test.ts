@@ -193,7 +193,14 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
   });
 
-  it('reaches the milestone timeline from the ways-out list', () => {
-    expect(stats).toContain('<ListRow key="timeline" icon="timeline"');
+  /* Redesign ticket 43 merged the rail into /transition/milestones, so this
+     row left: it was the one row on this list opening another area's screen,
+     and Look back keeps the readings it owns. What the list still has to be
+     is the look-back views, every one of which lights this same tab. */
+  it('leads out only to look-back views of its own, not to another area\'s screen', () => {
+    expect(stats).not.toContain('key="timeline"');
+    for (const key of ['body-map', 'compare']) {
+      expect(stats).toContain(`key="${key}"`);
+    }
   });
 });

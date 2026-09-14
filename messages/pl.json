@@ -16,7 +16,6 @@
   "add_details": "Dodaj szczegóły",
   "recent_entries": "Ostatnie wpisy",
   "milestones": "Kamienie milowe",
-  "timeline": "Oś czasu",
   "recent_days": "Ostatnie dni",
   "coloured_by": "kolor według",
   "mood": "Nastrój",
@@ -63,6 +62,12 @@
   "video_not_a_video": "To nie jest plik wideo.",
   "video_too_long": "Notatka wideo trwa maksymalnie 30 sekund. Wybierz krótszą albo nagraj ją tutaj.",
   "video_too_large": "To wideo jest za duże, żeby je zapisać, i nie udało się go zmniejszyć.",
+  "mt_play": "Odtwórz",
+  "mt_pause": "Wstrzymaj",
+  "mt_position": "Pozycja",
+  "mt_position_read": "{at} z {of}",
+  "mt_full": "Pełny ekran",
+  "mt_leave_full": "Zamknij pełny ekran",
   "gender_label": "Płeć",
   "gender_hint": "Tak, jak czujesz to teraz. Nie ma złych odpowiedzi.",
   "quick_log_dims_title": "Dodać dzisiejsze skale?",
@@ -1032,6 +1037,7 @@
   "quick_exit_sub_web": "przesunięcie dwoma palcami w dół gasi kartę i blokuje natychmiast",
   "quick_exit_no_lock": "bez PIN-u albo hasła tylko gasi ekran",
   "ms_intro": "Dni, które coś znaczą. Przeszłe wracają jako rocznice, przyszłe odliczają czas na ekranie startowym.",
+  "ms_log_heading": "Wszystkie kamienie milowe",
   "ms_add_heading": "Dodaj kamień milowy",
   "ms_shuffle": "Przetasuj podpowiedzi",
   "ms_own_title": "Stwórz własny",
@@ -1930,14 +1936,9 @@
   "prov_view_stock": "Zobacz zapas",
   "prov_reminder_wear": "Ustawione na podstawie zalogowanej sesji noszenia.",
   "prov_view_wear_log": "Zobacz dziennik noszenia",
-  "tl_intro": "Twoje kamienie milowe do tej pory i to, co przed tobą.",
   "tl_you_are_here": "dziś, tutaj jesteś",
   "tl_gap_aria": "{duration} bez kamieni milowych, skrócone",
   "tl_gap_label": "{duration} skrócone",
-  "tl_add_aria": "Dodaj kamień milowy",
-  "tl_empty_title": "Jeszcze bez kamieni milowych",
-  "tl_empty_body": "Dodaj dni, które coś znaczą, i twoja oś czasu zacznie nabierać kształtu.",
-  "tl_empty_action": "Dodaj kamień milowy",
   "home_anniv_years": "{name}, {years} temu. Tamten dzień był ważny. Ten też jest.",
   "home_anniv_today": "{name} jest dziś. Ten dzień jest ważny.",
   "recap_tags_title": "Najczęstsze tagi",
@@ -3365,6 +3366,23 @@
   "area_suspend_confirm": "Wstrzymaj",
   "area_suspend_cancel": "Jeszcze nie",
   "vm_empty_title": "Jeszcze bez nagrań",
+  "vm_summary": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} nagranie, łącznie {total}",
+        "countPlural=few": "{count} nagrania, łącznie {total}",
+        "countPlural=many": "{count} nagrań, łącznie {total}",
+        "countPlural=other": "{count} nagrań, łącznie {total}"
+      }
+    }
+  ],
   "vm_empty_body": "Nagrania głosowe dodane do wpisów zbierają się tutaj, w jednym miejscu - bez pamiętania, którego dnia je nagrano.",
   "vm_open_entry_aria": "Otwórz wpis z {date}",
   "saved_questions_open": "Zapisane pytania",

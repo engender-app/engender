@@ -545,17 +545,15 @@ try {
   await page.waitForURL('**' + pinnedRows[0].href);
 
   /* Nothing that left is unreachable, route by route: the week strip and
-     the entries on the Journal door, the timeline from the Look back door,
-     the milestones list from the Transition door. */
+     the entries on the Journal door, and the milestones - rail and list on
+     one screen since redesign ticket 43 - from the Transition door. */
   await fresh('/calendar');
   await page.waitForSelector('[data-week-strip]');
   await page.waitForSelector('[data-entry-card]');
-  await fresh('/stats');
-  await page.locator('[data-list-row="timeline"]').click();
-  await page.waitForURL('**/timeline');
   await fresh('/more');
   await page.locator('[data-list-row="milestones"]').click();
   await page.waitForURL('**/transition/milestones');
+  await page.waitForSelector('[data-milestone-rail]');
 
   /* Under disguise: no agenda and no sun, and every control left on the
      screen still works - asserted on the log strip that replaces the band
@@ -1112,9 +1110,16 @@ try {
 
 /* 6b. ticket 18's three view-only screens: chronological milestones with
    a compressed gap, thumbnail-backed photo comparison with both sides
-   step-able, and the on-demand recap sequence with its Rive fallback. */
+   step-able, and the on-demand recap sequence with its Rive fallback.
+
+   The first of them is no longer a screen: redesign ticket 43 merged the
+   rail into /transition/milestones and left /timeline as a 307. Loading
+   the old address is how the redirect is proved end to end - the rail's
+   own handles have to answer on the screen it lands on. */
 try {
   await fresh('/timeline');
+  await page.waitForURL('**/transition/milestones');
+  await page.waitForSelector('[data-milestone-rail]');
   const milestoneNames = await page.locator('[data-tl-name]').allTextContents();
   const expectedMilestones = [
     'Coming out to my parents',

@@ -27,7 +27,6 @@
     ['/settings/export', 'Export & import'],
     ['/media/photos', 'Progress photos'],
     ['/settings/labs', 'Lab results'],
-    ['/timeline', 'Transition timeline'],
   ];
 
   function setTheme(t: 'light' | 'dark') {

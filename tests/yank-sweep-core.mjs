@@ -108,6 +108,7 @@ const SCENES = [
   /* Transition screens (ticket 108): buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
   { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
+  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', is: 'a mark on the rail opening the same editor (redesign 43)' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
@@ -880,7 +881,6 @@ const HYDRATION_SCENES = [
   { name: 'search-question', at: '/search/questions/{question}', needs: 'question', when: 'persona', is: 'one saved question answered' },
   /* Stats tab */
   { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
-  { name: 'timeline', at: '/timeline', is: 'the milestone timeline' },
   { name: 'body-map', at: '/body-map', is: 'the body map over its range' },
   { name: 'tally', at: '/tally', is: 'the tally chart' },
   { name: 'compare', at: '/compare', is: 'then versus now' },
@@ -912,7 +912,7 @@ const HYDRATION_SCENES = [
   { name: 'stock', at: '/settings/stock', is: 'stock and the run-out day' },
   { name: 'exposure', at: '/settings/exposure', is: 'cumulative exposure' },
   /* Transition group */
-  { name: 'milestones', at: '/transition/milestones', is: 'the milestone list' },
+  { name: 'milestones', at: '/transition/milestones', is: 'the milestone rail over its list' },
   { name: 'roadmap', at: '/transition/roadmap', is: 'the roadmap checklist' },
   { name: 'letters', at: '/transition/letters', is: 'letters written to be read later' },
   { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
