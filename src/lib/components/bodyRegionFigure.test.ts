@@ -1,82 +1,140 @@
-/* The figure's arrangement (phase 10 redesign ticket 40). The rules that
-   have to hold are about coverage and about neutrality, and both are
-   checkable without drawing anything. */
+/* The figure's geometry (phase 10 redesign ticket 40). Three properties,
+   and each of them is something a <style> block cannot be asked about and a
+   render will not reliably show: a tap lands on exactly one region, every
+   target clears the touch floor at the smallest stage the component allows,
+   and what is drawn is inside the zone that selects it. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   FIGURE_BOX,
-  FIGURE_SLOTS,
   GROUND_REGION,
-  GROUND_SLOT,
-  STAGE_HEIGHT,
-  TOUCH_UNITS,
+  GROUND_SHAPES,
+  GROUND_ZONES,
+  MIN_STAGE_HEIGHT,
+  MIN_STAGE_WIDTH,
+  REGION_DRAWINGS,
+  TORSO,
+  TOUCH_PX,
+  boxStyle,
+  contains,
   fillLevel,
-  hitBox,
+  markAt,
+  overlaps,
   placeRegions,
-  slotStyle
+  zonePx
 } from './bodyRegionFigure.ts';
 import { BUILT_IN_BODY_REGIONS } from '../data/vocabulary/builtins.ts';
 
 const region = (id: string, name = id) => ({ id, name, builtIn: true, hidden: false });
+const everyZone = [...REGION_DRAWINGS.flatMap((d) => d.zones), ...GROUND_ZONES];
 
-test('every built-in region is either a slot on the figure or its ground', () => {
-  const placed = new Set([...FIGURE_SLOTS.map((slot) => slot.region), GROUND_REGION]);
+test('every built-in region is either drawn on the figure or is its ground', () => {
+  const placed = new Set([...REGION_DRAWINGS.map((d) => d.region), GROUND_REGION]);
   for (const key of BUILT_IN_BODY_REGIONS) {
     if (key === 'body_facial_hair') continue; // deliberately in the elsewhere cluster
     assert.ok(placed.has(key), `${key} has no place on the figure`);
   }
-  assert.equal(FIGURE_SLOTS.length, 8);
-  assert.equal(GROUND_REGION, 'whole_body');
+  assert.equal(REGION_DRAWINGS.length, 8);
 });
 
-test('the slots run down the body, which is the order they arrive in', () => {
+test('the regions run down the body, which is the order they arrive in', () => {
   assert.deepEqual(
-    FIGURE_SLOTS.map((slot) => slot.region),
+    REGION_DRAWINGS.map((d) => d.region),
     ['hairline', 'face_jaw', 'voice_throat', 'shoulders', 'chest', 'hips_waist', 'genitals', 'hands_feet']
   );
-  const tops = FIGURE_SLOTS.map((slot) => slot.top);
-  assert.deepEqual([...tops].sort((a, b) => a - b), tops);
 });
 
-/* Neutral by construction rather than by careful drawing: every shape is
-   centred on the figure's midline, so there is no contour to carry a waist,
-   a bust or a set of hips. This is the check that a later tweak to one
-   shape's width cannot quietly break. */
-test('every slot is centred on the midline and sits inside the ground', () => {
-  for (const slot of FIGURE_SLOTS) {
-    const centre = slot.left + slot.width / 2;
-    assert.equal(centre, FIGURE_BOX.width / 2, `${slot.region} is off the midline`);
-    assert.ok(slot.left >= 0 && slot.left + slot.width <= FIGURE_BOX.width, `${slot.region} is off the box`);
-    assert.ok(slot.top >= 0 && slot.top + slot.height <= FIGURE_BOX.height, `${slot.region} is off the box`);
+/* The neutrality rule, in the one place it lives. A contour is allowed -
+   the figure is a body - but the torso may not narrow at a waist, swell at
+   a bust or flare at a hip, because those are the three that say which body
+   this is, and they are exactly the three regions the ticket names as
+   costing most to get wrong. One rect of one width is what guarantees it. */
+test('the torso is a constant-width column, which is what makes the figure neutral', () => {
+  assert.equal(TORSO.width, 38);
+  assert.ok(TORSO.height > TORSO.width, 'the torso should be taller than it is wide');
+  // Left and right edge are mirrored about the midline, so it cannot lean.
+  assert.equal(TORSO.left + TORSO.width / 2, FIGURE_BOX.width / 2);
+  // And every other piece of the silhouette is centred or mirrored too.
+  const centres = GROUND_SHAPES.map((s) => s.left + s.width / 2);
+  for (const centre of centres) {
+    const mirrored = centres.some((other) => Math.abs(other - (FIGURE_BOX.width - centre)) < 0.001);
+    assert.ok(mirrored, `a silhouette piece at ${centre} has no mirror`);
   }
 });
 
-test('the drawn shapes do not overlap either', () => {
-  for (let i = 1; i < FIGURE_SLOTS.length; i += 1) {
-    const above = FIGURE_SLOTS[i - 1];
-    const below = FIGURE_SLOTS[i];
-    assert.ok(above.top + above.height <= below.top, `${above.region} and ${below.region} overlap`);
+test('no two zones overlap, so a tap lands on exactly one region', () => {
+  for (let i = 0; i < everyZone.length; i += 1) {
+    for (let j = i + 1; j < everyZone.length; j += 1) {
+      assert.ok(!overlaps(everyZone[i], everyZone[j]), `zones ${i} and ${j} overlap`);
+    }
   }
 });
 
-test('a region with no slot goes to the elsewhere cluster, built-in or not', () => {
+test('every zone is inside the figure box', () => {
+  const box = { left: 0, top: 0, width: FIGURE_BOX.width, height: FIGURE_BOX.height };
+  for (const zone of everyZone) assert.ok(contains(box, zone), 'a zone runs off the figure');
+});
+
+/* The bug the review's browser pass found: the module claimed a 320px stage
+   and the card's padding rendered it at 314, so every button came out
+   47.09px. A floor that is asserted at a size nothing guarantees is not a
+   floor - so the component is handed a minimum stage and this walks every
+   zone through it. */
+test('every zone clears 48px at the smallest stage the component allows', () => {
+  for (const zone of everyZone) {
+    const { w, h } = zonePx(zone, MIN_STAGE_WIDTH, MIN_STAGE_HEIGHT);
+    assert.ok(w >= TOUCH_PX, `a zone is ${w.toFixed(2)}px wide at the minimum stage`);
+    assert.ok(h >= TOUCH_PX, `a zone is ${h.toFixed(2)}px tall at the minimum stage`);
+  }
+});
+
+test('the minimum stage is derived from the zones rather than assumed', () => {
+  const narrowest = Math.min(...everyZone.map((z) => z.width));
+  const shortest = Math.min(...everyZone.map((z) => z.height));
+  assert.equal(MIN_STAGE_WIDTH, Math.ceil((TOUCH_PX * FIGURE_BOX.width) / narrowest));
+  assert.equal(MIN_STAGE_HEIGHT, Math.ceil((TOUCH_PX * FIGURE_BOX.height) / shortest));
+});
+
+/* Tap what you see. Every shape a person can make out has to sit inside one
+   of its own region's zones, or the figure draws one thing and selects
+   another - which is precisely what the old HOTSPOTS table did, with a dot
+   for the shoulders floating over the left arm. */
+test('every drawn shape sits inside a zone that selects its own region', () => {
+  for (const drawing of REGION_DRAWINGS) {
+    for (const shape of drawing.shapes) {
+      const home = drawing.zones.some((zone) => contains(zone, shape));
+      assert.ok(home, `${drawing.region} draws a shape outside its own zones`);
+    }
+  }
+});
+
+/* The ground is the exception, and it has to be stated rather than assumed:
+   its drawing is the silhouette, which runs under the eight, so it is
+   reached where they are not. */
+test('the ground is reached beside the figure rather than on it', () => {
+  assert.ok(GROUND_ZONES.length > 0);
+  for (const zone of GROUND_ZONES) {
+    const onTheEight = REGION_DRAWINGS.some((d) => d.zones.some((other) => overlaps(zone, other)));
+    assert.ok(!onTheEight, 'a ground zone sits on one of the eight');
+  }
+});
+
+test('a region with no place on the figure goes to the elsewhere cluster, built-in or not', () => {
   const placement = placeRegions([
     region('chest'),
     region('body_facial_hair'),
     region('whole_body'),
     region('custom-uuid', 'Scars')
   ]);
-
-  assert.deepEqual(placement.slots.map((s) => s.region.id), ['chest']);
+  assert.deepEqual(placement.drawn.map((d) => d.region.id), ['chest']);
   assert.equal(placement.ground?.id, 'whole_body');
   assert.deepEqual(placement.elsewhere.map((r) => r.id), ['body_facial_hair', 'custom-uuid']);
 });
 
-test('a hidden or deleted built-in leaves its slot empty rather than shifting the others', () => {
+test('a hidden or deleted built-in leaves its place empty rather than shifting the others', () => {
   const placement = placeRegions([region('chest'), region('genitals')]);
-  assert.deepEqual(placement.slots.map((s) => s.region.id), ['chest', 'genitals']);
-  assert.deepEqual(placement.slots.map((s) => s.slot.region), ['chest', 'genitals']);
+  assert.deepEqual(placement.drawn.map((d) => d.drawing.region), ['chest', 'genitals']);
   assert.equal(placement.ground, null);
   assert.deepEqual(placement.elsewhere, []);
 });
@@ -91,62 +149,19 @@ test('a region with no readings is level 0, and the faintest reading is level 1'
   assert.equal(fillLevel({ region: 'chest', side: 'euphoria', value: 100, mixed: false, count: 1 }), 4);
 });
 
-test('a slot writes itself as percentages of the figure box', () => {
-  const style = slotStyle(FIGURE_SLOTS[0]);
+test('the mixed mark lands inside the shape it marks', () => {
+  for (const drawing of REGION_DRAWINGS) {
+    const at = markAt(drawing);
+    const home = drawing.shapes.some(
+      (s) => at.x >= s.left && at.x <= s.left + s.width && at.y >= s.top && at.y <= s.top + s.height
+    );
+    assert.ok(home, `${drawing.region}'s mixed mark falls outside its shapes`);
+  }
+});
+
+test('a box writes itself as percentages of the figure box', () => {
+  const style = boxStyle(REGION_DRAWINGS[0].zones[0]);
   assert.match(style, /left:\s*\d/);
   assert.match(style, /top:\s*\d/);
-  assert.match(style, /width:\s*\d/);
-  assert.match(style, /height:\s*\d/);
   assert.ok(!style.includes('NaN'));
-});
-
-/* The drawing and the target are two rectangles. A shape may be drawn as
-   short as a hairline wants; the button around it is never under 48px on
-   either side, and it still has to be the shape's own button - so no two of
-   them may overlap, or a tap lands on two regions at once. */
-test('every region has a 48px button, whatever size its shape is drawn', () => {
-  const px = (units: number) => (units * STAGE_HEIGHT) / FIGURE_BOX.height;
-  for (const slot of FIGURE_SLOTS) {
-    const hit = hitBox(slot);
-    assert.ok(px(hit.height) >= 47.9, `${slot.region}'s button is ${px(hit.height)}px tall`);
-    assert.ok(px(hit.width) >= 47.9, `${slot.region}'s button is ${px(hit.width)}px wide`);
-    assert.ok(hit.height >= slot.height && hit.width >= slot.width, `${slot.region}'s button is smaller than its shape`);
-    assert.ok(hit.top >= 0 && hit.top + hit.height <= FIGURE_BOX.height, `${slot.region}'s button is off the box`);
-  }
-});
-
-test('no two buttons overlap, so a tap lands on exactly one region', () => {
-  for (let i = 1; i < FIGURE_SLOTS.length; i += 1) {
-    const above = hitBox(FIGURE_SLOTS[i - 1]);
-    const below = hitBox(FIGURE_SLOTS[i]);
-    assert.ok(
-      above.top + above.height <= below.top + 0.001,
-      `${above.region}'s button runs into ${below.region}'s`
-    );
-  }
-});
-
-/* Each shape wears a 5px ring of card surface to lift it off whole_body's
-   own fill, so two neighbours' rings must not touch: 10px, which is 3.125
-   box units at the stage's size. */
-test('no two shapes are closer than their separator rings', () => {
-  for (let i = 1; i < FIGURE_SLOTS.length; i += 1) {
-    const above = FIGURE_SLOTS[i - 1];
-    const below = FIGURE_SLOTS[i];
-    const gapPx = ((below.top - (above.top + above.height)) * STAGE_HEIGHT) / FIGURE_BOX.height;
-    assert.ok(gapPx >= 10, `${above.region} to ${below.region} is ${gapPx}px, under the two rings' 10px`);
-  }
-});
-
-/* whole_body is the ground, so the eight sitting on it cover its middle and
-   the only part of it a finger can reach is what they leave over. That
-   leftover has to be a target in its own right: a clear band below the last
-   shape, one touch target tall and the full width of the figure. */
-test('the ground keeps a clear band a finger can actually hit', () => {
-  const lowest = FIGURE_SLOTS.map(hitBox).reduce((low, hit) =>
-    hit.top + hit.height > low.top + low.height ? hit : low
-  );
-  const band = GROUND_SLOT.top + GROUND_SLOT.height - (lowest.top + lowest.height);
-  assert.ok(band >= TOUCH_UNITS, `the ground's clear band is ${band} units, under the touch floor`);
-  assert.equal(GROUND_SLOT.width, FIGURE_BOX.width);
 });

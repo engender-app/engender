@@ -97,25 +97,29 @@ const dress = async (palette, theme) => {
    wrapper, because the wrapper does not move. */
 const READ_SHAPES = `
   const out = {};
-  for (const el of document.querySelectorAll('[data-body-map-figure] [data-region]')) {
-    /* The state lives on the button and the movement lives on the shape
-       inside it (the button is the touch target and is never drawn), so
-       neither element answers this on its own. Reading the button alone
-       reported every shape at rest on its first frame, because a button's
-       opacity never leaves 1. */
-    const shape = el.classList.contains('region-shape') ? el : el.querySelector('.region-shape');
-    const s = getComputedStyle(shape);
-    const box = shape.getBoundingClientRect();
-    out[el.dataset.region] = {
+  /* The state lives on the button and the movement lives on the drawing,
+     which is an SVG group over on the other side of the stage - so neither
+     element answers this on its own. Reading the button alone reported
+     every shape at rest on its first frame, because a button's opacity
+     never leaves 1. */
+  const pickedOf = (region) =>
+    document
+      .querySelector('[data-body-map-figure] [data-region="' + region + '"]')
+      ?.getAttribute('aria-pressed') ?? null;
+  for (const el of document.querySelectorAll('[data-body-map-figure] [data-region-art], [data-body-map-figure] .region-body')) {
+    const region = el.dataset.regionArt ?? 'whole_body';
+    const s = getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    out[region] = {
       x: Math.round(box.x * 10) / 10,
       y: Math.round(box.y * 10) / 10,
       w: Math.round(box.width * 10) / 10,
       h: Math.round(box.height * 10) / 10,
       o: Math.round(Number(s.opacity) * 1000) / 1000,
       t: s.transform,
-      border: s.borderTopWidth,
-      fill: getComputedStyle(el).getPropertyValue('--region-fill').trim() || 'none',
-      picked: el.getAttribute('aria-pressed')
+      border: getComputedStyle(el.querySelector('rect')).strokeWidth,
+      fill: s.getPropertyValue('--region-fill').trim() || 'none',
+      picked: pickedOf(region)
     };
   }
   const head = document.querySelector('[data-body-map-heading]');
