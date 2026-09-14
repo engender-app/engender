@@ -48,7 +48,12 @@
 
   /** Each memo's length, by recording id, as its player works it out. */
   const lengths = new SvelteMap<string, number>();
-  const total = $derived([...lengths.values()].reduce((sum, n) => sum + n, 0));
+  /* Summed over the recordings that are here now rather than over everything
+     the map has ever been told: a memo deleted from its entry while this
+     screen is open leaves its length behind in the map, and a reading that
+     kept counting it would be saying something that stopped being true -
+     which is the one thing rule 16 asks this line not to do. */
+  const total = $derived(memos.reduce((sum, r) => sum + (lengths.get(r.id) ?? 0), 0));
 
   /** The total as it is being drawn, which trails `total` by one count-up. */
   let shownTotal = $state(0);

@@ -231,7 +231,7 @@
     class="transport-scrub"
     class:is-wave={bars !== null}
     data-transport-scrub
-    style="--played: {playedPx}px"
+    style="--played: {playedPx}px; --wave-height: {WAVE_HEIGHT}px"
     aria-label={m.mt_position()}
     aria-valuetext={m.mt_position_read({ at: formatClock(shownAt), of: formatClock(duration) })}
     bind:clientWidth={trackWidth}
@@ -333,7 +333,10 @@
     position: relative;
     flex: 1;
     min-width: 72px;
-    height: 36px;
+    /* The height the bars are drawn at, handed in rather than written twice:
+       the drawing is sized in script and the box is sized here, and two
+       copies of one number drift. */
+    height: var(--wave-height);
     display: flex;
     align-items: center;
     touch-action: none;
