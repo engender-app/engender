@@ -121,13 +121,36 @@ const writeLetterForToday = async (page, text) => {
    height is what every one of these movements animates, and the clip on the
    arrival, because that is what uncovers it. */
 const READ_CARD = `
-  const card = document.querySelector('[data-letter-state]:has([data-letter-open])');
+  /* The last openable card, which is the one the scene taps: the first is
+     read by nothing here and reading it would report a card at rest through
+     a scene in which another one moved. */
+  const cards = document.querySelectorAll('[data-letter-state]:has([data-letter-open])');
+  const card = cards[cards.length - 1] ?? null;
   const text = card ? card.querySelector('.letter-text') : null;
   const ready = card ? card.querySelector('.letter-ready') : null;
   const shut = card ? card.querySelector('[data-letter-close]') : null;
+  const w = (el) => (el ? Math.round(el.getBoundingClientRect().width * 10) / 10 : null);
   const h = (el) => (el ? Math.round(el.getBoundingClientRect().height * 10) / 10 : null);
   const top = (el) => (el ? Math.round(el.getBoundingClientRect().top * 10) / 10 : null);
-  return { cardH: h(card), cardTop: top(card), textH: h(text), readyH: h(ready), shutH: h(shut) };`;
+  /* A rAF callback runs before the frame's ResizeObserver steps, so the
+     height read above is the layout's natural one and not necessarily what
+     was painted: reveal.ts's resize action starts its animation from inside
+     that observer, in the same frame, and the animated value wins at paint.
+     So the animation itself is reported beside the number - a jump in cardH
+     with an animation already running is the sampler seeing one frame early,
+     and a jump with no animation is a real teleport.
+     (No backticks anywhere in this body: it is a template literal.) */
+  const anims = card ? card.getAnimations().map((a) => Math.round(a.currentTime ?? -1)) : [];
+  const painted = card ? getComputedStyle(card).height : null;
+  return {
+    cardH: h(card),
+    cardTop: top(card),
+    textH: h(text),
+    readyW: w(ready),
+    shutH: h(shut),
+    anims,
+    painted
+  };`;
 
 const READ_ARRIVAL = `
   const surface = document.querySelector('[data-letter-arrival]');
@@ -135,12 +158,20 @@ const READ_ARRIVAL = `
   const text = card ? card.querySelector('.letter-text') : null;
   const past = surface ? surface.querySelector('[data-letter-past]') : null;
   const h = (el) => (el ? Math.round(el.getBoundingClientRect().height * 10) / 10 : null);
+  /* The card's own overflow and its running animation, for the same reason
+     the list scene reports them: the paragraph loses its clamp in one frame
+     and becomes taller in one frame, and whether that is a teleport or a
+     blind depends entirely on whether the box around it was clipped and
+     travelling at the time. */
   return {
     clip: surface ? getComputedStyle(surface).clipPath : null,
     opacity: surface ? getComputedStyle(surface).opacity : null,
     cardH: h(card),
     textH: h(text),
-    pastH: h(past)
+    pastH: h(past),
+    painted: card ? getComputedStyle(card).height : null,
+    overflow: card ? getComputedStyle(card).overflow : null,
+    anims: card ? card.getAnimations().map((a) => Math.round(a.currentTime ?? -1)) : []
   };`;
 
 /** Records everything the page paints for SCENE_MS, with `act` fired one
@@ -238,9 +269,12 @@ try {
       motion === 'reduce'
         ? 'The arrival with reduce-motion set: the surface crossfades over --dur-crossfade rather than being uncovered, which is the substitute its contract asks for, and nothing cuts.'
         : 'A letter whose day is today, met on the way into the letters screen: the whole surface is uncovered from the top edge down over --dur-slow, field and page as one sheet.',
-      () => page.locator('[data-nav-item="transition"]').first().click().then(() => page.locator('[data-hub-row="letters"]').click().catch(() => page.goto(`${base}/transition/letters`))),
+      /* Clicked from the hub rather than navigated by `goto`: a goto
+         reloads the document, which runs no blind and takes the sampler's
+         rAF loop with it. */
+      () => page.locator('[data-list-row="letters"]').click(),
       READ_ARRIVAL,
-      { ms: 1600 }
+      { ms: 1800 }
     );
 
     await page.waitForSelector('[data-letter-arrival]');

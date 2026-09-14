@@ -127,14 +127,27 @@
         onclose={ondone}
       />
 
-      <!-- The way past, and only while there is something to go past. Once
-           the letter is open the card carries its own close, which ends the
-           moment - a second control down here would be the same door with
-           the wrong word on it. It leaves by collapsing rather than by
-           vanishing. -->
+      <!-- The two ways out of the moment, and only while it is still a
+           moment. The card above answers a press too, as it does in the
+           list, but a screen that arrived on its own has to say what it is
+           offering rather than leave it to be discovered. Once the letter is
+           open the card carries its own close, which ends the moment; a
+           second control down here would be the same door with the wrong
+           word on it. They leave by collapsing rather than by vanishing. -->
       {#if !opened}
-        <div out:collapse>
-          <button type="button" class="btn btn-soft letter-arrival-past press" data-letter-past onclick={ondone}>
+        <div class="letter-arrival-ways" out:collapse>
+          <button
+            type="button"
+            class="btn btn-primary press"
+            data-letter-arrival-open
+            onclick={() => {
+              opened = true;
+              onopen();
+            }}
+          >
+            <span>{m.letters_arrival_open()}</span>
+          </button>
+          <button type="button" class="btn btn-soft press" data-letter-past onclick={ondone}>
             <span>{m.not_now()}</span>
           </button>
         </div>
@@ -192,7 +205,9 @@
     padding: var(--space-5) var(--space-5) calc(var(--inset-bottom) + var(--space-6));
   }
 
-  .letter-arrival-past {
-    align-self: start;
+  .letter-arrival-ways {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 </style>
