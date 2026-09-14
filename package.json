@@ -25,6 +25,7 @@
     "gallery:scales": "VITE_DEMO=1 npm run build && node tests/scales-gallery.mjs",
     "gallery:onboarding-areas": "VITE_DEMO=1 npm run build && node tests/onboarding-areas-gallery.mjs",
     "gallery:transition-door": "VITE_DEMO=1 npm run build && node tests/transition-door-gallery.mjs",
+    "gallery:milestones": "VITE_DEMO=1 npm run build && node tests/milestones-gallery.mjs",
     "gallery:gates": "VITE_DEMO=1 npm run build && node tests/gates-gallery.mjs",
     "gallery:disguise-step": "VITE_DEMO=1 npm run build && node tests/disguise-step-gallery.mjs",
     "gallery:day": "node tests/day-gallery.mjs",
