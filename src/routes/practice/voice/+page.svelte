@@ -448,7 +448,7 @@
                          19px bold, which is large text, because rule 11
                          holds small text on a stripe to 4.5:1 and this list
                          takes whichever role the areas hand it. -->
-                    <span class="vc-row-pitch">{m.vb_hz({ value: String(Math.round(b.f0MedianHz)) })}</span>
+                    <span class="vc-row-pitch" data-voice-row-pitch>{m.vb_hz({ value: String(Math.round(b.f0MedianHz)) })}</span>
                     <span class="kit-row-text">
                       <span class="kit-row-title">{fmtDay(b.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </span>
